@@ -213,7 +213,7 @@ func newNewCmd() *cobra.Command {
 				}
 
 				// Prompt for config as needed.
-				c, err := promptForConfig(template.Config, commandLineConfig, nil, yes, displayOpts)
+				c, err := promptForConfig(template.Config, commandLineConfig, nil, nil, yes, displayOpts)
 				if err != nil {
 					return err
 				}
@@ -462,6 +462,7 @@ func promptForConfig(
 	templateConfig map[config.Key]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
 	stackConfig config.Map,
+	crypter config.Crypter,
 	yes bool,
 	opts backend.DisplayOptions) (config.Map, error) {
 
@@ -485,17 +486,24 @@ func promptForConfig(
 			templateConfigValue := templateConfig[k]
 
 			// Prepare a default value.
-			defaultValue := ""
+			var defaultValue string
+			var secret bool
 			if stackConfig != nil {
 				// Use the stack's existing value as the default.
-				if val, ok := stackConfig[k]; ok && !val.Secure() {
-					value, err := val.Value(nil)
-					contract.AssertNoError(err)
+				if val, ok := stackConfig[k]; ok {
+					value, err := val.Value(crypter)
+					if err != nil {
+						return nil, err
+					}
 					defaultValue = value
+					secret = val.Secure()
 				}
 			}
 			if defaultValue == "" {
 				defaultValue = templateConfigValue.Default
+			}
+			if !secret {
+				secret = templateConfigValue.Secret
 			}
 
 			// Prepare the prompt.
@@ -504,14 +512,26 @@ func promptForConfig(
 				prompt = prompt + ": " + templateConfigValue.Description
 			}
 
-			// Actually prompt.
-			value, err := promptForValue(yes, prompt, defaultValue, templateConfigValue.Secret, nil, opts)
+			// Prompt.
+			value, err := promptForValue(yes, prompt, defaultValue, secret, nil, opts)
 			if err != nil {
 				return nil, err
 			}
 
-			// Save the value.
-			c[k] = config.NewValue(value)
+			// Encrypt the value if needed.
+			var v config.Value
+			if secret {
+				enc, err := crypter.EncryptValue(value)
+				if err != nil {
+					return nil, err
+				}
+				v = config.NewSecureValue(enc)
+			} else {
+				v = config.NewValue(value)
+			}
+
+			// Save it.
+			c[k] = v
 		}
 	}
 
@@ -542,8 +562,13 @@ func promptForValue(
 			prompt = opts.Color.Colorize(
 				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
 		} else {
+			defaultValuePrompt := defaultValue
+			if secret {
+				defaultValuePrompt = "[secret]"
+			}
+
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValue, colors.Reset))
+				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValuePrompt, colors.Reset))
 		}
 		fmt.Print(prompt)
 
