@@ -40,6 +40,7 @@ import (
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
+// nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
 func newNewCmd() *cobra.Command {
 	var configArray []string
 	var name string
@@ -56,8 +57,6 @@ func newNewCmd() *cobra.Command {
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			// Validate name (if specified) before further prompts/operations.
 			if name != "" && !workspace.IsValidProjectName(name) {
 				return errors.Errorf("'%s' is not a valid project name", name)
@@ -68,8 +67,8 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Get the current working directory.
-			var cwd string
-			if cwd, err = os.Getwd(); err != nil {
+			cwd, err := os.Getwd()
+			if err != nil {
 				return errors.Wrap(err, "getting the working directory")
 			}
 			originalCwd := cwd
@@ -97,8 +96,7 @@ func newNewCmd() *cobra.Command {
 			// will kick off the login flow (if not already logged-in).
 			var b backend.Backend
 			if !generateOnly {
-				b, err = currentBackend(displayOpts)
-				if err != nil {
+				if b, err = currentBackend(displayOpts); err != nil {
 					return err
 				}
 			}
@@ -109,8 +107,7 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Retrieve the template repo.
-			var repo workspace.TemplateRepository
-			repo, err = workspace.RetrieveTemplates(templateNameOrURL, offline)
+			repo, err := workspace.RetrieveTemplates(templateNameOrURL, offline)
 			if err != nil {
 				return err
 			}
@@ -119,8 +116,7 @@ func newNewCmd() *cobra.Command {
 			}()
 
 			// List the templates from the repo.
-			var templates []workspace.Template
-			templates, err = repo.Templates()
+			templates, err := repo.Templates()
 			if err != nil {
 				return err
 			}
@@ -189,8 +185,7 @@ func newNewCmd() *cobra.Command {
 				defaultValue := getDevStackName(name)
 
 				for {
-					var stackName string
-					stackName, err = promptForValue(yes, "stack name", defaultValue, false, nil, displayOpts)
+					stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, displayOpts)
 					if err != nil {
 						return err
 					}
@@ -212,15 +207,13 @@ func newNewCmd() *cobra.Command {
 			// Prompt for config values and save.
 			if !generateOnly {
 				// Get config values passed on the command line.
-				var commandLineConfig config.Map
-				commandLineConfig, err = parseConfig(configArray)
+				commandLineConfig, err := parseConfig(configArray)
 				if err != nil {
 					return err
 				}
 
 				// Prompt for config as needed.
-				var c config.Map
-				c, err = promptForConfig(template.Config, commandLineConfig, nil, yes, displayOpts)
+				c, err := promptForConfig(template.Config, commandLineConfig, nil, yes, displayOpts)
 				if err != nil {
 					return err
 				}
@@ -404,7 +397,6 @@ func installDependencies() error {
 		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again", command)
 	}
 
-	fmt.Println("Finished installing dependencies.")
 	return nil
 }
 

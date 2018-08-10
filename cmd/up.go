@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -27,9 +26,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
 func newUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
@@ -98,29 +99,32 @@ func newUpCmd() *cobra.Command {
 				}
 
 				// Retrieve the template repo.
-				var repo workspace.TemplateRepository
-				if repo, err = workspace.RetrieveTemplates(url, false); err != nil {
+				repo, err := workspace.RetrieveTemplates(url, false)
+				if err != nil {
 					return err
 				}
 
 				// List the templates from the repo.
-				var templates []workspace.Template
-				if templates, err = repo.Templates(); err != nil {
+				templates, err := repo.Templates()
+				if err != nil {
 					return err
 				}
 
 				// Make sure only a single template is found.
 				// Alternatively, we could consider prompting to choose one instead of failing.
 				if len(templates) != 1 {
-					return errors.Errorf("more than one app template found at %s", url)
+					return errors.Errorf("more than one application found at %s", url)
 				}
 				template := templates[0]
 
 				// Create temp directory for the "virtual workspace".
-				var temp string
-				if temp, err = ioutil.TempDir("", "pulumi-up-"); err != nil {
+				temp, err := ioutil.TempDir("", "pulumi-up-")
+				if err != nil {
 					return err
 				}
+				defer func() {
+					contract.IgnoreError(os.RemoveAll(temp))
+				}()
 
 				// TODO don't use template name/description for project name/description.
 				// Consider prompting if they are ${PROJECT} and ${DESCRIPTION}.
@@ -148,8 +152,7 @@ func newUpCmd() *cobra.Command {
 					}
 					hasStack = true
 
-					stackConfig, err = backend.GetLatestConfiguration(commandContext(), s)
-					if err != nil {
+					if stackConfig, err = backend.GetLatestConfiguration(commandContext(), s); err != nil {
 						return err
 					}
 
@@ -159,8 +162,8 @@ func newUpCmd() *cobra.Command {
 				}
 
 				// Get config values passed on the command line.
-				var commandLineConfig config.Map
-				if commandLineConfig, err = parseConfig(configArray); err != nil {
+				commandLineConfig, err := parseConfig(configArray)
+				if err != nil {
 					return err
 				}
 
@@ -186,7 +189,6 @@ func newUpCmd() *cobra.Command {
 				if err = saveConfig(s.Name().StackName(), c); err != nil {
 					return errors.Wrap(err, "saving config")
 				}
-				fmt.Println("Saved config.")
 			}
 
 			proj, root, err := readProject()
