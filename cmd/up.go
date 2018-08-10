@@ -145,7 +145,7 @@ func newUpCmd() *cobra.Command {
 			return errors.Wrap(err, "changing the working directory")
 		}
 
-		// Get a stack, but don't set it to current.
+		// Get a stack, but don't set it as the current stack, to avoid writing to ~/.pulumi/workspaces.
 		s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
 		if err != nil {
 			return err
