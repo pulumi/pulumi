@@ -22,7 +22,7 @@ import { Resource } from "./resource";
 const a = new Resource("a", { fail: 4 });
 
 // Create B
-const b = new Resource("b", { fail: 2 });
+const b = new Resource("b", { fail: 2 }, { dependsOn: a });
 
 // Delete A
 // Delete B
