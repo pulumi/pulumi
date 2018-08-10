@@ -153,7 +153,7 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
 		if restErr, ok := err.(*apitype.ErrorResponse); ok {
 			if restErr.Code == http.StatusNotFound {
-				return nil, errors.New("no previous deployment")
+				return nil, backend.ErrNoPreviousDeployment
 			}
 		}
 

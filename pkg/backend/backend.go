@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -26,6 +27,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
+)
+
+var (
+	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
+	ErrNoPreviousDeployment = errors.New("no previous deployment")
 )
 
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.

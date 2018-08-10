@@ -52,7 +52,7 @@ func newStackRmCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts)
+			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}

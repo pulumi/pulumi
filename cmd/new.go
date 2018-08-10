@@ -351,7 +351,7 @@ func stackInit(b backend.Backend, stackName string) (backend.Stack, error) {
 	if err != nil {
 		return nil, err
 	}
-	return createStack(b, stackRef, nil)
+	return createStack(b, stackRef, nil, true /*setCurrent*/)
 }
 
 // saveConfig saves the config for the stack.

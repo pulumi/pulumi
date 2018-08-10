@@ -50,7 +50,7 @@ func newConfigCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			stack, err := requireStack(stack, true, opts)
+			stack, err := requireStack(stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -111,7 +111,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, false, opts)
+			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -225,7 +225,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
