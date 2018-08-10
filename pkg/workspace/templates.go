@@ -119,6 +119,9 @@ type Template struct {
 	Description string                                    // Description of the template.
 	Quickstart  string                                    // Optional text to be displayed after template creation.
 	Config      map[config.Key]ProjectTemplateConfigValue // Optional template config.
+
+	ProjectName        string // Name of the project.
+	ProjectDescription string // Optional description of the project.
 }
 
 // cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository.
@@ -277,11 +280,16 @@ func LoadTemplate(path string) (Template, error) {
 	template := Template{
 		Dir:  path,
 		Name: filepath.Base(path),
+
+		ProjectName: proj.Name.String(),
 	}
 	if proj.Template != nil {
 		template.Description = proj.Template.Description
 		template.Quickstart = proj.Template.Quickstart
 		template.Config = proj.Template.Config
+	}
+	if proj.Description != nil {
+		template.ProjectDescription = *proj.Description
 	}
 
 	return template, nil

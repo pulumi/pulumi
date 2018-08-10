@@ -19,6 +19,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -26,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -103,6 +104,9 @@ func newUpCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				defer func() {
+					contract.IgnoreError(repo.Delete())
+				}()
 
 				// List the templates from the repo.
 				templates, err := repo.Templates()
@@ -126,14 +130,18 @@ func newUpCmd() *cobra.Command {
 					contract.IgnoreError(os.RemoveAll(temp))
 				}()
 
-				// TODO don't use template name/description for project name/description.
-				// Consider prompting if they are ${PROJECT} and ${DESCRIPTION}.
-				if err = template.CopyTemplateFiles(temp, true, template.Name, template.Description); err != nil {
-					return err
+				// Cleanup the project name/description if needed.
+				projectName := template.ProjectName
+				if projectName == "${PROJECT}" {
+					projectName = workspace.ValueOrSanitizedDefaultProjectName(projectName, template.Name)
+				}
+				projectDescription := template.ProjectDescription
+				if projectDescription == "${DESCRIPTION}" {
+					projectDescription = ""
 				}
 
-				// Delete the template repo.
-				if err = repo.Delete(); err != nil {
+				// Copy the template files.
+				if err = template.CopyTemplateFiles(temp, true, projectName, projectDescription); err != nil {
 					return err
 				}
 
