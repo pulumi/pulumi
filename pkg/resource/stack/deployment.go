@@ -75,9 +75,15 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
 		resources = append(resources, SerializeResource(res))
 	}
 
+	var operations []apitype.OperationV1
+	for _, op := range snap.InFlightOperations {
+		operations = append(operations, SerializeOperation(op))
+	}
+
 	return &apitype.DeploymentV2{
-		Manifest:  manifest,
-		Resources: resources,
+		Manifest:           manifest,
+		Resources:          resources,
+		InFlightOperations: operations,
 	}
 }
 
@@ -147,7 +153,16 @@ func DeserializeDeploymentV2(deployment apitype.DeploymentV2) (*deploy.Snapshot,
 		resources = append(resources, desres)
 	}
 
-	return deploy.NewSnapshot(manifest, resources), nil
+	var ops []resource.Operation
+	for _, op := range deployment.InFlightOperations {
+		desop, err := DeserializeOperation(op)
+		if err != nil {
+			return nil, err
+		}
+		ops = append(ops, desop)
+	}
+
+	return deploy.NewSnapshot(manifest, resources, ops), nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
@@ -179,6 +194,14 @@ func SerializeResource(res *resource.State) apitype.ResourceV2 {
 		Dependencies: res.Dependencies,
 		InitErrors:   res.InitErrors,
 		Provider:     res.Provider,
+	}
+}
+
+func SerializeOperation(op resource.Operation) apitype.OperationV1 {
+	res := SerializeResource(op.Resource)
+	return apitype.OperationV1{
+		Resource: res,
+		Status:   string(op.Operation),
 	}
 }
 
@@ -242,6 +265,14 @@ func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider), nil
+}
+
+func DeserializeOperation(op apitype.OperationV1) (resource.Operation, error) {
+	res, err := DeserializeResource(op.Resource)
+	if err != nil {
+		return resource.Operation{}, err
+	}
+	return resource.NewOperation(res, resource.OperationState(op.Status)), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

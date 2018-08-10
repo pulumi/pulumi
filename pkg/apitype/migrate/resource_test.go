@@ -67,5 +67,4 @@ func TestV1ToV2(t *testing.T) {
 		resource.URN("dep2"),
 	}, v2.Dependencies)
 	assert.Empty(t, v2.Provider)
-	assert.Empty(t, v2.Status)
 }

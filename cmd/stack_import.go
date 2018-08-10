@@ -110,8 +110,28 @@ func newStackImportCmd() *cobra.Command {
 					errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
 			}
 
+			// Explicitly clear-out any pending operations.
+			if snapshot.InFlightOperations != nil {
+				for _, op := range snapshot.InFlightOperations {
+					msg := fmt.Sprintf(
+						"removing in-flight operation '%s' on '%s' from snapshot", op.Operation, op.Resource.URN)
+					cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
+				}
+
+				snapshot.InFlightOperations = nil
+			}
+			bytes, err := json.Marshal(stack.SerializeDeployment(snapshot))
+			if err != nil {
+				return err
+			}
+
+			dep := apitype.UntypedDeployment{
+				Version:    apitype.DeploymentSchemaVersionCurrent,
+				Deployment: bytes,
+			}
+
 			// Now perform the deployment.
-			if err = s.ImportDeployment(commandContext(), &deployment); err != nil {
+			if err = s.ImportDeployment(commandContext(), &dep); err != nil {
 				return errors.Wrap(err, "could not import deployment")
 			}
 			fmt.Printf("Import successful.\n")

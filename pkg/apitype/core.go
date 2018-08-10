@@ -86,6 +86,18 @@ type DeploymentV2 struct {
 	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
 	Resources []ResourceV2 `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// InFlightOperations are all operations that were known by the engine to be currently executing.
+	InFlightOperations []OperationV1 `json:"in_flight_operations,omitempty" yaml:"in_flight_operations,omitempty"`
+}
+
+// OperationV1 represents an operation that the engine is performing. It consists of a Resource, which is the state
+// that the engine used to initiate the operation, and a Status, which is a string representation of the operation
+// that the engine initiated.
+type OperationV1 struct {
+	// Resource is the state that the engine used to initiate this operation.
+	Resource ResourceV2 `json:"resource" yaml:"resource"`
+	// Status is a string representation of the operation that the engine is performing.
+	Status string `json:"status" yaml:"status"`
 }
 
 // UntypedDeployment contains an inner, untyped deployment structure.
@@ -132,11 +144,7 @@ type ResourceV1 struct {
 //   2. It adds an additional bool field, "External", which reflects whether or not this resource
 //      exists because of a call to `ReadResource`. This is motivated by a need to store
 //      resources that Pulumi does not own in the deployment.
-//   3. It adds an additional string field, "Status" that indicates whether or not the engine is
-//      aware that the last operation that targeted that resource completed successfully. If the engine
-//      crashes or is otherwise terminated while a resource operation is in-flight, resources may be
-//      left with this field set to a non-empty value.
-//   4. It adds an additional string field, "Provider", that is a reference to a first-class provider
+//   3. It adds an additional string field, "Provider", that is a reference to a first-class provider
 //      associated with this resource.
 //
 // Migrating from ResourceV1 to ResourceV2 involves:
@@ -144,9 +152,7 @@ type ResourceV1 struct {
 //  2. Setting the `External` field to "false", since a ResourceV1 existing for a resource
 //     implies that it is owned by Pulumi. Note that since this is the default value for
 //     booleans in Go, no explicit assignment needs to be made.
-//  3. Setting the "Status" field to the empty string, since a resource's presence in a V1 deployment
-//     implies that it has been operated upon successfully.
-//  4. Setting the "Provider" field to the empty string, because V1 deployments don't have first-class providers.
+//  3. Setting the "Provider" field to the empty string, because V1 deployments don't have first-class providers.
 type ResourceV2 struct {
 	// URN uniquely identifying this resource.
 	URN resource.URN `json:"urn" yaml:"urn"`
@@ -173,10 +179,6 @@ type ResourceV2 struct {
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
 	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
-	// Status is an indicator of whether or not this resource is in a "dirty" (known) state. If
-	// set and not the empty string, this resource refers to an operation that was in-flight but whose
-	// completion status is not known.
-	Status string `json:"status,omitempty" yaml:"status,omitempty"`
 	// Provider is a reference to the provider that is associated with this resource.
 	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
 }

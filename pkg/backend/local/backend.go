@@ -364,7 +364,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	}
 
 	if snap == nil {
-		snap = deploy.NewSnapshot(deploy.Manifest{}, nil)
+		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil)
 	}
 
 	data, err := json.Marshal(stack.SerializeDeployment(snap))

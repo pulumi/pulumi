@@ -139,7 +139,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, resources)
+	return deploy.NewSnapshot(manifest, resources, nil)
 }
 
 func newJournal() *Journal {
