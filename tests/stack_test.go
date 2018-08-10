@@ -229,8 +229,8 @@ func TestStackCommands(t *testing.T) {
 		// invalid resources in the snapshot.
 		res := snap.Resources[len(snap.Resources)-1]
 		snap.PendingOperations = append(snap.PendingOperations, resource.Operation{
-			Resource:  res,
-			Operation: resource.OperationStateDeleting,
+			Resource: res,
+			Type:     resource.OperationTypeDeleting,
 		})
 		v2deployment := stack.SerializeDeployment(snap)
 		data, err := json.Marshal(&v2deployment)
