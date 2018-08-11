@@ -169,8 +169,7 @@ func newUpCmd() *cobra.Command {
 		// Otherwise, use the values specified on the command line and prompt for new values.
 		// If the stack already existed and had previous config, those values will be used as the defaults.
 		var c config.Map
-		templateURL := getPreconfiguredEmptyStackTemplateURL(stackConfig, snap)
-		if templateURL != "" {
+		if isPreconfiguredEmptyStack(url, template.Config, stackConfig, snap) {
 			c = stackConfig
 			// TODO consider warning if the specific URL is different from templateURL.
 		} else {
@@ -331,16 +330,53 @@ var (
 	templateKey = config.MustMakeKey("pulumi", "template")
 )
 
-// getPreconfiguredEmptyStackTemplateURL returns the template URL of the preconfigured empty stack, otherwise "".
-func getPreconfiguredEmptyStackTemplateURL(c config.Map, snap *deploy.Snapshot) string {
-	templateURL, hasTemplateKey := c[templateKey]
-	stackResource, _ := stack.GetRootStackResource(snap)
+// isPreconfiguredEmptyStack returns true if the url matches the value of `pulumi:template` in stackConfig,
+// the stackConfig values satisfy the config requirements of templateConfig, and the snapshot is empty.
+// This is the state of an initial preconfigured empty stack (i.e. a stack that's been created and configured
+// in the Pulumi Console).
+func isPreconfiguredEmptyStack(
+	url string,
+	templateConfig map[config.Key]workspace.ProjectTemplateConfigValue,
+	stackConfig config.Map,
+	snap *deploy.Snapshot) bool {
 
-	if hasTemplateKey && len(snap.Resources) == 1 && stackResource != nil {
-		if val, err := templateURL.Value(nil); err == nil {
-			return val
+	// Does stackConfig have a `pulumi:template` value and does it match url?
+	if stackConfig == nil {
+		return false
+	}
+	templateURLValue, hasTemplateKey := stackConfig[templateKey]
+	if !hasTemplateKey {
+		return false
+	}
+	templateURL, err := templateURLValue.Value(nil)
+	if err != nil {
+		contract.IgnoreError(err)
+		return false
+	}
+	if templateURL != url {
+		return false
+	}
+
+	// Does the snapshot only contain a single root resource?
+	if len(snap.Resources) != 1 {
+		return false
+	}
+	stackResource, _ := stack.GetRootStackResource(snap)
+	if stackResource == nil {
+		return false
+	}
+
+	// Can stackConfig satisfy the config requirements of templateConfig?
+	for templateKey, templateVal := range templateConfig {
+		stackVal, ok := stackConfig[templateKey]
+		if !ok {
+			return false
+		}
+
+		if templateVal.Secret != stackVal.Secure() {
+			return false
 		}
 	}
 
-	return ""
+	return true
 }
