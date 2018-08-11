@@ -76,7 +76,7 @@ func newDestroyCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, false, opts.Display)
+			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -100,7 +100,7 @@ func newDestroyCmd() *cobra.Command {
 			if err == context.Canceled {
 				return errors.New("destroy cancelled")
 			}
-			return err
+			return PrintEngineError(err)
 		}),
 	}
 
@@ -124,7 +124,7 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
+		&parallel, "parallel", "p", 10,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,

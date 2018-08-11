@@ -102,8 +102,35 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
+	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range j.Entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
+
+		// Begin journal entries add pending operations to the snapshot. As we see success or failure
+		// entries, we'll record them in doneOps.
+		if e.Kind == JournalEntryBegin {
+			switch e.Step.Op() {
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
+				ops = append(ops, resource.NewOperation(e.Step.Old(), resource.OperationTypeDeleting))
+			case deploy.OpRead, deploy.OpReadReplacement:
+				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeReading))
+			case deploy.OpUpdate:
+				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeUpdating))
+			}
+
+			continue
+		}
+
+		if e.Kind != JournalEntryOutputs {
+			switch e.Step.Op() {
+			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate:
+				doneOps[e.Step.New()] = true
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
+				doneOps[e.Step.Old()] = true
+			}
+		}
 
 		if e.Kind != JournalEntrySuccess {
 			continue
@@ -119,6 +146,11 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			dones[e.Step.Old()] = true
 		case deploy.OpReplace:
 			// do nothing.
+		case deploy.OpRead, deploy.OpReadReplacement:
+			resources = append(resources, e.Step.New())
+			if e.Step.Old() != nil {
+				dones[e.Step.Old()] = true
+			}
 		}
 	}
 
@@ -132,9 +164,17 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 		}
 	}
 
+	// Append any pending operations.
+	var operations []resource.Operation
+	for _, op := range ops {
+		if !doneOps[op.Resource] {
+			operations = append(operations, op)
+		}
+	}
+
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, resources)
+	return deploy.NewSnapshot(manifest, resources, operations)
 }
 
 func newJournal() *Journal {
@@ -981,4 +1021,139 @@ func TestParallelRefresh(t *testing.T) {
 	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
 	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
 	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+}
+
+func TestExternalRefresh(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Our program reads a resource and exits.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "")
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps:   []TestStep{{Op: Update}},
+	}
+
+	// The read should place "resA" in the snapshot with the "External" bit set.
+	snap := p.Run(t, nil)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.True(t, snap.Resources[1].External)
+
+	p = &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps:   []TestStep{{Op: Refresh}},
+	}
+
+	snap = p.Run(t, snap)
+	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.True(t, snap.Resources[1].External)
+}
+
+func TestRefreshInitFailure(t *testing.T) {
+	//
+	// Refresh will persist any initialization errors that are returned by `Read`. This provider
+	// will error out or not based on the value of `refreshShouldFail`.
+	//
+	refreshShouldFail := false
+
+	//
+	// Set up test environment to use `readFailProvider` as the underlying resource provider.
+	//
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, props resource.PropertyMap,
+				) (resource.PropertyMap, resource.Status, error) {
+					if refreshShouldFail {
+						err := &plugin.InitError{
+							Reasons: []string{"Refresh reports continued to fail to initialize"},
+						}
+						return resource.PropertyMap{}, resource.StatusPartialFailure, err
+					}
+					return resource.PropertyMap{}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	//
+	// Create an old snapshot with a single initialization failure.
+	//
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{{
+			Type:       resURN.Type(),
+			URN:        resURN,
+			Custom:     true,
+			ID:         "0",
+			Inputs:     resource.PropertyMap{},
+			Outputs:    resource.PropertyMap{},
+			InitErrors: []string{"Resource failed to initialize"},
+		}},
+	}
+
+	//
+	// Refresh DOES NOT fail, causing the initialization error to disappear.
+	//
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap := p.Run(t, old)
+
+	for _, resource := range snap.Resources {
+		switch urn := resource.URN; urn {
+		case provURN:
+			// break
+		case resURN:
+			assert.Equal(t, []string{}, resource.InitErrors)
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+	}
+
+	//
+	// Refresh DOES fail, causing the new initialization error to appear.
+	//
+	refreshShouldFail = true
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap = p.Run(t, old)
+	for _, resource := range snap.Resources {
+		switch urn := resource.URN; urn {
+		case provURN:
+			// break
+		case resURN:
+			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, resource.InitErrors)
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+	}
 }

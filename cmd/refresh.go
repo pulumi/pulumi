@@ -75,7 +75,7 @@ func newRefreshCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, true, opts.Display)
+			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -100,7 +100,7 @@ func newRefreshCmd() *cobra.Command {
 			if err == context.Canceled {
 				return errors.New("refresh cancelled")
 			}
-			return err
+			return PrintEngineError(err)
 		}),
 	}
 
@@ -125,7 +125,7 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
+		&parallel, "parallel", "p", 10,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,

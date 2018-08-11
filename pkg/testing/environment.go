@@ -26,8 +26,12 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
+)
+
+const (
+	bookkeepingDir              = ".pulumi"
+	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 )
 
 // Environment is an extension of the testing.T type that provides support for a test environment
@@ -105,7 +109,7 @@ func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string,
 // LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
 // may reuse stack names.
 func (e *Environment) LocalURL() string {
-	return "local://" + filepath.Join(e.RootPath, workspace.BookkeepingDir)
+	return "local://" + filepath.Join(e.RootPath, bookkeepingDir)
 }
 
 // GetCommandResults runs the given command and args in the Environments CWD, returning
@@ -123,7 +127,7 @@ func (e *Environment) GetCommandResults(t *testing.T, command string, args ...st
 	cmd.Dir = e.CWD
 	cmd.Stdout = &outBuffer
 	cmd.Stderr = &errBuffer
-	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", workspace.PulumiCredentialsPathEnvVar, e.RootPath))
+	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 
 	runErr := cmd.Run()

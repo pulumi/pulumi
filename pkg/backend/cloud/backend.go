@@ -139,9 +139,6 @@ type Backend interface {
 		ctx context.Context, info workspace.PluginInfo,
 		progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
 
-	DownloadTemplate(ctx context.Context, name string, progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
-	ListTemplates(ctx context.Context) ([]workspace.Template, error)
-
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 }
@@ -433,33 +430,6 @@ func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.Plugin
 		bar := pb.New(int(size))
 		result = newBarProxyReadCloser(bar, result)
 		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading plugin: "))
-		bar.Postfix(opts.Color.Colorize(colors.Reset))
-		bar.SetMaxWidth(80)
-		bar.SetUnits(pb.U_BYTES)
-		bar.Start()
-	}
-
-	return result, nil
-}
-
-func (b *cloudBackend) ListTemplates(ctx context.Context) ([]workspace.Template, error) {
-	return b.client.ListTemplates(ctx)
-}
-
-func (b *cloudBackend) DownloadTemplate(
-	ctx context.Context, name string,
-	progress bool, opts backend.DisplayOptions) (io.ReadCloser, error) {
-
-	result, size, err := b.client.DownloadTemplate(ctx, name)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to download template")
-	}
-
-	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
-	if progress && size != -1 {
-		bar := pb.New(int(size))
-		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading template: "))
 		bar.Postfix(opts.Color.Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
@@ -871,14 +841,19 @@ func (b *cloudBackend) updateStack(
 		opts.Display.Color.Colorize(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
 		actionLabel, stack.Name())
 
-	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
+	// Create an update object if we will persist the results, e.g. when not doing a local preview.
 	var update client.UpdateIdentifier
 	var version int
 	var token string
 	var err error
 	if persist {
 		update, version, token, err = b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
+	}
+	if err != nil {
+		return nil, err
+	}
 
+	if persist {
 		// Print a URL at the end of the update pointing to the Pulumi Service.
 		var link string
 		base := b.cloudConsoleStackPath(update.StackIdentifier)
@@ -894,9 +869,6 @@ func (b *cloudBackend) updateStack(
 						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
 			}()
 		}
-	}
-	if err != nil {
-		return nil, err
 	}
 
 	return b.runEngineAction(

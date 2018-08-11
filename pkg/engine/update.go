@@ -44,6 +44,9 @@ type UpdateOptions struct {
 	// true if debugging output it enabled
 	Debug bool
 
+	// true if we should report events for steps that involve default providers.
+	reportDefaultProviderSteps bool
+
 	// the plugin host to use for this update
 	host plugin.Host
 }
@@ -210,21 +213,24 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
-	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
+	// Check for a default provider step and skip reporting if necessary.
+	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
+		acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
-	// Warn the user if they're not updating a resource whose initialization failed.
-	if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
-		indent := "         "
+		// Warn the user if they're not updating a resource whose initialization failed.
+		if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
+			indent := "         "
 
-		// TODO: Move indentation to the display logic, instead of doing it ourselves.
-		var warning bytes.Buffer
-		warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
-		warning.WriteString(indent + "to update it to fix these issues:\n")
-		for i, err := range step.Old().InitErrors {
-			warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
-				colors.Reset + " " + err + "\n")
+			// TODO: Move indentation to the display logic, instead of doing it ourselves.
+			var warning bytes.Buffer
+			warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
+			warning.WriteString(indent + "to update it to fix these issues:\n")
+			for i, err := range step.Old().InitErrors {
+				warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
+					colors.Reset + " " + err + "\n")
+			}
+			acts.Opts.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
 		}
-		acts.Opts.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
@@ -243,6 +249,8 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		return nil
 	}
 
+	reportStep := acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step)
+
 	// Report the result of the step.
 	stepop := step.Op()
 	if err != nil {
@@ -250,10 +258,17 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 			acts.MaybeCorrupt = true
 		}
 
+		errorURN := resource.URN("")
+		if reportStep {
+			errorURN = step.URN()
+		}
+
 		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetPlanApplyFailedError(step.URN()), err)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
-	} else {
+		acts.Opts.Diag.Errorf(diag.GetPlanApplyFailedError(errorURN), err)
+		if reportStep {
+			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
+		}
+	} else if reportStep {
 		if step.Logical() {
 			// Increment the counters.
 			acts.MapLock.Lock()
@@ -281,7 +296,10 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+	// Check for a default provider step and skip reporting if necessary.
+	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
+		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+	}
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.

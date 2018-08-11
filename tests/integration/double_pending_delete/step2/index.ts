@@ -21,7 +21,7 @@ import { Resource } from "./resource";
 // This leaves the previous instance of A in the snapshot, since the plan
 // failed before we got a chance to service the pending deletion.
 const a = new Resource("a", { fail: 2 });
-const b = new Resource("b", { fail: 1 });
+const b = new Resource("b", { fail: 1 }, { dependsOn: a });
 // The snapshot now contains:
 //  A: Created
 //  A: Pending Delete

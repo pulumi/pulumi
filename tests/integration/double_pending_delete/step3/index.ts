@@ -22,7 +22,7 @@ import { Resource } from "./resource";
 const a = new Resource("a", { fail: 3 });
 
 // We will still fail to replace B, since fail == 1.
-const b = new Resource("b", { fail: 1 });
+const b = new Resource("b", { fail: 1 }, { dependsOn: a });
 // The snapshot now contains:
 //  A: Created
 //  A: Pending Delete

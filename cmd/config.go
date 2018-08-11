@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -50,7 +51,7 @@ func newConfigCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			stack, err := requireStack(stack, true, opts)
+			stack, err := requireStack(stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -84,7 +85,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -111,7 +112,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -149,7 +150,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, false, opts)
+			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -225,7 +226,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -273,7 +274,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				v = config.NewValue(value)
 
 				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
-				if !plaintext && looksLikeSecret(value) {
+				if !plaintext && looksLikeSecret(key, value) {
 					return errors.Errorf(
 						"config value '%s' looks like a secret; "+
 							"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
@@ -415,6 +416,12 @@ func getConfig(stack backend.Stack, key config.Key) error {
 		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Name())
 }
 
+var (
+	// keyPattern is the regular expression a configuration key must match before we check (and error) if we think
+	// it is a password
+	keyPattern = regexp.MustCompile("(?i)passwd|pass|password|pwd|secret|token")
+)
+
 const (
 	// maxEntropyCheckLength is the maximum length of a possible secret for entropy checking.
 	maxEntropyCheckLength = 16
@@ -427,7 +434,11 @@ const (
 // looksLikeSecret returns true if a configuration value "looks" like a secret. This is always going to be a heuristic
 // that suffers from false positives, but is better (a) than our prior approach of unconditionally printing a warning
 // for all plaintext values, and (b)  to be paranoid about such things. Inspired by the gas linter and securego project.
-func looksLikeSecret(v string) bool {
+func looksLikeSecret(k config.Key, v string) bool {
+	if !keyPattern.MatchString(k.Name()) {
+		return false
+	}
+
 	if len(v) > maxEntropyCheckLength {
 		v = v[:maxEntropyCheckLength]
 	}

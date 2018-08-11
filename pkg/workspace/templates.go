@@ -15,10 +15,7 @@
 package workspace
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -26,143 +23,288 @@ import (
 	"runtime"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/gitutil"
 )
 
 const (
 	defaultProjectName = "project"
 
+	pulumiTemplateGitRepository = "https://github.com/pulumi/templates.git"
+
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
-	pulumiTemplateManifestFile = ".pulumi.template.yaml"
+	legacyPulumiTemplateManifestFile = ".pulumi.template.yaml"
 
 	// pulumiLocalTemplatePathEnvVar is a path to the folder where templates are stored.
 	// It is used in sandboxed environments where the classic template folder may not be writable.
 	pulumiLocalTemplatePathEnvVar = "PULUMI_TEMPLATE_PATH"
 )
 
-// Template represents a project template.
-type Template struct {
-	// The name of the template.
-	Name string `json:"name" yaml:"name"`
-	// Optional description of the template, also used as a default project description.
-	Description string `json:"description" yaml:"description"`
-	// Optional bool which determines whether dependencies should be installed after project creation.
-	InstallDependencies bool `json:"installdependencies" yaml:"installdependencies"`
-	// Optional default config values.
-	Config map[config.Key]string `json:"config" yaml:"config"`
+// TemplateRepository represents a repository of templates.
+type TemplateRepository struct {
+	Root         string // The full path to the root directory of the repository.
+	SubDirectory string // The full path to the sub directory within the repository.
+	ShouldDelete bool   // Whether the root directory should be deleted.
 }
 
-// LoadLocalTemplate returns a local template.
-func LoadLocalTemplate(name string) (Template, error) {
-	templateDir, err := GetTemplateDir(name)
+// Delete deletes the template repository.
+func (repo TemplateRepository) Delete() error {
+	if repo.ShouldDelete {
+		return os.RemoveAll(repo.Root)
+	}
+	return nil
+}
+
+// Templates lists the templates in the repository.
+func (repo TemplateRepository) Templates() ([]Template, error) {
+	path := repo.SubDirectory
+
+	info, err := os.Stat(path)
 	if err != nil {
-		return Template{}, err
+		return nil, err
 	}
 
-	info, err := os.Stat(templateDir)
-	if err != nil {
-		return Template{}, err
-	}
+	// If it's a file, look in its directory.
 	if !info.IsDir() {
-		return Template{}, errors.Errorf("template '%s' in %s is not a directory", name, templateDir)
+		path = filepath.Dir(path)
 	}
 
-	// Read the description from the manifest (if it exists).
-	template, err := readTemplateManifest(filepath.Join(templateDir, pulumiTemplateManifestFile))
+	// See if there's a Pulumi.yaml in the directory.
+	template, err := LoadTemplate(path)
 	if err != nil && !os.IsNotExist(err) {
-		return Template{}, err
+		return nil, err
+	} else if err == nil {
+		return []Template{template}, nil
 	}
 
-	template.Name = name
-	return template, nil
-}
-
-// ListLocalTemplates returns a list of local templates.
-func ListLocalTemplates() ([]Template, error) {
-	templateDir, err := GetTemplateDir("")
+	// Otherwise, read all subdirectories to find the ones
+	// that contain a Pulumi.yaml.
+	infos, err := ioutil.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
 
-	infos, err := ioutil.ReadDir(templateDir)
-	if err != nil {
-		return nil, err
-	}
-
-	var templates []Template
+	var result []Template
 	for _, info := range infos {
 		if info.IsDir() {
-			template, err := LoadLocalTemplate(info.Name())
-			if err != nil {
-				return nil, err
+			name := info.Name()
+
+			// Ignore the .git directory.
+			if name == GitDir {
+				continue
 			}
-			templates = append(templates, template)
+
+			template, err := LoadTemplate(filepath.Join(path, name))
+			if err != nil && !os.IsNotExist(err) {
+				return nil, err
+			} else if err == nil {
+				result = append(result, template)
+			}
 		}
 	}
-	return templates, nil
+	return result, nil
 }
 
-// InstallTemplate installs a template tarball into the local cache.
-func InstallTemplate(name string, tarball io.ReadCloser) error {
-	contract.Require(name != "", "name")
-	contract.Require(tarball != nil, "tarball")
+// Template represents a project template.
+type Template struct {
+	Dir         string                                    // The directory containing Pulumi.yaml.
+	Name        string                                    // The name of the template.
+	Description string                                    // Description of the template.
+	Quickstart  string                                    // Optional text to be displayed after template creation.
+	Config      map[config.Key]ProjectTemplateConfigValue // Optional template config.
 
-	var templateDir string
-	var err error
+	ProjectName        string // Name of the project.
+	ProjectDescription string // Optional description of the project.
+}
 
-	// Get the template directory.
-	if templateDir, err = GetTemplateDir(name); err != nil {
+// cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository.
+func cleanupLegacyTemplateDir() error {
+	templateDir, err := GetTemplateDir()
+	if err != nil {
 		return err
 	}
 
-	// Delete the directory if it exists.
-	if err = os.RemoveAll(templateDir); err != nil {
-		return errors.Wrapf(err, "removing existing template directory %s", templateDir)
-	}
-
-	// Ensure it exists since we may have just deleted it.
-	if err = os.MkdirAll(templateDir, 0700); err != nil {
-		return errors.Wrapf(err, "creating template directory %s", templateDir)
-	}
-
-	// Extract the tarball to its directory.
-	if err = extractTarball(tarball, templateDir); err != nil {
-		return errors.Wrapf(err, "extracting template to %s", templateDir)
-	}
-
-	// On Windows, we need to replace \n with \r\n. We'll just do this as a separate step.
-	if runtime.GOOS == "windows" {
-		if err = fixWindowsLineEndings(templateDir); err != nil {
-			return errors.Wrapf(err, "fixing line endings in %s", templateDir)
+	// See if the template directory is a Git repository.
+	if _, err = git.PlainOpen(templateDir); err != nil {
+		// If the repository doesn't exist, it's a legacy directory.
+		// Delete the entire template directory and all children.
+		if err == git.ErrRepositoryNotExists {
+			return os.RemoveAll(templateDir)
 		}
+
+		return err
 	}
 
 	return nil
 }
 
+// IsTemplateURL returns true if templateNameOrURL starts with "https://".
+func IsTemplateURL(templateNameOrURL string) bool {
+	return strings.HasPrefix(templateNameOrURL, "https://")
+}
+
+// RetrieveTemplates retrieves a "template repository" based on the specified name or URL.
+func RetrieveTemplates(templateNameOrURL string, offline bool) (TemplateRepository, error) {
+	if IsTemplateURL(templateNameOrURL) {
+		return retrieveURLTemplates(templateNameOrURL, offline)
+	}
+	return retrievePulumiTemplates(templateNameOrURL, offline)
+}
+
+// retrieveURLTemplates retrieves the "template repository" at the specified URL.
+func retrieveURLTemplates(rawurl string, offline bool) (TemplateRepository, error) {
+	if offline {
+		return TemplateRepository{}, errors.Errorf("cannot use %s offline", rawurl)
+	}
+
+	var err error
+
+	// Create a temp dir.
+	var temp string
+	if temp, err = ioutil.TempDir("", "pulumi-template-"); err != nil {
+		return TemplateRepository{}, err
+	}
+
+	var fullPath string
+	if fullPath, err = RetrieveTemplate(rawurl, temp); err != nil {
+		return TemplateRepository{}, err
+	}
+
+	return TemplateRepository{
+		Root:         temp,
+		SubDirectory: fullPath,
+		ShouldDelete: true,
+	}, nil
+}
+
+// retrievePulumiTemplates retrieves the "template repository" for Pulumi templates.
+// Instead of retrieving to a temporary directory, the Pulumi templates are managed from
+// ~/.pulumi/templates.
+func retrievePulumiTemplates(templateName string, offline bool) (TemplateRepository, error) {
+	templateName = strings.ToLower(templateName)
+
+	// Cleanup the template directory.
+	if err := cleanupLegacyTemplateDir(); err != nil {
+		return TemplateRepository{}, err
+	}
+
+	// Get the template directory.
+	templateDir, err := GetTemplateDir()
+	if err != nil {
+		return TemplateRepository{}, err
+	}
+
+	// Ensure the template directory exists.
+	if err := os.MkdirAll(templateDir, 0700); err != nil {
+		return TemplateRepository{}, err
+	}
+
+	if !offline {
+		// Clone or update the pulumi/templates repo.
+		err := gitutil.GitCloneOrPull(pulumiTemplateGitRepository, plumbing.HEAD, templateDir, false /*shallow*/)
+		if err != nil {
+			return TemplateRepository{}, err
+		}
+	}
+
+	subDir := templateDir
+	if templateName != "" {
+		subDir = filepath.Join(subDir, templateName)
+	}
+
+	return TemplateRepository{
+		Root:         templateDir,
+		SubDirectory: subDir,
+		ShouldDelete: false,
+	}, nil
+}
+
+// RetrieveTemplate downloads the repo to path and returns the full path on disk.
+func RetrieveTemplate(rawurl string, path string) (string, error) {
+	url, urlPath, err := gitutil.ParseGitRepoURL(rawurl)
+	if err != nil {
+		return "", err
+	}
+
+	ref, commit, subDirectory, err := gitutil.GetGitReferenceNameOrHashAndSubDirectory(url, urlPath)
+	if err != nil {
+		return "", err
+	}
+
+	if ref != "" {
+		if cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/); cloneErr != nil {
+			return "", cloneErr
+		}
+	} else {
+		if cloneErr := gitutil.GitCloneAndCheckoutCommit(url, commit, path); cloneErr != nil {
+			return "", cloneErr
+		}
+	}
+
+	// Verify the sub directory exists.
+	fullPath := filepath.Join(path, filepath.FromSlash(subDirectory))
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return "", errors.Errorf("%s is not a directory", fullPath)
+	}
+
+	return fullPath, nil
+}
+
+// LoadTemplate returns a template from a path.
+func LoadTemplate(path string) (Template, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return Template{}, err
+	}
+	if !info.IsDir() {
+		return Template{}, errors.Errorf("%s is not a directory", path)
+	}
+
+	// TODO handle other extensions like Pulumi.yml and Pulumi.json?
+	proj, err := LoadProject(filepath.Join(path, "Pulumi.yaml"))
+	if err != nil {
+		return Template{}, err
+	}
+
+	template := Template{
+		Dir:  path,
+		Name: filepath.Base(path),
+
+		ProjectName: proj.Name.String(),
+	}
+	if proj.Template != nil {
+		template.Description = proj.Template.Description
+		template.Quickstart = proj.Template.Quickstart
+		template.Config = proj.Template.Config
+	}
+	if proj.Description != nil {
+		template.ProjectDescription = *proj.Description
+	}
+
+	return template, nil
+}
+
 // CopyTemplateFilesDryRun does a dry run of copying a template to a destination directory,
 // to ensure it won't overwrite any files.
 func (template Template) CopyTemplateFilesDryRun(destDir string) error {
-	var err error
-	var sourceDir string
-	if sourceDir, err = GetTemplateDir(template.Name); err != nil {
-		return err
-	}
-
 	var existing []string
-	err = walkFiles(sourceDir, destDir, func(info os.FileInfo, source string, dest string) error {
+	if err := walkFiles(template.Dir, destDir, func(info os.FileInfo, source string, dest string) error {
 		if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
 			existing = append(existing, filepath.Base(dest))
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -176,12 +318,7 @@ func (template Template) CopyTemplateFilesDryRun(destDir string) error {
 func (template Template) CopyTemplateFiles(
 	destDir string, force bool, projectName string, projectDescription string) error {
 
-	sourceDir, err := GetTemplateDir(template.Name)
-	if err != nil {
-		return err
-	}
-
-	return walkFiles(sourceDir, destDir, func(info os.FileInfo, source string, dest string) error {
+	return walkFiles(template.Dir, destDir, func(info os.FileInfo, source string, dest string) error {
 		if info.IsDir() {
 			// Create the destination directory.
 			return os.Mkdir(dest, 0700)
@@ -213,7 +350,7 @@ func (template Template) CopyTemplateFiles(
 }
 
 // GetTemplateDir returns the directory in which templates on the current machine are stored.
-func GetTemplateDir(name string) (string, error) {
+func GetTemplateDir() (string, error) {
 	// Allow the folder we use to store templates to be overridden.
 	dir := os.Getenv(pulumiLocalTemplatePathEnvVar)
 
@@ -224,10 +361,6 @@ func GetTemplateDir(name string) (string, error) {
 			return "", errors.Wrap(err, "getting user home directory")
 		}
 		dir = filepath.Join(u.HomeDir, BookkeepingDir, TemplateDir)
-	}
-
-	if name != "" {
-		dir = filepath.Join(dir, name)
 	}
 
 	return dir, nil
@@ -282,50 +415,6 @@ func getValidProjectName(name string) string {
 	return result
 }
 
-// extractTarball extracts the tarball to the specified destination directory.
-func extractTarball(tarball io.ReadCloser, destDir string) error {
-	// Unzip and untar the file as we go.
-	defer contract.IgnoreClose(tarball)
-	gzr, err := gzip.NewReader(tarball)
-	if err != nil {
-		return errors.Wrapf(err, "unzipping")
-	}
-	r := tar.NewReader(gzr)
-	for {
-		header, err := r.Next()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return errors.Wrapf(err, "untarring")
-		}
-
-		path := filepath.Join(destDir, header.Name)
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			// Create any directories as needed.
-			if _, err := os.Stat(path); err != nil {
-				if err = os.MkdirAll(path, 0700); err != nil {
-					return errors.Wrapf(err, "untarring dir %s", path)
-				}
-			}
-		case tar.TypeReg:
-			// Expand files into the target directory.
-			dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return errors.Wrapf(err, "opening file %s for untar", path)
-			}
-			defer contract.IgnoreClose(dst)
-			if _, err = io.Copy(dst, r); err != nil {
-				return errors.Wrapf(err, "untarring file %s", path)
-			}
-		default:
-			return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
-		}
-	}
-	return nil
-}
-
 // walkFiles is a helper that walks the directories/files in a source directory
 // and performs an action for each item.
 func walkFiles(sourceDir string, destDir string,
@@ -345,6 +434,11 @@ func walkFiles(sourceDir string, destDir string,
 		dest := filepath.Join(destDir, name)
 
 		if info.IsDir() {
+			// Ignore the .git directory.
+			if name == GitDir {
+				continue
+			}
+
 			if err := actionFn(info, source, dest); err != nil {
 				return err
 			}
@@ -353,8 +447,8 @@ func walkFiles(sourceDir string, destDir string,
 				return err
 			}
 		} else {
-			// Ignore template manifest file.
-			if name == pulumiTemplateManifestFile {
+			// Ignore the legacy template manifest.
+			if name == legacyPulumiTemplateManifestFile {
 				continue
 			}
 
@@ -365,22 +459,6 @@ func walkFiles(sourceDir string, destDir string,
 	}
 
 	return nil
-}
-
-// readTemplateManifest reads a template manifest file.
-func readTemplateManifest(filename string) (Template, error) {
-	b, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return Template{}, err
-	}
-
-	var manifest Template
-	err = yaml.Unmarshal(b, &manifest)
-	if err != nil {
-		return Template{}, err
-	}
-
-	return manifest, nil
 }
 
 // newExistingFilesError returns a new error from a list of existing file names
@@ -398,6 +476,10 @@ func newExistingFilesError(existing []string) error {
 // transform returns a new string with ${PROJECT} and ${DESCRIPTION} replaced by
 // the value of projectName and projectDescription.
 func transform(content string, projectName string, projectDescription string) string {
+	// On Windows, we need to replace \n with \r\n because go-git does not currently handle it.
+	if runtime.GOOS == "windows" {
+		content = strings.Replace(content, "\n", "\r\n", -1)
+	}
 	content = strings.Replace(content, "${PROJECT}", projectName, -1)
 	content = strings.Replace(content, "${DESCRIPTION}", projectDescription, -1)
 	return content
@@ -440,40 +522,4 @@ func isBinary(bytes []byte) bool {
 	}
 
 	return false
-}
-
-// fixWindowsLineEndings will go through the sourceDir, read each file, replace \n with \r\n,
-// and save the changes.
-// It'd be more efficient to do this during tarball extraction, but this is sufficient for now.
-func fixWindowsLineEndings(sourceDir string) error {
-	return walkFiles(sourceDir, sourceDir, func(info os.FileInfo, source string, dest string) error {
-		// Skip directories.
-		if info.IsDir() {
-			return nil
-		}
-
-		// Read the source file.
-		b, err := ioutil.ReadFile(source)
-		if err != nil {
-			return err
-		}
-
-		// Transform only if it isn't a binary file.
-		result := b
-		if !isBinary(b) {
-			content := string(b)
-			content = strings.Replace(content, "\n", "\r\n", -1)
-			result = []byte(content)
-		}
-
-		// Write to the destination file.
-		err = writeAllBytes(dest, result, true /*overwrite*/)
-		if err != nil {
-			// An existing file has shown up in between the dry run and the actual copy operation.
-			if os.IsExist(err) {
-				return newExistingFilesError([]string{filepath.Base(dest)})
-			}
-		}
-		return err
-	})
 }

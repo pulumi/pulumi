@@ -502,7 +502,7 @@ func (sg *stepGenerator) getResourcePropertyStates(urn resource.URN, goal *resou
 	}
 	return props, inputs, outputs,
 		resource.NewState(goal.Type, urn, goal.Custom, false, "",
-			inputs, outputs, goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider)
+			inputs, outputs, goal.Parent, goal.Protect, false, goal.Dependencies, goal.InitErrors, goal.Provider)
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.

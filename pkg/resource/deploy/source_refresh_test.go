@@ -81,9 +81,9 @@ func TestRefresh(t *testing.T) {
 
 	reads := int32(0)
 	noopProvider := &deploytest.Provider{
-		ReadF: func(resource.URN, resource.ID, resource.PropertyMap) (resource.PropertyMap, error) {
+		ReadF: func(resource.URN, resource.ID, resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 			atomic.AddInt32(&reads, 1)
-			return resource.PropertyMap{}, nil
+			return resource.PropertyMap{}, resource.StatusUnknown, nil
 		},
 	}
 

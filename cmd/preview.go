@@ -73,7 +73,7 @@ func newPreviewCmd() *cobra.Command {
 				},
 			}
 
-			s, err := requireStack(stack, true, opts.Display)
+			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ func newPreviewCmd() *cobra.Command {
 			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
 			switch {
 			case err != nil:
-				return err
+				return PrintEngineError(err)
 			case expectNop && changes != nil && changes.HasChanges():
 				return errors.New("error: no changes were expected but changes were proposed")
 			default:
@@ -124,7 +124,7 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
+		&parallel, "parallel", "p", 10,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,

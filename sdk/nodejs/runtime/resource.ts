@@ -14,7 +14,7 @@
 
 import * as grpc from "grpc";
 import * as log from "../log";
-import { ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
+import { CustomResourceOptions, ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import {
     deserializeProperties,
@@ -227,9 +227,10 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     }
 
     let providerRef: string | undefined;
-    if (opts.provider) {
-        const providerURN = await opts.provider.urn.promise();
-        const providerID = await opts.provider.id.promise() || unknownValue;
+    if (custom && (<CustomResourceOptions>opts).provider) {
+        const provider = (<CustomResourceOptions>opts).provider!;
+        const providerURN = await provider.urn.promise();
+        const providerID = await provider.id.promise() || unknownValue;
         providerRef = `${providerURN}::${providerID}`;
     }
 
