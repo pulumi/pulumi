@@ -32,6 +32,22 @@ import (
 // Analyzers is a list of analyzers to run on this project.
 type Analyzers []tokens.QName
 
+// ProjectTemplate is a Pulumi project template manifest.
+// nolint: lll
+type ProjectTemplate struct {
+	Description string                                    `json:"description,omitempty" yaml:"description,omitempty"` // an optional description of the template.
+	Quickstart  string                                    `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`   // optional text to be displayed after template creation.
+	Config      map[config.Key]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`           // optional template config.
+}
+
+// ProjectTemplateConfigValue is a config value included in the project template manifest.
+// nolint: lll
+type ProjectTemplateConfigValue struct {
+	Description string `json:"description,omitempty" yaml:"description,omitempty"` // an optional description for the config value.
+	Default     string `json:"default,omitempty" yaml:"default,omitempty"`         // an optional default value for the config value.
+	Secret      bool   `json:"secret,omitempty" yaml:"secret,omitempty"`           // an optional value indicating whether the config value should be encrypted.
+}
+
 // Project is a Pulumi project manifest..
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -56,6 +72,8 @@ type Project struct {
 	NoDefaultIgnores *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
 
 	Config string `json:"config,omitempty" yaml:"config,omitempty"` // where to store Pulumi.<stack-name>.yaml files, this is combined with the folder Pulumi.yaml is in.
+
+	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"` // optional template manifest.
 }
 
 func (proj *Project) Validate() error {

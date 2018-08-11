@@ -197,7 +197,7 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 		return nil, err
 	}
 	if len(hist) == 0 {
-		return nil, errors.New("no previous deployment")
+		return nil, backend.ErrNoPreviousDeployment
 	}
 
 	return hist[0].Config, nil

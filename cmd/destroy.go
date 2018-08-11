@@ -76,7 +76,7 @@ func newDestroyCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, false, opts.Display)
+			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}

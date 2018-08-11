@@ -139,9 +139,6 @@ type Backend interface {
 		ctx context.Context, info workspace.PluginInfo,
 		progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
 
-	DownloadTemplate(ctx context.Context, name string, progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
-	ListTemplates(ctx context.Context) ([]workspace.Template, error)
-
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 }
@@ -433,33 +430,6 @@ func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.Plugin
 		bar := pb.New(int(size))
 		result = newBarProxyReadCloser(bar, result)
 		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading plugin: "))
-		bar.Postfix(opts.Color.Colorize(colors.Reset))
-		bar.SetMaxWidth(80)
-		bar.SetUnits(pb.U_BYTES)
-		bar.Start()
-	}
-
-	return result, nil
-}
-
-func (b *cloudBackend) ListTemplates(ctx context.Context) ([]workspace.Template, error) {
-	return b.client.ListTemplates(ctx)
-}
-
-func (b *cloudBackend) DownloadTemplate(
-	ctx context.Context, name string,
-	progress bool, opts backend.DisplayOptions) (io.ReadCloser, error) {
-
-	result, size, err := b.client.DownloadTemplate(ctx, name)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to download template")
-	}
-
-	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
-	if progress && size != -1 {
-		bar := pb.New(int(size))
-		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading template: "))
 		bar.Postfix(opts.Color.Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)

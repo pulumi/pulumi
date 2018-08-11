@@ -50,7 +50,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and import a deployment.
-			s, err := requireStack(stackName, false, opts)
+			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}

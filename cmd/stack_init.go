@@ -70,7 +70,7 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			_, err = createStack(b, stackRef, createOpts)
+			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/)
 			return err
 		}),
 	}

@@ -81,8 +81,9 @@ func commandContext() context.Context {
 	return ctx
 }
 
-// createStack creates a stack with the given name, and selects it as the current.
-func createStack(b backend.Backend, stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
+// createStack creates a stack with the given name, and optionally selects it as the current.
+func createStack(
+	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool) (backend.Stack, error) {
 	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
 		// If it's a StackAlreadyExistsError, don't wrap it.
@@ -92,8 +93,10 @@ func createStack(b backend.Backend, stackRef backend.StackReference, opts interf
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
-	if err = state.SetCurrentStack(stack.Name().String()); err != nil {
-		return nil, err
+	if setCurrent {
+		if err = state.SetCurrentStack(stack.Name().String()); err != nil {
+			return nil, err
+		}
 	}
 
 	return stack, nil
@@ -102,9 +105,10 @@ func createStack(b backend.Backend, stackRef backend.StackReference, opts interf
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(stackName string, offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
+func requireStack(
+	stackName string, offerNew bool, opts backend.DisplayOptions, setCurrent bool) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(offerNew, opts)
+		return requireCurrentStack(offerNew, opts, setCurrent)
 	}
 
 	b, err := currentBackend(opts)
@@ -135,13 +139,13 @@ func requireStack(stackName string, offerNew bool, opts backend.DisplayOptions) 
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil)
+		return createStack(b, stackRef, nil, setCurrent)
 	}
 
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
+func requireCurrentStack(offerNew bool, opts backend.DisplayOptions, setCurrent bool) (backend.Stack, error) {
 	// Search for the current stack.
 	b, err := currentBackend(opts)
 	if err != nil {
@@ -155,12 +159,13 @@ func requireCurrentStack(offerNew bool, opts backend.DisplayOptions) (backend.St
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(b, offerNew, opts)
+	return chooseStack(b, offerNew, opts, setCurrent)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backends.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
+func chooseStack(
+	b backend.Backend, offerNew bool, opts backend.DisplayOptions, setCurrent bool) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if offerNew {
@@ -240,7 +245,7 @@ func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) 
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil)
+		return createStack(b, stackRef, nil, setCurrent)
 	}
 
 	return stacks[option], nil
