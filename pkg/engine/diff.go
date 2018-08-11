@@ -413,14 +413,14 @@ func printOldNewDiffs(
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, replaces, false, planning, indent, summary, debug)
+		printObjectDiff(b, *diff, replaces, planning, indent, summary, debug)
 	} else {
 		printObject(b, news, planning, indent, op, true, debug)
 	}
 }
 
 func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
-	replaces []resource.PropertyKey, causedReplace bool, planning bool,
+	replaces []resource.PropertyKey, planning bool,
 	indent int, summary bool, debug bool) {
 
 	contract.Assert(indent > 0)
@@ -452,13 +452,8 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 				printDelete(b, delete, titleFunc, planning, indent, debug)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
-			if !causedReplace && replaceMap != nil {
-				causedReplace = replaceMap[k]
-			}
-
 			printPropertyValueDiff(
-				b, titleFunc, update, causedReplace, planning,
-				indent, summary, debug)
+				b, titleFunc, update, planning, indent, summary, debug)
 		} else if same := diff.Sames[k]; !summary && shouldPrintPropertyValue(same, planning) {
 			titleFunc(deploy.OpSame, false)
 			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
@@ -468,7 +463,7 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 
 func printPropertyValueDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	diff resource.ValueDiff, causedReplace bool, planning bool,
+	diff resource.ValueDiff, planning bool,
 	indent int, summary bool, debug bool) {
 
 	op := deploy.OpUpdate
@@ -489,7 +484,7 @@ func printPropertyValueDiff(
 				printDelete(b, delete, elemTitleFunc, planning, indent+2, debug)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(
-					b, elemTitleFunc, update, causedReplace, planning,
+					b, elemTitleFunc, update, planning,
 					indent+2, summary, debug)
 			} else if !summary {
 				elemTitleFunc(deploy.OpSame, false)
@@ -500,7 +495,7 @@ func printPropertyValueDiff(
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+1, summary, debug)
+		printObjectDiff(b, *diff.Object, nil, planning, indent+1, summary, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
