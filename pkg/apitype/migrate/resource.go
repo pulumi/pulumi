@@ -43,9 +43,6 @@ func UpToResourceV2(v1 apitype.ResourceV1) apitype.ResourceV2 {
 	v2.External = false
 	// v2.Provider is a reference to a first-class provider associated with this resource.
 	v2.Provider = ""
-	// v2.Status is the "dirtiness" of this resource - if the engine knows that the last
-	// operation against it succeeded or not.
-	v2.Status = ""
 	v2.Dependencies = append(v2.Dependencies, v1.Dependencies...)
 	v2.InitErrors = append(v2.InitErrors, v1.InitErrors...)
 	return v2

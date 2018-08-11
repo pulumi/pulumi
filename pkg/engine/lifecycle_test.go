@@ -102,8 +102,35 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
+	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range j.Entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
+
+		// Begin journal entries add pending operations to the snapshot. As we see success or failure
+		// entries, we'll record them in doneOps.
+		if e.Kind == JournalEntryBegin {
+			switch e.Step.Op() {
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
+				ops = append(ops, resource.NewOperation(e.Step.Old(), resource.OperationTypeDeleting))
+			case deploy.OpRead, deploy.OpReadReplacement:
+				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeReading))
+			case deploy.OpUpdate:
+				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeUpdating))
+			}
+
+			continue
+		}
+
+		if e.Kind != JournalEntryOutputs {
+			switch e.Step.Op() {
+			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate:
+				doneOps[e.Step.New()] = true
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
+				doneOps[e.Step.Old()] = true
+			}
+		}
 
 		if e.Kind != JournalEntrySuccess {
 			continue
@@ -137,9 +164,17 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 		}
 	}
 
+	// Append any pending operations.
+	var operations []resource.Operation
+	for _, op := range ops {
+		if !doneOps[op.Resource] {
+			operations = append(operations, op)
+		}
+	}
+
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, resources)
+	return deploy.NewSnapshot(manifest, resources, operations)
 }
 
 func newJournal() *Journal {

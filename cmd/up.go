@@ -80,7 +80,7 @@ func newUpCmd() *cobra.Command {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
 		case err != nil:
-			return err
+			return PrintEngineError(err)
 		case expectNop && changes != nil && changes.HasChanges():
 			return errors.New("error: no changes were expected but changes occurred")
 		default:
@@ -224,7 +224,7 @@ func newUpCmd() *cobra.Command {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
 		case err != nil:
-			return err
+			return PrintEngineError(err)
 		case expectNop && changes != nil && changes.HasChanges():
 			return errors.New("error: no changes were expected but changes occurred")
 		default:

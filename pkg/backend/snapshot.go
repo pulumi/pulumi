@@ -31,10 +31,6 @@ import (
 // persistence. In order to fit into our current model, snapshot persisters have two functions:
 // saving snapshots and invalidating already-persisted snapshots.
 type SnapshotPersister interface {
-	// Invalidates the last snapshot that was persisted. This is done as the first step
-	// of performing a mutation on the snapshot. Returns an error if the invalidation failed.
-	Invalidate() error
-
 	// Persists the given snapshot. Returns an error if the persistence failed.
 	Save(snapshot *deploy.Snapshot) error
 }
@@ -58,7 +54,9 @@ type SnapshotManager struct {
 	persister        SnapshotPersister        // The persister responsible for invalidating and persisting the snapshot
 	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
 	resources        []*resource.State        // The list of resources operated upon by this plan
+	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
 	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
+	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
 	doVerify         bool                     // If true, verify the snapshot before persisting it
 	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
 	mutationRequests chan func()              // The queue of mutation requests, to be retired serially by the manager
@@ -138,26 +136,19 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
-	// This is for compat with the existing update model with the service. Invalidating a
-	// stack sets a bit in a database indicating that the stored snapshot is not valid.
-	if err := sm.persister.Invalidate(); err != nil {
-		logging.V(9).Infof("SnapshotManager: Failed to invalidate snapshot: %s", err.Error())
-		return nil, err
-	}
-
 	switch step.Op() {
 	case deploy.OpSame:
 		return &sameSnapshotMutation{sm}, nil
 	case deploy.OpCreate, deploy.OpCreateReplacement:
-		return &createSnapshotMutation{sm}, nil
+		return sm.doCreate(step)
 	case deploy.OpUpdate:
-		return &updateSnapshotMutation{sm}, nil
+		return sm.doUpdate(step)
 	case deploy.OpDelete, deploy.OpDeleteReplaced:
-		return &deleteSnapshotMutation{sm}, nil
+		return sm.doDelete(step)
 	case deploy.OpReplace:
 		return &replaceSnapshotMutation{sm}, nil
 	case deploy.OpRead, deploy.OpReadReplacement:
-		return &readSnapshotMutation{sm}, nil
+		return sm.doRead(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -188,6 +179,18 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	})
 }
 
+func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
+	err := sm.mutate(func() {
+		sm.markOperationPending(step.New(), resource.OperationTypeCreating)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &createSnapshotMutation{sm}, nil
+}
+
 type createSnapshotMutation struct {
 	manager *SnapshotManager
 }
@@ -196,6 +199,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
 	return csm.manager.mutate(func() {
+		csm.manager.markOperationComplete(step.New())
 		if successful {
 			// There is some very subtle behind-the-scenes magic here that
 			// comes into play whenever this create is a CreateReplacement.
@@ -211,6 +215,18 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	})
 }
 
+func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Info("SnapshotManager.doUpdate(%s)", step.URN())
+	err := sm.mutate(func() {
+		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &updateSnapshotMutation{sm}, nil
+}
+
 type updateSnapshotMutation struct {
 	manager *SnapshotManager
 }
@@ -219,11 +235,24 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
 	return usm.manager.mutate(func() {
+		usm.manager.markOperationComplete(step.New())
 		if successful {
 			usm.manager.markDone(step.Old())
 			usm.manager.markNew(step.New())
 		}
 	})
+}
+
+func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
+	err := sm.mutate(func() {
+		sm.markOperationPending(step.Old(), resource.OperationTypeDeleting)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &deleteSnapshotMutation{sm}, nil
 }
 
 type deleteSnapshotMutation struct {
@@ -234,6 +263,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
 	return dsm.manager.mutate(func() {
+		dsm.manager.markOperationComplete(step.Old())
 		if successful {
 			contract.Assert(!step.Old().Protect)
 			dsm.manager.markDone(step.Old())
@@ -252,6 +282,18 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 	return rsm.manager.refresh()
 }
 
+func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
+	err := sm.mutate(func() {
+		sm.markOperationPending(step.New(), resource.OperationTypeReading)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &readSnapshotMutation{sm}, nil
+}
+
 type readSnapshotMutation struct {
 	manager *SnapshotManager
 }
@@ -260,6 +302,7 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
 	return rsm.manager.mutate(func() {
+		rsm.manager.markOperationComplete(step.New())
 		if successful {
 			if step.Old() != nil {
 				rsm.manager.markDone(step.Old())
@@ -293,6 +336,20 @@ func (sm *SnapshotManager) markNew(state *resource.State) {
 	contract.Assert(state != nil)
 	sm.resources = append(sm.resources, state)
 	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
+}
+
+// markOperationPending marks a resource as undergoing an operation that will now be considered pending.
+func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationType) {
+	contract.Assert(state != nil)
+	sm.operations = append(sm.operations, resource.NewOperation(state, op))
+	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))
+}
+
+// markOperationComplete marks a resource as having completed the operation that it previously was performing.
+func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
+	contract.Assert(state != nil)
+	sm.completeOps[state] = true
+	logging.V(9).Infof("SnapshotManager.markOperationComplete(%s)", state.URN)
 }
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
@@ -340,6 +397,14 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 		}
 	}
 
+	// Record any pending operations, if there are any outstanding that have not completed yet.
+	var operations []resource.Operation
+	for _, op := range sm.operations {
+		if !sm.completeOps[op.Resource] {
+			operations = append(operations, op)
+		}
+	}
+
 	manifest := deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
@@ -347,7 +412,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, resources)
+	return deploy.NewSnapshot(manifest, resources, operations)
 }
 
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
@@ -361,6 +426,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		persister:        persister,
 		baseSnapshot:     baseSnap,
 		dones:            make(map[*resource.State]bool),
+		completeOps:      make(map[*resource.State]bool),
 		doVerify:         true,
 		mutationRequests: make(chan func()),
 	}

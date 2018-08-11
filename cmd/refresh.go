@@ -100,7 +100,7 @@ func newRefreshCmd() *cobra.Command {
 			if err == context.Canceled {
 				return errors.New("refresh cancelled")
 			}
-			return err
+			return PrintEngineError(err)
 		}),
 	}
 

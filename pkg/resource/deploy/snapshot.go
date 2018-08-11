@@ -30,8 +30,9 @@ import (
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
-	Manifest  Manifest          // a deployment manifest of versions, checksums, and so on.
-	Resources []*resource.State // fetches all resources and their associated states.
+	Manifest          Manifest             // a deployment manifest of versions, checksums, and so on.
+	Resources         []*resource.State    // fetches all resources and their associated states.
+	PendingOperations []resource.Operation // all currently pending resource operations.
 }
 
 // Manifest captures versions for all binaries used to construct this snapshot.
@@ -53,10 +54,11 @@ func (m Manifest) NewMagic() string {
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
-func NewSnapshot(manifest Manifest, resources []*resource.State) *Snapshot {
+func NewSnapshot(manifest Manifest, resources []*resource.State, ops []resource.Operation) *Snapshot {
 	return &Snapshot{
-		Manifest:  manifest,
-		Resources: resources,
+		Manifest:          manifest,
+		Resources:         resources,
+		PendingOperations: ops,
 	}
 }
 

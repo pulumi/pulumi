@@ -91,7 +91,7 @@ func newPreviewCmd() *cobra.Command {
 			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
 			switch {
 			case err != nil:
-				return err
+				return PrintEngineError(err)
 			case expectNop && changes != nil && changes.HasChanges():
 				return errors.New("error: no changes were expected but changes were proposed")
 			default:
