@@ -177,11 +177,6 @@ func GetResourcePropertiesDetails(
 	// indent everything an additional level, like other properties.
 	indent++
 
-	var replaces []resource.PropertyKey
-	if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpReplace {
-		replaces = step.Keys
-	}
-
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
@@ -197,9 +192,9 @@ func GetResourcePropertiesDetails(
 			printObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
 	} else if len(new.Outputs) > 0 {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, replaces, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, planning, indent, step.Op, summary, debug)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, planning, indent, step.Op, summary, debug)
 	}
 
 	return b.String()
@@ -414,35 +409,24 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
-	replaces []resource.PropertyKey, planning bool, indent int, op deploy.StepOp,
-	summary bool, debug bool) {
+	planning bool, indent int, op deploy.StepOp, summary bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, replaces, false, planning, indent, summary, debug)
+		printObjectDiff(b, *diff, planning, indent, summary, debug)
 	} else {
 		printObject(b, news, planning, indent, op, true, debug)
 	}
 }
 
 func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
-	replaces []resource.PropertyKey, causedReplace bool, planning bool,
-	indent int, summary bool, debug bool) {
+	planning bool, indent int, summary bool, debug bool) {
 
 	contract.Assert(indent > 0)
 
 	// Compute the maximum with of property keys so we can justify everything.
 	keys := diff.Keys()
 	maxkey := maxKey(keys)
-
-	// If a list of what causes a resource to get replaced exist, create a handy map.
-	var replaceMap map[resource.PropertyKey]bool
-	if len(replaces) > 0 {
-		replaceMap = make(map[resource.PropertyKey]bool)
-		for _, k := range replaces {
-			replaceMap[k] = true
-		}
-	}
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
@@ -458,13 +442,8 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 				printDelete(b, delete, titleFunc, planning, indent, debug)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
-			if !causedReplace && replaceMap != nil {
-				causedReplace = replaceMap[k]
-			}
-
 			printPropertyValueDiff(
-				b, titleFunc, update, causedReplace, planning,
-				indent, summary, debug)
+				b, titleFunc, update, planning, indent, summary, debug)
 		} else if same := diff.Sames[k]; !summary && shouldPrintPropertyValue(same, planning) {
 			titleFunc(deploy.OpSame, false)
 			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
@@ -474,7 +453,7 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 
 func printPropertyValueDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	diff resource.ValueDiff, causedReplace bool, planning bool,
+	diff resource.ValueDiff, planning bool,
 	indent int, summary bool, debug bool) {
 
 	op := deploy.OpUpdate
@@ -495,7 +474,7 @@ func printPropertyValueDiff(
 				printDelete(b, delete, elemTitleFunc, planning, indent+2, debug)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(
-					b, elemTitleFunc, update, causedReplace, planning,
+					b, elemTitleFunc, update, planning,
 					indent+2, summary, debug)
 			} else if !summary {
 				elemTitleFunc(deploy.OpSame, false)
@@ -506,7 +485,7 @@ func printPropertyValueDiff(
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+1, summary, debug)
+		printObjectDiff(b, *diff.Object, planning, indent+1, summary, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
@@ -514,8 +493,7 @@ func printPropertyValueDiff(
 
 		if shouldPrintOld && shouldPrintNew {
 			if diff.Old.IsArchive() &&
-				diff.New.IsArchive() &&
-				!causedReplace {
+				diff.New.IsArchive() {
 
 				printArchiveDiff(
 					b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(),

@@ -24,6 +24,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/blang/semver"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -123,6 +125,28 @@ func (pc *Client) DownloadPlugin(ctx context.Context, info workspace.PluginInfo,
 		return nil, 0, err
 	}
 	return resp.Body, resp.ContentLength, nil
+}
+
+// GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
+// oldest version before the CLI should warn about an upgrade).
+func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
+	var versionInfo apitype.CLIVersionResponse
+
+	if err := pc.restCall(ctx, "GET", "/api/cli/version", nil, nil, &versionInfo); err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	latestSem, err := semver.ParseTolerant(versionInfo.LatestVersion)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	oldestSem, err := semver.ParseTolerant(versionInfo.OldestWithoutWarning)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	return latestSem, oldestSem, nil
 }
 
 // ListStacks lists all stacks for the indicated project.
