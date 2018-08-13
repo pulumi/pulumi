@@ -1,5 +1,5 @@
 # It may be tempting to add parens around each individual clause in this expression, but Travis then builds pushes anyway
-if: branch = master OR branch =~ ^features/ OR branch =~ ^release/ OR tag IS present
+if: branch = master OR branch =~ ^release/ OR tag IS present OR type = api
 matrix:
   include:
     - os: linux
@@ -15,6 +15,7 @@ git:
     depth: false
 before_install:
     - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
+    - git -C ${GOPATH}/src/github.com/pulumi/scripts checkout origin/feature/ellismg/compose-build
     - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:

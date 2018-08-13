@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# When doing a composed build, we only care about the leg that would publish packages.
+# We have additional legs that test other versions of node, which are un-interesting
+# in a composed build.
+[ "${TRAVIS_PUBLISH_PACKAGES}" != "true" ]

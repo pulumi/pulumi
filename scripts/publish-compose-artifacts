@@ -1,0 +1,21 @@
+#!/bin/bash
+set -eou pipefail
+source "${PULUMI_SCRIPTS}/compose/util.sh"
+
+if [ -z "${1:-}" ]; then
+    echo "usage: $0 <s3-prefix>"
+    exit 1
+fi
+
+S3_ROOT="$1"
+
+compose-publish-nodejs-package "./sdk/nodejs/bin" "${S3_ROOT}"
+compose-publish-binary "${PULUMI_ROOT}/bin/pulumi" "${S3_ROOT}"
+
+for resource in "${PULUMI_ROOT}/bin/"pulumi-resource-pulumi-*; do
+    compose-publish-binary "${resource}" "${S3_ROOT}"
+done
+
+for language in "${PULUMI_ROOT}/bin/"pulumi-language-*; do
+    compose-publish-binary "${language}" "${S3_ROOT}"
+done
