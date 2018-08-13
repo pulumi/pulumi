@@ -281,12 +281,13 @@ func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
-	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
 
 	// Check for a default provider step and skip reporting if necessary.
 	if !acts.Opts.reportDefaultProviderSteps && isDefaultProviderStep(step) {
 		return nil, nil
 	}
+
+	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
 
 	// Warn the user if they're not updating a resource whose initialization failed.
 	if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
