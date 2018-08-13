@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
@@ -208,6 +209,9 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
 		if steperr != nil {
 			logging.V(planExecutorLogLevel).Infof(
 				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
+			goal := e.Goal()
+			urn := pe.plan.generateURN(goal.Parent, goal.Type, goal.Name)
+			pe.plan.Diag().Errorf(diag.RawMessage(urn, steperr.Error()))
 			pe.cancel()
 			return
 		}
@@ -219,6 +223,8 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
 		if steperr != nil {
 			logging.V(planExecutorLogLevel).Infof(
 				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
+			urn := pe.plan.generateURN(e.Parent(), e.Type(), e.Name())
+			pe.plan.Diag().Errorf(diag.RawMessage(urn, steperr.Error()))
 			pe.cancel()
 			return
 		}

@@ -16,12 +16,15 @@ package engine
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -210,7 +213,7 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 }
 
 type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, error)
-type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal, err error) error
+type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal, events []Event, err error) error
 
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
 	dryRun bool, validate ValidateFunc) (*deploy.Snapshot, error) {
@@ -229,8 +232,10 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 	}
 
 	// Begin draining events.
+	var firedEvents []Event
 	go func() {
-		for range events {
+		for e := range events {
+			firedEvents = append(firedEvents, e)
 		}
 	}()
 
@@ -242,19 +247,21 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 		return nil, err
 	}
 	if validate != nil {
-		err = validate(project, target, journal, err)
+		err = validate(project, target, journal, firedEvents, err)
 	}
 
 	snap := journal.Snap(target.Snapshot)
-	if snap != nil {
+	if err == nil && snap != nil {
 		err = snap.VerifyIntegrity()
 	}
 	return snap, err
 }
 
 type TestStep struct {
-	Op       TestOp
-	Validate ValidateFunc
+	Op            TestOp
+	ExpectFailure bool
+	SkipPreview   bool
+	Validate      ValidateFunc
 }
 
 type TestPlan struct {
@@ -316,9 +323,23 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 	}
 
 	for _, step := range p.Steps {
-		_, err := step.Op.Run(*project, *target, p.Options, true, step.Validate)
-		assert.NoError(t, err)
+		if !step.SkipPreview {
+			_, err := step.Op.Run(*project, *target, p.Options, true, step.Validate)
+			if step.ExpectFailure {
+				assert.Error(t, err)
+				continue
+			}
+
+			assert.NoError(t, err)
+		}
+
+		var err error
 		target.Snapshot, err = step.Op.Run(*project, *target, p.Options, false, step.Validate)
+		if step.ExpectFailure {
+			assert.Error(t, err)
+			continue
+		}
+
 		assert.NoError(t, err)
 	}
 
@@ -330,7 +351,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		// Initial update
 		{
 			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 				// Should see only creates.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
@@ -342,7 +363,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		// No-op refresh
 		{
 			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 				// Should see only sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -354,7 +375,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		// No-op update
 		{
 			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 				// Should see only sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -366,7 +387,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		// No-op refresh
 		{
 			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 				// Should see only sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -378,7 +399,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		// Destroy
 		{
 			Op: Destroy,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 				// Should see only deletes.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpDelete, entry.Step.Op())
@@ -390,7 +411,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		// No-op refresh
 		{
 			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 				assert.Len(t, j.Entries, 0)
 				assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
 				return err
@@ -502,7 +523,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 		}},
 	}
 
-	validate := func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+	validate := func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
 		for _, entry := range j.Entries {
@@ -528,7 +549,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	// Run a single destroy step using the base snapshot.
 	p.Steps = []TestStep{{
 		Op: Destroy,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 			// Should see two deletes:  the default provider should be injected into the old state before the update
 			// runs.
 			deleted := make(map[resource.URN]bool)
@@ -595,7 +616,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	p.Config[config.MustMakeKey("pkgA", "foo")] = config.NewValue("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 			provURN := p.NewProviderURN("pkgA", "default", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -682,7 +703,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -769,7 +790,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -865,7 +886,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, err error) error {
+		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, err error) error {
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resouce with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
@@ -937,7 +958,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 
 	p.Steps = []TestStep{{
 		Op: Destroy,
-		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, err error) error {
+		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, err error) error {
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resouce with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
@@ -1156,4 +1177,102 @@ func TestRefreshInitFailure(t *testing.T) {
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+}
+
+// Test that ensures that we log diagnostics for resources that receive an error from Check. (Note that this
+// is distinct from receiving non-error failures from Check.)
+func TestCheckFailureRecord(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(urn resource.URN,
+					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return nil, nil, errors.New("oh no, check had an error")
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil)
+		assert.Error(t, err)
+		return err
+	})
+
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps: []TestStep{{
+			Op:            Update,
+			ExpectFailure: true,
+			SkipPreview:   true,
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+				sawFailure := false
+				for _, evt := range evts {
+					if evt.Type == DiagEvent {
+						e := evt.Payload.(DiagEventPayload)
+						msg := colors.Never.Colorize(e.Message)
+						sawFailure = msg == "oh no, check had an error\n" && e.Severity == diag.Error
+					}
+				}
+
+				assert.True(t, sawFailure)
+				return err
+			},
+		}},
+	}
+
+	p.Run(t, nil)
+}
+
+// Test that checks that we emit diagnostics for properties that check says are invalid.
+func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(urn resource.URN,
+					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return nil, []plugin.CheckFailure{{
+						Property: "someprop",
+						Reason:   "field is not valid",
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil)
+		assert.Error(t, err)
+		return err
+	})
+
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps: []TestStep{{
+			Op:            Update,
+			ExpectFailure: true,
+			SkipPreview:   true,
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+				sawFailure := false
+				for _, evt := range evts {
+					if evt.Type == DiagEvent {
+						e := evt.Payload.(DiagEventPayload)
+						msg := colors.Never.Colorize(e.Message)
+						sawFailure = strings.Contains(msg, "field is not valid") && e.Severity == diag.Error
+						if sawFailure {
+							break
+						}
+					}
+				}
+
+				assert.True(t, sawFailure)
+				return err
+			},
+		}},
+	}
+
+	p.Run(t, nil)
+
 }
