@@ -16,6 +16,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1275,4 +1276,46 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 
 	p.Run(t, nil)
 
+}
+
+// Test that tests that Refresh can detect that resources have been deleted and removes them
+// from the snapshot.
+func TestRefreshWithDelete(t *testing.T) {
+	for _, parallelFactor := range []int{1, 4} {
+		t.Run(fmt.Sprintf("parallel-%d", parallelFactor), func(t *testing.T) {
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						ReadF: func(
+							urn resource.URN, id resource.ID, props resource.PropertyMap,
+						) (resource.PropertyMap, resource.Status, error) {
+							// This thing doesn't exist. Returning nil from Read should trigger
+							// the engine to delete it from the snapshot.
+							return nil, resource.StatusOK, nil
+						},
+					}, nil
+				}),
+			}
+
+			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil)
+				assert.NoError(t, err)
+				return err
+			})
+
+			host := deploytest.NewPluginHost(nil, program, loaders...)
+			p := &TestPlan{Options: UpdateOptions{host: host, Parallel: parallelFactor}}
+
+			p.Steps = []TestStep{{Op: Update}}
+			snap := p.Run(t, nil)
+
+			p.Steps = []TestStep{{Op: Refresh}}
+			snap = p.Run(t, snap)
+
+			// Refresh succeeds and records that the resource in the snapshot doesn't exist anymore
+			provURN := p.NewProviderURN("pkgA", "default", "")
+			assert.Len(t, snap.Resources, 1)
+			assert.Equal(t, provURN, snap.Resources[0].URN)
+		})
+	}
 }
