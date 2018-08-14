@@ -439,7 +439,7 @@ func (p *provider) Read(
 		}
 		// Else it's a `StatusPartialFailure`.
 	} else {
-		id = resource.ID(resp.GetId())
+		readID = resource.ID(resp.GetId())
 		liveObject = resp.GetProperties()
 	}
 
