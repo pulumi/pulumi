@@ -1276,3 +1276,47 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 	p.Run(t, nil)
 
 }
+
+// Test that tests that Refresh can detect that resources have been deleted and removes them
+// from the snapshot.
+func TestRefreshWithDelete(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, props resource.PropertyMap,
+				) (resource.PropertyMap, resource.Status, error) {
+					// This thing doesn't exist.
+					return nil, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{host: host}}
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	urn := p.NewURN("pkgA:m:typA", "resA", "")
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{{
+			Type:    urn.Type(),
+			URN:     urn,
+			Custom:  true,
+			ID:      "0",
+			Inputs:  resource.PropertyMap{},
+			Outputs: resource.PropertyMap{},
+		}},
+	}
+
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap := p.Run(t, old)
+
+	// Refresh succeeds and records that the resource in the snapshot doesn't exist anymore
+	assert.Len(t, snap.Resources, 1)
+	assert.Equal(t, provURN, snap.Resources[0].URN)
+}
