@@ -135,7 +135,9 @@ func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 			iter.lastEventDone = event.done
 			return event, nil
 		}
-		// If the goal was nil, it means the resource was deleted, and we should keep going.
+		// If the goal was nil, it means the resource was deleted, and we should keep going
+		// without waiting.
+		iter.lastEventDone = nil
 	}
 }
 
