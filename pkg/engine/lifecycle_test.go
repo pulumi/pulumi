@@ -1319,3 +1319,46 @@ func TestRefreshWithDelete(t *testing.T) {
 		})
 	}
 }
+
+// Tests that errors returned directly from the language host get logged by the engine.
+func TestLanguageHostDiagnostics(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		// Exiting immediately with an error simulates a language exiting immediately with a non-zero exit code.
+		return errors.New("oh no")
+	})
+
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps: []TestStep{{
+			Op:            Update,
+			ExpectFailure: true,
+			SkipPreview:   true,
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+				assert.Error(t, err)
+				sawExitCode := false
+				for _, evt := range evts {
+					if evt.Type == DiagEvent {
+						e := evt.Payload.(DiagEventPayload)
+						msg := colors.Never.Colorize(e.Message)
+						sawExitCode = strings.Contains(msg, "oh no") && e.Severity == diag.Error
+						if sawExitCode {
+							break
+						}
+					}
+				}
+
+				assert.True(t, sawExitCode)
+				return err
+			},
+		}},
+	}
+
+	p.Run(t, nil)
+}
