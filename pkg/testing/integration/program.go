@@ -245,6 +245,16 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	return tokens.QName(opts.StackName)
 }
 
+// GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
+// We use this in CI to create test stacks in an organization that all developers have access to, for debugging.
+func (opts *ProgramTestOptions) GetStackNameWithOwner() tokens.QName {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		return tokens.QName(fmt.Sprintf("%s/%s", owner, opts.GetStackName()))
+	}
+
+	return opts.GetStackName()
+}
+
 // With combines a source set of options with a set of overrides.
 func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOptions {
 	if overrides.Dir != "" {
@@ -568,15 +578,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
-	// If an optional test owner is provided in the environment, create the stack under that owner. We use this in
-	// CI to ensure stacks are owned by an organization that all Pulumi developers have access to.
-	qualifiedStackName := string(stackName)
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
-		qualifiedStackName = owner + "/" + qualifiedStackName
-	}
-
 	// Stack init
-	stackInitArgs := []string{"stack", "init", qualifiedStackName}
+	stackInitArgs := []string{"stack", "init", string(pt.opts.GetStackNameWithOwner())}
 	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
 
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
@@ -611,9 +614,12 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return err
 	}
 
-	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
+	if pt.t.Failed() {
+		fprintf(pt.opts.Stdout, "Test failed, retaining stack '%s'\n", pt.opts.GetStackNameWithOwner())
+		return nil
+	}
 
-	return err
+	return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
 }
 
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
