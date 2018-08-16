@@ -56,7 +56,12 @@ export async function computeCodePaths(
 
     // For each of the required paths, add the corresponding FileArchive or FileAsset to the
     // AssetMap.
-    for (const path of pathSet.values()) {
+    for (const path of pathSet) {
+        // Don't include a path if there is another path higher up that will include this one.
+        if (isSubsumedByHigherPath(path, pathSet)) {
+            continue;
+        }
+
         // The Asset model does not support a consistent way to embed a file-or-directory into an
         // `AssetArchive`, so we stat the path to figure out which it is and use the appropriate
         // Asset constructor.
@@ -70,6 +75,16 @@ export async function computeCodePaths(
     }
 
     return codePaths;
+}
+
+function isSubsumedByHigherPath(path: string, pathSet: Set<string>): boolean {
+    for (const otherPath of pathSet) {
+        if (path.startsWith(otherPath)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // allFolders computes the set of package folders that are transitively required by the root
