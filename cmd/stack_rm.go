@@ -91,7 +91,7 @@ func newStackRmCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
-		"By default, removal of a stack with resources will be rejected; this forces it")
+		"Forces deletion of the stack, leaving behind any resources managed by the stack")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
