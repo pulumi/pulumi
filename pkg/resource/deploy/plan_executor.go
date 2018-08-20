@@ -120,6 +120,7 @@ outer:
 			if event.Error != nil {
 				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): saw incoming error: %v", event.Error)
 				pe.cancelDueToError()
+				pe.plan.Diag().Errorf(diag.RawMessage("" /*urn*/, event.Error.Error()))
 				break outer
 			}
 
