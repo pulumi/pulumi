@@ -28,7 +28,11 @@ func UpToCheckpointV2(v1 apitype.CheckpointV1) apitype.CheckpointV2 {
 		v2.Config[key] = value
 	}
 
-	v2deploy := UpToDeploymentV2(*v1.Latest)
-	v2.Latest = &v2deploy
+	var v2deploy *apitype.DeploymentV2
+	if v1.Latest != nil {
+		deploy := UpToDeploymentV2(*v1.Latest)
+		v2deploy = &deploy
+	}
+	v2.Latest = v2deploy
 	return v2
 }
