@@ -327,8 +327,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests")
-	cmd.PersistentFlags().BoolVar(
-		&generateOnly, "generate-only", false,
+	cmd.PersistentFlags().BoolVarP(
+		&generateOnly, "generate-only", "g", false,
 		"Generate the project only; do not create a stack, save config, or install dependencies")
 	cmd.PersistentFlags().StringVar(
 		&dir, "dir", "",
