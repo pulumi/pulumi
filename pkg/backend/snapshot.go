@@ -180,7 +180,6 @@ func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
 
 	contract.Assert(old.ID == new.ID)
 	contract.Assert(old.Provider == new.Provider)
-	contract.Assert(reflect.DeepEqual(old.Inputs, new.Inputs))
 
 	// If this resource's parent has changed, we must write the checkpoint.
 	if old.Parent != new.Parent {
@@ -498,9 +497,10 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		done:             done,
 	}
 
-	// True if we have elided writes since the last actual write.
-	hasElidedWrites := false
 	go func() {
+		// True if we have elided writes since the last actual write.
+		hasElidedWrites := false
+
 		// Service each mutation request in turn.
 		for request := range mutationRequests {
 			var err error
