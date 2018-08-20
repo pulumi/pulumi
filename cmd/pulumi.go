@@ -17,7 +17,6 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -165,12 +164,6 @@ func NewPulumiCmd() *cobra.Command {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
 	}
-
-	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging
-	// which calls flag.Parse under the hood doesn't yell at you.
-	//
-	// TODO[pulumi/pulumi#301]: when we move away from using glog, it should be safe to remove this.
-	flag.StringVar(&cwd, "C", "", "Run pulumi as if it had been started in another directory")
 
 	return cmd
 }

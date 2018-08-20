@@ -71,9 +71,8 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	Verbose = verbose
 	LogFlow = logFlow
 
-	// Ensure the logging library has been initialized, including calling flag.Parse beforehand.  Unfortunately,
-	// this is the only way to control the way logging runs.  That includes poking around at flags below.
-	flag.Parse()
+	// glog uses golang's built in flags package to set configuration values, which is incompatible with how
+	// we use cobra. So we explicitly set the flags we care about here, and don't call flag.Parse()
 	if logToStderr {
 		err := flag.Lookup("logtostderr").Value.Set("true")
 		assertNoError(err)
