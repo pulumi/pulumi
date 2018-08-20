@@ -1328,9 +1328,10 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 		}),
 	}
 
+	errorText := "oh no"
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		// Exiting immediately with an error simulates a language exiting immediately with a non-zero exit code.
-		return errors.New("oh no")
+		return errors.New(errorText)
 	})
 
 	host := deploytest.NewPluginHost(nil, program, loaders...)
@@ -1347,7 +1348,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 					if evt.Type == DiagEvent {
 						e := evt.Payload.(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
-						sawExitCode = strings.Contains(msg, "oh no") && e.Severity == diag.Error
+						sawExitCode = strings.Contains(msg, errorText) && e.Severity == diag.Error
 						if sawExitCode {
 							break
 						}
