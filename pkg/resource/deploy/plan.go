@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"context"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -235,10 +237,6 @@ func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
 func (p *Plan) Source() Source                         { return p.source }
 func (p *Plan) IsRefresh() bool                        { return p.source.IsRefresh() }
 
-func (p *Plan) SignalCancellation() error {
-	return p.ctx.Host.SignalCancellation()
-}
-
 func (p *Plan) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	return p.providers.GetProvider(ref)
 }
@@ -259,4 +257,28 @@ func (p *Plan) generateURN(parent resource.URN, ty tokens.Type, name tokens.QNam
 // defaultProviderURN generates the URN for the global provider given a package.
 func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
 	return resource.NewURN(target.Name, source.Project(), "", providers.MakeProviderType(pkg), "default")
+}
+
+// generateEventURN generates a URN for the resource associated with the given event.
+func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
+	contract.Require(event != nil, "event != nil")
+
+	switch e := event.(type) {
+	case RegisterResourceEvent:
+		goal := e.Goal()
+		return p.generateURN(goal.Parent, goal.Type, goal.Name)
+	case ReadResourceEvent:
+		return p.generateURN(e.Parent(), e.Type(), e.Name())
+	case RegisterResourceOutputsEvent:
+		return e.URN()
+	default:
+		return ""
+	}
+}
+
+// Execute executes a plan to completion, using the given cancellation context and running a preview
+// or update.
+func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) (PlanSummary, error) {
+	planExec := &planExecutor{plan: p}
+	return planExec.Execute(ctx, opts, preview)
 }
