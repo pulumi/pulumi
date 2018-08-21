@@ -31,7 +31,12 @@ export interface SerializeFunctionArgs {
     /**
      * If this is a function which, when invoked, will produce the actual entrypoint function.
      * Useful for when serializing a function that has high startup cost that only wants to be
-     * run once.
+     * run once. The signature of this function should be:  () => (provider_handler_args...) => provider_result
+     *
+     * This will then be emitted as: `exports.[exportName] = serialized_func_name();`
+     *
+     * In other words, the function will be invoked (once) and the resulting inner function will
+     * be what is exported.
      */
     isFactoryFunction?: boolean;
 }
@@ -41,8 +46,9 @@ export interface SerializeFunctionArgs {
  */
 export interface SerializedFunction {
     /**
-     * The text of a JavaScript module which exports a single name bound to a function value matching the serialized
-     * JavaScript function.
+     * The text of a JavaScript module which exports a single name bound to an appropriate value.
+     * In the case of a normal function, this value will just be serialized function.  In the case
+     * of a factory function this value will be the result of invoking the factory function.
      */
     text: string;
     /**
@@ -50,25 +56,25 @@ export interface SerializedFunction {
      */
     exportName: string;
     /**
-     * The set of pacakges that were 'require'd by the transitive closure of functions serialized as part of the
-     * JavaScript function serialization.  These pacakges must be able to resolve in the target execution environment
+     * The set of packages that were 'require'd by the transitive closure of functions serialized as part of the
+     * JavaScript function serialization.  These packages must be able to resolve in the target execution environment
      * for the serialized function to be able to be loaded and evaluated correctly.
      */
     requiredPackages: Set<string>;
 }
 
 /**
- * serializeFunction serializes a JavaScript function into a text form that can be loaded in another exuection context,
+ * serializeFunction serializes a JavaScript function into a text form that can be loaded in another execution context,
  * for example as part of a function callback associated with an AWS Lambda.  The function serialization captures any
  * variables captured by the function body and serializes those values into the generated text along with the function
  * body.  This process is recursive, so that functions referenced by the body of the serialized function will themselves
- * be serialized as well.  Thid process also deeply serializes captured object values, including prototype chains and
+ * be serialized as well.  This process also deeply serializes captured object values, including prototype chains and
  * property descriptors, such that the semantics of the function when deserialized should match the original function.
  *
  * There are several known limitations:
  * - If a native function is captured either directly or indirectly, closure serialization will return an error.
  * - Captured values will be serialized based on their values at the time that `serializeFunction` is called.  Mutations
- *   to these values after that (but before the deserialized funtion is used) will not be observed by the deserialized
+ *   to these values after that (but before the deserialized function is used) will not be observed by the deserialized
  *   function.
  *
  * @param func The JavaScript function to serialize.
@@ -108,7 +114,6 @@ function serializeJavaScriptText(
         outerFunction: closure.FunctionInfo,
         exportName: string,
         isFactoryFunction: boolean): SerializedFunction {
-    // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
 
     // Now produce a textual representation of the closure and its serialized captured environment.
 
@@ -136,6 +141,9 @@ function serializeJavaScriptText(
         environmentText = "\n" + environmentText;
     }
 
+    // Export the appropriate value.  For a normal function, this will just be exporting the name of
+    // the module function we created by serializing it.  For a factory function this will export
+    // the function produced by invoking the factory function once.
     const text = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};\n`
         + environmentText + functionText;
 
