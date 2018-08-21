@@ -79,8 +79,13 @@ export async function computeCodePaths(
 
 function isSubsumedByHigherPath(path: string, pathSet: Set<string>): boolean {
     for (const otherPath of pathSet) {
-        if (path.length > otherPath.length && path.startsWith(otherPath)) {
-            return true;
+        if (path.length > otherPath.length &&
+            path.startsWith(otherPath)) {
+
+            // Have to make sure we're actually a sub-directory of that other path.  For example,
+            // if we have:  node_modules/mime-types, that's not subsumed by node_modules/mime
+            const nextChar = path.charAt(otherPath.length);
+            return nextChar === "/" || nextChar === "\\";
         }
     }
 
