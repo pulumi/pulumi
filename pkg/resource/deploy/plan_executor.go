@@ -139,7 +139,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 				}
 			case <-ctx.Done():
 				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
-				return ctx.Err()
+				return nil
 			}
 		}
 	}()
