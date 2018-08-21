@@ -31,9 +31,12 @@ function tempDirName(prefix: string) {
     const outsideDir = path.join(os.tmpdir(), tempDirName("outside"));
     const insideDir = path.join(os.tmpdir(), tempDirName("inside"));
 
-
     fs.mkdirSync(outsideDir);
     fs.mkdirSync(insideDir);
+
+    const nodeModulesPath = path.join(process.cwd(), "node_modules");
+    fs.symlinkSync(nodeModulesPath, outsideDir + "/node_modules");
+    fs.symlinkSync(nodeModulesPath, insideDir + "/node_modules");
 
     fs.writeFileSync(path.join(outsideDir, "index.js"), outsideCapture.text);
     fs.writeFileSync(path.join(insideDir, "index.js"), insideCapture.text);
