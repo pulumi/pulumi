@@ -90,6 +90,7 @@ func (pe *PlanExecutor) Execute() error {
 					pe.plan.Diag().Errorf(diag.RawMessage("" /*urn*/, event.Error.Error()))
 					return event.Error
 				}
+
 				if event.Event == nil {
 					// TODO[pulumi/pulumi#1625] Today we lack the ability to parallelize deletions. We have all the
 					// information we need to do so (namely, a dependency graph). `GenerateDeletes` returns a single
@@ -104,7 +105,14 @@ func (pe *PlanExecutor) Execute() error {
 
 					return nil
 				}
-				pe.handleSingleEvent(event.Event)
+
+				if eventErr := pe.handleSingleEvent(event.Event); eventErr != nil {
+					logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): error handling event: %v",
+						eventErr)
+					pe.plan.Diag().Errorf(diag.RawMessage(pe.plan.generateEventURN(event.Event), eventErr.Error()))
+					pe.cancel()
+					return eventErr
+				}
 			case <-pe.ctx.Done():
 				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): context finished: %v", pe.ctx.Err())
 				return pe.ctx.Err()
@@ -129,42 +137,29 @@ func (pe *PlanExecutor) Summary() PlanSummary {
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
+func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) error {
 	contract.Require(event != nil, "event != nil")
 
-	logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received event")
+	var steps []Step
+	var err error
 	switch e := event.(type) {
 	case RegisterResourceEvent:
-		step, steperr := pe.stepGen.GenerateSteps(e)
-		if steperr != nil {
-			logging.V(planExecutorLogLevel).Infof(
-				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
-			goal := e.Goal()
-			urn := pe.plan.generateURN(goal.Parent, goal.Type, goal.Name)
-			pe.plan.Diag().Errorf(diag.RawMessage(urn, steperr.Error()))
-			pe.cancel()
-			return
-		}
-
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): submitting chain for execution")
-		pe.stepExec.Execute(step)
+		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received RegisterResourceEvent")
+		steps, err = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
-		step, steperr := pe.stepGen.GenerateReadSteps(e)
-		if steperr != nil {
-			logging.V(planExecutorLogLevel).Infof(
-				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
-			urn := pe.plan.generateURN(e.Parent(), e.Type(), e.Name())
-			pe.plan.Diag().Errorf(diag.RawMessage(urn, steperr.Error()))
-			pe.cancel()
-			return
-		}
-
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): submitting reads for execution")
-		pe.stepExec.Execute(step)
+		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received ReadResourceEvent")
+		steps, err = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
+		return nil
 	}
+
+	if err != nil {
+		return err
+	}
+	pe.stepExec.Execute(steps)
+	return nil
 }
 
 // NewPlanExecutor creates a new PlanExecutor suitable for executing the given plan.

@@ -260,3 +260,20 @@ func (p *Plan) generateURN(parent resource.URN, ty tokens.Type, name tokens.QNam
 func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
 	return resource.NewURN(target.Name, source.Project(), "", providers.MakeProviderType(pkg), "default")
 }
+
+// generateEventURN generates a URN for the resource associated with the given event.
+func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
+	contract.Require(event != nil, "event != nil")
+
+	switch e := event.(type) {
+	case RegisterResourceEvent:
+		goal := e.Goal()
+		return p.generateURN(goal.Parent, goal.Type, goal.Name)
+	case ReadResourceEvent:
+		return p.generateURN(e.Parent(), e.Type(), e.Name())
+	case RegisterResourceOutputsEvent:
+		return e.URN()
+	default:
+		return ""
+	}
+}
