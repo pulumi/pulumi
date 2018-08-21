@@ -27,6 +27,13 @@ export interface SerializeFunctionArgs {
      * prevent potential cycles.
      */
     serialize?: (o: any) => boolean;
+
+    /**
+     * If this is a function which, when invoked, will produce the actual entrypoint function.
+     * Useful for when serializing a function that has high startup cost that only wants to be
+     * run once.
+     */
+    isFactoryFunction?: boolean;
 }
 
 /**
@@ -73,9 +80,10 @@ export async function serializeFunction(func: Function, args?: SerializeFunction
     }
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || (_ => true);
+    const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
 
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
-    return serializeJavaScriptText(func, functionInfo, exportName);
+    return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction);
 }
 
 /**
@@ -87,7 +95,7 @@ export async function serializeFunctionAsync(
         serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
-    return serializeJavaScriptText(func, functionInfo, "handler").text;
+    return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false).text;
 }
 
 /**
@@ -97,9 +105,9 @@ export async function serializeFunctionAsync(
  * @param c The FunctionInfo to be serialized into a module string.
  */
 function serializeJavaScriptText(
-        func: Function,
         outerFunction: closure.FunctionInfo,
-        exportName: string): SerializedFunction {
+        exportName: string,
+        isFactoryFunction: boolean): SerializedFunction {
     // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
 
     // Now produce a textual representation of the closure and its serialized captured environment.
@@ -128,10 +136,9 @@ function serializeJavaScriptText(
         environmentText = "\n" + environmentText;
     }
 
-    const text = "exports.handler = " + outerFunctionName + ";\n"
-        + environmentText + functionText;
+    const header = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};\n`;
+    const text = header + environmentText + functionText;
 
-    // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
     return {
         text: text,
         requiredPackages: requiredPackages,

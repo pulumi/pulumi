@@ -25,7 +25,8 @@ import * as typescript from "typescript";
 interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
     title: string;                  // a title banner for the test case.
-    func: Function;                 // the function whose body and closure to serialize.
+    func?: Function;                // the function whose body and closure to serialize.
+    factoryFunc?: Function;         // the function whose body and closure to serialize (as a factory).
     expectText?: string;            // optionally also validate the serialization to JavaScript text.
     expectPackages?: Set<string>;   // optionally also validate the packages required by the JavaScript text.
     error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
@@ -5040,6 +5041,49 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
         });
     }
 
+    {
+        cases.push({
+            title: "Capture factory func #1",
+            factoryFunc: () => {
+                const serverlessExpress = require("aws-serverless-express");
+                const express = require("express");
+                const app = express();
+                app.get("/", (req: any, res: any) => {
+                    res.json({ succeeded: true });
+                });
+
+                const server = serverlessExpress.createServer(app);
+
+                return (event: any, context: any) => {
+                    serverlessExpress.proxy(server, event, context);
+                };
+            },
+            expectText: `exports.handler = __f0();
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => {
+                const serverlessExpress = require("aws-serverless-express");
+                const express = require("express");
+                const app = express();
+                app.get("/", (req, res) => {
+                    res.json({ succeeded: true });
+                });
+                const server = serverlessExpress.createServer(app);
+                return (event, context) => {
+                    serverlessExpress.proxy(server, event, context);
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
@@ -5070,7 +5114,7 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
 
             // Invoke the test case.
             if (test.expectText) {
-                const sf = await runtime.serializeFunction(test.func);
+                const sf = await serializeFunction(test);
                 compareTextWithWildcards(test.expectText, sf.text);
                 if (test.expectPackages) {
                     assert.equal(sf.requiredPackages.size, test.expectPackages.size)
@@ -5081,7 +5125,7 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
             }
             else {
                 const message = await assertAsyncThrows(async () => {
-                    await runtime.serializeFunction(test.func);
+                    await serializeFunction(test);
                 });
 
                 // replace real locations with (0,0) so that our test baselines do not need to
@@ -5097,6 +5141,18 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
         // Schedule any additional tests.
         if (test.afters) {
             remaining = test.afters.concat(remaining);
+        }
+    }
+
+    async function serializeFunction(test: ClosureCase) {
+        if (test.func) {
+            return await runtime.serializeFunction(test.func);
+        }
+        else if (test.factoryFunc) {
+            return await runtime.serializeFunction(test.factoryFunc!, { isFactoryFunction: true });
+        }
+        else {
+            throw new Error("Have to supply [func] or [factoryFunc]!");
         }
     }
 });
