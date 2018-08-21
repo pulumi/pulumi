@@ -37,6 +37,7 @@ type planExecutor struct {
 // Utility for convenient logging.
 var log = logging.V(4)
 
+// execError creates an error appropriate for returning from planExecutor.Execute.
 func execError(message string, preview bool) error {
 	kind := "update"
 	if preview {
@@ -45,6 +46,7 @@ func execError(message string, preview bool) error {
 	return errors.New(kind + " " + message)
 }
 
+// reportError reports a single error to the executor's diag stream with the indicated URN for context.
 func (pe *planExecutor) reportError(urn resource.URN, err error) {
 	pe.plan.Diag().Errorf(diag.RawMessage(urn, err.Error()))
 }
@@ -112,12 +114,11 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
+		log.Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
-			log.Infof("planExecutor.Execute(...): waiting for incoming events")
 			select {
 			case event := <-incomingEvents:
-				log.Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)",
-					event.Event == nil, event.Error)
+				log.Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Error)
 
 				if event.Error != nil {
 					pe.reportError("", event.Error)
@@ -135,7 +136,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 					// Signal completion to the step executor. It'll exit once it's done retiring all of the steps in
 					// the chain that we just gave it.
 					pe.stepExec.SignalCompletion()
-					log.Infof("planExecutor.Execute(...): issued deletes, exiting loop")
+					log.Infof("planExecutor.Execute(...): issued deletes")
 
 					return false, nil
 				}
