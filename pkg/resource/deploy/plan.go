@@ -288,7 +288,6 @@ func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) (PlanSum
 		return nil, err
 	}
 
-	planExec := NewPlanExecutor(ctx, p, opts, preview, src)
-	err = planExec.Execute()
-	return planExec.Summary(), err
+	planExec := newPlanExecutor(ctx, p, opts, preview, src)
+	return planExec.Execute()
 }

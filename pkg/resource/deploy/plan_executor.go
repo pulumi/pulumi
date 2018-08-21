@@ -27,25 +27,23 @@ const (
 	planExecutorLogLevel = 4
 )
 
-// PlanExecutor is responsible for taking a plan and driving it to completion.
+// planExecutor is responsible for taking a plan and driving it to completion.
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
-type PlanExecutor struct {
+type planExecutor struct {
 	plan *Plan          // The plan that we are executing
-	opts Options        // Options for the plan execution
 	src  SourceIterator // The iterator that generates SourceEvents
 
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
 
-	parentCtx context.Context    // cancellation context for the current CLI session.
-	ctx       context.Context    // cancellation context for the current plan. Child of parentCtx.
-	cancel    context.CancelFunc // CancelFunc that cancels the above context.
+	ctx    context.Context    // cancellation context for the current plan. Child of parentCtx.
+	cancel context.CancelFunc // CancelFunc that cancels the above context.
 }
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *PlanExecutor) Execute() error {
+func (pe *planExecutor) Execute() (PlanSummary, error) {
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
@@ -62,7 +60,7 @@ func (pe *PlanExecutor) Execute() error {
 					return
 				}
 			case <-pe.ctx.Done():
-				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): incoming events goroutine exiting")
+				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): incoming events goroutine exiting")
 				return
 			}
 		}
@@ -78,10 +76,10 @@ func (pe *PlanExecutor) Execute() error {
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	err := func() error {
 		for {
-			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): waiting for incoming events")
+			logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): waiting for incoming events")
 			select {
 			case event := <-incomingEvents:
-				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): incoming event (nil? %v, %v)",
+				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)",
 					event.Event == nil, event.Error)
 
 				if event.Error != nil {
@@ -101,56 +99,50 @@ func (pe *PlanExecutor) Execute() error {
 					// Signal completion to the step executor. It'll exit once it's done retiring all of the steps in
 					// the chain that we just gave it.
 					pe.stepExec.SignalCompletion()
-					logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): issued deletes, exiting loop")
+					logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): issued deletes, exiting loop")
 
 					return nil
 				}
 
 				if eventErr := pe.handleSingleEvent(event.Event); eventErr != nil {
-					logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): error handling event: %v",
+					logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): error handling event: %v",
 						eventErr)
 					pe.plan.Diag().Errorf(diag.RawMessage(pe.plan.generateEventURN(event.Event), eventErr.Error()))
 					pe.cancel()
 					return eventErr
 				}
 			case <-pe.ctx.Done():
-				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): context finished: %v", pe.ctx.Err())
+				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): context finished: %v", pe.ctx.Err())
 				return pe.ctx.Err()
 			}
 		}
 	}()
 
 	pe.stepExec.WaitForCompletion()
-	logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): step executor has completed")
+	logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): step executor has completed")
 
 	if err == nil && pe.stepExec.Errored() {
 		err = errStepApplyFailed
 	}
-
-	return err
-}
-
-// Summary returns a PlanSummary of the plan that was executed.
-func (pe *PlanExecutor) Summary() PlanSummary {
-	return pe.stepGen
+	return pe.stepGen, err
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) error {
+func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
 	var err error
 	switch e := event.(type) {
 	case RegisterResourceEvent:
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received RegisterResourceEvent")
+		logging.V(planExecutorLogLevel).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		steps, err = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received ReadResourceEvent")
+		logging.V(planExecutorLogLevel).Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, err = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received register resource outputs")
+		logging.V(planExecutorLogLevel).Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
 		return nil
 	}
@@ -162,19 +154,17 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) error {
 	return nil
 }
 
-// NewPlanExecutor creates a new PlanExecutor suitable for executing the given plan.
-func NewPlanExecutor(parentCtx context.Context, plan *Plan, opts Options,
-	preview bool, src SourceIterator) *PlanExecutor {
+// newPlanExecutor creates a new planExecutor suitable for executing the given plan.
+func newPlanExecutor(parentCtx context.Context, plan *Plan, opts Options,
+	preview bool, src SourceIterator) *planExecutor {
 	ctx, cancel := context.WithCancel(parentCtx)
-	pe := &PlanExecutor{
-		plan:      plan,
-		opts:      opts,
-		src:       src,
-		stepGen:   newStepGenerator(plan, opts),
-		stepExec:  newStepExecutor(ctx, cancel, plan, opts, preview),
-		parentCtx: parentCtx,
-		ctx:       ctx,
-		cancel:    cancel,
+	pe := &planExecutor{
+		plan:     plan,
+		src:      src,
+		stepGen:  newStepGenerator(plan, opts),
+		stepExec: newStepExecutor(ctx, cancel, plan, opts, preview),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 	return pe
 }
