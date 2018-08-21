@@ -96,7 +96,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 				if event == nil {
 					return
 				}
-			case <-ctx.Done():
+			case <-done:
 				log.Infof("planExecutor.Execute(...): incoming events goroutine exiting")
 				return
 			}
