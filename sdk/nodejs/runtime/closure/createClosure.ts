@@ -1074,8 +1074,10 @@ function getOrCreateEntry(
     }
 
     function captureModule(moduleName: string) {
-        const nodeModulesPrefix = "./node_modules/";
-        const isInNodeModules = moduleName.startsWith(nodeModulesPrefix);
+        const nodeModulesSegment = "/node_modules/";
+        const nodeModulesSegmentIndex = moduleName.indexOf(nodeModulesSegment);
+        const isInNodeModules = nodeModulesSegmentIndex >= 0;
+
         const isLocalModule = moduleName.startsWith(".") && !isInNodeModules;
 
         if (obj.deploymentOnlyModule || isLocalModule) {
@@ -1088,8 +1090,8 @@ function getOrCreateEntry(
             // serializable (like pulumi.Config)
             //
             // Or this is a reference to a local module (i.e. starts with '.', but isn't in
-            // ./node_modules). Always capture the local module as a value.  We do this because
-            // capturing as a reference (i.e. 'require(...)') has the following problems:
+            // /node_modules/ somewhere). Always capture the local module as a value.  We do this
+            // because capturing as a reference (i.e. 'require(...)') has the following problems:
             //
             // 1. 'require(...)' will not work at run-time, because the user's code will not be
             //    serialized in a way that can actually be require'd (i.e. it is not ) serialized
@@ -1102,12 +1104,17 @@ function getOrCreateEntry(
             serializeObject();
         }
         else  {
-            // If the path goes into node_modules, strip off the node_modules part. This
-            // will help ensure that lookup of those modules will work on the cloud-side even if the
-            // module isn't in a relative node_modules directory.  For example, this happens with
-            // aws-sdk.  It ends up actually being in /var/runtime/node_modules inside aws lambda.
+            // If the path goes into node_modules, strip off the node_modules part. This will help
+            // ensure that lookup of those modules will work on the cloud-side even if the module
+            // isn't in a relative node_modules directory.  For example, this happens with aws-sdk.
+            // It ends up actually being in /var/runtime/node_modules inside aws lambda.
+            //
+            // This also helps ensure that modules that are 'yarn link'ed are found properly. The
+            // module path we have may be on some non-local path due to the linking, however this
+            // will ensure that the module-name we load is a simple path that can be found off the
+            // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? moduleName.substring(nodeModulesPrefix.length)
+                ? moduleName.substring(nodeModulesSegmentIndex + nodeModulesSegment.length)
                 : moduleName;
         }
     }
