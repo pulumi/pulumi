@@ -136,8 +136,8 @@ function serializeJavaScriptText(
         environmentText = "\n" + environmentText;
     }
 
-    const header = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};\n`;
-    const text = header + environmentText + functionText;
+    const text = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};\n`
+        + environmentText + functionText;
 
     return {
         text: text,
