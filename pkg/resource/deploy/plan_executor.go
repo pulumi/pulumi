@@ -17,7 +17,9 @@ package deploy
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
@@ -34,6 +36,18 @@ type planExecutor struct {
 
 // Utility for convenient logging.
 var log = logging.V(4)
+
+func execError(message string, preview bool) error {
+	kind := "update"
+	if preview {
+		kind = "preview"
+	}
+	return errors.New(kind + " " + message)
+}
+
+func (pe *planExecutor) reportError(urn resource.URN, err error) {
+	pe.plan.Diag().Errorf(diag.RawMessage(urn, err.Error()))
+}
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
@@ -97,7 +111,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	err = func() error {
+	canceled, err := func() (bool, error) {
 		for {
 			log.Infof("planExecutor.Execute(...): waiting for incoming events")
 			select {
@@ -106,10 +120,9 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 					event.Event == nil, event.Error)
 
 				if event.Error != nil {
-					log.Infof("PlanExecutor.Execute(...): saw incoming error: %v", event.Error)
-					pe.plan.Diag().Errorf(diag.RawMessage("" /*urn*/, event.Error.Error()))
+					pe.reportError("", event.Error)
 					cancel()
-					return event.Error
+					return false, event.Error
 				}
 
 				if event.Event == nil {
@@ -124,18 +137,21 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 					pe.stepExec.SignalCompletion()
 					log.Infof("planExecutor.Execute(...): issued deletes, exiting loop")
 
-					return nil
+					return false, nil
 				}
 
 				if eventErr := pe.handleSingleEvent(event.Event); eventErr != nil {
 					log.Infof("planExecutor.Execute(...): error handling event: %v", eventErr)
-					pe.plan.Diag().Errorf(diag.RawMessage(pe.plan.generateEventURN(event.Event), eventErr.Error()))
+					pe.reportError(pe.plan.generateEventURN(event.Event), eventErr)
 					cancel()
-					return eventErr
+					return false, eventErr
 				}
 			case <-ctx.Done():
 				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
-				return nil
+
+				// NOTE: we use the presence of an error in the parent context in order to distinguish caller-initiated
+				// cancellation from internally-initiated cancellation.
+				return parentCtx.Err() != nil, nil
 			}
 		}
 	}()
@@ -144,8 +160,11 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 	pe.stepExec.WaitForCompletion()
 	log.Infof("planExecutor.Execute(...): step executor has completed")
 
-	if err == nil && pe.stepExec.Errored() {
-		err = errStepApplyFailed
+	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
+	if err != nil || pe.stepExec.Errored() {
+		err = execError("failed", preview)
+	} else if canceled {
+		err = execError("canceled", preview)
 	}
 	return pe.stepGen, err
 }
