@@ -195,23 +195,16 @@ func (res *planResult) Chdir() (func(), error) {
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
 func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) (deploy.PlanSummary, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	opts := deploy.Options{
-		Events:   events,
-		Parallel: res.Options.Parallel,
-	}
-
-	src, err := res.Plan.Source().Iterate(ctx, opts, res.Plan)
-	if err != nil {
-		cancelFunc()
-		return nil, err
-	}
 
 	done := make(chan bool)
 	var summary deploy.PlanSummary
+	var err error
 	go func() {
-		planExec := deploy.NewPlanExecutor(ctx, res.Plan, opts, preview, src)
-		err = planExec.Execute()
-		summary = planExec.Summary()
+		opts := deploy.Options{
+			Events:   events,
+			Parallel: res.Options.Parallel,
+		}
+		summary, err = res.Plan.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -219,7 +212,7 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 	go func() {
 		select {
 		case <-cancelCtx.Cancel.Canceled():
-			// Cancel the plan executor's context, so it begins to shut down.
+			// Cancel the plan's execution context, so it begins to shut down.
 			cancelFunc()
 			cancelErr := res.Plan.SignalCancellation()
 			if cancelErr != nil {

@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"context"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -276,4 +278,17 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 	default:
 		return ""
 	}
+}
+
+// Execute executes a plan to completion, using the given cancellation context and running a preview
+// or update.
+func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) (PlanSummary, error) {
+	src, err := p.source.Iterate(ctx, opts, p)
+	if err != nil {
+		return nil, err
+	}
+
+	planExec := NewPlanExecutor(ctx, p, opts, preview, src)
+	err = planExec.Execute()
+	return planExec.Summary(), err
 }
