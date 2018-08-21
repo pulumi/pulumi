@@ -237,10 +237,6 @@ func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
 func (p *Plan) Source() Source                         { return p.source }
 func (p *Plan) IsRefresh() bool                        { return p.source.IsRefresh() }
 
-func (p *Plan) SignalCancellation() error {
-	return p.ctx.Host.SignalCancellation()
-}
-
 func (p *Plan) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	return p.providers.GetProvider(ref)
 }
@@ -283,11 +279,6 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
 func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) (PlanSummary, error) {
-	src, err := p.source.Iterate(ctx, opts, p)
-	if err != nil {
-		return nil, err
-	}
-
-	planExec := newPlanExecutor(ctx, p, opts, preview, src)
-	return planExec.Execute()
+	planExec := &planExecutor{plan: p}
+	return planExec.Execute(ctx, opts, preview)
 }

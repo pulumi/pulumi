@@ -21,7 +21,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -214,11 +213,6 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 		case <-cancelCtx.Cancel.Canceled():
 			// Cancel the plan's execution context, so it begins to shut down.
 			cancelFunc()
-			cancelErr := res.Plan.SignalCancellation()
-			if cancelErr != nil {
-				glog.V(3).Infof("Attempted to signal cancellation to resource providers, but failed: %s",
-					cancelErr.Error())
-			}
 		case <-done:
 			return
 		}

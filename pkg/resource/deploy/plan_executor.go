@@ -31,19 +31,45 @@ const (
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
 type planExecutor struct {
-	plan *Plan          // The plan that we are executing
-	src  SourceIterator // The iterator that generates SourceEvents
+	plan *Plan // The plan that we are executing
 
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
-
-	ctx    context.Context    // cancellation context for the current plan. Child of parentCtx.
-	cancel context.CancelFunc // CancelFunc that cancels the above context.
 }
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *planExecutor) Execute() (PlanSummary, error) {
+func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview bool) (PlanSummary, error) {
+	// Begin iterating the source.
+	src, err := pe.plan.source.Iterate(parentCtx, opts, pe.plan)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set up a goroutine that will signal cancellation to the plan's plugins if the parent context is cancelled. We do
+	// not hang this off of the context we create below because we do not want the failure of a single step to cause
+	// other steps to fail.
+	done := make(chan bool)
+	go func() {
+		select {
+		case <-parentCtx.Done():
+			cancelErr := pe.plan.ctx.Host.SignalCancellation()
+			if cancelErr != nil {
+				logging.V(planExecutorLogLevel).Infof(
+					"planExecutor.Execute(...): failed to signal cancellation to resource providers: %v", cancelErr)
+			}
+		case <-done:
+		}
+	}()
+
+	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
+	// execution fails.
+	ctx, cancel := context.WithCancel(parentCtx)
+
+	// Set up a step generator and executor for this plan.
+	pe.stepGen = newStepGenerator(pe.plan, opts)
+	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview)
+
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
@@ -53,13 +79,13 @@ func (pe *planExecutor) Execute() (PlanSummary, error) {
 	incomingEvents := make(chan nextEvent)
 	go func() {
 		for {
-			event, sourceErr := pe.src.Next()
+			event, sourceErr := src.Next()
 			select {
 			case incomingEvents <- nextEvent{event, sourceErr}:
 				if event == nil {
 					return
 				}
-			case <-pe.ctx.Done():
+			case <-ctx.Done():
 				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): incoming events goroutine exiting")
 				return
 			}
@@ -74,7 +100,7 @@ func (pe *planExecutor) Execute() (PlanSummary, error) {
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	err := func() error {
+	err = func() error {
 		for {
 			logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): waiting for incoming events")
 			select {
@@ -84,8 +110,8 @@ func (pe *planExecutor) Execute() (PlanSummary, error) {
 
 				if event.Error != nil {
 					logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): saw incoming error: %v", event.Error)
-					pe.cancel()
 					pe.plan.Diag().Errorf(diag.RawMessage("" /*urn*/, event.Error.Error()))
+					cancel()
 					return event.Error
 				}
 
@@ -108,15 +134,16 @@ func (pe *planExecutor) Execute() (PlanSummary, error) {
 					logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): error handling event: %v",
 						eventErr)
 					pe.plan.Diag().Errorf(diag.RawMessage(pe.plan.generateEventURN(event.Event), eventErr.Error()))
-					pe.cancel()
+					cancel()
 					return eventErr
 				}
-			case <-pe.ctx.Done():
-				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): context finished: %v", pe.ctx.Err())
-				return pe.ctx.Err()
+			case <-ctx.Done():
+				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
+				return ctx.Err()
 			}
 		}
 	}()
+	close(done)
 
 	pe.stepExec.WaitForCompletion()
 	logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): step executor has completed")
@@ -152,19 +179,4 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
 	}
 	pe.stepExec.Execute(steps)
 	return nil
-}
-
-// newPlanExecutor creates a new planExecutor suitable for executing the given plan.
-func newPlanExecutor(parentCtx context.Context, plan *Plan, opts Options,
-	preview bool, src SourceIterator) *planExecutor {
-	ctx, cancel := context.WithCancel(parentCtx)
-	pe := &planExecutor{
-		plan:     plan,
-		src:      src,
-		stepGen:  newStepGenerator(plan, opts),
-		stepExec: newStepExecutor(ctx, cancel, plan, opts, preview),
-		ctx:      ctx,
-		cancel:   cancel,
-	}
-	return pe
 }
