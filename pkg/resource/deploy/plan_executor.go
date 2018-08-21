@@ -22,11 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
-const (
-	// Utility constant for easy debugging.
-	planExecutorLogLevel = 4
-)
-
 // planExecutor is responsible for taking a plan and driving it to completion.
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
@@ -36,6 +31,9 @@ type planExecutor struct {
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
 }
+
+// Utility for convenient logging.
+var log = logging.V(4)
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
@@ -55,8 +53,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 		case <-parentCtx.Done():
 			cancelErr := pe.plan.ctx.Host.SignalCancellation()
 			if cancelErr != nil {
-				logging.V(planExecutorLogLevel).Infof(
-					"planExecutor.Execute(...): failed to signal cancellation to resource providers: %v", cancelErr)
+				log.Infof("planExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
 			}
 		case <-done:
 		}
@@ -86,7 +83,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 					return
 				}
 			case <-ctx.Done():
-				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): incoming events goroutine exiting")
+				log.Infof("planExecutor.Execute(...): incoming events goroutine exiting")
 				return
 			}
 		}
@@ -102,14 +99,14 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	err = func() error {
 		for {
-			logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): waiting for incoming events")
+			log.Infof("planExecutor.Execute(...): waiting for incoming events")
 			select {
 			case event := <-incomingEvents:
-				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)",
+				log.Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)",
 					event.Event == nil, event.Error)
 
 				if event.Error != nil {
-					logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): saw incoming error: %v", event.Error)
+					log.Infof("PlanExecutor.Execute(...): saw incoming error: %v", event.Error)
 					pe.plan.Diag().Errorf(diag.RawMessage("" /*urn*/, event.Error.Error()))
 					cancel()
 					return event.Error
@@ -125,20 +122,19 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 					// Signal completion to the step executor. It'll exit once it's done retiring all of the steps in
 					// the chain that we just gave it.
 					pe.stepExec.SignalCompletion()
-					logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): issued deletes, exiting loop")
+					log.Infof("planExecutor.Execute(...): issued deletes, exiting loop")
 
 					return nil
 				}
 
 				if eventErr := pe.handleSingleEvent(event.Event); eventErr != nil {
-					logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): error handling event: %v",
-						eventErr)
+					log.Infof("planExecutor.Execute(...): error handling event: %v", eventErr)
 					pe.plan.Diag().Errorf(diag.RawMessage(pe.plan.generateEventURN(event.Event), eventErr.Error()))
 					cancel()
 					return eventErr
 				}
 			case <-ctx.Done():
-				logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
+				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
 				return nil
 			}
 		}
@@ -146,7 +142,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 	close(done)
 
 	pe.stepExec.WaitForCompletion()
-	logging.V(planExecutorLogLevel).Infof("planExecutor.Execute(...): step executor has completed")
+	log.Infof("planExecutor.Execute(...): step executor has completed")
 
 	if err == nil && pe.stepExec.Errored() {
 		err = errStepApplyFailed
@@ -163,13 +159,13 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
 	var err error
 	switch e := event.(type) {
 	case RegisterResourceEvent:
-		logging.V(planExecutorLogLevel).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
+		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		steps, err = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
-		logging.V(planExecutorLogLevel).Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
+		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, err = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
-		logging.V(planExecutorLogLevel).Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
+		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
 		return nil
 	}
