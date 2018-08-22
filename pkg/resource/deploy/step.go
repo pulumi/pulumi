@@ -538,14 +538,17 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	return resourceStatus, complete, resourceError
 }
 
+// RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
+// resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
+// instead, they are issued by the plan executor as the optional first step in plan execution.
 type RefreshStep struct {
-	plan *Plan           // the plan that produced this read
+	plan *Plan           // the plan that produced this refresh
 	old  *resource.State // the old resource state, if one exists for this urn
 	new  *resource.State // the new resource state, to be used to query the provider
-	done chan<- bool     // the channel to use to signal completion
+	done chan<- bool     // the channel to use to signal completion, if any
 }
 
-// NewRefreshStep creates a new Read step.
+// NewRefreshStep creates a new Refresh step.
 func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
 	contract.Assert(old != nil)
 
@@ -556,10 +559,7 @@ func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
 	}
 }
 
-func (s *RefreshStep) Op() StepOp {
-	return OpRefresh
-}
-
+func (s *RefreshStep) Op() StepOp           { return OpRefresh }
 func (s *RefreshStep) Plan() *Plan          { return s.plan }
 func (s *RefreshStep) Type() tokens.Type    { return s.old.Type }
 func (s *RefreshStep) Provider() string     { return s.old.Provider }
@@ -569,6 +569,8 @@ func (s *RefreshStep) New() *resource.State { return s.new }
 func (s *RefreshStep) Res() *resource.State { return s.old }
 func (s *RefreshStep) Logical() bool        { return false }
 
+// ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
+// any.
 func (s *RefreshStep) ResultOp() StepOp {
 	if s.new == nil {
 		return OpDelete
@@ -585,12 +587,13 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		complete = func() { close(s.done) }
 	}
 
-	// Component and provider resources are always sames.
+	// Component and provider resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) {
 		s.new = s.old
 		return resource.StatusOK, complete, nil
 	}
 
+	// For a custom resource, fetch the resource's provider and read the resource's current state.
 	prov, err := getProvider(s)
 	if err != nil {
 		return resource.StatusOK, nil, err
@@ -710,7 +713,8 @@ func (op StepOp) RawPrefix() string {
 
 func (op StepOp) PastTense() string {
 	switch op {
-	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement, OpRefresh:
+	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement,
+		OpRefresh:
 		return string(op) + "d"
 	case OpRead:
 		return "read"

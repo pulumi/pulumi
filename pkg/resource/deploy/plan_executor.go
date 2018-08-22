@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -215,6 +216,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return nil
 	}
 
+	// Fire up a worker pool and issue a refresh step per resource in the old snapshot.
 	ctx, cancel := context.WithCancel(callerCtx)
 	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview)
 
@@ -242,34 +244,57 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources and repairing
-	// dependency lists as necessary.
+	// dependency lists as necessary. Note that this updates the base snapshot _in memory_, so it is critical that any
+	// components that use the snapshot refer to the same instance and avoid reading it concurrently with this rebuild.
+	//
+	// The process of repairing dependency lists is a bit subtle. Because multiple physical resources may share a URN,
+	// the ability of a particular URN to be referenced in a dependency list can change based on the dependent
+	// resource's position in the resource list. For example, consider the following list of resources, where each
+	// resource is a (URN, ID, Dependencies) tuple:
+	//
+	//     [ (A, 0, []), (B, 0, [A]), (A, 1, []), (A, 2, []), (C, 0, [A]) ]
+	//
+	// Let `(A, 0, [])` and `(A, 2, [])` be deleted by the refresh. This produces the following intermediate list
+	// before dependency lists are repaired:
+	//
+	//     [ (B, 0, [A]), (A, 1, []), (C, 0, [A]) ]
+	//
+	// In order to repair the dependency lists, we iterate over the intermediate resource list, keeping track of which
+	// URNs refer to at least one physical resource at each point in the list, and remove any dependencies that refer
+	// to URNs that do not refer to any physical resources. This process produces the following final list:
+	//
+	//     [ (B, 0, []), (A, 1, []), (C, 0, [A]) ]
+	//
+	// Note that the correctness of this process depends on the fact that the list of resources is a topological sort
+	// of its corresponding dependency graph, so a resource always appears in the list after any resources on which it
+	// may depend.
 	resources := make([]*resource.State, 0, len(prev.Resources))
-	deleted := make(map[resource.URN]struct{})
+	referenceable := make(map[resource.URN]struct{})
 	olds := make(map[resource.URN]*resource.State)
 	for _, s := range steps {
 		new := s.New()
 		if new == nil {
-			// Note that this URN no longer exists.
-			deleted[s.URN()] = struct{}{}
+			contract.Assert(s.Old().Custom)
+			contract.Assert(!providers.IsProviderType(s.Old().Type))
 			continue
 		}
-		// If this URN referred to a deleted resource, note that it exists again.
-		delete(deleted, s.URN())
 
-		// Remove any deleted resource from this resource's dependency list.
+		// Remove any deleted resources from this resource's dependency list.
 		if len(new.Dependencies) != 0 {
 			deps := make([]resource.URN, 0, len(new.Dependencies))
 			for _, d := range new.Dependencies {
-				if _, gone := deleted[d]; !gone {
+				if _, canRef := referenceable[d]; canRef {
 					deps = append(deps, d)
 				}
 			}
 			new.Dependencies = deps
 		}
 
+		// Add this resource to the resource list and mark it as referenceable.
 		resources = append(resources, new)
+		referenceable[new.URN] = struct{}{}
 
-		// Do not record resources that are pending deletion in the lookup table.
+		// Do not record resources that are pending deletion in the "olds" lookup table.
 		if !new.Delete {
 			olds[new.URN] = new
 		}

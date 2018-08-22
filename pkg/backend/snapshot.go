@@ -381,7 +381,10 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	contract.Require(step.Op() == deploy.OpRefresh, "step.Op() == deploy.OpRefresh")
 	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
 	return rsm.manager.mutate(func() bool {
-		// We always elide refreshes. We'll write these out incrementally.
+		// We always elide refreshes. The expectation is that all of these run before any actual mutations and that
+		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
+		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
+		// have changed.
 		return false
 	})
 }
