@@ -5058,8 +5058,7 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
                     serverlessExpress.proxy(server, event, context);
                 };
             },
-            expectText: `exports.handler = __f0();
-
+            expectText: `
 function __f0() {
   return (function() {
     with({  }) {
@@ -5080,7 +5079,80 @@ return () => {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-`,
+
+exports.handler = __f0();`,
+        });
+    }
+
+    {
+        const outerVal = [{}];
+        (<any>outerVal[0]).inner = outerVal;
+
+        function foo() {
+            outerVal.pop();
+        }
+
+        function bar() {
+            outerVal.join();
+        }
+
+        cases.push({
+            title: "Capture factory func #2",
+            factoryFunc: () => {
+                outerVal.push({});
+                foo();
+
+                return (event: any, context: any) => {
+                    bar();
+                };
+            },
+            expectText: `
+var __outerVal = [];
+var __outerVal_0 = {};
+__outerVal_0.inner = __outerVal;
+__outerVal[0] = __outerVal_0;
+
+function __foo() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo }) {
+
+return function /*foo*/() {
+            outerVal.pop();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __bar() {
+  return (function() {
+    with({ outerVal: __outerVal, bar: __bar }) {
+
+return function /*bar*/() {
+            outerVal.join();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo, bar: __bar }) {
+
+return () => {
+                outerVal.push({});
+                foo();
+                return (event, context) => {
+                    bar();
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+exports.handler = __f0();`,
         });
     }
 
