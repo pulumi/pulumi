@@ -139,17 +139,22 @@ type StepEventStateMetadata struct {
 	Provider string
 }
 
-func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
+func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
 	target := update.GetTarget()
 	var secrets []string
 	if target.Config.HasSecureValue() {
-		for _, v := range target.Config {
+		for k, v := range target.Config {
 			if !v.Secure() {
 				continue
 			}
-			secret, err := v.Value(target.Decrypter)
-			contract.AssertNoError(err)
 
+			secret, err := v.Value(target.Decrypter)
+			if err != nil {
+				return eventEmitter{}, DecryptError{
+					Key: k,
+					Err: err,
+				}
+			}
 			secrets = append(secrets, secret)
 		}
 	}
@@ -158,7 +163,7 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
 
 	return eventEmitter{
 		Chan: events,
-	}
+	}, nil
 }
 
 type eventEmitter struct {

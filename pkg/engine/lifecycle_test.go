@@ -1363,3 +1363,48 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 
 	p.Run(t, nil)
 }
+
+type brokenDecrypter struct {
+	ErrorMessage string
+}
+
+func (b brokenDecrypter) DecryptValue(ciphertext string) (string, error) {
+	return "", fmt.Errorf(b.ErrorMessage)
+}
+
+// Tests that the engine presents a reasonable error message when a decrypter fails to decrypt a config value.
+func TestBrokenDecrypter(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+	key := config.MustMakeKey("foo", "bar")
+	msg := "decryption failed"
+	configMap := make(config.Map)
+	configMap[key] = config.NewSecureValue("hunter2")
+	p := &TestPlan{
+		Options:   UpdateOptions{host: host},
+		Decrypter: brokenDecrypter{ErrorMessage: msg},
+		Config:    configMap,
+		Steps: []TestStep{{
+			Op:            Update,
+			ExpectFailure: true,
+			SkipPreview:   true,
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+				assert.Error(t, err)
+				decryptErr := err.(DecryptError)
+				assert.Equal(t, key, decryptErr.Key)
+				assert.Contains(t, decryptErr.Err.Error(), msg)
+				return err
+			},
+		}},
+	}
+
+	p.Run(t, nil)
+}

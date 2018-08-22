@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -22,6 +23,9 @@ func PrintEngineError(err error) error {
 	switch e := err.(type) {
 	case deploy.PlanPendingOperationsError:
 		printPendingOperationsError(e)
+		return fmt.Errorf("refusing to proceed")
+	case engine.DecryptError:
+		printDecryptError(e)
 		return fmt.Errorf("refusing to proceed")
 	default:
 		return err
@@ -50,6 +54,20 @@ remove that operation from the "pending_operations" section of the file. Once th
 use 'pulumi stack import' to import the repaired stack.`)
 	contract.IgnoreError(writer.Flush())
 
+	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
+}
+
+func printDecryptError(e engine.DecryptError) {
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s", e.Key, e.Err.Error())
+	fprintf(writer, `
+This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and
+it is not possible to share an encrypted configuration value across stacks.
+
+You can re-encrypt your configuration buy running 'pulumi config set %s [value] --secret' with your
+new stack selected.`, e.Key)
+	contract.IgnoreError(writer.Flush())
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
 }
 
