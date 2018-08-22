@@ -237,12 +237,6 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
-	if stepExec.Errored() {
-		return execError("failed", preview)
-	} else if canceled {
-		return execError("canceled", preview)
-	}
-
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources and repairing
 	// dependency lists as necessary. Note that this updates the base snapshot _in memory_, so it is critical that any
 	// components that use the snapshot refer to the same instance and avoid reading it concurrently with this rebuild.
@@ -301,5 +295,11 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 	pe.plan.prev.Resources = resources
 	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
+
+	if stepExec.Errored() {
+		return execError("failed", preview)
+	} else if canceled {
+		return execError("canceled", preview)
+	}
 	return nil
 }

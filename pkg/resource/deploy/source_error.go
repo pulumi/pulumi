@@ -17,21 +17,25 @@ package deploy
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-// ErrorSource is a singleton source that returns an error if it is iterated. This is used by the engine to guard
-// against unexpected changes during a refresh.
-var ErrorSource Source = &errorSource{}
+// NewErrorSource creates a source that panics if it is iterated. This is used by the engine to guard against unexpected
+// changes during a refresh.
+
+func NewErrorSource(project tokens.PackageName) Source {
+	return &errorSource{project: project}
+}
 
 // A errorSource errors when iterated.
-type errorSource struct{}
+type errorSource struct {
+	project tokens.PackageName
+}
 
 func (src *errorSource) Close() error                { return nil }
-func (src *errorSource) Project() tokens.PackageName { return "" }
+func (src *errorSource) Project() tokens.PackageName { return src.project }
 func (src *errorSource) Info() interface{}           { return nil }
 
 func (src *errorSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {
-	return nil, errors.New("internal error: unexpected call to errorSource.Iterate")
+	panic("internal error: unexpected call to errorSource.Iterate")
 }

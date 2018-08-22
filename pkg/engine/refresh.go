@@ -54,5 +54,5 @@ func newRefreshSource(opts planOptions, proj *workspace.Project, pwd, main strin
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
 	// Just return an error source. Refresh doesn't use its source.
-	return deploy.ErrorSource, nil
+	return deploy.NewErrorSource(proj.Name), nil
 }

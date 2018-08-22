@@ -365,9 +365,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
-				// Should see only sames.
+				// Should see only refreshes.
 				for _, entry := range j.Entries {
-					assert.Equal(t, deploy.OpSame, entry.Step.Op())
+					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
 				return err
@@ -389,9 +389,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
-				// Should see only sames.
+				// Should see only refereshes.
 				for _, entry := range j.Entries {
-					assert.Equal(t, deploy.OpSame, entry.Step.Op())
+					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
 				return err
@@ -524,13 +524,18 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 		}},
 	}
 
+	isRefresh := false
 	validate := func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
 		for _, entry := range j.Entries {
 			switch urn := entry.Step.URN(); urn {
 			case provURN, resURN:
-				assert.Equal(t, deploy.OpSame, entry.Step.Op())
+				expect := deploy.OpSame
+				if isRefresh {
+					expect = deploy.OpRefresh
+				}
+				assert.Equal(t, expect, entry.Step.Op())
 			default:
 				t.Fatalf("unexpected resource %v", urn)
 			}
@@ -544,10 +549,12 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	p.Run(t, old)
 
 	// Run a single refresh step using the base snapshot.
+	isRefresh = true
 	p.Steps = []TestStep{{Op: Refresh, Validate: validate}}
 	p.Run(t, old)
 
 	// Run a single destroy step using the base snapshot.
+	isRefresh = false
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
@@ -1156,9 +1163,9 @@ func TestRefreshInitFailure(t *testing.T) {
 		case provURN:
 			// break
 		case resURN:
-			assert.Equal(t, []string{}, resource.InitErrors)
+			assert.Empty(t, resource.InitErrors)
 		default:
-			t.Fatalf("unexpected resource %v", urn)
+			t.Fatalf("unexpected resource %v (%v)", urn, provURN)
 		}
 	}
 
@@ -1166,7 +1173,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Refresh DOES fail, causing the new initialization error to appear.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh}}
+	p.Steps = []TestStep{{Op: Refresh, ExpectFailure: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
