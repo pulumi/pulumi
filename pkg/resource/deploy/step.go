@@ -597,7 +597,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	var initErrors []string
-	refreshed, rst, err := prov.Read(s.old.URN, s.old.ID, s.old.Inputs)
+	refreshed, rst, err := prov.Read(s.old.URN, s.old.ID, s.old.Outputs)
 	if err != nil {
 		if rst != resource.StatusPartialFailure {
 			return rst, nil, err

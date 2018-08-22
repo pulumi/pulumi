@@ -245,6 +245,8 @@ func GetResourceOutputsPropertiesString(
 	ins := new.Inputs
 	outs := new.Outputs
 
+	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
+	// the new outputs, we want to print the diffs.
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
 		outputDiff = step.Old.Outputs.Diff(outs)
