@@ -33,7 +33,10 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, err
+	}
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SkipOutputs:   true, // refresh is exclusively about outputs

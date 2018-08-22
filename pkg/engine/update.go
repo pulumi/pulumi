@@ -77,7 +77,10 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, err
+	}
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
