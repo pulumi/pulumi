@@ -60,11 +60,10 @@ use 'pulumi stack import' to import the repaired stack.`)
 func printDecryptError(e engine.DecryptError) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
-	fprintf(writer, "failed to decrypt encrypted configuration key '%s': %s", e.Key, e.Err.Error())
+	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s", e.Key, e.Err.Error())
 	fprintf(writer, `
-This most commonly occurs when using a secret encrypted by a stack and then using the encrypted
-configuration in another stack. Configuration encryption is done per-stack and it is not possible
-for another stack to decrypt a stack's encrypted configuration.
+This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and
+it is not possible to share an encrypted configuration value across stacks.
 
 You can re-encrypt your configuration buy running 'pulumi config set %s [value] --secret' with your
 new stack selected.`, e.Key)
