@@ -94,7 +94,7 @@ export interface ReadResult {
     /**
      * The current property state read from the live environment.
      */
-    readonly properties?: any;
+    readonly props?: any;
 }
 
 /**
