@@ -53,11 +53,11 @@ func (pe *planExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview bool) (PlanSummary, error) {
+func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview bool) error {
 	// Begin iterating the source.
 	src, err := pe.plan.source.Iterate(parentCtx, opts, pe.plan)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Set up a goroutine that will signal cancellation to the plan's plugins if the parent context is cancelled. We do
@@ -167,7 +167,7 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 	} else if canceled {
 		err = execError("canceled", preview)
 	}
-	return pe.stepGen, err
+	return err
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs

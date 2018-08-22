@@ -136,18 +136,15 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		defer contract.IgnoreClose(result)
 
 		// Make the current working directory the same as the program's, and restore it upon exit.
-		done, err := result.Chdir()
-		if err != nil {
-			return nil, err
+		done, chErr := result.Chdir()
+		if chErr != nil {
+			return nil, chErr
 		}
 		defer done()
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
 			resourceChanges, err = printPlan(ctx, result, dryRun)
-			if err != nil {
-				return resourceChanges, err
-			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			opts.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
@@ -155,24 +152,17 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
-			summary, err := result.Walk(ctx, actions, false)
-			if err != nil && summary == nil {
-				// Something went wrong, and no changes were made.
-				return resourceChanges, err
-			}
 
-			contract.Assert(summary != nil)
-			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+			err = result.Walk(ctx, actions, false)
 			resourceChanges = ResourceChanges(actions.Ops)
-			opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
 
-			if err != nil {
-				return resourceChanges, err
+			if len(resourceChanges) != 0 {
+				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+				opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
 			}
 		}
 	}
-
-	return resourceChanges, nil
+	return resourceChanges, err
 }
 
 // pluginActions listens for plugin events and persists the set of loaded plugins

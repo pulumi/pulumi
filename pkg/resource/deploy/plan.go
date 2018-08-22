@@ -52,16 +52,6 @@ type Events interface {
 	OnResourceOutputs(step Step) error
 }
 
-// PlanSummary is an interface for summarizing the progress of a plan.
-type PlanSummary interface {
-	Steps() int
-	Creates() map[resource.URN]bool
-	Updates() map[resource.URN]bool
-	Replaces() map[resource.URN]bool
-	Deletes() map[resource.URN]bool
-	Sames() map[resource.URN]bool
-}
-
 // PlanPendingOperationsError is an error returned from `NewPlan` if there exist pending operations in the
 // snapshot that we are preparing to operate upon. The engine does not allow any operations to be pending
 // when operating on a snapshot.
@@ -278,7 +268,7 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) (PlanSummary, error) {
+func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) error {
 	planExec := &planExecutor{plan: p}
 	return planExec.Execute(ctx, opts, preview)
 }
