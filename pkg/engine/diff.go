@@ -256,13 +256,12 @@ func GetResourceOutputsPropertiesString(
 	maxkey := maxKey(keys)
 	for _, k := range keys {
 		out := outs[k]
+
 		// Print this property if it is printable and either ins doesn't have it or it's different.
-		if shouldPrintPropertyValue(out, true) {
-			var print bool
+		if outputDiff != nil || shouldPrintPropertyValue(out, true) {
+			print := true
 			if in, has := ins[k]; has {
 				print = (out.Diff(in) != nil)
-			} else {
-				print = true
 			}
 
 			if print {
@@ -450,13 +449,9 @@ func printObjectPropertyDiff(b *bytes.Buffer, key resource.PropertyKey, maxkey i
 		printPropertyTitle(b, string(key), maxkey, indent, top, prefix)
 	}
 	if add, isadd := diff.Adds[key]; isadd {
-		if shouldPrintPropertyValue(add, planning) {
-			printAdd(b, add, titleFunc, planning, indent, debug)
-		}
+		printAdd(b, add, titleFunc, planning, indent, debug)
 	} else if delete, isdelete := diff.Deletes[key]; isdelete {
-		if shouldPrintPropertyValue(delete, planning) {
-			printDelete(b, delete, titleFunc, planning, indent, debug)
-		}
+		printDelete(b, delete, titleFunc, planning, indent, debug)
 	} else if update, isupdate := diff.Updates[key]; isupdate {
 		printPropertyValueDiff(
 			b, titleFunc, update, planning, indent, summary, debug)
