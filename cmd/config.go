@@ -305,14 +305,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 func parseConfigKey(key string) (config.Key, error) {
 	// As a convience, we'll treat any key with no delimiter as if:
-	// <program-name>:config:<key> had been written instead
+	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
 		proj, err := workspace.DetectProject()
 		if err != nil {
 			return config.Key{}, err
 		}
 
-		return config.ParseKey(fmt.Sprintf("%s:config:%s", proj.Name, key))
+		return config.ParseKey(fmt.Sprintf("%s:%s", proj.Name, key))
 	}
 
 	return config.ParseKey(key)
