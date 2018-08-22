@@ -145,15 +145,14 @@ function serializeJavaScriptText(
     // the module function we created by serializing it.  For a factory function this will export
     // the function produced by invoking the factory function once.
     let text: string;
+    const exportText = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};`;
     if (isFactoryFunction) {
         // for a factory function, we need to call the function at the end.  That way all the logic
         // to set up the environment has run.
-        text = environmentText + functionText + "\n" +
-            `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};`;
+        text = environmentText + functionText + "\n" + exportText;
     }
     else {
-        text = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};\n`
-            + environmentText + functionText;
+        text = exportText + "\n" + environmentText + functionText;
     }
 
     return {
