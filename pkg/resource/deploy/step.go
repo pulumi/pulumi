@@ -15,8 +15,6 @@
 package deploy
 
 import (
-	"reflect"
-
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -575,7 +573,7 @@ func (s *RefreshStep) ResultOp() StepOp {
 	if s.new == nil {
 		return OpDelete
 	}
-	if s.new == s.old || reflect.DeepEqual(s.old.Outputs, s.new.Outputs) {
+	if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
 		return OpSame
 	}
 	return OpUpdate
