@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -89,6 +90,13 @@ func newNewCmd() *cobra.Command {
 				// Get the new working directory.
 				if cwd, err = os.Getwd(); err != nil {
 					return errors.Wrap(err, "getting the working directory")
+				}
+			}
+
+			// Return an error if the directory isn't empty.
+			if !force {
+				if err = errorIfNotEmptyDirectory(cwd); err != nil {
+					return err
 				}
 			}
 
@@ -335,6 +343,21 @@ func newNewCmd() *cobra.Command {
 		"The location to place the generated project; if not specified, the current directory is used")
 
 	return cmd
+}
+
+// errorIfNotEmptyDirectory returns an error if path is not empty.
+func errorIfNotEmptyDirectory(path string) error {
+	infos, err := ioutil.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	if len(infos) > 0 {
+		return errors.Errorf("%s is not empty; "+
+			"rerun in an empty directory, pass the path to an empty directory to --dir, or use --force", path)
+	}
+
+	return nil
 }
 
 // getDevStackName returns the stack name suffixed with -dev.
