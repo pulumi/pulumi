@@ -17,6 +17,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1167,7 +1169,7 @@ func TestRefreshInitFailure(t *testing.T) {
 		case resURN:
 			assert.Empty(t, resource.InitErrors)
 		default:
-			t.Fatalf("unexpected resource %v (%v)", urn, provURN)
+			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
 
@@ -1327,6 +1329,230 @@ func TestRefreshWithDelete(t *testing.T) {
 			assert.Equal(t, provURN, snap.Resources[0].URN)
 		})
 	}
+}
+
+// Tests that dependencies are correctly rewritten when refresh removes deleted resources.
+func TestRefreshDeleteDependencies(t *testing.T) {
+	p := &TestPlan{}
+
+	const resType = "pkgA:m:typA"
+
+	urnA := p.NewURN(resType, "resA", "")
+	urnB := p.NewURN(resType, "resB", "")
+	urnC := p.NewURN(resType, "resC", "")
+
+	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+		return &resource.State{
+			Type:         urn.Type(),
+			URN:          urn,
+			Custom:       true,
+			Delete:       delete,
+			ID:           id,
+			Inputs:       resource.PropertyMap{},
+			Outputs:      resource.PropertyMap{},
+			Dependencies: dependencies,
+		}
+	}
+
+	oldResources := []*resource.State{
+		newResource(urnA, "0", false),
+		newResource(urnB, "1", false, urnA),
+		newResource(urnC, "2", false, urnA, urnB),
+		newResource(urnA, "3", true),
+		newResource(urnA, "4", true),
+		newResource(urnC, "5", true, urnA, urnB),
+	}
+
+	old := &deploy.Snapshot{
+		Resources: oldResources,
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(urn resource.URN, id resource.ID,
+					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+
+					switch id {
+					case "0", "4":
+						// We want to delete resources A::0 and A::4.
+						return nil, resource.StatusOK, nil
+					default:
+						return state, resource.StatusOK, nil
+					}
+				},
+			}, nil
+		}),
+	}
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, loaders...)
+
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap := p.Run(t, old)
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+
+	for _, r := range snap.Resources {
+		switch urn := r.URN; urn {
+		case provURN:
+			continue
+		case urnA, urnB, urnC:
+			// break
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+
+		switch r.ID {
+		case "1":
+			// A::0 was deleted, so B's dependency list should be empty.
+			assert.Equal(t, urnB, r.URN)
+			assert.Empty(t, r.Dependencies)
+		case "2":
+			// A::0 was deleted, so C's dependency list should only contain B.
+			assert.Equal(t, urnC, r.URN)
+			assert.Equal(t, []resource.URN{urnB}, r.Dependencies)
+		case "3":
+			// A::3 should not have changed.
+			assert.Equal(t, oldResources[3], r)
+		case "5":
+			// A::4 was deleted but A::3 was still refernceable by C, so C should not have changed.
+			assert.Equal(t, oldResources[5], r)
+		default:
+			t.Fatalf("unexepcted resource %v::%v", r.URN, r.ID)
+		}
+	}
+}
+
+// Tests basic refresh functionality.
+func TestRefreshBasics(t *testing.T) {
+	p := &TestPlan{}
+
+	const resType = "pkgA:m:typA"
+
+	urnA := p.NewURN(resType, "resA", "")
+	urnB := p.NewURN(resType, "resB", "")
+	urnC := p.NewURN(resType, "resC", "")
+
+	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+		return &resource.State{
+			Type:         urn.Type(),
+			URN:          urn,
+			Custom:       true,
+			Delete:       delete,
+			ID:           id,
+			Inputs:       resource.PropertyMap{},
+			Outputs:      resource.PropertyMap{},
+			Dependencies: dependencies,
+		}
+	}
+
+	oldResources := []*resource.State{
+		newResource(urnA, "0", false),
+		newResource(urnB, "1", false, urnA),
+		newResource(urnC, "2", false, urnA, urnB),
+		newResource(urnA, "3", true),
+		newResource(urnA, "4", true),
+		newResource(urnC, "5", true, urnA, urnB),
+	}
+
+	newStates := map[resource.ID]resource.PropertyMap{
+		// A::0 and A::3 will have no changes.
+		"0": {},
+		"3": {},
+
+		// B::1 and A::4 will have changes.
+		"1": {"foo": resource.NewStringProperty("bar")},
+		"4": {"baz": resource.NewStringProperty("qux")},
+
+		// C::2 and C::5 will be deleted.
+		"2": nil,
+		"5": nil,
+	}
+
+	old := &deploy.Snapshot{
+		Resources: oldResources,
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(urn resource.URN, id resource.ID,
+					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+
+					new, hasNewState := newStates[id]
+					assert.True(t, hasNewState)
+					return new, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, loaders...)
+
+	p.Steps = []TestStep{{
+		Op: Refresh,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+			// Should see only refreshes.
+			for _, entry := range j.Entries {
+				assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
+				resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
+
+				old := entry.Step.Old()
+				if !old.Custom || providers.IsProviderType(old.Type) {
+					// Component and provider resources should never change.
+					assert.Equal(t, deploy.OpSame, resultOp)
+					continue
+				}
+
+				expected, new := newStates[old.ID], entry.Step.New()
+				if expected == nil {
+					// If the resource was deleted, we want the result op to be an OpDelete.
+					assert.Nil(t, new)
+					assert.Equal(t, deploy.OpDelete, resultOp)
+				} else {
+					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
+					// an OpSame.
+					if reflect.DeepEqual(new.Outputs, expected) {
+						assert.Equal(t, deploy.OpSame, resultOp)
+					} else {
+						assert.Equal(t, deploy.OpUpdate, resultOp)
+					}
+
+					// Only the outputs should have changed (if anything changed).
+					old.Outputs = expected
+					assert.Equal(t, old, new)
+				}
+			}
+			return err
+		},
+	}}
+	snap := p.Run(t, old)
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+
+	for _, r := range snap.Resources {
+		switch urn := r.URN; urn {
+		case provURN:
+			continue
+		case urnA, urnB, urnC:
+			// break
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+
+		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
+		expected := newStates[r.ID]
+		assert.NotNil(t, expected)
+
+		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
+		assert.NoError(t, err)
+
+		// The new resources should be equal to the old resources + the new outputs.
+		old := oldResources[int(idx)]
+		old.Outputs = expected
+		assert.Equal(t, old, r)
+	}
+
 }
 
 // Tests that errors returned directly from the language host get logged by the engine.
