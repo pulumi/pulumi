@@ -341,7 +341,7 @@ func (pc *Client) CreateUpdate(
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoError(err)
 
-		wireConfig[k.Namespace()+":config:"+k.Name()] = apitype.ConfigValue{
+		wireConfig[k.String()] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
 		}
