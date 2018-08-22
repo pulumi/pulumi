@@ -32,7 +32,7 @@ import (
 // one that encrypted it.
 type DecryptError struct {
 	Key config.Key // The configuration key whose value couldn't be decrypted
-	Err error      // The error that occured while decrypting
+	Err error      // The error that occurred while decrypting
 }
 
 func (d DecryptError) Error() string {
