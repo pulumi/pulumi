@@ -524,16 +524,6 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 	return true
 }
 
-func (sg *stepGenerator) Steps() int {
-	return len(sg.Creates()) + len(sg.Updates()) + len(sg.Replaces()) + len(sg.Deletes())
-}
-
-func (sg *stepGenerator) Creates() map[resource.URN]bool  { return sg.creates }
-func (sg *stepGenerator) Sames() map[resource.URN]bool    { return sg.sames }
-func (sg *stepGenerator) Updates() map[resource.URN]bool  { return sg.updates }
-func (sg *stepGenerator) Replaces() map[resource.URN]bool { return sg.replaces }
-func (sg *stepGenerator) Deletes() map[resource.URN]bool  { return sg.deletes }
-
 // newStepGenerator creates a new step generator that operates on the given plan.
 func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 	return &stepGenerator{
