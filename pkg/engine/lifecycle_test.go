@@ -105,6 +105,7 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 
 func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 	// Build up a list of current resources by replaying the journal.
+	refreshed := make(map[*resource.State]*resource.State)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range j.Entries {
@@ -155,6 +156,8 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			if e.Step.Old() != nil {
 				dones[e.Step.Old()] = true
 			}
+		case deploy.OpRefresh:
+			refreshed[e.Step.Old()] = e.Step.New()
 		}
 	}
 
@@ -162,6 +165,13 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 	// See backend.SnapshotManager.snap for why this works.
 	if base != nil {
 		for _, res := range base.Resources {
+			if r, has := refreshed[res]; has {
+				contract.Assert(!dones[res])
+				if r == nil {
+					continue
+				}
+				res = r
+			}
 			if !dones[res] {
 				resources = append(resources, res)
 			}

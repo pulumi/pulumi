@@ -1011,6 +1011,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "replacing failed"
 			case deploy.OpRead, deploy.OpReadReplacement:
 				return "reading failed"
+			case deploy.OpRefresh:
+				return "refreshing failed"
 			}
 		} else {
 			switch op {
@@ -1032,6 +1034,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "read"
 			case deploy.OpReadReplacement:
 				return "read for replacement"
+			case deploy.OpRefresh:
+				return "refresh"
 			}
 		}
 
@@ -1066,6 +1070,8 @@ func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
 		return "read"
 	case deploy.OpReadReplacement:
 		return "read for replacement"
+	case deploy.OpRefresh:
+		return "refresh"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", op)
@@ -1134,6 +1140,8 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "reading"
 		case deploy.OpReadReplacement:
 			return "reading for replacement"
+		case deploy.OpRefresh:
+			return "refresh"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)

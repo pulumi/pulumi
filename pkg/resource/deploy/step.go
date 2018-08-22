@@ -538,6 +538,81 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	return resourceStatus, complete, resourceError
 }
 
+type RefreshStep struct {
+	plan *Plan           // the plan that produced this read
+	old  *resource.State // the old resource state, if one exists for this urn
+	new  *resource.State // the new resource state, to be used to query the provider
+	done chan<- bool     // the channel to use to signal completion
+}
+
+// NewRefreshStep creates a new Read step.
+func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
+	contract.Assert(old != nil)
+
+	return &RefreshStep{
+		plan:  plan,
+		event: event,
+		old:   old,
+		done:  done,
+	}
+}
+
+func (s *RefreshStep) Op() StepOp {
+	return OpRefresh
+}
+
+func (s *RefreshStep) Plan() *Plan          { return s.plan }
+func (s *RefreshStep) Type() tokens.Type    { return s.old.Type }
+func (s *RefreshStep) Provider() string     { return s.old.Provider }
+func (s *RefreshStep) URN() resource.URN    { return s.old.URN }
+func (s *RefreshStep) Old() *resource.State { return s.old }
+func (s *RefreshStep) New() *resource.State { return s.new }
+func (s *RefreshStep) Res() *resource.State { return s.old }
+func (s *RefreshStep) Logical() bool        { return false }
+
+func (s *RefreshStep) ResultOp() StepOp {
+	if s.new == nil {
+		return OpDelete
+	}
+	if s.new == s.old || reflect.DeepEqual(s.old.Outputs, s.new.Outputs) {
+		return OpSame
+	}
+	return OpUpdate
+}
+
+func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+	complete := func() { close(s.done) }
+
+	// Component and provider resources are always sames.
+	if !s.old.Custom || providers.IsProviderType(s.Type) {
+		s.new = s.old
+		return resource.StatusOK, complete, nil
+	}
+
+	prov, err := getProvider(s)
+	if err != nil {
+		return resource.StatusOK, nil, err
+	}
+
+	var initErrors []string
+	refreshed, rst, err := prov.Read(s.old.URN, s.old.ID, s.old.Inputs)
+	if err != nil {
+		if rst != resource.StatusPartialFailure {
+			return rst, nil, err
+		}
+		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+			initErrors = initErr.Reasons
+		}
+	}
+
+	if refreshed != nil {
+		s.new = resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, s.Inputs, refreshed, s.Parent, s.Protect,
+			s.External, s.Dependencies, initErrors, s.Provider)
+	}
+
+	return rst, complete, err
+}
+
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
 type StepOp string
 
@@ -551,6 +626,7 @@ const (
 	OpDeleteReplaced    StepOp = "delete-replaced"    // deleting an existing resource after replacement.
 	OpRead              StepOp = "read"               // reading an existing resource.
 	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
+	OpRefresh           StepOp = "refresh"            // refreshing an existing resource.
 )
 
 // StepOps contains the full set of step operation types.
@@ -564,6 +640,7 @@ var StepOps = []StepOp{
 	OpDeleteReplaced,
 	OpRead,
 	OpReadReplacement,
+	OpRefresh,
 }
 
 // Color returns a suggested color for lines of this op type.
@@ -587,6 +664,8 @@ func (op StepOp) Color() string {
 		return colors.SpecCreate
 	case OpReadReplacement:
 		return colors.SpecReplace
+	case OpRefresh:
+		return colors.SpecUpdate
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -619,6 +698,8 @@ func (op StepOp) RawPrefix() string {
 		return ">-"
 	case OpReadReplacement:
 		return ">~"
+	case OpRefresh:
+		return "~ "
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -627,7 +708,7 @@ func (op StepOp) RawPrefix() string {
 
 func (op StepOp) PastTense() string {
 	switch op {
-	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement:
+	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement, OpRefresh:
 		return string(op) + "d"
 	case OpRead:
 		return "read"
@@ -639,7 +720,7 @@ func (op StepOp) PastTense() string {
 
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
-	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace || op == OpReadReplacement {
+	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace || op == OpReadReplacement || op == OpRefresh {
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""

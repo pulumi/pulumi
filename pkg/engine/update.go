@@ -181,6 +181,7 @@ func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo) error {
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
 	Context      *Context
+	Refresh      bool
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	Seen         map[resource.URN]deploy.Step
@@ -245,7 +246,6 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	reportStep := acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step)
 
 	// Report the result of the step.
-	stepop := step.Op()
 	if err != nil {
 		if status == resource.StatusUnknown {
 			acts.MaybeCorrupt = true
@@ -262,11 +262,17 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 		}
 	} else if reportStep {
-		if step.Logical() {
+		op, record := step.Op(), step.Logical()
+		if acts.Refresh && op == deploy.OpRefresh {
+			// Refreshes are handled specially.
+			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
+
+		if record {
 			// Increment the counters.
 			acts.MapLock.Lock()
 			acts.Steps++
-			acts.Ops[stepop]++
+			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 

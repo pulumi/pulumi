@@ -53,16 +53,17 @@ type SnapshotPersister interface {
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
 type SnapshotManager struct {
-	persister        SnapshotPersister        // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
-	resources        []*resource.State        // The list of resources operated upon by this plan
-	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
-	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
-	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
-	doVerify         bool                     // If true, verify the snapshot before persisting it
-	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
-	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
-	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+	persister        SnapshotPersister                   // The persister responsible for invalidating and persisting the snapshot
+	baseSnapshot     *deploy.Snapshot                    // The base snapshot for this plan
+	resources        []*resource.State                   // The list of resources operated upon by this plan
+	operations       []resource.Operation                // The set of operations known to be outstanding in this plan
+	refreshed        map[*resource.State]*resource.State // The set of states that have been refreshed.
+	dones            map[*resource.State]bool            // The set of resources that have been operated upon already by this plan
+	completeOps      map[*resource.State]bool            // The set of resources that have completed their operation
+	doVerify         bool                                // If true, verify the snapshot before persisting it
+	plugins          []workspace.PluginInfo              // The list of plugins loaded by the plan, to be saved in the manifest
+	mutationRequests chan<- mutationRequest              // The queue of mutation requests, to be retired serially by the manager
+	done             <-chan error                        // A channel that sends a single result when the manager has shut down.
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -144,6 +145,8 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &replaceSnapshotMutation{sm}, nil
 	case deploy.OpRead, deploy.OpReadReplacement:
 		return sm.doRead(step)
+	case deploy.OpRefresh:
+		return &refreshSnapshotMutation{sm}, nil
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -370,6 +373,31 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	})
 }
 
+type refreshSnapshotMutation struct {
+	manager *SnapshotManager
+}
+
+func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
+	contract.Require(step != nil, "step != nil")
+	contract.Reqiure(step.Op() == deploy.OpRefresh, "step.Op() == deploy.OpRefresh")
+	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
+	return rsm.manager.mutate(func() bool {
+		if successful {
+			rsm.manager.markRefreshed(step.Old(), step.New())
+		}
+		// We always elide refreshes. We'll write these out incrementally.
+		return false
+	})
+}
+
+// markRefreshed marks a resource as having been refreshed. Resources that have been marked as refreshed
+// will be stored in the snapshot with their new state.
+func (sm *SnapshotManager) markRefreshed(state, refreshed *resource.State) {
+	contract.Assert(state != nil)
+	sm.refreshed[state] = refreshed
+	logging.V(9).Infof("Marked old state snapshot as refreshed: %v", state.URN)
+}
+
 // markDone marks a resource as having been processed. Resources that have been marked
 // in this manner won't be persisted in the snapshot.
 func (sm *SnapshotManager) markDone(state *resource.State) {
@@ -440,6 +468,14 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// Append any resources from the base plan that were not produced by the current plan.
 	if base := sm.baseSnapshot; base != nil {
 		for _, res := range base.Resources {
+			if r, has := sm.refreshed[res]; has {
+				// We had better not have done anything with the state prior to the refresh.
+				contract.Assert(!sm.dones[res])
+				if r == nil {
+					continue
+				}
+				res = r
+			}
 			if !sm.dones[res] {
 				resources = append(resources, res)
 			}
@@ -490,6 +526,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 	manager := &SnapshotManager{
 		persister:        persister,
 		baseSnapshot:     baseSnap,
+		refreshed:        make(map[*resource.State]*resource.State),
 		dones:            make(map[*resource.State]bool),
 		completeOps:      make(map[*resource.State]bool),
 		doVerify:         true,

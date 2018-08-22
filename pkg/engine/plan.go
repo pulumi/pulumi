@@ -310,11 +310,16 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
 	} else if reportStep {
+		op, record := step.Op(), step.Logical()
+		if acts.Refresh && op == deploy.OpRefresh {
+			// Refreshes are handled specially.
+			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
-		if step.Logical() {
+		if record {
 			acts.MapLock.Lock()
-			acts.Ops[step.Op()]++
+			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 

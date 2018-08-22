@@ -53,20 +53,14 @@ func (pe *planExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview bool) error {
-	// Begin iterating the source.
-	src, err := pe.plan.source.Iterate(parentCtx, opts, pe.plan)
-	if err != nil {
-		return err
-	}
-
-	// Set up a goroutine that will signal cancellation to the plan's plugins if the parent context is cancelled. We do
+func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview bool) error {
+	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context is cancelled. We do
 	// not hang this off of the context we create below because we do not want the failure of a single step to cause
 	// other steps to fail.
 	done := make(chan bool)
 	go func() {
 		select {
-		case <-parentCtx.Done():
+		case <-callerCtx.Done():
 			cancelErr := pe.plan.ctx.Host.SignalCancellation()
 			if cancelErr != nil {
 				log.Infof("planExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
@@ -75,9 +69,25 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 		}
 	}()
 
+	// Before doing anything else, optionally refresh each resource in the base checkpoint.
+	if opts.refresh {
+		if err := pe.refresh(callerCtx, opts, preview); err != nil {
+			return err
+		}
+		if opts.refreshOnly {
+			return nil
+		}
+	}
+
+	// Begin iterating the source.
+	src, err := pe.plan.source.Iterate(callerCtx, opts, pe.plan)
+	if err != nil {
+		return nil, err
+	}
+
 	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
 	// execution fails.
-	ctx, cancel := context.WithCancel(parentCtx)
+	ctx, cancel := context.WithCancel(callerCtx)
 
 	// Set up a step generator and executor for this plan.
 	pe.stepGen = newStepGenerator(pe.plan, opts)
@@ -150,9 +160,9 @@ func (pe *planExecutor) Execute(parentCtx context.Context, opts Options, preview
 			case <-ctx.Done():
 				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
 
-				// NOTE: we use the presence of an error in the parent context in order to distinguish caller-initiated
+				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 				// cancellation from internally-initiated cancellation.
-				return parentCtx.Err() != nil, nil
+				return callerCtx.Err() != nil, nil
 			}
 		}
 	}()
@@ -194,5 +204,61 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
 		return err
 	}
 	pe.stepExec.Execute(steps)
+	return nil
+}
+
+// refresh refreshes the state of the base checkpoint file for the current plan in memory.
+func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview bool) error {
+	prev := pe.plan.prev
+	if prev == nil || len(prev.Resources) == 0 {
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(callerCtx)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview)
+
+	canceled := false
+	for i := range prev.Resources {
+		if ctx.Err() != nil {
+			// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+			// cancellation from internally-initiated cancellation.
+			cancelled = callerCtx.Err() != nil
+			break
+		}
+
+		done := make(chan bool)
+		step := NewRefreshStep(pe.plan, prev.Resources[i], done)
+		stepExec.Execute([]Step{step})
+		go func() {
+			select {
+			case <-done:
+				prev.Resources[i] = step.New()
+			case <-ctx.Done():
+			}
+		}()
+	}
+	if stepExec.Errored() {
+		return execError("failed", preview)
+	} else if canceled {
+		return execError("canceled", preview)
+	}
+
+	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources as necessary.
+	resources := make([]*resource.State, 0, len(prev.Resources))
+	olds := make(map[resource.URN]*resource.State)
+	for _, s := range prev.Resources {
+		if s == nil {
+			continue
+		}
+
+		resources = append(resources, s)
+
+		// Do not record resources that are pending deletion in the lookup table.
+		if !s.Delete {
+			olds[s.URN] = s
+		}
+	}
+	pe.plan.prev.Resources = resources
+	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
 	return nil
 }
