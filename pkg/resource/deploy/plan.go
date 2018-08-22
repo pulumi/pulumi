@@ -179,6 +179,9 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	var oldResources []*resource.State
 
 	// Produce a map of all old resources for fast resources.
+	//
+	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
+	// planExecutor.refresh for details.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
 		if prev.PendingOperations != nil {

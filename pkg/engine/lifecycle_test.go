@@ -365,9 +365,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
-				// Should see only refreshes.
+				// Should see only refresh-sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
+					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
 				return err
@@ -389,9 +390,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
-				// Should see only refereshes.
+				// Should see only referesh-sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
+					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
 				return err

@@ -263,7 +263,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	// of its corresponding dependency graph, so a resource always appears in the list after any resources on which it
 	// may depend.
 	resources := make([]*resource.State, 0, len(prev.Resources))
-	referenceable := make(map[resource.URN]struct{})
+	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
 	for _, s := range steps {
 		new := s.New()
@@ -277,7 +277,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		if len(new.Dependencies) != 0 {
 			deps := make([]resource.URN, 0, len(new.Dependencies))
 			for _, d := range new.Dependencies {
-				if _, canRef := referenceable[d]; canRef {
+				if referenceable[d] {
 					deps = append(deps, d)
 				}
 			}
@@ -286,7 +286,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 		// Add this resource to the resource list and mark it as referenceable.
 		resources = append(resources, new)
-		referenceable[new.URN] = struct{}{}
+		referenceable[new.URN] = true
 
 		// Do not record resources that are pending deletion in the "olds" lookup table.
 		if !new.Delete {

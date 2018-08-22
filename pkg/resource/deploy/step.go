@@ -552,9 +552,11 @@ type RefreshStep struct {
 func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
 	contract.Assert(old != nil)
 
+	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
 	return &RefreshStep{
 		plan: plan,
 		old:  old,
+		new:  old,
 		done: done,
 	}
 }
@@ -589,7 +591,6 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 
 	// Component and provider resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) {
-		s.new = s.old
 		return resource.StatusOK, complete, nil
 	}
 
@@ -613,6 +614,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	if refreshed != nil {
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, s.old.Inputs, refreshed,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider)
+	} else {
+		s.new = nil
 	}
 
 	return rst, complete, err
@@ -713,9 +716,10 @@ func (op StepOp) RawPrefix() string {
 
 func (op StepOp) PastTense() string {
 	switch op {
-	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement,
-		OpRefresh:
+	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
+	case OpRefresh:
+		return "refreshed"
 	case OpRead:
 		return "read"
 	default:
