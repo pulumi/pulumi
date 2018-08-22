@@ -44,6 +44,9 @@ type UpdateOptions struct {
 	// true if debugging output it enabled
 	Debug bool
 
+	// true if the plan should refresh before executing.
+	Refresh bool
+
 	// true if we should report events for steps that involve default providers.
 	reportDefaultProviderSteps bool
 
@@ -181,7 +184,6 @@ func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo) error {
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
 	Context      *Context
-	Refresh      bool
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	Seen         map[resource.URN]deploy.Step
@@ -263,7 +265,7 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		}
 	} else if reportStep {
 		op, record := step.Op(), step.Logical()
-		if acts.Refresh && op == deploy.OpRefresh {
+		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
 			op, record = step.(*deploy.RefreshStep).ResultOp(), true
 		}
@@ -279,8 +281,8 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		// Also show outputs here for custom resources, since there might be some from the initial registration. We do
 		// not show outputs for component resources at this point: any that exist must be from a previous execution of
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
-		if step.Res().Custom {
-			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh {
+			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug)
 		}
 	}
 
@@ -297,7 +299,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// Check for a default provider step and skip reporting if necessary.
 	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
-		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug)
 	}
 
 	// There's a chance there are new outputs that weren't written out last time.

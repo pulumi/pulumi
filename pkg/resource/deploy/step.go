@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"reflect"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -170,7 +172,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	if !preview {
-		if s.new.Custom && !s.plan.IsRefresh() {
+		if s.new.Custom {
 			// Invoke the Create RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -269,7 +271,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	if !preview && !s.old.External {
-		if s.old.Custom && !s.plan.IsRefresh() {
+		if s.old.Custom {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -336,7 +338,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	if !preview {
-		if s.new.Custom && !s.plan.IsRefresh() {
+		if s.new.Custom {
 			// Invoke the Update RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -550,10 +552,9 @@ func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
 	contract.Assert(old != nil)
 
 	return &RefreshStep{
-		plan:  plan,
-		event: event,
-		old:   old,
-		done:  done,
+		plan: plan,
+		old:  old,
+		done: done,
 	}
 }
 
@@ -581,10 +582,13 @@ func (s *RefreshStep) ResultOp() StepOp {
 }
 
 func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	complete := func() { close(s.done) }
+	var complete func()
+	if s.done != nil {
+		complete = func() { close(s.done) }
+	}
 
 	// Component and provider resources are always sames.
-	if !s.old.Custom || providers.IsProviderType(s.Type) {
+	if !s.old.Custom || providers.IsProviderType(s.old.Type) {
 		s.new = s.old
 		return resource.StatusOK, complete, nil
 	}
@@ -606,8 +610,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	if refreshed != nil {
-		s.new = resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, s.Inputs, refreshed, s.Parent, s.Protect,
-			s.External, s.Dependencies, initErrors, s.Provider)
+		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, s.old.Inputs, refreshed,
+			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider)
 	}
 
 	return rst, complete, err

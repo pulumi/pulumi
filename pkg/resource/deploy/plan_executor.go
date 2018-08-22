@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
@@ -70,11 +71,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	}()
 
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
-	if opts.refresh {
+	if opts.Refresh {
 		if err := pe.refresh(callerCtx, opts, preview); err != nil {
 			return err
 		}
-		if opts.refreshOnly {
+		if opts.RefreshOnly {
 			return nil
 		}
 	}
@@ -82,7 +83,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// Begin iterating the source.
 	src, err := pe.plan.source.Iterate(callerCtx, opts, pe.plan)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
@@ -218,44 +219,59 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview)
 
 	canceled := false
+	steps := make([]Step, len(prev.Resources))
 	for i := range prev.Resources {
 		if ctx.Err() != nil {
 			// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 			// cancellation from internally-initiated cancellation.
-			cancelled = callerCtx.Err() != nil
+			canceled = callerCtx.Err() != nil
 			break
 		}
 
-		done := make(chan bool)
-		step := NewRefreshStep(pe.plan, prev.Resources[i], done)
-		stepExec.Execute([]Step{step})
-		go func() {
-			select {
-			case <-done:
-				prev.Resources[i] = step.New()
-			case <-ctx.Done():
-			}
-		}()
+		steps[i] = NewRefreshStep(pe.plan, prev.Resources[i], nil)
+		stepExec.Execute([]Step{steps[i]})
 	}
+
+	stepExec.SignalCompletion()
+	stepExec.WaitForCompletion()
+
 	if stepExec.Errored() {
 		return execError("failed", preview)
 	} else if canceled {
 		return execError("canceled", preview)
 	}
 
-	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources as necessary.
+	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources and repairing
+	// dependency lists as necessary.
 	resources := make([]*resource.State, 0, len(prev.Resources))
+	deleted := make(map[resource.URN]struct{})
 	olds := make(map[resource.URN]*resource.State)
-	for _, s := range prev.Resources {
-		if s == nil {
+	for _, s := range steps {
+		new := s.New()
+		if new == nil {
+			// Note that this URN no longer exists.
+			deleted[s.URN()] = struct{}{}
 			continue
 		}
+		// If this URN referred to a deleted resource, note that it exists again.
+		delete(deleted, s.URN())
 
-		resources = append(resources, s)
+		// Remove any deleted resource from this resource's dependency list.
+		if len(new.Dependencies) != 0 {
+			deps := make([]resource.URN, 0, len(new.Dependencies))
+			for _, d := range new.Dependencies {
+				if _, gone := deleted[d]; !gone {
+					deps = append(deps, d)
+				}
+			}
+			new.Dependencies = deps
+		}
+
+		resources = append(resources, new)
 
 		// Do not record resources that are pending deletion in the lookup table.
-		if !s.Delete {
-			olds[s.URN] = s
+		if !new.Delete {
+			olds[new.URN] = new
 		}
 	}
 	pe.plan.prev.Resources = resources

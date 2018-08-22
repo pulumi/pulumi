@@ -170,9 +170,10 @@ type eventEmitter struct {
 	Chan chan<- Event
 }
 
-func makeStepEventMetadata(step deploy.Step, debug bool) StepEventMetadata {
-	var keys []resource.PropertyKey
+func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepEventMetadata {
+	contract.Assert(op == step.Op() || step.Op() == deploy.OpRefresh)
 
+	var keys []resource.PropertyKey
 	if step.Op() == deploy.OpCreateReplacement {
 		keys = step.(*deploy.CreateStep).Keys()
 	} else if step.Op() == deploy.OpReplace {
@@ -180,7 +181,7 @@ func makeStepEventMetadata(step deploy.Step, debug bool) StepEventMetadata {
 	}
 
 	return StepEventMetadata{
-		Op:       step.Op(),
+		Op:       op,
 		URN:      step.URN(),
 		Type:     step.Type(),
 		Keys:     keys,
@@ -328,22 +329,20 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 	e.Chan <- Event{
 		Type: ResourceOperationFailed,
 		Payload: ResourceOperationFailedPayload{
-			Metadata: makeStepEventMetadata(step, debug),
+			Metadata: makeStepEventMetadata(step.Op(), step, debug),
 			Status:   status,
 			Steps:    steps,
 		},
 	}
 }
 
-func (e *eventEmitter) resourceOutputsEvent(
-	step deploy.Step, planning bool, debug bool) {
-
+func (e *eventEmitter) resourceOutputsEvent(op deploy.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.Chan <- Event{
 		Type: ResourceOutputsEvent,
 		Payload: ResourceOutputsEventPayload{
-			Metadata: makeStepEventMetadata(step, debug),
+			Metadata: makeStepEventMetadata(op, step, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
@@ -358,7 +357,7 @@ func (e *eventEmitter) resourcePreEvent(
 	e.Chan <- Event{
 		Type: ResourcePreEvent,
 		Payload: ResourcePreEventPayload{
-			Metadata: makeStepEventMetadata(step, debug),
+			Metadata: makeStepEventMetadata(step.Op(), step, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
