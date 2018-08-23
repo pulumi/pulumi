@@ -38,9 +38,6 @@ type Source interface {
 	Project() tokens.PackageName
 	// Info returns a serializable payload that can be used to stamp snapshots for future reconciliation.
 	Info() interface{}
-	// IsRefresh indicates whether this source returns events source from existing state (true), and hence can simply
-	// be assumed to reflect existing state, or whether the events should acted upon (false).
-	IsRefresh() bool
 
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
 	Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error)

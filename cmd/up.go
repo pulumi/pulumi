@@ -46,6 +46,7 @@ func newUpCmd() *cobra.Command {
 	var diffDisplay bool
 	var nonInteractive bool
 	var parallel int
+	var refresh bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -73,6 +74,7 @@ func newUpCmd() *cobra.Command {
 			Analyzers: analyzers,
 			Parallel:  parallel,
 			Debug:     debug,
+			Refresh:   refresh,
 		}
 
 		changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
@@ -212,6 +214,7 @@ func newUpCmd() *cobra.Command {
 			Analyzers: analyzers,
 			Parallel:  parallel,
 			Debug:     debug,
+			Refresh:   refresh,
 		}
 
 		// TODO for the URL case:
@@ -307,6 +310,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 10,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+	cmd.PersistentFlags().BoolVarP(
+		&refresh, "refresh", "r", false,
+		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

@@ -168,16 +168,19 @@ async function readRPC(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp = new provproto.ReadResponse();
 
+        const id = req.getId();
         const props = req.getProperties().toJavaScript();
         const provider = getProvider(props);
         if (provider.read) {
-            // If there's a read function, consult the provider.  Ensure to propagate the special __provider
+            // If there's a read function, consult the provider. Ensure to propagate the special __provider
             // value too, so that the provider's CRUD operations continue to function after a refresh.
-            const result: any = await provider.read(req.getId(), props);
-            const resultProps = resultIncludingProvider(result.properties, props);
+            const result: any = await provider.read(id, props);
+            resp.setId(result.id);
+            const resultProps = resultIncludingProvider(result.props, props);
             resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
         } else {
-            // In the event of a missing read, simply return back the input properties.
+            // In the event of a missing read, simply return back the input state.
+            resp.setId(id);
             resp.setProperties(req.getProperties());
         }
 

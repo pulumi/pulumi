@@ -259,9 +259,11 @@ func renderResourcePreEvent(
 	opts backend.DisplayOptions) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
+	if payload.Metadata.Op == deploy.OpRefresh {
+		return ""
+	}
 
 	out := &bytes.Buffer{}
-
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
@@ -272,7 +274,6 @@ func renderResourcePreEvent(
 		fprintIgnoreError(out, opts.Color.Colorize(details))
 		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 	}
-
 	return out.String()
 }
 
@@ -282,14 +283,18 @@ func renderResourceOutputsEvent(
 	opts backend.DisplayOptions) string {
 
 	out := &bytes.Buffer{}
-
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
+
+		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
+			summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
+			fprintIgnoreError(out, opts.Color.Colorize(summary))
+		}
+
 		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent+1, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
-
 	return out.String()
 }
 

@@ -32,7 +32,6 @@ type nullSource struct {
 func (src *nullSource) Close() error                { return nil }
 func (src *nullSource) Project() tokens.PackageName { return "" }
 func (src *nullSource) Info() interface{}           { return nil }
-func (src *nullSource) IsRefresh() bool             { return false }
 
 func (src *nullSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {
 	contract.Ignore(ctx)

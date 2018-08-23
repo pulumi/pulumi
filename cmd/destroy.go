@@ -35,6 +35,7 @@ func newDestroyCmd() *cobra.Command {
 	var analyzers []string
 	var diffDisplay bool
 	var parallel int
+	var refresh bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -94,6 +95,7 @@ func newDestroyCmd() *cobra.Command {
 				Analyzers: analyzers,
 				Parallel:  parallel,
 				Debug:     debug,
+				Refresh:   refresh,
 			}
 
 			_, err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)
@@ -126,6 +128,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 10,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+	cmd.PersistentFlags().BoolVarP(
+		&refresh, "refresh", "r", false,
+		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

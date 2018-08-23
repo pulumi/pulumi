@@ -32,8 +32,10 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Events   Events // an optional events callback interface.
-	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
+	Events      Events // an optional events callback interface.
+	Parallel    int    // the degree of parallelism for resource operations (<=1 for serial).
+	Refresh     bool   // whether or not to refresh before executing the plan.
+	RefreshOnly bool   // whether or not to exit after refreshing.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -177,6 +179,9 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	var oldResources []*resource.State
 
 	// Produce a map of all old resources for fast resources.
+	//
+	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
+	// planExecutor.refresh for details.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
 		if prev.PendingOperations != nil {
@@ -225,7 +230,6 @@ func (p *Plan) Diag() diag.Sink                        { return p.ctx.Diag }
 func (p *Plan) Prev() *Snapshot                        { return p.prev }
 func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
 func (p *Plan) Source() Source                         { return p.source }
-func (p *Plan) IsRefresh() bool                        { return p.source.IsRefresh() }
 
 func (p *Plan) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	return p.providers.GetProvider(ref)

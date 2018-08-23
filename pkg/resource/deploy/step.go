@@ -170,7 +170,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	if !preview {
-		if s.new.Custom && !s.plan.IsRefresh() {
+		if s.new.Custom {
 			// Invoke the Create RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -269,7 +269,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	if !preview && !s.old.External {
-		if s.old.Custom && !s.plan.IsRefresh() {
+		if s.old.Custom {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -336,7 +336,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	if !preview {
-		if s.new.Custom && !s.plan.IsRefresh() {
+		if s.new.Custom {
 			// Invoke the Update RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -538,6 +538,89 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	return resourceStatus, complete, resourceError
 }
 
+// RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
+// resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
+// instead, they are issued by the plan executor as the optional first step in plan execution.
+type RefreshStep struct {
+	plan *Plan           // the plan that produced this refresh
+	old  *resource.State // the old resource state, if one exists for this urn
+	new  *resource.State // the new resource state, to be used to query the provider
+	done chan<- bool     // the channel to use to signal completion, if any
+}
+
+// NewRefreshStep creates a new Refresh step.
+func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
+	contract.Assert(old != nil)
+
+	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
+	return &RefreshStep{
+		plan: plan,
+		old:  old,
+		new:  old,
+		done: done,
+	}
+}
+
+func (s *RefreshStep) Op() StepOp           { return OpRefresh }
+func (s *RefreshStep) Plan() *Plan          { return s.plan }
+func (s *RefreshStep) Type() tokens.Type    { return s.old.Type }
+func (s *RefreshStep) Provider() string     { return s.old.Provider }
+func (s *RefreshStep) URN() resource.URN    { return s.old.URN }
+func (s *RefreshStep) Old() *resource.State { return s.old }
+func (s *RefreshStep) New() *resource.State { return s.new }
+func (s *RefreshStep) Res() *resource.State { return s.old }
+func (s *RefreshStep) Logical() bool        { return false }
+
+// ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
+// any.
+func (s *RefreshStep) ResultOp() StepOp {
+	if s.new == nil {
+		return OpDelete
+	}
+	if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
+		return OpSame
+	}
+	return OpUpdate
+}
+
+func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+	var complete func()
+	if s.done != nil {
+		complete = func() { close(s.done) }
+	}
+
+	// Component and provider resources never change with a refresh; just return the current state.
+	if !s.old.Custom || providers.IsProviderType(s.old.Type) {
+		return resource.StatusOK, complete, nil
+	}
+
+	// For a custom resource, fetch the resource's provider and read the resource's current state.
+	prov, err := getProvider(s)
+	if err != nil {
+		return resource.StatusOK, nil, err
+	}
+
+	var initErrors []string
+	refreshed, rst, err := prov.Read(s.old.URN, s.old.ID, s.old.Outputs)
+	if err != nil {
+		if rst != resource.StatusPartialFailure {
+			return rst, nil, err
+		}
+		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+			initErrors = initErr.Reasons
+		}
+	}
+
+	if refreshed != nil {
+		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, s.old.Inputs, refreshed,
+			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider)
+	} else {
+		s.new = nil
+	}
+
+	return rst, complete, err
+}
+
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
 type StepOp string
 
@@ -551,6 +634,7 @@ const (
 	OpDeleteReplaced    StepOp = "delete-replaced"    // deleting an existing resource after replacement.
 	OpRead              StepOp = "read"               // reading an existing resource.
 	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
+	OpRefresh           StepOp = "refresh"            // refreshing an existing resource.
 )
 
 // StepOps contains the full set of step operation types.
@@ -564,6 +648,7 @@ var StepOps = []StepOp{
 	OpDeleteReplaced,
 	OpRead,
 	OpReadReplacement,
+	OpRefresh,
 }
 
 // Color returns a suggested color for lines of this op type.
@@ -587,6 +672,8 @@ func (op StepOp) Color() string {
 		return colors.SpecCreate
 	case OpReadReplacement:
 		return colors.SpecReplace
+	case OpRefresh:
+		return colors.SpecUpdate
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -619,6 +706,8 @@ func (op StepOp) RawPrefix() string {
 		return ">-"
 	case OpReadReplacement:
 		return ">~"
+	case OpRefresh:
+		return "~ "
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -629,6 +718,8 @@ func (op StepOp) PastTense() string {
 	switch op {
 	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
+	case OpRefresh:
+		return "refreshed"
 	case OpRead:
 		return "read"
 	default:
@@ -639,7 +730,7 @@ func (op StepOp) PastTense() string {
 
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
-	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace || op == OpReadReplacement {
+	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace || op == OpReadReplacement || op == OpRefresh {
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""

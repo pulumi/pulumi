@@ -93,10 +93,12 @@ type planOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc planSourceFunc
 
-	SkipOutputs bool         // true if we we should skip printing outputs separately.
-	DOT         bool         // true if we should print the DOT file for this plan.
-	Events      eventEmitter // the channel to write events from the engine to.
-	Diag        diag.Sink    // the sink to use for diag'ing.
+	DOT    bool         // true if we should print the DOT file for this plan.
+	Events eventEmitter // the channel to write events from the engine to.
+	Diag   diag.Sink    // the sink to use for diag'ing.
+
+	// true if we're planning a refresh.
+	isRefresh bool
 }
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -199,8 +201,10 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 	var err error
 	go func() {
 		opts := deploy.Options{
-			Events:   events,
-			Parallel: res.Options.Parallel,
+			Events:      events,
+			Parallel:    res.Options.Parallel,
+			Refresh:     res.Options.Refresh,
+			RefreshOnly: res.Options.isRefresh,
 		}
 		err = res.Plan.Execute(ctx, opts, preview)
 		close(done)
@@ -247,7 +251,6 @@ func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, 
 }
 
 type planActions struct {
-	Refresh bool
 	Ops     map[deploy.StepOp]int
 	Opts    planOptions
 	Seen    map[resource.URN]deploy.Step
@@ -310,15 +313,20 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
 	} else if reportStep {
+		op, record := step.Op(), step.Logical()
+		if acts.Opts.isRefresh && op == deploy.OpRefresh {
+			// Refreshes are handled specially.
+			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
-		if step.Logical() {
+		if record {
 			acts.MapLock.Lock()
-			acts.Ops[step.Op()]++
+			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 
-		_ = acts.OnResourceOutputs(step)
+		acts.Opts.Events.resourceOutputsEvent(op, step, true /*planning*/, acts.Opts.Debug)
 	}
 
 	return nil
@@ -334,10 +342,8 @@ func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
 		return nil
 	}
 
-	// Print the resource outputs separately, unless this is a refresh in which case they are already printed.
-	if !acts.Opts.SkipOutputs {
-		acts.Opts.Events.resourceOutputsEvent(step, true /*planning*/, acts.Opts.Debug)
-	}
+	// Print the resource outputs separately.
+	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug)
 
 	return nil
 }

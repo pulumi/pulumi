@@ -44,6 +44,9 @@ type UpdateOptions struct {
 	// true if debugging output it enabled
 	Debug bool
 
+	// true if the plan should refresh before executing.
+	Refresh bool
+
 	// true if we should report events for steps that involve default providers.
 	reportDefaultProviderSteps bool
 
@@ -245,7 +248,6 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	reportStep := acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step)
 
 	// Report the result of the step.
-	stepop := step.Op()
 	if err != nil {
 		if status == resource.StatusUnknown {
 			acts.MaybeCorrupt = true
@@ -262,19 +264,25 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 		}
 	} else if reportStep {
-		if step.Logical() {
+		op, record := step.Op(), step.Logical()
+		if acts.Opts.isRefresh && op == deploy.OpRefresh {
+			// Refreshes are handled specially.
+			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
+
+		if record {
 			// Increment the counters.
 			acts.MapLock.Lock()
 			acts.Steps++
-			acts.Ops[stepop]++
+			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 
 		// Also show outputs here for custom resources, since there might be some from the initial registration. We do
 		// not show outputs for component resources at this point: any that exist must be from a previous execution of
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
-		if step.Res().Custom {
-			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh {
+			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug)
 		}
 	}
 
@@ -291,7 +299,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// Check for a default provider step and skip reporting if necessary.
 	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
-		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug)
 	}
 
 	// There's a chance there are new outputs that weren't written out last time.

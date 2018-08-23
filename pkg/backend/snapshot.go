@@ -144,6 +144,8 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &replaceSnapshotMutation{sm}, nil
 	case deploy.OpRead, deploy.OpReadReplacement:
 		return sm.doRead(step)
+	case deploy.OpRefresh:
+		return &refreshSnapshotMutation{sm}, nil
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -367,6 +369,23 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 			rsm.manager.markNew(step.New())
 		}
 		return true
+	})
+}
+
+type refreshSnapshotMutation struct {
+	manager *SnapshotManager
+}
+
+func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
+	contract.Require(step != nil, "step != nil")
+	contract.Require(step.Op() == deploy.OpRefresh, "step.Op() == deploy.OpRefresh")
+	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
+	return rsm.manager.mutate(func() bool {
+		// We always elide refreshes. The expectation is that all of these run before any actual mutations and that
+		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
+		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
+		// have changed.
+		return false
 	})
 }
 

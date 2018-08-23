@@ -872,13 +872,15 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		step := event.Payload.(engine.ResourcePreEventPayload).Metadata
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
+		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
 		row.SetStep(step)
 		row.AddOutputStep(step)
 
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
 		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.
-		hasMeaningfulOutput := !display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
+		hasMeaningfulOutput := isRefresh ||
+			!display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
 		if !display.isTerminal && !hasMeaningfulOutput {
 			return
 		}
@@ -1011,8 +1013,11 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "replacing failed"
 			case deploy.OpRead, deploy.OpReadReplacement:
 				return "reading failed"
+			case deploy.OpRefresh:
+				return "refreshing failed"
 			}
 		} else {
+
 			switch op {
 			case deploy.OpSame:
 				return "unchanged"
@@ -1032,6 +1037,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "read"
 			case deploy.OpReadReplacement:
 				return "read for replacement"
+			case deploy.OpRefresh:
+				return "refresh"
 			}
 		}
 
@@ -1066,6 +1073,8 @@ func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
 		return "read"
 	case deploy.OpReadReplacement:
 		return "read for replacement"
+	case deploy.OpRefresh:
+		return "refreshing"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", op)
@@ -1134,6 +1143,8 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "reading"
 		case deploy.OpReadReplacement:
 			return "reading for replacement"
+		case deploy.OpRefresh:
+			return "refreshing"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)

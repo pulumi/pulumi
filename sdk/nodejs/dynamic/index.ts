@@ -88,6 +88,10 @@ export interface CreateResult {
 
 export interface ReadResult {
     /**
+     * The ID of the resource ready back (or blank if missing).
+     */
+    readonly id?: resource.ID;
+    /**
      * The current property state read from the live environment.
      */
     readonly props?: any;
