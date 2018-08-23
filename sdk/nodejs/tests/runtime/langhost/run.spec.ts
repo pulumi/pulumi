@@ -385,8 +385,6 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: name, props: undefined };
             },
             log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
-                console.log(severity);
-                console.log(message);
                 assert.strictEqual(severity, engineproto.LogSeverity.INFO);
                 assert.strictEqual(/logging via (.*) works/.test(message), true);
             },
@@ -487,6 +485,7 @@ describe("rpc", () => {
                         assert.strictEqual(streamId, 42);
                         return;
                     default:
+                        assert.fail("unexpected message: " + message);
                         break;
                 }
             },
