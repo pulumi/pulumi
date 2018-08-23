@@ -54,11 +54,7 @@ export class Provider implements dynamic.ResourceProvider {
     public async read(id: pulumi.ID, props: any): Promise<dynamic.ReadResult> {
         return {
             id: id,
-            props: {
-                state: {
-                    foo: 42
-                }
-            }
+            props: props,
         }
     }
 }
