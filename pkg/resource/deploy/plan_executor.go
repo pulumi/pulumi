@@ -153,9 +153,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, o
 					return false, nil
 				}
 
-				if eventErr := pe.handleSingleEvent(diagSink, event.Event); eventErr != nil {
+				if eventErr, bailed := pe.handleSingleEvent(diagSink, event.Event); eventErr != nil {
 					log.Infof("planExecutor.Execute(...): error handling event: %v", eventErr)
-					pe.reportError(diagSink, pe.plan.generateEventURN(event.Event), eventErr)
+					if !bailed {
+						pe.reportError(diagSink, pe.plan.generateEventURN(event.Event), eventErr)
+					}
 					cancel()
 					return false, eventErr
 				}
@@ -184,29 +186,30 @@ func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, o
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(sink diag.Sink, event SourceEvent) error {
+func (pe *planExecutor) handleSingleEvent(sink diag.Sink, event SourceEvent) (error, bool) {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
 	var err error
+	var bailed bool
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, err = pe.stepGen.GenerateSteps(sink, e)
+		steps, err, bailed = pe.stepGen.GenerateSteps(sink, e)
 	case ReadResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
-		steps, err = pe.stepGen.GenerateReadSteps(e)
+		steps, err, bailed = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(sink, e)
-		return nil
+		return nil, false
 	}
 
 	if err != nil {
-		return err
+		return err, bailed
 	}
 	pe.stepExec.Execute(steps)
-	return nil
+	return nil, false
 }
 
 // refresh refreshes the state of the base checkpoint file for the current plan in memory.
