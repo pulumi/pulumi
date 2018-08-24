@@ -226,7 +226,6 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 
 func (p *Plan) Ctx() *plugin.Context                   { return p.ctx }
 func (p *Plan) Target() *Target                        { return p.target }
-func (p *Plan) Diag() diag.Sink                        { return p.ctx.Diag }
 func (p *Plan) Prev() *Snapshot                        { return p.prev }
 func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
 func (p *Plan) Source() Source                         { return p.source }
@@ -272,7 +271,7 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) error {
+func (p *Plan) Execute(ctx context.Context, sink diag.Sink, opts Options, preview bool) error {
 	planExec := &planExecutor{plan: p}
-	return planExec.Execute(ctx, opts, preview)
+	return planExec.Execute(ctx, sink, opts, preview)
 }

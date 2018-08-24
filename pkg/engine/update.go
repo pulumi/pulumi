@@ -159,7 +159,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
 
-			err = result.Walk(ctx, actions, false)
+			err = result.Walk(ctx, result.Plugctx.Diag, actions, false)
 			resourceChanges = ResourceChanges(actions.Ops)
 
 			if len(resourceChanges) != 0 {

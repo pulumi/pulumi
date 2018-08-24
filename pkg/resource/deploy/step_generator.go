@@ -100,7 +100,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 // If the given resource is a custom resource, the step generator will invoke Diff
 // and Check on the provider associated with that resource. If those fail, an error
 // is returned.
-func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEvent) ([]Step, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -109,7 +109,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 	if sg.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
+		sink.Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
 	sg.urns[urn] = true
 
@@ -175,7 +175,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 		if err != nil {
 			return nil, err
-		} else if sg.issueCheckErrors(new, urn, failures) {
+		} else if sg.issueCheckErrors(sink, new, urn, failures) {
 			invalid = true
 		}
 		new.Inputs = inputs
@@ -197,8 +197,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 		for _, failure := range failures {
 			invalid = true
-			sg.plan.Diag().Errorf(
-				diag.GetAnalyzeResourceFailureError(urn), a, urn, failure.Property, failure.Reason)
+			sink.Errorf(diag.GetAnalyzeResourceFailureError(urn), a, urn, failure.Property, failure.Reason)
 		}
 	}
 
@@ -297,7 +296,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 					if err != nil {
 						return nil, err
-					} else if sg.issueCheckErrors(new, urn, failures) {
+					} else if sg.issueCheckErrors(sink, new, urn, failures) {
 						return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
 					}
 					new.Inputs = inputs
@@ -471,7 +470,7 @@ func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOu
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
-func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
+func (sg *stepGenerator) issueCheckErrors(sink diag.Sink, new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure) bool {
 	if len(failures) == 0 {
 		return false
@@ -479,10 +478,10 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			sg.plan.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
+			sink.Errorf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			sg.plan.Diag().Errorf(
+			sink.Errorf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}

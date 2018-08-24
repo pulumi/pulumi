@@ -49,13 +49,13 @@ func execError(message string, preview bool) error {
 }
 
 // reportError reports a single error to the executor's diag stream with the indicated URN for context.
-func (pe *planExecutor) reportError(urn resource.URN, err error) {
-	pe.plan.Diag().Errorf(diag.RawMessage(urn, err.Error()))
+func (pe *planExecutor) reportError(sink diag.Sink, urn resource.URN, err error) {
+	sink.Errorf(diag.RawMessage(urn, err.Error()))
 }
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview bool) error {
+func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, opts Options, preview bool) error {
 	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context is cancelled. We do
 	// not hang this off of the context we create below because we do not want the failure of a single step to cause
 	// other steps to fail.
@@ -73,7 +73,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
 	if opts.Refresh {
-		if err := pe.refresh(callerCtx, opts, preview); err != nil {
+		if err := pe.refresh(callerCtx, diagSink, opts, preview); err != nil {
 			return err
 		}
 		if opts.RefreshOnly {
@@ -93,7 +93,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 	// Set up a step generator and executor for this plan.
 	pe.stepGen = newStepGenerator(pe.plan, opts)
-	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview)
+	pe.stepExec = newStepExecutor(ctx, cancel, diagSink, opts, preview)
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
@@ -133,7 +133,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				log.Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Error)
 
 				if event.Error != nil {
-					pe.reportError("", event.Error)
+					pe.reportError(diagSink, "", event.Error)
 					cancel()
 					return false, event.Error
 				}
@@ -153,9 +153,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					return false, nil
 				}
 
-				if eventErr := pe.handleSingleEvent(event.Event); eventErr != nil {
+				if eventErr := pe.handleSingleEvent(diagSink, event.Event); eventErr != nil {
 					log.Infof("planExecutor.Execute(...): error handling event: %v", eventErr)
-					pe.reportError(pe.plan.generateEventURN(event.Event), eventErr)
+					pe.reportError(diagSink, pe.plan.generateEventURN(event.Event), eventErr)
 					cancel()
 					return false, eventErr
 				}
@@ -184,7 +184,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
+func (pe *planExecutor) handleSingleEvent(sink diag.Sink, event SourceEvent) error {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
@@ -192,13 +192,13 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, err = pe.stepGen.GenerateSteps(e)
+		steps, err = pe.stepGen.GenerateSteps(sink, e)
 	case ReadResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, err = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
-		pe.stepExec.ExecuteRegisterResourceOutputs(e)
+		pe.stepExec.ExecuteRegisterResourceOutputs(sink, e)
 		return nil
 	}
 
@@ -210,7 +210,7 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
 }
 
 // refresh refreshes the state of the base checkpoint file for the current plan in memory.
-func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview bool) error {
+func (pe *planExecutor) refresh(callerCtx context.Context, sink diag.Sink, opts Options, preview bool) error {
 	prev := pe.plan.prev
 	if prev == nil || len(prev.Resources) == 0 {
 		return nil
@@ -218,7 +218,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 	// Fire up a worker pool and issue a refresh step per resource in the old snapshot.
 	ctx, cancel := context.WithCancel(callerCtx)
-	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview)
+	stepExec := newStepExecutor(ctx, cancel, sink, opts, preview)
 
 	canceled := false
 	steps := make([]Step, len(prev.Resources))
