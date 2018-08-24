@@ -187,8 +187,8 @@ func TestStackOutputsDisplayed(t *testing.T) {
 			output := stdout.String()
 
 			// ensure we get the --outputs:-- info both for the normal update, and for the no-change update.
-			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"\n\ninfo: 1 change performed")
-			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"\n\ninfo: no changes required")
+			assert.Contains(t, output, "---outputs:---\n    foo: 42\n    xyz: \"ABC\"\n\ninfo: 1 change performed")
+			assert.Contains(t, output, "---outputs:---\n    foo: 42\n    xyz: \"ABC\"\n\ninfo: no changes required")
 		},
 	})
 }

@@ -252,10 +252,16 @@ func GetResourceOutputsPropertiesString(
 		outputDiff = step.Old.Outputs.Diff(outs)
 	}
 
+	var keys []resource.PropertyKey
+	if outputDiff == nil {
+		keys = outs.StableKeys()
+	} else {
+		keys = outputDiff.Keys()
+	}
+	maxkey := maxKey(keys)
+
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	firstout := true
-	keys := outs.StableKeys()
-	maxkey := maxKey(keys)
 	for _, k := range keys {
 		out := outs[k]
 
