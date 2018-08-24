@@ -702,19 +702,17 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
-	// If we're not previewing, and we get stack outputs, then display them at the end.
-	if !display.isPreview {
-		if display.stackUrn != "" {
-			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
-			props := engine.GetResourceOutputsPropertiesString(stackStep, 0, false, display.opts.Debug)
-			if props != "" {
-				if !wroteDiagnosticHeader {
-					display.writeBlankLine()
-				}
-
-				wroteDiagnosticHeader = true
-				display.writeSimpleMessage(props)
+	// If we get stack outputs, display them at the end.
+	if display.stackUrn != "" {
+		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+		props := engine.GetResourceOutputsPropertiesString(stackStep, 1, display.isPreview, display.opts.Debug)
+		if props != "" {
+			if !wroteDiagnosticHeader {
+				display.writeBlankLine()
 			}
+
+			wroteDiagnosticHeader = true
+			display.writeSimpleMessage(props)
 		}
 	}
 
