@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/util/errorutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
@@ -105,6 +106,11 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 				logging.V(3).Infof(DetailedError(err))
 			}
 
+			if !errorutil.IsInternalError(err) {
+				os.Exit(1)
+			}
+
+			// Please file a bug, etc. etc.
 			ExitError(msg)
 		}
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/errorutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
@@ -203,7 +204,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 
 	// If the resource isn't valid, don't proceed any further.
 	if invalid {
-		return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+		return nil, errorutil.Bail()
 	}
 
 	// There are four cases we need to consider when figuring out what to do with this resource.
@@ -297,7 +298,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 					if err != nil {
 						return nil, err
 					} else if sg.issueCheckErrors(sink, new, urn, failures) {
-						return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+						return nil, errorutil.Bail()
 					}
 					new.Inputs = inputs
 				}
