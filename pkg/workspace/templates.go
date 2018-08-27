@@ -124,6 +124,16 @@ type Template struct {
 	ProjectDescription string // Optional description of the project.
 }
 
+// ProjectNameNeedsReplacement returns true of ProjectName is "${PROJECT}".
+func (template Template) ProjectNameNeedsReplacement() bool {
+	return template.ProjectName == "${PROJECT}"
+}
+
+// ProjectDescriptionNeedsReplacement returns true of ProjectDescription is "${DESCRIPTION}".
+func (template Template) ProjectDescriptionNeedsReplacement() bool {
+	return template.ProjectDescription == "${DESCRIPTION}"
+}
+
 // cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository.
 func cleanupLegacyTemplateDir() error {
 	templateDir, err := GetTemplateDir()

@@ -129,11 +129,11 @@ func newUpCmd() *cobra.Command {
 
 		// Cleanup the project name/description if needed.
 		projectName := template.ProjectName
-		if projectName == "${PROJECT}" {
+		if template.ProjectNameNeedsReplacement() {
 			projectName = workspace.ValueOrSanitizedDefaultProjectName(projectName, template.Name)
 		}
 		projectDescription := template.ProjectDescription
-		if projectDescription == "${DESCRIPTION}" {
+		if template.ProjectDescriptionNeedsReplacement() {
 			projectDescription = ""
 		}
 

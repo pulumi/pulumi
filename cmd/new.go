@@ -151,7 +151,9 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Show instructions, if we're going to show at least one prompt.
-			hasAtLeastOnePrompt := (name == "") || (description == "") || !generateOnly
+			hasAtLeastOnePrompt := (template.ProjectNameNeedsReplacement() && name == "") ||
+				(template.ProjectDescriptionNeedsReplacement() && description == "") ||
+				!generateOnly
 			if !yes && hasAtLeastOnePrompt {
 				fmt.Println("This command will walk you through creating a new Pulumi project.")
 				fmt.Println()
@@ -159,8 +161,8 @@ func newNewCmd() *cobra.Command {
 				fmt.Println("Press ^C at any time to quit.")
 			}
 
-			// Prompt for the project name, if it wasn't already specified.
-			if name == "" {
+			// Prompt for the project name, if it needs replacement and it wasn't already specified.
+			if template.ProjectNameNeedsReplacement() && name == "" {
 				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, filepath.Base(cwd))
 				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, displayOpts)
 				if err != nil {
@@ -168,8 +170,13 @@ func newNewCmd() *cobra.Command {
 				}
 			}
 
-			// Prompt for the project description, if it wasn't already specified.
-			if description == "" {
+			// At this point, if the name is empty, use the existing project name.
+			if name == "" {
+				name = template.ProjectName
+			}
+
+			// Prompt for the project description, if it needs replacement and it wasn't already specified.
+			if template.ProjectDescriptionNeedsReplacement() && description == "" {
 				defaultValue := workspace.ValueOrDefaultProjectDescription(description, template.Description)
 				description, err = promptForValue(yes, "project description", defaultValue, false, nil, displayOpts)
 				if err != nil {
