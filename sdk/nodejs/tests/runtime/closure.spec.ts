@@ -5156,6 +5156,24 @@ exports.handler = __f0();`,
         });
     }
 
+    cases.push({
+        title: "Deconstructing function",
+        // @ts-ignore
+        func: function f({ whatever }) { },
+        expectText: `exports.handler = __f;
+
+function __f() {
+  return (function() {
+    with({ f: __f }) {
+
+return function /*f*/({ whatever }) { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
