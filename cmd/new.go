@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -231,51 +233,26 @@ func newNewCmd() *cobra.Command {
 					if err = saveConfig(stack.Name().StackName(), c); err != nil {
 						return errors.Wrap(err, "saving config")
 					}
-
-					fmt.Println("Saved config.")
 				}
 			}
 
 			// Install dependencies.
 			if !generateOnly {
-				err = installDependencies("Installing dependencies...")
-				if err != nil {
+				if err = installDependencies("Installing dependencies..."); err != nil {
 					return err
 				}
 
-				// Write a summary with next steps.
 				fmt.Println(
 					displayOpts.Color.Colorize(
 						colors.BrightGreen+colors.Bold+"Your new project is configured and ready to go!"+colors.Reset) +
 						" " + cmdutil.EmojiOr("✨", ""))
+			}
 
-				// If the current working directory changed, add instructions to cd into the directory.
-				var deployMsg string
-				if originalCwd != cwd {
-					// If we can determine a relative path, use that, otherwise use the full path.
-					var cd string
-					if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
-						cd = rel
-					} else {
-						cd = cwd
-					}
-
-					// Surround the path with double quotes if it contains whitespace.
-					if containsWhiteSpace(cd) {
-						cd = fmt.Sprintf("\"%s\"", cd)
-					}
-
-					cd = fmt.Sprintf("cd %s", cd)
-
-					deployMsg = "To deploy it, '" + cd + "' and then run 'pulumi up'."
-					deployMsg = colors.Highlight(deployMsg, cd, colors.BrightBlue+colors.Underline+colors.Bold)
-				} else {
-					deployMsg = "To deploy it, run 'pulumi up'."
+			// Run `up` automatically, or print out next steps to run `up` manually.
+			if !generateOnly {
+				if err = runUpOrPrintNextSteps(stack, originalCwd, cwd, displayOpts, yes); err != nil {
+					return err
 				}
-
-				// Colorize and print the next step deploy action.
-				deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
-				fmt.Println(displayOpts.Color.Colorize(deployMsg))
 			}
 
 			if template.Quickstart != "" {
@@ -420,6 +397,76 @@ func installDependencies(message string) error {
 	if out, err := c.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s", out)
 		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again", command)
+	}
+
+	return nil
+}
+
+// runUpOrPrintNextSteps runs `up` automatically, or if `up` shouldn't run, prints out a message with next steps.
+func runUpOrPrintNextSteps(
+	stack backend.Stack, originalCwd string, cwd string, displayOpts backend.DisplayOptions, yes bool) error {
+
+	proj, root, err := readProject()
+	if err != nil {
+		return err
+	}
+
+	// Currently go projects require a build/install step before deployment, so we won't automatically run `up` for
+	// such projects. Once we switch over to using `go run` for go, we can remove this and always run `up`.
+	runUp := !strings.EqualFold(proj.RuntimeInfo.Name(), "go")
+
+	if runUp {
+		opts, err := updateFlagsToOptions(true /*interactive*/, false /*skipPreview*/, yes)
+		if err != nil {
+			return err
+		}
+		opts.Display = displayOpts
+		opts.Engine = engine.UpdateOptions{
+			Parallel: defaultParallel,
+		}
+
+		m, err := getUpdateMetadata("", root)
+		if err != nil {
+			return errors.Wrap(err, "gathering environment metadata")
+		}
+
+		_, err = stack.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+		switch {
+		case err == context.Canceled:
+			return errors.New("update cancelled")
+		case err != nil:
+			return PrintEngineError(err)
+		default:
+			return nil
+		}
+	} else {
+		// If the current working directory changed, add instructions to cd into the directory.
+		var deployMsg string
+		if originalCwd != cwd {
+			// If we can determine a relative path, use that, otherwise use the full path.
+			var cd string
+			if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
+				cd = rel
+			} else {
+				cd = cwd
+			}
+
+			// Surround the path with double quotes if it contains whitespace.
+			if containsWhiteSpace(cd) {
+				cd = fmt.Sprintf("\"%s\"", cd)
+			}
+
+			cd = fmt.Sprintf("cd %s", cd)
+
+			deployMsg = "To deploy it, '" + cd + "' and then run 'pulumi up'."
+			deployMsg = colors.Highlight(deployMsg, cd, colors.BrightBlue+colors.Underline+colors.Bold)
+		} else {
+			deployMsg = "To deploy it, run 'pulumi up'."
+		}
+
+		// Colorize and print the next step deploy action.
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Println(displayOpts.Color.Colorize(deployMsg))
 	}
 
 	return nil
