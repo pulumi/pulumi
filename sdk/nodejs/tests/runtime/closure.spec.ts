@@ -4823,25 +4823,17 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
             expectText: `exports.handler = __f0;
 
 var __testConfig_proto = {};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
 var __options = {project: undefined};
 var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
 var __metadata_1 = {getProject: __getProject};
 __f1.prototype = __testConfig_proto;
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
-__f5.isInstance = __f6;
 (...)
-Object.setPrototypeOf(__f4, __f5);
-Object.defineProperty(__testConfig_proto, "getBoolean", { configurable: true, writable: true, value: __f3 });
-Object.defineProperty(__testConfig_proto, "getNumber", { configurable: true, writable: true, value: __f7 });
-Object.defineProperty(__testConfig_proto, "getObject", { configurable: true, writable: true, value: __f8 });
-Object.setPrototypeOf(__f10, __f5);
-Object.defineProperty(__testConfig_proto, "require", { configurable: true, writable: true, value: __f9 });
-Object.defineProperty(__testConfig_proto, "requireBoolean", { configurable: true, writable: true, value: __f11 });
-Object.defineProperty(__testConfig_proto, "requireNumber", { configurable: true, writable: true, value: __f12 });
-Object.defineProperty(__testConfig_proto, "requireObject", { configurable: true, writable: true, value: __f13 });
-Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f14 });
+Object.defineProperty(__testConfig_proto, "require", { configurable: true, writable: true, value: __f17 });
+(...)
+Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f27 });
 var __testConfig = Object.create(__testConfig_proto);
 __testConfig.name = "test";
 
@@ -4937,24 +4929,16 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
             expectText: `exports.handler = __f0;
 
 var __options = {project: undefined};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
 var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
 var __metadata_1 = {getProject: __getProject};
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
-__f5.isInstance = __f6;
 (...)
-Object.setPrototypeOf(__f4, __f5);
-Object.defineProperty(__f1_prototype, "getBoolean", { configurable: true, writable: true, value: __f3 });
-Object.defineProperty(__f1_prototype, "getNumber", { configurable: true, writable: true, value: __f7 });
-Object.defineProperty(__f1_prototype, "getObject", { configurable: true, writable: true, value: __f8 });
-Object.setPrototypeOf(__f10, __f5);
-Object.defineProperty(__f1_prototype, "require", { configurable: true, writable: true, value: __f9 });
-Object.defineProperty(__f1_prototype, "requireBoolean", { configurable: true, writable: true, value: __f11 });
-Object.defineProperty(__f1_prototype, "requireNumber", { configurable: true, writable: true, value: __f12 });
-Object.defineProperty(__f1_prototype, "requireObject", { configurable: true, writable: true, value: __f13 });
-Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f14 });
+Object.defineProperty(__f1_prototype, "require", { configurable: true, writable: true, value: __f17 });
+(...)
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f27 });
 __f1.prototype = __f1_prototype;
 var __pulumi = {Config: __f1};
 

@@ -62,6 +62,60 @@ describe("config", () => {
         assert.throws(() => { config.getBoolean("num"); });
         assert.throws(() => { config.getNumber("boolf"); });
     });
+    it("does enums", () => {
+        runtime.setConfig("pkg:color", "orange");
+        const config = new Config("pkg");
+        assert.strictEqual("orange", config.getEnum("color", [ "purple", "orange", "blue" ]));
+        assert.strictEqual(undefined, config.getEnum("missing", [ "purple", "orange", "blue" ]));
+        assert.strictEqual("orange", config.requireEnum("color", [ "purple", "orange", "blue" ]));
+        assert.throws(() => { config.getEnum("color", [ "purple", "black", "blue" ]); });
+        assert.throws(() => { config.requireEnum("color", [ "purple", "black", "blue" ]); });
+        assert.throws(() => { config.requireEnum("missing", [ "purple", "orange", "blue" ]); });
+    });
+    it("does min/max (strlen)", () => {
+        runtime.setConfig("pkg:strlen", "abcdefgh");
+        const config = new Config("pkg");
+        assert.strictEqual("abcdefgh", config.getMinMax("strlen", 0, 8));
+        assert.strictEqual("abcdefgh", config.getMinMax("strlen", 8, 8));
+        assert.strictEqual("abcdefgh", config.getMinMax("strlen", 0, 16));
+        assert.strictEqual(undefined, config.getMinMax("missing", 0, 8));
+        assert.strictEqual("abcdefgh", config.requireMinMax("strlen", 0, 8));
+        assert.strictEqual("abcdefgh", config.requireMinMax("strlen", 8, 8));
+        assert.strictEqual("abcdefgh", config.requireMinMax("strlen", 0, 16));
+        assert.throws(() => { config.getMinMax("strlen", 9, 16); });
+        assert.throws(() => { config.getMinMax("strlen", 0, 7); });
+        assert.throws(() => { config.requireMinMax("strlen", 9, 16); });
+        assert.throws(() => { config.requireMinMax("strlen", 0, 7); });
+        assert.throws(() => { config.requireMinMax("missing", 0, 8); });
+    });
+    it("does pattern matching", () => {
+        runtime.setConfig("pkg:pattern", "aBcDeFgH");
+        const config = new Config("pkg");
+        assert.strictEqual("aBcDeFgH", config.getPattern("pattern", /^[a-zA-Z]*$/));
+        assert.strictEqual("aBcDeFgH", config.getPattern("pattern", "^[a-zA-Z]*$"));
+        assert.strictEqual(undefined, config.getPattern("missing", /^[a-zA-Z]*$/));
+        assert.strictEqual("aBcDeFgH", config.requirePattern("pattern", /^[a-zA-Z]*$/));
+        assert.strictEqual("aBcDeFgH", config.requirePattern("pattern", "^[a-zA-Z]*$"));
+        assert.throws(() => { config.getPattern("pattern", /^[a-z]*$/); }, "bad pattern: get");
+        assert.throws(() => { config.getPattern("pattern", "/^[a-z]*$/"); }, "bad pattern (string): get");
+        assert.throws(() => { config.requirePattern("pattern", /^[a-z]*$/); }, "bad pattern: require");
+        assert.throws(() => { config.requirePattern("pattern", "/^[a-z]*$/"); }, "bad pattern (string): require");
+        assert.throws(() => { config.requirePattern("missing", /^[a-z]*$/); }, "missing");
+    });
+    it("does min/max (numbers)", () => {
+        runtime.setConfig("pkg:quantity", "8");
+        const config = new Config("pkg");
+        assert.strictEqual(8, config.getNumberMinMax("quantity", 0, 8));
+        assert.strictEqual(8, config.getNumberMinMax("quantity", 8, 8));
+        assert.strictEqual(8, config.getNumberMinMax("quantity", 0, 16));
+        assert.strictEqual(undefined, config.getNumberMinMax("missing", 0, 8));
+        assert.strictEqual(8, config.requireNumberMinMax("quantity", 0, 8));
+        assert.strictEqual(8, config.requireNumberMinMax("quantity", 8, 8));
+        assert.strictEqual(8, config.requireNumberMinMax("quantity", 0, 16));
+        assert.throws(() => { config.getNumberMinMax("quantity", 9, 16); });
+        assert.throws(() => { config.getNumberMinMax("quantity", 0, 7); });
+        assert.throws(() => { config.requireNumberMinMax("quantity", 9, 16); });
+        assert.throws(() => { config.requireNumberMinMax("quantity", 0, 7); });
+        assert.throws(() => { config.requireNumberMinMax("missing", 0, 8); });
+    });
 });
-
-
