@@ -63,7 +63,6 @@ const TokenDelimiter string = ":" // the character delimiting portions of a qual
 func (tok Token) Delimiters() int       { return strings.Count(string(tok), TokenDelimiter) }
 func (tok Token) HasModule() bool       { return tok.Delimiters() > 0 }
 func (tok Token) HasModuleMember() bool { return tok.Delimiters() > 1 }
-func (tok Token) HasClassMember() bool  { return tok.Delimiters() > 2 }
 func (tok Token) Simple() bool          { return tok.Delimiters() == 0 }
 func (tok Token) String() string        { return string(tok) }
 
@@ -98,7 +97,7 @@ func (tok Token) Name() Name {
 
 // Package extracts the package from the token, assuming one exists.
 func (tok Token) Package() Package {
-	if t := Type(tok); t.Decorated() || t.Primitive() {
+	if t := Type(tok); t.Primitive() {
 		return "" // decorated and primitive types are built-in (and hence have no package).
 	}
 	if tok.HasModule() {
@@ -121,20 +120,9 @@ func (tok Token) Module() Module {
 // ModuleMember extracts the module member portion from the token, assuming one exists.
 func (tok Token) ModuleMember() ModuleMember {
 	if tok.HasModuleMember() {
-		if tok.HasClassMember() {
-			return ModuleMember(tok[:tok.delimiter(3)])
-		}
 		return ModuleMember(tok)
 	}
 	return ModuleMember("")
-}
-
-// ClassMember extracts the class member portion from the token, assuming one exists.
-func (tok Token) ClassMember() ClassMember {
-	if tok.HasClassMember() {
-		return ClassMember(tok)
-	}
-	return ClassMember("")
 }
 
 // Package is a token representing just a package.  It uses a much simpler grammar:
@@ -213,38 +201,6 @@ func (tok ModuleMember) Name() ModuleMemberName {
 
 func (tok ModuleMember) String() string { return string(tok) }
 
-// ClassMember is a token representing a class's member.  It uses the following grammar.  Unlike ModuleMember, this
-// cannot use a slash for delimiting names, because we use often ClassMember and ModuleMember interchangeably:
-//		ClassMember = <ModuleMember> "." <ClassMemberName>
-type ClassMember Token
-
-func NewClassMemberToken(class Type, nm ClassMemberName) ClassMember {
-	contract.Assertf(IsName(string(nm)), "Class '%v' member name '%v' is not a legal name", class, nm)
-	return ClassMember(string(class) + TokenDelimiter + string(nm))
-}
-
-func (tok ClassMember) Package() Package {
-	return tok.Module().Package()
-}
-
-func (tok ClassMember) Module() Module {
-	return tok.Class().Module()
-}
-
-func (tok ClassMember) Class() Type {
-	t := Token(tok)
-	contract.Assertf(t.HasClassMember(), "Class member token '%v' missing class member delimiter", tok)
-	return Type(tok[:t.delimiter(3)])
-}
-
-func (tok ClassMember) Name() ClassMemberName {
-	t := Token(tok)
-	contract.Assertf(t.HasClassMember(), "Class member token '%v' missing class member delimiter", tok)
-	return ClassMemberName(tok[t.delimiter(3)+1:])
-}
-
-func (tok ClassMember) String() string { return string(tok) }
-
 // Type is a token representing a type.  It is either a primitive type name, reference to a module class, or decorated:
 //		Type = <Name> | <ModuleMember> | <DecoratedType>
 type Type Token
@@ -255,21 +211,21 @@ func NewTypeToken(mod Module, nm TypeName) Type {
 }
 
 func (tok Type) Package() Package {
-	if tok.Primitive() || tok.Decorated() {
+	if tok.Primitive() {
 		return Package("")
 	}
 	return ModuleMember(tok).Package()
 }
 
 func (tok Type) Module() Module {
-	if tok.Primitive() || tok.Decorated() {
+	if tok.Primitive() {
 		return Module("")
 	}
 	return ModuleMember(tok).Module()
 }
 
 func (tok Type) Name() TypeName {
-	if tok.Primitive() || tok.Decorated() {
+	if tok.Primitive() {
 		return TypeName(tok)
 	}
 	return TypeName(ModuleMember(tok).Name())
@@ -279,40 +235,9 @@ func (tok Type) Member() ModuleMember {
 	return ModuleMember(tok)
 }
 
-// Decorated indicates whether this token represents a decorated type.
-func (tok Type) Decorated() bool {
-	return tok.Pointer() || tok.Array() || tok.Map() || tok.Function()
-}
-
-func (tok Type) Pointer() bool  { return IsPointerType(tok) }
-func (tok Type) Array() bool    { return IsArrayType(tok) }
-func (tok Type) Map() bool      { return IsMapType(tok) }
-func (tok Type) Function() bool { return IsFunctionType(tok) }
-
 // Primitive indicates whether this type is a primitive type name (i.e., not qualified with a module, etc).
 func (tok Type) Primitive() bool {
-	return !tok.Decorated() && !Token(tok).HasModule()
+	return !Token(tok).HasModule()
 }
 
 func (tok Type) String() string { return string(tok) }
-
-// Variable is a token representing a variable (module property, class property, or local variable (including
-// parameters)).  It can be a simple name for the local cases, or a true token for others:
-//		Variable = <Name> | <ModuleMember> | <ClassMember>
-type Variable Token
-
-func (tok Variable) String() string { return string(tok) }
-
-// Function is a token representing a variable (module method or class method).  Its grammar is as follows:
-//		Variable = <ModuleMember> | <ClassMember>
-type Function Token
-
-func (tok Function) String() string { return string(tok) }
-
-// ByName implements sort.Interface to allow an array of tokens to be
-// sorted based on string order.
-type ByName []Token
-
-func (ts ByName) Len() int               { return len(ts) }
-func (ts ByName) Less(i int, j int) bool { return ts[i] < ts[j] }
-func (ts ByName) Swap(i int, j int)      { ts[i], ts[j] = ts[j], ts[i] }
