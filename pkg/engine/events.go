@@ -137,6 +137,9 @@ type StepEventStateMetadata struct {
 	Outputs resource.PropertyMap
 	// the resource's provider reference
 	Provider string
+	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+	// during create or update).
+	InitErrors []string
 }
 
 func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
@@ -199,16 +202,17 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 	}
 
 	return &StepEventStateMetadata{
-		Type:     state.Type,
-		URN:      state.URN,
-		Custom:   state.Custom,
-		Delete:   state.Delete,
-		ID:       state.ID,
-		Parent:   state.Parent,
-		Protect:  state.Protect,
-		Inputs:   filterPropertyMap(state.Inputs, debug),
-		Outputs:  filterPropertyMap(state.Outputs, debug),
-		Provider: state.Provider,
+		Type:       state.Type,
+		URN:        state.URN,
+		Custom:     state.Custom,
+		Delete:     state.Delete,
+		ID:         state.ID,
+		Parent:     state.Parent,
+		Protect:    state.Protect,
+		Inputs:     filterPropertyMap(state.Inputs, debug),
+		Outputs:    filterPropertyMap(state.Outputs, debug),
+		Provider:   state.Provider,
+		InitErrors: state.InitErrors,
 	}
 }
 

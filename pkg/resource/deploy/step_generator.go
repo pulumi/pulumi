@@ -376,6 +376,13 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, nil
 		}
 
+		// If resource was unchanged, but there were initialization errors, generate an empty update
+		// step to attempt to "continue" awaiting initialization.
+		if len(old.InitErrors) > 0 {
+			sg.updates[urn] = true
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, nil
+		}
+
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
 		if logging.V(7) {

@@ -231,6 +231,11 @@ func printObject(
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
 	step StepEventMetadata, indent int, planning bool, debug bool) string {
+	// Resources that have initialization errors did not successfully complete, and therefore do not
+	// have outputs to render diffs for. So, simply return.
+	if step.Old != nil && len(step.Old.InitErrors) > 0 {
+		return ""
+	}
 
 	b := &bytes.Buffer{}
 
