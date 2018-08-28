@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/errutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -84,12 +86,17 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	if err != nil {
 		return nil, err
 	}
-	return update(ctx, info, planOptions{
+	changes, bail, err := update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	}, dryRun)
+	if err != nil && bail == errutil.BugAbort {
+		return nil, errors.Wrap(err, "internal engine error")
+	}
+
+	return changes, nil
 }
 
 func newUpdateSource(
@@ -131,12 +138,13 @@ func newUpdateSource(
 	}, defaultProviderVersions, dryRun), nil
 }
 
-func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
+func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, errutil.BailStatus, error) {
 	result, err := plan(ctx, info, opts, dryRun)
 	if err != nil {
-		return nil, err
+		return nil, errutil.BugAbort, err
 	}
 
+	var bail errutil.BailStatus
 	var resourceChanges ResourceChanges
 	if result != nil {
 		defer contract.IgnoreClose(result)
@@ -144,13 +152,13 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		// Make the current working directory the same as the program's, and restore it upon exit.
 		done, chErr := result.Chdir()
 		if chErr != nil {
-			return nil, chErr
+			return nil, errutil.BugAbort, chErr
 		}
 		defer done()
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, err = printPlan(ctx, result, dryRun)
+			resourceChanges, bail, err = printPlan(ctx, result, dryRun)
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			opts.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
@@ -159,7 +167,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
 
-			err = result.Walk(ctx, result.Plugctx.Diag, actions, false)
+			bail, err = result.Walk(ctx, result.Plugctx.Diag, actions, false)
 			resourceChanges = ResourceChanges(actions.Ops)
 
 			if len(resourceChanges) != 0 {
@@ -168,7 +176,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			}
 		}
 	}
-	return resourceChanges, err
+	return resourceChanges, bail, err
 }
 
 // pluginActions listens for plugin events and persists the set of loaded plugins

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/errutil"
 )
 
 // Options controls the planning and deployment process.
@@ -271,7 +272,7 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (p *Plan) Execute(ctx context.Context, sink diag.Sink, opts Options, preview bool) error {
+func (p *Plan) Execute(ctx context.Context, sink diag.Sink, opts Options, preview bool) (errutil.BailStatus, error) {
 	planExec := &planExecutor{plan: p}
 	return planExec.Execute(ctx, sink, opts, preview)
 }

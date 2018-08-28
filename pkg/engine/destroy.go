@@ -37,12 +37,14 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	if err != nil {
 		return nil, err
 	}
-	return update(ctx, info, planOptions{
+
+	changes, _, err := update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	}, dryRun)
+	return changes, err
 }
 
 func newDestroySource(

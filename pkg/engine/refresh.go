@@ -41,13 +41,14 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	// Force opts.Refresh to true.
 	opts.Refresh = true
 
-	return update(ctx, info, planOptions{
+	changes, _, err := update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 		isRefresh:     true,
 	}, dryRun)
+	return changes, err
 }
 
 func newRefreshSource(opts planOptions, proj *workspace.Project, pwd, main string,

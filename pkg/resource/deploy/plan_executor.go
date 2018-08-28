@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/errutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
@@ -55,7 +56,8 @@ func (pe *planExecutor) reportError(sink diag.Sink, urn resource.URN, err error)
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, opts Options, preview bool) error {
+func (pe *planExecutor) Execute(callerCtx context.Context,
+	diagSink diag.Sink, opts Options, preview bool) (errutil.BailStatus, error) {
 	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context is cancelled. We do
 	// not hang this off of the context we create below because we do not want the failure of a single step to cause
 	// other steps to fail.
@@ -74,17 +76,17 @@ func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, o
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
 	if opts.Refresh {
 		if err := pe.refresh(callerCtx, diagSink, opts, preview); err != nil {
-			return err
+			return errutil.BugAbort, err
 		}
 		if opts.RefreshOnly {
-			return nil
+			return errutil.Continue, nil
 		}
 	}
 
 	// Begin iterating the source.
 	src, err := pe.plan.source.Iterate(callerCtx, opts, pe.plan)
 	if err != nil {
-		return err
+		return errutil.BugAbort, err
 	}
 
 	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
@@ -125,7 +127,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, o
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	canceled, err := func() (bool, error) {
+	canceled, bail, err := func() (bool, errutil.BailStatus, error) {
 		log.Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
 			select {
@@ -135,7 +137,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, o
 				if event.Error != nil {
 					pe.reportError(diagSink, "", event.Error)
 					cancel()
-					return false, event.Error
+					// TODO(sean) - When expanding this sketch, need to pass this information through the
+					// incoming events channel
+					return false, errutil.BugAbort, event.Error
 				}
 
 				if event.Event == nil {
@@ -150,21 +154,23 @@ func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, o
 					pe.stepExec.SignalCompletion()
 					log.Infof("planExecutor.Execute(...): issued deletes")
 
-					return false, nil
+					return false, errutil.Continue, nil
 				}
 
-				if eventErr := pe.handleSingleEvent(diagSink, event.Event); eventErr != nil {
-					log.Infof("planExecutor.Execute(...): error handling event: %v", eventErr)
-					pe.reportError(diagSink, pe.plan.generateEventURN(event.Event), eventErr)
+				if bail, eventErr := pe.handleSingleEvent(diagSink, event.Event); eventErr != nil {
+					if bail != errutil.Bail {
+						log.Infof("planExecutor.Execute(...): error handling event: %v", eventErr)
+						pe.reportError(diagSink, pe.plan.generateEventURN(event.Event), eventErr)
+					}
 					cancel()
-					return false, eventErr
+					return false, bail, eventErr
 				}
 			case <-ctx.Done():
 				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 				// cancellation from internally-initiated cancellation.
-				return callerCtx.Err() != nil, nil
+				return callerCtx.Err() != nil, errutil.Bail, nil
 			}
 		}
 	}()
@@ -179,34 +185,35 @@ func (pe *planExecutor) Execute(callerCtx context.Context, diagSink diag.Sink, o
 	} else if canceled {
 		err = execError("canceled", preview)
 	}
-	return err
+	return bail, err
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(sink diag.Sink, event SourceEvent) error {
+func (pe *planExecutor) handleSingleEvent(sink diag.Sink, event SourceEvent) (errutil.BailStatus, error) {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
+	var bail errutil.BailStatus
 	var err error
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, err = pe.stepGen.GenerateSteps(sink, e)
+		steps, bail, err = pe.stepGen.GenerateSteps(sink, e)
 	case ReadResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
-		steps, err = pe.stepGen.GenerateReadSteps(e)
+		steps, bail, err = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(sink, e)
-		return nil
+		return errutil.Continue, nil
 	}
 
 	if err != nil {
-		return err
+		return bail, err
 	}
 	pe.stepExec.Execute(steps)
-	return nil
+	return errutil.Continue, nil
 }
 
 // refresh refreshes the state of the base checkpoint file for the current plan in memory.

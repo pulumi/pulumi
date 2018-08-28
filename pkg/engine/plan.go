@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/errutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -194,11 +195,12 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(cancelCtx *Context, sink diag.Sink, events deploy.Events, preview bool) error {
+func (res *planResult) Walk(cancelCtx *Context, sink diag.Sink, events deploy.Events, preview bool) (errutil.BailStatus, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	done := make(chan bool)
 	var err error
+	var bail errutil.BailStatus
 	go func() {
 		opts := deploy.Options{
 			Events:      events,
@@ -206,7 +208,7 @@ func (res *planResult) Walk(cancelCtx *Context, sink diag.Sink, events deploy.Ev
 			Refresh:     res.Options.Refresh,
 			RefreshOnly: res.Options.isRefresh,
 		}
-		err = res.Plan.Execute(ctx, sink, opts, preview)
+		bail, err = res.Plan.Execute(ctx, sink, opts, preview)
 		close(done)
 	}()
 
@@ -223,10 +225,10 @@ func (res *planResult) Walk(cancelCtx *Context, sink diag.Sink, events deploy.Ev
 
 	select {
 	case <-cancelCtx.Cancel.Terminated():
-		return cancelCtx.Cancel.TerminateErr()
+		return errutil.Bail, cancelCtx.Cancel.TerminateErr()
 
 	case <-done:
-		return err
+		return bail, err
 	}
 }
 
@@ -235,19 +237,19 @@ func (res *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, error) {
+func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, errutil.BailStatus, error) {
 	result.Options.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPlanActions(result.Options)
-	if err := result.Walk(ctx, result.Plugctx.Diag, actions, true); err != nil {
-		return nil, errors.New("an error occurred while advancing the preview")
+	if bail, err := result.Walk(ctx, result.Plugctx.Diag, actions, true); err != nil {
+		return nil, bail, err
 	}
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
 	result.Options.Events.previewSummaryEvent(changes)
-	return changes, nil
+	return changes, errutil.Continue, nil
 }
 
 type planActions struct {

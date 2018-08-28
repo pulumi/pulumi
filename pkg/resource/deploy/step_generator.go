@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/errutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
@@ -44,7 +45,7 @@ type stepGenerator struct {
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
-func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, errutil.BailStatus, error) {
 	urn := sg.plan.generateURN(event.Parent(), event.Type(), event.Name())
 	newState := resource.NewState(event.Type(),
 		urn,
@@ -81,7 +82,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		return []Step{
 			NewReadReplacementStep(sg.plan, event, old, newState),
 			NewReplaceStep(sg.plan, old, newState, nil, true),
-		}, nil
+		}, errutil.Continue, nil
 	}
 
 	if bool(logging.V(7)) && hasOld && old.ID == event.ID() {
@@ -91,7 +92,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	sg.reads[urn] = true
 	return []Step{
 		NewReadStep(sg.plan, event, old, newState),
-	}, nil
+	}, errutil.Continue, nil
 }
 
 // GenerateSteps produces one or more steps required to achieve the goal state
@@ -100,7 +101,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 // If the given resource is a custom resource, the step generator will invoke Diff
 // and Check on the provider associated with that resource. If those fail, an error
 // is returned.
-func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEvent) ([]Step, errutil.BailStatus, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -140,12 +141,12 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 			contract.Assert(goal.Provider != "")
 			ref, refErr := providers.ParseReference(goal.Provider)
 			if refErr != nil {
-				return nil, errors.Errorf(
+				return nil, errutil.BugAbort, errors.Errorf(
 					"bad provider reference '%v' for resource '%v': %v", goal.Provider, urn, refErr)
 			}
 			p, ok := sg.plan.GetProvider(ref)
 			if !ok {
-				return nil, errors.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
+				return nil, errutil.BugAbort, errors.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
 			}
 			prov = p
 		}
@@ -174,7 +175,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 		}
 
 		if err != nil {
-			return nil, err
+			return nil, errutil.BugAbort, err
 		} else if sg.issueCheckErrors(sink, new, urn, failures) {
 			invalid = true
 		}
@@ -186,14 +187,14 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 		var analyzer plugin.Analyzer
 		analyzer, err = sg.plan.ctx.Host.Analyzer(a)
 		if err != nil {
-			return nil, err
+			return nil, errutil.BugAbort, err
 		} else if analyzer == nil {
-			return nil, errors.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
+			return nil, errutil.BugAbort, errors.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
 		var failures []plugin.AnalyzeFailure
 		failures, err = analyzer.Analyze(new.Type, inputs)
 		if err != nil {
-			return nil, err
+			return nil, errutil.BugAbort, err
 		}
 		for _, failure := range failures {
 			invalid = true
@@ -203,7 +204,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 
 	// If the resource isn't valid, don't proceed any further.
 	if invalid {
-		return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+		return nil, errutil.Bail, errors.New("One or more resource validation errors occurred; refusing to proceed")
 	}
 
 	// There are four cases we need to consider when figuring out what to do with this resource.
@@ -230,7 +231,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 		return []Step{
 			NewReplaceStep(sg.plan, old, new, nil, false),
 			NewCreateReplacementStep(sg.plan, event, old, new, nil, false),
-		}, nil
+		}, errutil.Continue, nil
 	}
 
 	// Case 2: wasExternal
@@ -245,13 +246,13 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
 		sg.creates[urn] = true
 		if err != nil {
-			return nil, err
+			return nil, errutil.Continue, err
 		}
 
 		return []Step{
 			NewCreateReplacementStep(sg.plan, event, old, new, nil, true),
 			NewReplaceStep(sg.plan, old, new, nil, true),
-		}, nil
+		}, errutil.Continue, nil
 	}
 
 	// Case 3: hasOld
@@ -273,14 +274,14 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 			// Determine whether the change resulted in a diff.
 			d, diffErr := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
 			if diffErr != nil {
-				return nil, diffErr
+				return nil, errutil.BugAbort, diffErr
 			}
 			diff = d
 		}
 
 		// Ensure that we received a sensible response.
 		if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
-			return nil, errors.Errorf(
+			return nil, errutil.BugAbort, errors.Errorf(
 				"unrecognized diff state for %s: %d", urn, diff.Changes)
 		}
 
@@ -295,9 +296,9 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 					var failures []plugin.CheckFailure
 					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 					if err != nil {
-						return nil, err
+						return nil, errutil.BugAbort, err
 					} else if sg.issueCheckErrors(sink, new, urn, failures) {
-						return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+						return nil, errutil.Bail, errors.New("One or more resource validation errors occurred; refusing to proceed")
 					}
 					new.Inputs = inputs
 				}
@@ -357,14 +358,14 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 						NewDeleteReplacementStep(sg.plan, old, false),
 						NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, false),
 						NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, false),
-					), nil
+					), errutil.Continue, nil
 				}
 
 				return []Step{
 					NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, true),
 					NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, true),
 					// note that the delete step is generated "later" on, after all creates/updates finish.
-				}, nil
+				}, errutil.Continue, nil
 			}
 
 			// If we fell through, it's an update.
@@ -372,7 +373,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 			if logging.V(7) {
 				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 			}
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, nil
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, errutil.Continue, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -380,7 +381,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 		if logging.V(7) {
 			logging.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
 		}
-		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
+		return []Step{NewSameStep(sg.plan, event, old, new)}, errutil.Continue, nil
 	}
 
 	// Case 4: Not Case 1, 2, or 3
@@ -388,7 +389,7 @@ func (sg *stepGenerator) GenerateSteps(sink diag.Sink, event RegisterResourceEve
 	//  it's just being created.
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
-	return []Step{NewCreateStep(sg.plan, event, new)}, nil
+	return []Step{NewCreateStep(sg.plan, event, new)}, errutil.Continue, nil
 }
 
 func (sg *stepGenerator) GenerateDeletes() []Step {
