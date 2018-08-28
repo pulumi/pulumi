@@ -15,16 +15,13 @@
 package engine
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
@@ -276,21 +273,6 @@ func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error
 	}
 
 	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
-
-	// Warn the user if they're not updating a resource whose initialization failed.
-	if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
-		indent := "         "
-
-		// TODO: Move indentation to the display logic, instead of doing it ourselves.
-		var warning bytes.Buffer
-		warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
-		warning.WriteString(indent + "to update it to fix these issues:\n")
-		for i, err := range step.Old().InitErrors {
-			warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
-				colors.Reset + " " + err + "\n")
-		}
-		acts.Opts.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
-	}
 
 	return nil, nil
 }
