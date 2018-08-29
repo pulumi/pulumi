@@ -302,6 +302,30 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.RunBuild {
 		opts.RunBuild = overrides.RunBuild
 	}
+	if overrides.ExpectFailure {
+		opts.ExpectFailure = overrides.ExpectFailure
+	}
+	if overrides.ExpectRefreshChanges {
+		opts.ExpectRefreshChanges = overrides.ExpectRefreshChanges
+	}
+	if overrides.AllowEmptyPreviewChanges {
+		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
+	}
+	if overrides.AllowEmptyUpdateChanges {
+		opts.AllowEmptyUpdateChanges = overrides.AllowEmptyUpdateChanges
+	}
+	if overrides.Bin != "" {
+		opts.Bin = overrides.Bin
+	}
+	if overrides.DebugLogLevel != 0 {
+		opts.DebugLogLevel = overrides.DebugLogLevel
+	}
+	if overrides.DebugUpdates {
+		opts.DebugUpdates = overrides.DebugUpdates
+	}
+	if overrides.Env != nil {
+		opts.Env = append(opts.Env, overrides.Env...)
+	}
 	return opts
 }
 
