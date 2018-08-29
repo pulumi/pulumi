@@ -385,10 +385,10 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/xanzy/ssh-agent"
   packages = ["."]
-  revision = "ba9c9e33906f58169366275e3450db66139a31a9"
+  revision = "640f0ab560aeb89d523bb6ac322b1244d5c3796c"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
@@ -578,6 +578,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "71208477393825ddcf9e60bd0a6855758c05f49ec560fd9e5ba6336592a18da0"
+  inputs-digest = "a955cc48b271db5e6f25f085160fdf1555c5078bdff41f583ac3e6566af5876f"
   solver-name = "gps-cdcl"
   solver-version = 1
