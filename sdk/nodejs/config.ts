@@ -166,7 +166,7 @@ export class Config {
     }
 
     /**
-     * requireNumberMinMax loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
+     * requireNumber loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
      * configuration value is not a legal number, an error is thrown.
      *
      * @param key The key to lookup.
