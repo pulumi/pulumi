@@ -178,7 +178,7 @@ func newNewCmd() *cobra.Command {
 
 			// Prompt for the project name, if it wasn't already specified.
 			if name == "" {
-				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, filepath.Base(cwd))
+				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, filepath.Base(cwd))
 				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
 				if err != nil {
 					return err
@@ -187,7 +187,8 @@ func newNewCmd() *cobra.Command {
 
 			// Prompt for the project description, if it wasn't already specified.
 			if description == "" {
-				defaultValue := workspace.ValueOrDefaultProjectDescription(description, template.Description)
+				defaultValue := workspace.ValueOrDefaultProjectDescription(
+					description, template.ProjectDescription, template.Description)
 				description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
 				if err != nil {
 					return err
@@ -203,6 +204,17 @@ func newNewCmd() *cobra.Command {
 			}
 
 			fmt.Printf("Created project '%s'.\n", name)
+
+			// Load the project, update the name & description, and save it.
+			proj, _, err := readProject()
+			if err != nil {
+				return err
+			}
+			proj.Name = tokens.PackageName(name)
+			proj.Description = &description
+			if err = workspace.SaveProject(proj); err != nil {
+				return errors.Wrap(err, "saving project")
+			}
 
 			// Prompt for the stack name and create the stack.
 			var stack backend.Stack
