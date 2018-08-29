@@ -8,6 +8,10 @@
   version = "v1.1.0"
 
 [[override]]
+  name = "github.com/xanzy/ssh-agent"
+  version = "v0.2.0"
+
+[[override]]
   name = "github.com/golang/glog"
   source = "github.com/pulumi/glog"
   branch = "pulumi-master"
