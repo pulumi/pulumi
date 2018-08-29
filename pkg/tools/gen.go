@@ -61,10 +61,15 @@ func (g *GenWriter) Close() error {
 	return nil
 }
 
+// WriteString writes the provided string to the underlying buffer _without_ formatting it.
+func (g *GenWriter) WriteString(msg string) {
+	_, err := g.w.WriteString(msg)
+	contract.IgnoreError(err)
+}
+
 // Writefmt wraps the bufio.Writer.WriteString function, but also performs fmt.Sprintf-style formatting.
 func (g *GenWriter) Writefmt(msg string, args ...interface{}) {
-	_, err := g.w.WriteString(fmt.Sprintf(msg, args...))
-	contract.IgnoreError(err)
+	g.WriteString(fmt.Sprintf(msg, args...))
 }
 
 // Writefmtln wraps the bufio.Writer.WriteString function, performing fmt.Sprintf-style formatting and appending \n.
