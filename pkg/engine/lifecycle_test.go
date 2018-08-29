@@ -64,7 +64,6 @@ type Journal struct {
 
 func (j *Journal) Close() error {
 	close(j.cancel)
-	close(j.events)
 	<-j.done
 
 	return nil
@@ -190,10 +189,15 @@ func newJournal() *Journal {
 		done:   make(chan bool),
 	}
 	go func() {
-		for e := range j.events {
-			j.Entries = append(j.Entries, e)
+		for {
+			select {
+			case <-j.cancel:
+				close(j.done)
+				return
+			case e := <-j.events:
+				j.Entries = append(j.Entries, e)
+			}
 		}
-		close(j.done)
 	}()
 	return j
 }
@@ -221,10 +225,16 @@ type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journ
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
 	dryRun bool, validate ValidateFunc) (*deploy.Snapshot, error) {
 
+	return op.RunWithContext(context.Background(), project, target, opts, dryRun, validate)
+}
+
+func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Project, target deploy.Target,
+	opts UpdateOptions, dryRun bool, validate ValidateFunc) (*deploy.Snapshot, error) {
+
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
 
-	cancelCtx, _ := cancel.NewContext(context.Background())
+	cancelCtx, _ := cancel.NewContext(callerCtx)
 	events := make(chan Event)
 	journal := newJournal()
 
@@ -258,6 +268,7 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 		err = snap.VerifyIntegrity()
 	}
 	return snap, err
+
 }
 
 type TestStep struct {
@@ -306,28 +317,37 @@ func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resour
 	return p.NewURN(providers.MakeProviderType(pkg), name, parent)
 }
 
-func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
-	stack, projectName, runtime := p.getNames()
+func (p *TestPlan) GetProject() workspace.Project {
+	_, projectName, runtime := p.getNames()
+
+	return workspace.Project{
+		Name:        projectName,
+		RuntimeInfo: workspace.NewProjectRuntimeInfo(runtime, nil),
+	}
+}
+
+func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
+	stack, _, _ := p.getNames()
 
 	cfg := p.Config
 	if cfg == nil {
 		cfg = config.Map{}
 	}
 
-	project := &workspace.Project{
-		Name:        projectName,
-		RuntimeInfo: workspace.NewProjectRuntimeInfo(runtime, nil),
-	}
-	target := &deploy.Target{
+	return deploy.Target{
 		Name:      stack,
 		Config:    cfg,
 		Decrypter: p.Decrypter,
 		Snapshot:  snapshot,
 	}
+}
+
+func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
+	project, target := p.GetProject(), p.GetTarget(snapshot)
 
 	for _, step := range p.Steps {
 		if !step.SkipPreview {
-			_, err := step.Op.Run(*project, *target, p.Options, true, step.Validate)
+			_, err := step.Op.Run(project, target, p.Options, true, step.Validate)
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -337,7 +357,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		var err error
-		target.Snapshot, err = step.Op.Run(*project, *target, p.Options, false, step.Validate)
+		target.Snapshot, err = step.Op.Run(project, target, p.Options, false, step.Validate)
 		if step.ExpectFailure {
 			assert.Error(t, err)
 			continue
@@ -1177,7 +1197,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Refresh DOES fail, causing the new initialization error to appear.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh, ExpectFailure: true}}
+	p.Steps = []TestStep{{Op: Refresh}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
@@ -1512,7 +1532,7 @@ func TestRefreshBasics(t *testing.T) {
 				} else {
 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
 					// an OpSame.
-					if reflect.DeepEqual(new.Outputs, expected) {
+					if reflect.DeepEqual(old.Outputs, expected) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -1552,7 +1572,156 @@ func TestRefreshBasics(t *testing.T) {
 		old.Outputs = expected
 		assert.Equal(t, old, r)
 	}
+}
 
+// Tests that an interrupted refresh leaves behind an expected state.
+func TestCanceledRefresh(t *testing.T) {
+	p := &TestPlan{}
+
+	const resType = "pkgA:m:typA"
+
+	urnA := p.NewURN(resType, "resA", "")
+	urnB := p.NewURN(resType, "resB", "")
+	urnC := p.NewURN(resType, "resC", "")
+
+	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+		return &resource.State{
+			Type:         urn.Type(),
+			URN:          urn,
+			Custom:       true,
+			Delete:       delete,
+			ID:           id,
+			Inputs:       resource.PropertyMap{},
+			Outputs:      resource.PropertyMap{},
+			Dependencies: dependencies,
+		}
+	}
+
+	oldResources := []*resource.State{
+		newResource(urnA, "0", false),
+		newResource(urnB, "1", false),
+		newResource(urnC, "2", false),
+	}
+
+	newStates := map[resource.ID]resource.PropertyMap{
+		// A::0 and B::1 will have changes; D::3 will be deleted.
+		"0": {"foo": resource.NewStringProperty("bar")},
+		"1": {"baz": resource.NewStringProperty("qux")},
+		"2": nil,
+	}
+
+	old := &deploy.Snapshot{
+		Resources: oldResources,
+	}
+
+	// Set up a cancelable context for the refresh operation.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Serialize all refreshes s.t. we can cancel after the first is issued.
+	refreshes := make(chan resource.ID)
+	go func() {
+		<-refreshes
+		cancel()
+	}()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(urn resource.URN, id resource.ID,
+					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+
+					select {
+					case refreshes <- id:
+					case <-ctx.Done():
+					}
+
+					new, hasNewState := newStates[id]
+					assert.True(t, hasNewState)
+					return new, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	refreshed := make(map[resource.ID]bool)
+	op := TestOp(Refresh)
+	options := UpdateOptions{
+		Parallel: 1,
+		host:     deploytest.NewPluginHost(nil, nil, loaders...),
+	}
+	project, target := p.GetProject(), p.GetTarget(old)
+	validate := func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+		for _, entry := range j.Entries {
+			assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
+			resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
+
+			old := entry.Step.Old()
+			if !old.Custom || providers.IsProviderType(old.Type) {
+				// Component and provider resources should never change.
+				assert.Equal(t, deploy.OpSame, resultOp)
+				continue
+			}
+
+			refreshed[old.ID] = true
+
+			expected, new := newStates[old.ID], entry.Step.New()
+			if expected == nil {
+				// If the resource was deleted, we want the result op to be an OpDelete.
+				assert.Nil(t, new)
+				assert.Equal(t, deploy.OpDelete, resultOp)
+			} else {
+				// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
+				// an OpSame.
+				if reflect.DeepEqual(old.Outputs, expected) {
+					assert.Equal(t, deploy.OpSame, resultOp)
+				} else {
+					assert.Equal(t, deploy.OpUpdate, resultOp)
+				}
+
+				// Only the outputs should have changed (if anything changed).
+				old.Outputs = expected
+				assert.Equal(t, old, new)
+			}
+		}
+		return err
+	}
+
+	snap, err := op.RunWithContext(ctx, project, target, options, false, validate)
+	assert.Error(t, err)
+
+	t.Logf("%v/%v resources refreshed", len(refreshed), len(oldResources))
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+
+	for _, r := range snap.Resources {
+		switch urn := r.URN; urn {
+		case provURN:
+			continue
+		case urnA, urnB, urnC:
+			// break
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+
+		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
+		assert.NoError(t, err)
+
+		if refreshed[r.ID] {
+			// The refreshed resource should have its new state.
+			expected := newStates[r.ID]
+			if expected == nil {
+				assert.Fail(t, "refreshed resource was not deleted")
+			} else {
+				old := oldResources[int(idx)]
+				old.Outputs = expected
+				assert.Equal(t, old, r)
+			}
+		} else {
+			// Any resources that were not refreshed should retain their original state.
+			old := oldResources[int(idx)]
+			assert.Equal(t, old, r)
+		}
+	}
 }
 
 // Tests that errors returned directly from the language host get logged by the engine.
