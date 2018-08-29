@@ -4829,11 +4829,8 @@ var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
 var __metadata_1 = {getProject: __getProject};
 __f1.prototype = __testConfig_proto;
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
 (...)
-Object.defineProperty(__testConfig_proto, "require", { configurable: true, writable: true, value: __f17 });
-(...)
-Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f27 });
+Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f17 });
 var __testConfig = Object.create(__testConfig_proto);
 __testConfig.name = "test";
 
@@ -4894,18 +4891,6 @@ return function /*constructor*/(name) {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
-function __f2() {
-  return (function() {
-    with({ runtime_1: __runtime }) {
-
-return function /*get*/(key) {
-        return runtime_1.getConfig(this.fullKey(key));
-    };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
 (...)
 function __f0() {
   return (function() {
@@ -4934,11 +4919,8 @@ var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
 var __metadata_1 = {getProject: __getProject};
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
 (...)
-Object.defineProperty(__f1_prototype, "require", { configurable: true, writable: true, value: __f17 });
-(...)
-Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f27 });
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f17 });
 __f1.prototype = __f1_prototype;
 var __pulumi = {Config: __f1};
 
@@ -4994,18 +4976,6 @@ return function /*constructor*/(name) {
             name = name.replace(/:config$/, "");
         }
         this.name = name;
-    };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
-function __f2() {
-  return (function() {
-    with({ runtime_1: __runtime }) {
-
-return function /*get*/(key) {
-        return runtime_1.getConfig(this.fullKey(key));
     };
 
     }

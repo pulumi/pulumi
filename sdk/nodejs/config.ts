@@ -47,83 +47,29 @@ export class Config {
      * get loads an optional configuration value by its key, or undefined if it doesn't exist.
      *
      * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
      */
-    public get(key: string): string | undefined {
-        return getConfig(this.fullKey(key));
-    }
-
-    /**
-     * getEnum loads an optional configuration value by its key, or undefined if it doesn't exist. If the value is not
-     * within the array of legal values, an error will be thrown.
-     *
-     * @param key The key to lookup.
-     * @param values The legal enum values.
-     */
-    public getEnum(key: string, values: string[]): string | undefined {
+    public get(key: string, opts?: StringConfigOptions): string | undefined {
         const v = getConfig(this.fullKey(key));
-        if (v !== undefined && values.indexOf(v) === -1) {
-            throw new ConfigEnumError(this.fullKey(key), v, values);
+        if (v === undefined) {
+            return undefined;
         }
-        return v;
-    }
-
-    /**
-     * getMinMax loads an optional string configuration value by its key, or undefined if it doesn't exist. If the
-     * value's length is less than or greater than the specified number of characters, this function throws.
-     *
-     * @param key The key to lookup.
-     * @param min The minimum string length.
-     * @param max The maximum string length.
-     */
-    public getMinMax(key: string, min: number, max: number): string | undefined {
-        const v = getConfig(this.fullKey(key));
-        if (v !== undefined && (v.length < min || v.length > max)) {
-            throw new ConfigRangeError(this.fullKey(key), v, min, max);
-        }
-        return v;
-    }
-
-    /**
-     * getMinMaxPattern loads an optional string configuration value by its key, or undefined if it doesn't exist. If
-     * the value's length is less than or greater than the specified number of characters, or the string does not match
-     * the supplied regular expression, this function throws.
-     *
-     * @param key The key to lookup.
-     * @param min The minimum string length.
-     * @param max The maximum string length.
-     * @param regexp A regular expression the string must match.
-     */
-    public getMinMaxPattern(key: string, min: number, max: number, regexp: string | RegExp): string | undefined {
-        if (typeof regexp === "string") {
-            regexp = new RegExp(regexp);
-        }
-
-        const v = getConfig(this.fullKey(key));
-        if (v !== undefined) {
-            if (v.length < min || v.length > max) {
-                throw new ConfigRangeError(this.fullKey(key), v, min, max);
-            } else if (!regexp.test(v)) {
-                throw new ConfigPatternError(this.fullKey(key), v, regexp);
+        if (opts) {
+            if (opts.allowedValues !== undefined && opts.allowedValues.indexOf(v) === -1) {
+                throw new ConfigEnumError(this.fullKey(key), v, opts.allowedValues);
+            } else if (opts.minLength !== undefined && v.length < opts.minLength) {
+                throw new ConfigRangeError(this.fullKey(key), v, opts.minLength, undefined);
+            } else if (opts.maxLength !== undefined && v.length > opts.maxLength) {
+                throw new ConfigRangeError(this.fullKey(key), v, undefined, opts.maxLength);
+            } else if (opts.pattern !== undefined) {
+                let pattern = opts.pattern;
+                if (typeof pattern === "string") {
+                    pattern = new RegExp(pattern);
+                }
+                if (!pattern.test(v)) {
+                    throw new ConfigPatternError(this.fullKey(key), v, pattern);
+                }
             }
-        }
-        return v;
-    }
-
-    /**
-     * getPattern loads an optional string configuration value by its key, or undefined if it doesn't exist. If the
-     * value doesn't match the regular expression pattern, the function throws.
-     *
-     * @param key The key to lookup.
-     * @param regexp A regular expression the string must match.
-     */
-    public getPattern(key: string, regexp: string | RegExp): string | undefined {
-        if (typeof regexp === "string") {
-            regexp = new RegExp(regexp);
-        }
-
-        const v = getConfig(this.fullKey(key));
-        if (v !== undefined && !regexp.test(v)) {
-            throw new ConfigPatternError(this.fullKey(key), v, regexp);
         }
         return v;
     }
@@ -151,8 +97,9 @@ export class Config {
      * If the configuration value isn't a legal number, this function will throw an error.
      *
      * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
      */
-    public getNumber(key: string): number | undefined {
+    public getNumber(key: string, opts?: NumberConfigOptions): number | undefined {
         const v: string | undefined = this.get(key);
         if (v === undefined) {
             return undefined;
@@ -161,24 +108,14 @@ export class Config {
         if (isNaN(f)) {
             throw new ConfigTypeError(this.fullKey(key), v, "number");
         }
-        return f;
-    }
-
-    /**
-     * getNumberMinMax loads an optional configuration value, as a number, by its key, or undefined if it doesn't exist.
-     * If the configuration value isn't a legal number, this function will throw an error. The range is a pair of min
-     * and max values that, should there be a value, the number must fall within, inclusively, else an error is thrown.
-     *
-     * @param key The key to lookup.
-     * @param min The minimum value the number may be, inclusive.
-     * @param max The maximum value the number may be, inclusive.
-     */
-    public getNumberMinMax(key: string, min: number, max: number): number | undefined {
-        const v: number | undefined = this.getNumber(key);
-        if (v !== undefined && (v < min || v > max)) {
-            throw new ConfigRangeError(this.fullKey(key), v, min, max);
+        if (opts) {
+            if (opts.min !== undefined && f < opts.min) {
+                throw new ConfigRangeError(this.fullKey(key), f, opts.min, undefined);
+            } else if (opts.max !== undefined && f > opts.max) {
+                throw new ConfigRangeError(this.fullKey(key), f, undefined, opts.max);
+            }
         }
-        return v;
+        return f;
     }
 
     /**
@@ -204,72 +141,10 @@ export class Config {
      * require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
      *
      * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
      */
-    public require(key: string): string {
-        const v: string | undefined = this.get(key);
-        if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
-        }
-        return v;
-    }
-
-    /**
-     * requireEnum loads a configuration value by its given key.  If it doesn't exist, an error is thrown. If the value
-     * is not within the array of legal values, an error will be thrown.
-     *
-     * @param key The key to lookup.
-     * @param values The legal enum values.
-     */
-    public requireEnum(key: string, values: string[]): string {
-        const v: string | undefined = this.getEnum(key, values);
-        if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
-        }
-        return v;
-    }
-
-    /**
-     * requireMinMax loads a string configuration value by its key. If it doesn't exist, an error is thrown. If the
-     * value's length is less than or greater than the specified number of characters, this function throws.
-     *
-     * @param key The key to lookup.
-     * @param min The minimum string length.
-     * @param max The maximum string length.
-     */
-    public requireMinMax(key: string, min: number, max: number): string {
-        const v = this.getMinMax(key, min, max);
-        if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
-        }
-        return v;
-    }
-
-    /**
-     * requireMinMaxPattern loads a string configuration value by its key. If it doesn't exist, an error is thrown. If
-     * the value's length is less than or greater than the specified number of characters, this function throws.
-     *
-     * @param key The key to lookup.
-     * @param min The minimum string length.
-     * @param max The maximum string length.
-     * @param regexp A regular expression the string must match.
-     */
-    public requireMinMaxPattern(key: string, min: number, max: number, pattern: string | RegExp): string {
-        const v = this.getMinMaxPattern(key, min, max, pattern);
-        if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
-        }
-        return v;
-    }
-
-    /**
-     * requirePattern loads a string configuration value by its key. If it doesn't exist, an error is thrown. If the
-     * value's length is less than or greater than the specified number of characters, this function throws.
-     *
-     * @param key The key to lookup.
-     * @param regexp A regular expression the string must match.
-     */
-    public requirePattern(key: string, pattern: string | RegExp): string {
-        const v = this.getPattern(key, pattern);
+    public require(key: string, opts?: StringConfigOptions): string {
+        const v: string | undefined = this.get(key, opts);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
         }
@@ -292,29 +167,13 @@ export class Config {
 
     /**
      * requireNumberMinMax loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
-     * configuration value is not a legal number, an error is thrown. The range is a pair of min and max values that,
-     * should there be a value, the number must fall within, inclusively, else an error is thrown.
-     *
-     * @param key The key to lookup.
-     * @param min The minimum value the number may be, inclusive.
-     * @param max The maximum value the number may be, inclusive.
-     */
-    public requireNumberMinMax(key: string, min: number, max: number): number {
-        const v: number | undefined = this.getNumberMinMax(key, min, max);
-        if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
-        }
-        return v;
-    }
-
-    /**
-     * requireNumberMinMax loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
      * configuration value is not a legal number, an error is thrown.
      *
      * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
      */
-    public requireNumber(key: string): number {
-        const v: number | undefined = this.getNumber(key);
+    public requireNumber(key: string, opts?: NumberConfigOptions): number {
+        const v: number | undefined = this.getNumber(key, opts);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
         }
@@ -343,6 +202,42 @@ export class Config {
     private fullKey(key: string): string {
         return `${this.name}:${key}`;
     }
+}
+
+/**
+ * StringConfigOptions may be used to constrain the set of legal values a string config value may contain.
+ */
+interface StringConfigOptions {
+    /**
+     * The legal enum values. If it does not match, a ConfigEnumError is thrown.
+     */
+    allowedValues?: string[];
+    /**
+     * The minimum string length. If the string is not this long, a ConfigRangeError is thrown.
+     */
+    minLength?: number;
+    /**
+     * The maximum string length. If the string is longer than this, a ConfigRangeError is thrown.
+     */
+    maxLength?: number;
+    /**
+     * A regular expression the string must match. If it does not match, a ConfigPatternError is thrown.
+     */
+    pattern?: string | RegExp;
+}
+
+/**
+ * NumberConfigOptions may be used to constrain the set of legal values a number config value may contain.
+ */
+interface NumberConfigOptions {
+    /**
+     * The minimum number value, inclusive. If the number is less than this, a ConfigRangeError is thrown.
+     */
+    min?: number;
+    /**
+     * The maximum number value, inclusive. If the number is greater than this, a ConfigRangeError is thrown.
+     */
+    max?: number;
 }
 
 /**
