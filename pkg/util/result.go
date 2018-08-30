@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package result
+package util
 
 import "github.com/pkg/errors"
 
@@ -40,44 +40,41 @@ import "github.com/pkg/errors"
 // At the highest level, when a function wishes to return only an `error`, the
 // `Error` member function can be used to turn a nullable `Result` into an
 // `error`.
-type Result struct {
-	bail bool
-	err  error
+type Result interface {
+	// Error produces an `error` from this Result. Returns nil unless the provided
+	// Result represents an internal-to-Pulumi error.
+	Error() error
 }
 
-// Error produces an `error` from this Result. Returns nil unless the provided
-// Result represents an internal-to-Pulumi error.
-func (r *Result) Error() error {
-	if r != nil && !r.bail {
-		return r.err
-	}
-
-	return nil
+type resultImpl struct {
+	err error
 }
+
+func (r resultImpl) Error() error { return r.err }
 
 // Bail produces a Result that represents a computation that failed to complete
 // successfully but is not a bug in Pulumi.
-func Bail() *Result {
-	return &Result{bail: true}
+func Bail() Result {
+	return resultImpl{err: nil}
 }
 
 // Errorf produces a Result that represents an internal Pulumi error,
 // constructed from the given format string and arguments.
-func Errorf(msg string, args ...interface{}) *Result {
+func Errorf(msg string, args ...interface{}) Result {
 	err := errors.Errorf(msg, args...)
 	return FromError(err)
 }
 
 // Error produces a Result that represents an internal Pulumi error,
 // constructed from the given message.
-func Error(msg string) *Result {
+func Error(msg string) Result {
 	err := errors.New(msg)
 	return FromError(err)
 }
 
 // FromError produces a Result that wraps an internal Pulumi error.
-func FromError(err error) *Result {
-	return &Result{err: err}
+func FromError(err error) Result {
+	return resultImpl{err: err}
 }
 
 // TODO returns an error that can be used in places that have not yet been

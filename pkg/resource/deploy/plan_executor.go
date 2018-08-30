@@ -22,9 +22,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
+	"github.com/pulumi/pulumi/pkg/util"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // planExecutor is responsible for taking a plan and driving it to completion.
@@ -161,7 +161,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
 					cancel()
-					return false, result.TODO()
+					return false, util.TODO()
 				}
 			case <-ctx.Done():
 				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
@@ -188,26 +188,26 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
+func (pe *planExecutor) handleSingleEvent(event SourceEvent) util.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
-	var res *result.Result
+	var result util.Result
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, res = pe.stepGen.GenerateSteps(e)
+		steps, result = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
-		steps, res = pe.stepGen.GenerateReadSteps(e)
+		steps, result = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
 		return nil
 	}
 
-	if res != nil {
-		return res
+	if result != nil {
+		return result
 	}
 
 	pe.stepExec.Execute(steps)
