@@ -138,6 +138,8 @@ type ProgramTestOptions struct {
 	// ExpectRefreshChanges may be set to true if a test is expected to have changes yielded by an immediate refresh.
 	// This could occur, for example, is a resource's state is constantly changing outside of Pulumi (e.g., timestamps).
 	ExpectRefreshChanges bool
+	// SkipRefresh indicates that the refresh step should be skipped entirely.
+	SkipRefresh bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
@@ -307,6 +309,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.ExpectRefreshChanges {
 		opts.ExpectRefreshChanges = overrides.ExpectRefreshChanges
+	}
+	if overrides.SkipRefresh {
+		opts.SkipRefresh = overrides.SkipRefresh
 	}
 	if overrides.AllowEmptyPreviewChanges {
 		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
@@ -685,16 +690,18 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 		return err
 	}
 
-	// Perform a refresh and ensure it doesn't yield changes.
-	refresh := []string{"refresh", "--non-interactive", "--skip-preview"}
-	if pt.opts.GetDebugUpdates() {
-		refresh = append(refresh, "-d")
-	}
-	if !pt.opts.ExpectRefreshChanges {
-		refresh = append(refresh, "--expect-no-changes")
-	}
-	if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir); err != nil {
-		return err
+	if !pt.opts.SkipRefresh {
+		// Perform a refresh and ensure it doesn't yield changes.
+		refresh := []string{"refresh", "--non-interactive", "--skip-preview"}
+		if pt.opts.GetDebugUpdates() {
+			refresh = append(refresh, "-d")
+		}
+		if !pt.opts.ExpectRefreshChanges {
+			refresh = append(refresh, "--expect-no-changes")
+		}
+		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir); err != nil {
+			return err
+		}
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
