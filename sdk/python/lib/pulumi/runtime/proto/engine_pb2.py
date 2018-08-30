@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='engine.proto',
   package='pulumirpc',
   syntax='proto3',
-  serialized_pb=_b('\n\x0c\x65ngine.proto\x12\tpulumirpc\x1a\x1bgoogle/protobuf/empty.proto\"f\n\nLogRequest\x12(\n\x08severity\x18\x01 \x01(\x0e\x32\x16.pulumirpc.LogSeverity\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x10\n\x08streamId\x18\x04 \x01(\x05*:\n\x0bLogSeverity\x12\t\n\x05\x44\x45\x42UG\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\x0b\n\x07WARNING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x32@\n\x06\x45ngine\x12\x36\n\x03Log\x12\x15.pulumirpc.LogRequest\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0c\x65ngine.proto\x12\tpulumirpc\x1a\x1bgoogle/protobuf/empty.proto\"x\n\nLogRequest\x12(\n\x08severity\x18\x01 \x01(\x0e\x32\x16.pulumirpc.LogSeverity\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x10\n\x08streamId\x18\x04 \x01(\x05\x12\x10\n\x08isStatus\x18\x05 \x01(\x08*:\n\x0bLogSeverity\x12\t\n\x05\x44\x45\x42UG\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\x0b\n\x07WARNING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x32@\n\x06\x45ngine\x12\x36\n\x03Log\x12\x15.pulumirpc.LogRequest\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -50,8 +50,8 @@ _LOGSEVERITY = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=160,
-  serialized_end=218,
+  serialized_start=178,
+  serialized_end=236,
 )
 _sym_db.RegisterEnumDescriptor(_LOGSEVERITY)
 
@@ -98,6 +98,13 @@ _LOGREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='isStatus', full_name='pulumirpc.LogRequest.isStatus', index=4,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -111,7 +118,7 @@ _LOGREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=56,
-  serialized_end=158,
+  serialized_end=176,
 )
 
 _LOGREQUEST.fields_by_name['severity'].enum_type = _LOGSEVERITY
@@ -134,8 +141,8 @@ _ENGINE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=220,
-  serialized_end=284,
+  serialized_start=238,
+  serialized_end=302,
   methods=[
   _descriptor.MethodDescriptor(
     name='Log',

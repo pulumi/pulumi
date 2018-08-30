@@ -50,4 +50,7 @@ message LogRequest {
     //
     // 0/not-given means: do not associate with any stream.
     int32 streamId = 4;
+
+    // Optional value indicating whether this is a status message.
+    bool isStatus = 5;
 }
