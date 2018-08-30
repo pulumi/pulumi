@@ -216,21 +216,20 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return nil
 	}
 
-	// Fire up a worker pool and issue a refresh step per resource in the old snapshot.
-	ctx, cancel := context.WithCancel(callerCtx)
-	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview)
-
-	canceled := false
+	// Create a refresh step for each resource in the old snapshot.
 	steps := make([]Step, len(prev.Resources))
 	for i := range prev.Resources {
+		steps[i] = NewRefreshStep(pe.plan, prev.Resources[i], nil)
+	}
+
+	// Fire up a worker pool and issue each refresh in turn.
+	ctx, cancel := context.WithCancel(callerCtx)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview)
+	for i := range steps {
 		if ctx.Err() != nil {
-			// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
-			// cancellation from internally-initiated cancellation.
-			canceled = callerCtx.Err() != nil
 			break
 		}
 
-		steps[i] = NewRefreshStep(pe.plan, prev.Resources[i], nil)
 		stepExec.Execute([]Step{steps[i]})
 	}
 
@@ -295,6 +294,10 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 	pe.plan.prev.Resources = resources
 	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
+
+	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+	// cancellation from internally-initiated cancellation.
+	canceled := callerCtx.Err() != nil
 
 	if stepExec.Errored() {
 		return execError("failed", preview)

@@ -62,6 +62,7 @@ type SnapshotManager struct {
 	doVerify         bool                     // If true, verify the snapshot before persisting it
 	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
+	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 }
 
@@ -73,7 +74,7 @@ type mutationRequest struct {
 }
 
 func (sm *SnapshotManager) Close() error {
-	close(sm.mutationRequests)
+	close(sm.cancel)
 	return <-sm.done
 }
 
@@ -96,8 +97,12 @@ func (sm *SnapshotManager) Close() error {
 // you have a very good justification.
 func (sm *SnapshotManager) mutate(mutator func() bool) error {
 	result := make(chan error)
-	sm.mutationRequests <- mutationRequest{mutator: mutator, result: result}
-	return <-result
+	select {
+	case sm.mutationRequests <- mutationRequest{mutator: mutator, result: result}:
+		return <-result
+	case <-sm.cancel:
+		return errors.New("snapshot manager closed")
+	}
 }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
@@ -504,7 +509,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 // given to the engine! The engine will mutate this object and correctness of the
 // SnapshotManager depends on being able to observe this mutation. (This is not ideal...)
 func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) *SnapshotManager {
-	mutationRequests, done := make(chan mutationRequest), make(chan error)
+	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
 	manager := &SnapshotManager{
 		persister:        persister,
@@ -513,6 +518,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		completeOps:      make(map[*resource.State]bool),
 		doVerify:         true,
 		mutationRequests: mutationRequests,
+		cancel:           cancel,
 		done:             done,
 	}
 
@@ -521,15 +527,21 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		hasElidedWrites := false
 
 		// Service each mutation request in turn.
-		for request := range mutationRequests {
-			var err error
-			if request.mutator() {
-				err = manager.saveSnapshot()
-				hasElidedWrites = false
-			} else {
-				hasElidedWrites = true
+	serviceLoop:
+		for {
+			select {
+			case request := <-mutationRequests:
+				var err error
+				if request.mutator() {
+					err = manager.saveSnapshot()
+					hasElidedWrites = false
+				} else {
+					hasElidedWrites = true
+				}
+				request.result <- err
+			case <-cancel:
+				break serviceLoop
 			}
-			request.result <- err
 		}
 
 		// If we still have elided writes once the channel has closed, flush the snapshot.
