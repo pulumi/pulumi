@@ -27,7 +27,6 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
@@ -114,11 +113,11 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 // Template represents a project template.
 type Template struct {
-	Dir         string                                    // The directory containing Pulumi.yaml.
-	Name        string                                    // The name of the template.
-	Description string                                    // Description of the template.
-	Quickstart  string                                    // Optional text to be displayed after template creation.
-	Config      map[config.Key]ProjectTemplateConfigValue // Optional template config.
+	Dir         string                                // The directory containing Pulumi.yaml.
+	Name        string                                // The name of the template.
+	Description string                                // Description of the template.
+	Quickstart  string                                // Optional text to be displayed after template creation.
+	Config      map[string]ProjectTemplateConfigValue // Optional template config.
 
 	ProjectName        string // Name of the project.
 	ProjectDescription string // Optional description of the project.

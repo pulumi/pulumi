@@ -509,7 +509,7 @@ func parseConfig(configArray []string) (config.Map, error) {
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
 
-		key, err := config.ParseKey(kvp[0])
+		key, err := parseConfigKey(kvp[0])
 		if err != nil {
 			return nil, err
 		}
@@ -530,22 +530,35 @@ func parseConfig(configArray []string) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	stack backend.Stack,
-	templateConfig map[config.Key]workspace.ProjectTemplateConfigValue,
+	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
 	stackConfig config.Map,
 	yes bool,
 	opts backend.DisplayOptions) (config.Map, error) {
 
-	c := make(config.Map)
+	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
+	// the project name will be prepended.
+	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
+	for k, v := range templateConfig {
+		parsedKey, parseErr := parseConfigKey(k)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		parsedTemplateConfig[parsedKey] = v
+	}
 
+	// Sort keys. Note that we use the fully qualified module member here instead of a `prettyKey` so that
+	// all config values for the current program are prompted one after another.
 	var keys config.KeyArray
-	for k := range templateConfig {
+	for k := range parsedTemplateConfig {
 		keys = append(keys, k)
 	}
 	sort.Sort(keys)
 
 	var err error
 	var crypter config.Crypter
+
+	c := make(config.Map)
 
 	for _, k := range keys {
 		// If it was passed as a command line flag, use it without prompting.
@@ -554,7 +567,7 @@ func promptForConfig(
 			continue
 		}
 
-		templateConfigValue := templateConfig[k]
+		templateConfigValue := parsedTemplateConfig[k]
 
 		// Prepare a default value.
 		var defaultValue string
@@ -587,7 +600,7 @@ func promptForConfig(
 		}
 
 		// Prepare the prompt.
-		prompt := k.String()
+		prompt := prettyKey(k)
 		if templateConfigValue.Description != "" {
 			prompt = prompt + ": " + templateConfigValue.Description
 		}
