@@ -90,7 +90,7 @@ func getStackPath(stack StackIdentifier, components ...string) string {
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the update root.
 func getUpdatePath(update UpdateIdentifier, components ...string) string {
-	components = append([]string{string(update.UpdateKind), update.UpdateID}, components...)
+	components = append([]string{string(apitype.UpdateUpdate), update.UpdateID}, components...)
 	return getStackPath(update.StackIdentifier, components...)
 }
 
@@ -322,7 +322,7 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 
 	return UpdateIdentifier{
 		StackIdentifier: stack,
-		UpdateKind:      UpdateKindUpdate,
+		UpdateKind:      apitype.UpdateUpdate,
 		UpdateID:        resp.UpdateID,
 	}, nil
 }
@@ -331,7 +331,7 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
-	ctx context.Context, kind UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
 	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool,
 	getContents func() (io.ReadCloser, int64, error)) (UpdateIdentifier, error) {
 
@@ -373,13 +373,13 @@ func (pc *Client) CreateUpdate(
 	// Create the initial update object.
 	var endpoint string
 	switch kind {
-	case UpdateKindUpdate:
+	case apitype.UpdateUpdate:
 		endpoint = "update"
-	case UpdateKindPreview:
+	case apitype.PreviewUpdate:
 		endpoint = "preview"
-	case UpdateKindRefresh:
+	case apitype.RefreshUpdate:
 		endpoint = "refresh"
-	case UpdateKindDestroy:
+	case apitype.DestroyUpdate:
 		endpoint = "destroy"
 	default:
 		contract.Failf("Unknown kind: %s", kind)
@@ -392,7 +392,7 @@ func (pc *Client) CreateUpdate(
 	}
 
 	// Now upload the program if necessary.
-	if kind != UpdateKindDestroy && updateResponse.UploadURL != "" {
+	if kind != apitype.DestroyUpdate && updateResponse.UploadURL != "" {
 		uploadURL, err := url.Parse(updateResponse.UploadURL)
 		if err != nil {
 			return UpdateIdentifier{}, errors.Wrap(err, "parsing upload URL")

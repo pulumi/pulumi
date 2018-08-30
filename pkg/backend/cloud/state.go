@@ -137,7 +137,7 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 }
 
 func (u *cloudUpdate) recordEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
+	action apitype.UpdateKind, event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
 	opts backend.DisplayOptions) error {
 
 	// If we don't have a token source, we can't perform any mutations.
@@ -158,7 +158,7 @@ func (u *cloudUpdate) recordEvent(
 	// Ensure we render events with raw colorization tags.  Also, render these as 'diff' events so
 	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
-	msg := local.RenderDiffEvent(event, seen, opts)
+	msg := local.RenderDiffEvent(action, event, seen, opts)
 	if msg == "" {
 		return nil
 	}
@@ -173,13 +173,13 @@ func (u *cloudUpdate) recordEvent(
 	return u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token)
 }
 
-func (u *cloudUpdate) RecordAndDisplayEvents(action string,
+func (u *cloudUpdate) RecordAndDisplayEvents(op string, action apitype.UpdateKind,
 	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
 
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go local.DisplayEvents(action, displayEvents, done, opts)
+	go local.DisplayEvents(op, action, displayEvents, done, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {
@@ -187,7 +187,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 		displayEvents <- e
 
 		// Then render and record the event for posterity.
-		if err := u.recordEvent(e, seen, opts); err != nil {
+		if err := u.recordEvent(action, e, seen, opts); err != nil {
 			diagEvent := engine.Event{
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
