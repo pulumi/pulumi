@@ -122,7 +122,7 @@ func ExitError(msg string, args ...interface{}) {
 
 // exitErrorCode issues an error and exists with the given error exit code.
 func exitErrorCode(code int, msg string, args ...interface{}) {
-	Diag().Errorf(diag.Message("", msg), args...)
+	Diag().Errorf(diag.Message("", msg), false, args...)
 	os.Exit(code)
 }
 

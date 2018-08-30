@@ -50,7 +50,7 @@ func execError(message string, preview bool) error {
 
 // reportError reports a single error to the executor's diag stream with the indicated URN for context.
 func (pe *planExecutor) reportError(urn resource.URN, err error) {
-	pe.plan.Diag().Errorf(diag.RawMessage(urn, err.Error()))
+	pe.plan.Diag().Errorf(diag.RawMessage(urn, err.Error()), false)
 }
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
