@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // planExecutor is responsible for taking a plan and driving it to completion.
@@ -153,11 +154,14 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					return false, nil
 				}
 
-				if eventErr := pe.handleSingleEvent(event.Event); eventErr != nil {
-					log.Infof("planExecutor.Execute(...): error handling event: %v", eventErr)
-					pe.reportError(pe.plan.generateEventURN(event.Event), eventErr)
+				if res := pe.handleSingleEvent(event.Event); res != nil {
+					resErr := res.Error()
+					if resErr != nil {
+						log.Infof("planExecutor.Execute(...): error handling event: %v", resErr)
+						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
+					}
 					cancel()
-					return false, eventErr
+					return false, result.TODO()
 				}
 			case <-ctx.Done():
 				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
@@ -184,27 +188,28 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) error {
+func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
-	var err error
+	var res result.Result
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, err = pe.stepGen.GenerateSteps(e)
+		steps, res = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
-		steps, err = pe.stepGen.GenerateReadSteps(e)
+		steps, res = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
 		return nil
 	}
 
-	if err != nil {
-		return err
+	if res != nil {
+		return res
 	}
+
 	pe.stepExec.Execute(steps)
 	return nil
 }
