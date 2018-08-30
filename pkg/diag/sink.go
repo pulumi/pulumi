@@ -28,17 +28,17 @@ import (
 // Sink facilitates pluggable diagnostics messages.
 type Sink interface {
 	// Logf issues a log message.
-	Logf(sev Severity, diag *Diag, args ...interface{})
+	Logf(sev Severity, diag *Diag, isStatus bool, args ...interface{})
 	// Debugf issues a debugging message.
-	Debugf(diag *Diag, args ...interface{})
+	Debugf(diag *Diag, isStatus bool, args ...interface{})
 	// Infof issues an informational message (to stdout).
-	Infof(diag *Diag, args ...interface{})
+	Infof(diag *Diag, isStatus bool, args ...interface{})
 	// Infoerrf issues an informational message (to stderr).
-	Infoerrf(diag *Diag, args ...interface{})
+	Infoerrf(diag *Diag, isStatus bool, args ...interface{})
 	// Errorf issues a new error diagnostic.
-	Errorf(diag *Diag, args ...interface{})
+	Errorf(diag *Diag, isStatus bool, args ...interface{})
 	// Warningf issues a new warning diagnostic.
-	Warningf(diag *Diag, args ...interface{})
+	Warningf(diag *Diag, isStatus bool, args ...interface{})
 
 	// Stringify stringifies a diagnostic into a prefix and message that is appropriate for printing.
 	Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string)
@@ -100,18 +100,18 @@ type defaultSink struct {
 	writers map[Severity]io.Writer // the writers to use for each kind of diagnostic severity.
 }
 
-func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
+func (d *defaultSink) Logf(sev Severity, diag *Diag, isStatus bool, args ...interface{}) {
 	switch sev {
 	case Debug:
-		d.Debugf(diag, args...)
+		d.Debugf(diag, isStatus, args...)
 	case Info:
-		d.Infof(diag, args...)
+		d.Infof(diag, isStatus, args...)
 	case Infoerr:
-		d.Infoerrf(diag, args...)
+		d.Infoerrf(diag, isStatus, args...)
 	case Warning:
-		d.Warningf(diag, args...)
+		d.Warningf(diag, isStatus, args...)
 	case Error:
-		d.Errorf(diag, args...)
+		d.Errorf(diag, isStatus, args...)
 	default:
 		contract.Failf("Unrecognized severity: %v", sev)
 	}
@@ -122,7 +122,7 @@ func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...interface{
 	return prefix + msg
 }
 
-func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Debugf(diag *Diag, isStatus bool, args ...interface{}) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
 	logging.V(3).Infof(diag.Message, args...)
 	msg := d.createMessage(Debug, diag, args...)
@@ -132,7 +132,7 @@ func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 	fmt.Fprint(d.writers[Debug], msg)
 }
 
-func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Infof(diag *Diag, isStatus bool, args ...interface{}) {
 	msg := d.createMessage(Info, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
@@ -140,7 +140,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 	fmt.Fprint(d.writers[Info], msg)
 }
 
-func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Infoerrf(diag *Diag, isStatus bool, args ...interface{}) {
 	msg := d.createMessage(Info /* not Infoerr, just "info: "*/, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
@@ -148,7 +148,7 @@ func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 	fmt.Fprint(d.writers[Infoerr], msg)
 }
 
-func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Errorf(diag *Diag, isStatus bool, args ...interface{}) {
 	msg := d.createMessage(Error, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
@@ -156,7 +156,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	fmt.Fprint(d.writers[Error], msg)
 }
 
-func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Warningf(diag *Diag, isStatus bool, args ...interface{}) {
 	msg := d.createMessage(Warning, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
