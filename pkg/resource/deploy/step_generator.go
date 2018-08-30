@@ -15,14 +15,13 @@
 package deploy
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // stepGenerator is responsible for turning resource events into steps that
@@ -44,7 +43,7 @@ type stepGenerator struct {
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
-func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, *result.Result) {
 	urn := sg.plan.generateURN(event.Parent(), event.Type(), event.Name())
 	newState := resource.NewState(event.Type(),
 		urn,
@@ -100,7 +99,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 // If the given resource is a custom resource, the step generator will invoke Diff
 // and Check on the provider associated with that resource. If those fail, an error
 // is returned.
-func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -140,12 +139,12 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			contract.Assert(goal.Provider != "")
 			ref, refErr := providers.ParseReference(goal.Provider)
 			if refErr != nil {
-				return nil, errors.Errorf(
+				return nil, result.Errorf(
 					"bad provider reference '%v' for resource '%v': %v", goal.Provider, urn, refErr)
 			}
 			p, ok := sg.plan.GetProvider(ref)
 			if !ok {
-				return nil, errors.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
+				return nil, result.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
 			}
 			prov = p
 		}
@@ -174,7 +173,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		} else if sg.issueCheckErrors(new, urn, failures) {
 			invalid = true
 		}
@@ -186,14 +185,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		var analyzer plugin.Analyzer
 		analyzer, err = sg.plan.ctx.Host.Analyzer(a)
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		} else if analyzer == nil {
-			return nil, errors.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
+			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
 		var failures []plugin.AnalyzeFailure
 		failures, err = analyzer.Analyze(new.Type, inputs)
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		}
 		for _, failure := range failures {
 			invalid = true
@@ -204,7 +203,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 	// If the resource isn't valid, don't proceed any further.
 	if invalid {
-		return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+		return nil, result.Bail()
 	}
 
 	// There are four cases we need to consider when figuring out what to do with this resource.
@@ -246,7 +245,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
 		sg.creates[urn] = true
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		}
 
 		return []Step{
@@ -274,14 +273,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			// Determine whether the change resulted in a diff.
 			d, diffErr := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
 			if diffErr != nil {
-				return nil, diffErr
+				return nil, result.FromError(diffErr)
 			}
 			diff = d
 		}
 
 		// Ensure that we received a sensible response.
 		if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
-			return nil, errors.Errorf(
+			return nil, result.Errorf(
 				"unrecognized diff state for %s: %d", urn, diff.Changes)
 		}
 
@@ -296,9 +295,9 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 					var failures []plugin.CheckFailure
 					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 					if err != nil {
-						return nil, err
+						return nil, result.FromError(err)
 					} else if sg.issueCheckErrors(new, urn, failures) {
-						return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+						return nil, result.Bail()
 					}
 					new.Inputs = inputs
 				}
