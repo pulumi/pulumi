@@ -293,7 +293,7 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 			reportedURN = step.URN()
 		}
 
-		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), false, err)
+		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
 	} else if reportStep {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {

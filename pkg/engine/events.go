@@ -61,7 +61,6 @@ type DiagEventPayload struct {
 	Color    colors.Colorization
 	Severity diag.Severity
 	StreamID int32
-	IsStatus bool
 }
 
 type StdoutEventPayload struct {
@@ -418,8 +417,7 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 	}
 }
 
-func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
-	isStatus bool) {
+func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.Chan <- Event{
@@ -431,27 +429,26 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 			Color:    colors.Raw,
 			Severity: sev,
 			StreamID: d.StreamID,
-			IsStatus: isStatus,
 		},
 	}
 }
 
-func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string, isStatus bool) {
-	diagEvent(e, d, prefix, msg, diag.Debug, isStatus)
+func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Debug)
 }
 
-func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string, isStatus bool) {
-	diagEvent(e, d, prefix, msg, diag.Info, isStatus)
+func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Info)
 }
 
-func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string, isStatus bool) {
-	diagEvent(e, d, prefix, msg, diag.Infoerr, isStatus)
+func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Infoerr)
 }
 
-func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, isStatus bool) {
-	diagEvent(e, d, prefix, msg, diag.Error, isStatus)
+func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Error)
 }
 
-func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, isStatus bool) {
-	diagEvent(e, d, prefix, msg, diag.Warning, isStatus)
+func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Warning)
 }

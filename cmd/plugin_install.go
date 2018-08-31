@@ -107,7 +107,7 @@ func newPluginInstallCmd() *cobra.Command {
 			for _, install := range installs {
 				label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
 				cmdutil.Diag().Infoerrf(
-					diag.Message("", "%s installing"), false, label)
+					diag.Message("", "%s installing"), label)
 
 				// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
 				// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
@@ -116,7 +116,7 @@ func newPluginInstallCmd() *cobra.Command {
 						if workspace.HasPlugin(install) {
 							if verbose {
 								cmdutil.Diag().Infoerrf(
-									diag.Message("", "%s skipping install (existing == match)"), false, label)
+									diag.Message("", "%s skipping install (existing == match)"), label)
 							}
 							continue
 						}
@@ -124,7 +124,7 @@ func newPluginInstallCmd() *cobra.Command {
 						if has, _ := workspace.HasPluginGTE(install); has {
 							if verbose {
 								cmdutil.Diag().Infoerrf(
-									diag.Message("", "%s skipping install (existing >= match)"), false, label)
+									diag.Message("", "%s skipping install (existing >= match)"), label)
 							}
 							continue
 						}
@@ -139,7 +139,7 @@ func newPluginInstallCmd() *cobra.Command {
 					source = releases.CloudURL()
 					if verbose {
 						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s downloading from %s"), false, label, source)
+							diag.Message("", "%s downloading from %s"), label, source)
 					}
 					if tarball, err = releases.DownloadPlugin(commandContext(), install, true, displayOpts); err != nil {
 						return errors.Wrapf(err, "%s downloading from %s", label, source)
@@ -148,7 +148,7 @@ func newPluginInstallCmd() *cobra.Command {
 					source = file
 					if verbose {
 						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s opening tarball from %s"), false, label, file)
+							diag.Message("", "%s opening tarball from %s"), label, file)
 					}
 					if tarball, err = os.Open(file); err != nil {
 						return errors.Wrapf(err, "opening file %s", source)
@@ -156,7 +156,7 @@ func newPluginInstallCmd() *cobra.Command {
 				}
 				if verbose {
 					cmdutil.Diag().Infoerrf(
-						diag.Message("", "%s installing tarball ..."), false, label)
+						diag.Message("", "%s installing tarball ..."), label)
 				}
 				if err = install.Install(tarball); err != nil {
 					return errors.Wrapf(err, "installing %s from %s", label, source)

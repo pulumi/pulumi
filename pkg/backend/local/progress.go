@@ -670,10 +670,6 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				wroteResourceHeader := false
 				for _, v := range payloads {
-					if v.IsStatus {
-						continue
-					}
-
 					msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
 
 					lines := splitIntoDisplayableLines(msg)
@@ -749,7 +745,6 @@ func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
 		Color:    firstPayload.Color,
 		Severity: firstPayload.Severity,
 		StreamID: firstPayload.StreamID,
-		IsStatus: firstPayload.IsStatus,
 	}
 }
 

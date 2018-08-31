@@ -1296,9 +1296,9 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 
 	// Issue a warning if appropriate.
 	if warn {
-		b.d.Warningf(diag.Message("" /*urn*/, "error querying update status: %v"), false, err)
+		b.d.Warningf(diag.Message("" /*urn*/, "error querying update status: %v"), err)
 		b.d.Warningf(diag.Message("" /*urn*/, "retrying in %vs... ^C to stop (this will not cancel the update)"),
-			false, nextRetryTime.Seconds())
+			nextRetryTime.Seconds())
 	}
 
 	return false, nil, nil

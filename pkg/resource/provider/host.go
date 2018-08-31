@@ -52,7 +52,7 @@ func (host *HostClient) Close() error {
 
 // Log logs a global message, including errors and warnings.
 func (host *HostClient) Log(
-	context context.Context, sev diag.Severity, urn resource.URN, msg string, isStatus bool,
+	context context.Context, sev diag.Severity, urn resource.URN, msg string,
 ) error {
 	var rpcsev lumirpc.LogSeverity
 	switch sev {
@@ -71,7 +71,6 @@ func (host *HostClient) Log(
 		Severity: rpcsev,
 		Message:  msg,
 		Urn:      string(urn),
-		IsStatus: isStatus,
 	})
 	return err
 }

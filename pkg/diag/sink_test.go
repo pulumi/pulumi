@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
 
-func discardSink() *defaultSink {
+func discardSink() Sink {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
 	return newDefaultSink(FormatOptions{Color: colors.Never}, map[Severity]io.Writer{
 		Debug:   ioutil.Discard,
@@ -43,11 +43,11 @@ func TestCounts(t *testing.T) {
 	const numEach = 10
 
 	for i := 0; i < numEach; i++ {
-		sink.Warningf(&Diag{Message: "A test of the emergency warning system: %v."}, false, i)
+		sink.Warningf(&Diag{Message: "A test of the emergency warning system: %v."}, i)
 	}
 
 	for i := 0; i < numEach; i++ {
-		sink.Errorf(&Diag{Message: "A test of the emergency error system: %v."}, false, i)
+		sink.Errorf(&Diag{Message: "A test of the emergency error system: %v."}, i)
 	}
 }
 
