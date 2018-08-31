@@ -33,7 +33,7 @@ import (
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource, pluginEvents plugin.Events,
-	diag diag.Sink, tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
+	diag, statusDiag diag.Sink, tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 	contract.Require(projinfo != nil, "projinfo")
 
 	// If the package contains an override for the main entrypoint, use it.
@@ -43,8 +43,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(diag, host, config, pluginEvents, pwd, projinfo.Proj.RuntimeInfo.Options(),
-		tracingSpan)
+	ctx, err := plugin.NewContext(diag, statusDiag, host, config, pluginEvents, pwd,
+		projinfo.Proj.RuntimeInfo.Options(), tracingSpan)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -90,9 +90,10 @@ type planOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc planSourceFunc
 
-	DOT    bool         // true if we should print the DOT file for this plan.
-	Events eventEmitter // the channel to write events from the engine to.
-	Diag   diag.Sink    // the sink to use for diag'ing.
+	DOT        bool         // true if we should print the DOT file for this plan.
+	Events     eventEmitter // the channel to write events from the engine to.
+	Diag       diag.Sink    // the sink to use for diag'ing.
+	StatusDiag diag.Sink    // the sink to use for diag'ing status messages.
 
 	// true if we're planning a refresh.
 	isRefresh bool
@@ -122,7 +123,8 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.host, target, pluginEvents, opts.Diag, info.TracingSpan)
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.host, target, pluginEvents,
+		opts.Diag, opts.StatusDiag, info.TracingSpan)
 	if err != nil {
 		return nil, err
 	}
