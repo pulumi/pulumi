@@ -26,19 +26,21 @@ import (
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and
 // reclaimed as appropriate.
 type Context struct {
-	Diag diag.Sink // the diagnostics sink to use for messages.
-	Host Host      // the host that can be used to fetch providers.
-	Pwd  string    // the working directory to spawn all plugins in.
+	Diag       diag.Sink // the diagnostics sink to use for messages.
+	StatusDiag diag.Sink // the diagnostics sink to use for status messages.
+	Host       Host      // the host that can be used to fetch providers.
+	Pwd        string    // the working directory to spawn all plugins in.
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 }
 
 // NewContext allocates a new context with a given sink and host.  Note that the host is "owned" by this context from
 // here forwards, such that when the context's resources are reclaimed, so too are the host's.
-func NewContext(d diag.Sink, host Host, cfg ConfigSource, events Events,
+func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource, events Events,
 	pwd string, runtimeOptions map[string]interface{}, parentSpan opentracing.Span) (*Context, error) {
 	ctx := &Context{
 		Diag:        d,
+		StatusDiag:  statusD,
 		Host:        host,
 		Pwd:         pwd,
 		tracingSpan: parentSpan,

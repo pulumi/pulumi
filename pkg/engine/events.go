@@ -55,12 +55,13 @@ func cancelEvent() Event {
 
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {
-	URN      resource.URN
-	Prefix   string
-	Message  string
-	Color    colors.Colorization
-	Severity diag.Severity
-	StreamID int32
+	URN       resource.URN
+	Prefix    string
+	Message   string
+	Color     colors.Colorization
+	Severity  diag.Severity
+	StreamID  int32
+	Ephemeral bool
 }
 
 type StdoutEventPayload struct {
@@ -417,38 +418,40 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 	}
 }
 
-func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity) {
+func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
+	ephemeral bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.Chan <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
-			URN:      d.URN,
-			Prefix:   logging.FilterString(prefix),
-			Message:  logging.FilterString(msg),
-			Color:    colors.Raw,
-			Severity: sev,
-			StreamID: d.StreamID,
+			URN:       d.URN,
+			Prefix:    logging.FilterString(prefix),
+			Message:   logging.FilterString(msg),
+			Color:     colors.Raw,
+			Severity:  sev,
+			StreamID:  d.StreamID,
+			Ephemeral: ephemeral,
 		},
 	}
 }
 
-func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Debug)
+func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Debug, ephemeral)
 }
 
-func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Info)
+func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Info, ephemeral)
 }
 
-func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Infoerr)
+func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Infoerr, ephemeral)
 }
 
-func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Error)
+func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Error, ephemeral)
 }
 
-func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Warning)
+func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Warning, ephemeral)
 }

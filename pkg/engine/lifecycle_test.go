@@ -449,7 +449,7 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program)
+	host := deploytest.NewPluginHost(nil, nil, program)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -471,7 +471,7 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -505,7 +505,7 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -527,7 +527,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -628,7 +628,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -718,7 +718,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -805,7 +805,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -884,7 +884,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -956,7 +956,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		}),
 	}
 
-	host := deploytest.NewPluginHost(nil, nil, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -1049,7 +1049,7 @@ func TestParallelRefresh(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{Parallel: 4, host: host},
@@ -1092,7 +1092,7 @@ func TestExternalRefresh(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
 		Steps:   []TestStep{{Op: Update}},
@@ -1152,7 +1152,7 @@ func TestRefreshInitFailure(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -1231,7 +1231,7 @@ func TestCheckFailureRecord(t *testing.T) {
 		return err
 	})
 
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
 		Steps: []TestStep{{
@@ -1279,7 +1279,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		return err
 	})
 
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
 		Steps: []TestStep{{
@@ -1334,7 +1334,7 @@ func TestRefreshWithDelete(t *testing.T) {
 				return err
 			})
 
-			host := deploytest.NewPluginHost(nil, program, loaders...)
+			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 			p := &TestPlan{Options: UpdateOptions{host: host, Parallel: parallelFactor}}
 
 			p.Steps = []TestStep{{Op: Update}}
@@ -1405,7 +1405,7 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, loaders...)
+	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{{Op: Refresh}}
 	snap := p.Run(t, old)
@@ -1507,7 +1507,7 @@ func TestRefreshBasics(t *testing.T) {
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, loaders...)
+	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{{
 		Op: Refresh,
@@ -1647,7 +1647,7 @@ func TestCanceledRefresh(t *testing.T) {
 	op := TestOp(Refresh)
 	options := UpdateOptions{
 		Parallel: 1,
-		host:     deploytest.NewPluginHost(nil, nil, loaders...),
+		host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
 	}
 	project, target := p.GetProject(), p.GetTarget(old)
 	validate := func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
@@ -1738,7 +1738,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 		return errors.New(errorText)
 	})
 
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
 		Steps: []TestStep{{
@@ -1787,7 +1787,7 @@ func TestBrokenDecrypter(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	key := config.MustMakeKey("foo", "bar")
 	msg := "decryption failed"
 	configMap := make(config.Map)

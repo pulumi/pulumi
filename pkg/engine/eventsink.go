@@ -25,15 +25,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
-func newEventSink(events eventEmitter) diag.Sink {
+func newEventSink(events eventEmitter, statusSink bool) diag.Sink {
 	return &eventSink{
-		events: events,
+		events:     events,
+		statusSink: statusSink,
 	}
 }
 
 // eventSink is a sink which writes all events to a channel
 type eventSink struct {
-	events eventEmitter // the channel to emit events into.
+	events     eventEmitter // the channel to emit events into.
+	statusSink bool         // whether this is an event sink for status messages.
 }
 
 func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
@@ -60,7 +62,7 @@ func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
 	if logging.V(9) {
 		logging.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	s.events.diagDebugEvent(d, prefix, msg)
+	s.events.diagDebugEvent(d, prefix, msg, s.statusSink)
 }
 
 func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
@@ -68,7 +70,7 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
 	}
-	s.events.diagInfoEvent(d, prefix, msg)
+	s.events.diagInfoEvent(d, prefix, msg, s.statusSink)
 }
 
 func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
@@ -76,7 +78,7 @@ func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
-	s.events.diagInfoerrEvent(d, prefix, msg)
+	s.events.diagInfoerrEvent(d, prefix, msg, s.statusSink)
 }
 
 func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
@@ -84,7 +86,7 @@ func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
 	}
-	s.events.diagErrorEvent(d, prefix, msg)
+	s.events.diagErrorEvent(d, prefix, msg, s.statusSink)
 }
 
 func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
@@ -92,7 +94,7 @@ func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	s.events.diagWarningEvent(d, prefix, msg)
+	s.events.diagWarningEvent(d, prefix, msg, s.statusSink)
 }
 
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) (string, string) {

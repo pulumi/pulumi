@@ -85,7 +85,8 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
-		Diag:          newEventSink(emitter),
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
 	}, dryRun)
 }
 

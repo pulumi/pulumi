@@ -45,15 +45,17 @@ type pluginHost struct {
 	providerLoaders []*ProviderLoader
 	languageRuntime plugin.LanguageRuntime
 	sink            diag.Sink
+	statusSink      diag.Sink
 }
 
-func NewPluginHost(sink diag.Sink, languageRuntime plugin.LanguageRuntime,
+func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
 	providerLoaders ...*ProviderLoader) plugin.Host {
 
 	return &pluginHost{
 		providerLoaders: providerLoaders,
 		languageRuntime: languageRuntime,
 		sink:            sink,
+		statusSink:      statusSink,
 	}
 }
 
@@ -92,6 +94,9 @@ func (host *pluginHost) ServerAddr() string {
 }
 func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+}
+func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	host.statusSink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 }
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")

@@ -45,7 +45,8 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
-		Diag:          newEventSink(emitter),
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
 		isRefresh:     true,
 	}, dryRun)
 }
