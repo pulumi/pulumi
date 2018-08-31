@@ -64,6 +64,18 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
+		// Save any config values passed via flags.
+		if len(configArray) > 0 {
+			commandLineConfig, err := parseConfig(configArray)
+			if err != nil {
+				return err
+			}
+
+			if err = saveConfig(s.Name().StackName(), commandLineConfig); err != nil {
+				return errors.Wrap(err, "saving config")
+			}
+		}
+
 		proj, root, err := readProject()
 		if err != nil {
 			return err
