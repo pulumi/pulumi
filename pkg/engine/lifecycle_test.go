@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -343,11 +344,21 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 }
 
 func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
-	project, target := p.GetProject(), p.GetTarget(snapshot)
-
+	project := p.GetProject()
+	snap := snapshot
 	for _, step := range p.Steps {
 		if !step.SkipPreview {
-			_, err := step.Op.Run(project, target, p.Options, true, step.Validate)
+			var previewSnap *deploy.Snapshot
+			if snapshot != nil {
+				copiedSnap := copystructure.Must(copystructure.Copy(*snapshot)).(deploy.Snapshot)
+				previewSnap = &copiedSnap
+			}
+			previewTarget := p.GetTarget(previewSnap)
+			if !assert.True(t, reflect.DeepEqual(snapshot, previewSnap)) {
+				t.FailNow()
+			}
+
+			_, err := step.Op.Run(project, previewTarget, p.Options, true, step.Validate)
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -357,7 +368,8 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		var err error
-		target.Snapshot, err = step.Op.Run(project, target, p.Options, false, step.Validate)
+		target := p.GetTarget(snap)
+		snap, err = step.Op.Run(project, target, p.Options, false, step.Validate)
 		if step.ExpectFailure {
 			assert.Error(t, err)
 			continue
@@ -366,7 +378,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		assert.NoError(t, err)
 	}
 
-	return target.Snapshot
+	return snap
 }
 
 func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
@@ -674,6 +686,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 			return err
 		},
 	}}
+
 	snap = p.Run(t, snap)
 
 	// Resume the lifecycle with another no-op update.

@@ -88,12 +88,19 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		return err
 	}
 
+	// Set up a step generator for this plan.
+	pe.stepGen = newStepGenerator(pe.plan, opts)
+
+	// Retire any pending deletes that are currently present in this plan.
+	if err = pe.retirePendingDeletes(callerCtx, opts, preview); err != nil {
+		return err
+	}
+
 	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
 	// execution fails.
 	ctx, cancel := context.WithCancel(callerCtx)
 
 	// Set up a step generator and executor for this plan.
-	pe.stepGen = newStepGenerator(pe.plan, opts)
 	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview, false)
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
@@ -210,6 +217,46 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
 	}
 
 	pe.stepExec.Execute(steps)
+	return nil
+}
+
+// retirePendingDeletes deletes all resources that are pending deletion. Run before the start of a plan, this pass
+// ensures that the engine never sees any resources that are pending deletion from a previous plan.
+//
+// retirePendingDeletes re-uses the plan executor's step generator but uses its own step executor.
+func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Options, preview bool) error {
+	prev := pe.plan.prev
+	if prev == nil || len(prev.Resources) == 0 {
+		logging.V(4).Infoln("planExecutor.retirePendingDeletes(...): no resources")
+		return nil
+	}
+
+	contract.Require(pe.stepGen != nil, "pe.stepGen != nil")
+	steps := pe.stepGen.GeneratePendingDeletes()
+	if len(steps) == 0 {
+		logging.V(4).Infoln("planExecutor.retirePendingDeletes(...): no pending deletions")
+		return nil
+	}
+	logging.V(4).Infof("planExecutor.retirePendingDeletes(...): executing %d steps", len(steps))
+	ctx, cancel := context.WithCancel(callerCtx)
+
+	options := opts
+	options.Parallel = 1 // deletes can't be executed in parallel yet (pulumi/pulumi#1625)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, options, preview)
+
+	// Submit the deletes for execution and wait for them all to retire.
+	stepExec.Execute(steps)
+	stepExec.SignalCompletion()
+	stepExec.WaitForCompletion()
+
+	// Like Refresh, we use the presence of an error in the caller's context to detect whether or not we have been
+	// cancelled.
+	canceled := callerCtx.Err() != nil
+	if stepExec.Errored() {
+		return execError("failed", preview)
+	} else if canceled {
+		return execError("canceled", preview)
+	}
 	return nil
 }
 

@@ -32,13 +32,14 @@ type stepGenerator struct {
 	plan *Plan   // the plan to which this step generator belongs
 	opts Options // options for this step generator
 
-	urns     map[resource.URN]bool // set of URNs discovered for this plan
-	reads    map[resource.URN]bool // set of URNs read for this plan
-	deletes  map[resource.URN]bool // set of URNs deleted in this plan
-	replaces map[resource.URN]bool // set of URNs replaced in this plan
-	updates  map[resource.URN]bool // set of URNs updated in this plan
-	creates  map[resource.URN]bool // set of URNs created in this plan
-	sames    map[resource.URN]bool // set of URNs that were not changed in this plan
+	urns           map[resource.URN]bool    // set of URNs discovered for this plan
+	reads          map[resource.URN]bool    // set of URNs read for this plan
+	deletes        map[resource.URN]bool    // set of URNs deleted in this plan
+	replaces       map[resource.URN]bool    // set of URNs replaced in this plan
+	updates        map[resource.URN]bool    // set of URNs updated in this plan
+	creates        map[resource.URN]bool    // set of URNs created in this plan
+	sames          map[resource.URN]bool    // set of URNs that were not changed in this plan
+	pendingDeletes map[*resource.State]bool // set of resources (not URNs!) that are pending deletion
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -408,7 +409,6 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 			res := prev.Resources[i]
 			if res.Delete {
-				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				// The below assert is commented-out because it's believed to be wrong.
 				//
 				// The original justification for this assert is that the author (swgillespie) believed that
@@ -425,10 +425,18 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				// Regardless, it is better to admit strange behavior in corner cases than it is to crash the CLI
 				// whenever we see multiple deletes for the same URN.
 				// contract.Assert(!sg.deletes[res.URN])
+				if sg.pendingDeletes[res] {
+					logging.V(7).Infof(
+						"Planner ignoring pending-delete urn '%v' that was already deleted", res.URN)
+					continue
+				}
+
 				if sg.deletes[res.URN] {
 					logging.V(7).Infof(
 						"Planner is deleting pending-delete urn '%v' that has already been deleted", res.URN)
 				}
+
+				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, true))
 			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
@@ -436,6 +444,24 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
+				dels = append(dels, NewDeleteStep(sg.plan, res))
+			}
+		}
+	}
+	return dels
+}
+
+// GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
+// called at the start of a plan in order to find all resources that are pending deletion from the prevous plan.
+func (sg *stepGenerator) GeneratePendingDeletes() []Step {
+	var dels []Step
+	if prev := sg.plan.prev; prev != nil {
+		logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): scanning previous snapshot for pending deletes")
+		for i := len(prev.Resources) - 1; i >= 0; i-- {
+			res := prev.Resources[i]
+			if res.Delete {
+				logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): resource %s is pending deletion", res.URN)
+				sg.pendingDeletes[res] = true
 				dels = append(dels, NewDeleteStep(sg.plan, res))
 			}
 		}
@@ -498,14 +524,15 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 // newStepGenerator creates a new step generator that operates on the given plan.
 func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 	return &stepGenerator{
-		plan:     plan,
-		opts:     opts,
-		urns:     make(map[resource.URN]bool),
-		reads:    make(map[resource.URN]bool),
-		creates:  make(map[resource.URN]bool),
-		sames:    make(map[resource.URN]bool),
-		replaces: make(map[resource.URN]bool),
-		updates:  make(map[resource.URN]bool),
-		deletes:  make(map[resource.URN]bool),
+		plan:           plan,
+		opts:           opts,
+		urns:           make(map[resource.URN]bool),
+		reads:          make(map[resource.URN]bool),
+		creates:        make(map[resource.URN]bool),
+		sames:          make(map[resource.URN]bool),
+		replaces:       make(map[resource.URN]bool),
+		updates:        make(map[resource.URN]bool),
+		deletes:        make(map[resource.URN]bool),
+		pendingDeletes: make(map[*resource.State]bool),
 	}
 }
