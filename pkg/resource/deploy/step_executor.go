@@ -110,7 +110,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			// of these are particularly appealing right now.
 			outErr := errors.Wrap(eventerr, "resource complete event returned an error")
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
-			se.plan.Diag().Errorf(diagMsg, false)
+			se.plan.Diag().Errorf(diagMsg)
 			se.cancelDueToError()
 			return
 		}
@@ -164,7 +164,7 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
 				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
 				diagMsg := diag.RawMessage(step.URN(), err.Error())
-				se.plan.Diag().Errorf(diagMsg, false)
+				se.plan.Diag().Errorf(diagMsg)
 			}
 			return
 		}

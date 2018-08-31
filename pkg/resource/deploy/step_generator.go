@@ -109,7 +109,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 	if sg.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), false, urn)
+		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
 	sg.urns[urn] = true
 
@@ -198,7 +198,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		for _, failure := range failures {
 			invalid = true
 			sg.plan.Diag().Errorf(
-				diag.GetAnalyzeResourceFailureError(urn), false, a, urn, failure.Property, failure.Reason)
+				diag.GetAnalyzeResourceFailureError(urn), a, urn, failure.Property, failure.Reason)
 		}
 	}
 
@@ -486,11 +486,11 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			sg.plan.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn), false,
+			sg.plan.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
 			sg.plan.Diag().Errorf(
-				diag.GetResourceInvalidError(urn), false, new.Type, urn.Name(), failure.Reason)
+				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
 	return true

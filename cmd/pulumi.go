@@ -187,7 +187,7 @@ func checkForUpdate() {
 	}
 
 	if oldestAllowedVer.GT(curVer) {
-		cmdutil.Diag().Warningf(diag.RawMessage("", getUpgradeMessage(latestVer, curVer)), false)
+		cmdutil.Diag().Warningf(diag.RawMessage("", getUpgradeMessage(latestVer, curVer)))
 	}
 }
 

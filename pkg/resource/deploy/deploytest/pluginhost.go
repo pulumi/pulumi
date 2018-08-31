@@ -90,9 +90,8 @@ func (host *pluginHost) Close() error {
 func (host *pluginHost) ServerAddr() string {
 	panic("Host RPC address not available")
 }
-func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32,
-	isStatus bool) {
-	host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID), isStatus)
+func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 }
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")

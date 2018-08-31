@@ -121,9 +121,9 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 
 			if strings.TrimSpace(msg) != "" {
 				if stderr {
-					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID), false)
+					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
 				} else {
-					ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, outStreamID), false)
+					ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, outStreamID))
 				}
 			}
 		}

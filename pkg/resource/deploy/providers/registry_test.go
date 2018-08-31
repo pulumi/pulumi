@@ -44,8 +44,7 @@ func (host *testPluginHost) ServerAddr() string {
 	host.t.Fatalf("Host RPC address not available")
 	return ""
 }
-func (host *testPluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32,
-	isStatus bool) {
+func (host *testPluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
 }
 func (host *testPluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {

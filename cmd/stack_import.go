@@ -98,7 +98,7 @@ func newStackImportCmd() *cobra.Command {
 						// Note: we could associate this diagnostic with the resource URN
 						// we have.  However, this sort of message seems to be better as
 						// something associated with the stack as a whole.
-						cmdutil.Diag().Warningf(diag.Message("" /*urn*/, msg), false)
+						cmdutil.Diag().Warningf(diag.Message("" /*urn*/, msg))
 					} else {
 						// Otherwise, gather up an error so that we can quit before doing damage.
 						result = multierror.Append(result, errors.New(msg))
@@ -115,7 +115,7 @@ func newStackImportCmd() *cobra.Command {
 				for _, op := range snapshot.PendingOperations {
 					msg := fmt.Sprintf(
 						"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
-					cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg), false)
+					cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
 				}
 
 				snapshot.PendingOperations = nil

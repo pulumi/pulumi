@@ -54,7 +54,7 @@ remove that operation from the "pending_operations" section of the file. Once th
 use 'pulumi stack import' to import the repaired stack.`)
 	contract.IgnoreError(writer.Flush())
 
-	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()), false)
+	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
 }
 
 func printDecryptError(e engine.DecryptError) {
@@ -68,7 +68,7 @@ it is not possible to share an encrypted configuration value across stacks.
 You can re-encrypt your configuration buy running 'pulumi config set %s [value] --secret' with your
 new stack selected.`, e.Key)
 	contract.IgnoreError(writer.Flush())
-	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()), false)
+	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
 }
 
 // Quick and dirty utility function for printing to writers that we know will never fail.
