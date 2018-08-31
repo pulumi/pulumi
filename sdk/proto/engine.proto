@@ -52,5 +52,5 @@ message LogRequest {
     int32 streamId = 4;
 
     // Optional value indicating whether this is a status message.
-    bool isStatus = 5;
+    bool ephemeral = 5;
 }
