@@ -222,8 +222,8 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 
 	// Launch the web browser and navigate to the login URL.
 	if openErr := open.Run(u.String()); openErr != nil {
-		fmt.Printf("We couldn't launch your browser for some reason.\n\nPlease visit %s "+
-			"to finish the login process.\n", u)
+		fmt.Printf("We couldn't launch your web browser for some reason. Please visit:\n\n%s\n\n"+
+			"to finish the login process.", u)
 	} else {
 		fmt.Println("We've launched your web browser to complete the login process.")
 	}
