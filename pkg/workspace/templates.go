@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
@@ -31,8 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
-
-	"github.com/texttheater/golang-levenshtein/levenshtein"
 )
 
 const (
