@@ -282,7 +282,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
 /**
  * registerResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
  */
-export function registerResourceOutputs(res: Resource, outputs: Input<Inputs>) {
+export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise<Inputs> | Output<Inputs>) {
     // Now run the operation. Note that we explicitly do not serialize output registration with
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can
