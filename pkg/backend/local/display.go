@@ -158,30 +158,34 @@ func renderSummaryEvent(
 			changeCount += c
 		}
 	}
-	var kind string
-	if event.IsPreview {
-		kind = "previewed"
-	} else if action == apitype.RefreshUpdate {
-		kind = "refreshed"
+
+	var actionVerbLabel string
+	if action == apitype.RefreshUpdate {
+		actionVerbLabel = "found during refresh"
+	} else if event.IsPreview {
+		actionVerbLabel = "previewed"
 	} else {
-		kind = "performed"
+		actionVerbLabel = "performed"
 	}
 
 	var changesLabel string
 	if changeCount == 0 {
-		kind = "required"
 		changesLabel = "no"
+
+		if action != apitype.RefreshUpdate {
+			actionVerbLabel = "required"
+		}
 	} else {
 		changesLabel = strconv.Itoa(changeCount)
 	}
 
 	if changeCount > 0 || changes[deploy.OpSame] > 0 {
-		kind += ":"
+		actionVerbLabel += ":"
 	}
 
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vinfo%v: %v %v %v\n",
-		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), kind)))
+		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), actionVerbLabel)))
 
 	var planTo string
 	if event.IsPreview {

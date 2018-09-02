@@ -697,7 +697,10 @@ func confirmBeforeUpdating(updateKind apitype.UpdateKind, stack backend.Stack,
 			colors.BrightWhite+fmt.Sprintf("Do you want to perform this %s%s?",
 				updateKind, previewWarning)+colors.Reset)
 		if updateKind == apitype.RefreshUpdate {
-			prompt += "\nNo resources will be modified as part of this refresh; just your stack's state will be."
+			prompt += "\n" +
+				opts.Display.Color.Colorize(colors.BrightYellow+
+					"No resources will be modified as part of this refresh; just your stack's state will be."+
+					colors.Reset)
 		}
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
