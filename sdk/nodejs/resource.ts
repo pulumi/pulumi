@@ -276,7 +276,7 @@ export class ComponentResource extends Resource {
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by allocating
     // other child sub-resources and propagating their resulting property values.
-    protected registerOutputs(outputs: Inputs | undefined): void {
+    protected registerOutputs(outputs: Inputs | Promise<Inputs> | Output<Inputs> | undefined): void {
         if (outputs) {
             registerResourceOutputs(this, outputs);
         }
