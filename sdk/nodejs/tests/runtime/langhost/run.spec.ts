@@ -490,6 +490,26 @@ describe("rpc", () => {
                 }
             },
         },
+        // Test stack outputs via exports.
+        "stack_exports": {
+            program: path.join(base, "019.stack_exports"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    a: {
+                        x: 99,
+                        y: "z",
+                    },
+                    b: 42,
+                    c: {
+                        d: "a",
+                        e: false,
+                    },
+                });
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {

@@ -282,19 +282,18 @@ async function resolveOutputs(res: Resource, t: string, name: string,
 /**
  * registerResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
  */
-export function registerResourceOutputs(res: Resource, outputs: Inputs) {
+export function registerResourceOutputs(res: Resource, outputs: Input<Inputs>) {
     // Now run the operation. Note that we explicitly do not serialize output registration with
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can
     // never resolve.
     const opLabel = `monitor.registerResourceOutputs(...)`;
     runAsyncResourceOp(opLabel, async () => {
-        // The registration could very well still be taking place, so we will need to wait for its
-        // URN.  Additionally, the output properties might have come from other resources, so we
-        // must await those too.
+        // The registration could very well still be taking place, so we will need to wait for its URN.
+        // Additionally, the output properties might have come from other resources, so we must await those too.
         const urn = await res.urn.promise();
-        const outputsObj = gstruct.Struct.fromJavaScript(
-            await serializeProperties(`completeResource`, outputs));
+        const resolved = await serializeResourceProperties(opLabel, { outputs });
+        const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));
 
