@@ -25,6 +25,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/docker/docker/pkg/term"
+	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -34,9 +38,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-
-	"github.com/docker/docker/pkg/term"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
@@ -85,6 +86,9 @@ type DiagInfo struct {
 type ProgressDisplay struct {
 	opts           backend.DisplayOptions
 	progressOutput chan<- Progress
+
+	// action is the kind of action (preview, update, refresh, etc) being performed.
+	action apitype.UpdateKind
 
 	// Whether or not we're previewing.  We don't know what we are actually doing until
 	// we get the initial 'prelude' event.
@@ -223,14 +227,14 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // DisplayProgressEvents displays the engine events with docker's progress view.
 func DisplayProgressEvents(
-	action string, events <-chan engine.Event,
+	op string, action apitype.UpdateKind, events <-chan engine.Event,
 	done chan<- bool, opts backend.DisplayOptions) {
 
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
-		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
+		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
 		nil, 1 /*timesPerSecond*/)
 
 	// The channel we push progress messages into, and which DisplayProgressToStream pulls
@@ -238,6 +242,7 @@ func DisplayProgressEvents(
 	progressOutput := make(chan Progress)
 
 	display := &ProgressDisplay{
+		action:                 action,
 		opts:                   opts,
 		progressOutput:         progressOutput,
 		eventUrnToResourceRow:  make(map[resource.URN]ResourceRow),
@@ -722,7 +727,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// print the summary
 	if display.summaryEventPayload != nil {
-		msg := renderSummaryEvent(*display.summaryEventPayload, display.opts)
+		msg := renderSummaryEvent(display.action, *display.summaryEventPayload, display.opts)
 
 		if !wroteDiagnosticHeader {
 			display.writeBlankLine()

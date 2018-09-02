@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -38,13 +39,13 @@ import (
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
 func DisplayEvents(
-	action string, events <-chan engine.Event,
+	op string, action apitype.UpdateKind, events <-chan engine.Event,
 	done chan<- bool, opts backend.DisplayOptions) {
 
 	if opts.DiffDisplay {
-		DisplayDiffEvents(action, events, done, opts)
+		DisplayDiffEvents(op, action, events, done, opts)
 	} else {
-		DisplayProgressEvents(action, events, done, opts)
+		DisplayProgressEvents(op, action, events, done, opts)
 	}
 }
 
@@ -58,10 +59,10 @@ func (s *nopSpinner) Reset() {
 }
 
 // DisplayDiffEvents displays the engine events with the diff view.
-func DisplayDiffEvents(action string,
+func DisplayDiffEvents(op string, action apitype.UpdateKind,
 	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
 
-	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
+	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
@@ -96,7 +97,7 @@ func DisplayDiffEvents(action string,
 				}
 			}
 
-			msg := RenderDiffEvent(event, seen, opts)
+			msg := RenderDiffEvent(action, event, seen, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -108,8 +109,8 @@ func DisplayDiffEvents(action string,
 	}
 }
 
-func RenderDiffEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
+func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
+	seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
 
 	switch event.Type {
 	case engine.CancelEvent:
@@ -117,7 +118,7 @@ func RenderDiffEvent(
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+		return renderSummaryEvent(action, event.Payload.(engine.SummaryEventPayload), opts)
 	case engine.ResourceOperationFailed:
 		return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:
@@ -147,7 +148,8 @@ func renderStdoutColorEvent(
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
+func renderSummaryEvent(
+	action apitype.UpdateKind, event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -156,28 +158,34 @@ func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOp
 			changeCount += c
 		}
 	}
-	var kind string
-	if event.IsPreview {
-		kind = "previewed"
+
+	var actionVerbLabel string
+	if action == apitype.RefreshUpdate {
+		actionVerbLabel = "found during refresh"
+	} else if event.IsPreview {
+		actionVerbLabel = "previewed"
 	} else {
-		kind = "performed"
+		actionVerbLabel = "performed"
 	}
 
 	var changesLabel string
 	if changeCount == 0 {
-		kind = "required"
 		changesLabel = "no"
+
+		if action != apitype.RefreshUpdate {
+			actionVerbLabel = "required"
+		}
 	} else {
 		changesLabel = strconv.Itoa(changeCount)
 	}
 
 	if changeCount > 0 || changes[deploy.OpSame] > 0 {
-		kind += ":"
+		actionVerbLabel += ":"
 	}
 
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vinfo%v: %v %v %v\n",
-		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), kind)))
+		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), actionVerbLabel)))
 
 	var planTo string
 	if event.IsPreview {

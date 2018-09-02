@@ -36,17 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/version"
 )
 
-// UpdateKind is an enum for describing the kinds of updates we support.
-type UpdateKind string
-
-const (
-	UpdateKindUpdate  UpdateKind = "update"
-	UpdateKindPreview UpdateKind = "preview"
-	UpdateKindRefresh UpdateKind = "refresh"
-	UpdateKindDestroy UpdateKind = "destroy"
-	UpdateKindImport  UpdateKind = "import"
-)
-
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
 type StackIdentifier struct {
 	Owner string
@@ -57,7 +46,7 @@ type StackIdentifier struct {
 type UpdateIdentifier struct {
 	StackIdentifier
 
-	UpdateKind UpdateKind
+	UpdateKind apitype.UpdateKind
 	UpdateID   string
 }
 
