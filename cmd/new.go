@@ -53,6 +53,7 @@ func newNewCmd() *cobra.Command {
 	var offline bool
 	var generateOnly bool
 	var dir string
+	var nonInteractive bool
 
 	cmd := &cobra.Command{
 		Use:        "new [template]",
@@ -60,13 +61,27 @@ func newNewCmd() *cobra.Command {
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			interactive := isInteractive(nonInteractive)
+			if !interactive {
+				yes = true // auto-approve changes, since we cannot prompt.
+			}
+
+			// Prepare options.
+			opts, err := updateFlagsToOptions(interactive, false /*skipPreview*/, yes)
+			if err != nil {
+				return err
+			}
+			opts.Display = backend.DisplayOptions{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+			opts.Engine = engine.UpdateOptions{
+				Parallel: defaultParallel,
+			}
+
 			// Validate name (if specified) before further prompts/operations.
 			if name != "" && !workspace.IsValidProjectName(name) {
 				return errors.Errorf("'%s' is not a valid project name", name)
-			}
-
-			displayOpts := backend.DisplayOptions{
-				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Get the current working directory.
@@ -106,7 +121,7 @@ func newNewCmd() *cobra.Command {
 			// will kick off the login flow (if not already logged-in).
 			var b backend.Backend
 			if !generateOnly {
-				if b, err = currentBackend(displayOpts); err != nil {
+				if b, err = currentBackend(opts.Display); err != nil {
 					return err
 				}
 			}
@@ -137,7 +152,7 @@ func newNewCmd() *cobra.Command {
 			} else if len(templates) == 1 {
 				template = templates[0]
 			} else {
-				if template, err = chooseTemplate(templates, displayOpts); err != nil {
+				if template, err = chooseTemplate(templates, opts.Display); err != nil {
 					return err
 				}
 			}
@@ -164,7 +179,7 @@ func newNewCmd() *cobra.Command {
 			// Prompt for the project name, if it wasn't already specified.
 			if name == "" {
 				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, filepath.Base(cwd))
-				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, displayOpts)
+				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -173,7 +188,7 @@ func newNewCmd() *cobra.Command {
 			// Prompt for the project description, if it wasn't already specified.
 			if description == "" {
 				defaultValue := workspace.ValueOrDefaultProjectDescription(description, template.Description)
-				description, err = promptForValue(yes, "project description", defaultValue, false, nil, displayOpts)
+				description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -195,7 +210,7 @@ func newNewCmd() *cobra.Command {
 				defaultValue := getDevStackName(name)
 
 				for {
-					stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, displayOpts)
+					stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, opts.Display)
 					if err != nil {
 						return err
 					}
@@ -223,7 +238,7 @@ func newNewCmd() *cobra.Command {
 				}
 
 				// Prompt for config as needed.
-				c, err := promptForConfig(stack, template.Config, commandLineConfig, nil, yes, displayOpts)
+				c, err := promptForConfig(stack, template.Config, commandLineConfig, nil, yes, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -243,14 +258,14 @@ func newNewCmd() *cobra.Command {
 				}
 
 				fmt.Println(
-					displayOpts.Color.Colorize(
+					opts.Display.Color.Colorize(
 						colors.BrightGreen+colors.Bold+"Your new project is configured and ready to go!"+colors.Reset) +
 						" " + cmdutil.EmojiOr("✨", ""))
 			}
 
 			// Run `up` automatically, or print out next steps to run `up` manually.
 			if !generateOnly {
-				if err = runUpOrPrintNextSteps(stack, originalCwd, cwd, displayOpts, yes); err != nil {
+				if err = runUpOrPrintNextSteps(stack, originalCwd, cwd, opts, yes); err != nil {
 					return err
 				}
 			}
@@ -318,6 +333,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&dir, "dir", "",
 		"The location to place the generated project; if not specified, the current directory is used")
+	cmd.PersistentFlags().BoolVar(
+		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 
 	return cmd
 }
@@ -404,7 +421,7 @@ func installDependencies(message string) error {
 
 // runUpOrPrintNextSteps runs `up` automatically, or if `up` shouldn't run, prints out a message with next steps.
 func runUpOrPrintNextSteps(
-	stack backend.Stack, originalCwd string, cwd string, displayOpts backend.DisplayOptions, yes bool) error {
+	stack backend.Stack, originalCwd string, cwd string, opts backend.UpdateOptions, yes bool) error {
 
 	proj, root, err := readProject()
 	if err != nil {
@@ -416,15 +433,6 @@ func runUpOrPrintNextSteps(
 	runUp := !strings.EqualFold(proj.RuntimeInfo.Name(), "go")
 
 	if runUp {
-		opts, err := updateFlagsToOptions(true /*interactive*/, false /*skipPreview*/, yes)
-		if err != nil {
-			return err
-		}
-		opts.Display = displayOpts
-		opts.Engine = engine.UpdateOptions{
-			Parallel: defaultParallel,
-		}
-
 		m, err := getUpdateMetadata("", root)
 		if err != nil {
 			return errors.Wrap(err, "gathering environment metadata")
@@ -466,7 +474,7 @@ func runUpOrPrintNextSteps(
 
 		// Colorize and print the next step deploy action.
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Println(displayOpts.Color.Colorize(deployMsg))
+		fmt.Println(opts.Display.Color.Colorize(deployMsg))
 	}
 
 	return nil
