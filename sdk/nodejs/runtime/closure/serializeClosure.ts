@@ -248,6 +248,10 @@ function serializeJavaScriptText(
         if (envEntry.hasOwnProperty("json")) {
             return JSON.stringify(envEntry.json);
         }
+        else if (envEntry.regexp) {
+            const re = envEntry.regexp;
+            return `new RegExp(${JSON.stringify(re.source)}, ${JSON.stringify(re.flags)})`;
+        }
         else if (envEntry.function !== undefined) {
             return emitFunctionAndGetName(envEntry.function);
         }
