@@ -233,7 +233,7 @@ function serializeJavaScriptText(
         // Objects any arrays may have cycles in them.  They may also be referenced from multiple
         // functions.  As such, we have to create variables for them in the environment so that all
         // references to them unify to the same reference to the env variable.
-        if (isObjOrArray(envEntry)) {
+        if (isObjOrArrayOrRegExp(envEntry)) {
             return complexEnvEntryToString(envEntry, varName);
         }
         else {
@@ -247,10 +247,6 @@ function serializeJavaScriptText(
 
         if (envEntry.hasOwnProperty("json")) {
             return JSON.stringify(envEntry.json);
-        }
-        else if (envEntry.regexp) {
-            const re = envEntry.regexp;
-            return `new RegExp(${JSON.stringify(re.source)}, ${JSON.stringify(re.flags)})`;
         }
         else if (envEntry.function !== undefined) {
             return emitFunctionAndGetName(envEntry.function);
@@ -285,8 +281,15 @@ function serializeJavaScriptText(
         if (envEntry.object) {
             emitObject(envVar, envEntry.object, varName);
         }
-         else if (envEntry.array) {
+        else if (envEntry.array) {
             emitArray(envVar, envEntry.array, varName);
+        }
+        else if (envEntry.regexp) {
+            const re = envEntry.regexp;
+            const reVal = `new RegExp(${JSON.stringify(re.source)}, ${JSON.stringify(re.flags)})`;
+            const entryString = `var ${envVar} = ${reVal};\n`;
+
+            environmentText += entryString;
         }
 
         return envVar;
@@ -368,7 +371,7 @@ function serializeJavaScriptText(
         }
 
         function entryIsComplex(v: closure.PropertyInfoAndValue) {
-            return !isSimplePropertyInfo(v.info) || deepContainsObjOrArray(v.entry);
+            return !isSimplePropertyInfo(v.info) || deepContainsObjOrArrayOrRegExp(v.entry);
         }
     }
 
@@ -435,7 +438,7 @@ function serializeJavaScriptText(
 
     function emitArray(
             envVar: string, arr: closure.Entry[], varName: string): void {
-        if (arr.some(deepContainsObjOrArray) || isSparse(arr) || hasNonNumericIndices(arr)) {
+        if (arr.some(deepContainsObjOrArrayOrRegExp) || isSparse(arr) || hasNonNumericIndices(arr)) {
             // we have a complex child.  Because of the possibility of recursion in the object
             // graph, we have to spit out this variable initialized (but empty) first. Then we can
             // walk our children, knowing we'll be able to find this variable if they reference it.
@@ -490,14 +493,14 @@ function isNumeric(n: string) {
     return !isNaN(parseFloat(n)) && isFinite(+n);
 }
 
-function isObjOrArray(env: closure.Entry): boolean {
-    return env.object !== undefined || env.array !== undefined;
+function isObjOrArrayOrRegExp(env: closure.Entry): boolean {
+    return env.object !== undefined || env.array !== undefined || env.regexp !== undefined;
 }
 
-function deepContainsObjOrArray(env: closure.Entry): boolean {
-    return isObjOrArray(env) ||
-        (env.output !== undefined && deepContainsObjOrArray(env.output)) ||
-        (env.promise !== undefined && deepContainsObjOrArray(env.promise));
+function deepContainsObjOrArrayOrRegExp(env: closure.Entry): boolean {
+    return isObjOrArrayOrRegExp(env) ||
+        (env.output !== undefined && deepContainsObjOrArrayOrRegExp(env.output)) ||
+        (env.promise !== undefined && deepContainsObjOrArrayOrRegExp(env.promise));
 }
 
 /**
