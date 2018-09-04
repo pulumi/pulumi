@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -138,7 +138,7 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 
 func (u *cloudUpdate) recordEvent(
 	action apitype.UpdateKind, event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) error {
+	opts display.Options) error {
 
 	// If we don't have a token source, we can't perform any mutations.
 	if u.tokenSource == nil {
@@ -158,7 +158,7 @@ func (u *cloudUpdate) recordEvent(
 	// Ensure we render events with raw colorization tags.  Also, render these as 'diff' events so
 	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
-	msg := filestate.RenderDiffEvent(action, event, seen, opts)
+	msg := display.RenderDiffEvent(action, event, seen, opts)
 	if msg == "" {
 		return nil
 	}
@@ -174,12 +174,12 @@ func (u *cloudUpdate) recordEvent(
 }
 
 func (u *cloudUpdate) RecordAndDisplayEvents(op string, action apitype.UpdateKind,
-	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
+	events <-chan engine.Event, done chan<- bool, opts display.Options) {
 
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go filestate.DisplayEvents(op, action, displayEvents, done, opts)
+	go display.DisplayEvents(op, action, displayEvents, done, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package display
 
 import (
 	"bytes"
@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -38,10 +37,7 @@ import (
 // DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
-func DisplayEvents(
-	op string, action apitype.UpdateKind, events <-chan engine.Event,
-	done chan<- bool, opts backend.DisplayOptions) {
-
+func DisplayEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 	if opts.DiffDisplay {
 		DisplayDiffEvents(op, action, events, done, opts)
 	} else {
@@ -60,7 +56,7 @@ func (s *nopSpinner) Reset() {
 
 // DisplayDiffEvents displays the engine events with the diff view.
 func DisplayDiffEvents(op string, action apitype.UpdateKind,
-	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
+	events <-chan engine.Event, done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
@@ -110,7 +106,7 @@ func DisplayDiffEvents(op string, action apitype.UpdateKind,
 }
 
 func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
-	seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
+	seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
 
 	switch event.Type {
 	case engine.CancelEvent:
@@ -135,7 +131,7 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 	}
 }
 
-func renderDiffDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
+func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
@@ -143,13 +139,13 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOp
 }
 
 func renderStdoutColorEvent(
-	payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
+	payload engine.StdoutEventPayload, opts Options) string {
 
 	return opts.Color.Colorize(payload.Message)
 }
 
 func renderSummaryEvent(
-	action apitype.UpdateKind, event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
+	action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -221,7 +217,7 @@ func renderSummaryEvent(
 	return out.String()
 }
 
-func renderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOptions) string {
+func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	out := &bytes.Buffer{}
 
 	if opts.ShowConfig {
@@ -249,7 +245,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOp
 }
 
 func renderResourceOperationFailedEvent(
-	payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
+	payload engine.ResourceOperationFailedPayload, opts Options) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
@@ -264,7 +260,7 @@ func renderResourceOperationFailedEvent(
 func renderResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) string {
+	opts Options) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
 	if payload.Metadata.Op == deploy.OpRefresh {
@@ -288,7 +284,7 @@ func renderResourcePreEvent(
 func renderResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) string {
+	opts Options) string {
 
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
@@ -316,7 +312,7 @@ func isRootURN(urn resource.URN) bool {
 }
 
 // shouldShow returns true if a step should show in the output.
-func shouldShow(step engine.StepEventMetadata, opts backend.DisplayOptions) bool {
+func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op == deploy.OpSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.

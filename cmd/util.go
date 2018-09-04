@@ -34,6 +34,7 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
@@ -51,7 +52,7 @@ func hasDebugCommands() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
 }
 
-func currentBackend(opts backend.DisplayOptions) (backend.Backend, error) {
+func currentBackend(opts display.Options) (backend.Backend, error) {
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil {
 		return nil, err
@@ -106,7 +107,7 @@ func createStack(
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
 func requireStack(
-	stackName string, offerNew bool, opts backend.DisplayOptions, setCurrent bool) (backend.Stack, error) {
+	stackName string, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	if stackName == "" {
 		return requireCurrentStack(offerNew, opts, setCurrent)
 	}
@@ -145,7 +146,7 @@ func requireStack(
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool, opts backend.DisplayOptions, setCurrent bool) (backend.Stack, error) {
+func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Search for the current stack.
 	b, err := currentBackend(opts)
 	if err != nil {
@@ -165,7 +166,7 @@ func requireCurrentStack(offerNew bool, opts backend.DisplayOptions, setCurrent 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backends.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
 func chooseStack(
-	b backend.Backend, offerNew bool, opts backend.DisplayOptions, setCurrent bool) (backend.Stack, error) {
+	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if offerNew {

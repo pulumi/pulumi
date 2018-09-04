@@ -29,6 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -283,7 +284,7 @@ func (b *localBackend) performEngineOp(op string, kind apitype.UpdateKind,
 	defer cancelScope.Close()
 
 	done := make(chan bool)
-	go DisplayEvents(op, kind, events, done, opts.Display)
+	go display.DisplayEvents(op, kind, events, done, opts.Display)
 
 	// Create the management machinery.
 	persister := b.newSnapshotPersister(stackName)
@@ -313,7 +314,7 @@ func (b *localBackend) performEngineOp(op string, kind apitype.UpdateKind,
 		Config:      update.GetTarget().Config,
 		Result:      result,
 		EndTime:     end,
-		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doens't need to
+		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doesn't need to
 		//     rudely assume it knows where the checkpoint file is on disk as it makes a copy of it.  This isn't
 		//     trivial to achieve today given the event driven nature of plan-walking, however.
 		ResourceChanges: changes,

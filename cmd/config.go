@@ -29,6 +29,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -47,7 +48,7 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -81,7 +82,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -108,7 +109,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Short: "Remove configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -145,7 +146,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -221,7 +222,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"may be set by piping a file to standard in.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 

@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -51,7 +51,7 @@ func newPluginInstallCmd() *cobra.Command {
 			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 			"downloading more plugins than is strictly necessary.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			displayOpts := backend.DisplayOptions{
+			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 

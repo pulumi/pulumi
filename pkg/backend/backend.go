@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -119,7 +120,7 @@ type UpdateOptions struct {
 	// Engine contains all of the engine-specific options.
 	Engine engine.UpdateOptions
 	// Display contains all of the backend display options.
-	Display DisplayOptions
+	Display display.Options
 
 	// AutoApprove, when true, will automatically approve previews.
 	AutoApprove bool

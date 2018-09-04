@@ -43,6 +43,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -137,7 +138,7 @@ type Backend interface {
 
 	DownloadPlugin(
 		ctx context.Context, info workspace.PluginInfo,
-		progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
+		progress bool, opts display.Options) (io.ReadCloser, error)
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
@@ -241,7 +242,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string, opts backend.DisplayOptions) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -421,7 +422,7 @@ func (b *cloudBackend) Logout() error {
 // that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
 // is true, the download will display a progress bar using stdout.
 func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.PluginInfo,
-	progress bool, opts backend.DisplayOptions) (io.ReadCloser, error) {
+	progress bool, opts display.Options) (io.ReadCloser, error) {
 
 	// Figure out the OS/ARCH pair for the download URL.
 	var os string
@@ -623,14 +624,14 @@ func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackRefere
 	return stack, nil
 }
 
-func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts backend.DisplayOptions) string {
+func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
 	buff := &bytes.Buffer{}
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	displayOpts.SummaryDiff = true
 
 	for _, e := range events {
-		msg := filestate.RenderDiffEvent(updateKind, e, seen, displayOpts)
+		msg := display.RenderDiffEvent(updateKind, e, seen, displayOpts)
 		if msg != "" {
 			if e.Type == engine.SummaryEvent {
 				msg = "\n" + msg
@@ -911,7 +912,7 @@ func (b *cloudBackend) updateStack(
 // If set, printSize will print the size of the data being uploaded.
 func getUpdateContents(
 	context string, useDefaultIgnores bool,
-	progress bool, opts backend.DisplayOptions) (io.ReadCloser, int64, error) {
+	progress bool, opts display.Options) (io.ReadCloser, int64, error) {
 
 	archiveContents, err := archive.Process(context, useDefaultIgnores)
 	if err != nil {
@@ -1161,7 +1162,7 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	status, err := b.waitForUpdate(
 		ctx, getActionLabel("import", false /*dryRun*/), update,
-		backend.DisplayOptions{Color: colors.Always})
+		display.Options{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")
 	} else if status != apitype.StatusSucceeded {
@@ -1204,7 +1205,7 @@ type displayEvent struct {
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
 func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, update client.UpdateIdentifier,
-	displayOpts backend.DisplayOptions) (apitype.UpdateStatus, error) {
+	displayOpts display.Options) (apitype.UpdateStatus, error) {
 
 	events, done := make(chan displayEvent), make(chan bool)
 	defer func() {
@@ -1242,9 +1243,7 @@ func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, up
 	}
 }
 
-func displayEvents(
-	action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
-
+func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts display.Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 

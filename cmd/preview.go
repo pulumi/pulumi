@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -62,7 +63,7 @@ func newPreviewCmd() *cobra.Command {
 					Parallel:  parallel,
 					Debug:     debug,
 				},
-				Display: backend.DisplayOptions{
+				Display: display.Options{
 					Color:                cmdutil.GetGlobalColorization(),
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,

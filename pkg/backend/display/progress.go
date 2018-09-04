@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package display
 
 import (
 	"bytes"
@@ -29,7 +29,6 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -84,7 +83,7 @@ type DiagInfo struct {
 }
 
 type ProgressDisplay struct {
-	opts           backend.DisplayOptions
+	opts           Options
 	progressOutput chan<- Progress
 
 	// action is the kind of action (preview, update, refresh, etc) being performed.
@@ -227,8 +226,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // DisplayProgressEvents displays the engine events with docker's progress view.
 func DisplayProgressEvents(
-	op string, action apitype.UpdateKind, events <-chan engine.Event,
-	done chan<- bool, opts backend.DisplayOptions) {
+	op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to

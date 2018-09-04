@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -63,7 +64,7 @@ func newLoginCmd() *cobra.Command {
 			"    $ pulumi login --local\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			displayOptions := backend.DisplayOptions{
+			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
