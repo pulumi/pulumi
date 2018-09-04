@@ -53,6 +53,7 @@ func newNewCmd() *cobra.Command {
 	var offline bool
 	var generateOnly bool
 	var dir string
+	var nonInteractive bool
 
 	cmd := &cobra.Command{
 		Use:        "new [template]",
@@ -60,7 +61,7 @@ func newNewCmd() *cobra.Command {
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := isInteractive(false /*nonInteractive*/)
+			interactive := isInteractive(nonInteractive)
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
 			}
@@ -332,6 +333,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&dir, "dir", "",
 		"The location to place the generated project; if not specified, the current directory is used")
+	cmd.PersistentFlags().BoolVar(
+		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 
 	return cmd
 }
