@@ -34,8 +34,8 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -56,10 +56,10 @@ func currentBackend(opts backend.DisplayOptions) (backend.Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	if local.IsLocalBackendURL(creds.Current) {
-		return local.New(cmdutil.Diag(), creds.Current)
+	if filestate.IsLocalBackendURL(creds.Current) {
+		return filestate.New(cmdutil.Diag(), creds.Current)
 	}
-	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
 }
 
 // This is used to control the contents of the tracing header.

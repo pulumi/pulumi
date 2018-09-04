@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cloud
+package httpstate
 
 import (
 	"bytes"
@@ -43,8 +43,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -97,7 +97,7 @@ func ValueOrDefaultURL(cloudURL string) string {
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
 	// to ignore the local cloud.
 	if creds, err := workspace.GetStoredCredentials(); err == nil {
-		if creds.Current != "" && !local.IsLocalBackendURL(creds.Current) {
+		if creds.Current != "" && !filestate.IsLocalBackendURL(creds.Current) {
 			return creds.Current
 		}
 	}
@@ -618,7 +618,7 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	displayOpts.SummaryDiff = true
 
 	for _, e := range events {
-		msg := local.RenderDiffEvent(updateKind, e, seen, displayOpts)
+		msg := filestate.RenderDiffEvent(updateKind, e, seen, displayOpts)
 		if msg != "" {
 			if e.Type == engine.SummaryEvent {
 				msg = "\n" + msg
@@ -1114,7 +1114,7 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 	if targetErr != nil {
 		return nil, targetErr
 	}
-	return local.GetLogsForTarget(target, logQuery)
+	return filestate.GetLogsForTarget(target, logQuery)
 }
 
 func (b *cloudBackend) ExportDeployment(ctx context.Context,

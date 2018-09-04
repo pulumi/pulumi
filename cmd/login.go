@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -69,10 +69,10 @@ func newLoginCmd() *cobra.Command {
 
 			var be backend.Backend
 			var err error
-			if local.IsLocalBackendURL(cloudURL) {
-				be, err = local.Login(cmdutil.Diag(), cloudURL)
+			if filestate.IsLocalBackendURL(cloudURL) {
+				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
 			} else {
-				be, err = cloud.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
 			}
 			if err != nil {
 				return errors.Wrapf(err, "problem logging in")

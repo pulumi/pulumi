@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -82,7 +82,7 @@ func newStackLsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, showURLColumn := b.(cloud.Backend)
+			_, showURLColumn := b.(httpstate.Backend)
 
 			for _, stack := range bs {
 				name := stack.Name().String()
@@ -146,7 +146,7 @@ func newStackLsCmd() *cobra.Command {
 				values := []interface{}{name, lastUpdate, resourceCount}
 				if showURLColumn {
 					var url string
-					if cs, ok := stack.(cloud.Stack); ok {
+					if cs, ok := stack.(httpstate.Stack); ok {
 						if u, urlErr := cs.ConsoleURL(); urlErr == nil {
 							url = u
 						}

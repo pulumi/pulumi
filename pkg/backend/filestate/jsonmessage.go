@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package filestate
 
 // forked from: https://github.com/moby/moby/blob/master/pkg/jsonmessage/jsonmessage.go
 // so we can customize parts of the display of our progress messages

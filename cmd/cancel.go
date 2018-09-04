@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -57,7 +57,7 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Ensure that we are targeting the Pulumi cloud.
-			backend, ok := s.Backend().(cloud.Backend)
+			backend, ok := s.Backend().(httpstate.Backend)
 			if !ok {
 				return errors.New("the `cancel` command is not supported for local stacks")
 			}

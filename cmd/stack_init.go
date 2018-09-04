@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -44,8 +44,8 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{}
-			if _, ok := b.(cloud.Backend); ok {
-				createOpts = cloud.CreateStackOptions{
+			if _, ok := b.(httpstate.Backend); ok {
+				createOpts = httpstate.CreateStackOptions{
 					CloudName: ppc,
 				}
 			}

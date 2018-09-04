@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cloud
+package httpstate
 
 import (
 	"context"
@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -158,7 +158,7 @@ func (u *cloudUpdate) recordEvent(
 	// Ensure we render events with raw colorization tags.  Also, render these as 'diff' events so
 	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
-	msg := local.RenderDiffEvent(action, event, seen, opts)
+	msg := filestate.RenderDiffEvent(action, event, seen, opts)
 	if msg == "" {
 		return nil
 	}
@@ -179,7 +179,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(op string, action apitype.UpdateKin
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go local.DisplayEvents(op, action, displayEvents, done, opts)
+	go filestate.DisplayEvents(op, action, displayEvents, done, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {

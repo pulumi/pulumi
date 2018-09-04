@@ -37,9 +37,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -121,7 +121,7 @@ func NewPulumiCmd() *cobra.Command {
 		"Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
 		"Enable emojis in the output")
-	cmd.PersistentFlags().BoolVar(&local.DisableIntegrityChecking, "disable-integrity-checking", false,
+	cmd.PersistentFlags().BoolVar(&filestate.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
 		"Flow log settings to child processes (like plugins)")
@@ -199,7 +199,7 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 		return latest, oldest, err
 	}
 
-	client := client.NewClient(cloud.DefaultURL(), "")
+	client := client.NewClient(httpstate.DefaultURL(), "")
 	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
