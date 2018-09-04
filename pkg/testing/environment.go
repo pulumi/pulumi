@@ -30,7 +30,6 @@ import (
 )
 
 const (
-	bookkeepingDir              = ".pulumi"
 	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 )
 
@@ -109,7 +108,7 @@ func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string,
 // LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
 // may reuse stack names.
 func (e *Environment) LocalURL() string {
-	return "local://" + filepath.Join(e.RootPath, bookkeepingDir)
+	return "file://" + e.RootPath
 }
 
 // GetCommandResults runs the given command and args in the Environments CWD, returning

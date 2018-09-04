@@ -62,6 +62,8 @@ type StackReference interface {
 type Backend interface {
 	// Name returns a friendly name for this backend.
 	Name() string
+	// URL returns a URL at which information about this backend may be seen.
+	URL() string
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.

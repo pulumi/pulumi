@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -27,40 +28,68 @@ import (
 
 func newLoginCmd() *cobra.Command {
 	var cloudURL string
+	var localMode bool
 
 	cmd := &cobra.Command{
-		Use:   "login",
-		Short: "Log into the Pulumi Cloud",
-		Long:  "Log into the Pulumi Cloud.  You can script by using PULUMI_ACCESS_TOKEN environment variable.",
-		Args:  cmdutil.NoArgs,
+		Use:   "login [<url>]",
+		Short: "Log into the Pulumi service",
+		Long: "Log into the Pulumi service.\n" +
+			"\n" +
+			"This command will prompt you for an access token, including a way to launch your web browser to\n" +
+			"easily obtain one. You can script by using PULUMI_ACCESS_TOKEN environment variable.\n" +
+			"\n" +
+			"By default, this will log into app.pulumi.com. If you prefer to log into a separate instance\n" +
+			"of the Pulumi service, such as Pulumi Enterprise, specify a <url>.\n" +
+			"\n" +
+			"For https:// URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
+			"If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
+			"pass file://<path>, where <path> will be where state checkpoints will be stored. As a shortcut, you\n" +
+			"may pass --local to use your home directory (this is an alias for file://~).",
+		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOptions := backend.DisplayOptions{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			var b backend.Backend
+			// If a <cloud> was specified as an argument, use it.
+			if len(args) > 0 {
+				if cloudURL != "" {
+					return errors.New("only one of --cloud-url or argument URL may be specified, not both")
+				}
+				cloudURL = args[0]
+			}
+
+			// For local mode, store state by default in the user's home directory.
+			if localMode {
+				if cloudURL != "" {
+					return errors.New("a URL may not be specified when --local mode is enabled")
+				}
+				cloudURL = "file://~"
+			}
+
+			var be backend.Backend
 			var err error
-
 			if local.IsLocalBackendURL(cloudURL) {
-				b, err = local.Login(cmdutil.Diag(), cloudURL)
+				be, err = local.Login(cmdutil.Diag(), cloudURL)
 			} else {
-				b, err = cloud.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = cloud.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
 			}
-
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "problem logging in")
 			}
 
-			if currentUser, err := b.CurrentUser(); err == nil {
-				fmt.Printf("Logged into %s as %s\n", b.Name(), currentUser)
+			if currentUser, err := be.CurrentUser(); err == nil {
+				fmt.Printf("Logged into %s as %s (%s)\n", be.Name(), currentUser, be.URL())
 			} else {
-				fmt.Printf("Logged into %s\n", b.Name())
+				fmt.Printf("Logged into %s (%s)\n", be.Name(), be.URL())
 			}
 
 			return nil
 		}),
 	}
+
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log into")
+	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 
 	return cmd
 }

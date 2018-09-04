@@ -43,7 +43,7 @@ import (
 )
 
 // localBackendURL is fake URL scheme we use to signal we want to use the local backend vs a cloud one.
-const localBackendURLPrefix = "local://"
+const localBackendURLPrefix = "file://"
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -52,9 +52,8 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d         diag.Sink
-	url       string
-	stateRoot string
+	d   diag.Sink
+	url string
 }
 
 type localBackendReference struct {
@@ -69,27 +68,29 @@ func (r localBackendReference) StackName() tokens.QName {
 	return r.name
 }
 
-func stateRootFromLocalURL(localURL string) string {
-	if localURL == localBackendURLPrefix {
-		user, err := user.Current()
-		contract.AssertNoErrorf(err, "could not determine current user")
-		return filepath.Join(user.HomeDir, workspace.BookkeepingDir)
-	}
-
-	return localURL[len(localBackendURLPrefix):]
-}
-
 func IsLocalBackendURL(url string) bool {
 	return strings.HasPrefix(url, localBackendURLPrefix)
 }
 
-func New(d diag.Sink, localURL string) Backend {
-	return &localBackend{d: d, url: localURL, stateRoot: stateRootFromLocalURL(localURL)}
+func New(d diag.Sink, url string) (Backend, error) {
+	if !IsLocalBackendURL(url) {
+		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
+	}
+	return &localBackend{
+		d:   d,
+		url: url,
+	}, nil
 }
 
-func Login(d diag.Sink, localURL string) (Backend, error) {
-	return New(d, localURL), workspace.StoreAccessToken(localURL, "", true)
+func Login(d diag.Sink, url string) (Backend, error) {
+	be, err := New(d, url)
+	if err != nil {
+		return nil, err
+	}
+	return be, workspace.StoreAccessToken(url, "", true)
 }
+
+func (b *localBackend) local() {}
 
 func (b *localBackend) Name() string {
 	name, err := os.Hostname()
@@ -100,11 +101,32 @@ func (b *localBackend) Name() string {
 	return name
 }
 
+func (b *localBackend) URL() string {
+	return b.url
+}
+
+func (b *localBackend) Dir() string {
+	path := b.url[len(localBackendURLPrefix):]
+	if path == "~" {
+		user, err := user.Current()
+		contract.AssertNoErrorf(err, "could not determine current user")
+		path = user.HomeDir
+	} else if path == "." {
+		pwd, err := os.Getwd()
+		contract.AssertNoErrorf(err, "could not determine current working directory")
+		path = pwd
+	}
+	return path
+}
+
+func (b *localBackend) StateDir() string {
+	dir := b.Dir()
+	return filepath.Join(dir, workspace.BookkeepingDir)
+}
+
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
 }
-
-func (b *localBackend) local() {}
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
@@ -401,7 +423,11 @@ func (b *localBackend) Logout() error {
 }
 
 func (b *localBackend) CurrentUser() (string, error) {
-	return "", errors.New("the local backend does not support multiple users")
+	user, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return user.Username, nil
 }
 
 func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {

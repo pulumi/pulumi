@@ -325,6 +325,14 @@ func (b *cloudBackend) Name() string {
 	return b.url
 }
 
+func (b *cloudBackend) URL() string {
+	user, err := b.CurrentUser()
+	if err != nil {
+		return cloudConsoleURL(b.url)
+	}
+	return cloudConsoleURL(b.url, user)
+}
+
 func (b *cloudBackend) CurrentUser() (string, error) {
 	return b.client.GetPulumiAccountName(context.Background())
 }
