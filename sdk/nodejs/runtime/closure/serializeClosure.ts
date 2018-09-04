@@ -288,9 +288,9 @@ function serializeJavaScriptText(
             emitArray(envVar, envEntry.array, varName);
         }
         else if (envEntry.regexp) {
-            const re = envEntry.regexp;
-            const reVal = `new RegExp(${JSON.stringify(re.source)}, ${JSON.stringify(re.flags)})`;
-            const entryString = `var ${envVar} = ${reVal};\n`;
+            const { source, flags } = envEntry.regexp;
+            const regexVal = `new RegExp(${JSON.stringify(source)}, ${JSON.stringify(flags)})`;
+            const entryString = `var ${envVar} = ${regexVal};\n`;
 
             environmentText += entryString;
         }
