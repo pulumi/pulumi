@@ -203,7 +203,7 @@ func TestStackCommands(t *testing.T) {
 		stackName := addRandomSuffix("invalid-resources")
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_dependencies")
-		e.RunCommand("pulumi", "login")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
