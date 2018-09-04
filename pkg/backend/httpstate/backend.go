@@ -263,25 +263,37 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts backend.Displ
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
 	} else {
-		line1 := "We need your Pulumi account to identify you."
-		line1 = colors.Highlight(line1, "Pulumi account", colors.BrightWhite+colors.Underline+colors.Bold)
+		line1 := fmt.Sprintf("Manage your Pulumi stacks by logging in.")
+		line1len := len(line1)
+		line1 = colors.Highlight(line1, "Pulumi stacks", colors.BrightWhite+colors.Underline+colors.Bold)
 		fmt.Printf(opts.Color.Colorize(line1) + "\n")
+		maxlen := line1len
+
+		line2 := "Run `pulumi login --help` for alternative login options."
+		line2len := len(line2)
+		fmt.Printf(opts.Color.Colorize(line2) + "\n")
+		if line2len > maxlen {
+			maxlen = line2len
+		}
 
 		accountLink := cloudConsoleURL(cloudURL, "account")
-		line2 := fmt.Sprintf("Enter your access token from %s", accountLink)
-		line2len := len(line2)
-		line2 = colors.Highlight(line2, "access token", colors.BrightCyan+colors.Bold)
-		line2 = colors.Highlight(line2, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Printf(opts.Color.Colorize(line2) + "\n")
+		line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
+		line3len := len(line3)
+		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
+		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Printf(opts.Color.Colorize(line3) + "\n")
+		if line3len > maxlen {
+			maxlen = line3len
+		}
 
-		line3 := "    or hit <ENTER> to log in using your browser"
+		line4 := "    or hit <ENTER> to log in using your browser"
 		var padding string
-		if pad := line2len - len(line3); pad > 0 {
+		if pad := maxlen - len(line4); pad > 0 {
 			padding = strings.Repeat(" ", pad)
 		}
-		line3 = colors.Highlight(line3, "<ENTER>", colors.BrightCyan+colors.Bold)
+		line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
 
-		token, readerr := cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line3 + padding))
+		token, readerr := cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding)
 		if readerr != nil {
 			return nil, readerr
 		}

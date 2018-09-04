@@ -35,16 +35,32 @@ func newLoginCmd() *cobra.Command {
 		Short: "Log into the Pulumi service",
 		Long: "Log into the Pulumi service.\n" +
 			"\n" +
-			"This command will prompt you for an access token, including a way to launch your web browser to\n" +
+			"The service manages your stack's state reliably. Simply run\n" +
+			"\n" +
+			"    $ pulumi login\n" +
+			"\n" +
+			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
 			"easily obtain one. You can script by using PULUMI_ACCESS_TOKEN environment variable.\n" +
 			"\n" +
 			"By default, this will log into app.pulumi.com. If you prefer to log into a separate instance\n" +
-			"of the Pulumi service, such as Pulumi Enterprise, specify a <url>.\n" +
+			"of the Pulumi service, such as Pulumi Enterprise, specify a <url>. For example, run\n" +
+			"\n" +
+			"    $ pulumi login https://pulumi.acmecorp.com\n" +
+			"\n" +
+			"to log in to a Pulumi Enterprise server running at the pulumi.acmecorp.com domain.\n" +
 			"\n" +
 			"For https:// URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
 			"If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
-			"pass file://<path>, where <path> will be where state checkpoints will be stored. As a shortcut, you\n" +
-			"may pass --local to use your home directory (this is an alias for file://~).",
+			"pass file://<path>, where <path> will be where state checkpoints will be stored. For instance,\n" +
+			"\n" +
+			"    $ pulumi login file://~\n" +
+			"\n" +
+			"will store your state information on your computer underneath ~/.pulumi. It is then up to you to\n" +
+			"manage this state, including backing it up, using it in a team environment, and so on.\n" +
+			"\n" +
+			"As a shortcut, you may pass --local to use your home directory (this is an alias for file://~):\n" +
+			"\n" +
+			"    $ pulumi login --local\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOptions := backend.DisplayOptions{
