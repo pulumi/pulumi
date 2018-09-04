@@ -363,6 +363,12 @@
   version = "v1.1.4"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/texttheater/golang-levenshtein"
+  packages = ["levenshtein"]
+  revision = "d188e65d659ef53fcdb0691c12f1bba64928b649"
+
+[[projects]]
   name = "github.com/uber/jaeger-client-go"
   packages = [
     ".",
@@ -578,6 +584,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "71208477393825ddcf9e60bd0a6855758c05f49ec560fd9e5ba6336592a18da0"
+  inputs-digest = "d6db93501077426a275193a3d77e69cc4fe68fd80603907438fcb0503d7817a0"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
@@ -216,6 +217,15 @@ func retrievePulumiTemplates(templateName string, offline bool) (TemplateReposit
 	subDir := templateDir
 	if templateName != "" {
 		subDir = filepath.Join(subDir, templateName)
+
+		// Provide a nicer error message when the template can't be found (dir doesn't exist).
+		_, err := os.Stat(subDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return TemplateRepository{}, newTemplateNotFoundError(templateDir, templateName)
+			}
+			contract.IgnoreError(err)
+		}
 	}
 
 	return TemplateRepository{
@@ -469,6 +479,40 @@ func newExistingFilesError(existing []string) error {
 		message = message + fmt.Sprintf("  overwrite   %s\n", file)
 	}
 	message = message + "\nrerun the command and pass --force to accept and create"
+	return errors.New(message)
+}
+
+// newTemplateNotFoundError returns an error for when the template doesn't exist,
+// offering distance-based suggestions in the error message.
+func newTemplateNotFoundError(templateDir string, templateName string) error {
+	message := fmt.Sprintf("template '%s' not found", templateName)
+
+	// Attempt to read the directory to offer suggestions.
+	infos, err := ioutil.ReadDir(templateDir)
+	if err != nil {
+		contract.IgnoreError(err)
+		return errors.New(message)
+	}
+
+	// Get suggestions based on levenshtein distance.
+	suggestions := []string{}
+	const minDistance = 2
+	op := levenshtein.DefaultOptions
+	for _, info := range infos {
+		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(info.Name()), op)
+		if distance <= minDistance {
+			suggestions = append(suggestions, info.Name())
+		}
+	}
+
+	// Build-up error message with suggestions.
+	if len(suggestions) > 0 {
+		message = message + "\n\nDid you mean this?\n"
+		for _, suggestion := range suggestions {
+			message = message + fmt.Sprintf("\t%s\n", suggestion)
+		}
+	}
+
 	return errors.New(message)
 }
 
