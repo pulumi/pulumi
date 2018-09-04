@@ -230,9 +230,12 @@ function serializeJavaScriptText(
             return envVar;
         }
 
-        // Objects any arrays may have cycles in them.  They may also be referenced from multiple
-        // functions.  As such, we have to create variables for them in the environment so that all
-        // references to them unify to the same reference to the env variable.
+        // Complex objects may also be referenced from multiple functions.  As such, we have to
+        // create variables for them in the environment so that all references to them unify to the
+        // same reference to the env variable.  Effectively, we need to do this for any object that
+        // could be compared for reference-identity.  Basic types (strings, numbers, etc.) have
+        // value semantics and this can be emitted directly into the code where they are used as
+        // there is no way to observe that you are getting a different copy.
         if (isObjOrArrayOrRegExp(envEntry)) {
             return complexEnvEntryToString(envEntry, varName);
         }
