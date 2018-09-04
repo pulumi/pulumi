@@ -90,6 +90,9 @@ export interface Entry {
     // a value which can be safely json serialized.
     json?: any;
 
+    // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
+    regexp?: RegExp;
+
     // a closure we are dependent on.
     function?: FunctionInfo;
 
@@ -800,6 +803,10 @@ function getOrCreateEntry(
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
             // Serialize primitives as-is.
             entry.json = obj;
+            return;
+        }
+        else if (obj instanceof RegExp) {
+            entry.regexp = obj;
             return;
         }
 

@@ -5128,6 +5128,70 @@ return function /*f*/({ whatever }) { };
 `,
     });
 
+    {
+        const regex = /(abc)[\(123-456]\\a\b\z/gi;
+
+        cases.push({
+            title: "Regex #1",
+            // @ts-ignore
+            func: function() { console.log(regex); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)[\\\\(123-456]\\\\\\\\a\\\\b\\\\z", "gi");
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex }) {
+
+return function () { console.log(regex); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const regex = /(abc)/g;
+
+        function foo() {
+            console.log(regex);
+        }
+
+        cases.push({
+            title: "Regex #2",
+            // @ts-ignore
+            func: function() { console.log(regex); foo(); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)", "g");
+
+function __foo() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function /*foo*/() {
+            console.log(regex);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function () { console.log(regex); foo(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
