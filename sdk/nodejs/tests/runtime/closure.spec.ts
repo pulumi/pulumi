@@ -793,7 +793,7 @@ return () => {
     cases.push({
         title: "Don't capture built-ins",
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
-        expectPackages: new Set(["os"]),
+        expectPackages: new Set(),
         expectText: `exports.handler = __f0;
 
 function __f0() {
@@ -814,7 +814,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
         cases.push({
             title: "Capture built in module by ref",
             func: () => os,
-            expectPackages: new Set([]),
+            expectPackages: new Set(["os"]),
             expectText: `exports.handler = __f0;
 
 function __f0() {
@@ -4145,7 +4145,7 @@ return function () { console.log(module.exports.exportedValue); };
         cases.push({
             title: "Required packages #1",
             func: function () { require("typescript"); foo(); if (true) { require("os") } },
-            expectPackages: new Set(["os", "typescript", "./util"]),
+            expectPackages: new Set(),
             expectText: `exports.handler = __f0;
 
 function __foo() {

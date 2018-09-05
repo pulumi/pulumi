@@ -18,6 +18,52 @@ import * as readPackageTree from "read-package-tree";
 import * as asset from "../../asset";
 import { RunError } from "../../errors";
 
+/**
+ * computeRequiredSubDependencyPaths Takes in the set of "require"d modules from a serialied function
+ * and determines which dependencies of @pulumi/... need to be included.  Normally We do not include
+ * @pulumi/... packages in a serialized function (largely due to the size as well as because these
+ * libraries are only intended to be used at deployment time.  However, @pulumi/... might itself
+ * depend on *other* libraries that *are* needed at runtime.  This function helps determine that set
+ * so that we will include those sub-packages even if we filter out the main @pulumi/... package
+ * itself.
+ */
+export function computeRequiredSubDependencyPaths(requiredModules: Set<string>): Set<string> {
+    const requiredPaths = new Set<string>();
+
+    const nodeModulesPiece = "node_modules";
+    for (const requiredModule of requiredModules) {
+        // Check if requiredModule is like:
+        // "@pulumi/cloud-azure/node_modules/azure-sb/lib/servicebus.js"
+        const split = requiredModule.split("/");
+
+        // has to start with @pulumi.
+        if (split[0] !== "@pulumi") {
+            continue;
+        }
+
+        // Has to reference node_modules somewhere under that.
+        const nodeModulesIndex = split.indexOf(nodeModulesPiece);
+        if (nodeModulesIndex < 0) {
+            continue;
+        }
+
+        // Has to have something following node_modules. (i.e. azure-sb)
+        if (!split[nodeModulesIndex + 1]) {
+            continue;
+        }
+
+        // We want to include all the pieces of the split up through and including the *next*
+        // item after the node_modules
+        const pieces = [nodeModulesPiece, ...split.slice(0, nodeModulesIndex + 2)];
+
+        // This will generate a path like: node_modules/@pulumi/cloud-azure/node_modules/azure-sb
+        // This is the form we want to pass in as an 'extraIncludePaths' when calling 'computeCodePaths'
+        requiredPaths.add(pieces.join("/"));
+    }
+
+    return requiredPaths;
+}
+
 // computeCodePaths computes the local node_module paths to include in an uploaded cloud 'Lambda'.
 // Specifically, it will examine the package.json for the caller's code, and will transitively walk
 // it's 'dependencies' section to determine what packages should be included.
