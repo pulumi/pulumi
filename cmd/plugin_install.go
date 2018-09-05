@@ -23,8 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -51,7 +51,7 @@ func newPluginInstallCmd() *cobra.Command {
 			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 			"downloading more plugins than is strictly necessary.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			displayOpts := backend.DisplayOptions{
+			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -94,9 +94,9 @@ func newPluginInstallCmd() *cobra.Command {
 			}
 
 			// Target the cloud URL for downloads.
-			var releases cloud.Backend
+			var releases httpstate.Backend
 			if len(installs) > 0 && file == "" {
-				r, err := cloud.New(cmdutil.Diag(), cloud.ValueOrDefaultURL(cloudURL))
+				r, err := httpstate.New(cmdutil.Diag(), httpstate.ValueOrDefaultURL(cloudURL))
 				if err != nil {
 					return errors.Wrap(err, "creating API client")
 				}

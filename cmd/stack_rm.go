@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -48,7 +48,7 @@ func newStackRmCmd() *cobra.Command {
 				stack = args[0]
 			}
 
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -58,8 +58,8 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Name())
-			if !yes && !confirmPrompt(prompt, s.Name().String(), opts) {
+			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
+			if !yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
 				return errors.New("confirmation declined")
 			}
 
@@ -67,13 +67,13 @@ func newStackRmCmd() *cobra.Command {
 			if err != nil {
 				if hasResources {
 					return errors.Errorf(
-						"'%s' still has resources; removal rejected; pass --force to override", s.Name())
+						"'%s' still has resources; removal rejected; pass --force to override", s.Ref())
 				}
 				return err
 			}
 
 			// Blow away stack specific settings if they exist
-			path, err := workspace.DetectProjectStackPath(s.Name().StackName())
+			path, err := workspace.DetectProjectStackPath(s.Ref().Name())
 			if err != nil {
 				return err
 			}
@@ -82,7 +82,7 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
-			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
+			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
 
 			return state.SetCurrentStack("")

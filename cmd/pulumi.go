@@ -26,25 +26,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-
-	"github.com/djherbis/times"
-	"github.com/pulumi/pulumi/pkg/workspace"
-
 	"github.com/blang/semver"
+	"github.com/djherbis/times"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -121,7 +119,7 @@ func NewPulumiCmd() *cobra.Command {
 		"Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
 		"Enable emojis in the output")
-	cmd.PersistentFlags().BoolVar(&local.DisableIntegrityChecking, "disable-integrity-checking", false,
+	cmd.PersistentFlags().BoolVar(&filestate.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
 		"Flow log settings to child processes (like plugins)")
@@ -199,7 +197,7 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 		return latest, oldest, err
 	}
 
-	client := client.NewClient(cloud.DefaultURL(), "")
+	client := client.NewClient(httpstate.DefaultURL(), "")
 	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
@@ -332,7 +330,7 @@ func isDevVersion(s semver.Version) bool {
 	return !s.Pre[0].IsNum && strings.HasPrefix("dev", s.Pre[0].VersionStr)
 }
 
-func confirmPrompt(prompt string, name string, opts backend.DisplayOptions) bool {
+func confirmPrompt(prompt string, name string, opts display.Options) bool {
 	if prompt != "" {
 		fmt.Print(
 			opts.Color.Colorize(

@@ -37,7 +37,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -361,8 +361,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	if err := os.Setenv(local.DisableCheckpointBackupsEnvVar, "1"); err != nil {
-		t.Errorf("error setting env var '%s': %v", local.DisableCheckpointBackupsEnvVar, err)
+	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
+		t.Errorf("error setting env var '%s': %v", filestate.DisableCheckpointBackupsEnvVar, err)
 	}
 
 	t.Parallel()

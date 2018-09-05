@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -62,7 +63,7 @@ func newPreviewCmd() *cobra.Command {
 					Parallel:  parallel,
 					Debug:     debug,
 				},
-				Display: backend.DisplayOptions{
+				Display: display.Options{
 					Color:                cmdutil.GetGlobalColorization(),
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
@@ -88,7 +89,13 @@ func newPreviewCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
+			changes, err := s.Preview(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
 			switch {
 			case err != nil:
 				return PrintEngineError(err)

@@ -29,6 +29,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -47,7 +48,7 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -81,7 +82,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -108,7 +109,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Short: "Remove configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -116,13 +117,14 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name().StackName())
+			ps, err := workspace.DetectProjectStack(stackName)
 			if err != nil {
 				return err
 			}
@@ -131,7 +133,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				delete(ps.Config, key)
 			}
 
-			return workspace.SaveProjectStack(s.Name().StackName(), ps)
+			return workspace.SaveProjectStack(stackName, ps)
 		}),
 	}
 
@@ -145,7 +147,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -154,13 +156,14 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			c, err := backend.GetLatestConfiguration(commandContext(), s)
 			if err != nil {
 				return err
 			}
 
-			configPath, err := workspace.DetectProjectStackPath(s.Name().StackName())
+			configPath, err := workspace.DetectProjectStackPath(stackName)
 			if err != nil {
 				return err
 			}
@@ -198,7 +201,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 
 			err = ps.Save(configPath)
 			if err == nil {
-				fmt.Printf("refreshed configuration for stack '%s'\n", s.Name().String())
+				fmt.Printf("refreshed configuration for stack '%s'\n", stackName)
 			}
 			return err
 		}),
@@ -221,7 +224,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"may be set by piping a file to standard in.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -230,6 +233,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
@@ -282,14 +286,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name().StackName())
+			ps, err := workspace.DetectProjectStack(stackName)
 			if err != nil {
 				return err
 			}
 
 			ps.Config[key] = v
 
-			return workspace.SaveProjectStack(s.Name().StackName(), ps)
+			return workspace.SaveProjectStack(stackName, ps)
 		}),
 	}
 
@@ -336,7 +340,7 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	ps, err := workspace.DetectProjectStack(stack.Name().StackName())
+	ps, err := workspace.DetectProjectStack(stack.Ref().Name())
 	if err != nil {
 		return err
 	}
@@ -387,7 +391,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 }
 
 func getConfig(stack backend.Stack, key config.Key) error {
-	ps, err := workspace.DetectProjectStack(stack.Name().StackName())
+	ps, err := workspace.DetectProjectStack(stack.Ref().Name())
 	if err != nil {
 		return err
 	}
@@ -413,7 +417,7 @@ func getConfig(stack backend.Stack, key config.Key) error {
 	}
 
 	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Name())
+		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
 }
 
 var (

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package display
 
 import "github.com/pulumi/pulumi/pkg/diag/colors"
 
-// DisplayOptions controls how the output of events are rendered
-type DisplayOptions struct {
+// Options controls how the output of events are rendered
+type Options struct {
 	Color                colors.Colorization // colorization to apply to events.
 	ShowConfig           bool                // true if we should show configuration information.
 	ShowReplacementSteps bool                // true to show the replacement steps in the plan.

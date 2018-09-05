@@ -32,23 +32,19 @@ import (
 
 // Stack is a stack associated with a particular backend implementation.
 type Stack interface {
-	Name() StackReference                                   // this stack's identity.
+	Ref() StackReference                                    // this stack's identity.
 	Config() config.Map                                     // the current config map.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
 	// Update this stack.
-	Update(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
 	// Refresh this stack's state from the cloud provider.
-	Refresh(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
 	// Destroy this stack's resources.
-	Destroy(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
@@ -62,56 +58,52 @@ type Stack interface {
 
 // RemoveStack returns the stack, or returns an error if it cannot.
 func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
-	return s.Backend().RemoveStack(ctx, s.Name(), force)
+	return s.Backend().RemoveStack(ctx, s.Ref(), force)
 }
 
 // PreviewStack previews changes to this stack.
-func PreviewStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
-	return s.Backend().Preview(ctx, s.Name(), proj, root, m, opts, scopes)
+func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+	return s.Backend().Preview(ctx, s.Ref(), op)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
-	return s.Backend().Update(ctx, s.Name(), proj, root, m, opts, scopes)
+func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+	return s.Backend().Update(ctx, s.Ref(), op)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
-	return s.Backend().Refresh(ctx, s.Name(), proj, root, m, opts, scopes)
+func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+	return s.Backend().Refresh(ctx, s.Ref(), op)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
-	return s.Backend().Destroy(ctx, s.Name(), proj, root, m, opts, scopes)
+func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+	return s.Backend().Destroy(ctx, s.Ref(), op)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.
 func GetStackCrypter(s Stack) (config.Crypter, error) {
-	return s.Backend().GetStackCrypter(s.Name())
+	return s.Backend().GetStackCrypter(s.Ref())
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
 func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
-	return s.Backend().GetLatestConfiguration(ctx, s.Name())
+	return s.Backend().GetLatestConfiguration(ctx, s.Ref())
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
 func GetStackLogs(ctx context.Context, s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(ctx, s.Name(), query)
+	return s.Backend().GetLogs(ctx, s.Ref(), query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
 func ExportStackDeployment(ctx context.Context, s Stack) (*apitype.UntypedDeployment, error) {
-	return s.Backend().ExportDeployment(ctx, s.Name())
+	return s.Backend().ExportDeployment(ctx, s.Ref())
 }
 
 // ImportStackDeployment imports the given deployment into the indicated stack.
 func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.UntypedDeployment) error {
-	return s.Backend().ImportDeployment(ctx, s.Name(), deployment)
+	return s.Backend().ImportDeployment(ctx, s.Ref(), deployment)
 }
 
 // GetStackTags returns the set of tags for the "current" stack, based on the environment

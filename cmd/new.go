@@ -26,6 +26,7 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -71,7 +72,7 @@ func newNewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			opts.Display = backend.DisplayOptions{
+			opts.Display = display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: interactive,
 			}
@@ -257,7 +258,7 @@ func newNewCmd() *cobra.Command {
 
 				// Save the config.
 				if c != nil {
-					if err = saveConfig(stack.Name().StackName(), c); err != nil {
+					if err = saveConfig(stack.Ref().Name(), c); err != nil {
 						return errors.Wrap(err, "saving config")
 					}
 				}
@@ -450,7 +451,13 @@ func runUpOrPrintNextSteps(
 			return errors.Wrap(err, "gathering environment metadata")
 		}
 
-		_, err = stack.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+		_, err = stack.Update(commandContext(), backend.UpdateOperation{
+			Proj:   proj,
+			Root:   root,
+			M:      m,
+			Opts:   opts,
+			Scopes: cancellationScopes,
+		})
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
@@ -493,7 +500,7 @@ func runUpOrPrintNextSteps(
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
-func chooseTemplate(templates []workspace.Template, opts backend.DisplayOptions) (workspace.Template, error) {
+func chooseTemplate(templates []workspace.Template, opts display.Options) (workspace.Template, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
 	if !cmdutil.Interactive() {
 		return workspace.Template{}, errors.New(chooseTemplateErr)
@@ -554,7 +561,7 @@ func promptForConfig(
 	commandLineConfig config.Map,
 	stackConfig config.Map,
 	yes bool,
-	opts backend.DisplayOptions) (config.Map, error) {
+	opts display.Options) (config.Map, error) {
 
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
 	// the project name will be prepended.
@@ -670,7 +677,7 @@ func promptForConfig(
 // message followed by another prompt for the value.
 func promptForValue(
 	yes bool, prompt string, defaultValue string, secret bool,
-	isValidFn func(value string) bool, opts backend.DisplayOptions) (string, error) {
+	isValidFn func(value string) bool, opts display.Options) (string, error) {
 
 	if yes {
 		return defaultValue, nil
