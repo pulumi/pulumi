@@ -25,5 +25,8 @@
         "mocha": "^3.5.0",
         "node-gyp": "^3.6.2",
         "tslint": "^5.7.0"
+    },
+    "pulumi": {
+        "comment": "Do not remove. Marks this as as a deployment-time-only package"
     }
 }
