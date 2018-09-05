@@ -72,7 +72,7 @@ func newNewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			opts.Display = backend.DisplayOptions{
+			opts.Display = display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: interactive,
 			}
