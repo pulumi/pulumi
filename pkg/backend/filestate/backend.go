@@ -283,15 +283,6 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		return nil, err
 	}
 
-	// Make sure to print a link to the stack's checkpoint before exiting.
-	if persist {
-		defer func() {
-			fmt.Printf(
-				op.Opts.Display.Color.Colorize(
-					colors.BrightMagenta+"Permalink: file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
-		}()
-	}
-
 	// Spawn a display loop to show events on the CLI.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
@@ -369,6 +360,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		//     trivial to achieve today given the event driven nature of plan-walking, however.
 		ResourceChanges: changes,
 	}
+
 	var saveErr error
 	var backupErr error
 	if !dryRun {
@@ -380,11 +372,24 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
 		return changes, updateErr
 	}
+
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
 		return changes, errors.Wrap(saveErr, "saving update info")
 	}
-	return changes, errors.Wrap(backupErr, "saving backup")
+
+	if backupErr != nil {
+		return changes, errors.Wrap(backupErr, "saving backup")
+	}
+
+	// Make sure to print a link to the stack's checkpoint before exiting.
+	if persist {
+		fmt.Printf(
+			op.Opts.Display.Color.Colorize(
+				colors.BrightMagenta+"Permalink: file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
+	}
+
+	return changes, nil
 }
 
 func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
