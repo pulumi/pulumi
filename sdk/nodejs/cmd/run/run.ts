@@ -185,7 +185,7 @@ export function run(argv: minimist.ParsedArgs): void {
 
         // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
         if (code === 0 && uncaught) {
-            process.exit(1);
+            process.exitCode = 1;
         }
     });
 
