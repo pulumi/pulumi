@@ -19,7 +19,7 @@ import * as asset from "../../asset";
 import { RunError } from "../../errors";
 
 /**
- * getRequiredPulumiDependencyPaths Takes in the set of "require"d modules from a serialied function
+ * computeRequiredSubDependencyPaths Takes in the set of "require"d modules from a serialied function
  * and determines which dependencies of @pulumi/... need to be included.  Normally We do not include
  * @pulumi/... packages in a serialized function (largely due to the size as well as because these
  * libraries are only intended to be used at deployment time.  However, @pulumi/... might itself
@@ -27,7 +27,7 @@ import { RunError } from "../../errors";
  * so that we will include those sub-packages even if we filter out the main @pulumi/... package
  * itself.
  */
-export function getRequiredPulumiDependencyPaths(requiredModules: Set<string>): Set<string> {
+export function computeRequiredSubDependencyPaths(requiredModules: Set<string>): Set<string> {
     const requiredPaths = new Set<string>();
 
     const nodeModulesPiece = "node_modules";
