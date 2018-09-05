@@ -155,8 +155,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
-					resErr := res.Error()
-					if resErr != nil {
+					if resErr := res.Error(); resErr != nil {
 						log.Infof("planExecutor.Execute(...): error handling event: %v", resErr)
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
@@ -188,11 +187,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
+func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
-	var res result.Result
+	var res *result.Result
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
