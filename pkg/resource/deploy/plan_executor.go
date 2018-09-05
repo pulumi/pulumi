@@ -242,7 +242,7 @@ func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Opt
 
 	options := opts
 	options.Parallel = 1 // deletes can't be executed in parallel yet (pulumi/pulumi#1625)
-	stepExec := newStepExecutor(ctx, cancel, pe.plan, options, preview)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, options, preview, false)
 
 	// Submit the deletes for execution and wait for them all to retire.
 	stepExec.Execute(steps)
