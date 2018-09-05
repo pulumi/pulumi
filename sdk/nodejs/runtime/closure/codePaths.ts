@@ -222,7 +222,7 @@ function findDependency(root: readPackageTree.Node | undefined | null, name: str
             const childFolderName = filepath.basename(child.path);
             const parentFolderName = filepath.basename(filepath.dirname(child.path));
             if (parentFolderName[0] === "@") {
-                childName = filepath.join(parentFolderName, childFolderName);
+                childName = `${parentFolderName}/${childFolderName}`;
             }
 
             if (childName === name) {
