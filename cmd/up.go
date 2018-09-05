@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -143,15 +144,10 @@ func newUpCmd() *cobra.Command {
 			contract.IgnoreError(os.RemoveAll(temp))
 		}()
 
-		// Cleanup the project name/description if needed.
-		projectName := template.ProjectName
-		if projectName == "${PROJECT}" {
-			projectName = workspace.ValueOrSanitizedDefaultProjectName(projectName, template.Name)
-		}
-		projectDescription := template.ProjectDescription
-		if projectDescription == "${DESCRIPTION}" {
-			projectDescription = ""
-		}
+		// Get the project name/description.
+		projectName := workspace.ValueOrSanitizedDefaultProjectName("", template.ProjectName, template.Name)
+		projectDescription := workspace.ValueOrDefaultProjectDescription(
+			"", template.ProjectDescription, template.Description)
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
 		if err = template.CopyTemplateFiles(temp, true, projectName, projectDescription); err != nil {
@@ -161,6 +157,17 @@ func newUpCmd() *cobra.Command {
 		// Change the working directory to the "virtual workspace" directory.
 		if err = os.Chdir(temp); err != nil {
 			return errors.Wrap(err, "changing the working directory")
+		}
+
+		// Load the project, update the name & description, and save it.
+		proj, _, err := readProject()
+		if err != nil {
+			return err
+		}
+		proj.Name = tokens.PackageName(projectName)
+		proj.Description = &projectDescription
+		if err = workspace.SaveProject(proj); err != nil {
+			return errors.Wrap(err, "saving project")
 		}
 
 		// Get a stack, but don't set it as the current stack, to avoid writing to ~/.pulumi/workspaces.

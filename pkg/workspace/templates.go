@@ -382,22 +382,37 @@ func IsValidProjectName(name string) bool {
 
 // ValueOrSanitizedDefaultProjectName returns the value or a sanitized valid project name
 // based on defaultNameToSanitize.
-func ValueOrSanitizedDefaultProjectName(name string, defaultNameToSanitize string) string {
+func ValueOrSanitizedDefaultProjectName(name string, projectName string, defaultNameToSanitize string) string {
+	// If we have a name, use it.
 	if name != "" {
 		return name
 	}
+
+	// If the project already has a name that isn't a replacement string, use it.
+	if projectName != "${PROJECT}" {
+		return projectName
+	}
+
+	// Otherwise, get a sanitized version of `defaultNameToSanitize`.
 	return getValidProjectName(defaultNameToSanitize)
 }
 
 // ValueOrDefaultProjectDescription returns the value or defaultDescription.
-func ValueOrDefaultProjectDescription(description string, defaultDescription string) string {
+func ValueOrDefaultProjectDescription(
+	description string, projectDescription string, defaultDescription string) string {
+
+	// If we have a description, use it.
 	if description != "" {
 		return description
 	}
-	if defaultDescription != "" {
-		return defaultDescription
+
+	// If the project already has a description that isn't a replacement string, use it.
+	if projectDescription != "${DESCRIPTION}" {
+		return projectDescription
 	}
-	return ""
+
+	// Otherwise, use the default, which may be an empty string.
+	return defaultDescription
 }
 
 // getValidProjectName returns a valid project name based on the passed-in name.
