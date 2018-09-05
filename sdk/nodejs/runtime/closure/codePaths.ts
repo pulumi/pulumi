@@ -149,23 +149,28 @@ function addPackageAndDependenciesToSet(
         return;
     }
 
-    let dependencies: any;
     if (child.package.pulumi) {
-        // This was an @pulumi deployment package.  Check if it had a: pulumi: { runtimeDependencies: ... }
+        // This was a pulumi deployment-time package.  Check if it had a:
+        //
+        //    `pulumi: { runtimeDependencies: ... }`
+        //
         // section.  In this case, we don't want to add this specific package, but we do want to
         // include all the runtime dependencies it says are necessary.
-        dependencies = child.package.pulumi.runtimeDependencies;
+        recurse(child.package.pulumi.runtimeDependencies);
     }
-    else if (child.package.dependencies) {
+    else {
         // Normal package.  Add the path to it, and all transitively add all of its dependencies.
         packagePaths.add(child.path);
-
-        dependencies = child.package.dependencies;
+        recurse(child.package.dependencies);
     }
 
-    if (dependencies) {
-        for (const dep of Object.keys(dependencies)) {
-            addPackageAndDependenciesToSet(child, dep, packagePaths, excludedPackages);
+    return;
+
+    function recurse(dependencies: any) {
+        if (dependencies) {
+            for (const dep of Object.keys(dependencies)) {
+                addPackageAndDependenciesToSet(child!, dep, packagePaths, excludedPackages);
+            }
         }
     }
 }
