@@ -1119,6 +1119,14 @@ func TestExternalRefresh(t *testing.T) {
 }
 
 func TestRefreshInitFailure(t *testing.T) {
+	p := &TestPlan{}
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	res2URN := p.NewURN("pkgA:m:typA", "resB", "")
+
+	res2Outputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+
 	//
 	// Refresh will persist any initialization errors that are returned by `Read`. This provider
 	// will error out or not based on the value of `refreshShouldFail`.
@@ -1134,11 +1142,13 @@ func TestRefreshInitFailure(t *testing.T) {
 				ReadF: func(
 					urn resource.URN, id resource.ID, props resource.PropertyMap,
 				) (resource.PropertyMap, resource.Status, error) {
-					if refreshShouldFail {
+					if refreshShouldFail && urn == resURN {
 						err := &plugin.InitError{
 							Reasons: []string{"Refresh reports continued to fail to initialize"},
 						}
 						return resource.PropertyMap{}, resource.StatusPartialFailure, err
+					} else if urn == res2URN {
+						return res2Outputs, resource.StatusOK, nil
 					}
 					return resource.PropertyMap{}, resource.StatusOK, nil
 				},
@@ -1154,26 +1164,31 @@ func TestRefreshInitFailure(t *testing.T) {
 	})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
-	p := &TestPlan{
-		Options: UpdateOptions{host: host},
-	}
-
-	provURN := p.NewProviderURN("pkgA", "default", "")
-	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	p.Options.host = host
 
 	//
 	// Create an old snapshot with a single initialization failure.
 	//
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{{
-			Type:       resURN.Type(),
-			URN:        resURN,
-			Custom:     true,
-			ID:         "0",
-			Inputs:     resource.PropertyMap{},
-			Outputs:    resource.PropertyMap{},
-			InitErrors: []string{"Resource failed to initialize"},
-		}},
+		Resources: []*resource.State{
+			{
+				Type:       resURN.Type(),
+				URN:        resURN,
+				Custom:     true,
+				ID:         "0",
+				Inputs:     resource.PropertyMap{},
+				Outputs:    resource.PropertyMap{},
+				InitErrors: []string{"Resource failed to initialize"},
+			},
+			{
+				Type:    res2URN.Type(),
+				URN:     res2URN,
+				Custom:  true,
+				ID:      "1",
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+		},
 	}
 
 	//
@@ -1188,6 +1203,8 @@ func TestRefreshInitFailure(t *testing.T) {
 			// break
 		case resURN:
 			assert.Empty(t, resource.InitErrors)
+		case res2URN:
+			assert.Equal(t, res2Outputs, resource.Outputs)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
 		}
@@ -1197,7 +1214,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Refresh DOES fail, causing the new initialization error to appear.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh}}
+	p.Steps = []TestStep{{Op: Refresh, ExpectFailure: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
@@ -1205,6 +1222,8 @@ func TestRefreshInitFailure(t *testing.T) {
 			// break
 		case resURN:
 			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, resource.InitErrors)
+		case res2URN:
+			assert.Equal(t, res2Outputs, resource.Outputs)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
 		}

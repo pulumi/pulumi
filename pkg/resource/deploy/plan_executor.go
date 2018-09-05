@@ -93,7 +93,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 	// Set up a step generator and executor for this plan.
 	pe.stepGen = newStepGenerator(pe.plan, opts)
-	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview)
+	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview, false)
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
@@ -224,7 +224,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 	// Fire up a worker pool and issue each refresh in turn.
 	ctx, cancel := context.WithCancel(callerCtx)
-	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, true)
 	for i := range steps {
 		if ctx.Err() != nil {
 			break
