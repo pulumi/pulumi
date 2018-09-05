@@ -139,7 +139,6 @@ function addPackageAndDependenciesToSet(
 
     // Don't process this packages if it was in the set the user wants to exclude.
     if (excludedPackages.has(pkg)) {
-
         return;
     }
 
@@ -157,6 +156,12 @@ function addPackageAndDependenciesToSet(
         // section.  In this case, we don't want to add this specific package, but we do want to
         // include all the runtime dependencies it says are necessary.
         recurse(child.package.pulumi.runtimeDependencies);
+    }
+    else if (pkg.startsWith("@pulumi")) {
+        // exclude it if it's an @pulumi package.  These packages are intended for deployment
+        // time only and will only bloat up the serialized lambda package.  Note: this code can
+        // be removed once all pulumi packages add a "pulumi" section to their package.json.
+        return;
     }
     else {
         // Normal package.  Add the path to it, and all transitively add all of its dependencies.
