@@ -100,10 +100,10 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 	}
 }
 
-// DisplayProgressToStream displays a Progress  stream from `in` to `out`, `isTerminal` describes if
+// ShowProgressOutput displays a progress stream from `in` to `out`, `isTerminal` describes if
 // `out` is a terminal. If this is the case, it will print `\n` at the end of each line and move the
 // cursor while displaying.
-func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool) {
+func ShowProgressOutput(in <-chan Progress, out io.Writer, isTerminal bool) {
 	var (
 		ids = make(map[string]int)
 	)

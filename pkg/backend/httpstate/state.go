@@ -179,7 +179,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(op string, action apitype.UpdateKin
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go display.DisplayEvents(op, action, displayEvents, done, opts)
+	go display.ShowEvents(op, action, displayEvents, done, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {

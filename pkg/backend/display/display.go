@@ -34,14 +34,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
+// ShowEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
-func DisplayEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 	if opts.DiffDisplay {
-		DisplayDiffEvents(op, action, events, done, opts)
+		ShowDiffEvents(op, action, events, done, opts)
 	} else {
-		DisplayProgressEvents(op, action, events, done, opts)
+		ShowProgressEvents(op, action, events, done, opts)
 	}
 }
 
@@ -54,8 +54,8 @@ func (s *nopSpinner) Tick() {
 func (s *nopSpinner) Reset() {
 }
 
-// DisplayDiffEvents displays the engine events with the diff view.
-func DisplayDiffEvents(op string, action apitype.UpdateKind,
+// ShowDiffEvents displays the engine events with the diff view.
+func ShowDiffEvents(op string, action apitype.UpdateKind,
 	events <-chan engine.Event, done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)

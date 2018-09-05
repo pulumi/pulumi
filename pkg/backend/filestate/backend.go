@@ -295,7 +295,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Spawn a display loop to show events on the CLI.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-	go display.DisplayEvents(strings.ToLower(actionLabel), kind, displayEvents, displayDone, op.Opts.Display)
+	go display.ShowEvents(strings.ToLower(actionLabel), kind, displayEvents, displayDone, op.Opts.Display)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)

@@ -224,8 +224,8 @@ func (display *ProgressDisplay) writeBlankLine() {
 	display.writeSimpleMessage(" ")
 }
 
-// DisplayProgressEvents displays the engine events with docker's progress view.
-func DisplayProgressEvents(
+// ShowProgressEvents displays the engine events with docker's progress view.
+func ShowProgressEvents(
 	op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 
 	// Create a ticker that will update all our status messages once a second.  Any
@@ -235,7 +235,7 @@ func DisplayProgressEvents(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
 		nil, 1 /*timesPerSecond*/)
 
-	// The channel we push progress messages into, and which DisplayProgressToStream pulls
+	// The channel we push progress messages into, and which ShowProgressOutput pulls
 	// from to display to the console.
 	progressOutput := make(chan Progress)
 
@@ -272,7 +272,7 @@ func DisplayProgressEvents(
 		close(progressOutput)
 	}()
 
-	DisplayProgressToStream(progressOutput, stdout, display.isTerminal)
+	ShowProgressOutput(progressOutput, stdout, display.isTerminal)
 
 	ticker.Stop()
 
