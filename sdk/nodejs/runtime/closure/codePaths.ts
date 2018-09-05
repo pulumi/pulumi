@@ -18,52 +18,6 @@ import * as readPackageTree from "read-package-tree";
 import * as asset from "../../asset";
 import { RunError } from "../../errors";
 
-/**
- * computeRequiredSubDependencyPaths Takes in the set of "require"d modules from a serialied function
- * and determines which dependencies of @pulumi/... need to be included.  Normally We do not include
- * @pulumi/... packages in a serialized function (largely due to the size as well as because these
- * libraries are only intended to be used at deployment time.  However, @pulumi/... might itself
- * depend on *other* libraries that *are* needed at runtime.  This function helps determine that set
- * so that we will include those sub-packages even if we filter out the main @pulumi/... package
- * itself.
- */
-export function computeRequiredSubDependencyPaths(requiredModules: Set<string>): Set<string> {
-    const requiredPaths = new Set<string>();
-
-    const nodeModulesPiece = "node_modules";
-    for (const requiredModule of requiredModules) {
-        // Check if requiredModule is like:
-        // "@pulumi/cloud-azure/node_modules/azure-sb/lib/servicebus.js"
-        const split = requiredModule.split("/");
-
-        // has to start with @pulumi.
-        if (split[0] !== "@pulumi") {
-            continue;
-        }
-
-        // Has to reference node_modules somewhere under that.
-        const nodeModulesIndex = split.indexOf(nodeModulesPiece);
-        if (nodeModulesIndex < 0) {
-            continue;
-        }
-
-        // Has to have something following node_modules. (i.e. azure-sb)
-        if (!split[nodeModulesIndex + 1]) {
-            continue;
-        }
-
-        // We want to include all the pieces of the split up through and including the *next*
-        // item after the node_modules
-        const pieces = [nodeModulesPiece, ...split.slice(0, nodeModulesIndex + 2)];
-
-        // This will generate a path like: node_modules/@pulumi/cloud-azure/node_modules/azure-sb
-        // This is the form we want to pass in as an 'extraIncludePaths' when calling 'computeCodePaths'
-        requiredPaths.add(pieces.join("/"));
-    }
-
-    return requiredPaths;
-}
-
 // computeCodePaths computes the local node_module paths to include in an uploaded cloud 'Lambda'.
 // Specifically, it will examine the package.json for the caller's code, and will transitively walk
 // it's 'dependencies' section to determine what packages should be included.
@@ -182,12 +136,9 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
     root: readPackageTree.Node, pkg: string, packagePaths: Set<string>, excludedPackages: Set<string>) {
-    // Don't process this packages if it was in the set the user wants to exclude.
 
-    // Also, exclude it if it's an @pulumi package.  These packages are intended for deployment
-    // time only and will only bloat up the serialized lambda package.
-    if (excludedPackages.has(pkg) ||
-        pkg.startsWith("@pulumi")) {
+    // Don't process this packages if it was in the set the user wants to exclude.
+    if (excludedPackages.has(pkg)) {
 
         return;
     }
@@ -198,9 +149,22 @@ function addPackageAndDependenciesToSet(
         return;
     }
 
-    packagePaths.add(child.path);
-    if (child.package.dependencies) {
-        for (const dep of Object.keys(child.package.dependencies)) {
+    let dependencies: any;
+    if (child.package.pulumi) {
+        // This was an @pulumi deployment package.  Check if it had a: pulumi: { runtimeDependencies: ... }
+        // section.  In this case, we don't want to add this specific package, but we do want to
+        // include all the runtime dependencies it says are necessary.
+        dependencies = child.package.pulumi.runtimeDependencies;
+    }
+    else if (child.package.dependencies) {
+        // Normal package.  Add the path to it, and all transitively add all of its dependencies.
+        packagePaths.add(child.path);
+
+        dependencies = child.package.dependencies;
+    }
+
+    if (dependencies) {
+        for (const dep of Object.keys(dependencies)) {
             addPackageAndDependenciesToSet(child, dep, packagePaths, excludedPackages);
         }
     }
@@ -210,7 +174,7 @@ function addPackageAndDependenciesToSet(
 // for the given name. It is assumed that the tree was correctly constructed such that dependencies
 // are resolved to compatible versions in the closest available match starting at the provided root
 // and walking up to the head of the tree.
-function findDependency(root: readPackageTree.Node | undefined | null, name: string) {
+function findDependency(root: readPackageTree.Node | undefined | null, name: string): readPackageTree.Node | undefined {
     for (; root; root = root.parent) {
         for (const child of root.children) {
             let childName = child.name;
