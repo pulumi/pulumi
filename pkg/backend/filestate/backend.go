@@ -277,9 +277,19 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	fmt.Printf(op.Opts.Display.Color.Colorize(
 		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stackRef)
 
+	// Start the update.
 	update, err := b.newUpdate(stackName, op.Proj, op.Root)
 	if err != nil {
 		return nil, err
+	}
+
+	// Make sure to print a link to the stack's checkpoint before exiting.
+	if persist {
+		defer func() {
+			fmt.Printf(
+				op.Opts.Display.Color.Colorize(
+					colors.BrightMagenta+"Permalink: file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
+		}()
 	}
 
 	// Spawn a display loop to show events on the CLI.
