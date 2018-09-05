@@ -26,27 +26,20 @@ import (
 
 var snk diag.Sink
 
-func ColorsDisabled() bool {
-	if _, ok := os.LookupEnv("NO_COLOR"); ok {
-		return true
-	}
-
-	// Only have colors when we're in an interactive session.  If we're non-interactive (i.e.
-	// redirecting stdout), then disable colors as well.  We don't want to put color tags into
-	// the stream.
-	if !terminal.IsTerminal(int(os.Stdout.Fd())) {
-		return true
-	}
-
-	return false
-}
-
 var globalColorization = colors.Always
 
 // GetGlobalColorization gets the global setting for how things should be colored.
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
 func GetGlobalColorization() colors.Colorization {
-	if ColorsDisabled() {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return colors.Never
+	}
+
+	// Only have colors when we're in an interactive session.  If we're non-interactive (i.e.
+	// redirecting stdout), then disable colors as well.  We don't want to put color tags into the
+	// stream.  We only do this if the color is set to be on.  If it was set to 'raw' then we don't
+	// touch it.
+	if globalColorization == colors.Always && !terminal.IsTerminal(int(os.Stdout.Fd())) {
 		return colors.Never
 	}
 

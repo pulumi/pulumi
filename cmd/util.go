@@ -309,7 +309,7 @@ func (cf *colorFlag) Type() string {
 }
 
 func (cf *colorFlag) Colorization() colors.Colorization {
-	if cmdutil.ColorsDisabled() {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
 		return colors.Never
 	}
 
