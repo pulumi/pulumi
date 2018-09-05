@@ -76,10 +76,6 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 	eventsChannel := make(chan engine.Event)
-	defer func() {
-		close(eventsChannel)
-	}()
-
 	var events []engine.Event
 	go func() {
 		// pull the events from the channel and store them locally
@@ -98,6 +94,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	if !op.Opts.SkipPreview {
 		c, err := apply(ctx, kind, stack, op, true /*dryRun*/, false /*persist*/, eventsChannel)
 		if err != nil {
+			close(eventsChannel)
 			return c, err
 		}
 		changes = c
@@ -105,11 +102,14 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
+		close(eventsChannel)
 		return changes, nil
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	return changes, confirmBeforeUpdating(kind, stack, events, op.Opts)
+	err := confirmBeforeUpdating(kind, stack, events, op.Opts)
+	close(eventsChannel)
+	return changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
