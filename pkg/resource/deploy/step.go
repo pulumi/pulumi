@@ -607,8 +607,6 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			return rst, nil, err
 		}
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
-			// We clear error in this case because we do not want the refresh to fail in the face of initialization
-			// errors.
 			initErrors = initErr.Reasons
 		}
 	}
