@@ -17,6 +17,8 @@ package cmdutil
 import (
 	"os"
 
+	"golang.org/x/crypto/ssh/terminal"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -30,6 +32,14 @@ var globalColorization = colors.Always
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
 func GetGlobalColorization() colors.Colorization {
 	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return colors.Never
+	}
+
+	// Only have colors when we're in an interactive session.  If we're non-interactive (i.e.
+	// redirecting stdout), then disable colors as well.  We don't want to put color tags into the
+	// stream.  We only do this if the color is set to be on.  If it was set to 'raw' then we don't
+	// touch it.
+	if globalColorization == colors.Always && !terminal.IsTerminal(int(os.Stdout.Fd())) {
 		return colors.Never
 	}
 
