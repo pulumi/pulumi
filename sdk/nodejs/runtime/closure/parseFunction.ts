@@ -41,9 +41,6 @@ export interface ParsedFunction extends ParsedFunctionCode {
 
     // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
     usesNonLexicalThis: boolean;
-
-    // The set of package `require`s seen in the parsed function.
-    requiredPackages: Set<string>;
 }
 
 // Information about a captured property.  Both the name and whether or not the property was
@@ -77,7 +74,6 @@ export type CapturedVariableMap = Map<string, CapturedPropertyChain[]>;
 export interface CapturedVariables {
     required: CapturedVariableMap;
     optional: CapturedVariableMap;
-    requiredPackages: Set<string>;
 }
 
 // These are the special globals we've marked as ones we do not want to capture by value.
@@ -120,7 +116,6 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
     const result = <ParsedFunction>functionCode;
     result.capturedVariables = capturedVariables;
     result.usesNonLexicalThis = usesNonLexicalThis;
-    result.requiredPackages = capturedVariables.requiredPackages;
 
     if (result.capturedVariables.required.has("this")) {
         return [
@@ -406,7 +401,6 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     let optional: CapturedVariableMap = new Map();
     const scopes: Set<string>[] = [];
     let functionVars: Set<string> = new Set();
-    const requiredPackages: Set<string> = new Set();
 
     // Recurse through the tree.  We use typescript's AST here and generally walk the entire
     // tree. One subtlety to be aware of is that we generally assume that when we hit an
@@ -420,7 +414,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
     // Now just return all variables whose value is true.  Filter out any that are part of the built-in
     // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-    const result: CapturedVariables = { required: new Map(), optional: new Map(), requiredPackages: requiredPackages };
+    const result: CapturedVariables = { required: new Map(), optional: new Map() };
 
     for (const key of required.keys()) {
         if (required.has(key) && !isBuiltIn(key)) {
@@ -713,18 +707,6 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // For normal calls, just walk all arguments normally.
         for (const arg of node.arguments) {
             walk(arg);
-        }
-
-        // If we see calls to `require`, record them.
-        if (node.expression.kind === ts.SyntaxKind.Identifier) {
-            if ((node.expression as ts.Identifier).text === "require") {
-                if (node.arguments.length > 0) {
-                    if (node.arguments[0].kind === ts.SyntaxKind.StringLiteral) {
-                        const modName = (node.arguments[0] as ts.StringLiteral).text;
-                        requiredPackages.add(modName);
-                    }
-                }
-            }
         }
     }
 

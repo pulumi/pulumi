@@ -56,9 +56,9 @@ export interface SerializedFunction {
      */
     exportName: string;
     /**
-     * The set of packages that were 'require'd by the transitive closure of functions serialized as part of the
-     * JavaScript function serialization.  These packages must be able to resolve in the target execution environment
-     * for the serialized function to be able to be loaded and evaluated correctly.
+     * The set of packages that we emitted explicit 'require' calls to ourself when serializing the
+     * closure. Can be used by downstream consumers to ensure that these modules will be include
+     * unilaterally.
      */
     requiredPackages: Set<string>;
 }
@@ -155,11 +155,7 @@ function serializeJavaScriptText(
         text = exportText + "\n" + environmentText + functionText;
     }
 
-    return {
-        text: text,
-        requiredPackages: requiredPackages,
-        exportName: exportName,
-    };
+    return { text, exportName, requiredPackages };
 
     function emitFunctionAndGetName(functionInfo: closure.FunctionInfo): string {
         // If this is the first time seeing this function, then actually emit the function code for
@@ -173,10 +169,6 @@ function serializeJavaScriptText(
             functionInfoToEnvVar.set(functionInfo, functionName);
 
             emitFunctionWorker(functionInfo, functionName);
-        }
-
-        for (const p of functionInfo.requiredPackages) {
-            requiredPackages.add(p);
         }
 
         return functionName;
@@ -255,6 +247,7 @@ function serializeJavaScriptText(
             return emitFunctionAndGetName(envEntry.function);
         }
         else if (envEntry.module !== undefined) {
+            requiredPackages.add(envEntry.module);
             return `require("${envEntry.module}")`;
         }
         else if (envEntry.output !== undefined) {

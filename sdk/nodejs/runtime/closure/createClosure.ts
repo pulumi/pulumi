@@ -49,9 +49,6 @@ export interface FunctionInfo extends ObjectInfo {
     // name that the function was declared with.  used only for trying to emit a better
     // name into the serialized code for it.
     name: string | undefined;
-
-    // the set of package 'requires' seen in the function body.
-    requiredPackages: Set<string>;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
@@ -391,7 +388,6 @@ function createFunctionInfo(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
-            requiredPackages: parsedFunction.requiredPackages,
         };
 
         const proto = Object.getPrototypeOf(func);

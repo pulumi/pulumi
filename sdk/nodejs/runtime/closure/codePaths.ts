@@ -42,12 +42,12 @@ export async function computeCodePaths(
 
     const includedPackages = new Set<string>(extraIncludePackages || []);
     const excludedPackages = new Set<string>(extraExcludePackages || []);
+    extraIncludePaths = extraIncludePaths || [];
 
     // Find folders for all packages requested by the user
-    const pathSet = await allFoldersForPackages(includedPackages, excludedPackages);
+    const pathSet = await allFoldersForPackages(includedPackages, excludedPackages, extraIncludePaths);
 
     // Add all paths explicitly requested by the user
-    extraIncludePaths = extraIncludePaths || [];
     for (const path of extraIncludePaths) {
         pathSet.add(path);
     }
@@ -94,7 +94,10 @@ function isSubsumedByHigherPath(path: string, pathSet: Set<string>): boolean {
 
 // allFolders computes the set of package folders that are transitively required by the root
 // 'dependencies' node in the client's project.json file.
-function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: Set<string>): Promise<Set<string>> {
+function allFoldersForPackages(
+        includedPackages: Set<string>,
+        excludedPackages: Set<string>,
+        extraIncludePaths: string[]): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
         readPackageTree(".", <any>undefined, (err: any, root: readPackageTree.Node) => {
             if (err) {
@@ -124,7 +127,8 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
 
             const packagePaths = new Set<string>();
             for (const pkg of referencedPackages) {
-                addPackageAndDependenciesToSet(root, pkg, packagePaths, excludedPackages);
+                addPackageAndDependenciesToSet(
+                    root, pkg, packagePaths, excludedPackages, extraIncludePaths);
             }
 
             resolve(packagePaths);
@@ -135,14 +139,12 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
-    root: readPackageTree.Node, pkg: string, packagePaths: Set<string>, excludedPackages: Set<string>) {
+    root: readPackageTree.Node, pkg: string,
+    packagePaths: Set<string>, excludedPackages: Set<string>,
+    extraIncludePaths: string[]) {
+
     // Don't process this packages if it was in the set the user wants to exclude.
-
-    // Also, exclude it if it's an @pulumi package.  These packages are intended for deployment
-    // time only and will only bloat up the serialized lambda package.
-    if (excludedPackages.has(pkg) ||
-        pkg.startsWith("@pulumi")) {
-
+    if (excludedPackages.has(pkg)) {
         return;
     }
 
@@ -152,10 +154,20 @@ function addPackageAndDependenciesToSet(
         return;
     }
 
-    packagePaths.add(child.path);
-    if (child.package.dependencies) {
-        for (const dep of Object.keys(child.package.dependencies)) {
-            addPackageAndDependenciesToSet(child, dep, packagePaths, excludedPackages);
+    // Also, exclude it if it's an @pulumi package.  These packages are intended for deployment
+    // time only and will only bloat up the serialized lambda package. Note though, we will include
+    // dependencies of that @pulumi package if explicitly asked for.  This way, if
+    if (pkg.startsWith("@pulumi")) {
+
+        return;
+    }
+    else {
+        packagePaths.add(child.path);
+        if (child.package.dependencies) {
+            for (const dep of Object.keys(child.package.dependencies)) {
+                addPackageAndDependenciesToSet(
+                    child, dep, packagePaths, excludedPackages, extraIncludePaths);
+            }
         }
     }
 }
