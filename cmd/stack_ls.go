@@ -67,7 +67,7 @@ func newStackLsCmd() *cobra.Command {
 			var current string
 			if s, _ := state.CurrentStack(commandContext(), b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Name().String()
+				current = s.Ref().String()
 			}
 
 			var packageFilter *tokens.PackageName
@@ -86,7 +86,7 @@ func newStackLsCmd() *cobra.Command {
 			_, showURLColumn := b.(httpstate.Backend)
 
 			for _, stack := range bs {
-				name := stack.Name().String()
+				name := stack.Ref().String()
 				stacks[name] = stack
 				stackNames = append(stackNames, name)
 			}

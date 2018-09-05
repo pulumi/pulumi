@@ -72,7 +72,7 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			if err = saveConfig(s.Name().StackName(), commandLineConfig); err != nil {
+			if err = saveConfig(s.Ref().Name(), commandLineConfig); err != nil {
 				return errors.Wrap(err, "saving config")
 			}
 		}
@@ -94,7 +94,13 @@ func newUpCmd() *cobra.Command {
 			Refresh:   refresh,
 		}
 
-		changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+			Proj:   proj,
+			Root:   root,
+			M:      m,
+			Opts:   opts,
+			Scopes: cancellationScopes,
+		})
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
@@ -207,7 +213,7 @@ func newUpCmd() *cobra.Command {
 
 		// Save the config locally.
 		if c != nil {
-			if err = saveConfig(s.Name().StackName(), c); err != nil {
+			if err = saveConfig(s.Ref().Name(), c); err != nil {
 				return errors.Wrap(err, "saving config")
 			}
 		}
@@ -239,7 +245,13 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+			Proj:   proj,
+			Root:   root,
+			M:      m,
+			Opts:   opts,
+			Scopes: cancellationScopes,
+		})
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")

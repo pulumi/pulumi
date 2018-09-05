@@ -57,7 +57,7 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %s:\n", s.Name())
+			fmt.Printf("Current stack is %s:\n", s.Ref())
 
 			be := s.Backend()
 			cloudBe, isCloud := be.(httpstate.Backend)

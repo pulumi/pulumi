@@ -15,7 +15,6 @@
 package httpstate
 
 import (
-	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/base64"
@@ -38,8 +37,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -50,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -516,7 +512,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'.\n", stack.Name())
+	fmt.Printf("Created stack '%s'.\n", stack.Ref())
 
 	return stack, nil
 }
@@ -580,39 +576,6 @@ func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
-var (
-	updateTextMap = map[string]struct {
-		previewText string
-		text        string
-	}{
-		string(apitype.PreviewUpdate): {"update of", "Previewing"},
-		string(apitype.UpdateUpdate):  {"update of", "Updating"},
-		string(apitype.RefreshUpdate): {"refresh of", "Refreshing"},
-		string(apitype.DestroyUpdate): {"destroy of", "Destroying"},
-		string(apitype.ImportUpdate):  {"import to", "Importing into"},
-	}
-)
-
-func getActionLabel(key string, dryRun bool) string {
-	v := updateTextMap[key]
-	contract.Assert(v.previewText != "")
-	contract.Assert(v.text != "")
-
-	if dryRun {
-		return "Previewing " + v.previewText
-	}
-
-	return v.text
-}
-
-type response string
-
-const (
-	yes     response = "yes"
-	no      response = "no"
-	details response = "details"
-)
-
 func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
@@ -624,158 +587,8 @@ func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackRefere
 	return stack, nil
 }
 
-func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
-	buff := &bytes.Buffer{}
-
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-	displayOpts.SummaryDiff = true
-
-	for _, e := range events {
-		msg := display.RenderDiffEvent(updateKind, e, seen, displayOpts)
-		if msg != "" {
-			if e.Type == engine.SummaryEvent {
-				msg = "\n" + msg
-			}
-
-			_, err := buff.WriteString(msg)
-			contract.IgnoreError(err)
-		}
-	}
-
-	return strings.TrimSpace(buff.String())
-}
-
-func (b *cloudBackend) PreviewThenPrompt(
-	ctx context.Context, updateKind apitype.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
-	// create a channel to hear about the update events from the engine. this will be used so that
-	// we can build up the diff display in case the user asks to see the details of the diff
-	eventsChannel := make(chan engine.Event)
-	defer func() {
-		close(eventsChannel)
-	}()
-
-	events := []engine.Event{}
-	go func() {
-		// pull the events from the channel and store them locally
-		for e := range eventsChannel {
-			if e.Type == engine.ResourcePreEvent ||
-				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.SummaryEvent {
-
-				events = append(events, e)
-			}
-		}
-	}()
-
-	// Perform the update operations, passing true for dryRun, so that we get a preview.
-	changes := engine.ResourceChanges(nil)
-	if !opts.SkipPreview {
-		c, err := b.updateStack(
-			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel,
-			true /*dryRun*/, false /* persist */, scopes)
-		if err != nil {
-			return c, err
-		}
-		changes = c
-	}
-
-	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
-	if opts.AutoApprove || updateKind == apitype.PreviewUpdate {
-		return changes, nil
-	}
-
-	// Otherwise, ensure the user wants to proceed.
-	return changes, confirmBeforeUpdating(updateKind, stack, events, opts)
-}
-
-// confirmBeforeUpdating asks the user whether to proceed.  A nil error means yes.
-func confirmBeforeUpdating(updateKind apitype.UpdateKind, stack backend.Stack,
-	events []engine.Event, opts backend.UpdateOptions) error {
-	for {
-		var response string
-
-		surveycore.DisableColor = true
-		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
-
-		choices := []string{string(yes), string(no)}
-
-		// For non-previews, we can also offer a detailed summary.
-		if !opts.SkipPreview {
-			choices = append(choices, string(details))
-		}
-
-		var previewWarning string
-		if opts.SkipPreview {
-			previewWarning = colors.SpecWarning + " without a preview" + colors.BrightWhite
-		}
-
-		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
-		prompt := "\b" + opts.Display.Color.Colorize(
-			colors.BrightWhite+fmt.Sprintf("Do you want to perform this %s%s?",
-				updateKind, previewWarning)+colors.Reset)
-		if updateKind == apitype.RefreshUpdate {
-			prompt += "\n" +
-				opts.Display.Color.Colorize(colors.BrightYellow+
-					"No resources will be modified as part of this refresh; just your stack's state will be."+
-					colors.Reset)
-		}
-
-		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
-		if err := survey.AskOne(&survey.Select{
-			Message: prompt,
-			Options: choices,
-			Default: string(no),
-		}, &response, nil); err != nil {
-			return errors.Wrapf(err, "confirmation cancelled, not proceeding with the %s", updateKind)
-		}
-
-		if response == string(no) {
-			return errors.Errorf("confirmation declined, not proceeding with the %s", updateKind)
-		}
-
-		if response == string(yes) {
-			return nil
-		}
-
-		if response == string(details) {
-			diff := createDiff(updateKind, events, opts.Display)
-			_, err := os.Stdout.WriteString(diff + "\n\n")
-			contract.IgnoreError(err)
-			continue
-		}
-	}
-}
-
-func (b *cloudBackend) PreviewThenPromptThenExecute(
-	ctx context.Context, updateKind apitype.UpdateKind, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
-	// First get the stack.
-	stack, err := getStack(ctx, b, stackRef)
-	if err != nil {
-		return nil, err
-	}
-
-	// Preview the operation to the user and ask them if they want to proceed.
-	changes, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
-	if err != nil || updateKind == apitype.PreviewUpdate {
-		return changes, err
-	}
-
-	// Now do the real operation.  We don't care about the events it issues, so just pass a nil channel along.
-	return b.updateStack(
-		ctx, updateKind, stack, pkg, root, m, opts, nil,
-		false /*dryRun*/, true /* persist */, scopes)
-}
-
-func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
+func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	// Get the stack.
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
@@ -786,57 +599,63 @@ func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 	// so performance data can be gathered before enabling it by default.
 	persist := os.Getenv("PULUMI_PERSIST_PREVIEWS") != ""
 
-	// We can skip PreviewtTenPromptThenExecute, and just go straight to Execute.
-	return b.updateStack(
-		ctx, apitype.PreviewUpdate, stack, pkg, root, m, opts, nil,
-		true /*dryRun*/, persist, scopes)
+	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
+	return b.apply(ctx, apitype.PreviewUpdate, stack, op, true /*dryRun*/, persist, nil /*events*/)
 }
 
-func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stackRef, pkg, root, m, opts, scopes)
+func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	stack, err := getStack(ctx, b, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stackRef, pkg, root, m, opts, scopes)
+func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	stack, err := getStack(ctx, b, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stackRef, pkg, root, m, opts, scopes)
+func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	stack, err := getStack(ctx, b, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stackRef backend.StackReference,
-	pkg *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
+	op backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	programContext, main, err := getContextAndMain(pkg, root)
+	programContext, main, err := getContextAndMain(op.Proj, op.Root)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	workspaceStack, err := workspace.DetectProjectStack(stackRef.StackName())
+	workspaceStack, err := workspace.DetectProjectStack(stackRef.Name())
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
 	}
 	metadata := apitype.UpdateMetadata{
-		Message:     m.Message,
-		Environment: m.Environment,
+		Message:     op.M.Message,
+		Environment: op.M.Environment,
 	}
 	getContents := func() (io.ReadCloser, int64, error) {
 		const showProgress = true
-		return getUpdateContents(programContext, pkg.UseDefaultIgnores(), showProgress, opts.Display)
+		return getUpdateContents(programContext, op.Proj.UseDefaultIgnores(), showProgress, op.Opts.Display)
 	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stack, pkg, workspaceStack.Config, main, metadata, opts.Engine, dryRun, getContents)
+		ctx, action, stack, op.Proj, workspaceStack.Config, main, metadata, op.Opts.Engine, dryRun, getContents)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -859,18 +678,13 @@ func (b *cloudBackend) createAndStartUpdate(
 	return update, version, token, nil
 }
 
-// updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
-func (b *cloudBackend) updateStack(
-	ctx context.Context, action apitype.UpdateKind, stack backend.Stack, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	callerEventsOpt chan<- engine.Event, dryRun bool, persist bool,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
+// apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
+func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
+	op backend.UpdateOperation, dryRun, persist bool, events chan<- engine.Event) (engine.ResourceChanges, error) {
 	// Print a banner so it's clear this is going to the cloud.
-	actionLabel := getActionLabel(string(action), dryRun)
-	fmt.Printf(
-		opts.Display.Color.Colorize(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
-		actionLabel, stack.Name())
+	actionLabel := backend.ActionLabel(kind, dryRun)
+	fmt.Printf(op.Opts.Display.Color.Colorize(
+		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stack.Ref())
 
 	// Create an update object if we will persist the results, e.g. when not doing a local preview.
 	var update client.UpdateIdentifier
@@ -878,7 +692,7 @@ func (b *cloudBackend) updateStack(
 	var token string
 	var err error
 	if persist {
-		update, version, token, err = b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
+		update, version, token, err = b.createAndStartUpdate(ctx, kind, stack.Ref(), op, dryRun)
 	}
 	if err != nil {
 		return nil, err
@@ -896,15 +710,13 @@ func (b *cloudBackend) updateStack(
 		if link != "" {
 			defer func() {
 				fmt.Printf(
-					opts.Display.Color.Colorize(
+					op.Opts.Display.Color.Colorize(
 						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
 			}()
 		}
 	}
 
-	return b.runEngineAction(
-		ctx, action, stack.Name(), pkg, root, opts, update, token, callerEventsOpt,
-		dryRun, persist, scopes)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, dryRun, persist)
 }
 
 // uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
@@ -936,12 +748,11 @@ func getUpdateContents(
 }
 
 func (b *cloudBackend) runEngineAction(
-	ctx context.Context, action apitype.UpdateKind, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, opts backend.UpdateOptions, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool, persist bool,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
+	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
+	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
+	callerEventsOpt chan<- engine.Event, dryRun bool, persist bool) (engine.ResourceChanges, error) {
 	contract.Assertf(!persist || token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, pkg, root, update, token)
+	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
 	if err != nil {
 		return nil, err
 	}
@@ -952,11 +763,11 @@ func (b *cloudBackend) runEngineAction(
 	displayDone := make(chan bool)
 
 	go u.RecordAndDisplayEvents(
-		getActionLabel(string(action), dryRun), action, displayEvents, displayDone, opts.Display)
+		backend.ActionLabel(kind, dryRun), kind, displayEvents, displayDone, op.Opts.Display)
 
 	engineEvents := make(chan engine.Event)
 
-	scope := scopes.NewScope(engineEvents, dryRun)
+	scope := op.Scopes.NewScope(engineEvents, dryRun)
 	defer scope.Close()
 
 	eventsDone := make(chan bool)
@@ -975,23 +786,23 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	var changes engine.ResourceChanges
 	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
 
-	switch action {
+	var changes engine.ResourceChanges
+	switch kind {
 	case apitype.PreviewUpdate:
-		changes, err = engine.Update(u, engineCtx, opts.Engine, true)
+		changes, err = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, err = engine.Update(u, engineCtx, opts.Engine, dryRun)
+		changes, err = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.RefreshUpdate:
-		changes, err = engine.Refresh(u, engineCtx, opts.Engine, dryRun)
+		changes, err = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
-		changes, err = engine.Destroy(u, engineCtx, opts.Engine, dryRun)
+		changes, err = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
 	default:
-		contract.Failf("Unrecognized action type: %s", action)
+		contract.Failf("Unrecognized update kind: %s", kind)
 	}
 
 	// Wait for the display to finish showing all the events.
@@ -1161,7 +972,7 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	status, err := b.waitForUpdate(
-		ctx, getActionLabel("import", false /*dryRun*/), update,
+		ctx, backend.ActionLabel(apitype.ImportUpdate, false /*dryRun*/), update,
 		display.Options{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")
@@ -1186,7 +997,7 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 
 	return client.StackIdentifier{
 		Owner: owner,
-		Stack: string(stackRef.StackName()),
+		Stack: string(stackRef.Name()),
 	}, nil
 }
 

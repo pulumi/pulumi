@@ -95,7 +95,7 @@ func createStack(
 	}
 
 	if setCurrent {
-		if err = state.SetCurrentStack(stack.Name().String()); err != nil {
+		if err = state.SetCurrentStack(stack.Ref().String()); err != nil {
 			return nil, err
 		}
 	}
@@ -191,7 +191,7 @@ func chooseStack(
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
 	for _, stack := range allStacks {
-		name := stack.Name().String()
+		name := stack.Ref().String()
 		options = append(options, name)
 		stacks[name] = stack
 	}
@@ -211,7 +211,7 @@ func chooseStack(
 	currStack, currErr := state.CurrentStack(commandContext(), b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
-		current = currStack.Name().String()
+		current = currStack.Ref().String()
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).

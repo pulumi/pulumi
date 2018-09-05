@@ -89,7 +89,13 @@ func newPreviewCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
+			changes, err := s.Preview(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
 			switch {
 			case err != nil:
 				return PrintEngineError(err)

@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -97,7 +98,13 @@ func newRefreshCmd() *cobra.Command {
 				Debug:     debug,
 			}
 
-			changes, err := s.Refresh(commandContext(), proj, root, m, opts, cancellationScopes)
+			changes, err := s.Refresh(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
 			switch {
 			case err == context.Canceled:
 				return errors.New("refresh cancelled")

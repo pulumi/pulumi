@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -65,7 +66,7 @@ func (r localBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) StackName() tokens.QName {
+func (r localBackendReference) Name() tokens.QName {
 	return r.name
 }
 
@@ -134,7 +135,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
-	stackName := stackRef.StackName()
+	stackName := stackRef.Name()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
 	}
@@ -157,13 +158,13 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(stackRef, file, nil, nil, b)
-	fmt.Printf("Created stack '%s'.\n", stack.Name())
+	fmt.Printf("Created stack '%s'.\n", stack.Ref())
 
 	return stack, nil
 }
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
-	stackName := stackRef.StackName()
+	stackName := stackRef.Name()
 	config, snapshot, path, err := b.getStack(stackName)
 	switch {
 	case os.IsNotExist(errors.Cause(err)):
@@ -194,7 +195,7 @@ func (b *localBackend) ListStacks(ctx context.Context, projectFilter *tokens.Pac
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
-	stackName := stackRef.StackName()
+	stackName := stackRef.Name()
 	_, snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return false, err
@@ -209,7 +210,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 }
 
 func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	return symmetricCrypter(stackRef.StackName())
+	return symmetricCrypter(stackRef.Name())
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
@@ -226,80 +227,119 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	return hist[0].Config, nil
 }
 
-func (b *localBackend) Preview(
-	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.performEngineOp("previewing", apitype.PreviewUpdate,
-		stackRef.StackName(), proj, root, m, opts, scopes, engine.Update)
-}
-
-func (b *localBackend) Update(
-	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
-	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
-	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
-	// parity with stacks managed by the Pulumi Service.
-	tags, err := backend.GetStackTags()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting stack tags")
-	}
-	stackName := stackRef.StackName()
-	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
-		return nil, errors.Wrap(err, "validating stack properties")
-	}
-	return b.performEngineOp("updating", apitype.UpdateUpdate,
-		stackName, proj, root, m, opts, scopes, engine.Update)
-}
-
-func (b *localBackend) Refresh(
-	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.performEngineOp("refreshing", apitype.RefreshUpdate,
-		stackRef.StackName(), proj, root, m, opts, scopes, engine.Refresh)
-}
-
-func (b *localBackend) Destroy(
-	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.performEngineOp("destroying", apitype.DestroyUpdate,
-		stackRef.StackName(), proj, root, m, opts, scopes, engine.Destroy)
-}
-
-type engineOpFunc func(engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
-
-func (b *localBackend) performEngineOp(op string, kind apitype.UpdateKind,
-	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource, performEngineOp engineOpFunc) (engine.ResourceChanges, error) {
-
-	update, err := b.newUpdate(stackName, proj, root)
+func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	// Get the stack.
+	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	events := make(chan engine.Event)
-	dryRun := (kind == apitype.PreviewUpdate)
+	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
+	return b.apply(ctx, apitype.PreviewUpdate, stack, op, true /*dryRun*/, false /*persist*/, nil /*events*/)
+}
 
-	cancelScope := scopes.NewScope(events, dryRun)
-	defer cancelScope.Close()
+func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+}
 
-	done := make(chan bool)
-	go display.DisplayEvents(op, kind, events, done, opts.Display)
+func (b *localBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
+}
+
+func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
+}
+
+// apply actually performs the provided type of update on a locally hosted stack.
+func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
+	op backend.UpdateOperation, dryRun, persist bool, events chan<- engine.Event) (engine.ResourceChanges, error) {
+	stackRef := stack.Ref()
+	stackName := stackRef.Name()
+
+	// Print a banner so it's clear this is a local deployment.
+	actionLabel := backend.ActionLabel(kind, dryRun)
+	fmt.Printf(op.Opts.Display.Color.Colorize(
+		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stackRef)
+
+	update, err := b.newUpdate(stackName, op.Proj, op.Root)
+	if err != nil {
+		return nil, err
+	}
+
+	// Spawn a display loop to show events on the CLI.
+	displayEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+	go display.DisplayEvents(strings.ToLower(actionLabel), kind, displayEvents, displayDone, op.Opts.Display)
+
+	// Create a separate event channel for engine events that we'll pipe to both listening streams.
+	engineEvents := make(chan engine.Event)
+
+	scope := op.Scopes.NewScope(engineEvents, dryRun)
+	defer scope.Close()
+
+	eventsDone := make(chan bool)
+	go func() {
+		// Pull in all events from the engine and send them to the two listeners.
+		for e := range engineEvents {
+			displayEvents <- e
+
+			// If the caller also wants to see the events, stream them there also.
+			if events != nil {
+				events <- e
+			}
+		}
+
+		close(eventsDone)
+	}()
 
 	// Create the management machinery.
 	persister := b.newSnapshotPersister(stackName)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
-	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events, SnapshotManager: manager}
+	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, engineCtx, opts.Engine, dryRun)
+	var changes engine.ResourceChanges
+	var updateErr error
+	switch kind {
+	case apitype.PreviewUpdate:
+		changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
+	case apitype.UpdateUpdate:
+		changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, dryRun)
+	case apitype.RefreshUpdate:
+		changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, dryRun)
+	case apitype.DestroyUpdate:
+		changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, dryRun)
+	default:
+		contract.Failf("Unrecognized update kind: %s", kind)
+	}
 	end := time.Now().Unix()
 
-	<-done
-	close(events)
-	close(done)
+	// Wait for the display to finish showing all the events.
+	<-displayDone
+	close(engineEvents)
+	close(displayEvents)
+	close(displayDone)
 	contract.IgnoreClose(manager)
+
+	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
+	<-eventsDone
 
 	// Save update results.
 	result := backend.SucceededResult
@@ -309,8 +349,8 @@ func (b *localBackend) performEngineOp(op string, kind apitype.UpdateKind,
 	info := backend.UpdateInfo{
 		Kind:        kind,
 		StartTime:   start,
-		Message:     m.Message,
-		Environment: m.Environment,
+		Message:     op.M.Message,
+		Environment: op.M.Environment,
 		Config:      update.GetTarget().Config,
 		Result:      result,
 		EndTime:     end,
@@ -338,7 +378,7 @@ func (b *localBackend) performEngineOp(op string, kind apitype.UpdateKind,
 }
 
 func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
-	stackName := stackRef.StackName()
+	stackName := stackRef.Name()
 	updates, err := b.getHistory(stackName)
 	if err != nil {
 		return nil, err
@@ -349,7 +389,7 @@ func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 func (b *localBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
-	stackName := stackRef.StackName()
+	stackName := stackRef.Name()
 	target, err := b.getTarget(stackName)
 	if err != nil {
 		return nil, err
@@ -380,7 +420,7 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 func (b *localBackend) ExportDeployment(ctx context.Context,
 	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
 
-	stackName := stackRef.StackName()
+	stackName := stackRef.Name()
 	_, snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
@@ -404,7 +444,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
 	deployment *apitype.UntypedDeployment) error {
 
-	stackName := stackRef.StackName()
+	stackName := stackRef.Name()
 	config, _, _, err := b.getStack(stackName)
 	if err != nil {
 		return err

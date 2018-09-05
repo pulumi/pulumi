@@ -246,7 +246,7 @@ func newNewCmd() *cobra.Command {
 
 				// Save the config.
 				if c != nil {
-					if err = saveConfig(stack.Name().StackName(), c); err != nil {
+					if err = saveConfig(stack.Ref().Name(), c); err != nil {
 						return errors.Wrap(err, "saving config")
 					}
 				}
@@ -439,7 +439,13 @@ func runUpOrPrintNextSteps(
 			return errors.Wrap(err, "gathering environment metadata")
 		}
 
-		_, err = stack.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+		_, err = stack.Update(commandContext(), backend.UpdateOperation{
+			Proj:   proj,
+			Root:   root,
+			M:      m,
+			Opts:   opts,
+			Scopes: cancellationScopes,
+		})
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")

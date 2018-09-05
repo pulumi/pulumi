@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -98,7 +99,13 @@ func newDestroyCmd() *cobra.Command {
 				Refresh:   refresh,
 			}
 
-			_, err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)
+			_, err = s.Destroy(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
 			if err == context.Canceled {
 				return errors.New("destroy cancelled")
 			}

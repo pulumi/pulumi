@@ -251,7 +251,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
-	stk, err := workspace.DetectProjectStack(stackRef.StackName())
+	stk, err := workspace.DetectProjectStack(stackRef.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -265,17 +265,17 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:
 			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-				stackRef.StackName())
+				stackRef.Name())
 		case stack.ErrDeploymentSchemaVersionTooNew:
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-				"Please update your version of the Pulumi CLI", stackRef.StackName())
+				"Please update your version of the Pulumi CLI", stackRef.Name())
 		default:
 			return nil, errors.Wrap(err, "could not deserialize deployment")
 		}
 	}
 
 	return &deploy.Target{
-		Name:      stackRef.StackName(),
+		Name:      stackRef.Name(),
 		Config:    stk.Config,
 		Decrypter: decrypter,
 		Snapshot:  snapshot,

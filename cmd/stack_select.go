@@ -68,7 +68,7 @@ func newStackSelectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return state.SetCurrentStack(stack.Name().String())
+			return state.SetCurrentStack(stack.Ref().String())
 
 		}),
 	}
