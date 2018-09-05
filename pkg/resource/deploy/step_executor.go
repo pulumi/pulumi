@@ -52,10 +52,11 @@ type Chain = []Step
 // resolved, we (the engine) can assume that any chain given to us by the step generator is already
 // ready to execute.
 type stepExecutor struct {
-	plan        *Plan    // The plan currently being executed.
-	opts        Options  // The options for this current plan.
-	preview     bool     // Whether or not we are doing a preview.
-	pendingNews sync.Map // Resources that have been created but are pending a RegisterResourceOutputs.
+	plan            *Plan    // The plan currently being executed.
+	opts            Options  // The options for this current plan.
+	preview         bool     // Whether or not we are doing a preview.
+	pendingNews     sync.Map // Resources that have been created but are pending a RegisterResourceOutputs.
+	continueOnError bool     // True if we want to continue the plan after a step error.
 
 	workers        sync.WaitGroup // WaitGroup tracking the worker goroutines that are owned by this step executor.
 	incomingChains chan Chain     // Incoming chains that we are to execute
@@ -173,7 +174,9 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 
 func (se *stepExecutor) cancelDueToError() {
 	se.sawError.Store(true)
-	se.cancel()
+	if !se.continueOnError {
+		se.cancel()
+	}
 }
 
 //
@@ -285,14 +288,15 @@ func (se *stepExecutor) worker(workerID int) {
 }
 
 func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan, opts Options,
-	preview bool) *stepExecutor {
+	preview, continueOnError bool) *stepExecutor {
 	exec := &stepExecutor{
-		plan:           plan,
-		opts:           opts,
-		preview:        preview,
-		incomingChains: make(chan Chain),
-		ctx:            ctx,
-		cancel:         cancel,
+		plan:            plan,
+		opts:            opts,
+		preview:         preview,
+		continueOnError: continueOnError,
+		incomingChains:  make(chan Chain),
+		ctx:             ctx,
+		cancel:          cancel,
 	}
 
 	exec.sawError.Store(false)
