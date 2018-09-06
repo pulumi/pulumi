@@ -58,6 +58,22 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use: "pulumi",
+		Long: "Pulumi - Cloud Native Infrastructure as Code\n" +
+			"\n" +
+			"To begin working with Pulumi, run the 'pulumi new' command:\n" +
+			"\n" +
+			"    $ pulumi new\n" +
+			"\n" +
+			"This will prompt you to create a new project for your cloud and language of choice.\n" +
+			"\n" +
+			"The most common commands from there are:\n" +
+			"\n" +
+			"    - pulumi up       : Deploy code and/or resource changes\n" +
+			"    - pulumi stack    : Manage instances of your project\n" +
+			"    - pulumi config   : Alter your stack's configuration or secrets\n" +
+			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
+			"\n" +
+			"For more information, please visit the project page: https://pulumi.io",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
@@ -107,14 +123,6 @@ func NewPulumiCmd() *cobra.Command {
 		},
 	}
 
-	// Add additional help that includes a link to the docs website.
-	defaultHelp := cmd.HelpFunc()
-	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		defaultHelp(cmd, args)
-		fmt.Println("")
-		fmt.Println("Additional documentation available at https://pulumi.io")
-	})
-
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
 		"Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
@@ -135,20 +143,26 @@ func NewPulumiCmd() *cobra.Command {
 		&color, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
-	cmd.AddCommand(newCancelCmd())
-	cmd.AddCommand(newConfigCmd())
+	//     - Getting Started Commands
+	cmd.AddCommand(newNewCmd())
+	//     - Deploy Commands
+	cmd.AddCommand(newUpCmd())
+	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDestroyCmd())
+	//     - Stack Management Commands:
+	cmd.AddCommand(newStackCmd())
+	cmd.AddCommand(newConfigCmd())
+	//     - Service Commands:
 	cmd.AddCommand(newLoginCmd())
 	cmd.AddCommand(newLogoutCmd())
-	cmd.AddCommand(newLogsCmd())
-	cmd.AddCommand(newNewCmd())
-	cmd.AddCommand(newPluginCmd())
-	cmd.AddCommand(newPreviewCmd())
-	cmd.AddCommand(newRefreshCmd())
-	cmd.AddCommand(newStackCmd())
-	cmd.AddCommand(newUpCmd())
-	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newWhoAmICmd())
+	//     - Advanced Commands:
+	cmd.AddCommand(newCancelCmd())
+	cmd.AddCommand(newRefreshCmd())
+	//     - Other Commands:
+	cmd.AddCommand(newLogsCmd())
+	cmd.AddCommand(newPluginCmd())
+	cmd.AddCommand(newVersionCmd())
 
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenBashCompletionCmd(cmd))
