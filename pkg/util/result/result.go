@@ -14,7 +14,10 @@
 
 package result
 
-import "github.com/pkg/errors"
+import (
+	multierror "github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+)
 
 // Result represents the result of a computation that can fail. The Result type
 // revolves around two notions of failure:
@@ -41,10 +44,26 @@ import "github.com/pkg/errors"
 // `Error` member function can be used to turn a nullable `Result` into an
 // `error`.
 type Result struct {
-	err error
+	cause *Result
+	err   error
 }
 
-func (r *Result) Error() error { return r.err }
+// Error returns the error most appropriate for this Result. If this result represents a bailed operation, it will be
+// nil.
+func (r *Result) Error() error {
+	if r != nil {
+		return r.err
+	}
+	return nil
+}
+
+// Cause returns the Result that caused the current Result to be propegated.
+func (r *Result) Cause() *Result {
+	if r != nil {
+		return r.cause
+	}
+	return nil
+}
 
 // Bail produces a Result that represents a computation that failed to complete
 // successfully but is not a bug in Pulumi.
@@ -69,6 +88,38 @@ func Error(msg string) *Result {
 // FromError produces a Result that wraps an internal Pulumi error.
 func FromError(err error) *Result {
 	return &Result{err: err}
+}
+
+// Wrap wraps a Result, producing another Result whose cause is linked to the wrapped Result.
+func Wrap(res *Result, msg string) *Result {
+	return &Result{cause: res, err: errors.New(msg)}
+}
+
+// Wrapf wraps a Result with a formatted message, producing another result whose cause is linked to the wrapped result.
+func Wrapf(res *Result, msg string, args ...interface{}) *Result {
+	return &Result{cause: res, err: errors.Errorf(msg, args...)}
+}
+
+// All produces a new Result given a slice of Results. If the result array consists of nothing but nil results, this
+// function will return nil. If the result array consists of any non-nil Results, a non-nil Result will be returned.
+// This Result will have a non-nil Error if any of the component Results had a non-nil error.
+func All(results []*Result) *Result {
+	var multiresult *multierror.Error
+	seenNonNilResult := false
+	for _, res := range results {
+		if res != nil {
+			seenNonNilResult = true
+			if res.Error() != nil {
+				multiresult = multierror.Append(multiresult, res.Error())
+			}
+		}
+	}
+
+	if seenNonNilResult {
+		return FromError(multiresult.ErrorOrNil())
+	}
+
+	return nil
 }
 
 // TODO returns an error that can be used in places that have not yet been

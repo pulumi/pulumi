@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 const (
@@ -32,13 +33,6 @@ const (
 
 	// Utility constant for easy debugging.
 	stepExecutorLogLevel = 4
-)
-
-var (
-	// errStepApplyFailed is a sentinel error for errors that arise when step application fails.
-	// We (the step executor) are not responsible for reporting those errors so this sentinel ensures
-	// that we don't do so.
-	errStepApplyFailed = errors.New("step application failed")
 )
 
 // A Chain is a sequence of Steps that must be executed in the given order.
@@ -58,8 +52,9 @@ type stepExecutor struct {
 	pendingNews     sync.Map // Resources that have been created but are pending a RegisterResourceOutputs.
 	continueOnError bool     // True if we want to continue the plan after a step error.
 
-	workers        sync.WaitGroup // WaitGroup tracking the worker goroutines that are owned by this step executor.
-	incomingChains chan Chain     // Incoming chains that we are to execute
+	workers        sync.WaitGroup      // WaitGroup tracking the worker goroutines that are owned by this step executor.
+	results        chan *result.Result // Channel for collecting Results from worker goroutines
+	incomingChains chan Chain          // Incoming chains that we are to execute
 
 	ctx      context.Context    // cancellation context for the current plan.
 	cancel   context.CancelFunc // CancelFunc that cancels the above context.
@@ -120,7 +115,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 }
 
 // Errored returnes whether or not this step executor saw a step whose execution ended in failure.
-func (se *stepExecutor) Errored() bool {
+func (se *stepExecutor) errored() bool {
 	return se.sawError.Load().(bool)
 }
 
@@ -132,10 +127,22 @@ func (se *stepExecutor) SignalCompletion() {
 
 // WaitForCompletion blocks the calling goroutine until the step executor completes execution of all in-flight
 // chains.
-func (se *stepExecutor) WaitForCompletion() {
+func (se *stepExecutor) WaitForCompletion() *result.Result {
 	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): waiting for worker threads to exit")
 	se.workers.Wait()
-	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): worker threads all exited")
+	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): worker threads all exited, gathering results")
+	var results []*result.Result
+	for i := 0; i < se.opts.DegreeOfParallelism(); i++ {
+		results = append(results, <-se.results)
+	}
+
+	// Special case - if we're continuing on errors but an error occurred, return a non-nil Result.
+	res := result.All(results)
+	if res == nil && se.continueOnError && se.errored() {
+		return result.Bail()
+	}
+
+	return res
 }
 
 //
@@ -146,30 +153,21 @@ func (se *stepExecutor) WaitForCompletion() {
 
 // executeChain executes a chain, one step at a time. If any step in the chain fails to execute, or if the
 // context is canceled, the chain stops execution.
-func (se *stepExecutor) executeChain(workerID int, chain Chain) {
+func (se *stepExecutor) executeChain(workerID int, chain Chain) *result.Result {
 	for _, step := range chain {
 		select {
 		case <-se.ctx.Done():
 			se.log(workerID, "step %v on %v canceled", step.Op(), step.URN())
-			return
+			return nil
 		default:
 		}
 
-		if err := se.executeStep(workerID, step); err != nil {
-			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
-			se.cancelDueToError()
-			if err != errStepApplyFailed {
-				// Step application errors are recorded by the OnResourceStepPost callback. This is confusing,
-				// but it means that at this level we shouldn't be logging any errors that came from there.
-				//
-				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
-				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
-				diagMsg := diag.RawMessage(step.URN(), err.Error())
-				se.plan.Diag().Errorf(diagMsg)
-			}
-			return
+		if res := se.executeStep(workerID, step); res != nil {
+			return result.Wrapf(res, "when executing step '%s' on '%s'", step.Op(), step.URN())
 		}
 	}
+
+	return nil
 }
 
 func (se *stepExecutor) cancelDueToError() {
@@ -192,7 +190,7 @@ func (se *stepExecutor) cancelDueToError() {
 
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
-func (se *stepExecutor) executeStep(workerID int, step Step) error {
+func (se *stepExecutor) executeStep(workerID int, step Step) *result.Result {
 	var payload interface{}
 	events := se.opts.Events
 	if events != nil {
@@ -200,7 +198,9 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
 			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.URN(), err)
-			return errors.Wrap(err, "pre-step event returned an error")
+			err = errors.Wrap(err, "pre-step event returned an error")
+			se.plan.Diag().Errorf(diag.RawMessage(step.URN(), err.Error()))
+			return result.Bail()
 		}
 	}
 
@@ -211,7 +211,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
 			if prior, has := se.pendingNews.Load(step.URN()); has {
-				return errors.Errorf(
+				return result.Errorf(
 					"resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
 			}
 
@@ -222,7 +222,9 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
-			return errors.Wrap(postErr, "post-step event returned an error")
+			postErr = errors.Wrap(postErr, "pre-step event returned an error")
+			se.plan.Diag().Errorf(diag.RawMessage(step.URN(), postErr.Error()))
+			return result.Bail()
 		}
 	}
 
@@ -235,7 +237,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
-		return errStepApplyFailed
+		return result.Bail()
 	}
 
 	return nil
@@ -275,13 +277,22 @@ func (se *stepExecutor) worker(workerID int) {
 		case chain := <-se.incomingChains:
 			if chain == nil {
 				se.log(workerID, "worker received nil chain, exiting")
+				se.results <- nil
 				return
 			}
 
 			se.log(workerID, "worker received chain for execution")
-			se.executeChain(workerID, chain)
+			if res := se.executeChain(workerID, chain); res != nil {
+				se.cancelDueToError()
+				if !se.continueOnError {
+					se.log(workerID, "chain failed, signalling cancellation")
+					se.results <- res
+					return
+				}
+			}
 		case <-se.ctx.Done():
 			se.log(workerID, "worker exiting due to cancellation")
+			se.results <- nil
 			return
 		}
 	}
@@ -289,18 +300,19 @@ func (se *stepExecutor) worker(workerID int) {
 
 func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan, opts Options,
 	preview, continueOnError bool) *stepExecutor {
+	fanout := opts.DegreeOfParallelism()
 	exec := &stepExecutor{
 		plan:            plan,
 		opts:            opts,
 		preview:         preview,
 		continueOnError: continueOnError,
 		incomingChains:  make(chan Chain),
+		results:         make(chan *result.Result, fanout),
 		ctx:             ctx,
 		cancel:          cancel,
 	}
 
 	exec.sawError.Store(false)
-	fanout := opts.DegreeOfParallelism()
 	for i := 0; i < fanout; i++ {
 		exec.workers.Add(1)
 		go exec.worker(i)

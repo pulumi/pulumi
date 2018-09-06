@@ -133,7 +133,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	canceled, err := func() (bool, error) {
+	canceled, res := func() (bool, *result.Result) {
 		logging.V(4).Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
 			select {
@@ -143,7 +143,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				if event.Error != nil {
 					pe.reportError("", event.Error)
 					cancel()
-					return false, event.Error
+					return false, result.Bail()
 				}
 
 				if event.Event == nil {
@@ -167,7 +167,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
 					cancel()
-					return false, result.TODO()
+					return false, res
 				}
 			case <-ctx.Done():
 				logging.V(4).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
@@ -179,11 +179,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}()
 
-	pe.stepExec.WaitForCompletion()
+	stepRes := pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if err != nil || pe.stepExec.Errored() {
+	if res != nil || stepRes != nil {
 		err = execError("failed", preview)
 	} else if canceled {
 		err = execError("canceled", preview)
@@ -284,7 +284,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 
 	stepExec.SignalCompletion()
-	stepExec.WaitForCompletion()
+	res := stepExec.WaitForCompletion()
 
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources and repairing
 	// dependency lists as necessary. Note that this updates the base snapshot _in memory_, so it is critical that any
@@ -349,7 +349,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
 
-	if stepExec.Errored() {
+	if res != nil {
 		return execError("failed", preview)
 	} else if canceled {
 		return execError("canceled", preview)
