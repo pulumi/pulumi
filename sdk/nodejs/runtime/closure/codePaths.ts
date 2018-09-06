@@ -15,6 +15,7 @@
 // tslint:disable:max-line-length
 
 import * as fs from "fs";
+import * as normalize from "normalize-package-data";
 import * as filepath from "path";
 import * as readPackageTree from "read-package-tree";
 import * as asset from "../../asset";
@@ -151,11 +152,17 @@ function computeDependenciesDirectlyFromPackageFile(path: string): any {
     const contents = readFile();
     const data = parse();
 
-    // Now, replicate the same logic in read-project.json for trying to determine the set of
-    // dependencies based on the file contents.  Logic from here:
-    // https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L131-L134
-    objectifyDeps(data);
-    addOptionalDepsToDeps(data);
+    // 'normalize-package-data' can throw if 'version' isn't a valid string.  We don't care about
+    // 'version' so just delete it.
+    // https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L191
+    delete data.version;
+
+    // 'normalize-package-data' can throw if 'name' isn't a valid string.  We don't care about
+    // 'name' so just delete it.
+    // https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L211
+    delete data.name;
+
+    normalize(data);
 
     return data;
 
@@ -174,62 +181,6 @@ function computeDependenciesDirectlyFromPackageFile(path: string): any {
             throw new RunError(`Error parsing file '${path}' when computing package dependencies. ${err}`);
         }
     }
-}
-
-// From: https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L402-L407
-const depTypes = ["dependencies", "devDependencies", "optionalDependencies"];
-function objectifyDeps(data: any): any {
-    depTypes.forEach(function (type) {
-        if (!data[type]) {
-            return;
-        }
-
-        data[type] = depObjectify(data[type], type);
-    });
-}
-
-// From: https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L381-L400
-function depObjectify(deps: any, type: string) {
-    if (!deps) {
-        return {};
-    }
-
-    if (typeof deps === "string") {
-        deps = deps.trim().split(/[\n\r\s\t ,]+/);
-    }
-
-    if (!Array.isArray(deps)) {
-        return deps;
-    }
-
-    const o: any = {};
-    deps.filter(function (d) {
-        return typeof d === "string";
-    }).forEach(function (d) {
-        d = d.trim().split(/(:?[@\s><=])/);
-        const dn = d.shift();
-        let dv = d.join("");
-        dv = dv.trim();
-        dv = dv.replace(/^@/, "");
-        o[dn] = dv;
-    });
-
-    return o;
-}
-
-// From: https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L371-L379
-function addOptionalDepsToDeps(data: any) {
-    const o = data.optionalDependencies;
-    if (!o) {
-        return;
-    }
-
-    const d = data.dependencies || {};
-    Object.keys(o).forEach(function (k) {
-        d[k] = o[k];
-    });
-
-    data.dependencies = d;
 }
 
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
