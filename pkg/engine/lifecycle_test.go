@@ -347,17 +347,12 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 	project := p.GetProject()
 	snap := snapshot
 	for _, step := range p.Steps {
+		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
+		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
+		// cause state changes from the preview to persist even when doing an update.
 		if !step.SkipPreview {
-			var previewSnap *deploy.Snapshot
-			if snapshot != nil {
-				copiedSnap := copystructure.Must(copystructure.Copy(*snapshot)).(deploy.Snapshot)
-				previewSnap = &copiedSnap
-			}
+			previewSnap := CloneSnapshot(t, snap)
 			previewTarget := p.GetTarget(previewSnap)
-			if !assert.True(t, reflect.DeepEqual(snapshot, previewSnap)) {
-				t.FailNow()
-			}
-
 			_, err := step.Op.Run(project, previewTarget, p.Options, true, step.Validate)
 			if step.ExpectFailure {
 				assert.Error(t, err)
@@ -376,6 +371,18 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		assert.NoError(t, err)
+	}
+
+	return snap
+}
+
+// CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
+func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
+	t.Helper()
+	if snap != nil {
+		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
+		assert.True(t, reflect.DeepEqual(*snap, copiedSnap))
+		return &copiedSnap
 	}
 
 	return snap
@@ -1227,7 +1234,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Refresh DOES fail, causing the new initialization error to appear.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh, ExpectFailure: true}}
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true, ExpectFailure: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
