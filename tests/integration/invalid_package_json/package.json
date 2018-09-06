@@ -7,7 +7,7 @@
     "scripts": {
         "build": "tsc"
     },
-    "devDependencies": {
+    "optionalDependencies": {
         "typescript": "^2.5.3"
     },
     "peerDependencies": {
