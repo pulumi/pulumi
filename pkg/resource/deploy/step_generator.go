@@ -427,7 +427,7 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				// contract.Assert(!sg.deletes[res.URN])
 				if sg.pendingDeletes[res] {
 					logging.V(7).Infof(
-						"Planner ignoring pending-delete urn '%v' that was already deleted", res.URN)
+						"Planner ignoring pending-delete resource (%v, %v) that was already deleted", res.URN, res.ID)
 					continue
 				}
 
@@ -460,7 +460,8 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Step {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
 			res := prev.Resources[i]
 			if res.Delete {
-				logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): resource %s is pending deletion", res.URN)
+				logging.V(7).Infof(
+					"stepGenerator.GeneratePendingDeletes(): resource (%v, %v) is pending deletion", res.URN, res.ID)
 				sg.pendingDeletes[res] = true
 				dels = append(dels, NewDeleteStep(sg.plan, res))
 			}

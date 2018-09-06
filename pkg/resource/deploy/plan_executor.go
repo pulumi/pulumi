@@ -225,24 +225,18 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
 //
 // retirePendingDeletes re-uses the plan executor's step generator but uses its own step executor.
 func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Options, preview bool) error {
-	prev := pe.plan.prev
-	if prev == nil || len(prev.Resources) == 0 {
-		logging.V(4).Infoln("planExecutor.retirePendingDeletes(...): no resources")
-		return nil
-	}
-
 	contract.Require(pe.stepGen != nil, "pe.stepGen != nil")
 	steps := pe.stepGen.GeneratePendingDeletes()
 	if len(steps) == 0 {
 		logging.V(4).Infoln("planExecutor.retirePendingDeletes(...): no pending deletions")
 		return nil
 	}
+
 	logging.V(4).Infof("planExecutor.retirePendingDeletes(...): executing %d steps", len(steps))
 	ctx, cancel := context.WithCancel(callerCtx)
 
-	options := opts
-	options.Parallel = 1 // deletes can't be executed in parallel yet (pulumi/pulumi#1625)
-	stepExec := newStepExecutor(ctx, cancel, pe.plan, options, preview, false)
+	opts.Parallel = 1 // deletes can't be executed in parallel yet (pulumi/pulumi#1625)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, false)
 
 	// Submit the deletes for execution and wait for them all to retire.
 	stepExec.Execute(steps)
