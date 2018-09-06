@@ -56,7 +56,7 @@ import (
 const (
 	// The path to the "run" program which will spawn the rest of the language host. This may be overriden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
-	defaultRunPath = "./node_modules/@pulumi/pulumi/cmd/run"
+	defaultRunPath = "@pulumi/pulumi/cmd/run"
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -88,7 +88,8 @@ func main() {
 		runPath = defaultRunPath
 	}
 
-	if _, err = os.Stat(runPath); err != nil {
+	runPath, err = locateModule(runPath, nodePath)
+	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
 	}
@@ -118,6 +119,17 @@ func main() {
 	if err := <-done; err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
 	}
+}
+
+// locateModule resolves a node module name to a file path that can be loaded
+func locateModule(mod string, nodePath string) (string, error) {
+	program := fmt.Sprintf("console.log(require.resolve('%s'));", mod)
+	cmd := exec.Command(nodePath, "-e", program) // nolint: gas, intentionally running dynamic program name.
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // nodeLanguageHost implements the LanguageRuntimeServer interface
