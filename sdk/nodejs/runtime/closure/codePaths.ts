@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// tslint:disable:max-line-length
+
 import * as fs from "fs";
 import * as filepath from "path";
 import * as readPackageTree from "read-package-tree";
@@ -97,39 +99,137 @@ function isSubsumedByHigherPath(path: string, pathSet: Set<string>): boolean {
 function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: Set<string>): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
         readPackageTree(".", <any>undefined, (err: any, root: readPackageTree.Node) => {
-            if (err) {
-                return reject(err);
-            }
-
-            // read-package-tree defers to read-package-json to parse the project.json file. If that
-            // fails, root.error is set to the underlying error.  In that case, we want to fail as
-            // well.  Otherwise, we will silently proceed as if package.json was empty, which would
-            // result in us uploading no node_modules.
-            if (root.error) {
-                return reject(new RunError(
-                    "Failed to parse package.json. Underlying issue:\n  " + root.error.toString()));
-            }
-
-            // This is the core starting point of the algorithm.  We use readPackageTree to get the
-            // package.json information for this project, and then we start by walking the
-            // .dependencies node in that package.  Importantly, we do not look at things like
-            // .devDependencies or or .peerDependencies.  These are not what are considered part of
-            // the final runtime configuration of the app and should not be uploaded.
-            const referencedPackages = new Set<string>(includedPackages);
-            if (root.package && root.package.dependencies) {
-                for (const depName of Object.keys(root.package.dependencies)) {
-                    referencedPackages.add(depName);
+            try {
+                if (err) {
+                    return reject(err);
                 }
-            }
 
-            const packagePaths = new Set<string>();
-            for (const pkg of referencedPackages) {
-                addPackageAndDependenciesToSet(root, pkg, packagePaths, excludedPackages);
-            }
+                // read-package-tree defers to read-package-json to parse the project.json file. If that
+                // fails, root.error is set to the underlying error.  Unfortunately, read-package-json is
+                // very finicky and can fail for reasons that are not relevant to us.  For example, it
+                // can fail if a "version" string is not a legal semver.  We still want to proceed here
+                // as this is not an actual problem for determining the set of dependencies.
+                if (root.error) {
+                    if (!root.realpath) {
+                        throw new RunError(
+                            "Failed to parse package.json. Underlying issue:\n  " + root.error.toString());
+                    }
 
-            resolve(packagePaths);
+                    // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
+                    root.package = computeDependenciesDirectlyFromPackageFile(
+                        filepath.join(root.realpath, "package.json"));
+                }
+
+                // This is the core starting point of the algorithm.  We use readPackageTree to get the
+                // package.json information for this project, and then we start by walking the
+                // .dependencies node in that package.  Importantly, we do not look at things like
+                // .devDependencies or or .peerDependencies.  These are not what are considered part of
+                // the final runtime configuration of the app and should not be uploaded.
+                const referencedPackages = new Set<string>(includedPackages);
+                if (root.package && root.package.dependencies) {
+                    for (const depName of Object.keys(root.package.dependencies)) {
+                        referencedPackages.add(depName);
+                    }
+                }
+
+                const packagePaths = new Set<string>();
+                for (const pkg of referencedPackages) {
+                    addPackageAndDependenciesToSet(root, pkg, packagePaths, excludedPackages);
+                }
+
+                return resolve(packagePaths);
+            } catch (error) {
+                return reject(error);
+            }
         });
     });
+}
+
+function computeDependenciesDirectlyFromPackageFile(path: string): any {
+    // read the package.json file in directly.  if any of these fail an error will be thrown
+    // and bubbled back out to user.
+    const contents = readFile();
+    const data = parse();
+
+    // Now, replicate the same logic in read-project.json for trying to determine the set of
+    // dependencies based on the file contents.  Logic from here:
+    // https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L131-L134
+    objectifyDeps(data);
+    addOptionalDepsToDeps(data);
+
+    return data;
+
+    function readFile() {
+        try {
+            return fs.readFileSync(path);
+        } catch (err) {
+            throw new RunError(`Error reading file '${path}' when computing package dependencies. ${err}`);
+        }
+    }
+
+    function parse() {
+        try {
+            return JSON.parse(contents.toString());
+        } catch (err) {
+            throw new RunError(`Error parsing file '${path}' when computing package dependencies. ${err}`);
+        }
+    }
+}
+
+// From: https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L402-L407
+const depTypes = ["dependencies", "devDependencies", "optionalDependencies"];
+function objectifyDeps(data: any): any {
+    depTypes.forEach(function (type) {
+        if (!data[type]) {
+            return;
+        }
+
+        data[type] = depObjectify(data[type], type);
+    });
+}
+
+// From: https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L381-L400
+function depObjectify(deps: any, type: string) {
+    if (!deps) {
+        return {};
+    }
+
+    if (typeof deps === "string") {
+        deps = deps.trim().split(/[\n\r\s\t ,]+/);
+    }
+
+    if (!Array.isArray(deps)) {
+        return deps;
+    }
+
+    const o: any = {};
+    deps.filter(function (d) {
+        return typeof d === "string";
+    }).forEach(function (d) {
+        d = d.trim().split(/(:?[@\s><=])/);
+        const dn = d.shift();
+        let dv = d.join("");
+        dv = dv.trim();
+        dv = dv.replace(/^@/, "");
+        o[dn] = dv;
+    });
+
+    return o;
+}
+
+// From: https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L371-L379
+function addOptionalDepsToDeps(data: any) {
+    const o = data.optionalDependencies;
+    if (!o) {
+        return;
+    }
+
+    const d = data.dependencies || {};
+    Object.keys(o).forEach(function (k) {
+        d[k] = o[k];
+    });
+
+    data.dependencies = d;
 }
 
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
