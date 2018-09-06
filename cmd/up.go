@@ -151,87 +151,71 @@ func newUpCmd() *cobra.Command {
 			contract.IgnoreError(os.RemoveAll(temp))
 		}()
 
-		// Get the project name/description.
-		projectName := workspace.ValueOrSanitizedDefaultProjectName("", template.ProjectName, template.Name)
-		projectDescription := workspace.ValueOrDefaultProjectDescription(
-			"", template.ProjectDescription, template.Description)
-
-		// Copy the template files from the repo to the temporary "virtual workspace" directory.
-		if err = template.CopyTemplateFiles(temp, true, projectName, projectDescription); err != nil {
-			return err
-		}
-
 		// Change the working directory to the "virtual workspace" directory.
 		if err = os.Chdir(temp); err != nil {
 			return errors.Wrap(err, "changing the working directory")
 		}
 
+		// If a stack was specified via --stack, see if it already exists.
+		var name string
+		var description string
+		var s backend.Stack
+		if stack != "" {
+			if s, name, description, err = getStack(stack, opts.Display); err != nil {
+				return err
+			}
+		}
+
+		// Prompt for the project name, if we don't already have one from an existing stack.
+		if name == "" {
+			defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
+			name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Prompt for the project description, if we don't already have one from an existing stack.
+		if description == "" {
+			defaultValue := workspace.ValueOrDefaultProjectDescription(
+				description, template.ProjectDescription, template.Description)
+			description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Copy the template files from the repo to the temporary "virtual workspace" directory.
+		if err = template.CopyTemplateFiles(temp, true, name, description); err != nil {
+			return err
+		}
+
 		// Load the project, update the name & description, and save it.
-		proj, _, err := readProject()
+		proj, root, err := readProject()
 		if err != nil {
 			return err
 		}
-		proj.Name = tokens.PackageName(projectName)
-		proj.Description = &projectDescription
+		proj.Name = tokens.PackageName(name)
+		proj.Description = &description
 		if err = workspace.SaveProject(proj); err != nil {
 			return errors.Wrap(err, "saving project")
 		}
 
-		// Get a stack, but don't set it as the current stack, to avoid writing to ~/.pulumi/workspaces.
-		s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
-		if err != nil {
-			return err
-		}
-
-		// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
-		stackConfig, err := backend.GetLatestConfiguration(commandContext(), s)
-		if err != nil && err != backend.ErrNoPreviousDeployment {
-			return err
-		}
-
-		// Get the existing snapshot.
-		snap, err := s.Snapshot(commandContext())
-		if err != nil {
-			return err
-		}
-
-		// Handle config.
-		// If this is an initial preconfigured empty stack (i.e. configured in the Pulumi Console),
-		// use its config without prompting.
-		// Otherwise, use the values specified on the command line and prompt for new values.
-		// If the stack already existed and had previous config, those values will be used as the defaults.
-		var c config.Map
-		if isPreconfiguredEmptyStack(url, template.Config, stackConfig, snap) {
-			c = stackConfig
-			// TODO consider warning if the specific URL is different from templateURL.
-		} else {
-			// Get config values passed on the command line.
-			commandLineConfig, err := parseConfig(configArray)
-			if err != nil {
+		// Create the stack, if needed.
+		if s == nil {
+			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes, opts.Display); err != nil {
 				return err
 			}
-
-			// Prompt for config as needed.
-			c, err = promptForConfig(s, template.Config, commandLineConfig, stackConfig, yes, opts.Display)
-			if err != nil {
-				return err
-			}
+			// The backend will print "Created stack '<stack>'." on success.
 		}
 
-		// Save the config locally.
-		if c != nil {
-			if err = saveConfig(s.Ref().Name(), c); err != nil {
-				return errors.Wrap(err, "saving config")
-			}
+		// Prompt for config values (if needed) and save.
+		if err = handleConfig(s, url, template, configArray, yes, opts.Display); err != nil {
+			return err
 		}
 
 		// Install dependencies.
 		if err = installDependencies("Installing dependencies..."); err != nil {
-			return err
-		}
-
-		proj, root, err := readProject()
-		if err != nil {
 			return err
 		}
 
@@ -366,6 +350,61 @@ func newUpCmd() *cobra.Command {
 		"Automatically approve and perform the update after previewing it")
 
 	return cmd
+}
+
+// handleConfig handles prompting for config values (as needed) and saving config.
+func handleConfig(
+	s backend.Stack,
+	templateNameOrURL string,
+	template workspace.Template,
+	configArray []string,
+	yes bool,
+	opts display.Options) error {
+
+	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
+	stackConfig, err := backend.GetLatestConfiguration(commandContext(), s)
+	if err != nil && err != backend.ErrNoPreviousDeployment {
+		return err
+	}
+
+	// Get the existing snapshot.
+	snap, err := s.Snapshot(commandContext())
+	if err != nil {
+		return err
+	}
+
+	// Handle config.
+	// If this is an initial preconfigured empty stack (i.e. configured in the Pulumi Console),
+	// use its config without prompting.
+	// Otherwise, use the values specified on the command line and prompt for new values.
+	// If the stack already existed and had previous config, those values will be used as the defaults.
+	var c config.Map
+	if isPreconfiguredEmptyStack(templateNameOrURL, template.Config, stackConfig, snap) {
+		c = stackConfig
+		// TODO[pulumi/pulumi#1894] consider warning if templateNameOrURL is different from
+		// the stack's `pulumi:template` config value.
+	} else {
+		// Get config values passed on the command line.
+		commandLineConfig, parseErr := parseConfig(configArray)
+		if parseErr != nil {
+			return parseErr
+		}
+
+		// Prompt for config as needed.
+		c, err = promptForConfig(s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Save the config.
+	if c != nil {
+		if err = saveConfig(s.Ref().Name(), c); err != nil {
+			return errors.Wrap(err, "saving config")
+		}
+	}
+
+	return nil
 }
 
 var (

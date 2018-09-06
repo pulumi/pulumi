@@ -25,8 +25,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -49,6 +51,7 @@ func newNewCmd() *cobra.Command {
 	var configArray []string
 	var name string
 	var description string
+	var stack string
 	var force bool
 	var yes bool
 	var offline bool
@@ -120,9 +123,8 @@ func newNewCmd() *cobra.Command {
 
 			// If we're going to be creating a stack, get the current backend, which
 			// will kick off the login flow (if not already logged-in).
-			var b backend.Backend
 			if !generateOnly {
-				if b, err = currentBackend(opts.Display); err != nil {
+				if _, err = currentBackend(opts.Display); err != nil {
 					return err
 				}
 			}
@@ -168,8 +170,24 @@ func newNewCmd() *cobra.Command {
 				}
 			}
 
+			// If a stack was specified via --stack, see if it already exists.
+			var s backend.Stack
+			if stack != "" {
+				existingStack, existingName, existingDesc, err := getStack(stack, opts.Display)
+				if err != nil {
+					return err
+				}
+				s = existingStack
+				if name == "" {
+					name = existingName
+				}
+				if description == "" {
+					description = existingDesc
+				}
+			}
+
 			// Show instructions, if we're going to show at least one prompt.
-			hasAtLeastOnePrompt := (name == "") || (description == "") || !generateOnly
+			hasAtLeastOnePrompt := (name == "") || (description == "") || (stack == "")
 			if !yes && hasAtLeastOnePrompt {
 				fmt.Println("This command will walk you through creating a new Pulumi project.")
 				fmt.Println()
@@ -217,50 +235,18 @@ func newNewCmd() *cobra.Command {
 				return errors.Wrap(err, "saving project")
 			}
 
-			// Prompt for the stack name and create the stack.
-			var stack backend.Stack
-			if !generateOnly {
-				defaultValue := getDevStackName(name)
-
-				for {
-					stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, opts.Display)
-					if err != nil {
-						return err
-					}
-					stack, err = stackInit(b, stackName)
-					if err != nil {
-						if !yes {
-							// Let the user know about the error and loop around to try again.
-							fmt.Printf("Sorry, could not create stack '%s': %v.\n", stackName, err)
-							continue
-						}
-						return err
-					}
-					break
+			// Create the stack, if needed.
+			if !generateOnly && s == nil {
+				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts.Display); err != nil {
+					return err
 				}
-
 				// The backend will print "Created stack '<stack>'." on success.
 			}
 
-			// Prompt for config values and save.
+			// Prompt for config values (if needed) and save.
 			if !generateOnly {
-				// Get config values passed on the command line.
-				commandLineConfig, err := parseConfig(configArray)
-				if err != nil {
+				if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts.Display); err != nil {
 					return err
-				}
-
-				// Prompt for config as needed.
-				c, err := promptForConfig(stack, template.Config, commandLineConfig, nil, yes, opts.Display)
-				if err != nil {
-					return err
-				}
-
-				// Save the config.
-				if c != nil {
-					if err = saveConfig(stack.Ref().Name(), c); err != nil {
-						return errors.Wrap(err, "saving config")
-					}
 				}
 			}
 
@@ -278,7 +264,7 @@ func newNewCmd() *cobra.Command {
 
 			// Run `up` automatically, or print out next steps to run `up` manually.
 			if !generateOnly {
-				if err = runUpOrPrintNextSteps(stack, originalCwd, cwd, opts, yes); err != nil {
+				if err = runUpOrPrintNextSteps(s, originalCwd, cwd, opts, yes); err != nil {
 					return err
 				}
 			}
@@ -331,6 +317,9 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&description, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
@@ -367,6 +356,72 @@ func errorIfNotEmptyDirectory(path string) error {
 	return nil
 }
 
+// getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
+func getStack(stack string, opts display.Options) (backend.Stack, string, string, error) {
+	b, err := currentBackend(opts)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	stackRef, err := b.ParseStackReference(stack)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	s, err := b.GetStack(commandContext(), stackRef)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	name := ""
+	description := ""
+	if s != nil {
+		if cs, ok := s.(httpstate.Stack); ok {
+			tags := cs.Tags()
+			name = tags[apitype.ProjectNameTag]
+			description = tags[apitype.ProjectDescriptionTag]
+		}
+	}
+
+	return s, name, description, nil
+}
+
+// promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
+func promptAndCreateStack(
+	stack string, projectName string, setCurrent bool, yes bool, opts display.Options) (backend.Stack, error) {
+	b, err := currentBackend(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if stack != "" {
+		s, err := stackInit(b, stack, setCurrent)
+		if err != nil {
+			return nil, err
+		}
+		return s, nil
+	}
+
+	defaultValue := getDevStackName(projectName)
+
+	for {
+		stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, opts)
+		if err != nil {
+			return nil, err
+		}
+		s, err := stackInit(b, stackName, setCurrent)
+		if err != nil {
+			if !yes {
+				// Let the user know about the error and loop around to try again.
+				fmt.Printf("Sorry, could not create stack '%s': %v.\n", stackName, err)
+				continue
+			}
+			return nil, err
+		}
+		return s, nil
+	}
+}
+
 // getDevStackName returns the stack name suffixed with -dev.
 func getDevStackName(name string) string {
 	const suffix = "-dev"
@@ -376,12 +431,12 @@ func getDevStackName(name string) string {
 }
 
 // stackInit creates the stack.
-func stackInit(b backend.Backend, stackName string) (backend.Stack, error) {
+func stackInit(b backend.Backend, stackName string, setCurrent bool) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(b, stackRef, nil, true /*setCurrent*/)
+	return createStack(b, stackRef, nil, setCurrent)
 }
 
 // saveConfig saves the config for the stack.

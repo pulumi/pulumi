@@ -31,9 +31,10 @@ import (
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
-	CloudURL() string            // the URL to the cloud containing this stack.
-	OrgName() string             // the organization that owns this stack.
-	ConsoleURL() (string, error) // the URL to view the stack's information on Pulumi.com
+	CloudURL() string                      // the URL to the cloud containing this stack.
+	OrgName() string                       // the organization that owns this stack.
+	ConsoleURL() (string, error)           // the URL to view the stack's information on Pulumi.com
+	Tags() map[apitype.StackTagName]string // the stack's tags.
 }
 
 type cloudBackendReference struct {
@@ -59,14 +60,16 @@ func (c cloudBackendReference) Name() tokens.QName {
 	return c.name
 }
 
+// nolint: lll
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
-	ref      backend.StackReference // the stack's ref (unique name).
-	cloudURL string                 // the URL to the cloud containing this stack.
-	orgName  string                 // the organization that owns this stack.
-	config   config.Map             // the stack's config bag.
-	snapshot **deploy.Snapshot      // a snapshot representing the latest deployment state (allocated on first use)
-	b        *cloudBackend          // a pointer to the backend this stack belongs to.
+	ref      backend.StackReference          // the stack's ref (unique name).
+	cloudURL string                          // the URL to the cloud containing this stack.
+	orgName  string                          // the organization that owns this stack.
+	config   config.Map                      // the stack's config bag.
+	snapshot **deploy.Snapshot               // a snapshot representing the latest deployment state (allocated on first use)
+	b        *cloudBackend                   // a pointer to the backend this stack belongs to.
+	tags     map[apitype.StackTagName]string // the stack's tags.
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
@@ -81,15 +84,17 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		orgName:  apistack.OrgName,
 		config:   nil, // TODO[pulumi/pulumi-service#249]: add the config variables.
 		snapshot: nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
+		tags:     apistack.Tags,
 		b:        b,
 	}
 }
 
-func (s *cloudStack) Ref() backend.StackReference { return s.ref }
-func (s *cloudStack) Config() config.Map          { return s.config }
-func (s *cloudStack) Backend() backend.Backend    { return s.b }
-func (s *cloudStack) CloudURL() string            { return s.cloudURL }
-func (s *cloudStack) OrgName() string             { return s.orgName }
+func (s *cloudStack) Ref() backend.StackReference           { return s.ref }
+func (s *cloudStack) Config() config.Map                    { return s.config }
+func (s *cloudStack) Backend() backend.Backend              { return s.b }
+func (s *cloudStack) CloudURL() string                      { return s.cloudURL }
+func (s *cloudStack) OrgName() string                       { return s.orgName }
+func (s *cloudStack) Tags() map[apitype.StackTagName]string { return s.tags }
 
 func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {
