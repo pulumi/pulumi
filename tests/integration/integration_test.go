@@ -387,6 +387,15 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 	})
 }
 
+func TestInvalidVersionInPackageJson(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("invalid_package_json"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config:       map[string]string{},
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
