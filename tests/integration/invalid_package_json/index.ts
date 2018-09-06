@@ -6,9 +6,9 @@ import * as runtime from "@pulumi/pulumi/runtime"
 (async function() {
     const config = new Config();
     const deps = await runtime.computeCodePaths();
-    const actual = JSON.stringify(deps);
+    const actual = JSON.stringify([...deps.keys()].sort());
     const expected = "";
     if (actual !== expected) {
-        throw new Error(`Got '${actual}' expected '${expected}`)
+        throw new Error(`Got '${actual}' expected '${expected}'`)
     }
 })()
