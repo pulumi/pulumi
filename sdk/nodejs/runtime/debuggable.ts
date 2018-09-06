@@ -46,7 +46,10 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
         process.on("exit", (code: number) => {
             // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
             // course yields things that look like "leaks".
-            if (code === 0 && !log.hasErrors()) {
+            //
+            // process.exitCode is undefined unless set, in which case it's the exit code that was
+            // passed to process.exit.
+            if ((process.exitCode === undefined || process.exitCode === 0) && !log.hasErrors()) {
                 const leakedCount = leakCandidates.size;
                 if (leakedCount === 0) {
                     // No leaks - proceed with the exit.
