@@ -1069,7 +1069,7 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 		return "update"
 	case deploy.OpDelete:
 		if step.Old.Delete {
-			return "delete from previous plan"
+			return "delete from previous replacement"
 		}
 		return "delete"
 	case deploy.OpReplace:
@@ -1142,7 +1142,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "updating"
 		case deploy.OpDelete:
 			if step.Old.Delete {
-				return "deleting from previous plan"
+				return "deleting from previous replacement"
 			}
 			return "deleting"
 		case deploy.OpReplace:
