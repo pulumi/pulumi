@@ -16,88 +16,103 @@ package deploy
 
 import (
 	"context"
-	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/resource/graph"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
-const (
-	// Utility constant for easy debugging.
-	planExecutorLogLevel = 4
-)
-
-var (
-	// ErrPreviewFailed is returned whenever a preview fails.
-	ErrPreviewFailed = errors.New("preview failed")
-
-	// ErrUpdateFailed is returned whenever an update fails.
-	ErrUpdateFailed = errors.New("update failed")
-
-	// ErrCanceled is returned whenever a plan is canceled.
-	ErrCanceled = errors.New("plan canceled")
-)
-
-// PlanExecutor is responsible for taking a plan and driving it to completion.
+// planExecutor is responsible for taking a plan and driving it to completion.
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
-type PlanExecutor struct {
-	plan    *Plan          // The plan that we are executing
-	opts    Options        // Options for the plan execution
-	src     SourceIterator // The iterator that generates SourceEvents
-	preview bool           // are we running a preview?
+type planExecutor struct {
+	plan *Plan // The plan that we are executing
 
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
+}
 
-	parentCtx context.Context    // cancellation context for the current CLI session.
-	ctx       context.Context    // cancellation context for the current plan. Child of parentCtx.
-	cancel    context.CancelFunc // CancelFunc that cancels the above context.
+// Utility for convenient logging.
+var log = logging.V(4)
 
-	sawError  atomic.Value // have we seen an error?
-	sawCancel atomic.Value // have we seen a cancel?
+// execError creates an error appropriate for returning from planExecutor.Execute.
+func execError(message string, preview bool) error {
+	kind := "update"
+	if preview {
+		kind = "preview"
+	}
+	return errors.New(kind + " " + message)
+}
+
+// reportError reports a single error to the executor's diag stream with the indicated URN for context.
+func (pe *planExecutor) reportError(urn resource.URN, err error) {
+	pe.plan.Diag().Errorf(diag.RawMessage(urn, err.Error()))
 }
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *PlanExecutor) Execute() error {
-	// Before heading into the main event loop, we launch two goroutines. The first one links
-	// the parent cancellation context (which signals cancellation from the CLI level, i.e. Ctrl+C)
-	// to the cancellation context that the plan executor shares with its step executor. This ensures
-	// that top-level cancellations result in quick teardown of all worker threads and the plan executor
-	// itself.
+func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview bool) error {
+	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context is cancelled. We do
+	// not hang this off of the context we create below because we do not want the failure of a single step to cause
+	// other steps to fail.
+	done := make(chan bool)
 	go func() {
-		// Note that there's a bug here in that it's a little nondeterministic what happens here when
-		// the cancel signal is sent. Which arm of this select that is selected depends on the Go runtime
-		// and so it's possible that we'll issue a bad error message.
-		//
-		// TODO[pulumi/pulumi#1712] - The plan executor doesn't really need to know about ctrl-c cancellation
-		// at all so it would be nice to lift this into Plan.Walk or something higher up the stack.
 		select {
-		case <-pe.parentCtx.Done():
-			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): received cancel signal")
-			pe.sawCancel.Store(true)
-		case <-pe.ctx.Done():
-			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): cancel goroutine exiting")
+		case <-callerCtx.Done():
+			cancelErr := pe.plan.ctx.Host.SignalCancellation()
+			if cancelErr != nil {
+				log.Infof("planExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
+			}
+		case <-done:
 		}
 	}()
 
-	// The second one polls for incoming source events and writes them to the `incomingEvents` channel,
-	// so the man loop can `select` on it.
+	// Before doing anything else, optionally refresh each resource in the base checkpoint.
+	if opts.Refresh {
+		if err := pe.refresh(callerCtx, opts, preview); err != nil {
+			return err
+		}
+		if opts.RefreshOnly {
+			return nil
+		}
+	}
+
+	// Begin iterating the source.
+	src, err := pe.plan.source.Iterate(callerCtx, opts, pe.plan)
+	if err != nil {
+		return err
+	}
+
+	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
+	// execution fails.
+	ctx, cancel := context.WithCancel(callerCtx)
+
+	// Set up a step generator and executor for this plan.
+	pe.stepGen = newStepGenerator(pe.plan, opts)
+	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview, false)
+
+	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
+	// respond to cancellation requests promptly.
 	type nextEvent struct {
 		Event SourceEvent
 		Error error
 	}
-
 	incomingEvents := make(chan nextEvent)
 	go func() {
 		for {
-			event, sourceErr := pe.src.Next()
+			event, sourceErr := src.Next()
 			select {
 			case incomingEvents <- nextEvent{event, sourceErr}:
-			case <-pe.ctx.Done():
-				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): incoming events goroutine exiting")
+				if event == nil {
+					return
+				}
+			case <-done:
+				log.Infof("planExecutor.Execute(...): incoming events goroutine exiting")
 				return
 			}
 		}
@@ -111,149 +126,187 @@ func (pe *PlanExecutor) Execute() error {
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-outer:
-	for {
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): waiting for incoming events")
-		select {
-		case event := <-incomingEvents:
-			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): incoming event")
-			if event.Error != nil {
-				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): saw incoming error: %v", event.Error)
-				pe.cancelDueToError()
-				break outer
+	canceled, err := func() (bool, error) {
+		log.Infof("planExecutor.Execute(...): waiting for incoming events")
+		for {
+			select {
+			case event := <-incomingEvents:
+				log.Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Error)
+
+				if event.Error != nil {
+					pe.reportError("", event.Error)
+					cancel()
+					return false, event.Error
+				}
+
+				if event.Event == nil {
+					// TODO[pulumi/pulumi#1625] Today we lack the ability to parallelize deletions. We have all the
+					// information we need to do so (namely, a dependency graph). `GenerateDeletes` returns a single
+					// chain of every delete that needs to be executed.
+					deletes := pe.stepGen.GenerateDeletes()
+					pe.stepExec.Execute(deletes)
+
+					// Signal completion to the step executor. It'll exit once it's done retiring all of the steps in
+					// the chain that we just gave it.
+					pe.stepExec.SignalCompletion()
+					log.Infof("planExecutor.Execute(...): issued deletes")
+
+					return false, nil
+				}
+
+				if res := pe.handleSingleEvent(event.Event); res != nil {
+					if resErr := res.Error(); resErr != nil {
+						log.Infof("planExecutor.Execute(...): error handling event: %v", resErr)
+						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
+					}
+					cancel()
+					return false, result.TODO()
+				}
+			case <-ctx.Done():
+				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
+
+				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+				// cancellation from internally-initiated cancellation.
+				return callerCtx.Err() != nil, nil
 			}
-
-			if event.Event == nil {
-				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): saw nil event, beginning termination")
-
-				// TODO[pulumi/pulumi#1625] Today we lack the ability to parallelize deletions. We have all the
-				// information we need to do so (namely, a dependency graph). `GenerateDeletes` returns a single
-				// chain of every delete that needs to be executed.
-				deletes := pe.stepGen.GenerateDeletes()
-				pe.stepExec.Execute(deletes)
-
-				// Signal completion to the step executor. It'll exit once it's done retiring all of the steps in
-				// the chain that we just gave it.
-				pe.stepExec.SignalCompletion()
-				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): completed deletes, exiting loop")
-				break outer
-			}
-
-			pe.handleSingleEvent(event.Event)
-		case <-pe.ctx.Done():
-			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): context canceled")
-			pe.cancelDueToError()
-			break outer
 		}
-	}
+	}()
+	close(done)
 
-	logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): exited event loop, waiting for completion")
 	pe.stepExec.WaitForCompletion()
-	logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): step executor has completed")
+	log.Infof("planExecutor.Execute(...): step executor has completed")
 
-	// To provide the best error message we can, we've kept track of whether or not we were successful and, if we
-	// were not, if we failed because of a cancel or because the step executor died.
-	if pe.canceled() {
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): observed that the plan was canceled")
-		return ErrCanceled
+	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
+	if err != nil || pe.stepExec.Errored() {
+		err = execError("failed", preview)
+	} else if canceled {
+		err = execError("canceled", preview)
 	}
-
-	if pe.errored() {
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): observed that the plan errored")
-		if pe.preview {
-			return ErrPreviewFailed
-		}
-
-		return ErrUpdateFailed
-	}
-
-	logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): observed that the plan was successful")
-	return nil
-}
-
-// Summary returns a PlanSummary of the plan that was executed.
-func (pe *PlanExecutor) Summary() PlanSummary {
-	return pe.stepGen
-}
-
-// errored returns whether or not this plan failed due to an error in step application.
-func (pe *PlanExecutor) errored() bool {
-	return pe.sawError.Load().(bool) || pe.stepExec.Errored()
-}
-
-// canceled returns whether or not this plan failed because it was canceled through Ctrl-C.
-func (pe *PlanExecutor) canceled() bool {
-	return pe.sawCancel.Load().(bool)
-}
-
-// cancelDueToError cancels the step executor and signals shutdown because the plan executor witnessed
-// an error that the step executor would not have witnessed. The main reason this happens is because of errors
-// occurring in the source program that can't be translated into chains for the step executor to execute.
-func (pe *PlanExecutor) cancelDueToError() {
-	pe.sawError.Store(true)
-	pe.cancel()
+	return err
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
-	if event == nil {
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received nil event")
-		return
-	}
+func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
+	contract.Require(event != nil, "event != nil")
 
-	logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received event")
+	var steps []Step
+	var res *result.Result
 	switch e := event.(type) {
 	case RegisterResourceEvent:
-		step, steperr := pe.stepGen.GenerateSteps(e)
-		if steperr != nil {
-			logging.V(planExecutorLogLevel).Infof(
-				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
-			goal := e.Goal()
-			urn := pe.plan.generateURN(goal.Parent, goal.Type, goal.Name)
-			pe.plan.Diag().Errorf(diag.RawMessage(urn, steperr.Error()))
-			pe.cancel()
-			return
-		}
-
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): submitting chain for execution")
-		pe.stepExec.Execute(step)
+		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
+		steps, res = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
-		step, steperr := pe.stepGen.GenerateReadSteps(e)
-		if steperr != nil {
-			logging.V(planExecutorLogLevel).Infof(
-				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
-			urn := pe.plan.generateURN(e.Parent(), e.Type(), e.Name())
-			pe.plan.Diag().Errorf(diag.RawMessage(urn, steperr.Error()))
-			pe.cancel()
-			return
-		}
-
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): submitting reads for execution")
-		pe.stepExec.Execute(step)
+		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
+		steps, res = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received register resource outputs")
+		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
+		return nil
 	}
+
+	if res != nil {
+		return res
+	}
+
+	pe.stepExec.Execute(steps)
+	return nil
 }
 
-// NewPlanExecutor creates a new PlanExecutor suitable for executing the given plan.
-func NewPlanExecutor(parentCtx context.Context, plan *Plan, opts Options,
-	preview bool, src SourceIterator) *PlanExecutor {
-	ctx, cancel := context.WithCancel(parentCtx)
-	pe := &PlanExecutor{
-		plan:      plan,
-		opts:      opts,
-		src:       src,
-		preview:   preview,
-		stepGen:   newStepGenerator(plan, opts),
-		stepExec:  newStepExecutor(ctx, cancel, plan, opts, preview),
-		parentCtx: parentCtx,
-		ctx:       ctx,
-		cancel:    cancel,
+// refresh refreshes the state of the base checkpoint file for the current plan in memory.
+func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview bool) error {
+	prev := pe.plan.prev
+	if prev == nil || len(prev.Resources) == 0 {
+		return nil
 	}
 
-	pe.sawError.Store(false)
-	pe.sawCancel.Store(false)
-	return pe
+	// Create a refresh step for each resource in the old snapshot.
+	steps := make([]Step, len(prev.Resources))
+	for i := range prev.Resources {
+		steps[i] = NewRefreshStep(pe.plan, prev.Resources[i], nil)
+	}
+
+	// Fire up a worker pool and issue each refresh in turn.
+	ctx, cancel := context.WithCancel(callerCtx)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, true)
+	for i := range steps {
+		if ctx.Err() != nil {
+			break
+		}
+
+		stepExec.Execute([]Step{steps[i]})
+	}
+
+	stepExec.SignalCompletion()
+	stepExec.WaitForCompletion()
+
+	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources and repairing
+	// dependency lists as necessary. Note that this updates the base snapshot _in memory_, so it is critical that any
+	// components that use the snapshot refer to the same instance and avoid reading it concurrently with this rebuild.
+	//
+	// The process of repairing dependency lists is a bit subtle. Because multiple physical resources may share a URN,
+	// the ability of a particular URN to be referenced in a dependency list can change based on the dependent
+	// resource's position in the resource list. For example, consider the following list of resources, where each
+	// resource is a (URN, ID, Dependencies) tuple:
+	//
+	//     [ (A, 0, []), (B, 0, [A]), (A, 1, []), (A, 2, []), (C, 0, [A]) ]
+	//
+	// Let `(A, 0, [])` and `(A, 2, [])` be deleted by the refresh. This produces the following intermediate list
+	// before dependency lists are repaired:
+	//
+	//     [ (B, 0, [A]), (A, 1, []), (C, 0, [A]) ]
+	//
+	// In order to repair the dependency lists, we iterate over the intermediate resource list, keeping track of which
+	// URNs refer to at least one physical resource at each point in the list, and remove any dependencies that refer
+	// to URNs that do not refer to any physical resources. This process produces the following final list:
+	//
+	//     [ (B, 0, []), (A, 1, []), (C, 0, [A]) ]
+	//
+	// Note that the correctness of this process depends on the fact that the list of resources is a topological sort
+	// of its corresponding dependency graph, so a resource always appears in the list after any resources on which it
+	// may depend.
+	resources := make([]*resource.State, 0, len(prev.Resources))
+	referenceable := make(map[resource.URN]bool)
+	olds := make(map[resource.URN]*resource.State)
+	for _, s := range steps {
+		new := s.New()
+		if new == nil {
+			contract.Assert(s.Old().Custom)
+			contract.Assert(!providers.IsProviderType(s.Old().Type))
+			continue
+		}
+
+		// Remove any deleted resources from this resource's dependency list.
+		if len(new.Dependencies) != 0 {
+			deps := make([]resource.URN, 0, len(new.Dependencies))
+			for _, d := range new.Dependencies {
+				if referenceable[d] {
+					deps = append(deps, d)
+				}
+			}
+			new.Dependencies = deps
+		}
+
+		// Add this resource to the resource list and mark it as referenceable.
+		resources = append(resources, new)
+		referenceable[new.URN] = true
+
+		// Do not record resources that are pending deletion in the "olds" lookup table.
+		if !new.Delete {
+			olds[new.URN] = new
+		}
+	}
+	pe.plan.prev.Resources = resources
+	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
+
+	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+	// cancellation from internally-initiated cancellation.
+	canceled := callerCtx.Err() != nil
+
+	if stepExec.Errored() {
+		return execError("failed", preview)
+	} else if canceled {
+		return execError("canceled", preview)
+	}
+	return nil
 }

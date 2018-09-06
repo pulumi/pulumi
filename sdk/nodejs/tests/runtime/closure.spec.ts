@@ -25,7 +25,8 @@ import * as typescript from "typescript";
 interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
     title: string;                  // a title banner for the test case.
-    func: Function;                 // the function whose body and closure to serialize.
+    func?: Function;                // the function whose body and closure to serialize.
+    factoryFunc?: Function;         // the function whose body and closure to serialize (as a factory).
     expectText?: string;            // optionally also validate the serialization to JavaScript text.
     expectPackages?: Set<string>;   // optionally also validate the packages required by the JavaScript text.
     error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
@@ -792,7 +793,7 @@ return () => {
     cases.push({
         title: "Don't capture built-ins",
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
-        expectPackages: new Set(["os"]),
+        expectPackages: new Set(),
         expectText: `exports.handler = __f0;
 
 function __f0() {
@@ -813,7 +814,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
         cases.push({
             title: "Capture built in module by ref",
             func: () => os,
-            expectPackages: new Set([]),
+            expectPackages: new Set(["os"]),
             expectText: `exports.handler = __f0;
 
 function __f0() {
@@ -4144,7 +4145,7 @@ return function () { console.log(module.exports.exportedValue); };
         cases.push({
             title: "Required packages #1",
             func: function () { require("typescript"); foo(); if (true) { require("os") } },
-            expectPackages: new Set(["os", "typescript", "./util"]),
+            expectPackages: new Set(),
             expectText: `exports.handler = __f0;
 
 function __foo() {
@@ -4822,25 +4823,14 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
             expectText: `exports.handler = __f0;
 
 var __testConfig_proto = {};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
 var __options = {project: undefined};
 var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
 var __metadata_1 = {getProject: __getProject};
 __f1.prototype = __testConfig_proto;
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
-__f5.isInstance = __f6;
 (...)
-Object.setPrototypeOf(__f4, __f5);
-Object.defineProperty(__testConfig_proto, "getBoolean", { configurable: true, writable: true, value: __f3 });
-Object.defineProperty(__testConfig_proto, "getNumber", { configurable: true, writable: true, value: __f7 });
-Object.defineProperty(__testConfig_proto, "getObject", { configurable: true, writable: true, value: __f8 });
-Object.setPrototypeOf(__f10, __f5);
-Object.defineProperty(__testConfig_proto, "require", { configurable: true, writable: true, value: __f9 });
-Object.defineProperty(__testConfig_proto, "requireBoolean", { configurable: true, writable: true, value: __f11 });
-Object.defineProperty(__testConfig_proto, "requireNumber", { configurable: true, writable: true, value: __f12 });
-Object.defineProperty(__testConfig_proto, "requireObject", { configurable: true, writable: true, value: __f13 });
-Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f14 });
+Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f17 });
 var __testConfig = Object.create(__testConfig_proto);
 __testConfig.name = "test";
 
@@ -4901,18 +4891,6 @@ return function /*constructor*/(name) {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
-function __f2() {
-  return (function() {
-    with({ runtime_1: __runtime }) {
-
-return function /*get*/(key) {
-        return runtime_1.getConfig(this.fullKey(key));
-    };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
 (...)
 function __f0() {
   return (function() {
@@ -4936,24 +4914,13 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
             expectText: `exports.handler = __f0;
 
 var __options = {project: undefined};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
 var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
 var __metadata_1 = {getProject: __getProject};
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
-__f5.isInstance = __f6;
 (...)
-Object.setPrototypeOf(__f4, __f5);
-Object.defineProperty(__f1_prototype, "getBoolean", { configurable: true, writable: true, value: __f3 });
-Object.defineProperty(__f1_prototype, "getNumber", { configurable: true, writable: true, value: __f7 });
-Object.defineProperty(__f1_prototype, "getObject", { configurable: true, writable: true, value: __f8 });
-Object.setPrototypeOf(__f10, __f5);
-Object.defineProperty(__f1_prototype, "require", { configurable: true, writable: true, value: __f9 });
-Object.defineProperty(__f1_prototype, "requireBoolean", { configurable: true, writable: true, value: __f11 });
-Object.defineProperty(__f1_prototype, "requireNumber", { configurable: true, writable: true, value: __f12 });
-Object.defineProperty(__f1_prototype, "requireObject", { configurable: true, writable: true, value: __f13 });
-Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f14 });
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f17 });
 __f1.prototype = __f1_prototype;
 var __pulumi = {Config: __f1};
 
@@ -5014,24 +4981,209 @@ return function /*constructor*/(name) {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
-function __f2() {
-  return (function() {
-    with({ runtime_1: __runtime }) {
-
-return function /*get*/(key) {
-        return runtime_1.getConfig(this.fullKey(key));
-    };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
 (...)
 function __f0() {
   return (function() {
     with({ pulumi: __pulumi }) {
 
 return function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Capture factory func #1",
+            factoryFunc: () => {
+                const serverlessExpress = require("aws-serverless-express");
+                const express = require("express");
+                const app = express();
+                app.get("/", (req: any, res: any) => {
+                    res.json({ succeeded: true });
+                });
+
+                const server = serverlessExpress.createServer(app);
+
+                return (event: any, context: any) => {
+                    serverlessExpress.proxy(server, event, context);
+                };
+            },
+            expectText: `
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => {
+                const serverlessExpress = require("aws-serverless-express");
+                const express = require("express");
+                const app = express();
+                app.get("/", (req, res) => {
+                    res.json({ succeeded: true });
+                });
+                const server = serverlessExpress.createServer(app);
+                return (event, context) => {
+                    serverlessExpress.proxy(server, event, context);
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+exports.handler = __f0();`,
+        });
+    }
+
+    {
+        const outerVal = [{}];
+        (<any>outerVal[0]).inner = outerVal;
+
+        function foo() {
+            outerVal.pop();
+        }
+
+        function bar() {
+            outerVal.join();
+        }
+
+        cases.push({
+            title: "Capture factory func #2",
+            factoryFunc: () => {
+                outerVal.push({});
+                foo();
+
+                return (event: any, context: any) => {
+                    bar();
+                };
+            },
+            expectText: `
+var __outerVal = [];
+var __outerVal_0 = {};
+__outerVal_0.inner = __outerVal;
+__outerVal[0] = __outerVal_0;
+
+function __foo() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo }) {
+
+return function /*foo*/() {
+            outerVal.pop();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __bar() {
+  return (function() {
+    with({ outerVal: __outerVal, bar: __bar }) {
+
+return function /*bar*/() {
+            outerVal.join();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo, bar: __bar }) {
+
+return () => {
+                outerVal.push({});
+                foo();
+                return (event, context) => {
+                    bar();
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+exports.handler = __f0();`,
+        });
+    }
+
+    cases.push({
+        title: "Deconstructing function",
+        // @ts-ignore
+        func: function f({ whatever }) { },
+        expectText: `exports.handler = __f;
+
+function __f() {
+  return (function() {
+    with({ f: __f }) {
+
+return function /*f*/({ whatever }) { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
+    {
+        const regex = /(abc)[\(123-456]\\a\b\z/gi;
+
+        cases.push({
+            title: "Regex #1",
+            // @ts-ignore
+            func: function() { console.log(regex); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)[\\\\(123-456]\\\\\\\\a\\\\b\\\\z", "gi");
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex }) {
+
+return function () { console.log(regex); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const regex = /(abc)/g;
+
+        function foo() {
+            console.log(regex);
+        }
+
+        cases.push({
+            title: "Regex #2",
+            // @ts-ignore
+            func: function() { console.log(regex); foo(); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)", "g");
+
+function __foo() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function /*foo*/() {
+            console.log(regex);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function () { console.log(regex); foo(); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -5070,7 +5222,7 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
 
             // Invoke the test case.
             if (test.expectText) {
-                const sf = await runtime.serializeFunction(test.func);
+                const sf = await serializeFunction(test);
                 compareTextWithWildcards(test.expectText, sf.text);
                 if (test.expectPackages) {
                     assert.equal(sf.requiredPackages.size, test.expectPackages.size)
@@ -5081,7 +5233,7 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
             }
             else {
                 const message = await assertAsyncThrows(async () => {
-                    await runtime.serializeFunction(test.func);
+                    await serializeFunction(test);
                 });
 
                 // replace real locations with (0,0) so that our test baselines do not need to
@@ -5097,6 +5249,18 @@ return function () { const v = new pulumi.Config("test").get("TestingKey2"); con
         // Schedule any additional tests.
         if (test.afters) {
             remaining = test.afters.concat(remaining);
+        }
+    }
+
+    async function serializeFunction(test: ClosureCase) {
+        if (test.func) {
+            return await runtime.serializeFunction(test.func);
+        }
+        else if (test.factoryFunc) {
+            return await runtime.serializeFunction(test.factoryFunc!, { isFactoryFunction: true });
+        }
+        else {
+            throw new Error("Have to supply [func] or [factoryFunc]!");
         }
     }
 });

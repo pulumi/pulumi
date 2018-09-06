@@ -77,7 +77,7 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_DRY_RUN", argv["dry-run"]);
     addToEnvIfDefined("PULUMI_NODEJS_PARALLEL", argv["parallel"]);
     addToEnvIfDefined("PULUMI_NODEJS_MONITOR", argv["monitor"]);
-    addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engineAddr"]);
+    addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
 
     require("./run").run(argv);
 }

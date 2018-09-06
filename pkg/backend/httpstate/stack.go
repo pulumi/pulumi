@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cloud
+package httpstate
 
 import (
 	"context"
@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
@@ -35,16 +34,6 @@ type Stack interface {
 	CloudURL() string            // the URL to the cloud containing this stack.
 	OrgName() string             // the organization that owns this stack.
 	ConsoleURL() (string, error) // the URL to view the stack's information on Pulumi.com
-}
-
-// cloudStack is a cloud stack descriptor.
-type cloudStack struct {
-	name     backend.StackReference // the stack's name.
-	cloudURL string                 // the URL to the cloud containing this stack.
-	orgName  string                 // the organization that owns this stack.
-	config   config.Map             // the stack's config bag.
-	snapshot **deploy.Snapshot      // a snapshot representing the latest deployment state (allocated on first use)
-	b        *cloudBackend          // a pointer to the backend this stack belongs to.
 }
 
 type cloudBackendReference struct {
@@ -66,14 +55,24 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s", c.owner, c.name)
 }
 
-func (c cloudBackendReference) StackName() tokens.QName {
+func (c cloudBackendReference) Name() tokens.QName {
 	return c.name
+}
+
+// cloudStack is a cloud stack descriptor.
+type cloudStack struct {
+	ref      backend.StackReference // the stack's ref (unique name).
+	cloudURL string                 // the URL to the cloud containing this stack.
+	orgName  string                 // the organization that owns this stack.
+	config   config.Map             // the stack's config bag.
+	snapshot **deploy.Snapshot      // a snapshot representing the latest deployment state (allocated on first use)
+	b        *cloudBackend          // a pointer to the backend this stack belongs to.
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
-		name: cloudBackendReference{
+		ref: cloudBackendReference{
 			owner: apistack.OrgName,
 			name:  apistack.StackName,
 			b:     b,
@@ -86,18 +85,18 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	}
 }
 
-func (s *cloudStack) Name() backend.StackReference { return s.name }
-func (s *cloudStack) Config() config.Map           { return s.config }
-func (s *cloudStack) Backend() backend.Backend     { return s.b }
-func (s *cloudStack) CloudURL() string             { return s.cloudURL }
-func (s *cloudStack) OrgName() string              { return s.orgName }
+func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+func (s *cloudStack) Config() config.Map          { return s.config }
+func (s *cloudStack) Backend() backend.Backend    { return s.b }
+func (s *cloudStack) CloudURL() string            { return s.cloudURL }
+func (s *cloudStack) OrgName() string             { return s.orgName }
 
 func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {
 		return *s.snapshot, nil
 	}
 
-	snap, err := s.b.getSnapshot(ctx, s.name)
+	snap, err := s.b.getSnapshot(ctx, s.ref)
 	if err != nil {
 		return nil, err
 	}
@@ -110,24 +109,20 @@ func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *cloudStack) Preview(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.PreviewStack(ctx, s, proj, root, m, opts, scopes)
+func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *cloudStack) Update(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.UpdateStack(ctx, s, proj, root, m, opts, scopes)
+func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.UpdateStack(ctx, s, op)
 }
 
-func (s *cloudStack) Refresh(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.RefreshStack(ctx, s, proj, root, m, opts, scopes)
+func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *cloudStack) Destroy(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.DestroyStack(ctx, s, proj, root, m, opts, scopes)
+func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.DestroyStack(ctx, s, op)
 }
 
 func (s *cloudStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
@@ -143,7 +138,7 @@ func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 }
 
 func (s *cloudStack) ConsoleURL() (string, error) {
-	path, err := s.b.StackConsoleURL(s.Name())
+	path, err := s.b.StackConsoleURL(s.ref)
 	if err != nil {
 		return "", nil
 	}

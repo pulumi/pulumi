@@ -33,29 +33,27 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, err
+	}
+
+	// Force opts.Refresh to true.
+	opts.Refresh = true
+
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
-		SkipOutputs:   true, // refresh is exclusively about outputs
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
-		Diag:          newEventSink(emitter),
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
+		isRefresh:     true,
 	}, dryRun)
 }
 
 func newRefreshSource(opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
-	// First, consult the manifest for the plugins we will need to ask to refresh the state.
-	if target != nil && target.Snapshot != nil {
-		// We don't need the language plugin, since refresh doesn't run code, so we will leave that out.
-		kinds := plugin.AnalyzerPlugins
-		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins, kinds); err != nil {
-			return nil, err
-		}
-	}
-
-	// Now create a refresh source.  This source simply loads up the current checkpoint state, enumerates it,
-	// and refreshes each state with the current cloud provider's view of it.
-	return deploy.NewRefreshSource(plugctx, proj, target, dryRun), nil
+	// Just return an error source. Refresh doesn't use its source.
+	return deploy.NewErrorSource(proj.Name), nil
 }

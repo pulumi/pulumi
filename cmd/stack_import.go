@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -45,7 +45,7 @@ func newStackImportCmd() *cobra.Command {
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 			"The updated deployment will be read from standard in.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -54,6 +54,7 @@ func newStackImportCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			// Read from stdin or a specified file
 			reader := os.Stdin
@@ -79,10 +80,10 @@ func newStackImportCmd() *cobra.Command {
 				switch err {
 				case stack.ErrDeploymentSchemaVersionTooOld:
 					return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-						s.Name().StackName())
+						stackName)
 				case stack.ErrDeploymentSchemaVersionTooNew:
 					return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-						"Please update your version of the Pulumi CLI", s.Name().StackName())
+						"Please update your version of the Pulumi CLI", stackName)
 				}
 
 				return errors.Wrap(err, "could not deserialize deployment")
@@ -90,9 +91,9 @@ func newStackImportCmd() *cobra.Command {
 
 			var result error
 			for _, res := range snapshot.Resources {
-				if res.URN.Stack() != s.Name().StackName() {
+				if res.URN.Stack() != stackName {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
-						res.URN, res.URN.Stack(), s.Name().StackName())
+						res.URN, res.URN.Stack(), stackName)
 					if force {
 						// If --force was passed, just issue a warning and proceed anyway.
 						// Note: we could associate this diagnostic with the resource URN

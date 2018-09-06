@@ -18,8 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -34,7 +34,7 @@ func newStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -44,8 +44,8 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{}
-			if _, ok := b.(cloud.Backend); ok {
-				createOpts = cloud.CreateStackOptions{
+			if _, ok := b.(httpstate.Backend); ok {
+				createOpts = httpstate.CreateStackOptions{
 					CloudName: ppc,
 				}
 			}

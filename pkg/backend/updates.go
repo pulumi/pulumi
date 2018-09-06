@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
@@ -27,20 +28,6 @@ type UpdateMetadata struct {
 	// source code control commit information.
 	Environment map[string]string `json:"environment"`
 }
-
-// UpdateKind is an enum for the type of update performed.
-type UpdateKind string
-
-const (
-	// DeployUpdate is the prototypical Pulumi program update.
-	DeployUpdate UpdateKind = "update"
-	// PreviewUpdate is a preview of an update, without impacting resources.
-	PreviewUpdate UpdateKind = "preview"
-	// RefreshUpdate is an update that adopts a cloud's existing resource state.
-	RefreshUpdate UpdateKind = "refresh"
-	// DestroyUpdate is an update which removes all resources.
-	DestroyUpdate UpdateKind = "destroy"
-)
 
 // UpdateResult is an enum for the result of the update.
 type UpdateResult string
@@ -92,8 +79,8 @@ const (
 // UpdateInfo describes a previous update.
 type UpdateInfo struct {
 	// Information known before an update is started.
-	Kind      UpdateKind `json:"kind"`
-	StartTime int64      `json:"startTime"`
+	Kind      apitype.UpdateKind `json:"kind"`
+	StartTime int64              `json:"startTime"`
 
 	// Message is an optional message associated with the update.
 	Message string `json:"message"`

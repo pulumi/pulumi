@@ -19,6 +19,8 @@ import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
 
+const enginerpc = require("../../../proto/engine_grpc_pb.js");
+const engineproto = require("../../../proto/engine_pb.js");
 const gempty = require("google-protobuf/google/protobuf/empty_pb.js");
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const grpc = require("grpc");
@@ -36,6 +38,10 @@ interface RunCase {
     config?: {[key: string]: any};
     expectError?: string;
     expectResourceCount?: number;
+    expectedLogs?: {
+        count?: number;
+        ignoreDebug?: boolean;
+    };
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
         urn: URN | undefined, props: any | undefined };
@@ -44,6 +50,7 @@ interface RunCase {
         urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
+    log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
 }
 
 function makeUrn(t: string, name: string): URN {
@@ -370,8 +377,16 @@ describe("rpc", () => {
                 "sxs:message": "SxS config works!",
             },
             expectResourceCount: 2,
+            expectedLogs: {
+                count: 2,
+                ignoreDebug: true,
+            },
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 return { urn: makeUrn(t, name), id: name, props: undefined };
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                assert.strictEqual(/logging via (.*) works/.test(message), true);
             },
         },
         // Test that leaked debuggable promises fail the deployment.
@@ -433,6 +448,68 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: name, props: {} };
             },
         },
+        "logging": {
+            program: path.join(base, "018.logging"),
+            expectResourceCount: 1,
+            expectedLogs: {
+                count: 5,
+                ignoreDebug: true,
+            },
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                // "test" is the one resource this test creates - save the URN so we can assert
+                // it gets passed to log later on.
+                if (name === "test") {
+                    ctx.testUrn = makeUrn(t, name);
+                }
+
+                return { urn: makeUrn(t, name), id: name, props: res};
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                switch (message) {
+                    case "info message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        return;
+                    case "warning message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.WARNING);
+                        return;
+                    case "error message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
+                        return;
+                    case "attached to resource":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        assert.strictEqual(urn, ctx.testUrn);
+                        return;
+                    case "with streamid":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        assert.strictEqual(urn, ctx.testUrn);
+                        assert.strictEqual(streamId, 42);
+                        return;
+                    default:
+                        assert.fail("unexpected message: " + message);
+                        break;
+                }
+            },
+        },
+        // Test stack outputs via exports.
+        "stack_exports": {
+            program: path.join(base, "019.stack_exports"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    a: {
+                        x: 99,
+                        y: "z",
+                    },
+                    b: 42,
+                    c: {
+                        d: "a",
+                        e: false,
+                    },
+                });
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -446,6 +523,7 @@ describe("rpc", () => {
                 const ctx: any = {};
                 const regs: any = {};
                 let regCnt = 0;
+                let logCnt = 0;
                 const monitor = createMockResourceMonitor(
                     // Invoke callback
                     (call: any, callback: any) => {
@@ -519,8 +597,26 @@ describe("rpc", () => {
                     },
                 );
 
+                const engine = createMockEngine((call: any, callback: any) => {
+                    const req: any = call.request;
+                    const severity = req.getSeverity();
+                    const message = req.getMessage();
+                    const urn = req.getUrn();
+                    const streamId = req.getStreamid();
+                    if (opts.expectedLogs) {
+                        if (!opts.expectedLogs.ignoreDebug || severity !== engineproto.LogSeverity.DEBUG) {
+                            logCnt++;
+                            if (opts.log) {
+                                opts.log(ctx, severity, message, urn, streamId);
+                            }
+                        }
+                    }
+
+                    callback(undefined, new gempty.Empty());
+                });
+
                 // Next, go ahead and spawn a new language host that connects to said monitor.
-                const langHost = serveLanguageHostProcess();
+                const langHost = serveLanguageHostProcess(engine.addr);
                 const langHostAddr: string = await langHost.addr;
 
                 // Fake up a client RPC connection to the language host so that we can invoke run.
@@ -545,6 +641,14 @@ describe("rpc", () => {
                 }
                 assert.strictEqual(regCnt, expectResourceCount,
                                    `Expected exactly ${expectResourceCount} resource registrations; got ${regCnt}`);
+
+                if (opts.expectedLogs) {
+                    const logs = opts.expectedLogs;
+                    if (logs.count) {
+                        assert.strictEqual(logCnt, logs.count,
+                            `Expected exactly ${logs.count} logs; got ${logCnt}`);
+                    }
+                }
 
                 // Finally, tear down everything so each test case starts anew.
                 await new Promise<void>((resolve, reject) => {
@@ -618,7 +722,19 @@ function createMockResourceMonitor(
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 
-function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Promise<string> } {
+// Despite the name, the "engine" RPC endpoint is only a logging endpoint. createMockEngine fires up a fake
+// logging server so tests can assert that certain things get logged.
+function createMockEngine(logCallback: (call: any, callback: any) => any): { server: any, addr: string } {
+    const server = new grpc.Server();
+    server.addService(enginerpc.EngineService, {
+        log: logCallback,
+    });
+    const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
+    server.start();
+    return { server: server, addr: `0.0.0.0:${port}` };
+}
+
+function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // A quick note about this:
     //
     // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is responsible
@@ -630,7 +746,7 @@ function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Pr
     // set, it will use that path instead of the default value. For our tests here, we set it and point at the
     // just built version of run.
     process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = "./bin/cmd/run";
-    const proc = childProcess.spawn("pulumi-language-nodejs");
+    const proc = childProcess.spawn("pulumi-language-nodejs", [engineAddr]);
 
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.

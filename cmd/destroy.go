@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -35,6 +36,7 @@ func newDestroyCmd() *cobra.Command {
 	var analyzers []string
 	var diffDisplay bool
 	var parallel int
+	var refresh bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -66,7 +68,7 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			opts.Display = backend.DisplayOptions{
+			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
@@ -94,9 +96,16 @@ func newDestroyCmd() *cobra.Command {
 				Analyzers: analyzers,
 				Parallel:  parallel,
 				Debug:     debug,
+				Refresh:   refresh,
 			}
 
-			_, err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)
+			_, err = s.Destroy(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
 			if err == context.Canceled {
 				return errors.New("destroy cancelled")
 			}
@@ -124,8 +133,11 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 10,
+		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+	cmd.PersistentFlags().BoolVarP(
+		&refresh, "refresh", "r", false,
+		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

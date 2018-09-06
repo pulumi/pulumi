@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"context"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -30,8 +32,10 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Events   Events // an optional events callback interface.
-	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
+	Events      Events // an optional events callback interface.
+	Parallel    int    // the degree of parallelism for resource operations (<=1 for serial).
+	Refresh     bool   // whether or not to refresh before executing the plan.
+	RefreshOnly bool   // whether or not to exit after refreshing.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -48,16 +52,6 @@ type Events interface {
 	OnResourceStepPre(step Step) (interface{}, error)
 	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error
-}
-
-// PlanSummary is an interface for summarizing the progress of a plan.
-type PlanSummary interface {
-	Steps() int
-	Creates() map[resource.URN]bool
-	Updates() map[resource.URN]bool
-	Replaces() map[resource.URN]bool
-	Deletes() map[resource.URN]bool
-	Sames() map[resource.URN]bool
 }
 
 // PlanPendingOperationsError is an error returned from `NewPlan` if there exist pending operations in the
@@ -185,6 +179,9 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	var oldResources []*resource.State
 
 	// Produce a map of all old resources for fast resources.
+	//
+	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
+	// planExecutor.refresh for details.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
 		if prev.PendingOperations != nil {
@@ -233,11 +230,6 @@ func (p *Plan) Diag() diag.Sink                        { return p.ctx.Diag }
 func (p *Plan) Prev() *Snapshot                        { return p.prev }
 func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
 func (p *Plan) Source() Source                         { return p.source }
-func (p *Plan) IsRefresh() bool                        { return p.source.IsRefresh() }
-
-func (p *Plan) SignalCancellation() error {
-	return p.ctx.Host.SignalCancellation()
-}
 
 func (p *Plan) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	return p.providers.GetProvider(ref)
@@ -259,4 +251,28 @@ func (p *Plan) generateURN(parent resource.URN, ty tokens.Type, name tokens.QNam
 // defaultProviderURN generates the URN for the global provider given a package.
 func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
 	return resource.NewURN(target.Name, source.Project(), "", providers.MakeProviderType(pkg), "default")
+}
+
+// generateEventURN generates a URN for the resource associated with the given event.
+func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
+	contract.Require(event != nil, "event != nil")
+
+	switch e := event.(type) {
+	case RegisterResourceEvent:
+		goal := e.Goal()
+		return p.generateURN(goal.Parent, goal.Type, goal.Name)
+	case ReadResourceEvent:
+		return p.generateURN(e.Parent(), e.Type(), e.Name())
+	case RegisterResourceOutputsEvent:
+		return e.URN()
+	default:
+		return ""
+	}
+}
+
+// Execute executes a plan to completion, using the given cancellation context and running a preview
+// or update.
+func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) error {
+	planExec := &planExecutor{plan: p}
+	return planExec.Execute(ctx, opts, preview)
 }

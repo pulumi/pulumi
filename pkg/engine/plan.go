@@ -15,17 +15,13 @@
 package engine
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"sync"
 
-	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
@@ -37,7 +33,7 @@ import (
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource, pluginEvents plugin.Events,
-	diag diag.Sink, tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
+	diag, statusDiag diag.Sink, tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 	contract.Require(projinfo != nil, "projinfo")
 
 	// If the package contains an override for the main entrypoint, use it.
@@ -47,8 +43,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(diag, host, config, pluginEvents, pwd, projinfo.Proj.RuntimeInfo.Options(),
-		tracingSpan)
+	ctx, err := plugin.NewContext(diag, statusDiag, host, config, pluginEvents, pwd,
+		projinfo.Proj.RuntimeInfo.Options(), tracingSpan)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -94,10 +90,13 @@ type planOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc planSourceFunc
 
-	SkipOutputs bool         // true if we we should skip printing outputs separately.
-	DOT         bool         // true if we should print the DOT file for this plan.
-	Events      eventEmitter // the channel to write events from the engine to.
-	Diag        diag.Sink    // the sink to use for diag'ing.
+	DOT        bool         // true if we should print the DOT file for this plan.
+	Events     eventEmitter // the channel to write events from the engine to.
+	Diag       diag.Sink    // the sink to use for diag'ing.
+	StatusDiag diag.Sink    // the sink to use for diag'ing status messages.
+
+	// true if we're planning a refresh.
+	isRefresh bool
 }
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -124,7 +123,8 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.host, target, pluginEvents, opts.Diag, info.TracingSpan)
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.host, target, pluginEvents,
+		opts.Diag, opts.StatusDiag, info.TracingSpan)
 	if err != nil {
 		return nil, err
 	}
@@ -193,25 +193,19 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) (deploy.PlanSummary, error) {
+func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	opts := deploy.Options{
-		Events:   events,
-		Parallel: res.Options.Parallel,
-	}
-
-	src, err := res.Plan.Source().Iterate(ctx, opts, res.Plan)
-	if err != nil {
-		cancelFunc()
-		return nil, err
-	}
 
 	done := make(chan bool)
-	var summary deploy.PlanSummary
+	var err error
 	go func() {
-		planExec := deploy.NewPlanExecutor(ctx, res.Plan, opts, preview, src)
-		err = planExec.Execute()
-		summary = planExec.Summary()
+		opts := deploy.Options{
+			Events:      events,
+			Parallel:    res.Options.Parallel,
+			Refresh:     res.Options.Refresh,
+			RefreshOnly: res.Options.isRefresh,
+		}
+		err = res.Plan.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -219,13 +213,8 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 	go func() {
 		select {
 		case <-cancelCtx.Cancel.Canceled():
-			// Cancel the plan executor's context, so it begins to shut down.
+			// Cancel the plan's execution context, so it begins to shut down.
 			cancelFunc()
-			cancelErr := res.Plan.SignalCancellation()
-			if cancelErr != nil {
-				glog.V(3).Infof("Attempted to signal cancellation to resource providers, but failed: %s",
-					cancelErr.Error())
-			}
 		case <-done:
 			return
 		}
@@ -233,10 +222,10 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 
 	select {
 	case <-cancelCtx.Cancel.Terminated():
-		return summary, cancelCtx.Cancel.TerminateErr()
+		return cancelCtx.Cancel.TerminateErr()
 
 	case <-done:
-		return summary, err
+		return err
 	}
 }
 
@@ -250,8 +239,7 @@ func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, 
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPlanActions(result.Options)
-	_, err := result.Walk(ctx, actions, true)
-	if err != nil {
+	if err := result.Walk(ctx, actions, true); err != nil {
 		return nil, errors.New("an error occurred while advancing the preview")
 	}
 
@@ -262,7 +250,6 @@ func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, 
 }
 
 type planActions struct {
-	Refresh bool
 	Ops     map[deploy.StepOp]int
 	Opts    planOptions
 	Seen    map[resource.URN]deploy.Step
@@ -289,21 +276,6 @@ func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error
 
 	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
 
-	// Warn the user if they're not updating a resource whose initialization failed.
-	if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
-		indent := "         "
-
-		// TODO: Move indentation to the display logic, instead of doing it ourselves.
-		var warning bytes.Buffer
-		warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
-		warning.WriteString(indent + "to update it to fix these issues:\n")
-		for i, err := range step.Old().InitErrors {
-			warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
-				colors.Reset + " " + err + "\n")
-		}
-		acts.Opts.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
-	}
-
 	return nil, nil
 }
 
@@ -325,15 +297,20 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
 	} else if reportStep {
+		op, record := step.Op(), step.Logical()
+		if acts.Opts.isRefresh && op == deploy.OpRefresh {
+			// Refreshes are handled specially.
+			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
-		if step.Logical() {
+		if record {
 			acts.MapLock.Lock()
-			acts.Ops[step.Op()]++
+			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 
-		_ = acts.OnResourceOutputs(step)
+		acts.Opts.Events.resourceOutputsEvent(op, step, true /*planning*/, acts.Opts.Debug)
 	}
 
 	return nil
@@ -349,10 +326,8 @@ func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
 		return nil
 	}
 
-	// Print the resource outputs separately, unless this is a refresh in which case they are already printed.
-	if !acts.Opts.SkipOutputs {
-		acts.Opts.Events.resourceOutputsEvent(step, true /*planning*/, acts.Opts.Debug)
-	}
+	// Print the resource outputs separately.
+	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug)
 
 	return nil
 }

@@ -42,3 +42,19 @@ func TestCheckpointV1ToV2(t *testing.T) {
 	}, v2.Config)
 	assert.Len(t, v2.Latest.Resources, 0)
 }
+
+func TestCheckpointV1ToV2NilLatest(t *testing.T) {
+	v1 := apitype.CheckpointV1{
+		Stack: tokens.QName("mystack"),
+		Config: config.Map{
+			config.MustMakeKey("foo", "number"): config.NewValue("42"),
+		},
+	}
+
+	v2 := UpToCheckpointV2(v1)
+	assert.Equal(t, tokens.QName("mystack"), v2.Stack)
+	assert.Equal(t, config.Map{
+		config.MustMakeKey("foo", "number"): config.NewValue("42"),
+	}, v2.Config)
+	assert.Nil(t, v2.Latest)
+}

@@ -229,7 +229,7 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	// Flow the logging information if set.
 	if logging.LogFlow {
 		if logging.LogToStderr {
-			args = append(args, "--logtostderr")
+			args = append(args, "-logtostderr")
 		}
 		if logging.Verbose > 0 {
 			args = append(args, "-v="+strconv.Itoa(logging.Verbose))

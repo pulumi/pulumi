@@ -23,11 +23,11 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
@@ -114,11 +114,11 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 // Template represents a project template.
 type Template struct {
-	Dir         string                                    // The directory containing Pulumi.yaml.
-	Name        string                                    // The name of the template.
-	Description string                                    // Description of the template.
-	Quickstart  string                                    // Optional text to be displayed after template creation.
-	Config      map[config.Key]ProjectTemplateConfigValue // Optional template config.
+	Dir         string                                // The directory containing Pulumi.yaml.
+	Name        string                                // The name of the template.
+	Description string                                // Description of the template.
+	Quickstart  string                                // Optional text to be displayed after template creation.
+	Config      map[string]ProjectTemplateConfigValue // Optional template config.
 
 	ProjectName        string // Name of the project.
 	ProjectDescription string // Optional description of the project.
@@ -217,6 +217,15 @@ func retrievePulumiTemplates(templateName string, offline bool) (TemplateReposit
 	subDir := templateDir
 	if templateName != "" {
 		subDir = filepath.Join(subDir, templateName)
+
+		// Provide a nicer error message when the template can't be found (dir doesn't exist).
+		_, err := os.Stat(subDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return TemplateRepository{}, newTemplateNotFoundError(templateDir, templateName)
+			}
+			contract.IgnoreError(err)
+		}
 	}
 
 	return TemplateRepository{
@@ -373,22 +382,37 @@ func IsValidProjectName(name string) bool {
 
 // ValueOrSanitizedDefaultProjectName returns the value or a sanitized valid project name
 // based on defaultNameToSanitize.
-func ValueOrSanitizedDefaultProjectName(name string, defaultNameToSanitize string) string {
+func ValueOrSanitizedDefaultProjectName(name string, projectName string, defaultNameToSanitize string) string {
+	// If we have a name, use it.
 	if name != "" {
 		return name
 	}
+
+	// If the project already has a name that isn't a replacement string, use it.
+	if projectName != "${PROJECT}" {
+		return projectName
+	}
+
+	// Otherwise, get a sanitized version of `defaultNameToSanitize`.
 	return getValidProjectName(defaultNameToSanitize)
 }
 
 // ValueOrDefaultProjectDescription returns the value or defaultDescription.
-func ValueOrDefaultProjectDescription(description string, defaultDescription string) string {
+func ValueOrDefaultProjectDescription(
+	description string, projectDescription string, defaultDescription string) string {
+
+	// If we have a description, use it.
 	if description != "" {
 		return description
 	}
-	if defaultDescription != "" {
-		return defaultDescription
+
+	// If the project already has a description that isn't a replacement string, use it.
+	if projectDescription != "${DESCRIPTION}" {
+		return projectDescription
 	}
-	return ""
+
+	// Otherwise, use the default, which may be an empty string.
+	return defaultDescription
 }
 
 // getValidProjectName returns a valid project name based on the passed-in name.
@@ -470,6 +494,40 @@ func newExistingFilesError(existing []string) error {
 		message = message + fmt.Sprintf("  overwrite   %s\n", file)
 	}
 	message = message + "\nrerun the command and pass --force to accept and create"
+	return errors.New(message)
+}
+
+// newTemplateNotFoundError returns an error for when the template doesn't exist,
+// offering distance-based suggestions in the error message.
+func newTemplateNotFoundError(templateDir string, templateName string) error {
+	message := fmt.Sprintf("template '%s' not found", templateName)
+
+	// Attempt to read the directory to offer suggestions.
+	infos, err := ioutil.ReadDir(templateDir)
+	if err != nil {
+		contract.IgnoreError(err)
+		return errors.New(message)
+	}
+
+	// Get suggestions based on levenshtein distance.
+	suggestions := []string{}
+	const minDistance = 2
+	op := levenshtein.DefaultOptions
+	for _, info := range infos {
+		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(info.Name()), op)
+		if distance <= minDistance {
+			suggestions = append(suggestions, info.Name())
+		}
+	}
+
+	// Build-up error message with suggestions.
+	if len(suggestions) > 0 {
+		message = message + "\n\nDid you mean this?\n"
+		for _, suggestion := range suggestions {
+			message = message + fmt.Sprintf("\t%s\n", suggestion)
+		}
+	}
+
 	return errors.New(message)
 }
 

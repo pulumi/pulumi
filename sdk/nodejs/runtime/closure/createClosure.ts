@@ -49,9 +49,6 @@ export interface FunctionInfo extends ObjectInfo {
     // name that the function was declared with.  used only for trying to emit a better
     // name into the serialized code for it.
     name: string | undefined;
-
-    // the set of package 'requires' seen in the function body.
-    requiredPackages: Set<string>;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
@@ -89,6 +86,9 @@ export interface PropertyMap extends Map<Entry, PropertyInfoAndValue> {
 export interface Entry {
     // a value which can be safely json serialized.
     json?: any;
+
+    // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
+    regexp?: RegExp;
 
     // a closure we are dependent on.
     function?: FunctionInfo;
@@ -388,7 +388,6 @@ function createFunctionInfo(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
-            requiredPackages: parsedFunction.requiredPackages,
         };
 
         const proto = Object.getPrototypeOf(func);
@@ -802,6 +801,10 @@ function getOrCreateEntry(
             entry.json = obj;
             return;
         }
+        else if (obj instanceof RegExp) {
+            entry.regexp = obj;
+            return;
+        }
 
         const moduleName = findModuleName(obj);
         if (moduleName) {
@@ -1074,8 +1077,10 @@ function getOrCreateEntry(
     }
 
     function captureModule(moduleName: string) {
-        const nodeModulesPrefix = "./node_modules/";
-        const isInNodeModules = moduleName.startsWith(nodeModulesPrefix);
+        const nodeModulesSegment = "/node_modules/";
+        const nodeModulesSegmentIndex = moduleName.indexOf(nodeModulesSegment);
+        const isInNodeModules = nodeModulesSegmentIndex >= 0;
+
         const isLocalModule = moduleName.startsWith(".") && !isInNodeModules;
 
         if (obj.deploymentOnlyModule || isLocalModule) {
@@ -1088,8 +1093,8 @@ function getOrCreateEntry(
             // serializable (like pulumi.Config)
             //
             // Or this is a reference to a local module (i.e. starts with '.', but isn't in
-            // ./node_modules). Always capture the local module as a value.  We do this because
-            // capturing as a reference (i.e. 'require(...)') has the following problems:
+            // /node_modules/ somewhere). Always capture the local module as a value.  We do this
+            // because capturing as a reference (i.e. 'require(...)') has the following problems:
             //
             // 1. 'require(...)' will not work at run-time, because the user's code will not be
             //    serialized in a way that can actually be require'd (i.e. it is not ) serialized
@@ -1102,12 +1107,17 @@ function getOrCreateEntry(
             serializeObject();
         }
         else  {
-            // If the path goes into node_modules, strip off the node_modules part. This
-            // will help ensure that lookup of those modules will work on the cloud-side even if the
-            // module isn't in a relative node_modules directory.  For example, this happens with
-            // aws-sdk.  It ends up actually being in /var/runtime/node_modules inside aws lambda.
+            // If the path goes into node_modules, strip off the node_modules part. This will help
+            // ensure that lookup of those modules will work on the cloud-side even if the module
+            // isn't in a relative node_modules directory.  For example, this happens with aws-sdk.
+            // It ends up actually being in /var/runtime/node_modules inside aws lambda.
+            //
+            // This also helps ensure that modules that are 'yarn link'ed are found properly. The
+            // module path we have may be on some non-local path due to the linking, however this
+            // will ensure that the module-name we load is a simple path that can be found off the
+            // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? moduleName.substring(nodeModulesPrefix.length)
+                ? moduleName.substring(nodeModulesSegmentIndex + nodeModulesSegment.length)
                 : moduleName;
         }
     }

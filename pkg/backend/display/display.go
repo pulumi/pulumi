@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package display
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -34,17 +34,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
+// ShowEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
-func DisplayEvents(
-	action string, events <-chan engine.Event,
-	done chan<- bool, opts backend.DisplayOptions) {
-
+func ShowEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 	if opts.DiffDisplay {
-		DisplayDiffEvents(action, events, done, opts)
+		ShowDiffEvents(op, action, events, done, opts)
 	} else {
-		DisplayProgressEvents(action, events, done, opts)
+		ShowProgressEvents(op, action, events, done, opts)
 	}
 }
 
@@ -57,11 +54,11 @@ func (s *nopSpinner) Tick() {
 func (s *nopSpinner) Reset() {
 }
 
-// DisplayDiffEvents displays the engine events with the diff view.
-func DisplayDiffEvents(action string,
-	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
+// ShowDiffEvents displays the engine events with the diff view.
+func ShowDiffEvents(op string, action apitype.UpdateKind,
+	events <-chan engine.Event, done chan<- bool, opts Options) {
 
-	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
+	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
@@ -96,7 +93,7 @@ func DisplayDiffEvents(action string,
 				}
 			}
 
-			msg := RenderDiffEvent(event, seen, opts)
+			msg := RenderDiffEvent(action, event, seen, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -108,8 +105,8 @@ func DisplayDiffEvents(action string,
 	}
 }
 
-func RenderDiffEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
+func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
+	seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
 
 	switch event.Type {
 	case engine.CancelEvent:
@@ -117,7 +114,7 @@ func RenderDiffEvent(
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+		return renderSummaryEvent(action, event.Payload.(engine.SummaryEventPayload), opts)
 	case engine.ResourceOperationFailed:
 		return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:
@@ -134,7 +131,7 @@ func RenderDiffEvent(
 	}
 }
 
-func renderDiffDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
+func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
@@ -142,12 +139,13 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOp
 }
 
 func renderStdoutColorEvent(
-	payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
+	payload engine.StdoutEventPayload, opts Options) string {
 
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
+func renderSummaryEvent(
+	action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -156,28 +154,34 @@ func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOp
 			changeCount += c
 		}
 	}
-	var kind string
-	if event.IsPreview {
-		kind = "previewed"
+
+	var actionVerbLabel string
+	if action == apitype.RefreshUpdate {
+		actionVerbLabel = "found during refresh"
+	} else if event.IsPreview {
+		actionVerbLabel = "previewed"
 	} else {
-		kind = "performed"
+		actionVerbLabel = "performed"
 	}
 
 	var changesLabel string
 	if changeCount == 0 {
-		kind = "required"
 		changesLabel = "no"
+
+		if action != apitype.RefreshUpdate {
+			actionVerbLabel = "required"
+		}
 	} else {
 		changesLabel = strconv.Itoa(changeCount)
 	}
 
 	if changeCount > 0 || changes[deploy.OpSame] > 0 {
-		kind += ":"
+		actionVerbLabel += ":"
 	}
 
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vinfo%v: %v %v %v\n",
-		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), kind)))
+		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), actionVerbLabel)))
 
 	var planTo string
 	if event.IsPreview {
@@ -213,7 +217,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOp
 	return out.String()
 }
 
-func renderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOptions) string {
+func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	out := &bytes.Buffer{}
 
 	if opts.ShowConfig {
@@ -241,7 +245,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOp
 }
 
 func renderResourceOperationFailedEvent(
-	payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
+	payload engine.ResourceOperationFailedPayload, opts Options) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
@@ -256,12 +260,14 @@ func renderResourceOperationFailedEvent(
 func renderResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) string {
+	opts Options) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
+	if payload.Metadata.Op == deploy.OpRefresh {
+		return ""
+	}
 
 	out := &bytes.Buffer{}
-
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
@@ -272,24 +278,27 @@ func renderResourcePreEvent(
 		fprintIgnoreError(out, opts.Color.Colorize(details))
 		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 	}
-
 	return out.String()
 }
 
 func renderResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) string {
+	opts Options) string {
 
 	out := &bytes.Buffer{}
-
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
+
+		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
+			summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
+			fprintIgnoreError(out, opts.Color.Colorize(summary))
+		}
+
 		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent+1, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
-
 	return out.String()
 }
 
@@ -303,7 +312,7 @@ func isRootURN(urn resource.URN) bool {
 }
 
 // shouldShow returns true if a step should show in the output.
-func shouldShow(step engine.StepEventMetadata, opts backend.DisplayOptions) bool {
+func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op == deploy.OpSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.

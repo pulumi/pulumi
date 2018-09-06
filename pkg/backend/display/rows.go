@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package display
 
 import (
 	"bytes"
@@ -114,6 +114,9 @@ type resourceRowData struct {
 	step        engine.StepEventMetadata
 	outputSteps []engine.StepEventMetadata
 
+	// True if we should diff outputs instead of inputs for this row.
+	diffOutputs bool
+
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	tick int
@@ -154,6 +157,9 @@ func (data *resourceRowData) Step() engine.StepEventMetadata {
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
 	data.step = step
+	if step.Op == deploy.OpRefresh {
+		data.diffOutputs = true
+	}
 }
 
 func (data *resourceRowData) AddOutputStep(step engine.StepEventMetadata) {
@@ -208,7 +214,7 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 	payloads = append(payloads, payload)
 	diagInfo.StreamIDToDiagPayloads[payload.StreamID] = payloads
 
-	if recordCount {
+	if recordCount && !payload.Ephemeral {
 		switch payload.Severity {
 		case diag.Error:
 			diagInfo.ErrorCount++
@@ -321,7 +327,11 @@ func (data *resourceRowData) getInfoColumn() string {
 
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
-		if step.Old.Inputs != nil && step.New.Inputs != nil {
+		if data.diffOutputs {
+			if step.Old.Outputs != nil && step.New.Outputs != nil {
+				diff = step.Old.Outputs.Diff(step.New.Outputs)
+			}
+		} else if step.Old.Inputs != nil && step.New.Inputs != nil {
 			diff = step.Old.Inputs.Diff(step.New.Inputs)
 		}
 		if step.Old.Provider != step.New.Provider {
@@ -415,8 +425,13 @@ func (data *resourceRowData) getInfoColumn() string {
 
 		if diagnostic != nil {
 			eventMsg := data.display.renderProgressDiagEvent(*diagnostic, true /*includePrefix:*/)
+			diagCount := diagInfo.DebugCount + diagInfo.ErrorCount + diagInfo.InfoCount + diagInfo.WarningCount
+			if diagCount > 0 {
+				diagMsg += ". "
+			}
+
 			if eventMsg != "" {
-				diagMsg += ". " + eventMsg
+				diagMsg += eventMsg
 			}
 		}
 	}

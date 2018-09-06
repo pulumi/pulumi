@@ -15,15 +15,12 @@
 package engine
 
 import (
-	"bytes"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -43,6 +40,9 @@ type UpdateOptions struct {
 
 	// true if debugging output it enabled
 	Debug bool
+
+	// true if the plan should refresh before executing.
+	Refresh bool
 
 	// true if we should report events for steps that involve default providers.
 	reportDefaultProviderSteps bool
@@ -77,12 +77,16 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, err
+	}
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
-		Diag:          newEventSink(emitter),
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
 	}, dryRun)
 }
 
@@ -136,18 +140,15 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		defer contract.IgnoreClose(result)
 
 		// Make the current working directory the same as the program's, and restore it upon exit.
-		done, err := result.Chdir()
-		if err != nil {
-			return nil, err
+		done, chErr := result.Chdir()
+		if chErr != nil {
+			return nil, chErr
 		}
 		defer done()
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
 			resourceChanges, err = printPlan(ctx, result, dryRun)
-			if err != nil {
-				return resourceChanges, err
-			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			opts.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
@@ -155,24 +156,17 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
-			summary, err := result.Walk(ctx, actions, false)
-			if err != nil && summary == nil {
-				// Something went wrong, and no changes were made.
-				return resourceChanges, err
-			}
 
-			contract.Assert(summary != nil)
-			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+			err = result.Walk(ctx, actions, false)
 			resourceChanges = ResourceChanges(actions.Ops)
-			opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
 
-			if err != nil {
-				return resourceChanges, err
+			if len(resourceChanges) != 0 {
+				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+				opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
 			}
 		}
 	}
-
-	return resourceChanges, nil
+	return resourceChanges, err
 }
 
 // pluginActions listens for plugin events and persists the set of loaded plugins
@@ -216,21 +210,6 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Check for a default provider step and skip reporting if necessary.
 	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
 		acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
-
-		// Warn the user if they're not updating a resource whose initialization failed.
-		if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
-			indent := "         "
-
-			// TODO: Move indentation to the display logic, instead of doing it ourselves.
-			var warning bytes.Buffer
-			warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
-			warning.WriteString(indent + "to update it to fix these issues:\n")
-			for i, err := range step.Old().InitErrors {
-				warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
-					colors.Reset + " " + err + "\n")
-			}
-			acts.Opts.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
-		}
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
@@ -252,7 +231,6 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	reportStep := acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step)
 
 	// Report the result of the step.
-	stepop := step.Op()
 	if err != nil {
 		if status == resource.StatusUnknown {
 			acts.MaybeCorrupt = true
@@ -269,19 +247,25 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 		}
 	} else if reportStep {
-		if step.Logical() {
+		op, record := step.Op(), step.Logical()
+		if acts.Opts.isRefresh && op == deploy.OpRefresh {
+			// Refreshes are handled specially.
+			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
+
+		if record {
 			// Increment the counters.
 			acts.MapLock.Lock()
 			acts.Steps++
-			acts.Ops[stepop]++
+			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 
 		// Also show outputs here for custom resources, since there might be some from the initial registration. We do
 		// not show outputs for component resources at this point: any that exist must be from a previous execution of
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
-		if step.Res().Custom {
-			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh {
+			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug)
 		}
 	}
 
@@ -298,7 +282,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// Check for a default provider step and skip reporting if necessary.
 	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
-		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug)
 	}
 
 	// There's a chance there are new outputs that weren't written out last time.

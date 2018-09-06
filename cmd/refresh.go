@@ -21,12 +21,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newRefreshCmd() *cobra.Command {
 	var debug bool
+	var expectNop bool
 	var message string
 	var stack string
 
@@ -65,7 +67,7 @@ func newRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			opts.Display = backend.DisplayOptions{
+			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
@@ -96,17 +98,32 @@ func newRefreshCmd() *cobra.Command {
 				Debug:     debug,
 			}
 
-			_, err = s.Refresh(commandContext(), proj, root, m, opts, cancellationScopes)
-			if err == context.Canceled {
+			changes, err := s.Refresh(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
+			switch {
+			case err == context.Canceled:
 				return errors.New("refresh cancelled")
+			case err != nil:
+				return PrintEngineError(err)
+			case expectNop && changes != nil && changes.HasChanges():
+				return errors.New("error: no changes were expected but changes occurred")
+			default:
+				return nil
 			}
-			return PrintEngineError(err)
 		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
+	cmd.PersistentFlags().BoolVar(
+		&expectNop, "expect-no-changes", false,
+		"Return an error if any changes occur during this update")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -125,7 +142,7 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 10,
+		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,

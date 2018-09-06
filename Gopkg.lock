@@ -128,10 +128,11 @@
   version = "v1.31.0"
 
 [[projects]]
-  branch = "master"
+  branch = "pulumi-master"
   name = "github.com/golang/glog"
   packages = ["."]
-  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+  revision = "7eaa6ffb71e4c94df8bd5d7f4c0404eefc01bd2b"
+  source = "github.com/pulumi/glog"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -362,6 +363,12 @@
   version = "v1.1.4"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/texttheater/golang-levenshtein"
+  packages = ["levenshtein"]
+  revision = "d188e65d659ef53fcdb0691c12f1bba64928b649"
+
+[[projects]]
   name = "github.com/uber/jaeger-client-go"
   packages = [
     ".",
@@ -384,10 +391,10 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/xanzy/ssh-agent"
   packages = ["."]
-  revision = "ba9c9e33906f58169366275e3450db66139a31a9"
+  revision = "640f0ab560aeb89d523bb6ac322b1244d5c3796c"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
@@ -577,6 +584,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "54dbb01365a37a74aba07358a4e069c1ae7e9efd3a893e8c2ca6b6d3aea3bfb2"
+  inputs-digest = "d6db93501077426a275193a3d77e69cc4fe68fd80603907438fcb0503d7817a0"
   solver-name = "gps-cdcl"
   solver-version = 1

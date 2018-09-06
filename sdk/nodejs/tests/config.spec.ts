@@ -62,6 +62,60 @@ describe("config", () => {
         assert.throws(() => { config.getBoolean("num"); });
         assert.throws(() => { config.getNumber("boolf"); });
     });
+    it("does enums", () => {
+        runtime.setConfig("pkg:color", "orange");
+        const config = new Config("pkg");
+        assert.strictEqual("orange", config.get("color", { allowedValues: [ "purple", "orange", "blue" ] }));
+        assert.strictEqual(undefined, config.get("missing", { allowedValues: [ "purple", "orange", "blue" ] }));
+        assert.strictEqual("orange", config.require("color", { allowedValues: [ "purple", "orange", "blue" ] }));
+        assert.throws(() => { config.get("color", { allowedValues: [ "purple", "black", "blue" ] }); });
+        assert.throws(() => { config.require("color", { allowedValues: [ "purple", "black", "blue" ] }); });
+        assert.throws(() => { config.require("missing", { allowedValues: [ "purple", "orange", "blue" ] }); });
+    });
+    it("does min/max (strlen)", () => {
+        runtime.setConfig("pkg:strlen", "abcdefgh");
+        const config = new Config("pkg");
+        assert.strictEqual("abcdefgh", config.get("strlen", { minLength: 0, maxLength: 8 }));
+        assert.strictEqual("abcdefgh", config.get("strlen", { minLength: 8, maxLength: 8 }));
+        assert.strictEqual("abcdefgh", config.get("strlen", { minLength: 0, maxLength: 16 }));
+        assert.strictEqual(undefined, config.get("missing", { minLength: 0, maxLength: 8 }));
+        assert.strictEqual("abcdefgh", config.require("strlen", { minLength: 0, maxLength: 8 }));
+        assert.strictEqual("abcdefgh", config.require("strlen", { minLength: 8, maxLength: 8 }));
+        assert.strictEqual("abcdefgh", config.require("strlen", { minLength: 0, maxLength: 16 }));
+        assert.throws(() => { config.get("strlen", { minLength: 9, maxLength: 16 }); });
+        assert.throws(() => { config.get("strlen", { minLength: 0, maxLength: 7 }); });
+        assert.throws(() => { config.require("strlen", { minLength: 9, maxLength: 16 }); });
+        assert.throws(() => { config.require("strlen", { minLength: 0, maxLength: 7 }); });
+        assert.throws(() => { config.require("missing", { minLength: 0, maxLength: 8 }); });
+    });
+    it("does pattern matching", () => {
+        runtime.setConfig("pkg:pattern", "aBcDeFgH");
+        const config = new Config("pkg");
+        assert.strictEqual("aBcDeFgH", config.get("pattern", { pattern: /^[a-zA-Z]*$/ }));
+        assert.strictEqual("aBcDeFgH", config.get("pattern", { pattern: "^[a-zA-Z]*$" }));
+        assert.strictEqual(undefined, config.get("missing", { pattern: /^[a-zA-Z]*$/ }));
+        assert.strictEqual("aBcDeFgH", config.require("pattern", { pattern: /^[a-zA-Z]*$/ }));
+        assert.strictEqual("aBcDeFgH", config.require("pattern", { pattern: "^[a-zA-Z]*$" }));
+        assert.throws(() => { config.get("pattern", { pattern: /^[a-z]*$/ }); }, "bad pattern: get");
+        assert.throws(() => { config.get("pattern", { pattern: "/^[a-z]*$/" }); }, "bad pattern (string): get");
+        assert.throws(() => { config.require("pattern", { pattern: /^[a-z]*$/ }); }, "bad pattern: require");
+        assert.throws(() => { config.require("pattern", { pattern: "/^[a-z]*$/" }); }, "bad pattern (string): require");
+        assert.throws(() => { config.require("missing", { pattern: /^[a-z]*$/ }); }, "missing");
+    });
+    it("does min/max (numbers)", () => {
+        runtime.setConfig("pkg:quantity", "8");
+        const config = new Config("pkg");
+        assert.strictEqual(8, config.getNumber("quantity", { min: 0, max: 8 }));
+        assert.strictEqual(8, config.getNumber("quantity", { min: 8, max: 8 }));
+        assert.strictEqual(8, config.getNumber("quantity", { min: 0, max: 16 }));
+        assert.strictEqual(undefined, config.getNumber("missing", { min: 0, max: 8 }));
+        assert.strictEqual(8, config.requireNumber("quantity", { min: 0, max: 8 }));
+        assert.strictEqual(8, config.requireNumber("quantity", { min: 8, max: 8 }));
+        assert.strictEqual(8, config.requireNumber("quantity", { min: 0, max: 16 }));
+        assert.throws(() => { config.getNumber("quantity", { min: 9, max: 16 }); });
+        assert.throws(() => { config.getNumber("quantity", { min: 0, max: 7 }); });
+        assert.throws(() => { config.requireNumber("quantity", { min: 9, max: 16 }); });
+        assert.throws(() => { config.requireNumber("quantity", { min: 0, max: 7 }); });
+        assert.throws(() => { config.requireNumber("missing", { min: 0, max: 8 }); });
+    });
 });
-
-

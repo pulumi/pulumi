@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package filestate
 
 import (
 	"encoding/json"
@@ -255,7 +255,7 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 }
 
 func (b *localBackend) stackPath(stack tokens.QName) string {
-	path := filepath.Join(b.stateRoot, workspace.StackDir)
+	path := filepath.Join(b.StateDir(), workspace.StackDir)
 	if stack != "" {
 		path = filepath.Join(path, fsutil.QnamePath(stack)+".json")
 	}
@@ -265,14 +265,12 @@ func (b *localBackend) stackPath(stack tokens.QName) string {
 
 func (b *localBackend) historyDirectory(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
-
-	return filepath.Join(b.stateRoot, workspace.HistoryDir, fsutil.QnamePath(stack))
+	return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.QnamePath(stack))
 }
 
 func (b *localBackend) backupDirectory(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
-
-	return filepath.Join(b.stateRoot, workspace.BackupDir, fsutil.QnamePath(stack))
+	return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.QnamePath(stack))
 }
 
 // getHistory returns locally stored update history. The first element of the result will be

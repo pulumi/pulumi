@@ -38,7 +38,7 @@ func TestParseGitRepoURL(t *testing.T) {
 	pre := "https://github.com/pulumi/templates"
 	exp := pre + ".git"
 	test(exp, "", pre+".git")
-	test(exp, "", pre+"")
+	test(exp, "", pre)
 	test(exp, "", pre+"/")
 	test(exp, "templates", pre+"/templates")
 	test(exp, "templates", pre+"/templates/")
@@ -54,7 +54,7 @@ func TestParseGitRepoURL(t *testing.T) {
 	// Gists.
 	pre = "https://gist.github.com/user/1c8c6e43daf20924287c0d476e17de9a"
 	exp = "https://gist.github.com/1c8c6e43daf20924287c0d476e17de9a.git"
-	test(exp, "", pre+"")
+	test(exp, "", pre)
 	test(exp, "", pre+"/")
 
 	testError := func(rawurl string) {

@@ -64,7 +64,8 @@ proto.pulumirpc.LogRequest.toObject = function(includeInstance, msg) {
     severity: jspb.Message.getFieldWithDefault(msg, 1, 0),
     message: jspb.Message.getFieldWithDefault(msg, 2, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    streamid: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    streamid: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    ephemeral: jspb.Message.getFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -116,6 +117,10 @@ proto.pulumirpc.LogRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 4:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setStreamid(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setEphemeral(value);
       break;
     default:
       reader.skipField();
@@ -171,6 +176,13 @@ proto.pulumirpc.LogRequest.serializeBinaryToWriter = function(message, writer) {
   if (f !== 0) {
     writer.writeInt32(
       4,
+      f
+    );
+  }
+  f = message.getEphemeral();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -234,6 +246,23 @@ proto.pulumirpc.LogRequest.prototype.getStreamid = function() {
 /** @param {number} value */
 proto.pulumirpc.LogRequest.prototype.setStreamid = function(value) {
   jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional bool ephemeral = 5;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.LogRequest.prototype.getEphemeral = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 5, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.LogRequest.prototype.setEphemeral = function(value) {
+  jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 

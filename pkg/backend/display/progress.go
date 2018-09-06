@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package display
 
 import (
 	"bytes"
@@ -25,7 +25,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/docker/docker/pkg/term"
+	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -34,9 +37,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-
-	"github.com/docker/docker/pkg/term"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
@@ -83,8 +83,11 @@ type DiagInfo struct {
 }
 
 type ProgressDisplay struct {
-	opts           backend.DisplayOptions
+	opts           Options
 	progressOutput chan<- Progress
+
+	// action is the kind of action (preview, update, refresh, etc) being performed.
+	action apitype.UpdateKind
 
 	// Whether or not we're previewing.  We don't know what we are actually doing until
 	// we get the initial 'prelude' event.
@@ -221,23 +224,23 @@ func (display *ProgressDisplay) writeBlankLine() {
 	display.writeSimpleMessage(" ")
 }
 
-// DisplayProgressEvents displays the engine events with docker's progress view.
-func DisplayProgressEvents(
-	action string, events <-chan engine.Event,
-	done chan<- bool, opts backend.DisplayOptions) {
+// ShowProgressEvents displays the engine events with docker's progress view.
+func ShowProgressEvents(
+	op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
-		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
+		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
 		nil, 1 /*timesPerSecond*/)
 
-	// The channel we push progress messages into, and which DisplayProgressToStream pulls
+	// The channel we push progress messages into, and which ShowProgressOutput pulls
 	// from to display to the console.
 	progressOutput := make(chan Progress)
 
 	display := &ProgressDisplay{
+		action:                 action,
 		opts:                   opts,
 		progressOutput:         progressOutput,
 		eventUrnToResourceRow:  make(map[resource.URN]ResourceRow),
@@ -269,7 +272,7 @@ func DisplayProgressEvents(
 		close(progressOutput)
 	}()
 
-	DisplayProgressToStream(progressOutput, stdout, display.isTerminal)
+	ShowProgressOutput(progressOutput, stdout, display.isTerminal)
 
 	ticker.Stop()
 
@@ -670,6 +673,10 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				wroteResourceHeader := false
 				for _, v := range payloads {
+					if v.Ephemeral {
+						continue
+					}
+
 					msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
 
 					lines := splitIntoDisplayableLines(msg)
@@ -702,25 +709,23 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
-	// If we're not previewing, and we get stack outputs, then display them at the end.
-	if !display.isPreview {
-		if display.stackUrn != "" {
-			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
-			props := engine.GetResourceOutputsPropertiesString(stackStep, 0, false, display.opts.Debug)
-			if props != "" {
-				if !wroteDiagnosticHeader {
-					display.writeBlankLine()
-				}
-
-				wroteDiagnosticHeader = true
-				display.writeSimpleMessage(props)
+	// If we get stack outputs, display them at the end.
+	if display.stackUrn != "" {
+		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+		props := engine.GetResourceOutputsPropertiesString(stackStep, 1, display.isPreview, display.opts.Debug)
+		if props != "" {
+			if !wroteDiagnosticHeader {
+				display.writeBlankLine()
 			}
+
+			wroteDiagnosticHeader = true
+			display.writeSimpleMessage(props)
 		}
 	}
 
 	// print the summary
 	if display.summaryEventPayload != nil {
-		msg := renderSummaryEvent(*display.summaryEventPayload, display.opts)
+		msg := renderSummaryEvent(display.action, *display.summaryEventPayload, display.opts)
 
 		if !wroteDiagnosticHeader {
 			display.writeBlankLine()
@@ -741,12 +746,13 @@ func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
 	firstPayload := payloads[0]
 	msg := buf.String()
 	return engine.DiagEventPayload{
-		URN:      firstPayload.URN,
-		Message:  msg,
-		Prefix:   firstPayload.Prefix,
-		Color:    firstPayload.Color,
-		Severity: firstPayload.Severity,
-		StreamID: firstPayload.StreamID,
+		URN:       firstPayload.URN,
+		Message:   msg,
+		Prefix:    firstPayload.Prefix,
+		Color:     firstPayload.Color,
+		Severity:  firstPayload.Severity,
+		StreamID:  firstPayload.StreamID,
+		Ephemeral: firstPayload.Ephemeral,
 	}
 }
 
@@ -872,13 +878,15 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		step := event.Payload.(engine.ResourcePreEventPayload).Metadata
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
+		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
 		row.SetStep(step)
 		row.AddOutputStep(step)
 
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
 		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.
-		hasMeaningfulOutput := !display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
+		hasMeaningfulOutput := isRefresh ||
+			!display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
 		if !display.isTerminal && !hasMeaningfulOutput {
 			return
 		}
@@ -1011,8 +1019,11 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "replacing failed"
 			case deploy.OpRead, deploy.OpReadReplacement:
 				return "reading failed"
+			case deploy.OpRefresh:
+				return "refreshing failed"
 			}
 		} else {
+
 			switch op {
 			case deploy.OpSame:
 				return "unchanged"
@@ -1032,6 +1043,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "read"
 			case deploy.OpReadReplacement:
 				return "read for replacement"
+			case deploy.OpRefresh:
+				return "refresh"
 			}
 		}
 
@@ -1066,6 +1079,8 @@ func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
 		return "read"
 	case deploy.OpReadReplacement:
 		return "read for replacement"
+	case deploy.OpRefresh:
+		return "refreshing"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", op)
@@ -1134,6 +1149,8 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "reading"
 		case deploy.OpReadReplacement:
 			return "reading for replacement"
+		case deploy.OpRefresh:
+			return "refreshing"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)

@@ -15,6 +15,8 @@
 package backend
 
 import (
+	"reflect"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -59,14 +61,21 @@ type SnapshotManager struct {
 	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
 	doVerify         bool                     // If true, verify the snapshot before persisting it
 	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
-	mutationRequests chan func()              // The queue of mutation requests, to be retired serially by the manager
+	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
+	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
+	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
 
+type mutationRequest struct {
+	mutator func() bool
+	result  chan<- error
+}
+
 func (sm *SnapshotManager) Close() error {
-	close(sm.mutationRequests)
-	return nil
+	close(sm.cancel)
+	return <-sm.done
 }
 
 // If you need to understand what's going on in this file, start here!
@@ -75,35 +84,25 @@ func (sm *SnapshotManager) Close() error {
 // The given function will be, at the time of its invocation, the only function allowed to
 // mutate state within the SnapshotManager.
 //
-// Serialization is performed by pushing the mutation function onto a channel, where another
+// Serialization is performed by pushing the mutator function onto a channel, where another
 // goroutine is polling the channel and executing the mutation functions as they come.
 // This function optionally verifies the integrity of the snapshot before and after mutation.
-// Immediately after the mutating function is run, the snapshot's manifest is updated and,
-// if there are no verification errors, the snapshot is persisted.
+//
+// The mutator may indicate that its corresponding checkpoint write may be safely elided by
+// returning `false`. As of this writing, we only elide writes after same steps with no
+// meaningful changes (see sameSnapshotMutation.mustWrite for details). Any elided writes
+// are flushed by the next non-elided write or the next call to Close.
 //
 // You should never observe or mutate the global snapshot without using this function unless
 // you have a very good justification.
-func (sm *SnapshotManager) mutate(mutator func()) error {
-	responseChan := make(chan error)
-	sm.mutationRequests <- func() {
-		mutator()
-
-		snap := sm.snap()
-		err := sm.persister.Save(snap)
-		if err == nil && sm.doVerify {
-			if err = snap.VerifyIntegrity(); err != nil {
-				err = errors.Wrapf(err, "after mutation of snapshot")
-			}
-		}
-
-		if err != nil {
-			err = errors.Wrap(err, "failed to save snapshot")
-		}
-
-		responseChan <- err
+func (sm *SnapshotManager) mutate(mutator func() bool) error {
+	result := make(chan error)
+	select {
+	case sm.mutationRequests <- mutationRequest{mutator: mutator, result: result}:
+		return <-result
+	case <-sm.cancel:
+		return errors.New("snapshot manager closed")
 	}
-
-	return <-responseChan
 }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
@@ -118,14 +117,15 @@ func (sm *SnapshotManager) mutate(mutator func()) error {
 // Note that this is completely not thread-safe and defeats the purpose of having a `mutate` callback
 // entirely, but the hope is that this state of things will not be permament.
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
-	return sm.refresh()
+	return sm.mutate(func() bool { return true })
 }
 
 // RecordPlugin records that the current plan loaded a plugin and saves it in the snapshot.
 func (sm *SnapshotManager) RecordPlugin(plugin workspace.PluginInfo) error {
 	logging.V(9).Infof("SnapshotManager: RecordPlugin(%v)", plugin)
-	return sm.mutate(func() {
+	return sm.mutate(func() bool {
 		sm.plugins = append(sm.plugins, plugin)
+		return true
 	})
 }
 
@@ -149,6 +149,8 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &replaceSnapshotMutation{sm}, nil
 	case deploy.OpRead, deploy.OpReadReplacement:
 		return sm.doRead(step)
+	case deploy.OpRefresh:
+		return &refreshSnapshotMutation{sm}, nil
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -168,21 +170,78 @@ type sameSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+// mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
+// step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
+// this step can be elided.
+func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
+	contract.Assert(old.Type == new.Type)
+	contract.Assert(old.URN == new.URN)
+	contract.Assert(old.Delete == new.Delete)
+	contract.Assert(old.External == new.External)
+	contract.Assert(reflect.DeepEqual(old.Inputs, new.Inputs))
+
+	// If the kind of this resource has changed, we must write the checkpoint.
+	if old.Custom != new.Custom {
+		return true
+	}
+
+	contract.Assert(old.ID == new.ID)
+	contract.Assert(old.Provider == new.Provider)
+
+	// If this resource's parent has changed, we must write the checkpoint.
+	if old.Parent != new.Parent {
+		return true
+	}
+
+	// If the protection attribute of this resource has changed, we must write the checkpoint.
+	if old.Protect != new.Protect {
+		return true
+	}
+
+	// If the outputs of this resource have changed, we must write the checkpoint.
+	if !reflect.DeepEqual(old.Outputs, new.Outputs) {
+		return true
+	}
+
+	// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
+	//
+	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
+	// checkpoint.
+	sortDeps := func(deps []resource.URN) {
+		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+	}
+	sortDeps(old.Dependencies)
+	sortDeps(new.Dependencies)
+	return !reflect.DeepEqual(old.Dependencies, new.Dependencies)
+}
+
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
+	contract.Require(step.Op() == deploy.OpSame, "step.Op() == deploy.OpSame")
+	contract.Assert(successful)
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
-	return ssm.manager.mutate(func() {
-		if successful {
-			ssm.manager.markDone(step.Old())
-			ssm.manager.markNew(step.New())
+	return ssm.manager.mutate(func() bool {
+		ssm.manager.markDone(step.Old())
+		ssm.manager.markNew(step.New())
+
+		// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
+		// resource with new dependencies, outputs, parent, protection. etc.
+		//
+		// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
+		// changes.
+		if !ssm.mustWrite(step.Old(), step.New()) {
+			logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
+			return false
 		}
+		return true
 	})
 }
 
 func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
-	err := sm.mutate(func() {
+	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeCreating)
+		return true
 	})
 	if err != nil {
 		return nil, err
@@ -198,7 +257,7 @@ type createSnapshotMutation struct {
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
-	return csm.manager.mutate(func() {
+	return csm.manager.mutate(func() bool {
 		csm.manager.markOperationComplete(step.New())
 		if successful {
 			// There is some very subtle behind-the-scenes magic here that
@@ -212,13 +271,15 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 			// "just works" for the SnapshotManager.
 			csm.manager.markNew(step.New())
 		}
+		return true
 	})
 }
 
 func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Info("SnapshotManager.doUpdate(%s)", step.URN())
-	err := sm.mutate(func() {
+	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
+		return true
 	})
 	if err != nil {
 		return nil, err
@@ -234,19 +295,21 @@ type updateSnapshotMutation struct {
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
-	return usm.manager.mutate(func() {
+	return usm.manager.mutate(func() bool {
 		usm.manager.markOperationComplete(step.New())
 		if successful {
 			usm.manager.markDone(step.Old())
 			usm.manager.markNew(step.New())
 		}
+		return true
 	})
 }
 
 func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
-	err := sm.mutate(func() {
+	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.Old(), resource.OperationTypeDeleting)
+		return true
 	})
 	if err != nil {
 		return nil, err
@@ -262,12 +325,13 @@ type deleteSnapshotMutation struct {
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
-	return dsm.manager.mutate(func() {
+	return dsm.manager.mutate(func() bool {
 		dsm.manager.markOperationComplete(step.Old())
 		if successful {
 			contract.Assert(!step.Old().Protect)
 			dsm.manager.markDone(step.Old())
 		}
+		return true
 	})
 }
 
@@ -276,16 +340,15 @@ type replaceSnapshotMutation struct {
 }
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
-	// There's no explicit mutation that replace makes to the snapshot, but it does need
-	// to write out a snapshot to the backing store so that it's no longer invalid.
 	logging.V(9).Infof("SnapshotManager: replaceSnapshotMutation.End(..., %v)", successful)
-	return rsm.manager.refresh()
+	return nil
 }
 
 func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
-	err := sm.mutate(func() {
+	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeReading)
+		return true
 	})
 	if err != nil {
 		return nil, err
@@ -301,7 +364,7 @@ type readSnapshotMutation struct {
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
-	return rsm.manager.mutate(func() {
+	return rsm.manager.mutate(func() bool {
 		rsm.manager.markOperationComplete(step.New())
 		if successful {
 			if step.Old() != nil {
@@ -310,15 +373,25 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 
 			rsm.manager.markNew(step.New())
 		}
+		return true
 	})
 }
 
-// refresh does a no-op mutation that forces the SnapshotManager to persist the
-// snapshot exactly as it is currently to disk. This is useful when a mutation
-// has failed and we do not intend to persist the failed mutation.
-func (sm *SnapshotManager) refresh() error {
-	logging.V(9).Infof("SnapshotManager: refresh()")
-	return sm.mutate(func() {})
+type refreshSnapshotMutation struct {
+	manager *SnapshotManager
+}
+
+func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
+	contract.Require(step != nil, "step != nil")
+	contract.Require(step.Op() == deploy.OpRefresh, "step.Op() == deploy.OpRefresh")
+	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
+	return rsm.manager.mutate(func() bool {
+		// We always elide refreshes. The expectation is that all of these run before any actual mutations and that
+		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
+		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
+		// have changed.
+		return false
+	})
 }
 
 // markDone marks a resource as having been processed. Resources that have been marked
@@ -415,6 +488,20 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	return deploy.NewSnapshot(manifest, resources, operations)
 }
 
+// saveSnapshot persists the current snapshot and optionally verifies it afterwards.
+func (sm *SnapshotManager) saveSnapshot() error {
+	snap := sm.snap()
+	if err := sm.persister.Save(snap); err != nil {
+		return errors.Wrap(err, "failed to save snapshot")
+	}
+	if sm.doVerify {
+		if err := snap.VerifyIntegrity(); err != nil {
+			return errors.Wrapf(err, "failed to verify snapshot")
+		}
+	}
+	return nil
+}
+
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
 // and base snapshot.
 //
@@ -422,19 +509,48 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // given to the engine! The engine will mutate this object and correctness of the
 // SnapshotManager depends on being able to observe this mutation. (This is not ideal...)
 func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) *SnapshotManager {
+	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
+
 	manager := &SnapshotManager{
 		persister:        persister,
 		baseSnapshot:     baseSnap,
 		dones:            make(map[*resource.State]bool),
 		completeOps:      make(map[*resource.State]bool),
 		doVerify:         true,
-		mutationRequests: make(chan func()),
+		mutationRequests: mutationRequests,
+		cancel:           cancel,
+		done:             done,
 	}
 
 	go func() {
-		for request := range manager.mutationRequests {
-			request()
+		// True if we have elided writes since the last actual write.
+		hasElidedWrites := false
+
+		// Service each mutation request in turn.
+	serviceLoop:
+		for {
+			select {
+			case request := <-mutationRequests:
+				var err error
+				if request.mutator() {
+					err = manager.saveSnapshot()
+					hasElidedWrites = false
+				} else {
+					hasElidedWrites = true
+				}
+				request.result <- err
+			case <-cancel:
+				break serviceLoop
+			}
 		}
+
+		// If we still have elided writes once the channel has closed, flush the snapshot.
+		var err error
+		if hasElidedWrites {
+			logging.V(9).Infof("SnapshotManager: flushing elided writes...")
+			err = manager.saveSnapshot()
+		}
+		done <- err
 	}()
 
 	return manager

@@ -15,14 +15,13 @@
 package deploy
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // stepGenerator is responsible for turning resource events into steps that
@@ -44,7 +43,7 @@ type stepGenerator struct {
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
-func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, *result.Result) {
 	urn := sg.plan.generateURN(event.Parent(), event.Type(), event.Name())
 	newState := resource.NewState(event.Type(),
 		urn,
@@ -84,7 +83,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		}, nil
 	}
 
-	if logging.V(7) && old.ID == event.ID() {
+	if bool(logging.V(7)) && hasOld && old.ID == event.ID() {
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
@@ -100,7 +99,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 // If the given resource is a custom resource, the step generator will invoke Diff
 // and Check on the provider associated with that resource. If those fail, an error
 // is returned.
-func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -123,8 +122,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
-	// get serialized into the checkpoint file.  Normally there are no outputs, unless this is a refresh.
-	props, inputs, outputs, new := sg.getResourcePropertyStates(urn, goal)
+	// get serialized into the checkpoint file.
+	inputs := goal.Properties
+	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
+		goal.Dependencies, goal.InitErrors, goal.Provider)
 
 	// Fetch the provider for this resource type, assuming it isn't just a logical one.
 	var prov plugin.Provider
@@ -138,22 +139,19 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			contract.Assert(goal.Provider != "")
 			ref, refErr := providers.ParseReference(goal.Provider)
 			if refErr != nil {
-				return nil, errors.Errorf(
+				return nil, result.Errorf(
 					"bad provider reference '%v' for resource '%v': %v", goal.Provider, urn, refErr)
 			}
 			p, ok := sg.plan.GetProvider(ref)
 			if !ok {
-				return nil, errors.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
+				return nil, result.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
 			}
 			prov = p
 		}
 	}
 
-	// See if we're performing a refresh update, which takes slightly different code-paths.
-	refresh := sg.plan.IsRefresh()
-
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
-	allowUnknowns := sg.plan.preview && !refresh
+	allowUnknowns := sg.plan.preview
 
 	// We may be re-creating this resource if it got deleted earlier in the execution of this plan.
 	_, recreating := sg.deletes[urn]
@@ -161,11 +159,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 	// We may be creating this resource if it previously existed in the snapshot as an External resource
 	wasExternal := hasOld && old.External
 
-	// If this isn't a refresh, ensure the provider is okay with this resource and fetch the inputs to pass to
-	// subsequent methods.  If these are not inputs, we are just going to blindly store the outputs, so skip this.
-	// Note that we must always run `Check` for resource providers: the provider registry uses `Check` to load the
-	// appropriate provider plugin.
-	if prov != nil && (!refresh || providers.IsProviderType(goal.Type)) {
+	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
+	if prov != nil {
 		var failures []plugin.CheckFailure
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
@@ -178,11 +173,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		} else if sg.issueCheckErrors(new, urn, failures) {
 			invalid = true
 		}
-		props = inputs
 		new.Inputs = inputs
 	}
 
@@ -191,14 +185,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		var analyzer plugin.Analyzer
 		analyzer, err = sg.plan.ctx.Host.Analyzer(a)
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		} else if analyzer == nil {
-			return nil, errors.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
+			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
 		var failures []plugin.AnalyzeFailure
-		failures, err = analyzer.Analyze(new.Type, props)
+		failures, err = analyzer.Analyze(new.Type, inputs)
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		}
 		for _, failure := range failures {
 			invalid = true
@@ -209,7 +203,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 	// If the resource isn't valid, don't proceed any further.
 	if invalid {
-		return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+		return nil, result.Bail()
 	}
 
 	// There are four cases we need to consider when figuring out what to do with this resource.
@@ -229,7 +223,6 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 	contract.Assert(!recreating || hasOld)
 	if recreating {
 		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
-		contract.Assert(!refresh)
 
 		// Unmark this resource as deleted, we now know it's being replaced instead.
 		delete(sg.deletes, urn)
@@ -252,7 +245,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
 		sg.creates[urn] = true
 		if err != nil {
-			return nil, err
+			return nil, result.FromError(err)
 		}
 
 		return []Step{
@@ -278,17 +271,16 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			diff = plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}
 		} else {
 			// Determine whether the change resulted in a diff.
-			d, diffErr := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, outputs, props, prov, refresh,
-				allowUnknowns)
+			d, diffErr := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
 			if diffErr != nil {
-				return nil, diffErr
+				return nil, result.FromError(diffErr)
 			}
 			diff = d
 		}
 
 		// Ensure that we received a sensible response.
 		if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
-			return nil, errors.Errorf(
+			return nil, result.Errorf(
 				"unrecognized diff state for %s: %d", urn, diff.Changes)
 		}
 
@@ -299,13 +291,13 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 				// If we are going to perform a replacement, we need to recompute the default values.  The above logic
 				// had assumed that we were going to carry them over from the old resource, which is no longer true.
-				if prov != nil && !refresh {
+				if prov != nil {
 					var failures []plugin.CheckFailure
 					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 					if err != nil {
-						return nil, err
+						return nil, result.FromError(err)
 					} else if sg.issueCheckErrors(new, urn, failures) {
-						return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+						return nil, result.Bail()
 					}
 					new.Inputs = inputs
 				}
@@ -383,6 +375,13 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, nil
 		}
 
+		// If resource was unchanged, but there were initialization errors, generate an empty update
+		// step to attempt to "continue" awaiting initialization.
+		if len(old.InitErrors) > 0 {
+			sg.updates[urn] = true
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, nil
+		}
+
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
 		if logging.V(7) {
@@ -445,8 +444,8 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 }
 
 // diff returns a DiffResult for the given resource.
-func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs, newOutputs,
-	newProps resource.PropertyMap, prov plugin.Provider, refresh, allowUnknowns bool) (plugin.DiffResult, error) {
+func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
 
 	// Workaround #1251: unexpected replaces.
 	//
@@ -456,13 +455,7 @@ func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOu
 	// in the input properties. This can cause unexpected diffs.
 	//
 	// For now, simply apply the legacy diffing behavior before deferring to the provider.
-	var hasChanges bool
-	if refresh {
-		hasChanges = !oldOutputs.DeepEquals(newOutputs)
-	} else {
-		hasChanges = !oldInputs.DeepEquals(newInputs)
-	}
-	if !hasChanges {
+	if oldInputs.DeepEquals(newInputs) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
 
@@ -473,7 +466,7 @@ func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOu
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldOutputs, newProps, allowUnknowns)
+	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -481,28 +474,6 @@ func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOu
 		diff.Changes = plugin.DiffSome
 	}
 	return diff, nil
-}
-
-func (sg *stepGenerator) getResourcePropertyStates(urn resource.URN, goal *resource.Goal) (resource.PropertyMap,
-	resource.PropertyMap, resource.PropertyMap, *resource.State) {
-	props := goal.Properties
-	var inputs resource.PropertyMap
-	var outputs resource.PropertyMap
-	if sg.plan.IsRefresh() {
-		// In the case of a refresh, we will preserve the old inputs (since we won't have any new ones).  Note
-		// that this can lead to a state in which inputs could not have possibly produced the outputs, but this
-		// will need to be reconciled manually by the programmer updating the program accordingly.
-		if old, ok := sg.plan.Olds()[urn]; ok {
-			inputs = old.Inputs
-		}
-		outputs = props
-	} else {
-		// In the case of non-refreshes, outputs remain empty (they will be computed), but inputs are present.
-		inputs = props
-	}
-	return props, inputs, outputs,
-		resource.NewState(goal.Type, urn, goal.Custom, false, "",
-			inputs, outputs, goal.Parent, goal.Protect, false, goal.Dependencies, goal.InitErrors, goal.Provider)
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
@@ -523,16 +494,6 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 	}
 	return true
 }
-
-func (sg *stepGenerator) Steps() int {
-	return len(sg.Creates()) + len(sg.Updates()) + len(sg.Replaces()) + len(sg.Deletes())
-}
-
-func (sg *stepGenerator) Creates() map[resource.URN]bool  { return sg.creates }
-func (sg *stepGenerator) Sames() map[resource.URN]bool    { return sg.sames }
-func (sg *stepGenerator) Updates() map[resource.URN]bool  { return sg.updates }
-func (sg *stepGenerator) Replaces() map[resource.URN]bool { return sg.replaces }
-func (sg *stepGenerator) Deletes() map[resource.URN]bool  { return sg.deletes }
 
 // newStepGenerator creates a new step generator that operates on the given plan.
 func newStepGenerator(plan *Plan, opts Options) *stepGenerator {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package display
 
 // forked from: https://github.com/moby/moby/blob/master/pkg/jsonmessage/jsonmessage.go
 // so we can customize parts of the display of our progress messages
@@ -23,6 +23,7 @@ import (
 	"os"
 
 	gotty "github.com/Nvveen/Gotty"
+
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -99,10 +100,10 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 	}
 }
 
-// DisplayProgressToStream displays a Progress  stream from `in` to `out`, `isTerminal` describes if
+// ShowProgressOutput displays a progress stream from `in` to `out`, `isTerminal` describes if
 // `out` is a terminal. If this is the case, it will print `\n` at the end of each line and move the
 // cursor while displaying.
-func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool) {
+func ShowProgressOutput(in <-chan Progress, out io.Writer, isTerminal bool) {
 	var (
 		ids = make(map[string]int)
 	)

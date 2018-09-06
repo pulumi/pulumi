@@ -89,6 +89,11 @@ func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbemp
 	default:
 		return nil, errors.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
-	eng.host.Log(sev, resource.URN(req.Urn), req.Message, req.StreamId)
+
+	if req.Ephemeral {
+		eng.host.LogStatus(sev, resource.URN(req.Urn), req.Message, req.StreamId)
+	} else {
+		eng.host.Log(sev, resource.URN(req.Urn), req.Message, req.StreamId)
+	}
 	return &pbempty.Empty{}, nil
 }

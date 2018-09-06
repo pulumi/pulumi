@@ -231,42 +231,63 @@ func printObject(
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
 	step StepEventMetadata, indent int, planning bool, debug bool) string {
+	// Resources that have initialization errors did not successfully complete, and therefore do not
+	// have outputs to render diffs for. So, simply return.
+	if step.Old != nil && len(step.Old.InitErrors) > 0 {
+		return ""
+	}
 
-	var b bytes.Buffer
+	b := &bytes.Buffer{}
 
 	// Only certain kinds of steps have output properties associated with them.
 	new := step.New
 	if new == nil || new.Outputs == nil {
 		return ""
 	}
-	op := considerSameIfNotCreateOrDelete(step.Op)
+	op := step.Op
 
 	// First fetch all the relevant property maps that we may consult.
 	ins := new.Inputs
 	outs := new.Outputs
 
+	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
+	// the new outputs, we want to print the diffs.
+	var outputDiff *resource.ObjectDiff
+	if step.Old != nil && step.Old.Outputs != nil {
+		outputDiff = step.Old.Outputs.Diff(outs)
+	}
+
+	var keys []resource.PropertyKey
+	if outputDiff == nil {
+		keys = outs.StableKeys()
+	} else {
+		keys = outputDiff.Keys()
+	}
+	maxkey := maxKey(keys)
+
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	firstout := true
-	keys := outs.StableKeys()
-	maxkey := maxKey(keys)
 	for _, k := range keys {
 		out := outs[k]
+
 		// Print this property if it is printable and either ins doesn't have it or it's different.
-		if shouldPrintPropertyValue(out, true) {
-			var print bool
+		if outputDiff != nil || shouldPrintPropertyValue(out, true) {
+			print := true
 			if in, has := ins[k]; has {
 				print = (out.Diff(in) != nil)
-			} else {
-				print = true
 			}
 
 			if print {
 				if firstout {
-					writeWithIndentNoPrefix(&b, indent, op, "---outputs:---\n")
+					writeWithIndentNoPrefix(b, indent, op, "---outputs:---\n")
 					firstout = false
 				}
-				printPropertyTitle(&b, string(k), maxkey, indent, op, false)
-				printPropertyValue(&b, out, planning, indent, op, false, debug)
+				if outputDiff != nil {
+					printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
+				} else {
+					printPropertyTitle(b, string(k), maxkey, indent, op, false)
+					printPropertyValue(b, out, planning, indent, op, false, debug)
+				}
 			}
 		}
 	}
@@ -430,24 +451,26 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
-		titleFunc := func(top deploy.StepOp, prefix bool) {
-			printPropertyTitle(b, string(k), maxkey, indent, top, prefix)
-		}
-		if add, isadd := diff.Adds[k]; isadd {
-			if shouldPrintPropertyValue(add, planning) {
-				printAdd(b, add, titleFunc, planning, indent, debug)
-			}
-		} else if delete, isdelete := diff.Deletes[k]; isdelete {
-			if shouldPrintPropertyValue(delete, planning) {
-				printDelete(b, delete, titleFunc, planning, indent, debug)
-			}
-		} else if update, isupdate := diff.Updates[k]; isupdate {
-			printPropertyValueDiff(
-				b, titleFunc, update, planning, indent, summary, debug)
-		} else if same := diff.Sames[k]; !summary && shouldPrintPropertyValue(same, planning) {
-			titleFunc(deploy.OpSame, false)
-			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
-		}
+		printObjectPropertyDiff(b, k, maxkey, diff, planning, indent, summary, debug)
+	}
+}
+
+func printObjectPropertyDiff(b *bytes.Buffer, key resource.PropertyKey, maxkey int, diff resource.ObjectDiff,
+	planning bool, indent int, summary bool, debug bool) {
+
+	titleFunc := func(top deploy.StepOp, prefix bool) {
+		printPropertyTitle(b, string(key), maxkey, indent, top, prefix)
+	}
+	if add, isadd := diff.Adds[key]; isadd {
+		printAdd(b, add, titleFunc, planning, indent, debug)
+	} else if delete, isdelete := diff.Deletes[key]; isdelete {
+		printDelete(b, delete, titleFunc, planning, indent, debug)
+	} else if update, isupdate := diff.Updates[key]; isupdate {
+		printPropertyValueDiff(
+			b, titleFunc, update, planning, indent, summary, debug)
+	} else if same := diff.Sames[key]; !summary && shouldPrintPropertyValue(same, planning) {
+		titleFunc(deploy.OpSame, false)
+		printPropertyValue(b, diff.Sames[key], planning, indent, deploy.OpSame, false, debug)
 	}
 }
 

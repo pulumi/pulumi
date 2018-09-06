@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package local
+package filestate
 
 import (
 	"context"
@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a local stack.  This simply adds some local-specific properties atop the standard backend stack interface.
@@ -34,17 +33,17 @@ type Stack interface {
 
 // localStack is a local stack descriptor.
 type localStack struct {
-	name     backend.StackReference // the stack's name.
+	ref      backend.StackReference // the stack's reference (qualified name).
 	path     string                 // a path to the stack's checkpoint file on disk.
 	config   config.Map             // the stack's config bag.
 	snapshot *deploy.Snapshot       // a snapshot representing the latest deployment state.
 	b        *localBackend          // a pointer to the backend this stack belongs to.
 }
 
-func newStack(name backend.StackReference, path string, config config.Map,
+func newStack(ref backend.StackReference, path string, config config.Map,
 	snapshot *deploy.Snapshot, b *localBackend) Stack {
 	return &localStack{
-		name:     name,
+		ref:      ref,
 		path:     path,
 		config:   config,
 		snapshot: snapshot,
@@ -52,7 +51,7 @@ func newStack(name backend.StackReference, path string, config config.Map,
 	}
 }
 
-func (s *localStack) Name() backend.StackReference                           { return s.name }
+func (s *localStack) Ref() backend.StackReference                            { return s.ref }
 func (s *localStack) Config() config.Map                                     { return s.config }
 func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
 func (s *localStack) Backend() backend.Backend                               { return s.b }
@@ -62,24 +61,20 @@ func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *localStack) Preview(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.PreviewStack(ctx, s, proj, root, m, opts, scopes)
+func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *localStack) Update(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.UpdateStack(ctx, s, proj, root, m, opts, scopes)
+func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.UpdateStack(ctx, s, op)
 }
 
-func (s *localStack) Refresh(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.RefreshStack(ctx, s, proj, root, m, opts, scopes)
+func (s *localStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *localStack) Destroy(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return backend.DestroyStack(ctx, s, proj, root, m, opts, scopes)
+func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	return backend.DestroyStack(ctx, s, op)
 }
 
 func (s *localStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {

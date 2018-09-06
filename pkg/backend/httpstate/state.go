@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cloud
+package httpstate
 
 import (
 	"context"
@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -137,8 +137,8 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 }
 
 func (u *cloudUpdate) recordEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) error {
+	action apitype.UpdateKind, event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
+	opts display.Options) error {
 
 	// If we don't have a token source, we can't perform any mutations.
 	if u.tokenSource == nil {
@@ -158,7 +158,7 @@ func (u *cloudUpdate) recordEvent(
 	// Ensure we render events with raw colorization tags.  Also, render these as 'diff' events so
 	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
-	msg := local.RenderDiffEvent(event, seen, opts)
+	msg := display.RenderDiffEvent(action, event, seen, opts)
 	if msg == "" {
 		return nil
 	}
@@ -173,13 +173,13 @@ func (u *cloudUpdate) recordEvent(
 	return u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token)
 }
 
-func (u *cloudUpdate) RecordAndDisplayEvents(action string,
-	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
+func (u *cloudUpdate) RecordAndDisplayEvents(op string, action apitype.UpdateKind,
+	events <-chan engine.Event, done chan<- bool, opts display.Options) {
 
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go local.DisplayEvents(action, displayEvents, done, opts)
+	go display.ShowEvents(op, action, displayEvents, done, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {
@@ -187,7 +187,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 		displayEvents <- e
 
 		// Then render and record the event for posterity.
-		if err := u.recordEvent(e, seen, opts); err != nil {
+		if err := u.recordEvent(action, e, seen, opts); err != nil {
 			diagEvent := engine.Event{
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
@@ -251,7 +251,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
-	stk, err := workspace.DetectProjectStack(stackRef.StackName())
+	stk, err := workspace.DetectProjectStack(stackRef.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -265,17 +265,17 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:
 			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-				stackRef.StackName())
+				stackRef.Name())
 		case stack.ErrDeploymentSchemaVersionTooNew:
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-				"Please update your version of the Pulumi CLI", stackRef.StackName())
+				"Please update your version of the Pulumi CLI", stackRef.Name())
 		default:
 			return nil, errors.Wrap(err, "could not deserialize deployment")
 		}
 	}
 
 	return &deploy.Target{
-		Name:      stackRef.StackName(),
+		Name:      stackRef.Name(),
 		Config:    stk.Config,
 		Decrypter: decrypter,
 		Snapshot:  snapshot,

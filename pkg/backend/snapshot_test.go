@@ -95,7 +95,13 @@ func TestIdenticalSames(t *testing.T) {
 	err = mutation.End(same, true)
 	assert.NoError(t, err)
 
-	// Sames `do` cause a snapshot mutation as part of `End`.
+	// Identical sames do not cause a snapshot mutation as part of `End`.
+	assert.Empty(t, sp.SavedSnapshots)
+
+	// Close must write the snapshot.
+	err = manager.Close()
+	assert.NoError(t, err)
+
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
@@ -170,6 +176,65 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	assert.Equal(t, resourceA.URN, secondSnap.Resources[1].URN)
 	assert.Len(t, secondSnap.Resources[1].Dependencies, 1)
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
+}
+
+// This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
+// that the snapshot is written.
+func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
+	resourceP := NewResource("a-unique-urn-resource-p")
+	resourceA := NewResource("a-unique-urn-resource-a")
+
+	var changes []*resource.State
+
+	// Change the "custom" bit.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[0].Custom = !resourceA.Custom
+
+	// Change the parent.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[1].Parent = resourceP.URN
+
+	// Change the "protect" bit.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[2].Protect = !resourceA.Protect
+
+	// Change the resource outputs.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+
+	snap := NewSnapshot([]*resource.State{
+		resourceP,
+		resourceA,
+	})
+
+	for _, c := range changes {
+		manager, sp := MockSetup(t, snap)
+
+		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
+		pUpdated := NewResource(string(resourceP.URN))
+		pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
+		mutation, err := manager.BeginMutation(pSame)
+		assert.NoError(t, err)
+		err = mutation.End(pSame, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
+		// The engine generates a Same for a. Because this is a meaningful change, the snapshot is written:
+		aSame := deploy.NewSameStep(nil, nil, resourceA, c)
+		mutation, err = manager.BeginMutation(aSame)
+		assert.NoError(t, err)
+		err = mutation.End(aSame, true)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, sp.SavedSnapshots)
+		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
+
+		inSnapshot := sp.SavedSnapshots[0].Resources[1]
+		assert.Equal(t, c, inSnapshot)
+
+		err = manager.Close()
+		assert.NoError(t, err)
+	}
 }
 
 // This test exercises the merge operation with a particularly vexing deployment

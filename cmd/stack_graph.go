@@ -17,7 +17,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/graph"
 	"github.com/pulumi/pulumi/pkg/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -51,7 +51,7 @@ func newStackGraphCmd() *cobra.Command {
 			"admitted when it was ran. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 

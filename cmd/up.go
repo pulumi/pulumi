@@ -19,18 +19,24 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
+)
+
+const (
+	defaultParallel = 10
 )
 
 // nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
@@ -46,6 +52,7 @@ func newUpCmd() *cobra.Command {
 	var diffDisplay bool
 	var nonInteractive bool
 	var parallel int
+	var refresh bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -57,6 +64,18 @@ func newUpCmd() *cobra.Command {
 		s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 		if err != nil {
 			return err
+		}
+
+		// Save any config values passed via flags.
+		if len(configArray) > 0 {
+			commandLineConfig, err := parseConfig(configArray)
+			if err != nil {
+				return err
+			}
+
+			if err = saveConfig(s.Ref().Name(), commandLineConfig); err != nil {
+				return errors.Wrap(err, "saving config")
+			}
 		}
 
 		proj, root, err := readProject()
@@ -73,9 +92,16 @@ func newUpCmd() *cobra.Command {
 			Analyzers: analyzers,
 			Parallel:  parallel,
 			Debug:     debug,
+			Refresh:   refresh,
 		}
 
-		changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+			Proj:   proj,
+			Root:   root,
+			M:      m,
+			Opts:   opts,
+			Scopes: cancellationScopes,
+		})
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
@@ -125,15 +151,10 @@ func newUpCmd() *cobra.Command {
 			contract.IgnoreError(os.RemoveAll(temp))
 		}()
 
-		// Cleanup the project name/description if needed.
-		projectName := template.ProjectName
-		if projectName == "${PROJECT}" {
-			projectName = workspace.ValueOrSanitizedDefaultProjectName(projectName, template.Name)
-		}
-		projectDescription := template.ProjectDescription
-		if projectDescription == "${DESCRIPTION}" {
-			projectDescription = ""
-		}
+		// Get the project name/description.
+		projectName := workspace.ValueOrSanitizedDefaultProjectName("", template.ProjectName, template.Name)
+		projectDescription := workspace.ValueOrDefaultProjectDescription(
+			"", template.ProjectDescription, template.Description)
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
 		if err = template.CopyTemplateFiles(temp, true, projectName, projectDescription); err != nil {
@@ -143,6 +164,17 @@ func newUpCmd() *cobra.Command {
 		// Change the working directory to the "virtual workspace" directory.
 		if err = os.Chdir(temp); err != nil {
 			return errors.Wrap(err, "changing the working directory")
+		}
+
+		// Load the project, update the name & description, and save it.
+		proj, _, err := readProject()
+		if err != nil {
+			return err
+		}
+		proj.Name = tokens.PackageName(projectName)
+		proj.Description = &projectDescription
+		if err = workspace.SaveProject(proj); err != nil {
+			return errors.Wrap(err, "saving project")
 		}
 
 		// Get a stack, but don't set it as the current stack, to avoid writing to ~/.pulumi/workspaces.
@@ -188,7 +220,7 @@ func newUpCmd() *cobra.Command {
 
 		// Save the config locally.
 		if c != nil {
-			if err = saveConfig(s.Name().StackName(), c); err != nil {
+			if err = saveConfig(s.Ref().Name(), c); err != nil {
 				return errors.Wrap(err, "saving config")
 			}
 		}
@@ -212,6 +244,7 @@ func newUpCmd() *cobra.Command {
 			Analyzers: analyzers,
 			Parallel:  parallel,
 			Debug:     debug,
+			Refresh:   refresh,
 		}
 
 		// TODO for the URL case:
@@ -219,7 +252,13 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+			Proj:   proj,
+			Root:   root,
+			M:      m,
+			Opts:   opts,
+			Scopes: cancellationScopes,
+		})
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
@@ -260,7 +299,7 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			opts.Display = backend.DisplayOptions{
+			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
@@ -305,8 +344,11 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 10,
+		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+	cmd.PersistentFlags().BoolVarP(
+		&refresh, "refresh", "r", false,
+		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -336,7 +378,7 @@ var (
 // in the Pulumi Console).
 func isPreconfiguredEmptyStack(
 	url string,
-	templateConfig map[config.Key]workspace.ProjectTemplateConfigValue,
+	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	stackConfig config.Map,
 	snap *deploy.Snapshot) bool {
 
@@ -368,7 +410,13 @@ func isPreconfiguredEmptyStack(
 
 	// Can stackConfig satisfy the config requirements of templateConfig?
 	for templateKey, templateVal := range templateConfig {
-		stackVal, ok := stackConfig[templateKey]
+		parsedTemplateKey, parseErr := parseConfigKey(templateKey)
+		if parseErr != nil {
+			contract.IgnoreError(parseErr)
+			return false
+		}
+
+		stackVal, ok := stackConfig[parsedTemplateKey]
 		if !ok {
 			return false
 		}

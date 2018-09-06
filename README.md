@@ -6,12 +6,14 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-**The Pulumi Cloud Development Platform** is the easiest way to create and deploy cloud programs that use containers,
-serverless functions, hosted services, and infrastructure, on any cloud.
+**The Pulumi Cloud Native Development Platform** is the easiest way to create and deploy cloud programs that use
+containers, serverless functions, hosted services, and infrastructure, on any cloud.
 
-Simply write code in your favorite language and Pulumi automatically provisions and manages your AWS, Azure, Google
-Cloud, and/or Kubernetes resources, using an
-[immutable infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_as_Code) approach.  Skip the YAML, and
+Simply write code in your favorite language and Pulumi automatically provisions and manages your
+[AWS](https://pulumi.io/reference/aws.html), [Azure](https://pulumi.io/reference/azure.html),
+[Google Cloud Platform](https://pulumi.io/reference/gcp.html), and/or
+[Kubernetes](https://pulumi.io/reference/kubernetes.html) resources, using an
+[infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_as_Code) approach.  Skip the YAML, and
 use standard language features like loops, functions, classes, and package management that you already know and love.
 
 For example, create three web servers:

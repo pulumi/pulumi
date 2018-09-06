@@ -130,9 +130,17 @@ export function run(argv: minimist.ParsedArgs): void {
     // If this is a typescript project, we'll want to load node-ts.
     const typeScript: boolean = process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
 
+    // We provide reasonable defaults for many ts options, meaning you don't need to have a tsconfig.json present
+    // if you want to use TypeScript with Pulumi. However, ts-node's default behavior is to walk up from the cwd to
+    // find a tsconfig.json. For us, it's reasonable to say that the "root" of the project is the cwd,
+    // if there's a tsconfig.json file here. Otherwise, just tell ts-node to not load project options at all.
+    // This helps with cases like pulumi/pulumi#1772.
+    const skipProject = !fs.existsSync("tsconfig.json");
+
     if (typeScript) {
         tsnode.register({
             typeCheck: true,
+            skipProject: skipProject,
             compilerOptions: {
                 target: "es6",
                 module: "commonjs",
@@ -177,7 +185,7 @@ export function run(argv: minimist.ParsedArgs): void {
 
         // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
         if (code === 0 && uncaught) {
-            process.exit(1);
+            process.exitCode = 1;
         }
     });
 

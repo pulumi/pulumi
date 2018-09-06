@@ -24,7 +24,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -52,7 +53,7 @@ func newStackLsCmd() *cobra.Command {
 				return errors.Wrap(err, "could not load current project")
 			}
 
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
@@ -66,7 +67,7 @@ func newStackLsCmd() *cobra.Command {
 			var current string
 			if s, _ := state.CurrentStack(commandContext(), b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Name().String()
+				current = s.Ref().String()
 			}
 
 			var packageFilter *tokens.PackageName
@@ -82,10 +83,10 @@ func newStackLsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, showURLColumn := b.(cloud.Backend)
+			_, showURLColumn := b.(httpstate.Backend)
 
 			for _, stack := range bs {
-				name := stack.Name().String()
+				name := stack.Ref().String()
 				stacks[name] = stack
 				stackNames = append(stackNames, name)
 			}
@@ -146,7 +147,7 @@ func newStackLsCmd() *cobra.Command {
 				values := []interface{}{name, lastUpdate, resourceCount}
 				if showURLColumn {
 					var url string
-					if cs, ok := stack.(cloud.Stack); ok {
+					if cs, ok := stack.(httpstate.Stack); ok {
 						if u, urlErr := cs.ConsoleURL(); urlErr == nil {
 							url = u
 						}

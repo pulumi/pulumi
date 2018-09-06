@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
@@ -203,7 +203,7 @@ func TestStackCommands(t *testing.T) {
 		stackName := addRandomSuffix("invalid-resources")
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_dependencies")
-		e.RunCommand("pulumi", "login")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -267,9 +267,9 @@ func TestStackBackups(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs")
 
 		// We're testing that backups are created so ensure backups aren't disabled.
-		if env := os.Getenv(local.DisableCheckpointBackupsEnvVar); env != "" {
-			os.Unsetenv(local.DisableCheckpointBackupsEnvVar)
-			defer os.Setenv(local.DisableCheckpointBackupsEnvVar, env)
+		if env := os.Getenv(filestate.DisableCheckpointBackupsEnvVar); env != "" {
+			os.Unsetenv(filestate.DisableCheckpointBackupsEnvVar)
+			defer os.Setenv(filestate.DisableCheckpointBackupsEnvVar, env)
 		}
 
 		const stackName = "imulup"

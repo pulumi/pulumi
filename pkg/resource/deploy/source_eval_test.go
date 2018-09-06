@@ -70,9 +70,10 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 
 func newTestPluginContext(program deploytest.ProgramFunc) (*plugin.Context, error) {
 	sink := cmdutil.Diag()
+	statusSink := cmdutil.Diag()
 	lang := deploytest.NewLanguageRuntime(program)
-	host := deploytest.NewPluginHost(sink, lang)
-	return plugin.NewContext(sink, host, nil, nil, "", nil, nil)
+	host := deploytest.NewPluginHost(sink, statusSink, lang)
+	return plugin.NewContext(sink, statusSink, host, nil, nil, "", nil, nil)
 }
 
 type testProviderSource struct {

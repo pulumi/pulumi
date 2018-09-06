@@ -56,7 +56,12 @@ export async function computeCodePaths(
 
     // For each of the required paths, add the corresponding FileArchive or FileAsset to the
     // AssetMap.
-    for (const path of pathSet.values()) {
+    for (const path of pathSet) {
+        // Don't include a path if there is another path higher up that will include this one.
+        if (isSubsumedByHigherPath(path, pathSet)) {
+            continue;
+        }
+
         // The Asset model does not support a consistent way to embed a file-or-directory into an
         // `AssetArchive`, so we stat the path to figure out which it is and use the appropriate
         // Asset constructor.
@@ -70,6 +75,21 @@ export async function computeCodePaths(
     }
 
     return codePaths;
+}
+
+function isSubsumedByHigherPath(path: string, pathSet: Set<string>): boolean {
+    for (const otherPath of pathSet) {
+        if (path.length > otherPath.length &&
+            path.startsWith(otherPath)) {
+
+            // Have to make sure we're actually a sub-directory of that other path.  For example,
+            // if we have:  node_modules/mime-types, that's not subsumed by node_modules/mime
+            const nextChar = path.charAt(otherPath.length);
+            return nextChar === "/" || nextChar === "\\";
+        }
+    }
+
+    return false;
 }
 
 // allFolders computes the set of package folders that are transitively required by the root
@@ -116,13 +136,9 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
     root: readPackageTree.Node, pkg: string, packagePaths: Set<string>, excludedPackages: Set<string>) {
+
     // Don't process this packages if it was in the set the user wants to exclude.
-
-    // Also, exclude it if it's an @pulumi package.  These packages are intended for deployment
-    // time only and will only bloat up the serialized lambda package.
-    if (excludedPackages.has(pkg) ||
-        pkg.startsWith("@pulumi")) {
-
+    if (excludedPackages.has(pkg)) {
         return;
     }
 
@@ -132,10 +148,34 @@ function addPackageAndDependenciesToSet(
         return;
     }
 
-    packagePaths.add(child.path);
-    if (child.package.dependencies) {
-        for (const dep of Object.keys(child.package.dependencies)) {
-            addPackageAndDependenciesToSet(child, dep, packagePaths, excludedPackages);
+    if (child.package.pulumi) {
+        // This was a pulumi deployment-time package.  Check if it had a:
+        //
+        //    `pulumi: { runtimeDependencies: ... }`
+        //
+        // section.  In this case, we don't want to add this specific package, but we do want to
+        // include all the runtime dependencies it says are necessary.
+        recurse(child.package.pulumi.runtimeDependencies);
+    }
+    else if (pkg.startsWith("@pulumi")) {
+        // exclude it if it's an @pulumi package.  These packages are intended for deployment
+        // time only and will only bloat up the serialized lambda package.  Note: this code can
+        // be removed once all pulumi packages add a "pulumi" section to their package.json.
+        return;
+    }
+    else {
+        // Normal package.  Add the path to it, and all transitively add all of its dependencies.
+        packagePaths.add(child.path);
+        recurse(child.package.dependencies);
+    }
+
+    return;
+
+    function recurse(dependencies: any) {
+        if (dependencies) {
+            for (const dep of Object.keys(dependencies)) {
+                addPackageAndDependenciesToSet(child!, dep, packagePaths, excludedPackages);
+            }
         }
     }
 }
@@ -144,7 +184,7 @@ function addPackageAndDependenciesToSet(
 // for the given name. It is assumed that the tree was correctly constructed such that dependencies
 // are resolved to compatible versions in the closest available match starting at the provided root
 // and walking up to the head of the tree.
-function findDependency(root: readPackageTree.Node | undefined | null, name: string) {
+function findDependency(root: readPackageTree.Node | undefined | null, name: string): readPackageTree.Node | undefined {
     for (; root; root = root.parent) {
         for (const child of root.children) {
             let childName = child.name;
@@ -156,7 +196,7 @@ function findDependency(root: readPackageTree.Node | undefined | null, name: str
             const childFolderName = filepath.basename(child.path);
             const parentFolderName = filepath.basename(filepath.dirname(child.path));
             if (parentFolderName[0] === "@") {
-                childName = filepath.join(parentFolderName, childFolderName);
+                childName = `${parentFolderName}/${childFolderName}`;
             }
 
             if (childName === name) {

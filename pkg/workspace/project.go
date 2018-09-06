@@ -35,9 +35,9 @@ type Analyzers []tokens.QName
 // ProjectTemplate is a Pulumi project template manifest.
 // nolint: lll
 type ProjectTemplate struct {
-	Description string                                    `json:"description,omitempty" yaml:"description,omitempty"` // an optional description of the template.
-	Quickstart  string                                    `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`   // optional text to be displayed after template creation.
-	Config      map[config.Key]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`           // optional template config.
+	Description string                                `json:"description,omitempty" yaml:"description,omitempty"` // an optional description of the template.
+	Quickstart  string                                `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`   // optional text to be displayed after template creation.
+	Config      map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`           // optional template config.
 }
 
 // ProjectTemplateConfigValue is a config value included in the project template manifest.

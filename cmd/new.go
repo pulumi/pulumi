@@ -15,7 +15,9 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +26,8 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -50,6 +54,7 @@ func newNewCmd() *cobra.Command {
 	var offline bool
 	var generateOnly bool
 	var dir string
+	var nonInteractive bool
 
 	cmd := &cobra.Command{
 		Use:        "new [template]",
@@ -57,13 +62,27 @@ func newNewCmd() *cobra.Command {
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			interactive := isInteractive(nonInteractive)
+			if !interactive {
+				yes = true // auto-approve changes, since we cannot prompt.
+			}
+
+			// Prepare options.
+			opts, err := updateFlagsToOptions(interactive, false /*skipPreview*/, yes)
+			if err != nil {
+				return err
+			}
+			opts.Display = display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+			opts.Engine = engine.UpdateOptions{
+				Parallel: defaultParallel,
+			}
+
 			// Validate name (if specified) before further prompts/operations.
 			if name != "" && !workspace.IsValidProjectName(name) {
 				return errors.Errorf("'%s' is not a valid project name", name)
-			}
-
-			displayOpts := backend.DisplayOptions{
-				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Get the current working directory.
@@ -92,11 +111,18 @@ func newNewCmd() *cobra.Command {
 				}
 			}
 
+			// Return an error if the directory isn't empty.
+			if !force {
+				if err = errorIfNotEmptyDirectory(cwd); err != nil {
+					return err
+				}
+			}
+
 			// If we're going to be creating a stack, get the current backend, which
 			// will kick off the login flow (if not already logged-in).
 			var b backend.Backend
 			if !generateOnly {
-				if b, err = currentBackend(displayOpts); err != nil {
+				if b, err = currentBackend(opts.Display); err != nil {
 					return err
 				}
 			}
@@ -127,7 +153,7 @@ func newNewCmd() *cobra.Command {
 			} else if len(templates) == 1 {
 				template = templates[0]
 			} else {
-				if template, err = chooseTemplate(templates, displayOpts); err != nil {
+				if template, err = chooseTemplate(templates, opts.Display); err != nil {
 					return err
 				}
 			}
@@ -153,8 +179,8 @@ func newNewCmd() *cobra.Command {
 
 			// Prompt for the project name, if it wasn't already specified.
 			if name == "" {
-				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, filepath.Base(cwd))
-				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, displayOpts)
+				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, filepath.Base(cwd))
+				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -162,8 +188,9 @@ func newNewCmd() *cobra.Command {
 
 			// Prompt for the project description, if it wasn't already specified.
 			if description == "" {
-				defaultValue := workspace.ValueOrDefaultProjectDescription(description, template.Description)
-				description, err = promptForValue(yes, "project description", defaultValue, false, nil, displayOpts)
+				defaultValue := workspace.ValueOrDefaultProjectDescription(
+					description, template.ProjectDescription, template.Description)
+				description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -179,13 +206,24 @@ func newNewCmd() *cobra.Command {
 
 			fmt.Printf("Created project '%s'.\n", name)
 
+			// Load the project, update the name & description, and save it.
+			proj, _, err := readProject()
+			if err != nil {
+				return err
+			}
+			proj.Name = tokens.PackageName(name)
+			proj.Description = &description
+			if err = workspace.SaveProject(proj); err != nil {
+				return errors.Wrap(err, "saving project")
+			}
+
 			// Prompt for the stack name and create the stack.
 			var stack backend.Stack
 			if !generateOnly {
 				defaultValue := getDevStackName(name)
 
 				for {
-					stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, displayOpts)
+					stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, opts.Display)
 					if err != nil {
 						return err
 					}
@@ -213,61 +251,36 @@ func newNewCmd() *cobra.Command {
 				}
 
 				// Prompt for config as needed.
-				c, err := promptForConfig(stack, template.Config, commandLineConfig, nil, yes, displayOpts)
+				c, err := promptForConfig(stack, template.Config, commandLineConfig, nil, yes, opts.Display)
 				if err != nil {
 					return err
 				}
 
 				// Save the config.
 				if c != nil {
-					if err = saveConfig(stack.Name().StackName(), c); err != nil {
+					if err = saveConfig(stack.Ref().Name(), c); err != nil {
 						return errors.Wrap(err, "saving config")
 					}
-
-					fmt.Println("Saved config.")
 				}
 			}
 
 			// Install dependencies.
 			if !generateOnly {
-				err = installDependencies("Installing dependencies...")
-				if err != nil {
+				if err = installDependencies("Installing dependencies..."); err != nil {
 					return err
 				}
 
-				// Write a summary with next steps.
 				fmt.Println(
-					displayOpts.Color.Colorize(
+					opts.Display.Color.Colorize(
 						colors.BrightGreen+colors.Bold+"Your new project is configured and ready to go!"+colors.Reset) +
 						" " + cmdutil.EmojiOr("✨", ""))
+			}
 
-				// If the current working directory changed, add instructions to cd into the directory.
-				var deployMsg string
-				if originalCwd != cwd {
-					// If we can determine a relative path, use that, otherwise use the full path.
-					var cd string
-					if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
-						cd = rel
-					} else {
-						cd = cwd
-					}
-
-					// Surround the path with double quotes if it contains whitespace.
-					if containsWhiteSpace(cd) {
-						cd = fmt.Sprintf("\"%s\"", cd)
-					}
-
-					cd = fmt.Sprintf("cd %s", cd)
-
-					deployMsg = "To deploy it, '" + cd + "' and then run 'pulumi up'."
-					deployMsg = colors.Highlight(deployMsg, cd, colors.BrightBlue+colors.Underline+colors.Bold)
-				} else {
-					deployMsg = "To deploy it, run 'pulumi up'."
+			// Run `up` automatically, or print out next steps to run `up` manually.
+			if !generateOnly {
+				if err = runUpOrPrintNextSteps(stack, originalCwd, cwd, opts, yes); err != nil {
+					return err
 				}
-
-				// Colorize and print the next step deploy action.
-				deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
-				fmt.Println(displayOpts.Color.Colorize(deployMsg))
 			}
 
 			if template.Quickstart != "" {
@@ -327,14 +340,31 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests")
-	cmd.PersistentFlags().BoolVar(
-		&generateOnly, "generate-only", false,
+	cmd.PersistentFlags().BoolVarP(
+		&generateOnly, "generate-only", "g", false,
 		"Generate the project only; do not create a stack, save config, or install dependencies")
 	cmd.PersistentFlags().StringVar(
 		&dir, "dir", "",
 		"The location to place the generated project; if not specified, the current directory is used")
+	cmd.PersistentFlags().BoolVar(
+		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 
 	return cmd
+}
+
+// errorIfNotEmptyDirectory returns an error if path is not empty.
+func errorIfNotEmptyDirectory(path string) error {
+	infos, err := ioutil.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	if len(infos) > 0 {
+		return errors.Errorf("%s is not empty; "+
+			"rerun in an empty directory, pass the path to an empty directory to --dir, or use --force", path)
+	}
+
+	return nil
 }
 
 // getDevStackName returns the stack name suffixed with -dev.
@@ -402,8 +432,75 @@ func installDependencies(message string) error {
 	return nil
 }
 
+// runUpOrPrintNextSteps runs `up` automatically, or if `up` shouldn't run, prints out a message with next steps.
+func runUpOrPrintNextSteps(
+	stack backend.Stack, originalCwd string, cwd string, opts backend.UpdateOptions, yes bool) error {
+
+	proj, root, err := readProject()
+	if err != nil {
+		return err
+	}
+
+	// Currently go projects require a build/install step before deployment, so we won't automatically run `up` for
+	// such projects. Once we switch over to using `go run` for go, we can remove this and always run `up`.
+	runUp := !strings.EqualFold(proj.RuntimeInfo.Name(), "go")
+
+	if runUp {
+		m, err := getUpdateMetadata("", root)
+		if err != nil {
+			return errors.Wrap(err, "gathering environment metadata")
+		}
+
+		_, err = stack.Update(commandContext(), backend.UpdateOperation{
+			Proj:   proj,
+			Root:   root,
+			M:      m,
+			Opts:   opts,
+			Scopes: cancellationScopes,
+		})
+		switch {
+		case err == context.Canceled:
+			return errors.New("update cancelled")
+		case err != nil:
+			return PrintEngineError(err)
+		default:
+			return nil
+		}
+	} else {
+		// If the current working directory changed, add instructions to cd into the directory.
+		var deployMsg string
+		if originalCwd != cwd {
+			// If we can determine a relative path, use that, otherwise use the full path.
+			var cd string
+			if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
+				cd = rel
+			} else {
+				cd = cwd
+			}
+
+			// Surround the path with double quotes if it contains whitespace.
+			if containsWhiteSpace(cd) {
+				cd = fmt.Sprintf("\"%s\"", cd)
+			}
+
+			cd = fmt.Sprintf("cd %s", cd)
+
+			deployMsg = "To deploy it, '" + cd + "' and then run 'pulumi up'."
+			deployMsg = colors.Highlight(deployMsg, cd, colors.BrightBlue+colors.Underline+colors.Bold)
+		} else {
+			deployMsg = "To deploy it, run 'pulumi up'."
+		}
+
+		// Colorize and print the next step deploy action.
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Println(opts.Display.Color.Colorize(deployMsg))
+	}
+
+	return nil
+}
+
 // chooseTemplate will prompt the user to choose amongst the available templates.
-func chooseTemplate(templates []workspace.Template, opts backend.DisplayOptions) (workspace.Template, error) {
+func chooseTemplate(templates []workspace.Template, opts display.Options) (workspace.Template, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
 	if !cmdutil.Interactive() {
 		return workspace.Template{}, errors.New(chooseTemplateErr)
@@ -439,7 +536,7 @@ func parseConfig(configArray []string) (config.Map, error) {
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
 
-		key, err := config.ParseKey(kvp[0])
+		key, err := parseConfigKey(kvp[0])
 		if err != nil {
 			return nil, err
 		}
@@ -460,22 +557,35 @@ func parseConfig(configArray []string) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	stack backend.Stack,
-	templateConfig map[config.Key]workspace.ProjectTemplateConfigValue,
+	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
 	stackConfig config.Map,
 	yes bool,
-	opts backend.DisplayOptions) (config.Map, error) {
+	opts display.Options) (config.Map, error) {
 
-	c := make(config.Map)
+	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
+	// the project name will be prepended.
+	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
+	for k, v := range templateConfig {
+		parsedKey, parseErr := parseConfigKey(k)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		parsedTemplateConfig[parsedKey] = v
+	}
 
+	// Sort keys. Note that we use the fully qualified module member here instead of a `prettyKey` so that
+	// all config values for the current program are prompted one after another.
 	var keys config.KeyArray
-	for k := range templateConfig {
+	for k := range parsedTemplateConfig {
 		keys = append(keys, k)
 	}
 	sort.Sort(keys)
 
 	var err error
 	var crypter config.Crypter
+
+	c := make(config.Map)
 
 	for _, k := range keys {
 		// If it was passed as a command line flag, use it without prompting.
@@ -484,7 +594,7 @@ func promptForConfig(
 			continue
 		}
 
-		templateConfigValue := templateConfig[k]
+		templateConfigValue := parsedTemplateConfig[k]
 
 		// Prepare a default value.
 		var defaultValue string
@@ -517,7 +627,7 @@ func promptForConfig(
 		}
 
 		// Prepare the prompt.
-		prompt := k.String()
+		prompt := prettyKey(k)
 		if templateConfigValue.Description != "" {
 			prompt = prompt + ": " + templateConfigValue.Description
 		}
@@ -567,7 +677,7 @@ func promptForConfig(
 // message followed by another prompt for the value.
 func promptForValue(
 	yes bool, prompt string, defaultValue string, secret bool,
-	isValidFn func(value string) bool, opts backend.DisplayOptions) (string, error) {
+	isValidFn func(value string) bool, opts display.Options) (string, error) {
 
 	if yes {
 		return defaultValue, nil

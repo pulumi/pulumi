@@ -37,7 +37,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -135,6 +135,11 @@ type ProgramTestOptions struct {
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
+	// ExpectRefreshChanges may be set to true if a test is expected to have changes yielded by an immediate refresh.
+	// This could occur, for example, is a resource's state is constantly changing outside of Pulumi (e.g., timestamps).
+	ExpectRefreshChanges bool
+	// SkipRefresh indicates that the refresh step should be skipped entirely.
+	SkipRefresh bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
@@ -245,6 +250,16 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	return tokens.QName(opts.StackName)
 }
 
+// GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
+// We use this in CI to create test stacks in an organization that all developers have access to, for debugging.
+func (opts *ProgramTestOptions) GetStackNameWithOwner() tokens.QName {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		return tokens.QName(fmt.Sprintf("%s/%s", owner, opts.GetStackName()))
+	}
+
+	return opts.GetStackName()
+}
+
 // With combines a source set of options with a set of overrides.
 func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOptions {
 	if overrides.Dir != "" {
@@ -289,6 +304,33 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.RunBuild {
 		opts.RunBuild = overrides.RunBuild
 	}
+	if overrides.ExpectFailure {
+		opts.ExpectFailure = overrides.ExpectFailure
+	}
+	if overrides.ExpectRefreshChanges {
+		opts.ExpectRefreshChanges = overrides.ExpectRefreshChanges
+	}
+	if overrides.SkipRefresh {
+		opts.SkipRefresh = overrides.SkipRefresh
+	}
+	if overrides.AllowEmptyPreviewChanges {
+		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
+	}
+	if overrides.AllowEmptyUpdateChanges {
+		opts.AllowEmptyUpdateChanges = overrides.AllowEmptyUpdateChanges
+	}
+	if overrides.Bin != "" {
+		opts.Bin = overrides.Bin
+	}
+	if overrides.DebugLogLevel != 0 {
+		opts.DebugLogLevel = overrides.DebugLogLevel
+	}
+	if overrides.DebugUpdates {
+		opts.DebugUpdates = overrides.DebugUpdates
+	}
+	if overrides.Env != nil {
+		opts.Env = append(opts.Env, overrides.Env...)
+	}
 	return opts
 }
 
@@ -319,8 +361,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	if err := os.Setenv(local.DisableCheckpointBackupsEnvVar, "1"); err != nil {
-		t.Errorf("error setting env var '%s': %v", local.DisableCheckpointBackupsEnvVar, err)
+	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
+		t.Errorf("error setting env var '%s': %v", filestate.DisableCheckpointBackupsEnvVar, err)
 	}
 
 	t.Parallel()
@@ -568,15 +610,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
-	// If an optional test owner is provided in the environment, create the stack under that owner. We use this in
-	// CI to ensure stacks are owned by an organization that all Pulumi developers have access to.
-	qualifiedStackName := string(stackName)
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
-		qualifiedStackName = owner + "/" + qualifiedStackName
-	}
-
 	// Stack init
-	stackInitArgs := []string{"stack", "init", qualifiedStackName}
+	stackInitArgs := []string{"stack", "init", string(pt.opts.GetStackNameWithOwner())}
 	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
 
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
@@ -611,9 +646,12 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return err
 	}
 
-	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
+	if pt.t.Failed() {
+		fprintf(pt.opts.Stdout, "Test failed, retaining stack '%s'\n", pt.opts.GetStackNameWithOwner())
+		return nil
+	}
 
-	return err
+	return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
 }
 
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
@@ -650,6 +688,20 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if err := pt.performExtraRuntimeValidation(pt.opts.ExtraRuntimeValidation, dir); err != nil {
 		return err
+	}
+
+	if !pt.opts.SkipRefresh {
+		// Perform a refresh and ensure it doesn't yield changes.
+		refresh := []string{"refresh", "--non-interactive", "--skip-preview"}
+		if pt.opts.GetDebugUpdates() {
+			refresh = append(refresh, "-d")
+		}
+		if !pt.opts.ExpectRefreshChanges {
+			refresh = append(refresh, "--expect-no-changes")
+		}
+		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir); err != nil {
+			return err
+		}
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
@@ -690,6 +742,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
 	}
 
+	// If not in quick mode, run an explicit preview.
 	if !pt.opts.Quick {
 		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir); err != nil {
 			if shouldFail {
@@ -700,6 +753,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 		}
 	}
 
+	// Now run an update.
 	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir); err != nil {
 		if shouldFail {
 			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")

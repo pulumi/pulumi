@@ -81,7 +81,6 @@ func (src *evalSource) Stack() tokens.QName {
 }
 
 func (src *evalSource) Info() interface{} { return src.runinfo }
-func (src *evalSource) IsRefresh() bool   { return false }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {

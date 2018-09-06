@@ -27,6 +27,18 @@ export interface SerializeFunctionArgs {
      * prevent potential cycles.
      */
     serialize?: (o: any) => boolean;
+
+    /**
+     * If this is a function which, when invoked, will produce the actual entrypoint function.
+     * Useful for when serializing a function that has high startup cost that only wants to be
+     * run once. The signature of this function should be:  () => (provider_handler_args...) => provider_result
+     *
+     * This will then be emitted as: `exports.[exportName] = serialized_func_name();`
+     *
+     * In other words, the function will be invoked (once) and the resulting inner function will
+     * be what is exported.
+     */
+    isFactoryFunction?: boolean;
 }
 
 /**
@@ -34,8 +46,9 @@ export interface SerializeFunctionArgs {
  */
 export interface SerializedFunction {
     /**
-     * The text of a JavaScript module which exports a single name bound to a function value matching the serialized
-     * JavaScript function.
+     * The text of a JavaScript module which exports a single name bound to an appropriate value.
+     * In the case of a normal function, this value will just be serialized function.  In the case
+     * of a factory function this value will be the result of invoking the factory function.
      */
     text: string;
     /**
@@ -43,25 +56,25 @@ export interface SerializedFunction {
      */
     exportName: string;
     /**
-     * The set of pacakges that were 'require'd by the transitive closure of functions serialized as part of the
-     * JavaScript function serialization.  These pacakges must be able to resolve in the target execution environment
-     * for the serialized function to be able to be loaded and evaluated correctly.
+     * The set of packages that we emitted explicit 'require' calls to ourself when serializing the
+     * closure. Can be used by downstream consumers to ensure that these modules will be include
+     * unilaterally.
      */
     requiredPackages: Set<string>;
 }
 
 /**
- * serializeFunction serializes a JavaScript function into a text form that can be loaded in another exuection context,
+ * serializeFunction serializes a JavaScript function into a text form that can be loaded in another execution context,
  * for example as part of a function callback associated with an AWS Lambda.  The function serialization captures any
  * variables captured by the function body and serializes those values into the generated text along with the function
  * body.  This process is recursive, so that functions referenced by the body of the serialized function will themselves
- * be serialized as well.  Thid process also deeply serializes captured object values, including prototype chains and
+ * be serialized as well.  This process also deeply serializes captured object values, including prototype chains and
  * property descriptors, such that the semantics of the function when deserialized should match the original function.
  *
  * There are several known limitations:
  * - If a native function is captured either directly or indirectly, closure serialization will return an error.
  * - Captured values will be serialized based on their values at the time that `serializeFunction` is called.  Mutations
- *   to these values after that (but before the deserialized funtion is used) will not be observed by the deserialized
+ *   to these values after that (but before the deserialized function is used) will not be observed by the deserialized
  *   function.
  *
  * @param func The JavaScript function to serialize.
@@ -73,9 +86,10 @@ export async function serializeFunction(func: Function, args?: SerializeFunction
     }
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || (_ => true);
+    const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
 
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
-    return serializeJavaScriptText(func, functionInfo, exportName);
+    return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction);
 }
 
 /**
@@ -87,7 +101,7 @@ export async function serializeFunctionAsync(
         serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
-    return serializeJavaScriptText(func, functionInfo, "handler").text;
+    return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false).text;
 }
 
 /**
@@ -97,10 +111,9 @@ export async function serializeFunctionAsync(
  * @param c The FunctionInfo to be serialized into a module string.
  */
 function serializeJavaScriptText(
-        func: Function,
         outerFunction: closure.FunctionInfo,
-        exportName: string): SerializedFunction {
-    // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
+        exportName: string,
+        isFactoryFunction: boolean): SerializedFunction {
 
     // Now produce a textual representation of the closure and its serialized captured environment.
 
@@ -128,15 +141,21 @@ function serializeJavaScriptText(
         environmentText = "\n" + environmentText;
     }
 
-    const text = "exports.handler = " + outerFunctionName + ";\n"
-        + environmentText + functionText;
+    // Export the appropriate value.  For a normal function, this will just be exporting the name of
+    // the module function we created by serializing it.  For a factory function this will export
+    // the function produced by invoking the factory function once.
+    let text: string;
+    const exportText = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};`;
+    if (isFactoryFunction) {
+        // for a factory function, we need to call the function at the end.  That way all the logic
+        // to set up the environment has run.
+        text = environmentText + functionText + "\n" + exportText;
+    }
+    else {
+        text = exportText + "\n" + environmentText + functionText;
+    }
 
-    // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
-    return {
-        text: text,
-        requiredPackages: requiredPackages,
-        exportName: exportName,
-    };
+    return { text, exportName, requiredPackages };
 
     function emitFunctionAndGetName(functionInfo: closure.FunctionInfo): string {
         // If this is the first time seeing this function, then actually emit the function code for
@@ -150,10 +169,6 @@ function serializeJavaScriptText(
             functionInfoToEnvVar.set(functionInfo, functionName);
 
             emitFunctionWorker(functionInfo, functionName);
-        }
-
-        for (const p of functionInfo.requiredPackages) {
-            requiredPackages.add(p);
         }
 
         return functionName;
@@ -207,10 +222,13 @@ function serializeJavaScriptText(
             return envVar;
         }
 
-        // Objects any arrays may have cycles in them.  They may also be referenced from multiple
-        // functions.  As such, we have to create variables for them in the environment so that all
-        // references to them unify to the same reference to the env variable.
-        if (isObjOrArray(envEntry)) {
+        // Complex objects may also be referenced from multiple functions.  As such, we have to
+        // create variables for them in the environment so that all references to them unify to the
+        // same reference to the env variable.  Effectively, we need to do this for any object that
+        // could be compared for reference-identity.  Basic types (strings, numbers, etc.) have
+        // value semantics and this can be emitted directly into the code where they are used as
+        // there is no way to observe that you are getting a different copy.
+        if (isObjOrArrayOrRegExp(envEntry)) {
             return complexEnvEntryToString(envEntry, varName);
         }
         else {
@@ -229,6 +247,7 @@ function serializeJavaScriptText(
             return emitFunctionAndGetName(envEntry.function);
         }
         else if (envEntry.module !== undefined) {
+            requiredPackages.add(envEntry.module);
             return `require("${envEntry.module}")`;
         }
         else if (envEntry.output !== undefined) {
@@ -258,8 +277,15 @@ function serializeJavaScriptText(
         if (envEntry.object) {
             emitObject(envVar, envEntry.object, varName);
         }
-         else if (envEntry.array) {
+        else if (envEntry.array) {
             emitArray(envVar, envEntry.array, varName);
+        }
+        else if (envEntry.regexp) {
+            const { source, flags } = envEntry.regexp;
+            const regexVal = `new RegExp(${JSON.stringify(source)}, ${JSON.stringify(flags)})`;
+            const entryString = `var ${envVar} = ${regexVal};\n`;
+
+            environmentText += entryString;
         }
 
         return envVar;
@@ -341,7 +367,7 @@ function serializeJavaScriptText(
         }
 
         function entryIsComplex(v: closure.PropertyInfoAndValue) {
-            return !isSimplePropertyInfo(v.info) || deepContainsObjOrArray(v.entry);
+            return !isSimplePropertyInfo(v.info) || deepContainsObjOrArrayOrRegExp(v.entry);
         }
     }
 
@@ -408,7 +434,7 @@ function serializeJavaScriptText(
 
     function emitArray(
             envVar: string, arr: closure.Entry[], varName: string): void {
-        if (arr.some(deepContainsObjOrArray) || isSparse(arr) || hasNonNumericIndices(arr)) {
+        if (arr.some(deepContainsObjOrArrayOrRegExp) || isSparse(arr) || hasNonNumericIndices(arr)) {
             // we have a complex child.  Because of the possibility of recursion in the object
             // graph, we have to spit out this variable initialized (but empty) first. Then we can
             // walk our children, knowing we'll be able to find this variable if they reference it.
@@ -463,14 +489,14 @@ function isNumeric(n: string) {
     return !isNaN(parseFloat(n)) && isFinite(+n);
 }
 
-function isObjOrArray(env: closure.Entry): boolean {
-    return env.object !== undefined || env.array !== undefined;
+function isObjOrArrayOrRegExp(env: closure.Entry): boolean {
+    return env.object !== undefined || env.array !== undefined || env.regexp !== undefined;
 }
 
-function deepContainsObjOrArray(env: closure.Entry): boolean {
-    return isObjOrArray(env) ||
-        (env.output !== undefined && deepContainsObjOrArray(env.output)) ||
-        (env.promise !== undefined && deepContainsObjOrArray(env.promise));
+function deepContainsObjOrArrayOrRegExp(env: closure.Entry): boolean {
+    return isObjOrArrayOrRegExp(env) ||
+        (env.output !== undefined && deepContainsObjOrArrayOrRegExp(env.output)) ||
+        (env.promise !== undefined && deepContainsObjOrArrayOrRegExp(env.promise));
 }
 
 /**
