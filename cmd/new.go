@@ -173,8 +173,16 @@ func newNewCmd() *cobra.Command {
 			// If a stack was specified via --stack, see if it already exists.
 			var s backend.Stack
 			if stack != "" {
-				if s, err = getStack(stack, &name, &description, opts.Display); err != nil {
+				existingStack, existingName, existingDesc, err := getStack(stack, opts.Display)
+				if err != nil {
 					return err
+				}
+				s = existingStack
+				if name == "" {
+					name = existingName
+				}
+				if description == "" {
+					description = existingDesc
 				}
 			}
 
@@ -348,38 +356,34 @@ func errorIfNotEmptyDirectory(path string) error {
 	return nil
 }
 
-// getStack gets a stack or returns nil if the stack doesn't exist.
-// name and description are set if not empty and those values are available from the existing stack.
-func getStack(stack string, name *string, description *string, opts display.Options) (backend.Stack, error) {
+// getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
+func getStack(stack string, opts display.Options) (backend.Stack, string, string, error) {
 	b, err := currentBackend(opts)
 	if err != nil {
-		return nil, err
+		return nil, "", "", err
 	}
 
 	stackRef, err := b.ParseStackReference(stack)
 	if err != nil {
-		return nil, err
+		return nil, "", "", err
 	}
 
 	s, err := b.GetStack(commandContext(), stackRef)
 	if err != nil {
-		return nil, err
+		return nil, "", "", err
 	}
 
-	// We have an existing stack, use its project name/description.
+	name := ""
+	description := ""
 	if s != nil {
 		if cs, ok := s.(httpstate.Stack); ok {
 			tags := cs.Tags()
-			if *name == "" {
-				*name = tags[apitype.ProjectNameTag]
-			}
-			if *description == "" {
-				*description = tags[apitype.ProjectDescriptionTag]
-			}
+			name = tags[apitype.ProjectNameTag]
+			description = tags[apitype.ProjectDescriptionTag]
 		}
 	}
 
-	return s, nil
+	return s, name, description, nil
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).

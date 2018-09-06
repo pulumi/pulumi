@@ -161,7 +161,7 @@ func newUpCmd() *cobra.Command {
 		var description string
 		var s backend.Stack
 		if stack != "" {
-			if s, err = getStack(stack, &name, &description, opts.Display); err != nil {
+			if s, name, description, err = getStack(stack, opts.Display); err != nil {
 				return err
 			}
 		}
@@ -381,7 +381,8 @@ func handleConfig(
 	var c config.Map
 	if isPreconfiguredEmptyStack(templateNameOrURL, template.Config, stackConfig, snap) {
 		c = stackConfig
-		// TODO consider warning if the specific URL is different from templateURL.
+		// TODO[pulumi/pulumi#1894] consider warning if templateNameOrURL is different from
+		// the stack's `pulumi:template` config value.
 	} else {
 		// Get config values passed on the command line.
 		commandLineConfig, parseErr := parseConfig(configArray)
