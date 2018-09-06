@@ -77,7 +77,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// we can build up the diff display in case the user asks to see the details of the diff
 
 	// Note that eventsChannel is not closed in a `defer`. It is generally unsafe to do so, since defers run during
-	// panics and we can't know whether or not we were in the middle of writing to this channel when the panic occured.
+	// panics and we can't know whether or not we were in the middle of writing to this channel when the panic occurred.
 	//
 	// Instead of using a `defer`, we manually close `eventsChannel` on every exit of this function.
 	eventsChannel := make(chan engine.Event)
