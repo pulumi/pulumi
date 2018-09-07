@@ -339,8 +339,5 @@ func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
 
 func isDefaultProviderStep(step deploy.Step) bool {
 	urn := step.URN()
-	if !step.Res().Custom { // non-custom resources are never default provider steps
-		return false
-	}
 	return providers.IsProviderType(urn.Type()) && urn.Name() == "default"
 }
