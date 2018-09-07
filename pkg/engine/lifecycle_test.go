@@ -1856,6 +1856,15 @@ func TestBadResourceType(t *testing.T) {
 		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
 		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
 
+		// Component resources may have any format type.
+		_, _, _, noErr := mon.RegisterResource(
+			"a:component", "resB", false /* custom */, "", false, nil, "", resource.PropertyMap{})
+		assert.NoError(t, noErr)
+
+		_, _, _, noErr = mon.RegisterResource(
+			"singlename", "resC", false /* custom */, "", false, nil, "", resource.PropertyMap{})
+		assert.NoError(t, noErr)
+
 		return err
 	})
 

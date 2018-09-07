@@ -86,7 +86,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 		for i, state := range snap.Resources {
 			urn := state.URN
 
-			if providers.IsProviderType(state.Type) {
+			if state.Custom && providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)
 				if err != nil {
 					return errors.Errorf("provider %s is not referenceable: %v", urn, err)

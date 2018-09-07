@@ -105,7 +105,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	var defaultProviders []*resource.State
 	defaultProviderRefs := make(map[tokens.Package]providers.Reference)
 	for _, res := range prev.Resources {
-		if providers.IsProviderType(res.URN.Type()) || !res.Custom || res.Provider != "" {
+		if !res.Custom || providers.IsProviderType(res.URN.Type()) || res.Provider != "" {
 			continue
 		}
 
