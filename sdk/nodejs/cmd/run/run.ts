@@ -171,7 +171,7 @@ export function run(argv: minimist.ParsedArgs): void {
         }
         else {
             log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(util.format(err));
+            log.error(err.stack || err.message);
         }
 
         // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.

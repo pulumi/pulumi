@@ -210,6 +210,16 @@ func NewTypeToken(mod Module, nm TypeName) Type {
 	return Type(string(mod) + TokenDelimiter + string(nm))
 }
 
+// ParseTypeToken interprets an arbitrary string as a Type, returning an error if the string is not a valid Type.
+func ParseTypeToken(s string) (Type, error) {
+	tok := Token(s)
+	if !tok.HasModuleMember() {
+		return "", errors.Errorf("Type '%s' is not a valid type token (must have format '*:*:*')", tok)
+	}
+
+	return Type(tok), nil
+}
+
 func (tok Type) Package() Package {
 	if tok.Primitive() {
 		return Package("")
@@ -229,10 +239,6 @@ func (tok Type) Name() TypeName {
 		return TypeName(tok)
 	}
 	return TypeName(ModuleMember(tok).Name())
-}
-
-func (tok Type) Member() ModuleMember {
-	return ModuleMember(tok)
 }
 
 // Primitive indicates whether this type is a primitive type name (i.e., not qualified with a module, etc).

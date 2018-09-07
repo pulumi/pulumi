@@ -492,7 +492,11 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
 	// Read the basic inputs necessary to identify the plugin.
-	t := tokens.Type(req.GetType())
+	t, err := tokens.ParseTypeToken(req.GetType())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, err.Error())
+	}
+
 	name := tokens.QName(req.GetName())
 	parent := resource.URN(req.GetParent())
 
@@ -566,7 +570,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
-	t := tokens.Type(req.GetType())
+	t, err := tokens.ParseTypeToken(req.GetType())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, err.Error())
+	}
+
 	name := tokens.QName(req.GetName())
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 	custom := req.GetCustom()

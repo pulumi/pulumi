@@ -114,6 +114,12 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
     const monitor: any = getMonitor();
     const resopAsync = prepareResource(label, res, custom, props, opts);
+
+    // In order to present a useful stack trace if an error does occur, we preallocate potential
+    // errors here. V8 captures a stack trace at the moment an Error is created and this stack
+    // trace will lead directly to user code. Throwing in `runAsyncResourceOp` results in an Error
+    // with a non-useful stack trace.
+    const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
         log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
@@ -142,8 +148,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                             waitForDeath();
                         }
 
-                        log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
-                        reject(err);
+                        // Node lets us hack the message as long as we do it before accessing the `stack` property.
+                        preallocError.message = `failed to register new resource ${name} [${t}]: ${err.message}`;
+                        reject(preallocError);
                     }
                     else {
                         resolve(innerResponse);

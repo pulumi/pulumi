@@ -128,7 +128,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		return newURN(providers.MakeProviderType(pkg), name, parent)
 	}
 
-	componentURN := newURN("component", "component", "")
+	componentURN := newURN("component:thing:component", "component", "")
 
 	providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
 	assert.NoError(t, err)
@@ -220,7 +220,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
 	}
 
-	componentURN := newURN("component", "component", "")
+	componentURN := newURN("component:thing:component", "component", "")
 
 	steps := []RegisterResourceEvent{
 		// Register a component resource.

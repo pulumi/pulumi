@@ -25,6 +25,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -38,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -1826,6 +1828,44 @@ func TestBrokenDecrypter(t *testing.T) {
 				assert.Contains(t, decryptErr.Err.Error(), msg)
 				return err
 			},
+		}},
+	}
+
+	p.Run(t, nil)
+}
+
+func TestBadResourceType(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, _, err := mon.RegisterResource("very:bad", "resA", true, "", false, nil, "", resource.PropertyMap{})
+		assert.Error(t, err)
+		rpcerr, ok := rpcerror.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
+		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
+
+		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "")
+		assert.Error(t, err)
+		rpcerr, ok = rpcerror.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
+		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
+
+		return err
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps: []TestStep{{
+			Op:            Update,
+			ExpectFailure: true,
+			SkipPreview:   true,
 		}},
 	}
 
