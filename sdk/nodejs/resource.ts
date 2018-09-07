@@ -103,16 +103,18 @@ export abstract class Resource {
             }
 
             this.__providers = opts.parent.__providers;
+
             if (custom) {
                 const provider = (<CustomResourceOptions>opts).provider;
                 if (provider === undefined) {
                     (<CustomResourceOptions>opts).provider = opts.parent.getProvider(t);
                 }
-            } else {
-                const providers = (<ComponentResourceOptions>opts).providers;
-                if (providers) {
-                    this.__providers = { ...this.__providers, ...providers };
-                }
+            }
+        }
+        if (!custom) {
+            const providers = (<ComponentResourceOptions>opts).providers;
+            if (providers) {
+                this.__providers = { ...this.__providers, ...providers };
             }
         }
         this.__protect = !!opts.protect;
