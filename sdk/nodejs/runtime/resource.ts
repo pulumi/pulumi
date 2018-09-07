@@ -64,6 +64,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
     const monitor: any = getMonitor();
     const resopAsync = prepareResource(label, res, true, props, opts);
+    const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
         const resolvedID = await serializeProperty(label, id, []);
         log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
@@ -86,8 +87,9 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
                 monitor.readResource(req, (err: Error, innerResponse: any) => {
                     log.debug(`ReadResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
-                        log.error(`Failed to read resource #${resolvedID} '${name}' [${t}]: ${err.stack}`);
-                        reject(err);
+                        preallocError.message =
+                            `failed to read resource #${resolvedID} '${name}' [${t}]: ${err.message}`;
+                        reject(preallocError);
                     }
                     else {
                         resolve(innerResponse);
