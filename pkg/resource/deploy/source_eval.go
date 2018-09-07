@@ -502,9 +502,9 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		ref, err := rm.defaultProviders.getDefaultProviderRef(t.Package())
-		if err != nil {
-			return nil, err
+		ref, provErr := rm.defaultProviders.getDefaultProviderRef(t.Package())
+		if provErr != nil {
+			return nil, provErr
 		}
 		provider = ref.String()
 	}
