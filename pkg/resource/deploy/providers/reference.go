@@ -34,6 +34,10 @@ const UnknownID = plugin.UnknownStringValue
 
 // IsProviderType returns true if the supplied type token refers to a Pulumi provider.
 func IsProviderType(typ tokens.Type) bool {
+	// Tokens without a module member are definitely not provider types.
+	if !tokens.Token(typ).HasModuleMember() {
+		return false
+	}
 	return typ.Module() == "pulumi:providers" && typ.Name() != ""
 }
 
