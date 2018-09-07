@@ -178,7 +178,6 @@ func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
 	contract.Assert(old.URN == new.URN)
 	contract.Assert(old.Delete == new.Delete)
 	contract.Assert(old.External == new.External)
-	contract.Assert(reflect.DeepEqual(old.Inputs, new.Inputs))
 
 	// If the kind of this resource has changed, we must write the checkpoint.
 	if old.Custom != new.Custom {
@@ -198,8 +197,10 @@ func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
 		return true
 	}
 
-	// If the outputs of this resource have changed, we must write the checkpoint.
-	if !reflect.DeepEqual(old.Outputs, new.Outputs) {
+	// If the inputs or outputs of this resource have changed, we must write the checkpoint. Note that it is possible
+	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
+	// resource's provider deems the physical change to be semantically irrelevant.
+	if !reflect.DeepEqual(old.Inputs, new.Inputs) || !reflect.DeepEqual(old.Outputs, new.Outputs) {
 		return true
 	}
 
