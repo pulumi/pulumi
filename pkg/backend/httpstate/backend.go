@@ -606,18 +606,15 @@ func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackRefere
 
 func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) (engine.ResourceChanges, error) {
-	// Get the stack.
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	// Persisting update previews is a new feature to pulumi.com, and is enabled via a flag
-	// so performance data can be gathered before enabling it by default.
-	persist := os.Getenv("PULUMI_PERSIST_PREVIEWS") != ""
-
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, true /*dryRun*/, persist, nil /*events*/)
+	return b.apply(
+		ctx, apitype.PreviewUpdate, stack, op,
+		true /*dryRun*/, true /* persist */, nil /*events*/)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference,
