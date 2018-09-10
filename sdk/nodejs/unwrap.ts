@@ -31,10 +31,14 @@ export type primitive = string | number | boolean | undefined | null;
  *
  * Note: due to TypeScript limitations there are some things that cannot be expressed. Specifically,
  * if you had a `Promise<Output<T>>` then the Unwrap type would not be able to undo both of those
- * wraps. In practice that should be ok.  Code should not wrap Outputs in Promises. Instead, any
- * code that needs to work Outputs and also be async should either create the Output with the
- * Promise (which will collapse into just an Output).  Or, it should start with an Output and call
- * .Apply on it, passing in an async function.  This will also collapse and just produce an Output.
+ * wraps. In practice that should be ok.  Values in an object graph should not wrap Outputs in
+ * Promises.  Instead, any code that needs to work Outputs and also be async should either create
+ * the Output with the Promise (which will collapse into just an Output).  Or, it should start with
+ * an Output and call .Apply on it, passing in an async function.  This will also collapse and just
+ * produce an Output.
+ *
+ * In other words, this should not be used as the shape of an object: `{ a: Promise<Output<...>> }`.
+ * It should always either be `{ a: Promise<NonOutput> }` or just `{ a: Output<...> }`.
  */
 export type Unwrap<T> =
     // 1. If we have a promise, just get the type it itself is wrapping and recursively unwrap that.
@@ -77,6 +81,31 @@ type UnwrappedObject<T> = {
 // the unwrapped value and any resources it ran into while unwrapping.  Only the topmost function
 // deals with them returning that into the final Output to return.
 
+/**
+ * [unwrap] takes in a object and creates a deep clone of it with all inner Outputs and Promises
+ * unwrapped.  i.e. the object returned will point at the values inside those Outputs and Promises.
+ * This process works transitively over the entire value graph and will see inside of Arrays and
+ * Objects.
+ *
+ * The resultant awaited value of this function will be an Output containing the final completely
+ * unwrapped object, as well as all [Resource]s that were encountered along the way while unwrapping.
+ * With this, the result can then be transformed using [Output.apply] as usual, and the result of
+ * that can be passed anywhere that needs such a value and also wants to keep track of dependent
+ * [Resource]s.  The expected way to use this function is like:
+ *
+ * ```ts
+ *      var hoisted = await pulumi.unwrap(someVal);
+ *
+ *      var transformed = hoisted.apply(unwrapped => {
+ *          // Do whatever you want now.  'unwrapped' will contain no outputs/promises inside
+ *          // here, so you can easily do whatever sort of transformation is most convenient.
+ *      });
+ *
+ *      // Result can be passed to another Resource.  The dependency information will be
+ *      // propertly maintained.
+ *      var someResource = new SomeResource(name, { data: transformed ... });
+ * ```
+ */
 export async function unwrap<T>(val: T): Promise<Output<Unwrap<T>>> {
     // Unwrap the value that was passed in.  And also capture all the resources and the isKnown bit.
     // Use all that to create the final output we return.
