@@ -246,7 +246,7 @@ describe("unwrap", () => {
 
 
     describe("type system", () => {
-        it ("is ok with typescript 1", asyncTest(async () => {
+        it ("across promises", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } };
             var xOutput = unwrap(v);
             var x = await xOutput.promise();
@@ -258,8 +258,56 @@ describe("unwrap", () => {
             x.c.e.toExponential();
         }));
 
-        it ("is ok with typescript 2", asyncTest(async () => {
+        it ("across nested promises", asyncTest(async () => {
+            var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: Promise.resolve(4) }) };
+            var xOutput = unwrap(v);
+            var x = await xOutput.promise();
+
+            // Ensure that ts thinks that 'e' is a number.
+            const z: EqualsType<typeof x.c.e, number> = 1;
+
+            // The runtime value better be a number;
+            x.c.e.toExponential();
+        }));
+
+        it ("across outputs", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: [4, 5, 6] }) };
+            var xOutput = unwrap(v);
+            var x = await xOutput.promise();
+
+            // Ensure that ts thinks that 'e' is an array of numbers;
+            const z: EqualsType<typeof x.c.e, number[]> = x.c.e;
+
+            // The runtime value better be a number[]
+            x.c.e.push(1);
+        }));
+
+        it ("across nested outputs", asyncTest(async () => {
+            var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: output([4, 5, 6]) }) };
+            var xOutput = unwrap(v);
+            var x = await xOutput.promise();
+
+            // Ensure that ts thinks that 'e' is an array of numbers;
+            const z: EqualsType<typeof x.c.e, number[]> = x.c.e;
+
+            // The runtime value better be a number[]
+            x.c.e.push(1);
+        }));
+
+        it ("across promise and output", asyncTest(async () => {
+            var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: output([4, 5, 6]) }) };
+            var xOutput = unwrap(v);
+            var x = await xOutput.promise();
+
+            // Ensure that ts thinks that 'e' is an array of numbers;
+            const z: EqualsType<typeof x.c.e, number[]> = x.c.e;
+
+            // The runtime value better be a number[]
+            x.c.e.push(1);
+        }));
+
+        it ("across output and promise", asyncTest(async () => {
+            var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: Promise.resolve([4, 5, 6]) }) };
             var xOutput = unwrap(v);
             var x = await xOutput.promise();
 
