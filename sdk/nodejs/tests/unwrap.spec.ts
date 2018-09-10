@@ -63,68 +63,67 @@ class TestResource {
     private readonly __pulumiResource: boolean = true;
 
     constructor(public name: string) {
-
     }
 }
 
 describe("unwrap", () => {
-    // describe("handles simple", () => {
-    //     it("null", testUntouched(null));
-    //     it("undefined", testUntouched(undefined));
-    //     it("true", testUntouched(true));
-    //     it("false", testUntouched(false));
-    //     it("0", testUntouched(0));
-    //     it("numbers", testUntouched(4));
-    //     it("empty string", testUntouched(""));
-    //     it("strings", testUntouched("foo"));
-    //     it("arrays", testUntouched([]));
-    //     it("object", testUntouched({}));
-    // });
+    describe("handles simple", () => {
+        it("null", testUntouched(null));
+        it("undefined", testUntouched(undefined));
+        it("true", testUntouched(true));
+        it("false", testUntouched(false));
+        it("0", testUntouched(0));
+        it("numbers", testUntouched(4));
+        it("empty string", testUntouched(""));
+        it("strings", testUntouched("foo"));
+        it("arrays", testUntouched([]));
+        it("object", testUntouched({}));
+    });
 
-    // describe("handles promises", () => {
-    //     it("with null", testPromise(null));
-    //     it("with undefined", testPromise(undefined));
-    //     it("with true", testPromise(true));
-    //     it("with false", testPromise(false));
-    //     it("with 0", testPromise(0));
-    //     it("with numbers", testPromise(4));
-    //     it("with empty string", testPromise(""));
-    //     it("with strings", testPromise("foo"));
-    //     it("with array", testPromise([]));
-    //     it("with object", testPromise({}));
-    //     it("with nested promise", test(Promise.resolve(Promise.resolve(4)), 4))
-    // });
+    describe("handles promises", () => {
+        it("with null", testPromise(null));
+        it("with undefined", testPromise(undefined));
+        it("with true", testPromise(true));
+        it("with false", testPromise(false));
+        it("with 0", testPromise(0));
+        it("with numbers", testPromise(4));
+        it("with empty string", testPromise(""));
+        it("with strings", testPromise("foo"));
+        it("with array", testPromise([]));
+        it("with object", testPromise({}));
+        it("with nested promise", test(Promise.resolve(Promise.resolve(4)), 4))
+    });
 
-    // describe("handles outputs", () => {
-    //     it("with null", testOutput(null));
-    //     it("with undefined", testOutput(undefined));
-    //     it("with true", testOutput(true));
-    //     it("with false", testOutput(false));
-    //     it("with 0", testOutput(0));
-    //     it("with numbers", testOutput(4));
-    //     it("with empty string", testOutput(""));
-    //     it("with strings", testOutput("foo"));
-    //     it("with array", testOutput([]));
-    //     it("with object", testOutput({}));
-    //     it("with nested output", test(output(output(4)), 4));
-    //     it("with output of promise", test(output(Promise.resolve(4)), 4));
-    // });
+    describe("handles outputs", () => {
+        it("with null", testOutput(null));
+        it("with undefined", testOutput(undefined));
+        it("with true", testOutput(true));
+        it("with false", testOutput(false));
+        it("with 0", testOutput(0));
+        it("with numbers", testOutput(4));
+        it("with empty string", testOutput(""));
+        it("with strings", testOutput("foo"));
+        it("with array", testOutput([]));
+        it("with object", testOutput({}));
+        it("with nested output", test(output(output(4)), 4));
+        it("with output of promise", test(output(Promise.resolve(4)), 4));
+    });
 
-    // describe("handles arrays", () => {
-    //     it("empty", testUntouched([]));
-    //     it("with primitives", testUntouched([1, true]));
-    //     it("with inner promise", test([1, true, Promise.resolve("")], [1, true, ""]));
-    //     it("with inner and outer promise", test(Promise.resolve([1, true, Promise.resolve("")]), [1, true, ""]));
-    //     it("recursion", test([1, Promise.resolve(""), [true, Promise.resolve(4)]], [1, "", [true, 4 ]]));
-    // });
+    describe("handles arrays", () => {
+        it("empty", testUntouched([]));
+        it("with primitives", testUntouched([1, true]));
+        it("with inner promise", test([1, true, Promise.resolve("")], [1, true, ""]));
+        it("with inner and outer promise", test(Promise.resolve([1, true, Promise.resolve("")]), [1, true, ""]));
+        it("recursion", test([1, Promise.resolve(""), [true, Promise.resolve(4)]], [1, "", [true, 4 ]]));
+    });
 
-    // describe("handles complex object", () => {
-    //     it("empty", testUntouched({}));
-    //     it("with primitives", testUntouched({ a: 1, b: true }));
-    //     it("with inner promise", test({ a: 1, b: true, c: Promise.resolve("") }, { a: 1, b: true, c: "" }));
-    //     it("with inner and outer promise", test(Promise.resolve({ a: 1, b: true, c: Promise.resolve("") }), { a: 1, b: true, c: "" }));
-    //     it("recursion", test({ a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } }, { a: 1, b: "", c: { d: true, e: 4 } }));
-    // });
+    describe("handles complex object", () => {
+        it("empty", testUntouched({}));
+        it("with primitives", testUntouched({ a: 1, b: true }));
+        it("with inner promise", test({ a: 1, b: true, c: Promise.resolve("") }, { a: 1, b: true, c: "" }));
+        it("with inner and outer promise", test(Promise.resolve({ a: 1, b: true, c: Promise.resolve("") }), { a: 1, b: true, c: "" }));
+        it("recursion", test({ a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } }, { a: 1, b: "", c: { d: true, e: 4 } }));
+    });
 
     describe("preserves resources", () => {
         const r1 = new TestResource("r1");
@@ -187,15 +186,44 @@ describe("unwrap", () => {
             { a: 1, b: 2, c: { d: 3 } },
             [r1, r2, r3, r5]));
 
+        it("inside nested object and array", testResources(
+            { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3), c: { d: createOutput([createOutput(3, r5)], r6)  } },
+            { a: 1, b: 2, c: { d: [3] } },
+            [r1, r2, r3, r5, r6]));
 
-        // it("inside and outside of array", testResources(
-        //     createOutput([createOutput(1, r1), createOutput(2, r2, r3), [createOutput(3, r3, r4)]], r5),
-        //     [1, 2, [3]],
-        //     [r1, r2, r4]));
+        it("inside nested array and object", testResources(
+            { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3), c: createOutput([{ d: createOutput(3, r5) }], r6) },
+            { a: 1, b: 2, c: [{ d: 3 }] },
+            [r1, r2, r3, r5, r6]));
+
+        it("across inner promise", testResources(
+            createOutput(Promise.resolve(3), r1, r2),
+            3,
+            [r1, r2]));
+
+        it("across outer promise", testResources(
+            Promise.resolve(createOutput(3, r1, r2)),
+            3,
+            [r1, r2]));
+
+        it("across inner and outer promise", testResources(
+            Promise.resolve(createOutput(Promise.resolve(3), r1, r2)),
+            3,
+            [r1, r2]));
+
+        it("across promise and inner object", testResources(
+            Promise.resolve(createOutput(Promise.resolve({ a: createOutput(1, r4, r5)}), r1, r2)),
+            { a: 1 },
+            [r1, r2, r4, r5]));
+
+        it("across promise and inner array and object", testResources(
+            Promise.resolve(createOutput([Promise.resolve({ a: createOutput(1, r4, r5)})], r1, r2)),
+            [{ a: 1 }],
+            [r1, r2, r4, r5]));
     });
 
-    // it("handles all in one", test(
-    //     Promise.resolve([1, output({ a: [Promise.resolve([1, 2, { b: true, c: null }, undefined])]})]),
-    //     [1, { a: [[1, 2, { b: true, c: null }, undefined]]}]
-    // ));
+    it("handles all in one", test(
+        Promise.resolve([1, output({ a: [Promise.resolve([1, 2, { b: true, c: null }, undefined])]})]),
+        [1, { a: [[1, 2, { b: true, c: null }, undefined]]}]
+    ));
 });
