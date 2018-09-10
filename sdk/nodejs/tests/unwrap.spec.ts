@@ -142,20 +142,51 @@ describe("unwrap", () => {
                 : new Output<any>(<any>new Set(resources), Promise.resolve(cv), Promise.resolve(true))
         }
 
-        // it("with single output", testResources(
-        //     createOutput(3, r1, r2),
-        //     3,
-        //     [r1, r2]));
+        it("with single output", testResources(
+            createOutput(3, r1, r2),
+            3,
+            [r1, r2]));
 
-        // it("inside array", testResources(
-        //     [createOutput(3, r1, r2)],
-        //     [3],
-        //     [r1, r2]));
+        it("inside array", testResources(
+            [createOutput(3, r1, r2)],
+            [3],
+            [r1, r2]));
+
+        it("inside multi array", testResources(
+            [createOutput(1, r1, r2),createOutput(2, r2, r3)],
+            [1, 2],
+            [r1, r2, r3]));
+
+        it("inside nested array", testResources(
+            [createOutput(1, r1, r2), createOutput(2, r2, r3), [createOutput(3, r5)]],
+            [1, 2, [3]],
+            [r1, r2, r3, r5]));
 
         it("inside and outside of array", testResources(
             createOutput([createOutput(3, r1, r2)], r2, r3),
             [3],
             [r1, r2, r3]));
+
+        it("inside object", testResources(
+            { a: createOutput(3, r1, r2) },
+            { a: 3 },
+            [r1, r2]));
+
+        it("inside and outside of object", testResources(
+            createOutput({ a: createOutput(3, r1, r2) }, r2, r3),
+            { a: 3 },
+            [r1, r2, r3]));
+
+        it("inside multi object", testResources(
+            { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3) },
+            { a: 1, b: 2 },
+            [r1, r2, r3]));
+
+        it("inside nested object", testResources(
+            { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3), c: { d: createOutput(3, r5) } },
+            { a: 1, b: 2, c: { d: 3 } },
+            [r1, r2, r3, r5]));
+
 
         // it("inside and outside of array", testResources(
         //     createOutput([createOutput(1, r1), createOutput(2, r2, r3), [createOutput(3, r3, r4)]], r5),
