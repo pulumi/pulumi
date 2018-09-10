@@ -241,6 +241,12 @@ func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Opt
 	// Submit the deletes for execution and wait for them all to retire.
 	stepExec.Execute(steps)
 	stepExec.SignalCompletion()
+
+	// Log an ephemeral diagnostic for each resource we're deleting so it's clear why we are deleting it.
+	for _, step := range steps {
+		pe.plan.Ctx().StatusDiag.Infof(diag.RawMessage(step.URN(), "completing deletion from previous update"))
+	}
+
 	stepExec.WaitForCompletion()
 
 	// Like Refresh, we use the presence of an error in the caller's context to detect whether or not we have been
