@@ -71,16 +71,6 @@ type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
 
-// Note1: unwrap must be async itself.  Otherwise we can't 'peer' through promises to see what
-// resources they may be referencing.  i.e. Output<T> needs the set of resources it points at to be
-// provided at creation time.  So we could not possibly produce an Output that had all the right
-// Resources, unless we deeply (and thus asynchronously) unwrapped the Promises to find all of them.
-
-// Note2: I split this into two functions to keep the flow and return types clearer to me.  The
-// helper function is the recursive part and does not talk about Output objects.  It just gives back
-// the unwrapped value and any resources it ran into while unwrapping.  Only the topmost function
-// deals with them returning that into the final Output to return.
-
 /**
  * [unwrap] takes in a object and creates a deep clone of it with all inner Outputs and Promises
  * unwrapped.  i.e. the object returned will point at the values inside those Outputs and Promises.
@@ -94,7 +84,7 @@ type UnwrappedObject<T> = {
  * [Resource]s.  The expected way to use this function is like:
  *
  * ```ts
- *      var hoisted = await pulumi.unwrap(someVal);
+ *      var hoisted = pulumi.unwrap(someVal);
  *
  *      var transformed = hoisted.apply(unwrapped => {
  *          // Do whatever you want now.  'unwrapped' will contain no outputs/promises inside
@@ -106,72 +96,37 @@ type UnwrappedObject<T> = {
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
  */
-export async function unwrap<T>(val: T): Promise<Output<Unwrap<T>>> {
-    // Unwrap the value that was passed in.  And also capture all the resources and the isKnown bit.
-    // Use all that to create the final output we return.
-    const [unwrapped, resources, isKnown] = await unwrapWorker(val);
-    return new Output(new Set(resources), Promise.resolve(unwrapped), Promise.resolve(isKnown));
-}
-
-async function unwrapWorker<T>(val: T): Promise<[Unwrap<T>, Resource[], boolean]> {
+export function unwrap<T>(val: T): Output<Unwrap<T>> {
     if (val === null) {
-        return [<any>val, [], /*isKnown*/ true];
+        return output(val);
     }
     else if (typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds all are returned as themselves
-        return [val, [], /*isKnown*/ true];
+        return output(val);
     }
     else if (val instanceof Promise) {
-        // For a promise, we first await it to get the inner value, then we unwrap that inner value.
-        return unwrapWorker(await val);
+        // For a promise, we need to peek into the value the promise wraps and 'unwrap' that.
+        // However, unwrapping that inner value will itself return an Output.  So we get the promise
+        // off of *that* inner Output, and we create hte Outer output from that.
+        //
+        // This has the consequence of losing the resources the inner Promise/Output pointed at.
+        // However, that fits in line with our general pulumi model that Outputs should theselves
+        // not be wrapped in Promises (as those promises may not be executed, and may not pass their
+        // dependency information along.
+        return <any>output(val.then(v => unwrap(v).promise()));
     }
     else if (Output.isInstance(val)) {
-        // Outputs wrap a promise themselves.  So first unwrap that promise.  Then combine any
-        // resources we found inside of it with the resources we know are associated with this
-        // Output itself.
-        const [unwrapped, resources, innerIsKnown] = await unwrapWorker(val.promise());
-
-        const allResources = [...val.resources()];
-        allResources.push(...resources);
-
-        const isKnown = (await val.isKnown) && innerIsKnown;
-
-        return [<any>unwrapped, allResources, isKnown];
+        return <any>val.apply(unwrap);
     }
     else if (val instanceof Array) {
-        const unwrappedArray: any[] = [];
-        const allResources: Resource[] = [];
-        let isKnown = true;
-
-        for (const child of val) {
-            // Unwrap each child element and merge all its resources into a combined list of
-            // resources.  As long as all elements are known for this array, then this result will
-            // be known as well.
-            const [unwrapped, resources, innerIsKnown] = await unwrapWorker(child);
-            unwrappedArray.push(unwrapped);
-            allResources.push(...resources);
-
-            isKnown = isKnown && innerIsKnown;
-        }
-
-        return [<any>unwrappedArray, allResources, isKnown];
+        return <any>all(val.map(unwrap));
     }
     else {
         const unwrappedObject: any = {};
-        const allResources: Resource[] = [];
-        let isKnown = true;
+        Object.keys(val).forEach(k => {
+            unwrappedObject[k] = unwrap((<any>val)[k]);
+        });
 
-        for (const key of Object.keys(val)) {
-            // Unwrap each child property and merge all its resources into a combined list of
-            // resources.  As long as all child properties are known for this object, then this
-            // result will be known as well.
-            const [unwrapped, resources, innerIsKnown] = await unwrapWorker((<any>val)[key]);
-            unwrappedObject[key] = unwrapped;
-            allResources.push(...resources);
-
-            isKnown = isKnown && innerIsKnown;
-        }
-
-        return [<any>unwrappedObject, allResources, isKnown];
+        return <any>all(unwrappedObject);
     }
 }

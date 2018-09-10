@@ -21,7 +21,7 @@ import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
     return asyncTest(async () => {
-        const unwrapped = await unwrap(val);
+        const unwrapped = unwrap(val);
         const actual = await unwrapped.promise();
         assert.deepStrictEqual(actual, expected);
     });
@@ -41,7 +41,7 @@ function testOutput(val: any) {
 
 function testResources(val: any, expected: any, resources: TestResource[]) {
     return asyncTest(async () => {
-        const unwrapped = await unwrap(val);
+        const unwrapped = unwrap(val);
         const actual = await unwrapped.promise();
 
         assert.deepStrictEqual(actual, expected);
@@ -231,7 +231,7 @@ describe("unwrap", () => {
     describe("type system", () => {
         it ("is ok with typescript 1", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } };
-            var xOutput = await unwrap(v);
+            var xOutput = unwrap(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is a number.
@@ -243,7 +243,7 @@ describe("unwrap", () => {
 
         it ("is ok with typescript 2", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: [4, 5, 6] }) };
-            var xOutput = await unwrap(v);
+            var xOutput = unwrap(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is an array of numbers;
