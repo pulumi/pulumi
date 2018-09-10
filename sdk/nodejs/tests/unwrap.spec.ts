@@ -21,7 +21,8 @@ import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
     return asyncTest(async () => {
-        const actual = await unwrap(val).promise();
+        const unwrapped = await unwrap(val);
+        const actual = await unwrapped.promise();
         assert.deepStrictEqual(actual, expected);
     });
 }
@@ -40,13 +41,19 @@ function testOutput(val: any) {
 
 function testResources(val: any, expected: any, resources: TestResource[]) {
     return asyncTest(async () => {
-        const unwrapped = unwrap(val);
+        const unwrapped = await unwrap(val);
         const actual = await unwrapped.promise();
 
         assert.deepStrictEqual(actual, expected);
-        // console.log(JSON.stringify([...unwrapped.resources()]));
-        // console.log(JSON.stringify(resources));
-        assert.equal(unwrapped.resources(), new Set(resources));
+        assert.deepStrictEqual(unwrapped.resources(), new Set(resources));
+
+        const unwrappedResources: TestResource[] = <any>[...unwrapped.resources()];
+        unwrappedResources.sort((r1, r2) => r1.name.localeCompare(r2.name));
+
+        resources.sort((r1, r2) => r1.name.localeCompare(r2.name));
+        assert.equal(
+            JSON.stringify(unwrappedResources),
+            JSON.stringify(resources));
     });
 }
 
@@ -119,7 +126,7 @@ describe("unwrap", () => {
     //     it("recursion", test({ a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } }, { a: 1, b: "", c: { d: true, e: 4 } }));
     // });
 
-    describe("handles resources", () => {
+    describe("preserves resources", () => {
         const r1 = new TestResource("r1");
         const r2 = new TestResource("r2");
         const r3 = new TestResource("r3");
@@ -129,14 +136,31 @@ describe("unwrap", () => {
 
         // assert.deepEqual(r1, r2);
 
-        function createOutput<T>(val: T, ...resources: TestResource[]): Output<T> {
-            return new Output(<Set<Resource>><any>new Set(resources), Promise.resolve(val), Promise.resolve(true));
+        function createOutput<T>(cv: T, ...resources: TestResource[]): Output<T> {
+            return Output.isInstance(cv)
+                ? cv
+                : new Output<any>(<any>new Set(resources), Promise.resolve(cv), Promise.resolve(true))
         }
 
+        // it("with single output", testResources(
+        //     createOutput(3, r1, r2),
+        //     3,
+        //     [r1, r2]));
+
+        // it("inside array", testResources(
+        //     [createOutput(3, r1, r2)],
+        //     [3],
+        //     [r1, r2]));
+
         it("inside and outside of array", testResources(
-            createOutput([createOutput(1, r1), createOutput(2, r2, r3), [createOutput(3, r3, r4)]], r5),
-            [1, 2, [3]],
-            [r1, r2, r4]));
+            createOutput([createOutput(3, r1, r2)], r2, r3),
+            [3],
+            [r1, r2, r3]));
+
+        // it("inside and outside of array", testResources(
+        //     createOutput([createOutput(1, r1), createOutput(2, r2, r3), [createOutput(3, r3, r4)]], r5),
+        //     [1, 2, [3]],
+        //     [r1, r2, r4]));
     });
 
     // it("handles all in one", test(

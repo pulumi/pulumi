@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { all, Output, output } from ".";
+import { all, Output, output, Resource } from ".";
 
 export type primitive = string | number | boolean | undefined | null;
 
@@ -67,29 +67,54 @@ type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
 
-export function unwrap<T>(val: T): Output<Unwrap<T>> {
+export async function unwrap<T>(val: T): Promise<Output<Unwrap<T>>> {
     if (val === null) {
         return <any>output(val);
     }
 
     // strings, numbers, booleans, functions, symbols, undefineds all are returned as themselves
     if (typeof val !== "object") {
+        // console.log("Returning simple value: " + val)
         return output(val);
     }
 
     if (val instanceof Promise) {
-        return unwrap(output(val));
+        // console.log("Unwrapping promise");
+        const unwrappedPromise = await val;
+        // console.log("Unwrapped promise: " + JSON.stringify(unwrappedPromise));
+        return unwrap(unwrappedPromise);
     }
 
     if (Output.isInstance(val)) {
-        return <any>val.apply(unwrap);
+        // console.log("Unwrapping output");
+        const unwrapped = await unwrap(val.promise());
+        // console.log("Unwrapped output: " + JSON.stringify(unwrapped));
+        const allResources = new Set<Resource>();
+
+        val.resources().forEach(r => allResources.add(r));
+        unwrapped.resources().forEach(r => allResources.add(r));
+
+        return <any>new Output(allResources, unwrapped.promise(), unwrapped.isKnown);
     }
 
     if (val instanceof Array) {
-        return <any>all(val.map(unwrap));
+        // console.log("Unwrapping array.");
+        const unwrappedArray: any[] = [];
+        for (const child of val) {
+            unwrappedArray.push(await unwrap(child));
+        }
+        // console.log("Unwrapped array: " + JSON.stringify(unwrappedArray));
+
+        const allOutput = all(unwrappedArray);
+        // console.log("all.resources: " + JSON.stringify([...allOutput.resources()]));
+
+        return <any>allOutput;
     }
 
     const unwrappedObject: any = {};
-    Object.keys(val).forEach(key => unwrappedObject[key] = unwrap((<any>val)[key]));
+    for (const key of Object.keys(val)) {
+        unwrappedObject[key] = await unwrap((<any>val)[key]);
+    }
+
     return <any>all(unwrappedObject);
 }
