@@ -716,7 +716,9 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
-	// If we get stack outputs and there weren't any errors, display them at the end.
+	// If we get stack outputs and there weren't any errors, display them at the end. Stack outputs are meaningless if
+	// there were errors; it is possible that the update encountered an error and exited before the entire Pulumi
+	// program ran to populate the stack outputs.
 	if display.stackUrn != "" && !sawError {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 		props := engine.GetResourceOutputsPropertiesString(stackStep, 1, display.isPreview, display.opts.Debug)
