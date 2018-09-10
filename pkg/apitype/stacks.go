@@ -18,8 +18,10 @@ import "encoding/json"
 
 // StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
-	// QualifiedName is the name of the stack, prefixed with the organization. e.g. "pulumi/pulumi.io-production".
-	QualifiedName string `json:"qualifiedName"`
+	// OrgName is the organization name the stack is found in.
+	OrgName string `json:"orgName"`
+	// StackName is the name of the stack.
+	StackName string `json:"stackName"`
 
 	// LastUpdate is a Unix timestamp of the stack's last update, as applicable.
 	LastUpdate *int64 `json:"lastUpdate,omitempty"`
