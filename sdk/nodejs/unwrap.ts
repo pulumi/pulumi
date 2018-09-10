@@ -106,13 +106,15 @@ export function unwrap<T>(val: T): Output<Unwrap<T>> {
         return output(val);
     }
     else if (val instanceof Promise) {
-        // For a promise, we can just treat the same as an output that points to that resource.
+        // For a promise, we can just treat the same as an output that points to that resource. So
+        // we just create an Output around the Promise, and immediately apply the unwrap function on
+        // it to transform the value it points at.
         //
-        // Note: this does have the consequence of losing the resources the inner Promise/Output
+        // Note: this does have the consequence of losing any resources the inner Promise might have
         // pointed at. However, that fits in line with our general pulumi model that Outputs should
         // themselves not be wrapped in Promises (as those promises may not be executed, and may not
-        // pass their dependency information along.
-        return unwrap(output(val));
+        // pass their dependency information along).
+        return output(val).apply(unwrap);
     }
     else if (Output.isInstance(val)) {
         return <any>val.apply(unwrap);
