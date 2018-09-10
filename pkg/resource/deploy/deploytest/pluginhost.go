@@ -15,6 +15,8 @@
 package deploytest
 
 import (
+	"sync"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
@@ -46,6 +48,9 @@ type pluginHost struct {
 	languageRuntime plugin.LanguageRuntime
 	sink            diag.Sink
 	statusSink      diag.Sink
+
+	providers map[plugin.Provider]struct{}
+	m         sync.Mutex
 }
 
 func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
@@ -56,6 +61,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		languageRuntime: languageRuntime,
 		sink:            sink,
 		statusSink:      statusSink,
+		providers:       make(map[plugin.Provider]struct{}),
 	}
 }
 
@@ -76,7 +82,17 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	if best == nil {
 		return nil, nil
 	}
-	return best.load()
+
+	prov, err := best.load()
+	if err != nil {
+		return nil, err
+	}
+
+	host.m.Lock()
+	defer host.m.Unlock()
+
+	host.providers[prov] = struct{}{}
+	return prov, nil
 }
 
 func (host *pluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
@@ -84,7 +100,16 @@ func (host *pluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime,
 }
 
 func (host *pluginHost) SignalCancellation() error {
-	return nil
+	host.m.Lock()
+	defer host.m.Unlock()
+
+	var err error
+	for prov := range host.providers {
+		if pErr := prov.SignalCancellation(); pErr != nil {
+			err = pErr
+		}
+	}
+	return err
 }
 func (host *pluginHost) Close() error {
 	return nil
@@ -102,6 +127,10 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
 func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
+	host.m.Lock()
+	defer host.m.Unlock()
+
+	delete(host.providers, provider)
 	return nil
 }
 func (host *pluginHost) ListPlugins() []workspace.PluginInfo {
