@@ -37,9 +37,6 @@ type planExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this plan
 }
 
-// Utility for convenient logging.
-var log = logging.V(4)
-
 // execError creates an error appropriate for returning from planExecutor.Execute.
 func execError(message string, preview bool) error {
 	kind := "update"
@@ -61,14 +58,17 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// not hang this off of the context we create below because we do not want the failure of a single step to cause
 	// other steps to fail.
 	done := make(chan bool)
+	defer close(done)
 	go func() {
 		select {
 		case <-callerCtx.Done():
+			logging.V(4).Infof("planExecutor.Execute(...): signalling cancellation to providers...")
 			cancelErr := pe.plan.ctx.Host.SignalCancellation()
 			if cancelErr != nil {
-				log.Infof("planExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
+				logging.V(4).Infof("planExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
 			}
 		case <-done:
+			logging.V(4).Infof("planExecutor.Execute(...): exiting provider canceller")
 		}
 	}()
 
@@ -112,7 +112,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					return
 				}
 			case <-done:
-				log.Infof("planExecutor.Execute(...): incoming events goroutine exiting")
+				logging.V(4).Infof("planExecutor.Execute(...): incoming events goroutine exiting")
 				return
 			}
 		}
@@ -127,11 +127,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
-		log.Infof("planExecutor.Execute(...): waiting for incoming events")
+		logging.V(4).Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
 			select {
 			case event := <-incomingEvents:
-				log.Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Error)
+				logging.V(4).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Error)
 
 				if event.Error != nil {
 					pe.reportError("", event.Error)
@@ -149,21 +149,21 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					// Signal completion to the step executor. It'll exit once it's done retiring all of the steps in
 					// the chain that we just gave it.
 					pe.stepExec.SignalCompletion()
-					log.Infof("planExecutor.Execute(...): issued deletes")
+					logging.V(4).Infof("planExecutor.Execute(...): issued deletes")
 
 					return false, nil
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
 					if resErr := res.Error(); resErr != nil {
-						log.Infof("planExecutor.Execute(...): error handling event: %v", resErr)
+						logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
 					cancel()
 					return false, result.TODO()
 				}
 			case <-ctx.Done():
-				log.Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
+				logging.V(4).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 				// cancellation from internally-initiated cancellation.
@@ -171,10 +171,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 			}
 		}
 	}()
-	close(done)
 
 	pe.stepExec.WaitForCompletion()
-	log.Infof("planExecutor.Execute(...): step executor has completed")
+	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
 	if err != nil || pe.stepExec.Errored() {
@@ -194,13 +193,13 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
 	var res *result.Result
 	switch e := event.(type) {
 	case RegisterResourceEvent:
-		log.Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
+		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		steps, res = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
-		log.Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
+		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, res = pe.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
-		log.Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
+		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
 		return nil
 	}

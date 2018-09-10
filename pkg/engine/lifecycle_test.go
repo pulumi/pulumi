@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
@@ -236,7 +237,17 @@ func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Pro
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
 
-	cancelCtx, _ := cancel.NewContext(callerCtx)
+	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
+	done := make(chan bool)
+	defer close(done)
+	go func() {
+		select {
+		case <-callerCtx.Done():
+			cancelSrc.Cancel()
+		case <-done:
+		}
+	}()
+
 	events := make(chan Event)
 	journal := newJournal()
 
@@ -1879,4 +1890,76 @@ func TestBadResourceType(t *testing.T) {
 	}
 
 	p.Run(t, nil)
+}
+
+// Tests that provider cancellation occurs as expected.
+func TestProviderCancellation(t *testing.T) {
+	const resourceCount = 4
+
+	// Set up a cancelable context for the refresh operation.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Wait for our resource ops, then cancel.
+	var ops sync.WaitGroup
+	ops.Add(resourceCount)
+	go func() {
+		ops.Wait()
+		cancel()
+	}()
+
+	// Set up an independent cancelable context for the provider's operations.
+	provCtx, provCancel := context.WithCancel(context.Background())
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					inputs resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					// Inform the waiter that we've entered a provider op and wait for cancellation.
+					ops.Done()
+					<-provCtx.Done()
+
+					return resource.ID(urn.Name()), resource.PropertyMap{}, resource.StatusOK, nil
+				},
+				CancelF: func() error {
+					provCancel()
+					return nil
+				},
+			}, nil
+		}),
+	}
+
+	done := make(chan bool)
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		errors := make([]error, resourceCount)
+		var resources sync.WaitGroup
+		resources.Add(resourceCount)
+		for i := 0; i < resourceCount; i++ {
+			go func(idx int) {
+				_, _, _, errors[idx] = monitor.RegisterResource("pkgA:m:typA", fmt.Sprintf("res%d", idx), true, "",
+					false, nil, "", resource.PropertyMap{})
+				resources.Done()
+			}(i)
+		}
+		resources.Wait()
+		for _, err := range errors {
+			assert.NoError(t, err)
+		}
+		close(done)
+		return nil
+	})
+
+	p := &TestPlan{}
+	op := TestOp(Update)
+	options := UpdateOptions{
+		Parallel: resourceCount,
+		host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
+	}
+	project, target := p.GetProject(), p.GetTarget(nil)
+
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil)
+	assert.Error(t, err)
+
+	// Wait for the program to finish.
+	<-done
 }
