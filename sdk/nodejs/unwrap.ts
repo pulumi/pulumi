@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { all, Output, output, Resource } from ".";
-
-export type primitive = string | number | boolean | undefined | null;
+import { all, Output, output } from ".";
 
 /**
  * The 'Unwrap' type allows us to express the operation of taking a type, with potentially deeply
@@ -47,6 +45,8 @@ export type Unwrap<T> =
     T extends Promise<infer U> ? UnwrapSimple<U> :
     T extends Output<infer U> ? UnwrapSimple<U> :
     UnwrapSimple<T>;
+
+export type primitive = string | number | boolean | undefined | null;
 
 /**
  * Handles encountering basic types when unwrapping.
