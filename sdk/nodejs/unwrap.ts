@@ -25,7 +25,7 @@ export type primitive = string | number | boolean | undefined | null;
  *
  * Then `Unwrap<X>` would be equivalent to:
  *
- *      `type ... = { A: { B: { C: boolean } } }`
+ *      `...    = { A: { B: { C: boolean } } }`
  *
  * Unwrapping sees through Promises, Outputs, Arrays and Objects.
  *
@@ -34,7 +34,7 @@ export type primitive = string | number | boolean | undefined | null;
  * wraps. In practice that should be ok.  Values in an object graph should not wrap Outputs in
  * Promises.  Instead, any code that needs to work Outputs and also be async should either create
  * the Output with the Promise (which will collapse into just an Output).  Or, it should start with
- * an Output and call .Apply on it, passing in an async function.  This will also collapse and just
+ * an Output and call [apply] on it, passing in an async function.  This will also collapse and just
  * produce an Output.
  *
  * In other words, this should not be used as the shape of an object: `{ a: Promise<Output<...>> }`.
@@ -78,10 +78,11 @@ type UnwrappedObject<T> = {
  * Objects.
  *
  * The resultant awaited value of this function will be an Output containing the final completely
- * unwrapped object, as well as all [Resource]s that were encountered along the way while unwrapping.
- * With this, the result can then be transformed using [Output.apply] as usual, and the result of
- * that can be passed anywhere that needs such a value and also wants to keep track of dependent
- * [Resource]s.  The expected way to use this function is like:
+ * unwrapped object, as well as all [Resource]s that were encountered along the way while unwrapping
+ * (not including Promise boundaries). With this, the result can then be transformed using
+ * [Output.apply] as usual, and the result of that can be passed anywhere that needs such a value
+ * and also wants to keep track of dependent [Resource]s.  The expected way to use this function is
+ * like:
  *
  * ```ts
  *      var hoisted = pulumi.unwrap(someVal);
@@ -110,7 +111,7 @@ export function unwrap<T>(val: T): Output<Unwrap<T>> {
         // off of *that* inner Output, and we create hte Outer output from that.
         //
         // This has the consequence of losing the resources the inner Promise/Output pointed at.
-        // However, that fits in line with our general pulumi model that Outputs should theselves
+        // However, that fits in line with our general pulumi model that Outputs should themselves
         // not be wrapped in Promises (as those promises may not be executed, and may not pass their
         // dependency information along.
         return <any>output(val.then(v => unwrap(v).promise()));
