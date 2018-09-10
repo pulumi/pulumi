@@ -51,6 +51,7 @@
 
         "tests/config.spec.ts",
         "tests/init.spec.ts",
+        "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/closure.spec.ts",
         "tests/runtime/props.spec.ts",
