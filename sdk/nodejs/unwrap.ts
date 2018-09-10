@@ -106,15 +106,13 @@ export function unwrap<T>(val: T): Output<Unwrap<T>> {
         return output(val);
     }
     else if (val instanceof Promise) {
-        // For a promise, we need to peek into the value the promise wraps and 'unwrap' that.
-        // However, unwrapping that inner value will itself return an Output.  So we get the promise
-        // off of *that* inner Output, and we create hte Outer output from that.
+        // For a promise, we can just treat the same as an output that points to that resource.
         //
-        // This has the consequence of losing the resources the inner Promise/Output pointed at.
-        // However, that fits in line with our general pulumi model that Outputs should themselves
-        // not be wrapped in Promises (as those promises may not be executed, and may not pass their
-        // dependency information along.
-        return <any>output(val.then(v => unwrap(v).promise()));
+        // Note: this does have the consequence of losing the resources the inner Promise/Output
+        // pointed at. However, that fits in line with our general pulumi model that Outputs should
+        // themselves not be wrapped in Promises (as those promises may not be executed, and may not
+        // pass their dependency information along.
+        return unwrap(output(val));
     }
     else if (Output.isInstance(val)) {
         return <any>val.apply(unwrap);
