@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
@@ -356,11 +357,16 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 }
 
 func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
-	project, target := p.GetProject(), p.GetTarget(snapshot)
-
+	project := p.GetProject()
+	snap := snapshot
 	for _, step := range p.Steps {
+		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
+		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
+		// cause state changes from the preview to persist even when doing an update.
 		if !step.SkipPreview {
-			_, err := step.Op.Run(project, target, p.Options, true, step.Validate)
+			previewSnap := CloneSnapshot(t, snap)
+			previewTarget := p.GetTarget(previewSnap)
+			_, err := step.Op.Run(project, previewTarget, p.Options, true, step.Validate)
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -370,7 +376,8 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		var err error
-		target.Snapshot, err = step.Op.Run(project, target, p.Options, false, step.Validate)
+		target := p.GetTarget(snap)
+		snap, err = step.Op.Run(project, target, p.Options, false, step.Validate)
 		if step.ExpectFailure {
 			assert.Error(t, err)
 			continue
@@ -379,7 +386,19 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		assert.NoError(t, err)
 	}
 
-	return target.Snapshot
+	return snap
+}
+
+// CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
+func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
+	t.Helper()
+	if snap != nil {
+		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
+		assert.True(t, reflect.DeepEqual(*snap, copiedSnap))
+		return &copiedSnap
+	}
+
+	return snap
 }
 
 func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
@@ -687,6 +706,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 			return err
 		},
 	}}
+
 	snap = p.Run(t, snap)
 
 	// Resume the lifecycle with another no-op update.
@@ -1227,7 +1247,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Refresh DOES fail, causing the new initialization error to appear.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh, ExpectFailure: true}}
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true, ExpectFailure: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
