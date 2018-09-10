@@ -66,6 +66,12 @@ class TestResource {
     }
 }
 
+// Helper type to try to do type asserts.  Note that it's not totally safe.  If TS thinks a type is
+// the 'any' type, it will succeed here.  Talking to the TS team, it does not look like there's a
+// way to write a totally airtight type assertion.
+
+type EqualsType<X, Y> = X extends Y ? Y extends X ? X : never : never;
+
 describe("unwrap", () => {
     describe("handles simple", () => {
         it("null", testUntouched(null));
@@ -220,6 +226,32 @@ describe("unwrap", () => {
             Promise.resolve(createOutput([Promise.resolve({ a: createOutput(1, r4, r5)})], r1, r2)),
             [{ a: 1 }],
             [r1, r2, r4, r5]));
+    });
+
+    describe("type system", () => {
+        it ("is ok with typescript 1", asyncTest(async () => {
+            var v = { a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } };
+            var xOutput = await unwrap(v);
+            var x = await xOutput.promise();
+
+            // Ensure that ts thinks that 'e' is a number.
+            const z: EqualsType<typeof x.c.e, number> = 1;
+
+            // The runtime value better be a number;
+            x.c.e.toExponential();
+        }));
+
+        it ("is ok with typescript 2", asyncTest(async () => {
+            var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: [4, 5, 6] }) };
+            var xOutput = await unwrap(v);
+            var x = await xOutput.promise();
+
+            // Ensure that ts thinks that 'e' is an array of numbers;
+            const z: EqualsType<typeof x.c.e, number[]> = x.c.e;
+
+            // The runtime value better be a number[]
+            x.c.e.push(1);
+        }));
     });
 
     it("handles all in one", test(
