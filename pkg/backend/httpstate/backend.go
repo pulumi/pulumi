@@ -768,8 +768,6 @@ func (b *cloudBackend) runEngineAction(
 	engineEvents := make(chan engine.Event)
 
 	scope := op.Scopes.NewScope(engineEvents, dryRun)
-	defer scope.Close()
-
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send to them to the two listeners.
@@ -807,6 +805,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// Wait for the display to finish showing all the events.
 	<-displayDone
+	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
 	close(displayEvents)
 	close(displayDone)

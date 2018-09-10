@@ -292,8 +292,6 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	engineEvents := make(chan engine.Event)
 
 	scope := op.Scopes.NewScope(engineEvents, dryRun)
-	defer scope.Close()
-
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send them to the two listeners.
@@ -334,6 +332,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 
 	// Wait for the display to finish showing all the events.
 	<-displayDone
+	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
 	close(displayEvents)
 	close(displayDone)
