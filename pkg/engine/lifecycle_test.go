@@ -1894,7 +1894,6 @@ func TestBadResourceType(t *testing.T) {
 
 // Tests that provider cancellation occurs as expected.
 func TestProviderCancellation(t *testing.T) {
-	const resType = "pkgA:m:typA"
 	const resourceCount = 4
 
 	// Set up a cancelable context for the refresh operation.

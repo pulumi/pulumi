@@ -37,9 +37,6 @@ type planExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this plan
 }
 
-// Utility for convenient logging.
-var log = logging.V(4)
-
 // execError creates an error appropriate for returning from planExecutor.Execute.
 func execError(message string, preview bool) error {
 	kind := "update"
