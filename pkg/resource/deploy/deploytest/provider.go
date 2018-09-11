@@ -49,10 +49,15 @@ type Provider struct {
 		props resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+
+	CancelF func() error
 }
 
 func (prov *Provider) SignalCancellation() error {
-	return nil
+	if prov.CancelF == nil {
+		return nil
+	}
+	return prov.CancelF()
 }
 
 func (prov *Provider) Close() error {

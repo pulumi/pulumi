@@ -388,15 +388,18 @@ func (host *defaultHost) GetRequiredPlugins(info ProgInfo, kinds Flags) ([]works
 }
 
 func (host *defaultHost) SignalCancellation() error {
-	var result error
-	for _, plug := range host.resourcePlugins {
-		if err := plug.Plugin.SignalCancellation(); err != nil {
-			result = multierror.Append(result, errors.Wrapf(err,
-				"Error signaling cancellation to resource provider '%s'", plug.Info.Name))
+	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
+	_, err := host.loadPlugin(func() (interface{}, error) {
+		var result error
+		for _, plug := range host.resourcePlugins {
+			if err := plug.Plugin.SignalCancellation(); err != nil {
+				result = multierror.Append(result, errors.Wrapf(err,
+					"Error signaling cancellation to resource provider '%s'", plug.Info.Name))
+			}
 		}
-	}
-
-	return result
+		return nil, result
+	})
+	return err
 }
 
 func (host *defaultHost) CloseProvider(provider Provider) error {

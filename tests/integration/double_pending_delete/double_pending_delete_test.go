@@ -51,10 +51,10 @@ func TestDoublePendingDelete(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					// Now there are two pending deletes in the deployment.
+					// There is still only one pending delete resource in this snapshot.
 					assert.NotNil(t, stackInfo.Deployment)
 
-					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					assert.Equal(t, 5, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
@@ -68,11 +68,7 @@ func TestDoublePendingDelete(t *testing.T) {
 					assert.Equal(t, "a", string(aCondemned.URN.Name()))
 					assert.True(t, aCondemned.Delete)
 
-					aSecondCondemned := stackInfo.Deployment.Resources[4]
-					assert.Equal(t, "a", string(aSecondCondemned.URN.Name()))
-					assert.True(t, aSecondCondemned.Delete)
-
-					b := stackInfo.Deployment.Resources[5]
+					b := stackInfo.Deployment.Resources[4]
 					assert.Equal(t, "b", string(b.URN.Name()))
 					assert.False(t, b.Delete)
 				},

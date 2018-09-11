@@ -20,11 +20,14 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -38,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -234,7 +238,17 @@ func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Pro
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
 
-	cancelCtx, _ := cancel.NewContext(callerCtx)
+	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
+	done := make(chan bool)
+	defer close(done)
+	go func() {
+		select {
+		case <-callerCtx.Done():
+			cancelSrc.Cancel()
+		case <-done:
+		}
+	}()
+
 	events := make(chan Event)
 	journal := newJournal()
 
@@ -343,11 +357,16 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 }
 
 func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
-	project, target := p.GetProject(), p.GetTarget(snapshot)
-
+	project := p.GetProject()
+	snap := snapshot
 	for _, step := range p.Steps {
+		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
+		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
+		// cause state changes from the preview to persist even when doing an update.
 		if !step.SkipPreview {
-			_, err := step.Op.Run(project, target, p.Options, true, step.Validate)
+			previewSnap := CloneSnapshot(t, snap)
+			previewTarget := p.GetTarget(previewSnap)
+			_, err := step.Op.Run(project, previewTarget, p.Options, true, step.Validate)
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -357,7 +376,8 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		var err error
-		target.Snapshot, err = step.Op.Run(project, target, p.Options, false, step.Validate)
+		target := p.GetTarget(snap)
+		snap, err = step.Op.Run(project, target, p.Options, false, step.Validate)
 		if step.ExpectFailure {
 			assert.Error(t, err)
 			continue
@@ -366,7 +386,19 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		assert.NoError(t, err)
 	}
 
-	return target.Snapshot
+	return snap
+}
+
+// CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
+func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
+	t.Helper()
+	if snap != nil {
+		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
+		assert.True(t, reflect.DeepEqual(*snap, copiedSnap))
+		return &copiedSnap
+	}
+
+	return snap
 }
 
 func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
@@ -674,6 +706,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 			return err
 		},
 	}}
+
 	snap = p.Run(t, snap)
 
 	// Resume the lifecycle with another no-op update.
@@ -1214,7 +1247,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Refresh DOES fail, causing the new initialization error to appear.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh, ExpectFailure: true}}
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true, ExpectFailure: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
@@ -1830,4 +1863,123 @@ func TestBrokenDecrypter(t *testing.T) {
 	}
 
 	p.Run(t, nil)
+}
+
+func TestBadResourceType(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, _, err := mon.RegisterResource("very:bad", "resA", true, "", false, nil, "", resource.PropertyMap{})
+		assert.Error(t, err)
+		rpcerr, ok := rpcerror.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
+		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
+
+		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "")
+		assert.Error(t, err)
+		rpcerr, ok = rpcerror.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
+		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
+
+		// Component resources may have any format type.
+		_, _, _, noErr := mon.RegisterResource(
+			"a:component", "resB", false /* custom */, "", false, nil, "", resource.PropertyMap{})
+		assert.NoError(t, noErr)
+
+		_, _, _, noErr = mon.RegisterResource(
+			"singlename", "resC", false /* custom */, "", false, nil, "", resource.PropertyMap{})
+		assert.NoError(t, noErr)
+
+		return err
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps: []TestStep{{
+			Op:            Update,
+			ExpectFailure: true,
+			SkipPreview:   true,
+		}},
+	}
+
+	p.Run(t, nil)
+}
+
+// Tests that provider cancellation occurs as expected.
+func TestProviderCancellation(t *testing.T) {
+	const resourceCount = 4
+
+	// Set up a cancelable context for the refresh operation.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Wait for our resource ops, then cancel.
+	var ops sync.WaitGroup
+	ops.Add(resourceCount)
+	go func() {
+		ops.Wait()
+		cancel()
+	}()
+
+	// Set up an independent cancelable context for the provider's operations.
+	provCtx, provCancel := context.WithCancel(context.Background())
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					inputs resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					// Inform the waiter that we've entered a provider op and wait for cancellation.
+					ops.Done()
+					<-provCtx.Done()
+
+					return resource.ID(urn.Name()), resource.PropertyMap{}, resource.StatusOK, nil
+				},
+				CancelF: func() error {
+					provCancel()
+					return nil
+				},
+			}, nil
+		}),
+	}
+
+	done := make(chan bool)
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		errors := make([]error, resourceCount)
+		var resources sync.WaitGroup
+		resources.Add(resourceCount)
+		for i := 0; i < resourceCount; i++ {
+			go func(idx int) {
+				_, _, _, errors[idx] = monitor.RegisterResource("pkgA:m:typA", fmt.Sprintf("res%d", idx), true, "",
+					false, nil, "", resource.PropertyMap{})
+				resources.Done()
+			}(i)
+		}
+		resources.Wait()
+		for _, err := range errors {
+			assert.NoError(t, err)
+		}
+		close(done)
+		return nil
+	})
+
+	p := &TestPlan{}
+	op := TestOp(Update)
+	options := UpdateOptions{
+		Parallel: resourceCount,
+		host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
+	}
+	project, target := p.GetProject(), p.GetTarget(nil)
+
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil)
+	assert.Error(t, err)
+
+	// Wait for the program to finish.
+	<-done
 }

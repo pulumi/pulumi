@@ -225,7 +225,6 @@ func NewDeleteStep(plan *Plan, old *resource.State) Step {
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
-	contract.Assert(!old.Delete)
 	return &DeleteStep{
 		plan: plan,
 		old:  old,

@@ -18,6 +18,7 @@ import { Resource } from "./resource";
 // but this time the replacement of B will succeed.
 // The engine should generate:
 //
+// Delete A
 // Create A (mark old A as pending delete)
 const a = new Resource("a", { fail: 4 });
 
@@ -26,8 +27,6 @@ const b = new Resource("b", { fail: 2 }, { dependsOn: a });
 
 // Delete A
 // Delete B
-// Delete A
-// Delete A
 
 // Like the last step, this is interesting because we delete A's URN three times in the same plan.
 // This plan should drain all pending deletes and get us back to a state where only the live A and B

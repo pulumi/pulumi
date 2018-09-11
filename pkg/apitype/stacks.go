@@ -16,22 +16,22 @@ package apitype
 
 import "encoding/json"
 
-// StackSummary presents an overview of a particular stack without enumerating its current resource set.
+// StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
-	// ID is the unique identifier for a stack in the context of its PPC.
-	ID string `json:"id"`
+	// OrgName is the organization name the stack is found in.
+	OrgName string `json:"orgName"`
+	// StackName is the name of the stack.
+	StackName string `json:"stackName"`
 
-	// ActiveUpdate is the unique identifier for the stack's active update. This may be empty if no update has
-	// been applied.
-	ActiveUpdate string `json:"activeUpdate"`
+	// LastUpdate is a Unix timestamp of the stack's last update, as applicable.
+	LastUpdate *int64 `json:"lastUpdate,omitempty"`
 
-	// ResourceCount is the number of resources associated with this stack. Note that this is currently unimplemented.
-	ResourceCount int `json:"resourceCount"`
+	// ResourceCount is the number of resources associated with this stack, as applicable.
+	ResourceCount *int `json:"resourceCount,omitempty"`
 }
 
-// ListStacksResponse describes the data returned by the `GET /stacks` endpoint of the PPC API.
+// ListStacksResponse returns a set of stack summaries. This call is designed to be inexpensive.
 type ListStacksResponse struct {
-	// Stacks contains a list of summaries for each stack that currently exists in the PPC.
 	Stacks []StackSummary `json:"stacks"`
 }
 

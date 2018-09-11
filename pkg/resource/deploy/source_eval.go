@@ -492,15 +492,19 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
 	// Read the basic inputs necessary to identify the plugin.
-	t := tokens.Type(req.GetType())
+	t, err := tokens.ParseTypeToken(req.GetType())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, err.Error())
+	}
+
 	name := tokens.QName(req.GetName())
 	parent := resource.URN(req.GetParent())
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		ref, err := rm.defaultProviders.getDefaultProviderRef(t.Package())
-		if err != nil {
-			return nil, err
+		ref, provErr := rm.defaultProviders.getDefaultProviderRef(t.Package())
+		if provErr != nil {
+			return nil, provErr
 		}
 		provider = ref.String()
 	}
@@ -566,13 +570,27 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
-	t := tokens.Type(req.GetType())
+
 	name := tokens.QName(req.GetName())
-	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 	custom := req.GetCustom()
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
+	var t tokens.Type
 
+	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
+	// provider responsible for managing a particular resource (based on the type's Package).
+	if custom {
+		var err error
+		t, err = tokens.ParseTypeToken(req.GetType())
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, err.Error())
+		}
+	} else {
+		// Component resources may have any format type.
+		t = tokens.Type(req.GetType())
+	}
+
+	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 	provider := req.GetProvider()
 	if custom && !providers.IsProviderType(t) && provider == "" {
 		ref, err := rm.defaultProviders.getDefaultProviderRef(t.Package())

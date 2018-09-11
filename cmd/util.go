@@ -457,6 +457,7 @@ func addCIMetadataToEnvironment(env map[string]string) {
 type cancellationScope struct {
 	context *cancel.Context
 	sigint  chan os.Signal
+	done    chan bool
 }
 
 func (s *cancellationScope) Context() *cancel.Context {
@@ -466,6 +467,7 @@ func (s *cancellationScope) Context() *cancel.Context {
 func (s *cancellationScope) Close() {
 	signal.Stop(s.sigint)
 	close(s.sigint)
+	<-s.done
 }
 
 type cancellationScopeSource int
@@ -478,6 +480,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	c := &cancellationScope{
 		context: cancelContext,
 		sigint:  make(chan os.Signal),
+		done:    make(chan bool),
 	}
 
 	go func() {
@@ -512,6 +515,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 				cancelSource.Terminate()
 			}
 		}
+		close(c.done)
 	}()
 	signal.Notify(c.sigint, os.Interrupt)
 
