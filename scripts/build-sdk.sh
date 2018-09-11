@@ -59,7 +59,7 @@ readonly SDK_FILENAME=pulumi-${1:-$(date +"%Y%m%d_%H%M%S")}-${OS}-x64.tar.gz
 readonly PULUMI_REF=${2:-master}
 
 # setup temporary folder to process the package
-readonly PULUMI_FOLDER=$(mktemp --directory)/pulumi
+readonly PULUMI_FOLDER=$(mktemp -d)/pulumi
 mkdir -p "${PULUMI_FOLDER}"
 
 cd "${PULUMI_FOLDER}"
