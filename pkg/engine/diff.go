@@ -230,7 +230,21 @@ func printObject(
 // GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
-	step StepEventMetadata, indent int, planning bool, debug bool) string {
+	step StepEventMetadata, indent int, planning bool, debug bool, refresh bool) string {
+	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
+	//   1) not doing a preview
+	//   2) doing a refresh
+	//   3) doing a read
+	//
+	// Technically, 2 and 3 are the same, since they're both bottoming out at a provider's implementation of Read, but
+	// the upshot is that either way we're ending up with outputs that are exactly accurate. If we are not sure that we
+	// are in one of the above states, we shouldn't try to print outputs.
+	if planning && !refresh {
+		if step.Op != deploy.OpRead && step.Op != deploy.OpReadReplacement {
+			return ""
+		}
+	}
+
 	// Resources that have initialization errors did not successfully complete, and therefore do not
 	// have outputs to render diffs for. So, simply return.
 	if step.Old != nil && len(step.Old.InitErrors) > 0 {
@@ -436,7 +450,9 @@ func printOldNewDiffs(
 	if diff := olds.Diff(news); diff != nil {
 		printObjectDiff(b, *diff, planning, indent, summary, debug)
 	} else {
-		printObject(b, news, planning, indent, op, true, debug)
+		// If there's no diff, report the op as Same - there's no diff to render
+		// so it should be rendered as if nothing changed.
+		printObject(b, news, planning, indent, deploy.OpSame, true, debug)
 	}
 }
 
