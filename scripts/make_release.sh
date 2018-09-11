@@ -5,7 +5,7 @@ set -o errexit
 set -o pipefail
 
 readonly ROOT=$(dirname "${0}")/..
-readonly PUBDIR=$(mktemp --dry-run --directory)
+readonly PUBDIR=$(mktemp -d)
 readonly GITHASH=$(git rev-parse HEAD)
 readonly PUBFILE=$(dirname "${PUBDIR})/${GITHASH}.tgz")
 readonly VERSION=$("${ROOT}/scripts/get-version")
@@ -23,7 +23,7 @@ run_go_build() {
         bin_suffix=".exe"
     fi
 
-    mkdir --parents "${PUBDIR}/bin"
+    mkdir -p "${PUBDIR}/bin"
     go build \
        -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" \
        -o "${PUBDIR}/bin/${output_name}${bin_suffix}" \
