@@ -633,14 +633,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// Figure out the rows that are currently in progress.
 	inProgressRows := []ResourceRow{}
 
-	// Remember if any rows have errors. Stack outputs are not meaningful to display if there were errors.
-	sawError := false
-
 	for _, v := range display.eventUrnToResourceRow {
-		if v.DiagInfo().LastError != nil {
-			sawError = true
-		}
-
 		if !v.IsDone() {
 			inProgressRows = append(inProgressRows, v)
 		}
@@ -716,10 +709,8 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
-	// If we get stack outputs and there weren't any errors, display them at the end. Stack outputs are meaningless if
-	// there were errors; it is possible that the update encountered an error and exited before the entire Pulumi
-	// program ran to populate the stack outputs.
-	if display.stackUrn != "" && !sawError {
+	// If we get stack outputs, display them at the end.
+	if display.stackUrn != "" {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 		props := engine.GetResourceOutputsPropertiesString(stackStep, 1, display.isPreview, display.opts.Debug)
 		if props != "" {
