@@ -418,33 +418,58 @@ To manipulate the value of this Output, use '.apply' instead.`);
 }
 
 /**
- * Produces an 'Output' from any provided 'Input'.  Outputs are useful as they give a well known
- * shape that can then be transformed during a pulumi deployment operation.  This is in contrast to
- * an 'Input' which can be difficult to manipulate as it may be a `T`, a `Promise<T>` or even
- * another `Output<T>` itself.
+ * [output] takes in a object and creates a deep clone of it with all inner Outputs and Promises
+ * unwrapped.  i.e. the object returned will point at the values inside those Outputs and Promises.
+ * This process works transitively over the entire value graph and will see inside of Arrays and
+ * Objects.
  *
- * 'output' is also useful as it 'flattens' all contained `Input<T>`s inside the passed in value
- * into just plain `T` values.  In other words, if this function was passed a:
+ * The resultant awaited value of this function will be an Output containing the final completely
+ * unwrapped object, as well as all [Resource]s that were encountered along the way while unwrapping
+ * (not including Promise boundaries). With this, the result can then be transformed using
+ * [Output.apply] as usual, and the result of that can be passed anywhere that needs such a value
+ * and also wants to keep track of dependent [Resource]s.  The expected way to use this function is
+ * like:
  *
- *      `{ A: Promise<{ B: Output<{ C: Input<boolean> }> }> }`
+ * ```ts
+ *      var transformed = pulumi.unwrap(someVal).apply(unwrapped => {
+ *          // Do whatever you want now.  'unwrapped' will contain no outputs/promises inside
+ *          // here, so you can easily do whatever sort of transformation is most convenient.
+ *      });
  *
- * It would return an:
- *
- *      `Output<{ A: { B: { C: boolean } } }`
- *
- * This result could then be easily manipulated by calling:
- *
- *      `.apply(obj => "can use obj.A.B.C easily here")`.
- *
- * The result of this function includes the `Unwrap` type.  This type can simply be thought of as
- * the type that returns the mirror of what is passed in, except with all *deeply* nested
- * `Promise<T>`, `Output<T>`, and `Input<T>` types 'flatted' such that you are only dealing with
- * `T`s inside.
+ *      // Result can be passed to another Resource.  The dependency information will be
+ *      // properly maintained.
+ *      var someResource = new SomeResource(name, { data: transformed ... });
+ * ```
  */
-export function output<T>(cv: Input<T>): Output<Unwrap<T>>;
-export function output<T>(cv: Input<T> | undefined): Output<Unwrap<T | undefined>>;
-export function output<T>(cv: Input<T | undefined>): Output<Unwrap<T | undefined>> {
-    return <any>unwrap(cv);
+export function output<T>(val: Input<T>): Output<Unwrap<T>>;
+export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+    if (val === null || typeof val !== "object") {
+        // strings, numbers, booleans, functions, symbols, undefineds, nulls, all are returned as
+        // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
+        // preview).
+        return new Output(new Set(), Promise.resolve(val), /*isKnown*/ Promise.resolve(true));
+    }
+    else if (val instanceof Promise) {
+        // For a promise, we can just treat the same as an output that points to that resource. So
+        // we just create an Output around the Promise, and immediately apply the unwrap function on
+        // it to transform the value it points at.
+        return <any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true)).apply(output);
+    }
+    else if (Output.isInstance(val)) {
+        return <any>val.apply(output);
+    }
+    else if (val instanceof Array) {
+        return <any>all(val.map(output));
+    }
+    else {
+        const unwrappedObject: any = {};
+        Object.keys(val).forEach(k => {
+            unwrappedObject[k] = output((<any>val)[k]);
+        });
+
+        return <any>all(unwrappedObject);
+    }
 }
 
 /**
@@ -578,58 +603,3 @@ interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
-
-/**
- * [unwrap] takes in a object and creates a deep clone of it with all inner Outputs and Promises
- * unwrapped.  i.e. the object returned will point at the values inside those Outputs and Promises.
- * This process works transitively over the entire value graph and will see inside of Arrays and
- * Objects.
- *
- * The resultant awaited value of this function will be an Output containing the final completely
- * unwrapped object, as well as all [Resource]s that were encountered along the way while unwrapping
- * (not including Promise boundaries). With this, the result can then be transformed using
- * [Output.apply] as usual, and the result of that can be passed anywhere that needs such a value
- * and also wants to keep track of dependent [Resource]s.  The expected way to use this function is
- * like:
- *
- * ```ts
- *      var hoisted = pulumi.unwrap(someVal);
- *
- *      var transformed = hoisted.apply(unwrapped => {
- *          // Do whatever you want now.  'unwrapped' will contain no outputs/promises inside
- *          // here, so you can easily do whatever sort of transformation is most convenient.
- *      });
- *
- *      // Result can be passed to another Resource.  The dependency information will be
- *      // properly maintained.
- *      var someResource = new SomeResource(name, { data: transformed ... });
- * ```
- */
-function unwrap<T>(val: T): Output<Unwrap<T>> {
-    if (val === null || typeof val !== "object") {
-        // strings, numbers, booleans, functions, symbols, undefineds, nulls, all are returned as
-        // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
-        // preview).
-        return new Output(new Set(), Promise.resolve(val), /*isKnown*/ Promise.resolve(true));
-    }
-    else if (val instanceof Promise) {
-        // For a promise, we can just treat the same as an output that points to that resource. So
-        // we just create an Output around the Promise, and immediately apply the unwrap function on
-        // it to transform the value it points at.
-        return new Output(new Set(), val, /*isKnown*/ Promise.resolve(true)).apply(unwrap);
-    }
-    else if (Output.isInstance(val)) {
-        return <any>val.apply(unwrap);
-    }
-    else if (val instanceof Array) {
-        return <any>all(val.map(unwrap));
-    }
-    else {
-        const unwrappedObject: any = {};
-        Object.keys(val).forEach(k => {
-            unwrappedObject[k] = unwrap((<any>val)[k]);
-        });
-
-        return <any>all(unwrappedObject);
-    }
-}
