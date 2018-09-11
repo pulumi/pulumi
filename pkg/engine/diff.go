@@ -231,16 +231,22 @@ func printObject(
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
 	step StepEventMetadata, indent int, planning bool, debug bool, refresh bool) string {
-	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
-	//   1) not doing a preview
-	//   2) doing a refresh
-	//   3) doing a read
-	//
-	// Technically, 2 and 3 are the same, since they're both bottoming out at a provider's implementation of Read, but
-	// the upshot is that either way we're ending up with outputs that are exactly accurate. If we are not sure that we
-	// are in one of the above states, we shouldn't try to print outputs.
-	if planning && (!refresh || step.Op == deploy.OpRead || step.Op == deploy.OpReadReplacement) {
-		return ""
+	// We should only attempt to write out outputs if we are sure that this resource's outputs are complete. We know
+	// this for sure when we are performing updates, since we have just performed some resource operation and received
+	// outputs, but for previews we must be careful to not display a diff against outputs that are not complete.
+	if planning {
+		// If we are doing a preview, the only times that we are confident that our output bag is complete is when we
+		// are doing a refresh. So when we aren't...
+		if !refresh {
+			// ... we can only be sure that our outputs are complete if we have performed a Read or ReadReplacement, in
+			// which case the provider has given us a complete set of outputs for this resource.
+			if step.Op != deploy.OpRead && step.Op != deploy.OpReadReplacement {
+				return ""
+			}
+		}
+
+		// If we are doing a refresh, all of our outputs came from a provider's Read and we also can be confident that
+		// the set our outputs we are working with is complete.
 	}
 
 	// Resources that have initialization errors did not successfully complete, and therefore do not
