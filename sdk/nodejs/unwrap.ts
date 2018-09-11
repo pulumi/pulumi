@@ -93,28 +93,22 @@ type UnwrappedObject<T> = {
  *      });
  *
  *      // Result can be passed to another Resource.  The dependency information will be
- *      // propertly maintained.
+ *      // properly maintained.
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
  */
 export function unwrap<T>(val: T): Output<Unwrap<T>> {
-    if (val === null) {
-        return output(val);
-    }
-    else if (typeof val !== "object") {
-        // strings, numbers, booleans, functions, symbols, undefineds all are returned as themselves
-        return output(val);
+    if (val === null || typeof val !== "object") {
+        // strings, numbers, booleans, functions, symbols, undefineds, nulls, all are returned as
+        // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
+        // preview).
+        return new Output(new Set(), Promise.resolve(val), /*isKnown*/ Promise.resolve(true));
     }
     else if (val instanceof Promise) {
         // For a promise, we can just treat the same as an output that points to that resource. So
         // we just create an Output around the Promise, and immediately apply the unwrap function on
         // it to transform the value it points at.
-        //
-        // Note: this does have the consequence of losing any resources the inner Promise might have
-        // pointed at. However, that fits in line with our general pulumi model that Outputs should
-        // themselves not be wrapped in Promises (as those promises may not be executed, and may not
-        // pass their dependency information along).
-        return output(val).apply(unwrap);
+        return new Output(new Set(), val, /*isKnown*/ Promise.resolve(true)).apply(unwrap);
     }
     else if (Output.isInstance(val)) {
         return <any>val.apply(unwrap);

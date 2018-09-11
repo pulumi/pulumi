@@ -14,12 +14,9 @@
 
 import { RunError } from "./errors";
 import * as runtime from "./runtime";
-import {
-    readResource,
-    registerResource,
-    registerResourceOutputs,
-} from "./runtime/resource";
+import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
+import { unwrap, Unwrap } from "./unwrap";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -421,12 +418,34 @@ To manipulate the value of this Output, use '.apply' instead.`);
     }
 }
 
-export function output<T>(cv: Input<T>): Output<T>;
-export function output<T>(cv: Input<T> | undefined): Output<T | undefined>;
-export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
-    // outputs created from simply inputs are always stable.
-    return Output.isInstance<T | undefined>(cv) ? cv :
-        new Output<T | undefined>(new Set<Resource>(), Promise.resolve(cv), Promise.resolve(true));
+/**
+ * Produces an 'Output' from any provided 'Input'.  Outputs are useful as they give a well known
+ * shape that can then be transformed during a pulumi deployment operation.  This is in contrast to
+ * an 'Input' which can be difficult to manipulate as it may be a `T`, a `Promise<T>` or even
+ * another `Output<T>` itself.
+ *
+ * 'output' is also useful as it 'flattens' all contained `Input<T>`s inside the passed in value
+ * into just plain `T` values.  In other words, if this function was passed a:
+ *
+ *      `{ A: Promise<{ B: Output<{ C: Input<boolean> }> }> }`
+ *
+ * It would return an:
+ *
+ *      `Output<{ A: { B: { C: boolean } } }`
+ *
+ * This result could then be easily manipulated by calling:
+ *
+ *      `.apply(obj => "can use obj.A.B.C easily here")`.
+ *
+ * The result of this function includes the `Unwrap` type.  This type can simply be thought of as
+ * the type that returns the mirror of what is passed in, except with all *deeply* nested
+ * `Promise<T>`, `Output<T>`, and `Input<T>` types 'flatted' such that you are only dealing with
+ * `T`s inside.
+ */
+export function output<T>(cv: Input<T>): Output<Unwrap<T>>;
+export function output<T>(cv: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+export function output<T>(cv: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+    return <any>unwrap(cv);
 }
 
 /**
@@ -444,42 +463,52 @@ export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
  *
  * In this example, taking a dependency on d3 means a resource will depend on all the resources of
  * d1 and d2.
- *
  */
 // tslint:disable:max-line-length
-export function all<T>(val: { [key: string]: Input<T> }): Output<{ [key: string]: T }>;
-export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7]>;
-export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[T1, T2, T3, T4, T5, T6]>;
-export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[T1, T2, T3, T4, T5]>;
-export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[T1, T2, T3, T4]>;
-export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[T1, T2, T3]>;
-export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[T1, T2]>;
-export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
-export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<any> {
+export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
+export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
+export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
+export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
+export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
+export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>]>;
+export function all<T>(ds: (Input<T> | undefined)[]): Output<Unwrap<T>[]>;
+export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));
 
-        const resources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
-        const promises = allOutputs.map(o => o.promise());
+        const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
+        const promisedArray = Promise.all(allOutputs.map(o => o.promise()));
 
-        // A merged output is known if all of its inputs are known.
-        const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
-
-        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises), isKnown);
+        return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown);
     } else {
-        const array = Object.keys(val).map(k =>
-            output<T>(val[k]).apply(v => ({ key: k, value: v})));
+        const keysAndOutputs = Object.keys(val).map(key => ({ key, value: output(val[key]) }));
+        const allOutputs = keysAndOutputs.map(kvp => kvp.value);
 
-        return all(array).apply(keysAndValues => {
-            const result: { [key: string]: T } = {};
-            for (const kvp of keysAndValues) {
-                result[kvp.key] = kvp.value;
-            }
+        const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
+        const promisedObject = getPromisedObject(keysAndOutputs);
 
-            return result;
-        });
+        return new Output<Record<string, Unwrap<T>>>(new Set<Resource>(resources), promisedObject, isKnown);
     }
+}
+
+async function getPromisedObject<T>(keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
+    const result: Record<string, Unwrap<T>> = {};
+    for (const kvp of keysAndOutputs) {
+        result[kvp.key] = await kvp.value.promise();
+    }
+
+    return result;
+}
+
+function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[], Promise<boolean>] {
+    const allResources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
+
+    // A merged output is known if all of its inputs are known.
+    const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
+
+    return [allResources, isKnown];
 }
 
 /**

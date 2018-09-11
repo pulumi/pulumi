@@ -16,12 +16,11 @@
 
 import * as assert from "assert";
 import { output, Output, Resource } from "../index";
-import { unwrap } from "../unwrap";
 import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
     return asyncTest(async () => {
-        const unwrapped = unwrap(val);
+        const unwrapped = output(val);
         const actual = await unwrapped.promise();
         assert.deepStrictEqual(actual, expected);
     });
@@ -41,7 +40,7 @@ function testOutput(val: any) {
 
 function testResources(val: any, expected: any, resources: TestResource[]) {
     return asyncTest(async () => {
-        const unwrapped = unwrap(val);
+        const unwrapped = output(val);
         const actual = await unwrapped.promise();
 
         assert.deepStrictEqual(actual, expected);
@@ -248,7 +247,7 @@ describe("unwrap", () => {
     describe("type system", () => {
         it ("across promises", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } };
-            var xOutput = unwrap(v);
+            var xOutput = output(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is a number.
@@ -260,7 +259,7 @@ describe("unwrap", () => {
 
         it ("across nested promises", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: Promise.resolve(4) }) };
-            var xOutput = unwrap(v);
+            var xOutput = output(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is a number.
@@ -272,7 +271,7 @@ describe("unwrap", () => {
 
         it ("across outputs", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: [4, 5, 6] }) };
-            var xOutput = unwrap(v);
+            var xOutput = output(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is an array of numbers;
@@ -284,7 +283,7 @@ describe("unwrap", () => {
 
         it ("across nested outputs", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: output([4, 5, 6]) }) };
-            var xOutput = unwrap(v);
+            var xOutput = output(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is an array of numbers;
@@ -296,7 +295,7 @@ describe("unwrap", () => {
 
         it ("across promise and output", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: output([4, 5, 6]) }) };
-            var xOutput = unwrap(v);
+            var xOutput = output(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is an array of numbers;
@@ -308,7 +307,7 @@ describe("unwrap", () => {
 
         it ("across output and promise", asyncTest(async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: Promise.resolve([4, 5, 6]) }) };
-            var xOutput = unwrap(v);
+            var xOutput = output(v);
             var x = await xOutput.promise();
 
             // Ensure that ts thinks that 'e' is an array of numbers;
