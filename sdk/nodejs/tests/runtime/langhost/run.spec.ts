@@ -602,6 +602,9 @@ describe("rpc", () => {
                         const message = req.getMessage();
                         const urn = req.getUrn();
                         const streamId = req.getStreamid();
+                        if (severity === engineproto.LogSeverity.ERROR) {
+                            console.log("log error: " + message);
+                        }
                         if (opts.expectedLogs) {
                             if (!opts.expectedLogs.ignoreDebug || severity !== engineproto.LogSeverity.DEBUG) {
                                 logCnt++;
