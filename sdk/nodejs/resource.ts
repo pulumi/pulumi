@@ -14,11 +14,7 @@
 
 import { RunError } from "./errors";
 import * as runtime from "./runtime";
-import {
-    readResource,
-    registerResource,
-    registerResourceOutputs,
-} from "./runtime/resource";
+import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
 
 export type ID = string;  // a provider-assigned ID.
@@ -421,12 +417,59 @@ To manipulate the value of this Output, use '.apply' instead.`);
     }
 }
 
-export function output<T>(cv: Input<T>): Output<T>;
-export function output<T>(cv: Input<T> | undefined): Output<T | undefined>;
-export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
-    // outputs created from simply inputs are always stable.
-    return Output.isInstance<T | undefined>(cv) ? cv :
-        new Output<T | undefined>(new Set<Resource>(), Promise.resolve(cv), Promise.resolve(true));
+/**
+ * [output] takes in a object and creates a deep clone of it with all inner Outputs and Promises
+ * unwrapped.  i.e. the object returned will point at the values inside those Outputs and Promises.
+ * This process works transitively over the entire value graph and will see inside of Arrays and
+ * Objects.
+ *
+ * The resultant awaited value of this function will be an Output containing the final completely
+ * unwrapped object, as well as all [Resource]s that were encountered along the way while unwrapping
+ * (not including Promise boundaries). With this, the result can then be transformed using
+ * [Output.apply] as usual, and the result of that can be passed anywhere that needs such a value
+ * and also wants to keep track of dependent [Resource]s.  The expected way to use this function is
+ * like:
+ *
+ * ```ts
+ *      var transformed = pulumi.unwrap(someVal).apply(unwrapped => {
+ *          // Do whatever you want now.  'unwrapped' will contain no outputs/promises inside
+ *          // here, so you can easily do whatever sort of transformation is most convenient.
+ *      });
+ *
+ *      // Result can be passed to another Resource.  The dependency information will be
+ *      // properly maintained.
+ *      var someResource = new SomeResource(name, { data: transformed ... });
+ * ```
+ */
+export function output<T>(val: Input<T>): Output<Unwrap<T>>;
+export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+    if (val === null || typeof val !== "object") {
+        // strings, numbers, booleans, functions, symbols, undefineds, nulls, all are returned as
+        // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
+        // preview).
+        return new Output(new Set(), Promise.resolve(val), /*isKnown*/ Promise.resolve(true));
+    }
+    else if (val instanceof Promise) {
+        // For a promise, we can just treat the same as an output that points to that resource. So
+        // we just create an Output around the Promise, and immediately apply the unwrap function on
+        // it to transform the value it points at.
+        return <any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true)).apply(output);
+    }
+    else if (Output.isInstance(val)) {
+        return <any>val.apply(output);
+    }
+    else if (val instanceof Array) {
+        return <any>all(val.map(output));
+    }
+    else {
+        const unwrappedObject: any = {};
+        Object.keys(val).forEach(k => {
+            unwrappedObject[k] = output((<any>val)[k]);
+        });
+
+        return <any>all(unwrappedObject);
+    }
 }
 
 /**
@@ -444,42 +487,52 @@ export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
  *
  * In this example, taking a dependency on d3 means a resource will depend on all the resources of
  * d1 and d2.
- *
  */
 // tslint:disable:max-line-length
-export function all<T>(val: { [key: string]: Input<T> }): Output<{ [key: string]: T }>;
-export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7]>;
-export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[T1, T2, T3, T4, T5, T6]>;
-export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[T1, T2, T3, T4, T5]>;
-export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[T1, T2, T3, T4]>;
-export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[T1, T2, T3]>;
-export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[T1, T2]>;
-export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
-export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<any> {
+export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
+export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
+export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
+export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
+export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
+export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>]>;
+export function all<T>(ds: (Input<T> | undefined)[]): Output<Unwrap<T>[]>;
+export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));
 
-        const resources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
-        const promises = allOutputs.map(o => o.promise());
+        const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
+        const promisedArray = Promise.all(allOutputs.map(o => o.promise()));
 
-        // A merged output is known if all of its inputs are known.
-        const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
-
-        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises), isKnown);
+        return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown);
     } else {
-        const array = Object.keys(val).map(k =>
-            output<T>(val[k]).apply(v => ({ key: k, value: v})));
+        const keysAndOutputs = Object.keys(val).map(key => ({ key, value: output(val[key]) }));
+        const allOutputs = keysAndOutputs.map(kvp => kvp.value);
 
-        return all(array).apply(keysAndValues => {
-            const result: { [key: string]: T } = {};
-            for (const kvp of keysAndValues) {
-                result[kvp.key] = kvp.value;
-            }
+        const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
+        const promisedObject = getPromisedObject(keysAndOutputs);
 
-            return result;
-        });
+        return new Output<Record<string, Unwrap<T>>>(new Set<Resource>(resources), promisedObject, isKnown);
     }
+}
+
+async function getPromisedObject<T>(keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
+    const result: Record<string, Unwrap<T>> = {};
+    for (const kvp of keysAndOutputs) {
+        result[kvp.key] = await kvp.value.promise();
+    }
+
+    return result;
+}
+
+function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[], Promise<boolean>] {
+    const allResources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
+
+    // A merged output is known if all of its inputs are known.
+    const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
+
+    return [allResources, isKnown];
 }
 
 /**
@@ -493,3 +546,60 @@ export type Input<T> = T | Promise<T> | Output<T>;
  * property value.
  */
 export type Inputs = Record<string, Input<any>>;
+
+/**
+ * The 'Unwrap' type allows us to express the operation of taking a type, with potentially deeply
+ * nested Promises and Outputs and to then get that same type with all the Promises and Outputs
+ * replaced with their wrapped type.  Note that this Unwrapping is 'deep'.  So if you had:
+ *
+ *      `type X = { A: Promise<{ B: Output<{ c: Input<boolean> }> }> }`
+ *
+ * Then `Unwrap<X>` would be equivalent to:
+ *
+ *      `...    = { A: { B: { C: boolean } } }`
+ *
+ * Unwrapping sees through Promises, Outputs, Arrays and Objects.
+ *
+ * Note: due to TypeScript limitations there are some things that cannot be expressed. Specifically,
+ * if you had a `Promise<Output<T>>` then the Unwrap type would not be able to undo both of those
+ * wraps. In practice that should be ok.  Values in an object graph should not wrap Outputs in
+ * Promises.  Instead, any code that needs to work Outputs and also be async should either create
+ * the Output with the Promise (which will collapse into just an Output).  Or, it should start with
+ * an Output and call [apply] on it, passing in an async function.  This will also collapse and just
+ * produce an Output.
+ *
+ * In other words, this should not be used as the shape of an object: `{ a: Promise<Output<...>> }`.
+ * It should always either be `{ a: Promise<NonOutput> }` or just `{ a: Output<...> }`.
+ */
+type Unwrap<T> =
+    // 1. If we have a promise, just get the type it itself is wrapping and recursively unwrap that.
+    // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
+    // 3. Otherwise, we have a basic type.  Just unwrap that.
+    T extends Promise<infer U> ? UnwrapSimple<U> :
+    T extends Output<infer U> ? UnwrapSimple<U> :
+    UnwrapSimple<T>;
+
+type primitive = string | number | boolean | undefined | null;
+
+/**
+ * Handles encountering basic types when unwrapping.
+ */
+type UnwrapSimple<T> =
+    // 1. Any of the primitive types just unwrap to themselves.
+    // 2. An array of some types unwraps to an array of that type itself unwrapped. Note, due to a
+    //    TS limitation we cannot express that as Array<Unwrap<U>> due to how it handles recursive
+    //    types. We work around that by introducing an structurally equivalent interface that then
+    //    helps make typescript defer type-evaluation instead of doing it eagerly.
+    // 3. An object unwraps to an object with properties of the same name, but where the property
+    //    types have been unwrapped.
+    // 4. return 'never' at the end so that if we've missed something we'll discover it.
+    T extends primitive ? T :
+    T extends Array<infer U> ? UnwrappedArray<U> :
+    T extends object ? UnwrappedObject<T> :
+    never;
+
+interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
+
+type UnwrappedObject<T> = {
+    [P in keyof T]: Unwrap<T[P]>;
+};

@@ -1337,7 +1337,8 @@ __v.d1 = __v_d1;
 var __v_d2 = Object.create(__v_d1_proto);
 var __v_d2_value = {};
 __v_d2_value.a = 1;
-__v_d2_value.b = __v;
+var __v_d2_value_b = {d1: 4, d2: undefined};
+__v_d2_value.b = __v_d2_value_b;
 __v_d2.value = __v_d2_value;
 __v.d2 = __v_d2;
 
