@@ -176,7 +176,8 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	}
 }
 
-func (b *localBackend) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
+func (b *localBackend) ListStacks(
+	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
 		return nil, err
