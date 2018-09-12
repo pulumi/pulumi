@@ -18,6 +18,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -58,6 +59,16 @@ type StackReference interface {
 	Name() tokens.QName
 }
 
+// StackSummary provides a basic description of a stack, without the ability to inspect its resources or make changes.
+type StackSummary interface {
+	Name() StackReference
+
+	// LastUpdate returns when the stack was last updated, as applicable.
+	LastUpdate() *time.Time
+	// ResourceCount returns the stack's resource count, as applicable.
+	ResourceCount() *int
+}
+
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
 // It can be implemented any number of ways to provide pluggable backend implementations of the Pulumi Cloud.
 type Backend interface {
@@ -79,7 +90,7 @@ type Backend interface {
 	// first boolean return value will be set to true.
 	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]Stack, error)
+	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error)
 
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
