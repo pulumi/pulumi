@@ -99,6 +99,9 @@ type ProgressDisplay struct {
 	// The urn of the stack.
 	stackUrn resource.URN
 
+	// Whether or not we've seen outputs for the stack yet.
+	seenStackOutputs bool
+
 	// The summary event from the engine.  If we get this, we'll print this after all
 	// normal resource events are heard.  That way we don't interfere with all the progress
 	// messages we're outputting for them.
@@ -633,14 +636,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// Figure out the rows that are currently in progress.
 	inProgressRows := []ResourceRow{}
 
-	// Remember if any rows have errors. Stack outputs are not meaningful to display if there were errors.
-	sawError := false
-
 	for _, v := range display.eventUrnToResourceRow {
-		if v.DiagInfo().LastError != nil {
-			sawError = true
-		}
-
 		if !v.IsDone() {
 			inProgressRows = append(inProgressRows, v)
 		}
@@ -716,12 +712,11 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
-	// If we get stack outputs and there weren't any errors, display them at the end. Stack outputs are meaningless if
-	// there were errors; it is possible that the update encountered an error and exited before the entire Pulumi
-	// program ran to populate the stack outputs.
-	if display.stackUrn != "" && !sawError {
+	// If we get stack outputs, display them at the end.
+	if display.stackUrn != "" && display.seenStackOutputs {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
-		props := engine.GetResourceOutputsPropertiesString(stackStep, 1, display.isPreview, display.opts.Debug)
+		props := engine.GetResourceOutputsPropertiesString(
+			stackStep, 1, display.isPreview, display.opts.Debug, false /* refresh */)
 		if props != "" {
 			if !wroteDiagnosticHeader {
 				display.writeBlankLine()
@@ -889,6 +884,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else if event.Type == engine.ResourceOutputsEvent {
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+
+		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
+		if step.URN == display.stackUrn {
+			display.seenStackOutputs = true
+		}
+
 		row.SetStep(step)
 		row.AddOutputStep(step)
 

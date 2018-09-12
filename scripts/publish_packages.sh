@@ -1,7 +1,9 @@
 #!/bin/bash
 # publish_packages.sh uploads our packages to package repositories like npm
-set -o nounset -o errexit -o pipefail
-ROOT=$(dirname $0)/..
+set -o nounset
+set -o errexit
+set -o pipefail
+readonly ROOT=$(dirname "${0}")/..
 
 if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     echo "Publishing NPM package to NPMjs.com:"
@@ -14,15 +16,17 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         NPM_TAG="latest"
     fi
 
-    pushd ${ROOT}/sdk/nodejs/bin && \
+    pushd "${ROOT}/sdk/nodejs/bin" && \
         npm publish --tag "${NPM_TAG}" && \
         npm info 2>/dev/null || true && \
         popd
 
     echo "Publishing Pip package to pulumi.com:"
     twine upload \
-        -u pulumi -p ${PYPI_PASSWORD} \
-        ${ROOT}/sdk/python/env/src/dist/*.whl
+        -u pulumi -p "${PYPI_PASSWORD}" \
+        "${ROOT}/sdk/python/env/src/dist"/*.whl
 fi
 
-${ROOT}/scripts/build-sdk.sh $(${ROOT}/scripts/get-version) $(git rev-parse HEAD)
+"${ROOT}/scripts/build-sdk.sh" $("${ROOT}/scripts/get-version") $(git rev-parse HEAD)
+
+exit 0

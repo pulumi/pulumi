@@ -524,7 +524,7 @@ describe("rpc", () => {
                 const regs: any = {};
                 let regCnt = 0;
                 let logCnt = 0;
-                const monitor = createMockResourceMonitor(
+                const monitor = createMockEngine(
                     // Invoke callback
                     (call: any, callback: any) => {
                         const resp = new resproto.InvokeResponse();
@@ -595,32 +595,31 @@ describe("rpc", () => {
                         }
                         callback(undefined, new gempty.Empty());
                     },
-                );
-
-                const engine = createMockEngine((call: any, callback: any) => {
-                    const req: any = call.request;
-                    const severity = req.getSeverity();
-                    const message = req.getMessage();
-                    const urn = req.getUrn();
-                    const streamId = req.getStreamid();
-                    if (severity === engineproto.LogSeverity.ERROR) {
-                        console.log("log error: " + message);
-                    }
-
-                    if (opts.expectedLogs) {
-                        if (!opts.expectedLogs.ignoreDebug || severity !== engineproto.LogSeverity.DEBUG) {
-                            logCnt++;
-                            if (opts.log) {
-                                opts.log(ctx, severity, message, urn, streamId);
+                    // Log callback
+                    (call: any, callback: any) => {
+                        const req: any = call.request;
+                        const severity = req.getSeverity();
+                        const message = req.getMessage();
+                        const urn = req.getUrn();
+                        const streamId = req.getStreamid();
+                        if (severity === engineproto.LogSeverity.ERROR) {
+                            console.log("log error: " + message);
+                        }
+                        if (opts.expectedLogs) {
+                            if (!opts.expectedLogs.ignoreDebug || severity !== engineproto.LogSeverity.DEBUG) {
+                                logCnt++;
+                                if (opts.log) {
+                                    opts.log(ctx, severity, message, urn, streamId);
+                                }
                             }
                         }
-                    }
 
-                    callback(undefined, new gempty.Empty());
-                });
+                        callback(undefined, new gempty.Empty());
+                    },
+                );
 
                 // Next, go ahead and spawn a new language host that connects to said monitor.
-                const langHost = serveLanguageHostProcess(engine.addr);
+                const langHost = serveLanguageHostProcess(monitor.addr);
                 const langHostAddr: string = await langHost.addr;
 
                 // Fake up a client RPC connection to the language host so that we can invoke run.
@@ -708,11 +707,14 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
     );
 }
 
-function createMockResourceMonitor(
+// Despite the name, the "engine" RPC endpoint is only a logging endpoint. createMockEngine fires up a fake
+// logging server so tests can assert that certain things get logged.
+function createMockEngine(
         invokeCallback: (call: any, request: any) => any,
         readResourceCallback: (call: any, request: any) => any,
         registerResourceCallback: (call: any, request: any) => any,
-        registerResourceOutputsCallback: (call: any, request: any) => any): { server: any, addr: string } {
+        registerResourceOutputsCallback: (call: any, request: any) => any,
+        logCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
     server.addService(resrpc.ResourceMonitorService, {
@@ -721,18 +723,10 @@ function createMockResourceMonitor(
         registerResource: registerResourceCallback,
         registerResourceOutputs: registerResourceOutputsCallback,
     });
-    const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
-    server.start();
-    return { server: server, addr: `0.0.0.0:${port}` };
-}
-
-// Despite the name, the "engine" RPC endpoint is only a logging endpoint. createMockEngine fires up a fake
-// logging server so tests can assert that certain things get logged.
-function createMockEngine(logCallback: (call: any, callback: any) => any): { server: any, addr: string } {
-    const server = new grpc.Server();
     server.addService(enginerpc.EngineService, {
         log: logCallback,
     });
+
     const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
     server.start();
     return { server: server, addr: `0.0.0.0:${port}` };

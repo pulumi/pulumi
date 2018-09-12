@@ -290,12 +290,15 @@ func renderResourceOutputsEvent(
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
 
+		refresh := false // are these outputs from a refresh?
 		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
+			refresh = true
 			summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
-		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent+1, payload.Planning, payload.Debug)
+		text := engine.GetResourceOutputsPropertiesString(
+			payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
