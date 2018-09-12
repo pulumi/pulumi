@@ -418,25 +418,18 @@ To manipulate the value of this Output, use '.apply' instead.`);
 }
 
 /**
- * [output] takes in a object and creates a deep clone of it with all inner Outputs and Promises
- * unwrapped.  i.e. the object returned will point at the values inside those Outputs and Promises.
- * This process works transitively over the entire value graph and will see inside of Arrays and
- * Objects.
+ * [output] takes any Input value and converts it into an Output, deeply unwrapping nested Input
+ * values as necessary".
  *
- * The resultant awaited value of this function will be an Output containing the final completely
- * unwrapped object, as well as all [Resource]s that were encountered along the way while unwrapping
- * (not including Promise boundaries). With this, the result can then be transformed using
- * [Output.apply] as usual, and the result of that can be passed anywhere that needs such a value
- * and also wants to keep track of dependent [Resource]s.  The expected way to use this function is
- * like:
+ * The expected way to use this function is like so:
  *
  * ```ts
- *      var transformed = pulumi.unwrap(someVal).apply(unwrapped => {
+ *      var transformed = pulumi.output(someVal).apply(unwrapped => {
  *          // Do whatever you want now.  'unwrapped' will contain no outputs/promises inside
  *          // here, so you can easily do whatever sort of transformation is most convenient.
  *      });
  *
- *      // Result can be passed to another Resource.  The dependency information will be
+ *      // the result can be passed to another Resource.  The dependency information will be
  *      // properly maintained.
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
