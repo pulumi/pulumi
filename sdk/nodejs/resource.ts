@@ -438,10 +438,15 @@ export function output<T>(val: Input<T>): Output<Unwrap<T>>;
 export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
 export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     if (val === null || typeof val !== "object") {
-        // strings, numbers, booleans, functions, symbols, undefineds, nulls, all are returned as
+        // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
         // preview).
-        return new Output(new Set(), Promise.resolve(val), /*isKnown*/ Promise.resolve(true));
+        return createSimpleOutput(val);
+    }
+    else if (Resource.isInstance(val)) {
+        // Don't unwrap Resources, there are existing codepaths that return Resources through
+        // Outputs and we want to preserve them as is when flattening.
+        return createSimpleOutput(val);
     }
     else if (val instanceof Promise) {
         // For a promise, we can just treat the same as an output that points to that resource. So
@@ -463,6 +468,10 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
 
         return <any>all(unwrappedObject);
     }
+}
+
+function createSimpleOutput(val: any) {
+    return new Output(new Set(), Promise.resolve(val), /*isKnown*/ Promise.resolve(true));
 }
 
 /**
@@ -587,6 +596,7 @@ type UnwrapSimple<T> =
     //    types have been unwrapped.
     // 4. return 'never' at the end so that if we've missed something we'll discover it.
     T extends primitive ? T :
+    T extends Resource ? T :
     T extends Array<infer U> ? UnwrappedArray<U> :
     T extends object ? UnwrappedObject<T> :
     never;
