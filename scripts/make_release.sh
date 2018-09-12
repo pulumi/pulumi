@@ -34,8 +34,8 @@ run_go_build() {
 copy_package() {
     local -r module_root="${PUBDIR}/node_modules/${2}"
 
-    mkdir --parents "${module_root}"
-    cp --recursive "${1}" "${module_root}/"
+    mkdir -p "${module_root}"
+    cp -r "${1}" "${module_root}/"
     if [[ -e "${module_root}/node_modules" ]]; then
         rm -rf "${module_root}/node_modules"
     fi
