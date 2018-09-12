@@ -58,6 +58,7 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use: "pulumi",
+		Short: "Pulumi command line",
 		Long: "Pulumi - Cloud Native Infrastructure as Code\n" +
 			"\n" +
 			"To begin working with Pulumi, run the 'pulumi new' command:\n" +
