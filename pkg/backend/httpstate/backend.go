@@ -404,7 +404,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
-// must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
+// must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
 	return path.Join(stackID.Owner, stackID.Stack)
 }
