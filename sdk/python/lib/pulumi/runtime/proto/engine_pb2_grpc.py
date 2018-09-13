@@ -20,6 +20,16 @@ class EngineStub(object):
         request_serializer=engine__pb2.LogRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
+    self.GetRootResource = channel.unary_unary(
+        '/pulumirpc.Engine/GetRootResource',
+        request_serializer=engine__pb2.GetRootResourceRequest.SerializeToString,
+        response_deserializer=engine__pb2.GetRootResourceResponse.FromString,
+        )
+    self.SetRootResource = channel.unary_unary(
+        '/pulumirpc.Engine/SetRootResource',
+        request_serializer=engine__pb2.SetRootResourceRequest.SerializeToString,
+        response_deserializer=engine__pb2.SetRootResourceResponse.FromString,
+        )
 
 
 class EngineServicer(object):
@@ -33,6 +43,20 @@ class EngineServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def GetRootResource(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def SetRootResource(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_EngineServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -40,6 +64,16 @@ def add_EngineServicer_to_server(servicer, server):
           servicer.Log,
           request_deserializer=engine__pb2.LogRequest.FromString,
           response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'GetRootResource': grpc.unary_unary_rpc_method_handler(
+          servicer.GetRootResource,
+          request_deserializer=engine__pb2.GetRootResourceRequest.FromString,
+          response_serializer=engine__pb2.GetRootResourceResponse.SerializeToString,
+      ),
+      'SetRootResource': grpc.unary_unary_rpc_method_handler(
+          servicer.SetRootResource,
+          request_deserializer=engine__pb2.SetRootResourceRequest.FromString,
+          response_serializer=engine__pb2.SetRootResourceResponse.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

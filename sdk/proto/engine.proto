@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
@@ -22,6 +23,10 @@ package pulumirpc;
 service Engine {
     // Log logs a global message in the engine, including errors and warnings.
     rpc Log(LogRequest) returns (google.protobuf.Empty) {}
+
+    rpc GetRootResource(GetRootResourceRequest) returns (GetRootResourceResponse) {}
+
+    rpc SetRootResource(SetRootResourceRequest) returns (SetRootResourceResponse) {}
 }
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
@@ -53,4 +58,20 @@ message LogRequest {
 
     // Optional value indicating whether this is a status message.
     bool ephemeral = 5;
+}
+
+message GetRootResourceRequest {
+    // empty.
+}
+
+message GetRootResourceResponse {
+    string urn = 1;
+}
+
+message SetRootResourceRequest {
+    string urn = 1;
+}
+
+message SetRootResourceResponse {
+    // empty.
 }
