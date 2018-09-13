@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -35,6 +36,9 @@ type hostServer struct {
 	addr   string     // the address the host is listening on.
 	cancel chan bool  // a channel that can cancel the server.
 	done   chan error // a channel that resolves when the server completes.
+
+	// hostServer contains little bits of state that can't be saved in the language host.
+	rootUrn atomic.Value // a root resource URN that has been saved via SetRootResource
 }
 
 // newHostServer creates a new host server wired up to the given host and context.
@@ -59,6 +63,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 
 	engine.addr = fmt.Sprintf("127.0.0.1:%d", port)
 	engine.done = done
+	engine.rootUrn.Store("")
 
 	return engine, nil
 }
@@ -96,4 +101,22 @@ func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbemp
 		eng.host.Log(sev, resource.URN(req.Urn), req.Message, req.StreamId)
 	}
 	return &pbempty.Empty{}, nil
+}
+
+// GetRootResource returns the current root resource's URN, which will serve as the parent of resources that are
+// otherwise left unparented.
+func (eng *hostServer) GetRootResource(ctx context.Context,
+	req *lumirpc.GetRootResourceRequest) (*lumirpc.GetRootResourceResponse, error) {
+	var response lumirpc.GetRootResourceResponse
+	response.Urn = eng.rootUrn.Load().(string)
+	return &response, nil
+}
+
+// SetRootResources sets the current root resource's URN. Generally only called on startup when the Stack resource is
+// registered.
+func (eng *hostServer) SetRootResource(ctx context.Context,
+	req *lumirpc.SetRootResourceRequest) (*lumirpc.SetRootResourceResponse, error) {
+	var response lumirpc.SetRootResourceResponse
+	eng.rootUrn.Store(req.GetUrn())
+	return &response, nil
 }

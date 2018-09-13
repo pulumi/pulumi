@@ -83,11 +83,7 @@ export abstract class Resource {
             throw new RunError("Missing resource name argument (for URN creation)");
         }
 
-        // If there wasn't an explicit parent, and a root resource exists, parent to that.
-        if (!opts.parent) {
-            opts.parent = getRootResource();
-        }
-        // Check the parent type and fill in any default options.
+        // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
             if (!Resource.isInstance(opts.parent)) {

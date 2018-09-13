@@ -28,6 +28,13 @@ assert.strictEqual(pulumi1.runtime.getProject(), pulumi2.runtime.getProject());
 assert.strictEqual(pulumi1.runtime.getStack(), pulumi2.runtime.getStack());
 assert.deepEqual(pulumi1.runtime.allConfig(), pulumi2.runtime.allConfig());
 
+// Check that the two runtimes agree on the root resource
+pulumi1.runtime.getRootResource().then(r => {
+    pulumi2.runtime.getRootResource().then(other => {
+        assert.strictEqual(r, other);
+    });
+});
+
 // allConfig should have caught this, but let's check individual config values too.
 let cfg1 = new pulumi1.Config("sxs");
 let cfg2 = new pulumi2.Config("sxs");
