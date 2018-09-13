@@ -57,7 +57,7 @@ func NewPulumiCmd() *cobra.Command {
 	var color colorFlag
 
 	cmd := &cobra.Command{
-		Use: "pulumi",
+		Use:   "pulumi",
 		Short: "Pulumi command line",
 		Long: "Pulumi - Cloud Native Infrastructure as Code\n" +
 			"\n" +
