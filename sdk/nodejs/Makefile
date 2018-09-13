@@ -44,3 +44,4 @@ test_fast::
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
