@@ -112,7 +112,7 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         // Note that we do not take any special action if the provider has changed. This allows a user to iterate on a
         // dynamic provider's implementation. This does require some care on the part of the user: each iteration of a
         // dynamic provider's implementation must be able to handle all state produced by prior iterations.
-        // 
+        //
         // Prior versions of the dynamic provider required that a dynamic resource be replaced any time its provider
         // implementation changed. This made iteration painful, especially if the dynamic resource was managing a
         // physical resource--in this case, the physical resource would be unnecessarily deleted and recreated each
