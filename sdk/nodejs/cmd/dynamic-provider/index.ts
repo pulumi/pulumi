@@ -200,16 +200,14 @@ async function updateRPC(call: any, callback: any): Promise<void> {
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
 
-        let result: any;
+        let result: any = {};
         const provider = getProvider(news);
         if (provider.update) {
-            result = await provider.update(req.getId(), olds, news);
+            result = await provider.update(req.getId(), olds, news) || {};
         }
 
-        if (result.outs) {
-            const resultProps = resultIncludingProvider(result.outs, news);
-            resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
-        }
+        const resultProps = resultIncludingProvider(result.outs, news);
+        resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
 
         callback(undefined, resp);
     } catch (e) {
