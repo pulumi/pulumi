@@ -16,6 +16,7 @@ package filestate
 
 import (
 	"context"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -87,4 +88,35 @@ func (s *localStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDepl
 
 func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(ctx, s, deployment)
+}
+
+type localStackSummary struct {
+	s *localStack
+}
+
+func newLocalStackSummary(s *localStack) localStackSummary {
+	return localStackSummary{s}
+}
+
+func (lss localStackSummary) Name() backend.StackReference {
+	return lss.s.Ref()
+}
+
+func (lss localStackSummary) LastUpdate() *time.Time {
+	snap := lss.s.snapshot
+	if snap != nil {
+		if t := snap.Manifest.Time; !t.IsZero() {
+			return &t
+		}
+	}
+	return nil
+}
+
+func (lss localStackSummary) ResourceCount() *int {
+	snap := lss.s.snapshot
+	if snap != nil {
+		count := len(snap.Resources)
+		return &count
+	}
+	return nil
 }

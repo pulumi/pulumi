@@ -149,11 +149,10 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 	return latestSem, oldestSem, nil
 }
 
-// ListStacks lists all stacks for the indicated project.
-func (pc *Client) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
+// ListStacks lists all stacks the current user has access to, optionally filtered by project.
+func (pc *Client) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]apitype.StackSummary, error) {
 
-	// Query all stacks for the project on Pulumi.
-	var stacks []apitype.Stack
+	var resp apitype.ListStacksResponse
 	var queryFilter interface{}
 	if projectFilter != nil {
 		queryFilter = struct {
@@ -161,11 +160,11 @@ func (pc *Client) ListStacks(ctx context.Context, projectFilter *tokens.PackageN
 		}{ProjectFilter: string(*projectFilter)}
 	}
 
-	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &stacks); err != nil {
+	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &resp); err != nil {
 		return nil, err
 	}
 
-	return stacks, nil
+	return resp.Stacks, nil
 }
 
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.

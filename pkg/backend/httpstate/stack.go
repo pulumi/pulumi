@@ -17,6 +17,7 @@ package httpstate
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -152,4 +153,31 @@ func (s *cloudStack) ConsoleURL() (string, error) {
 		return "", errors.New("could not determine clould console URL")
 	}
 	return url, nil
+}
+
+// cloudStackSummary implements the backend.StackSummary interface, by wrapping
+// an apitype.StackSummary struct.
+type cloudStackSummary struct {
+	summary apitype.StackSummary
+	b       *cloudBackend
+}
+
+func (css cloudStackSummary) Name() backend.StackReference {
+	return cloudBackendReference{
+		owner: css.summary.OrgName,
+		name:  tokens.QName(css.summary.StackName),
+		b:     css.b,
+	}
+}
+
+func (css cloudStackSummary) LastUpdate() *time.Time {
+	if css.summary.LastUpdate == nil {
+		return nil
+	}
+	t := time.Unix(*css.summary.LastUpdate, 0)
+	return &t
+}
+
+func (css cloudStackSummary) ResourceCount() *int {
+	return css.summary.ResourceCount
 }
