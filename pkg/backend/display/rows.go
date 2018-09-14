@@ -334,20 +334,28 @@ func (data *resourceRowData) getInfoColumn() string {
 		} else if step.Old.Inputs != nil && step.New.Inputs != nil {
 			diff = step.Old.Inputs.Diff(step.New.Inputs)
 		}
-		if step.Old.Provider != step.New.Provider {
-			if diff == nil {
-				diff = &resource.ObjectDiff{
-					Adds:    make(resource.PropertyMap),
-					Deletes: make(resource.PropertyMap),
-					Sames:   make(resource.PropertyMap),
-					Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+
+		// Show a diff if either `provider` or `protect` changed; they might not show a diff via inputs or outputs, but
+		// it is still useful to show that these changed in output.
+		recordMetadataDiff := func(name string, old, new resource.PropertyValue) {
+			if old != new {
+				if diff == nil {
+					diff = &resource.ObjectDiff{
+						Adds:    make(resource.PropertyMap),
+						Deletes: make(resource.PropertyMap),
+						Sames:   make(resource.PropertyMap),
+						Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+					}
 				}
-			}
-			diff.Updates["provider"] = resource.ValueDiff{
-				Old: resource.NewStringProperty(step.Old.Provider),
-				New: resource.NewStringProperty(step.New.Provider),
+
+				diff.Updates[resource.PropertyKey(name)] = resource.ValueDiff{Old: old, New: new}
 			}
 		}
+
+		recordMetadataDiff("provider",
+			resource.NewStringProperty(step.Old.Provider), resource.NewStringProperty(step.New.Provider))
+		recordMetadataDiff("protect",
+			resource.NewBoolProperty(step.Old.Protect), resource.NewBoolProperty(step.New.Protect))
 
 		if diff != nil {
 			writeString(changesBuf, "changes:")
