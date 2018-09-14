@@ -225,7 +225,7 @@ func chooseStack(
 	message = opts.Color.Colorize(colors.BrightWhite + message + colors.Reset)
 
 	var option string
-	if err := survey.AskOne(&survey.Select{
+	if err = survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
 		Default: current,
@@ -234,14 +234,14 @@ func chooseStack(
 	}
 
 	if option == newOption {
-		stackName, err := cmdutil.ReadConsole("Please enter your desired stack name")
-		if err != nil {
-			return nil, err
+		stackName, readErr := cmdutil.ReadConsole("Please enter your desired stack name")
+		if readErr != nil {
+			return nil, readErr
 		}
 
-		stackRef, err := b.ParseStackReference(stackName)
-		if err != nil {
-			return nil, err
+		stackRef, parseErr := b.ParseStackReference(stackName)
+		if parseErr != nil {
+			return nil, parseErr
 		}
 
 		return createStack(b, stackRef, nil, setCurrent)
