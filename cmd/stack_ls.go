@@ -132,7 +132,7 @@ func newStackLsCmd() *cobra.Command {
 					var url string
 					if httpBackend, ok := b.(httpstate.Backend); ok {
 						if nameSuffix, err := httpBackend.StackConsoleURL(summary.Name()); err != nil {
-							url = "err"
+							url = none
 						} else {
 							url = fmt.Sprintf("%s/%s", httpBackend.CloudURL(), nameSuffix)
 						}
