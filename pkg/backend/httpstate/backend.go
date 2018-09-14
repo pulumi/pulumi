@@ -404,7 +404,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
-// must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
+// must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
 	return path.Join(stackID.Owner, stackID.Stack)
 }
@@ -517,19 +517,24 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	return stack, nil
 }
 
-func (b *cloudBackend) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]backend.Stack, error) {
-	stacks, err := b.client.ListStacks(ctx, projectFilter)
+func (b *cloudBackend) ListStacks(
+	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
+	apiSummaries, err := b.client.ListStacks(ctx, projectFilter)
 	if err != nil {
 		return nil, err
 	}
 
-	// Map to a summary slice.
-	var results []backend.Stack
-	for _, stack := range stacks {
-		results = append(results, newStack(stack, b))
+	// Convert []apitype.StackSummary into []backend.StackSummary.
+	var backendSummaries []backend.StackSummary
+	for _, apiSummary := range apiSummaries {
+		backendSummary := cloudStackSummary{
+			summary: apiSummary,
+			b:       b,
+		}
+		backendSummaries = append(backendSummaries, backendSummary)
 	}
 
-	return results, nil
+	return backendSummaries, nil
 }
 
 func (b *cloudBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {

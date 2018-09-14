@@ -23,13 +23,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -57,7 +55,7 @@ func newStackLsCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			// Get a list of all known backends, as we will query them all.
+			// Get the current backend.
 			b, err := currentBackend(opts)
 			if err != nil {
 				return err
@@ -75,85 +73,69 @@ func newStackLsCmd() *cobra.Command {
 				packageFilter = &proj.Name
 			}
 
-			// Now produce a list of summaries, and enumerate them sorted by name.
-			var result error
-			var stackNames []string
-			stacks := make(map[string]backend.Stack)
-			bs, err := b.ListStacks(commandContext(), packageFilter)
+			// List all of the stacks available.
+			stackSummaries, err := b.ListStacks(commandContext(), packageFilter)
 			if err != nil {
 				return err
 			}
+			// Sort by stack name.
+			sort.Slice(stackSummaries, func(i, j int) bool {
+				return stackSummaries[i].Name().String() < stackSummaries[j].Name().String()
+			})
+
 			_, showURLColumn := b.(httpstate.Backend)
 
-			for _, stack := range bs {
-				name := stack.Ref().String()
-				stacks[name] = stack
-				stackNames = append(stackNames, name)
-			}
-			sort.Strings(stackNames)
-
 			// Devote 48 characters to the name width, unless there is a longer name.
-			maxname := 48
-			for _, name := range stackNames {
-				if len(name) > maxname {
-					maxname = len(name)
+			maxName := 47
+			for _, summary := range stackSummaries {
+				name := summary.Name().String()
+				if len(name) > maxName {
+					maxName = len(name)
 				}
 			}
+			maxName++ // Account for adding the '*' to the currently selected stack.
 
-			// We have to fault in snapshots for all the stacks we are going to list here, because that's the easiest
-			// way to get the last update time and the resource count.  Since this is an expensive operation, we'll
-			// do it before printing any output so the latency happens all at once instead of line by line.
-			//
-			// TODO[pulumi/pulumi-service#1530]: We need a lighterweight way of fetching just the specific information
-			// we want to display here.
-			for _, name := range stackNames {
-				stack := stacks[name]
-				_, err := stack.Snapshot(commandContext())
-				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
-			}
-
-			formatDirective := "%-" + strconv.Itoa(maxname) + "s %-24s %-18s"
+			// Header string and formatting options to align columns.
+			formatDirective := "%-" + strconv.Itoa(maxName) + "s %-24s %-18s"
 			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
-
 			if showURLColumn {
 				formatDirective += " %s"
 				headers = append(headers, "URL")
 			}
-
 			formatDirective = formatDirective + "\n"
 
 			fmt.Printf(formatDirective, headers...)
-			for _, name := range stackNames {
-				// Mark the name as current '*' if we've selected it.
-				stack := stacks[name]
+			for _, summary := range stackSummaries {
+				const none = "n/a"
+
+				// Name column
+				name := summary.Name().String()
 				if name == current {
 					name += "*"
 				}
 
-				// Get last deployment info, provided that it exists.
-				none := "n/a"
+				// Last update column
 				lastUpdate := none
-				resourceCount := none
-				snap, err := stack.Snapshot(commandContext())
-				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
-
-				if snap != nil {
-					if t := snap.Manifest.Time; !t.IsZero() {
-						lastUpdate = humanize.Time(t)
-					}
-					resourceCount = strconv.Itoa(len(snap.Resources))
+				if stackLastUpdate := summary.LastUpdate(); stackLastUpdate != nil {
+					lastUpdate = humanize.Time(*stackLastUpdate)
 				}
 
+				// ResourceCount column
+				resourceCount := none
+				if stackResourceCount := summary.ResourceCount(); stackResourceCount != nil {
+					resourceCount = strconv.Itoa(*stackResourceCount)
+				}
+
+				// Render the columns.
 				values := []interface{}{name, lastUpdate, resourceCount}
 				if showURLColumn {
 					var url string
-					if cs, ok := stack.(httpstate.Stack); ok {
-						if u, urlErr := cs.ConsoleURL(); urlErr == nil {
-							url = u
+					if httpBackend, ok := b.(httpstate.Backend); ok {
+						if nameSuffix, err := httpBackend.StackConsoleURL(summary.Name()); err != nil {
+							url = none
+						} else {
+							url = fmt.Sprintf("%s/%s", httpBackend.CloudURL(), nameSuffix)
 						}
-					}
-					if url == "" {
-						url = none
 					}
 					values = append(values, url)
 				}
@@ -161,7 +143,7 @@ func newStackLsCmd() *cobra.Command {
 				fmt.Printf(formatDirective, values...)
 			}
 
-			return result
+			return nil
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(

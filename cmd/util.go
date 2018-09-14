@@ -163,7 +163,7 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 	return chooseStack(b, offerNew, opts, setCurrent)
 }
 
-// chooseStack will prompt the user to choose amongst the full set of stacks in the given backends.  If offerNew is
+// chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
 func chooseStack(
 	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
@@ -183,22 +183,20 @@ func chooseStack(
 		return nil, err
 	}
 
-	// First create a list and map of stack names.
+	// List stacks as available options.
 	var options []string
-	stacks := make(map[string]backend.Stack)
-	allStacks, err := b.ListStacks(commandContext(), &proj.Name)
+	summaries, err := b.ListStacks(commandContext(), &proj.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
-	for _, stack := range allStacks {
-		name := stack.Ref().String()
+	for _, summary := range summaries {
+		name := summary.Name().String()
 		options = append(options, name)
-		stacks[name] = stack
 	}
 	sort.Strings(options)
 
 	// If we are offering to create a new stack, add that to the end of the list.
-	newOption := "<create a new stack>"
+	const newOption = "<create a new stack>"
 	if offerNew {
 		options = append(options, newOption)
 	} else if len(options) == 0 {
@@ -227,7 +225,7 @@ func chooseStack(
 	message = opts.Color.Colorize(colors.BrightWhite + message + colors.Reset)
 
 	var option string
-	if err := survey.AskOne(&survey.Select{
+	if err = survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
 		Default: current,
@@ -236,20 +234,30 @@ func chooseStack(
 	}
 
 	if option == newOption {
-		stackName, err := cmdutil.ReadConsole("Please enter your desired stack name")
-		if err != nil {
-			return nil, err
+		stackName, readErr := cmdutil.ReadConsole("Please enter your desired stack name")
+		if readErr != nil {
+			return nil, readErr
 		}
 
-		stackRef, err := b.ParseStackReference(stackName)
-		if err != nil {
-			return nil, err
+		stackRef, parseErr := b.ParseStackReference(stackName)
+		if parseErr != nil {
+			return nil, parseErr
 		}
 
 		return createStack(b, stackRef, nil, setCurrent)
 	}
 
-	return stacks[option], nil
+	// With the stack name selected, look it up from the backend.
+	stackRef, err := b.ParseStackReference(option)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing selected stack")
+	}
+	stack, err := b.GetStack(commandContext(), stackRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting selected stack")
+	}
+
+	return stack, nil
 }
 
 // readProject attempts to detect and read the project for the current workspace. If an error occurs, it will be
