@@ -257,6 +257,8 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
 	accessToken := os.Getenv(AccessTokenEnvVar)
+	accountLink := cloudConsoleURL(cloudURL, "account")
+
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
 	} else {
@@ -273,32 +275,42 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			maxlen = line2len
 		}
 
-		accountLink := cloudConsoleURL(cloudURL, "account")
-		line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
-		line3len := len(line3)
-		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
-		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Printf(opts.Color.Colorize(line3) + "\n")
-		if line3len > maxlen {
-			maxlen = line3len
-		}
+		// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
+		// don't offer magic log-in or text about where to find your access token.
+		if accountLink == "" {
+			for {
+				if accessToken, err = cmdutil.ReadConsoleNoEcho("Enter your access token"); err != nil {
+					return nil, err
+				}
+				if accessToken != "" {
+					break
+				}
+			}
+		} else {
+			line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
+			line3len := len(line3)
+			line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
+			line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
+			fmt.Printf(opts.Color.Colorize(line3) + "\n")
+			if line3len > maxlen {
+				maxlen = line3len
+			}
 
-		line4 := "    or hit <ENTER> to log in using your browser"
-		var padding string
-		if pad := maxlen - len(line4); pad > 0 {
-			padding = strings.Repeat(" ", pad)
-		}
-		line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
+			line4 := "    or hit <ENTER> to log in using your browser"
+			var padding string
+			if pad := maxlen - len(line4); pad > 0 {
+				padding = strings.Repeat(" ", pad)
+			}
+			line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
 
-		token, readerr := cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding)
-		if readerr != nil {
-			return nil, readerr
-		}
-		accessToken = token
-	}
+			if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
+				return nil, err
+			}
 
-	if accessToken == "" {
-		return loginWithBrowser(ctx, d, cloudURL)
+			if accessToken == "" {
+				return loginWithBrowser(ctx, d, cloudURL)
+			}
+		}
 	}
 
 	// Try and use the credentials to see if they are valid.
