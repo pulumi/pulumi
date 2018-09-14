@@ -20,6 +20,8 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -57,7 +59,9 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %s:\n", s.Ref())
+			curStackMessage := fmt.Sprintf("Current stack is %s:\n", s.Ref())
+			curStackMessage = colors.Highlight(curStackMessage, s.Ref().String(), colors.Bold+colors.BrightMagenta)
+			fmt.Printf(opts.Color.Colorize(curStackMessage))
 
 			be := s.Backend()
 			cloudBe, isCloud := be.(httpstate.Backend)
