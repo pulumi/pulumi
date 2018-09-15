@@ -71,7 +71,7 @@ async function checkRPC(call: any, callback: any): Promise<void> {
         const news = req.getNews().toJavaScript();
         const provider = getProvider(news);
 
-        let inputs: any = {};
+        let inputs: any = news;
         let failures: any[] = [];
         if (provider.check) {
             const result = await provider.check(olds, news);
@@ -109,32 +109,33 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp = new provproto.DiffResponse();
 
-        // If the provider itself has changed, do not delegate to the dynamic provider. Instead, simply report that the
-        // resource requires replacement. This allows the new resource to be created using the new provider and the old
-        // resource to be deleted using the old provider.
+        // Note that we do not take any special action if the provider has changed. This allows a user to iterate on a
+        // dynamic provider's implementation. This does require some care on the part of the user: each iteration of a
+        // dynamic provider's implementation must be able to handle all state produced by prior iterations.
+        //
+        // Prior versions of the dynamic provider required that a dynamic resource be replaced any time its provider
+        // implementation changed. This made iteration painful, especially if the dynamic resource was managing a
+        // physical resource--in this case, the physical resource would be unnecessarily deleted and recreated each
+        // time the provider was updated.
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        if (olds[providerKey] !== news[providerKey]) {
-            resp.setReplacesList([ providerKey ]);
-        } else {
-            const provider = getProvider(olds);
-            if (provider.diff) {
-                const result: any = await provider.diff(req.getId(), olds, news);
+        const provider = getProvider(news);
+        if (provider.diff) {
+            const result: any = await provider.diff(req.getId(), olds, news);
 
-                if (result.changes === true) {
-                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_SOME);
-                } else if (result.changes === false) {
-                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_NONE);
-                } else {
-                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_UNKNOWN);
-                }
+            if (result.changes === true) {
+                resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_SOME);
+            } else if (result.changes === false) {
+                resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_NONE);
+            } else {
+                resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_UNKNOWN);
+            }
 
-                if (result.replaces && result.replaces.length !== 0) {
-                    resp.setReplacesList(result.replaces);
-                }
-                if (result.deleteBeforeReplace) {
-                    resp.setDeletebeforereplace(result.deleteBeforeReplace);
-                }
+            if (result.replaces && result.replaces.length !== 0) {
+                resp.setReplacesList(result.replaces);
+            }
+            if (result.deleteBeforeReplace) {
+                resp.setDeletebeforereplace(result.deleteBeforeReplace);
             }
         }
 
@@ -198,20 +199,15 @@ async function updateRPC(call: any, callback: any): Promise<void> {
 
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        if (olds[providerKey] !== news[providerKey]) {
-            throw new Error("changes to provider should require replacement");
-        }
 
-        let result: any;
-        const provider = getProvider(olds);
+        let result: any = {};
+        const provider = getProvider(news);
         if (provider.update) {
-            result = await provider.update(req.getId(), olds, news);
+            result = await provider.update(req.getId(), olds, news) || {};
         }
 
-        if (result.outs) {
-            const resultProps = resultIncludingProvider(result.outs, news);
-            resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
-        }
+        const resultProps = resultIncludingProvider(result.outs, news);
+        resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
 
         callback(undefined, resp);
     } catch (e) {
