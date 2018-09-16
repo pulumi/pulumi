@@ -442,8 +442,38 @@ func addGitCommitMetadataToEnvironment(repo *git.Repository, env map[string]stri
 	return nil
 }
 
-// addCIMetadataToEnvironment populate's the environment metadata bag with CI/CD-related values.
+// addCIMetadataToEnvironment populates the environment metadata bag with CI/CD-related values.
 func addCIMetadataToEnvironment(env map[string]string) {
+	// If CI variables have been set specifically for Pulumi in the environment,
+	// use that in preference to attempting to automatically detect the CI system.
+	// This allows Pulumi to work with any CI system with appropriate configuration,
+	// rather than requiring explicit support for each one.
+	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
+		env[backend.CISystem] = os.Getenv("PULUMI_CI_SYSTEM")
+
+		// Set whatever variables we have available in the environment
+		if buildID := os.Getenv("PULUMI_CI_BUILD_ID"); buildID != "" {
+			env[backend.CIBuildID] = buildID
+		}
+		if buildType := os.Getenv("PULUMI_CI_BUILD_TYPE"); buildType != "" {
+			env[backend.CIBuildType] = buildType
+		}
+		if buildURL := os.Getenv("PULUMI_CI_BUILD_URL"); buildURL != "" {
+			env[backend.CIBuildURL] = buildURL
+		}
+
+		// Pass pull request-specific vales as appropriate.
+		if sha := os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"); sha != "" {
+			env[backend.CIPRHeadSHA] = sha
+		}
+
+		// Don't proceed with automatic CI detection
+		return
+	}
+
+	// If CI variables were not set in the environment, try to detect which
+	// CI system we are inside and set variables
+
 	// Check if running on Travis CI. See:
 	// https://docs.travis-ci.com/user/environment-variables/
 	if os.Getenv("TRAVIS") == "true" {
