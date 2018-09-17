@@ -37,7 +37,7 @@ $PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC $PROTO_FILES
 JS_PULUMIRPC=/nodejs/proto/
 JS_PROTOFLAGS="import_style=commonjs,binary"
 echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"
-$PROTOC --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin $JS_PROTO_FILES
+$PROTOC --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=minimum_node_version=6:$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin $JS_PROTO_FILES
 
 function on_exit() {
     rm -rf "$TEMP_DIR"
