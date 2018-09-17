@@ -1004,9 +1004,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	op := display.getStepOp(step)
 
 	if display.isPreview {
-		// During a preview, when we transition to done, we still just print the same thing we
-		// did while running the step.
-		return op.Color() + display.getPreviewText(step) + colors.Reset
+		// During a preview, when we transition to done, we'll print out summary text describing the step instead of a
+		// past-tense verb describing the step that was performed.
+		return op.Color() + display.getPreviewDoneText(step) + colors.Reset
 	}
 
 	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
@@ -1050,6 +1050,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			case deploy.OpDeleteReplaced:
 				return "deleted original"
 			case deploy.OpRead:
+				// nolint: goconst
 				return "read"
 			case deploy.OpReadReplacement:
 				return "read for replacement"
@@ -1086,11 +1087,37 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 	case deploy.OpDeleteReplaced:
 		return "delete original"
 	case deploy.OpRead:
+		// nolint: goconst
 		return "read"
 	case deploy.OpReadReplacement:
 		return "read for replacement"
 	case deploy.OpRefresh:
 		return "refreshing"
+	}
+
+	contract.Failf("Unrecognized resource step op: %v", step.Op)
+	return ""
+}
+
+// getPreviewDoneText returns a textual representation for this step, suitable for display during a preview once the
+// preview has completed.
+func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata) string {
+	switch step.Op {
+	case deploy.OpSame:
+		return "no change"
+	case deploy.OpCreate:
+		return "create"
+	case deploy.OpUpdate:
+		return "update"
+	case deploy.OpDelete:
+		return "delete"
+	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement:
+		return "replace"
+	case deploy.OpRead:
+		// nolint: goconst
+		return "read"
+	case deploy.OpRefresh:
+		return "refresh"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
