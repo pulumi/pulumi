@@ -24,7 +24,7 @@ function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
     throw new Error('Expected argument of type google.protobuf.Empty');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_google_protobuf_Empty(buffer_arg) {
@@ -35,7 +35,7 @@ function serialize_pulumirpc_LogRequest(arg) {
   if (!(arg instanceof engine_pb.LogRequest)) {
     throw new Error('Expected argument of type pulumirpc.LogRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_LogRequest(buffer_arg) {
