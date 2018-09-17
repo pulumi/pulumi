@@ -53,6 +53,12 @@ func Highlight(s, text, commands string) string {
 	return strings.Replace(s, text, commands+text+Reset, -1)
 }
 
+var (
+	Reset     = Command("reset")
+	Bold      = Command("bold")
+	Underline = Command("underline")
+)
+
 // Basic colors.
 var (
 	Black         = Command("fg 0")
@@ -63,22 +69,15 @@ var (
 	Magenta       = Command("fg 5")
 	Cyan          = Command("fg 6")
 	White         = Command("fg 7")
-	BrightBlack   = Command("fg 8")
+	BrightBlack   = Reset
 	BrightRed     = Command("fg 9")
 	BrightGreen   = Command("fg 10")
 	BrightYellow  = Command("fg 11")
 	BrightBlue    = Command("fg 12")
 	BrightMagenta = Command("fg 13")
 	BrightCyan    = Command("fg 14")
-	BrightWhite   = Command("fg 15")
+	BrightWhite   = Bold
 )
-
-var (
-	Bold      = Command("bold")
-	Underline = Command("underline")
-)
-
-var Reset = Command("reset")
 
 // Special predefined colors for logical conditions.
 var (
