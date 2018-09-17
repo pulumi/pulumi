@@ -355,7 +355,7 @@ func confirmPrompt(prompt string, name string, opts display.Options) bool {
 	fmt.Print(
 		opts.Color.Colorize(
 			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
-				colors.SpecAttention, colors.BrightWhite, name, colors.SpecAttention, colors.Reset)))
+				colors.SpecAttention, colors.Bold, name, colors.SpecAttention, colors.Reset)))
 
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
