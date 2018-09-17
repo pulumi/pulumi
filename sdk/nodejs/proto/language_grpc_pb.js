@@ -25,7 +25,7 @@ function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
     throw new Error('Expected argument of type google.protobuf.Empty');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_google_protobuf_Empty(buffer_arg) {
@@ -36,7 +36,7 @@ function serialize_pulumirpc_GetRequiredPluginsRequest(arg) {
   if (!(arg instanceof language_pb.GetRequiredPluginsRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetRequiredPluginsRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetRequiredPluginsRequest(buffer_arg) {
@@ -47,7 +47,7 @@ function serialize_pulumirpc_GetRequiredPluginsResponse(arg) {
   if (!(arg instanceof language_pb.GetRequiredPluginsResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetRequiredPluginsResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetRequiredPluginsResponse(buffer_arg) {
@@ -58,7 +58,7 @@ function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_PluginInfo(buffer_arg) {
@@ -69,7 +69,7 @@ function serialize_pulumirpc_RunRequest(arg) {
   if (!(arg instanceof language_pb.RunRequest)) {
     throw new Error('Expected argument of type pulumirpc.RunRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_RunRequest(buffer_arg) {
@@ -80,7 +80,7 @@ function serialize_pulumirpc_RunResponse(arg) {
   if (!(arg instanceof language_pb.RunResponse)) {
     throw new Error('Expected argument of type pulumirpc.RunResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_RunResponse(buffer_arg) {
