@@ -142,7 +142,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
 		prompt := "\b" + opts.Display.Color.Colorize(
-			colors.Bold+fmt.Sprintf("Do you want to perform this %s%s?",
+			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
 				kind, previewWarning)+colors.Reset)
 		if kind == apitype.RefreshUpdate {
 			prompt += "\n" +

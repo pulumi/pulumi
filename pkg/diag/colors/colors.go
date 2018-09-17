@@ -96,8 +96,8 @@ var (
 	SpecError   = Red             // for errors.
 	SpecWarning = Yellow          // for warnings.
 
-	SpecLocation  = Cyan      // for source locations.
-	SpecAttention = BrightRed // for messages that are meant to grab attention.
+	SpecPrompt    = Cyan + Bold // for prompting the user
+	SpecAttention = BrightRed   // for messages that are meant to grab attention.
 
 	// for simple notes.  Just use the standard terminal text color.
 	SpecNote = Reset

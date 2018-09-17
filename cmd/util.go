@@ -222,7 +222,7 @@ func chooseStack(
 	} else {
 		message += ":"
 	}
-	message = opts.Color.Colorize(colors.Bold + message + colors.Reset)
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	var option string
 	if err = survey.AskOne(&survey.Select{
