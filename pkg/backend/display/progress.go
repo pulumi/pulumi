@@ -1050,6 +1050,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			case deploy.OpDeleteReplaced:
 				return "deleted original"
 			case deploy.OpRead:
+				// nolint: goconst
 				return "read"
 			case deploy.OpReadReplacement:
 				return "read for replacement"
@@ -1086,6 +1087,7 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 	case deploy.OpDeleteReplaced:
 		return "delete original"
 	case deploy.OpRead:
+		// nolint: goconst
 		return "read"
 	case deploy.OpReadReplacement:
 		return "read for replacement"
@@ -1112,6 +1114,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement:
 		return "replace"
 	case deploy.OpRead:
+		// nolint: goconst
 		return "read"
 	case deploy.OpRefresh:
 		return "refresh"
