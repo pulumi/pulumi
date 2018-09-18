@@ -146,7 +146,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 				kind, previewWarning)+colors.Reset)
 		if kind == apitype.RefreshUpdate {
 			prompt += "\n" +
-				opts.Display.Color.Colorize(colors.BrightYellow+
+				opts.Display.Color.Colorize(colors.SpecImportant+
 					"No resources will be modified as part of this refresh; just your stack's state will be."+
 					colors.Reset)
 		}
