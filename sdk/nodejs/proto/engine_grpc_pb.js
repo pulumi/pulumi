@@ -36,7 +36,7 @@ function serialize_pulumirpc_GetRootResourceRequest(arg) {
   if (!(arg instanceof engine_pb.GetRootResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetRootResourceRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetRootResourceRequest(buffer_arg) {
@@ -47,7 +47,7 @@ function serialize_pulumirpc_GetRootResourceResponse(arg) {
   if (!(arg instanceof engine_pb.GetRootResourceResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetRootResourceResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetRootResourceResponse(buffer_arg) {
@@ -69,7 +69,7 @@ function serialize_pulumirpc_SetRootResourceRequest(arg) {
   if (!(arg instanceof engine_pb.SetRootResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.SetRootResourceRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_SetRootResourceRequest(buffer_arg) {
@@ -80,7 +80,7 @@ function serialize_pulumirpc_SetRootResourceResponse(arg) {
   if (!(arg instanceof engine_pb.SetRootResourceResponse)) {
     throw new Error('Expected argument of type pulumirpc.SetRootResourceResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_SetRootResourceResponse(buffer_arg) {
@@ -88,7 +88,9 @@ function deserialize_pulumirpc_SetRootResourceResponse(buffer_arg) {
 }
 
 
-// Engine is an interface into the core engine responsible for orchestrating resource operations.
+// Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+// to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+// that can't store their own global state.
 var EngineService = exports.EngineService = {
   // Log logs a global message in the engine, including errors and warnings.
   log: {
@@ -102,6 +104,8 @@ var EngineService = exports.EngineService = {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  // GetRootResource gets the URN of the root resource, the resource that should be the root of all
+  // otherwise-unparented resources.
   getRootResource: {
     path: '/pulumirpc.Engine/GetRootResource',
     requestStream: false,
@@ -113,6 +117,7 @@ var EngineService = exports.EngineService = {
     responseSerialize: serialize_pulumirpc_GetRootResourceResponse,
     responseDeserialize: deserialize_pulumirpc_GetRootResourceResponse,
   },
+  // SetRootResource sets the URN of the root resource.
   setRootResource: {
     path: '/pulumirpc.Engine/SetRootResource',
     requestStream: false,

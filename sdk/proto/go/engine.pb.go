@@ -52,7 +52,7 @@ func (x LogSeverity) String() string {
 	return proto.EnumName(LogSeverity_name, int32(x))
 }
 func (LogSeverity) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_engine_f09f44fe55773ec3, []int{0}
+	return fileDescriptor_engine_28955f7023322744, []int{0}
 }
 
 type LogRequest struct {
@@ -81,7 +81,7 @@ func (m *LogRequest) Reset()         { *m = LogRequest{} }
 func (m *LogRequest) String() string { return proto.CompactTextString(m) }
 func (*LogRequest) ProtoMessage()    {}
 func (*LogRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_f09f44fe55773ec3, []int{0}
+	return fileDescriptor_engine_28955f7023322744, []int{0}
 }
 func (m *LogRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogRequest.Unmarshal(m, b)
@@ -146,7 +146,7 @@ func (m *GetRootResourceRequest) Reset()         { *m = GetRootResourceRequest{}
 func (m *GetRootResourceRequest) String() string { return proto.CompactTextString(m) }
 func (*GetRootResourceRequest) ProtoMessage()    {}
 func (*GetRootResourceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_f09f44fe55773ec3, []int{1}
+	return fileDescriptor_engine_28955f7023322744, []int{1}
 }
 func (m *GetRootResourceRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRootResourceRequest.Unmarshal(m, b)
@@ -167,6 +167,7 @@ func (m *GetRootResourceRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_GetRootResourceRequest proto.InternalMessageInfo
 
 type GetRootResourceResponse struct {
+	// the URN of the root resource, or the empty string if one was not set.
 	Urn                  string   `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -177,7 +178,7 @@ func (m *GetRootResourceResponse) Reset()         { *m = GetRootResourceResponse
 func (m *GetRootResourceResponse) String() string { return proto.CompactTextString(m) }
 func (*GetRootResourceResponse) ProtoMessage()    {}
 func (*GetRootResourceResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_f09f44fe55773ec3, []int{2}
+	return fileDescriptor_engine_28955f7023322744, []int{2}
 }
 func (m *GetRootResourceResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRootResourceResponse.Unmarshal(m, b)
@@ -205,6 +206,7 @@ func (m *GetRootResourceResponse) GetUrn() string {
 }
 
 type SetRootResourceRequest struct {
+	// the URN of the root resource, or the empty string.
 	Urn                  string   `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -215,7 +217,7 @@ func (m *SetRootResourceRequest) Reset()         { *m = SetRootResourceRequest{}
 func (m *SetRootResourceRequest) String() string { return proto.CompactTextString(m) }
 func (*SetRootResourceRequest) ProtoMessage()    {}
 func (*SetRootResourceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_f09f44fe55773ec3, []int{3}
+	return fileDescriptor_engine_28955f7023322744, []int{3}
 }
 func (m *SetRootResourceRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SetRootResourceRequest.Unmarshal(m, b)
@@ -252,7 +254,7 @@ func (m *SetRootResourceResponse) Reset()         { *m = SetRootResourceResponse
 func (m *SetRootResourceResponse) String() string { return proto.CompactTextString(m) }
 func (*SetRootResourceResponse) ProtoMessage()    {}
 func (*SetRootResourceResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_f09f44fe55773ec3, []int{4}
+	return fileDescriptor_engine_28955f7023322744, []int{4}
 }
 func (m *SetRootResourceResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SetRootResourceResponse.Unmarshal(m, b)
@@ -294,7 +296,10 @@ const _ = grpc.SupportPackageIsVersion4
 type EngineClient interface {
 	// Log logs a global message in the engine, including errors and warnings.
 	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	// GetRootResource gets the URN of the root resource, the resource that should be the root of all
+	// otherwise-unparented resources.
 	GetRootResource(ctx context.Context, in *GetRootResourceRequest, opts ...grpc.CallOption) (*GetRootResourceResponse, error)
+	// SetRootResource sets the URN of the root resource.
 	SetRootResource(ctx context.Context, in *SetRootResourceRequest, opts ...grpc.CallOption) (*SetRootResourceResponse, error)
 }
 
@@ -338,7 +343,10 @@ func (c *engineClient) SetRootResource(ctx context.Context, in *SetRootResourceR
 type EngineServer interface {
 	// Log logs a global message in the engine, including errors and warnings.
 	Log(context.Context, *LogRequest) (*empty.Empty, error)
+	// GetRootResource gets the URN of the root resource, the resource that should be the root of all
+	// otherwise-unparented resources.
 	GetRootResource(context.Context, *GetRootResourceRequest) (*GetRootResourceResponse, error)
+	// SetRootResource sets the URN of the root resource.
 	SetRootResource(context.Context, *SetRootResourceRequest) (*SetRootResourceResponse, error)
 }
 
@@ -421,9 +429,9 @@ var _Engine_serviceDesc = grpc.ServiceDesc{
 	Metadata: "engine.proto",
 }
 
-func init() { proto.RegisterFile("engine.proto", fileDescriptor_engine_f09f44fe55773ec3) }
+func init() { proto.RegisterFile("engine.proto", fileDescriptor_engine_28955f7023322744) }
 
-var fileDescriptor_engine_f09f44fe55773ec3 = []byte{
+var fileDescriptor_engine_28955f7023322744 = []byte{
 	// 360 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x91, 0x4f, 0x4b, 0xc3, 0x40,
 	0x10, 0xc5, 0x9b, 0xa6, 0xff, 0x32, 0x15, 0x0d, 0x0b, 0xa6, 0x31, 0xf6, 0xa0, 0x39, 0x49, 0x85,

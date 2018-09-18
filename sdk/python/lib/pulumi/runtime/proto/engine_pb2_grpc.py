@@ -6,7 +6,9 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
 class EngineStub(object):
-  """Engine is an interface into the core engine responsible for orchestrating resource operations.
+  """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+  to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+  that can't store their own global state.
   """
 
   def __init__(self, channel):
@@ -33,7 +35,9 @@ class EngineStub(object):
 
 
 class EngineServicer(object):
-  """Engine is an interface into the core engine responsible for orchestrating resource operations.
+  """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+  to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+  that can't store their own global state.
   """
 
   def Log(self, request, context):
@@ -44,15 +48,16 @@ class EngineServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def GetRootResource(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
+    """GetRootResource gets the URN of the root resource, the resource that should be the root of all
+    otherwise-unparented resources.
+    """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
   def SetRootResource(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
+    """SetRootResource sets the URN of the root resource.
+    """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
