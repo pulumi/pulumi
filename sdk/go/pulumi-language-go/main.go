@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -91,6 +92,40 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return &pulumirpc.GetRequiredPluginsResponse{}, nil
 }
 
+// findProgram attempts to find the needed program in various locations on the
+// filesystem, eventually resorting to searching in $PATH.
+func findProgram(program string) (string, error) {
+
+	// look in the same directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to get current working directory")
+	}
+
+	cwdProgram := filepath.Join(cwd, program)
+	if _, err := os.Stat(cwdProgram); !os.IsNotExist(err) {
+		logging.V(5).Infoln("program %s found in CWD", program)
+		return cwdProgram, nil
+	}
+
+	// look in $GOPATH/bin
+	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
+		goPathProgram := filepath.Join(goPath, "bin", program)
+		if _, err := os.Stat(goPathProgram); !os.IsNotExist(err) {
+			logging.V(5).Infoln("program %s found in $GOPATH/bin", program)
+			return goPathProgram, nil
+		}
+	}
+
+	// look in the $PATH somewhere
+	if fullPath, err := exec.LookPath(program); err == nil {
+		logging.V(5).Infoln("program %s found in $PATH", program)
+		return fullPath, nil
+	}
+
+	return "", errors.Errorf("unable to find program: %s", program)
+}
+
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
@@ -102,7 +137,11 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	// The program to execute is simply the name of the project.  This ensures good Go toolability, whereby
 	// you can simply run `go install .` to build a Pulumi program prior to running it, among other benefits.
-	program := req.GetProject()
+	program, err := findProgram(req.GetProject())
+	if err != nil {
+		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
+	}
+
 	logging.V(5).Infoln("language host launching process: %s", program)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
