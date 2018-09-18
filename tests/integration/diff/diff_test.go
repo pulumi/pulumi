@@ -326,6 +326,7 @@ func convertControlSequences(t *testing.T, text string) string {
 		case "<{%fg 2%}>":
 			return Added
 		case "<{%fg 3%}>":
+		case "<{%fg 13%}>":
 			return Replaced
 		case "<{%fg 5%}>":
 			return Info
