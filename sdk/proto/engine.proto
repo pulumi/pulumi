@@ -15,13 +15,23 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
-// Engine is an interface into the core engine responsible for orchestrating resource operations.
+// Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+// to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+// that can't store their own global state.
 service Engine {
     // Log logs a global message in the engine, including errors and warnings.
     rpc Log(LogRequest) returns (google.protobuf.Empty) {}
+
+    // GetRootResource gets the URN of the root resource, the resource that should be the root of all
+    // otherwise-unparented resources.
+    rpc GetRootResource(GetRootResourceRequest) returns (GetRootResourceResponse) {}
+
+    // SetRootResource sets the URN of the root resource.
+    rpc SetRootResource(SetRootResourceRequest) returns (SetRootResourceResponse) {}
 }
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
@@ -53,4 +63,22 @@ message LogRequest {
 
     // Optional value indicating whether this is a status message.
     bool ephemeral = 5;
+}
+
+message GetRootResourceRequest {
+    // empty.
+}
+
+message GetRootResourceResponse {
+    // the URN of the root resource, or the empty string if one was not set.
+    string urn = 1;
+}
+
+message SetRootResourceRequest {
+    // the URN of the root resource, or the empty string.
+    string urn = 1;
+}
+
+message SetRootResourceResponse {
+    // empty.
 }

@@ -33,9 +33,6 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
     opts = opts || {};
-    if (!opts.parent) {
-        opts.parent = getRootResource();
-    }
     if (opts.parent && opts.provider === undefined) {
         opts.provider = opts.parent.getProvider(tok);
     }

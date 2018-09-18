@@ -42,6 +42,8 @@ interface RunCase {
         count?: number;
         ignoreDebug?: boolean;
     };
+    skipRootResourceEndpoints?: boolean;
+    showRootResourceRegistration?: boolean;
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
         urn: URN | undefined, props: any | undefined };
@@ -51,6 +53,8 @@ interface RunCase {
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
+    getRootResource?: (ctx: any) => { urn: string };
+    setRootResource?: (ctx: any, urn: string) => void;
 }
 
 function makeUrn(t: string, name: string): URN {
@@ -510,6 +514,41 @@ describe("rpc", () => {
                 });
             },
         },
+        "root_resource": {
+            program: path.join(base, "001.one_resource"),
+            expectResourceCount: 2,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
+
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.strictEqual(parent, ctx.stackUrn);
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "backcompat_root_resource": {
+            program: path.join(base, "001.one_resource"),
+            expectResourceCount: 2,
+            skipRootResourceEndpoints: true,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
+
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.strictEqual(parent, ctx.stackUrn);
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -522,9 +561,10 @@ describe("rpc", () => {
                 // First we need to mock the resource monitor.
                 const ctx: any = {};
                 const regs: any = {};
+                let rootResource: string | undefined;
                 let regCnt = 0;
                 let logCnt = 0;
-                const monitor = createMockEngine(
+                const monitor = createMockEngine(opts,
                     // Invoke callback
                     (call: any, callback: any) => {
                         const resp = new resproto.InvokeResponse();
@@ -559,7 +599,7 @@ describe("rpc", () => {
                         const resp = new resproto.RegisterResourceResponse();
                         const req: any = call.request;
                         // Skip the automatically generated root component resource.
-                        if (req.getType() !== runtime.rootPulumiStackTypeName) {
+                        if (req.getType() !== runtime.rootPulumiStackTypeName || opts.showRootResourceRegistration) {
                             if (opts.registerResource) {
                                 const t = req.getType();
                                 const name = req.getName();
@@ -603,7 +643,7 @@ describe("rpc", () => {
                         const urn = req.getUrn();
                         const streamId = req.getStreamid();
                         if (severity === engineproto.LogSeverity.ERROR) {
-                            console.log("log error: " + message);
+                            console.log("log: " + message);
                         }
                         if (opts.expectedLogs) {
                             if (!opts.expectedLogs.ignoreDebug || severity !== engineproto.LogSeverity.DEBUG) {
@@ -615,6 +655,31 @@ describe("rpc", () => {
                         }
 
                         callback(undefined, new gempty.Empty());
+                    },
+                    // GetRootResource callback
+                    (call: any, callback: any) => {
+                        let root: { urn: string };
+                        if (opts.getRootResource) {
+                            root = opts.getRootResource(ctx);
+                        } else {
+                            root = { urn: rootResource! };
+                        }
+
+                        const resp = new engineproto.GetRootResourceResponse();
+                        resp.setUrn(root.urn);
+                        callback(undefined, resp);
+                    },
+                    // SetRootResource callback
+                    (call: any, callback: any) => {
+                        const req: any = call.request;
+                        const urn: string = req.getUrn();
+                        if (opts.setRootResource) {
+                            opts.setRootResource(ctx, urn);
+                        } else {
+                            rootResource = urn;
+                        }
+
+                        callback(undefined, new engineproto.SetRootResourceResponse());
                     },
                 );
 
@@ -710,11 +775,14 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
 // Despite the name, the "engine" RPC endpoint is only a logging endpoint. createMockEngine fires up a fake
 // logging server so tests can assert that certain things get logged.
 function createMockEngine(
+        opts: RunCase,
         invokeCallback: (call: any, request: any) => any,
         readResourceCallback: (call: any, request: any) => any,
         registerResourceCallback: (call: any, request: any) => any,
         registerResourceOutputsCallback: (call: any, request: any) => any,
-        logCallback: (call: any, request: any) => any): { server: any, addr: string } {
+        logCallback: (call: any, request: any) => any,
+        getRootResourceCallback: (call: any, request: any) => any,
+        setRootResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
     server.addService(resrpc.ResourceMonitorService, {
@@ -723,10 +791,20 @@ function createMockEngine(
         registerResource: registerResourceCallback,
         registerResourceOutputs: registerResourceOutputsCallback,
     });
-    server.addService(enginerpc.EngineService, {
-        log: logCallback,
-    });
 
+    let engineImpl: Object = {
+        log: logCallback,
+    };
+
+    if (!opts.skipRootResourceEndpoints) {
+        engineImpl = {
+            ... engineImpl,
+            getRootResource: getRootResourceCallback,
+            setRootResource: setRootResourceCallback,
+        };
+    }
+
+    server.addService(enginerpc.EngineService, engineImpl);
     const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
     server.start();
     return { server: server, addr: `0.0.0.0:${port}` };

@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as grpc from "grpc";
 import { RunError } from "../errors";
-import { ComponentResource } from "../resource";
+import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
-const grpc = require("grpc");
 const engrpc = require("../proto/engine_grpc_pb.js");
+const engproto = require("../proto/engine_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 
 /**
@@ -209,22 +210,72 @@ export function rpcKeepAlive(): () => void {
     return done!;
 }
 
-let rootResource: ComponentResource | undefined;
+let rootResource: Promise<URN> | undefined;
 
 /**
- * getRootResource returns a root resource that will automatically become the default parent of all resources.  This
+ * getRootResource returns a root resource URN that will automatically become the default parent of all resources.  This
  * can be used to ensure that all resources without explicit parents are parented to a common parent resource.
  */
-export function getRootResource(): ComponentResource | undefined {
-    return rootResource;
+export function getRootResource(): Promise<URN | undefined> {
+    const engineRef: any = getEngine();
+    if (!engineRef) {
+        return Promise.resolve(undefined);
+    }
+
+    const req = new engproto.GetRootResourceRequest();
+    return new Promise<URN | undefined>((resolve, reject) => {
+        engineRef.getRootResource(req, (err: grpc.ServiceError, resp: any) => {
+            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root resources,
+            // fall back to the old behavior.
+            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                if (rootResource) {
+                    rootResource.then(resolve);
+                    return;
+                }
+
+                resolve(undefined);
+            }
+
+            if (err) {
+                return reject(err);
+            }
+
+            const urn = resp.getUrn();
+            if (urn) {
+                return resolve(urn);
+            }
+
+            return resolve(undefined);
+        });
+    });
 }
 
 /**
  * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
  */
-export function setRootResource(res: ComponentResource | undefined): void {
-    if (rootResource && res) {
-        throw new Error("Cannot set multiple root resources");
+export async function setRootResource(res: ComponentResource): Promise<void> {
+    const engineRef: any = getEngine();
+    if (!engineRef) {
+        return Promise.resolve();
     }
-    rootResource = res;
+
+    const req = new engproto.SetRootResourceRequest();
+    const urn = await res.urn.promise();
+    req.setUrn(urn);
+    return new Promise<void>((resolve, reject) => {
+        engineRef.setRootResource(req, (err: grpc.ServiceError, resp: any) => {
+            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root resources,
+            // fall back to the old behavior.
+            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                rootResource = res.urn.promise();
+                return resolve();
+            }
+
+            if (err) {
+                return reject(err);
+            }
+
+            return resolve();
+        });
+    });
 }

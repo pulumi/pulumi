@@ -27,7 +27,7 @@ import {
     transferProperties,
     unknownValue,
 } from "./rpc";
-import { excessiveDebugOutput, getMonitor, rpcKeepAlive, serialize } from "./settings";
+import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -233,6 +233,9 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     let parentURN: URN | undefined;
     if (opts.parent) {
         parentURN = await opts.parent.urn.promise();
+    } else {
+        // If no parent was provided, parent to the root resource.
+        parentURN = await getRootResource();
     }
 
     let providerRef: string | undefined;
