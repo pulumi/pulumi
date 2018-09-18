@@ -81,13 +81,13 @@ func RunErr(body RunFunc) error {
 		result = multierror.Append(result, err)
 	}
 
-	// Ensure all outstanding RPCs have completed before proceeding.  Also, prevent any new RPCs from happening.
-	ctx.waitForRPCs()
-
 	// Register all the outputs to the stack object.
 	if err = ctx.RegisterResourceOutputs(ctx.stackR, ctx.exports); err != nil {
 		result = multierror.Append(result, err)
 	}
+
+	// Ensure all outstanding RPCs have completed before proceeding.  Also, prevent any new RPCs from happening.
+	ctx.waitForRPCs()
 
 	// Propagate the error from the body, if any.
 	return result

@@ -517,6 +517,30 @@ type ResourceState struct {
 
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
 func (ctx *Context) RegisterResourceOutputs(urn URN, outs map[string]interface{}) error {
+	_, outsMarshalled, _, err := marshalInputs(outs)
+	if err != nil {
+		return errors.Wrap(err, "marshaling outputs")
+	}
+
+	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
+	if err = ctx.beginRPC(); err != nil {
+		return err
+	}
+
+	// Register the outputs
+	glog.V(9).Infof("RegisterResourceOutputs(%s): RPC call being made", urn)
+	_, err = ctx.monitor.RegisterResourceOutputs(ctx.ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn:     string(urn),
+		Outputs: outsMarshalled,
+	})
+	if err != nil {
+		return errors.Wrap(err, "registering outputs")
+	}
+
+	glog.V(9).Infof("RegisterResourceOutputs(%s): success", urn)
+
+	// Signal the completion of this RPC and notify any potential awaiters.
+	ctx.endRPC()
 	return nil
 }
 
