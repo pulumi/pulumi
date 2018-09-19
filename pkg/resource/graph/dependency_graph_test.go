@@ -99,3 +99,59 @@ func TestGraphNoDuplicates(t *testing.T) {
 		b, c, d,
 	}, dg.DependingOn(a))
 }
+
+func TestDependenciesOf(t *testing.T) {
+	pA := NewProviderResource("test", "pA", "0")
+	a := NewResource("a", pA)
+	b := NewResource("b", pA, a.URN)
+	c := NewResource("c", pA)
+
+	dg := NewDependencyGraph([]*resource.State{
+		pA,
+		a,
+		b,
+		c,
+	})
+
+	aDepends := dg.DependenciesOf(a)
+	assert.True(t, aDepends.Test(pA))
+	assert.False(t, aDepends.Test(a))
+	assert.False(t, aDepends.Test(b))
+
+	bDepends := dg.DependenciesOf(b)
+	assert.True(t, bDepends.Test(pA))
+	assert.True(t, bDepends.Test(a))
+	assert.False(t, bDepends.Test(b))
+
+	cDepends := dg.DependenciesOf(c)
+	assert.True(t, cDepends.Test(pA))
+	assert.False(t, cDepends.Test(a))
+	assert.False(t, cDepends.Test(b))
+}
+
+func TestParentOf(t *testing.T) {
+	a := NewResource("a", nil)
+	// a.Parent is not defined - no parent.
+	b := NewResource("b", nil)
+	b.Parent = a.URN
+	aPendingDelete := NewResource("a", nil)
+	aPendingDelete.Delete = true
+	bPendingDelete := NewResource("b", nil)
+	bPendingDelete.Delete = true
+	bPendingDelete.Parent = aPendingDelete.URN
+
+	dg := NewDependencyGraph([]*resource.State{
+		a,
+		b,
+		aPendingDelete,
+		bPendingDelete,
+	})
+	assert.Equal(t, a.URN, aPendingDelete.URN)
+	assert.Nil(t, dg.ParentOf(a))
+	assert.Equal(t, a, dg.ParentOf(b))
+
+	// Despite having the same URN, bPendingDelete's parent is aPendingDelete because it is the first occurrence of that
+	// URN immediately above it in the snapshot.
+	assert.Nil(t, dg.ParentOf(aPendingDelete))
+	assert.Equal(t, aPendingDelete, dg.ParentOf(bPendingDelete))
+}

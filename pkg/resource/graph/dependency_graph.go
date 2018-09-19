@@ -69,6 +69,53 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 	return dependents
 }
 
+// DependenciesOf returns a ResourceSet of resources upon which the given resource depends.
+func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
+	set := NewResourceSet()
+
+	dependentUrns := make(map[resource.URN]bool)
+	for _, dep := range res.Dependencies {
+		dependentUrns[dep] = true
+	}
+
+	if res.Provider != "" {
+		ref, err := providers.ParseReference(res.Provider)
+		contract.Assert(err == nil)
+		dependentUrns[ref.URN()] = true
+	}
+
+	cursorIndex, ok := dg.index[res]
+	contract.Assert(ok)
+	for i := cursorIndex; i >= 0; i-- {
+		candidate := dg.resources[i]
+		if dependentUrns[candidate.URN] {
+			set.Add(candidate)
+		}
+	}
+
+	return set
+}
+
+// ParentOf returns the resource that is the direct parent of the provided resource, or nil if the provided resource
+// does not have a parent.
+func (dg *DependencyGraph) ParentOf(res *resource.State) *resource.State {
+	if res.Parent == "" {
+		return nil
+	}
+
+	cursorIndex, ok := dg.index[res]
+	contract.Assert(ok)
+	for i := cursorIndex; i >= 0; i-- {
+		candidate := dg.resources[i]
+		if candidate.URN == res.Parent {
+			return candidate
+		}
+	}
+
+	contract.Failf("Failed to find parent urn '%v' for resource '%v'", res.Parent, res.URN)
+	return nil
+}
+
 // NewDependencyGraph creates a new DependencyGraph from a list of resources.
 // The resources should be in topological order with respect to their dependencies.
 func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
