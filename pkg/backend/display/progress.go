@@ -799,7 +799,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	}
 
 	// First time we're hearing about this resource. Create an initial nearly-empty status for it.
-	step := engine.StepEventMetadata{Op: deploy.OpSame}
+	step := engine.StepEventMetadata{URN: urn, Op: deploy.OpSame}
 	if metadata != nil {
 		step = *metadata
 	}
