@@ -163,7 +163,7 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) *result.Result {
 		}
 
 		if res := se.executeStep(workerID, step); res != nil {
-			return result.Wrapf(res, "when executing step '%s' on '%s'", step.Op(), step.URN())
+			return res
 		}
 	}
 

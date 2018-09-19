@@ -246,12 +246,12 @@ func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Opt
 		pe.plan.Ctx().StatusDiag.Infof(diag.RawMessage(step.URN(), "completing deletion from previous update"))
 	}
 
-	stepExec.WaitForCompletion()
+	stepRes := stepExec.WaitForCompletion()
 
 	// Like Refresh, we use the presence of an error in the caller's context to detect whether or not we have been
 	// cancelled.
 	canceled := callerCtx.Err() != nil
-	if stepExec.Errored() {
+	if stepRes != nil {
 		return execError("failed", preview)
 	} else if canceled {
 		return execError("canceled", preview)

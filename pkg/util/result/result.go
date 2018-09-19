@@ -44,8 +44,7 @@ import (
 // `Error` member function can be used to turn a nullable `Result` into an
 // `error`.
 type Result struct {
-	cause *Result
-	err   error
+	err error
 }
 
 // Error returns the error most appropriate for this Result. If this result represents a bailed operation, it will be
@@ -53,14 +52,6 @@ type Result struct {
 func (r *Result) Error() error {
 	if r != nil {
 		return r.err
-	}
-	return nil
-}
-
-// Cause returns the Result that caused the current Result to be propegated.
-func (r *Result) Cause() *Result {
-	if r != nil {
-		return r.cause
 	}
 	return nil
 }
@@ -88,16 +79,6 @@ func Error(msg string) *Result {
 // FromError produces a Result that wraps an internal Pulumi error.
 func FromError(err error) *Result {
 	return &Result{err: err}
-}
-
-// Wrap wraps a Result, producing another Result whose cause is linked to the wrapped Result.
-func Wrap(res *Result, msg string) *Result {
-	return &Result{cause: res, err: errors.New(msg)}
-}
-
-// Wrapf wraps a Result with a formatted message, producing another result whose cause is linked to the wrapped result.
-func Wrapf(res *Result, msg string, args ...interface{}) *Result {
-	return &Result{cause: res, err: errors.Errorf(msg, args...)}
 }
 
 // All produces a new Result given a slice of Results. If the result array consists of nothing but nil results, this
