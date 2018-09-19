@@ -53,52 +53,62 @@ func Highlight(s, text, commands string) string {
 	return strings.Replace(s, text, commands+text+Reset, -1)
 }
 
+var (
+	Reset     = Command("reset")
+	Bold      = Command("bold")
+	Underline = Command("underline")
+)
+
 // Basic colors.
 var (
-	Black         = Command("fg 0")
 	Red           = Command("fg 1")
 	Green         = Command("fg 2")
 	Yellow        = Command("fg 3")
 	Blue          = Command("fg 4")
 	Magenta       = Command("fg 5")
 	Cyan          = Command("fg 6")
-	White         = Command("fg 7")
-	BrightBlack   = Command("fg 8")
 	BrightRed     = Command("fg 9")
 	BrightGreen   = Command("fg 10")
-	BrightYellow  = Command("fg 11")
 	BrightBlue    = Command("fg 12")
 	BrightMagenta = Command("fg 13")
 	BrightCyan    = Command("fg 14")
-	BrightWhite   = Command("fg 15")
-)
 
-var (
-	Bold      = Command("bold")
-	Underline = Command("underline")
-)
+	// We explicitly do not expose blacks/whites.  They're problematic given that we don't know what
+	// terminal settings the user has.  Best to avoid them and not run into contrast problems.
 
-var Reset = Command("reset")
+	// Black         = Command("fg 0")
+	// White         = Command("fg 7")
+	// BrightBlack   = Command("fg 8")
+	// BrightYellow  = Command("fg 11")
+	// BrightWhite   = Command("fg 15")
+)
 
 // Special predefined colors for logical conditions.
 var (
-	SpecImportant   = BrightYellow // for particularly noteworthy messages.
-	SpecUnimportant = BrightBlack  // for notes that can be skimmed or aren't very important.
+	SpecImportant = Yellow // for particularly noteworthy messages.
+
+	// for notes that can be skimmed or aren't very important.  Just use the standard terminal text
+	// color.
+	SpecUnimportant = Reset
 
 	SpecDebug   = SpecUnimportant // for debugging.
 	SpecInfo    = Magenta         // for information.
 	SpecError   = Red             // for errors.
 	SpecWarning = Yellow          // for warnings.
 
-	SpecLocation  = Cyan      // for source locations.
-	SpecAttention = BrightRed // for messages that are meant to grab attention.
-	SpecNote      = White     // for simple notes.
+	SpecPrompt    = Cyan + Bold // for prompting the user
+	SpecAttention = BrightRed   // for messages that are meant to grab attention.
 
-	SpecCreate            = Green        // for adds (in the diff sense).
-	SpecUpdate            = BrightYellow // for changes (in the diff sense).
-	SpecRead              = BrightWhite  // for reads (relatively unimportant).
-	SpecReplace           = Yellow       // for replacements (in the diff sense).
-	SpecDelete            = Red          // for deletes (in the diff sense).
-	SpecCreateReplacement = BrightGreen  // for replacement creates (in the diff sense).
-	SpecDeleteReplaced    = BrightRed    // for replacement deletes (in the diff sense).
+	// for simple notes.  Just use the standard terminal text color.
+	SpecNote = Reset
+
+	SpecCreate            = Green         // for adds (in the diff sense).
+	SpecUpdate            = Yellow        // for changes (in the diff sense).
+	SpecReplace           = BrightMagenta // for replacements (in the diff sense).
+	SpecDelete            = Red           // for deletes (in the diff sense).
+	SpecCreateReplacement = BrightGreen   // for replacement creates (in the diff sense).
+	SpecDeleteReplaced    = BrightRed     // for replacement deletes (in the diff sense).
+
+	// for reads (relatively unimportant).  Just use the standard terminal text color.
+	SpecRead = Reset
 )

@@ -264,7 +264,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	} else {
 		line1 := fmt.Sprintf("Manage your Pulumi stacks by logging in.")
 		line1len := len(line1)
-		line1 = colors.Highlight(line1, "Pulumi stacks", colors.BrightWhite+colors.Underline+colors.Bold)
+		line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
 		fmt.Printf(opts.Color.Colorize(line1) + "\n")
 		maxlen := line1len
 

@@ -137,16 +137,16 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		var previewWarning string
 		if opts.SkipPreview {
-			previewWarning = colors.SpecWarning + " without a preview" + colors.BrightWhite
+			previewWarning = colors.SpecWarning + " without a preview" + colors.Bold
 		}
 
 		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
 		prompt := "\b" + opts.Display.Color.Colorize(
-			colors.BrightWhite+fmt.Sprintf("Do you want to perform this %s%s?",
+			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
 				kind, previewWarning)+colors.Reset)
 		if kind == apitype.RefreshUpdate {
 			prompt += "\n" +
-				opts.Display.Color.Colorize(colors.BrightYellow+
+				opts.Display.Color.Colorize(colors.SpecImportant+
 					"No resources will be modified as part of this refresh; just your stack's state will be."+
 					colors.Reset)
 		}
