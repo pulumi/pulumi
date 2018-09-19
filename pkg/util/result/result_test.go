@@ -20,21 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Smoke test for wrapping Results.
-func TestWrap(t *testing.T) {
-	firstMsg := "something failed"
-	secondMsg := "while doing the first thing"
-	base := Error(firstMsg)
-	wrapped := Wrap(base, secondMsg)
-	assert.Equal(t, secondMsg, wrapped.Error().Error())
-	if !assert.NotNil(t, wrapped.Cause()) {
-		t.FailNow()
-	}
-
-	assert.Equal(t, base, wrapped.Cause())
-	assert.Equal(t, firstMsg, wrapped.Cause().Error().Error())
-}
-
 // Smoke test for All, composing multiple Results into a single Result.
 func TestAll(t *testing.T) {
 	assert.Nil(t, All([]*Result{nil, nil, nil}))
