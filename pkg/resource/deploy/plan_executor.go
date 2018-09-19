@@ -133,7 +133,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	canceled, res := func() (bool, *result.Result) {
+	res := func() *result.Result {
 		logging.V(4).Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
 			select {
@@ -143,7 +143,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				if event.Error != nil {
 					pe.reportError("", event.Error)
 					cancel()
-					return false, result.Bail()
+					return result.Bail()
 				}
 
 				if event.Event == nil {
@@ -158,7 +158,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					pe.stepExec.SignalCompletion()
 					logging.V(4).Infof("planExecutor.Execute(...): issued deletes")
 
-					return false, nil
+					return nil
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
@@ -167,18 +167,18 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
 					cancel()
-					return false, res
+					return res
 				}
 			case <-ctx.Done():
 				logging.V(4).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
-
-				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
-				// cancellation from internally-initiated cancellation.
-				return callerCtx.Err() != nil, nil
+				return nil
 			}
 		}
 	}()
 
+	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+	// cancellation from internally-initiated cancellation.
+	canceled := callerCtx.Err() != nil
 	stepRes := pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
 
