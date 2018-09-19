@@ -103,7 +103,7 @@ func findProgram(program string) (string, error) {
 	}
 
 	cwdProgram := filepath.Join(cwd, program)
-	if _, err := os.Stat(cwdProgram); !os.IsNotExist(err) {
+	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
 		logging.V(5).Infoln("program %s found in CWD", program)
 		return cwdProgram, nil
 	}
@@ -111,7 +111,7 @@ func findProgram(program string) (string, error) {
 	// look in $GOPATH/bin
 	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
 		goPathProgram := filepath.Join(goPath, "bin", program)
-		if _, err := os.Stat(goPathProgram); !os.IsNotExist(err) {
+		if fileInfo, err := os.Stat(goPathProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
 			logging.V(5).Infoln("program %s found in $GOPATH/bin", program)
 			return goPathProgram, nil
 		}
