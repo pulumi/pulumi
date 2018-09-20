@@ -19,6 +19,7 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,6 +28,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -334,6 +336,34 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	return opts
 }
 
+type regexFlag struct {
+	re *regexp.Regexp
+}
+
+func (rf *regexFlag) String() string {
+	if rf.re == nil {
+		return ""
+	}
+	return rf.re.String()
+}
+
+func (rf *regexFlag) Set(v string) error {
+	r, err := regexp.Compile(v)
+	if err != nil {
+		return err
+	}
+	rf.re = r
+	return nil
+}
+
+var directoryMatcher regexFlag
+var listDirs bool
+
+func init() {
+	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
+	flag.BoolVar(&listDirs, "list-dirs", false, "list available integration tests without running them")
+}
+
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
 // binaries available on PATH.  It essentially executes the following workflow:
 //
@@ -359,6 +389,17 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	// If we're just listing tests, simply print this test's directory.
+	if listDirs {
+		fmt.Printf("%s\n", opts.Dir)
+		return
+	}
+
+	// If we have a matcher, ensure that this test matches its pattern.
+	if directoryMatcher.re != nil && !directoryMatcher.re.Match([]byte(opts.Dir)) {
+		t.Skip(fmt.Sprintf("Skipping: '%v' does not match '%v'", opts.Dir, directoryMatcher.re))
+	}
+
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
 	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
