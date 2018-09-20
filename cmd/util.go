@@ -257,6 +257,13 @@ func chooseStack(
 		return nil, errors.Wrap(err, "getting selected stack")
 	}
 
+	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
+	if setCurrent {
+		if err = state.SetCurrentStack(stackRef.String()); err != nil {
+			return nil, err
+		}
+	}
+
 	return stack, nil
 }
 
