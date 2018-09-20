@@ -179,7 +179,7 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 		return nil, err
 	}
 
-	var env []string
+	env := os.Environ()
 	maybeAppendEnv := func(k, v string) {
 		if v != "" {
 			env = append(env, fmt.Sprintf("%s=%s", k, v))
