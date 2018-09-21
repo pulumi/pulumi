@@ -41,8 +41,6 @@ func newCompletionCmd(root *cobra.Command) *cobra.Command {
 			default:
 				return fmt.Errorf("%q is not a supported shell", args[0])
 			}
-
-			return nil
 		}),
 	}
 }
