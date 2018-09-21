@@ -331,28 +331,30 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 					// we must also eagerly delete all resources that depend directly or indirectly on the resource
 					// being replaced.
 					//
-					// To do this, we'll utilize the dependency information contained in the snapshot, which is
-					// interpreted by the DependencyGraph type.
+					// To do this, we'll utilize the dependency information contained in the snapshot if it is
+					// trustworthy, which is interpreted by the DependencyGraph type.
 					var steps []Step
-					dependents := sg.plan.depGraph.DependingOn(old)
+					if sg.opts.TrustDependencies {
+						dependents := sg.plan.depGraph.DependingOn(old)
 
-					// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
-					// order, so we iterate in reverse.
-					for i := len(dependents) - 1; i >= 0; i-- {
-						dependentResource := dependents[i]
+						// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
+						// order, so we iterate in reverse.
+						for i := len(dependents) - 1; i >= 0; i-- {
+							dependentResource := dependents[i]
 
-						// If we already deleted this resource due to some other DBR, don't do it again.
-						if sg.deletes[urn] {
-							continue
+							// If we already deleted this resource due to some other DBR, don't do it again.
+							if sg.deletes[urn] {
+								continue
+							}
+
+							logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
+								dependentResource.URN, urn)
+
+							steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, false))
+							// Mark the condemned resource as deleted. We won't know until later in the plan whether
+							// or not we're going to be replacing this resource.
+							sg.deletes[dependentResource.URN] = true
 						}
-
-						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
-							dependentResource.URN, urn)
-
-						steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, false))
-						// Mark the condemned resource as deleted. We won't know until later in the plan whether
-						// or not we're going to be replacing this resource.
-						sg.deletes[dependentResource.URN] = true
 					}
 
 					return append(steps,
@@ -409,6 +411,11 @@ func (sg *stepGenerator) GenerateDeletes() []Antichain {
 		return nil
 	}
 
+	var steps []Antichain
+
+	// We'll build up a set of condemned resources if we trust our dependency graph, otherwise we'll generate a list
+	// of steps that need to be executed one-after-another. If our graph is potentially inaccurate, it's not safe to
+	// delete anything in parallel.
 	condemnedResources := make(graph.ResourceSet)
 	for i := len(prev.Resources) - 1; i >= 0; i-- {
 		// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
@@ -443,17 +450,28 @@ func (sg *stepGenerator) GenerateDeletes() []Antichain {
 
 			logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 			sg.deletes[res.URN] = true
-			condemnedResources[res] = true
+			if sg.opts.TrustDependencies {
+				condemnedResources[res] = true
+			} else {
+				steps = append(steps, Antichain{NewDeleteReplacementStep(sg.plan, res, true)})
+			}
 		} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
 			// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 			// delete steps for the same URN if the old checkpoint contained pending deletes.
 			logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 			sg.deletes[res.URN] = true
-			condemnedResources[res] = true
+			if sg.opts.TrustDependencies {
+				condemnedResources[res] = true
+			} else {
+				steps = append(steps, Antichain{NewDeleteStep(sg.plan, res)})
+			}
 		}
 	}
 
-	return sg.scheduleDeletes(condemnedResources, false /* pendingDeletesAreReplaces */)
+	if sg.opts.TrustDependencies {
+		return sg.scheduleDeletes(condemnedResources, false /* pendingDeletesAreReplaces */)
+	}
+	return steps
 }
 
 // GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
@@ -465,6 +483,11 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Antichain {
 	}
 
 	logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): scanning previous snapshot for pending deletes")
+
+	// We'll build up a set of condemned resources if we trust our dependency graph, otherwise we'll generate a list
+	// of steps that need to be executed one-after-another. If our graph is potentially inaccurate, it's not safe to
+	// delete anything in parallel.
+	var steps []Antichain
 	condemnedResources := make(graph.ResourceSet)
 	for i := len(prev.Resources) - 1; i >= 0; i-- {
 		res := prev.Resources[i]
@@ -472,11 +495,18 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Antichain {
 			logging.V(7).Infof(
 				"stepGenerator.GeneratePendingDeletes(): resource (%v, %v) is pending deletion", res.URN, res.ID)
 			sg.pendingDeletes[res] = true
-			condemnedResources[res] = true
+			if sg.opts.TrustDependencies {
+				condemnedResources[res] = true
+			} else {
+				steps = append(steps, Antichain{NewDeleteStep(sg.plan, res)})
+			}
 		}
 	}
 
-	return sg.scheduleDeletes(condemnedResources, true /* pendingDeletesAreReplaces */)
+	if sg.opts.TrustDependencies {
+		return sg.scheduleDeletes(condemnedResources, true /* pendingDeletesAreReplaces */)
+	}
+	return steps
 }
 
 // scheduleDeletes takes a set of resources that are condemned for deletion and "schedules" them by producing a list of
@@ -504,6 +534,7 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Antichain {
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the plan executor for safe execution.
 func (sg *stepGenerator) scheduleDeletes(condemned graph.ResourceSet, pendingDeletesAreReplaces bool) []Antichain {
+	contract.Assertf(sg.opts.TrustDependencies, "scheduleDeletes must only be run on a trusted dependency graph")
 	var antichains []Antichain
 	dg := sg.plan.depGraph
 	for len(condemned) > 0 {

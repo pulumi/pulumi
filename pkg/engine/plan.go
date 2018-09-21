@@ -97,6 +97,10 @@ type planOptions struct {
 
 	// true if we're planning a refresh.
 	isRefresh bool
+
+	// true if we should trust the dependency graph reported by the language host. Not all Pulumi-supported languages
+	// correctly report their dependencies, in which case this will be false.
+	trustDependencies bool
 }
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -129,6 +133,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		return nil, err
 	}
 
+	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(opts, proj, pwd, main, target, plugctx, dryRun)
@@ -200,10 +205,11 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 	var err error
 	go func() {
 		opts := deploy.Options{
-			Events:      events,
-			Parallel:    res.Options.Parallel,
-			Refresh:     res.Options.Refresh,
-			RefreshOnly: res.Options.isRefresh,
+			Events:            events,
+			Parallel:          res.Options.Parallel,
+			Refresh:           res.Options.Refresh,
+			RefreshOnly:       res.Options.isRefresh,
+			TrustDependencies: res.Options.trustDependencies,
 		}
 		err = res.Plan.Execute(ctx, opts, preview)
 		close(done)
