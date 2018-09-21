@@ -406,6 +406,19 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	assert.Equal(t, "foo/bar/b.txt", files[0].Name)
 }
 
+func TestInvalidPathArchive(t *testing.T) {
+	// Create a temp file that is not an asset.
+	tmpFile, err := ioutil.TempFile("", "")
+	fileName := tmpFile.Name()
+	assert.NoError(t, err)
+	fmt.Fprintf(tmpFile, "foo\n")
+	tmpFile.Close()
+
+	// Attempt to construct a PathArchive with the temp file.
+	_, err = NewPathArchive(fileName)
+	assert.Error(t, err)
+}
+
 func validateTestDirArchive(t *testing.T, arch *Archive) {
 	r, err := arch.Open()
 	assert.Nil(t, err)
