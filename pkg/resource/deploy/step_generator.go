@@ -469,7 +469,7 @@ func (sg *stepGenerator) GenerateDeletes() []Antichain {
 	}
 
 	if sg.opts.TrustDependencies {
-		return sg.scheduleDeletes(condemnedResources, false /* pendingDeletesAreReplaces */)
+		return sg.scheduleDeletes(condemnedResources, true /* pendingDeletesAreReplaces */)
 	}
 	return steps
 }
@@ -504,7 +504,7 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Antichain {
 	}
 
 	if sg.opts.TrustDependencies {
-		return sg.scheduleDeletes(condemnedResources, true /* pendingDeletesAreReplaces */)
+		return sg.scheduleDeletes(condemnedResources, false /* pendingDeletesAreReplaces */)
 	}
 	return steps
 }
@@ -547,7 +547,7 @@ func (sg *stepGenerator) scheduleDeletes(condemned graph.ResourceSet, pendingDel
 			if len(condemnedDependencies) == 0 && !condemned[dg.ParentOf(res)] {
 				// If not, it's safe to delete res at this stage.
 				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
-				if res.Delete && !pendingDeletesAreReplaces {
+				if res.Delete && pendingDeletesAreReplaces {
 					antichain = append(antichain, NewDeleteReplacementStep(sg.plan, res, true))
 				} else {
 					antichain = append(antichain, NewDeleteStep(sg.plan, res))
