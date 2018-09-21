@@ -20,59 +20,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEmptySet(t *testing.T) {
-	set := NewResourceSet()
-	assert.True(t, set.Empty())
-	assert.Nil(t, set.Elements())
-}
-
-func TestSingleton(t *testing.T) {
-	r := NewResource("a", nil)
-	set := NewResourceSet()
-	set.Add(r)
-	assert.False(t, set.Empty())
-	assert.Len(t, set.Elements(), 1)
-	assert.Contains(t, set.Elements(), r)
-	assert.True(t, set.Test(r))
-}
-
-func TestRemove(t *testing.T) {
-	r := NewResource("a", nil)
-	set := NewResourceSet()
-	set.Add(r)
-	assert.False(t, set.Empty())
-	assert.Len(t, set.Elements(), 1)
-	assert.Contains(t, set.Elements(), r)
-	assert.True(t, set.Test(r))
-	set.Remove(r)
-	assert.True(t, set.Empty())
-	assert.Nil(t, set.Elements())
-	assert.False(t, set.Test(r))
-}
-
 func TestIntersect(t *testing.T) {
 	a := NewResource("a", nil)
 	b := NewResource("b", nil)
 	c := NewResource("c", nil)
 
-	setA := NewResourceSet()
-	setA.Add(a)
-	setA.Add(b)
-	setB := NewResourceSet()
-	setB.Add(b)
-	setB.Add(c)
+	setA := make(ResourceSet)
+	setA[a] = true
+	setA[b] = true
+	setB := make(ResourceSet)
+	setB[b] = true
+	setB[c] = true
 
 	setC := setA.Intersect(setB)
-	assert.False(t, setC.Test(a))
-	assert.True(t, setC.Test(b))
-	assert.False(t, setC.Test(c))
-}
-
-func TestNilInMap(t *testing.T) {
-	set := NewResourceSet()
-	set.Add(nil)
-	assert.True(t, set.Empty())
-	assert.False(t, set.Test(nil))
-	set.Remove(nil)
-	assert.True(t, set.Empty())
+	assert.False(t, setC[a])
+	assert.True(t, setC[b])
+	assert.False(t, setC[c])
 }

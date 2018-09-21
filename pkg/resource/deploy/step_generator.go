@@ -409,7 +409,7 @@ func (sg *stepGenerator) GenerateDeletes() []Antichain {
 		return nil
 	}
 
-	condemnedResources := graph.NewResourceSet()
+	condemnedResources := make(graph.ResourceSet)
 	for i := len(prev.Resources) - 1; i >= 0; i-- {
 		// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 		res := prev.Resources[i]
@@ -443,13 +443,13 @@ func (sg *stepGenerator) GenerateDeletes() []Antichain {
 
 			logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 			sg.deletes[res.URN] = true
-			condemnedResources.Add(res)
+			condemnedResources[res] = true
 		} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
 			// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 			// delete steps for the same URN if the old checkpoint contained pending deletes.
 			logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 			sg.deletes[res.URN] = true
-			condemnedResources.Add(res)
+			condemnedResources[res] = true
 		}
 	}
 
@@ -465,14 +465,14 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Antichain {
 	}
 
 	logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): scanning previous snapshot for pending deletes")
-	condemnedResources := graph.NewResourceSet()
+	condemnedResources := make(graph.ResourceSet)
 	for i := len(prev.Resources) - 1; i >= 0; i-- {
 		res := prev.Resources[i]
 		if res.Delete {
 			logging.V(7).Infof(
 				"stepGenerator.GeneratePendingDeletes(): resource (%v, %v) is pending deletion", res.URN, res.ID)
 			sg.pendingDeletes[res] = true
-			condemnedResources.Add(res)
+			condemnedResources[res] = true
 		}
 	}
 
@@ -506,14 +506,14 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Antichain {
 func (sg *stepGenerator) scheduleDeletes(condemned graph.ResourceSet, pendingDeletesAreReplaces bool) []Antichain {
 	var antichains []Antichain
 	dg := sg.plan.depGraph
-	for !condemned.Empty() {
+	for len(condemned) > 0 {
 		var antichain Antichain
 		logging.V(7).Infof("Planner beginning schedule of new deletion antichain")
-		for _, res := range condemned.Elements() {
+		for res := range condemned {
 			// Does res have any outgoing edges to resources that haven't already been removed from the graph?
 			// For the purposes of deletion calculation, res.Parent counts as an outgoing edge.
 			condemnedDependencies := dg.DependenciesOf(res).Intersect(condemned)
-			if condemnedDependencies.Empty() && !condemned.Test(dg.ParentOf(res)) {
+			if len(condemnedDependencies) == 0 && !condemned[dg.ParentOf(res)] {
 				// If not, it's safe to delete res at this stage.
 				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
 				if res.Delete && !pendingDeletesAreReplaces {
@@ -529,7 +529,7 @@ func (sg *stepGenerator) scheduleDeletes(condemned graph.ResourceSet, pendingDel
 
 		// For all reosurces that are to be deleted in this round, remove them from the graph.
 		for _, step := range antichain {
-			condemned.Remove(step.Res())
+			delete(condemned, step.Res())
 		}
 
 		antichains = append(antichains, antichain)

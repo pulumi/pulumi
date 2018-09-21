@@ -71,7 +71,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 
 // DependenciesOf returns a ResourceSet of resources upon which the given resource depends.
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
-	set := NewResourceSet()
+	set := make(ResourceSet)
 
 	dependentUrns := make(map[resource.URN]bool)
 	for _, dep := range res.Dependencies {
@@ -89,7 +89,7 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 	for i := cursorIndex; i >= 0; i-- {
 		candidate := dg.resources[i]
 		if dependentUrns[candidate.URN] {
-			set.Add(candidate)
+			set[candidate] = true
 		}
 	}
 

@@ -114,19 +114,19 @@ func TestDependenciesOf(t *testing.T) {
 	})
 
 	aDepends := dg.DependenciesOf(a)
-	assert.True(t, aDepends.Test(pA))
-	assert.False(t, aDepends.Test(a))
-	assert.False(t, aDepends.Test(b))
+	assert.True(t, aDepends[pA])
+	assert.False(t, aDepends[a])
+	assert.False(t, aDepends[b])
 
 	bDepends := dg.DependenciesOf(b)
-	assert.True(t, bDepends.Test(pA))
-	assert.True(t, bDepends.Test(a))
-	assert.False(t, bDepends.Test(b))
+	assert.True(t, bDepends[pA])
+	assert.True(t, bDepends[a])
+	assert.False(t, bDepends[b])
 
 	cDepends := dg.DependenciesOf(c)
-	assert.True(t, cDepends.Test(pA))
-	assert.False(t, cDepends.Test(a))
-	assert.False(t, cDepends.Test(b))
+	assert.True(t, cDepends[pA])
+	assert.False(t, cDepends[a])
+	assert.False(t, cDepends[b])
 }
 
 func TestParentOf(t *testing.T) {
