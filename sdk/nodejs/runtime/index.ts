@@ -19,7 +19,7 @@ export {
     SerializeFunctionArgs,
 }  from "./closure/serializeClosure";
 
-export { computeCodePaths } from "./closure/codePaths";
+export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
 
 export * from "./config";
 export * from "./invoke";
