@@ -21,36 +21,92 @@ import * as readPackageTree from "read-package-tree";
 import * as asset from "../../asset";
 import { RunError } from "../../errors";
 
+/**
+ * Options for controlling what gets returned by [computeCodePaths].
+ */
+interface CodePathOptions {
+    /**
+     * Local file/directory paths that we always want to include when producing the Assets to be
+     * included for a serialized closure.
+     */
+    extraIncludePaths?: string[];
+
+    /**
+     * Extra packages to include when producing the Assets for a serialized closure.  This can be
+     * useful if the packages are acquired in a way that the serialization code does not understand.
+     * For example, if there was some sort of module that was pulled in based off of a computed
+     * string.
+     */
+    extraIncludePackages?: string[];
+
+    /**
+     * Packages to explicitly exclude from the Assets for a serialized closure.  This can be used
+     * when clients want to trim down the size of a closure, and they know that some package won't
+     * ever actually be needed at runtime, but is still a dependency of some package that is being
+     * used at runtime.
+     */
+    extraExcludePackages?: string[];
+}
+
 // computeCodePaths computes the local node_module paths to include in an uploaded cloud 'Lambda'.
 // Specifically, it will examine the package.json for the caller's code, and will transitively walk
 // it's 'dependencies' section to determine what packages should be included.
 //
-// During this walk, if an @pulumi/... package is encountered, it will not be walked into.  @pulumi
-// packages are deployment-time only packages and will not runtime.  This prevents uploading
-// packages needlessly which can majorly bloat up the size of uploaded code.
+// During this walk, if a package is encountered that contains a `"pulumi": { ... }` section then
+// the normal `"dependencies": { ... }` section of that package will not be included.  These are
+// "pulumi" packages, and those dependencies are only intended for use at deployment time. However,
+// a "pulumi" package can also specify package that should be available at cloud-runtime.  These
+// packages are found in a `"runtimeDependencies": { ... }` section in the package.json file with
+// the same format as the normal "dependencies" section.
 //
-// [extraIncludePaths], [extraExcludePackages] and [extraExcludePackages] can all be used to adjust
-// the final set of paths included in the resultant asset/archive map.
+// See [CodePathOptions] for information on ways to control and configure the final set of paths
+// included in the resultant asset/archive map.
 //
 // Note: this functionality is specifically intended for use by downstream library code that is
 // determining what is needed for a cloud-lambda.  i.e. the aws.serverless.Function or
 // azure.serverless.FunctionApp libraries.  In general, other clients should not need to use this
 // helper.
+
+export async function computeCodePaths(options?: CodePathOptions): Promise<Map<string, asset.Asset | asset.Archive>>;
+
+/**
+ * @deprecated Use the [computeCodePaths] that takes a [CodePathOptions] instead.
+ */
+export async function computeCodePaths(extraIncludePaths?: string[], extraIncludePackages?: string[], extraExcludePackages?: string[]): Promise<Map<string, asset.Asset | asset.Archive>>;
+
 export async function computeCodePaths(
-    extraIncludePaths?: string[],
+    optionsOrExtraIncludePaths?: string[] | CodePathOptions,
     extraIncludePackages?: string[],
     extraExcludePackages?: string[]): Promise<Map<string, asset.Asset | asset.Archive>> {
 
+    let options: CodePathOptions;
+    if (Array.isArray(optionsOrExtraIncludePaths)) {
+        options = {
+            extraIncludePaths: optionsOrExtraIncludePaths,
+            extraExcludePackages: extraIncludePackages,
+            extraIncludePackages: extraExcludePackages,
+        };
+    }
+    else if (optionsOrExtraIncludePaths) {
+        options = optionsOrExtraIncludePaths;
+    }
+    else {
+        options = {};
+    }
+
+    return computeCodePathsWorker(options);
+}
+
+async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<string, asset.Asset | asset.Archive>> {
     // Construct the set of paths to include in the archive for upload.
 
-    const includedPackages = new Set<string>(extraIncludePackages || []);
-    const excludedPackages = new Set<string>(extraExcludePackages || []);
-
     // Find folders for all packages requested by the user
-    const pathSet = await allFoldersForPackages(includedPackages, excludedPackages);
+    const pathSet = await allFoldersForPackages(
+        new Set<string>(options.extraIncludePackages || []),
+        new Set<string>(options.extraExcludePackages || []));
 
     // Add all paths explicitly requested by the user
-    extraIncludePaths = extraIncludePaths || [];
+    const extraIncludePaths = options.extraIncludePaths || [];
     for (const path of extraIncludePaths) {
         pathSet.add(path);
     }
@@ -121,11 +177,11 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
                         filepath.join(root.realpath, "package.json"));
                 }
 
-                // This is the core starting point of the algorithm.  We use readPackageTree to get the
-                // package.json information for this project, and then we start by walking the
+                // This is the core starting point of the algorithm.  We use readPackageTree to get
+                // the package.json information for this project, and then we start by walking the
                 // .dependencies node in that package.  Importantly, we do not look at things like
-                // .devDependencies or or .peerDependencies.  These are not what are considered part of
-                // the final runtime configuration of the app and should not be uploaded.
+                // .devDependencies or or .peerDependencies.  These are not what are considered part
+                // of the final runtime configuration of the app and should not be uploaded.
                 const referencedPackages = new Set<string>(includedPackages);
                 if (root.package && root.package.dependencies) {
                     for (const depName of Object.keys(root.package.dependencies)) {
