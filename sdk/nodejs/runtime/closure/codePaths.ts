@@ -83,8 +83,8 @@ export async function computeCodePaths(
     if (Array.isArray(optionsOrExtraIncludePaths)) {
         options = {
             extraIncludePaths: optionsOrExtraIncludePaths,
-            extraExcludePackages: extraIncludePackages,
-            extraIncludePackages: extraExcludePackages,
+            extraIncludePackages,
+            extraExcludePackages,
         };
     }
     else if (optionsOrExtraIncludePaths) {
