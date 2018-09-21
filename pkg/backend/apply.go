@@ -98,7 +98,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
 	changes := engine.ResourceChanges(nil)
 	if !op.Opts.SkipPreview {
-		c, err := apply(ctx, kind, stack, op, true /*dryRun*/, false /*persist*/, eventsChannel)
+		c, err := apply(ctx, kind, stack, op, true /*dryRun*/, true /*persist*/, eventsChannel)
 		if err != nil {
 			close(eventsChannel)
 			return c, err
