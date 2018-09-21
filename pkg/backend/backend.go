@@ -69,6 +69,12 @@ type StackSummary interface {
 	ResourceCount() *int
 }
 
+type CreateStackArgs struct {
+	LocallyEncrypted          bool
+	LocalEncryptionPassphrase string
+	BackendArguments          interface{}
+}
+
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
 // It can be implemented any number of ways to provide pluggable backend implementations of the Pulumi Cloud.
 type Backend interface {
@@ -84,16 +90,13 @@ type Backend interface {
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context, stackRef StackReference, opts interface{}) (Stack, error)
+	CreateStack(ctx context.Context, stackRef StackReference, args CreateStackArgs) (Stack, error)
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.
 	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error)
-
-	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
-	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)

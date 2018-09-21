@@ -84,8 +84,8 @@ func commandContext() context.Context {
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
 func createStack(
-	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool) (backend.Stack, error) {
-	stack, err := b.CreateStack(commandContext(), stackRef, opts)
+	b backend.Backend, stackRef backend.StackReference, args backend.CreateStackArgs, setCurrent bool) (backend.Stack, error) {
+	stack, err := b.CreateStack(commandContext(), stackRef, args)
 	if err != nil {
 		// If it's a StackAlreadyExistsError, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -140,7 +140,7 @@ func requireStack(
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil, setCurrent)
+		return createStack(b, stackRef, backend.CreateStackArgs{}, setCurrent)
 	}
 
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
@@ -244,7 +244,7 @@ func chooseStack(
 			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil, setCurrent)
+		return createStack(b, stackRef, backend.CreateStackArgs{}, setCurrent)
 	}
 
 	// With the stack name selected, look it up from the backend.

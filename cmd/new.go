@@ -436,7 +436,7 @@ func stackInit(b backend.Backend, stackName string, setCurrent bool) (backend.St
 	if err != nil {
 		return nil, err
 	}
-	return createStack(b, stackRef, nil, setCurrent)
+	return createStack(b, stackRef, backend.CreateStackArgs{}, setCurrent)
 }
 
 // saveConfig saves the config for the stack.
@@ -661,7 +661,7 @@ func promptForConfig(
 
 				// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
 				if secret && crypter == nil {
-					if crypter, err = backend.GetStackCrypter(stack); err != nil {
+					if crypter, err = stack.GetCrypter(); err != nil {
 						return nil, err
 					}
 				}
@@ -698,7 +698,7 @@ func promptForConfig(
 		if secret {
 			// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
 			if crypter == nil {
-				if crypter, err = backend.GetStackCrypter(stack); err != nil {
+				if crypter, err = stack.GetCrypter(); err != nil {
 					return nil, err
 				}
 			}

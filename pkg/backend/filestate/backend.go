@@ -131,9 +131,9 @@ func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackRe
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	opts interface{}) (backend.Stack, error) {
+	args backend.CreateStackArgs) (backend.Stack, error) {
 
-	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
+	contract.Requiref(args.BackendArguments == nil, "args.BackendArguments", "local stacks do not support any options")
 
 	stackName := stackRef.Name()
 	if stackName == "" {
@@ -210,10 +210,6 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	return false, b.removeStack(stackName)
-}
-
-func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	return symmetricCrypter(stackRef.Name())
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,

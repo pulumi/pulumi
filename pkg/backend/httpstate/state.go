@@ -256,11 +256,17 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 		return nil, err
 	}
 
-	decrypter, err := b.GetStackCrypter(stackRef)
+	bStack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := b.getSnapshot(ctx, stackRef)
+
+	decrypter, err := bStack.GetCrypter()
+	if err != nil {
+		return nil, err
+	}
+
+	snapshot, err := bStack.Snapshot(ctx)
 	if err != nil {
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:

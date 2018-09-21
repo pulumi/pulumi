@@ -493,13 +493,13 @@ type CreateStackOptions struct {
 }
 
 func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	opts interface{}) (backend.Stack, error) {
+	args backend.CreateStackArgs) (backend.Stack, error) {
 
-	if opts == nil {
-		opts = CreateStackOptions{}
+	if args.BackendArguments == nil {
+		args.BackendArguments = CreateStackOptions{}
 	}
 
-	cloudOpts, ok := opts.(CreateStackOptions)
+	cloudOpts, ok := args.BackendArguments.(CreateStackOptions)
 	if !ok {
 		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
 	}
@@ -582,15 +582,6 @@ func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
 		return "", err
 	}
 	return string(plaintext), nil
-}
-
-func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	stack, err := b.getCloudStackIdentifier(stackRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
 func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {

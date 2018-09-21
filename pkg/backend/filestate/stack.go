@@ -56,7 +56,12 @@ func (s *localStack) Ref() backend.StackReference                            { r
 func (s *localStack) Config() config.Map                                     { return s.config }
 func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
 func (s *localStack) Backend() backend.Backend                               { return s.b }
+func (s *localStack) LocallyEncrypted() bool                                 { return false }
 func (s *localStack) Path() string                                           { return s.path }
+
+func (s *localStack) GetCrypter() (config.Crypter, error) {
+	return symmetricCrypter(s.ref.Name())
+}
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)

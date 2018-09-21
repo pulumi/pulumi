@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -25,6 +26,7 @@ import (
 
 func newStackInitCmd() *cobra.Command {
 	var ppc string
+	var encrypted bool
 	cmd := &cobra.Command{
 		Use:   "init <stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -43,9 +45,11 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			var createOpts interface{}
+			createArgs := backend.CreateStackArgs{
+				LocallyEncrypted: encrypted,
+			}
 			if _, ok := b.(httpstate.Backend); ok {
-				createOpts = httpstate.CreateStackOptions{
+				createArgs.BackendArguments = httpstate.CreateStackOptions{
 					CloudName: ppc,
 				}
 			}
@@ -70,9 +74,14 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/)
+			_, err = createStack(b, stackRef, createArgs, true /*setCurrent*/)
 			return err
 		}),
+	}
+
+	if hasDebugCommands() {
+		cmd.PersistentFlags().BoolVar(
+			&encrypted, "encrypted", false, "Encrypt this stack's state")
 	}
 	cmd.PersistentFlags().StringVarP(
 		&ppc, "ppc", "p", "", "An optional Pulumi Private Cloud (PPC) name to initialize this stack in")

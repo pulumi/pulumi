@@ -36,6 +36,10 @@ type Stack interface {
 	Config() config.Map                                     // the current config map.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
+	LocallyEncrypted() bool                                 // whether or not this stack is locally encrypted
+
+	// GetCrypter returns an encrypter/decrypter for the given stack's secret config values.
+	GetCrypter() (config.Crypter, error)
 
 	// Preview changes to this stack.
 	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
@@ -79,11 +83,6 @@ func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 // DestroyStack destroys all of this stack's resources.
 func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
 	return s.Backend().Destroy(ctx, s.Ref(), op)
-}
-
-// GetStackCrypter fetches the encrypter/decrypter for a stack.
-func GetStackCrypter(s Stack) (config.Crypter, error) {
-	return s.Backend().GetStackCrypter(s.Ref())
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.

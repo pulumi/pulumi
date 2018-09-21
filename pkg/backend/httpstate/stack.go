@@ -93,6 +93,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 func (s *cloudStack) Ref() backend.StackReference           { return s.ref }
 func (s *cloudStack) Config() config.Map                    { return s.config }
 func (s *cloudStack) Backend() backend.Backend              { return s.b }
+func (s *cloudStack) LocallyEncrypted() bool                { return false }
 func (s *cloudStack) CloudURL() string                      { return s.cloudURL }
 func (s *cloudStack) OrgName() string                       { return s.orgName }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string { return s.tags }
@@ -109,6 +110,15 @@ func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 
 	s.snapshot = &snap
 	return *s.snapshot, nil
+}
+
+func (s *cloudStack) GetCrypter() (config.Crypter, error) {
+	stack, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cloudCrypter{backend: s.b, stack: stack}, nil
 }
 
 func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
