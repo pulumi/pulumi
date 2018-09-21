@@ -181,8 +181,8 @@ export class Config {
     }
 
     /**
-     * requireObject loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
-     * configuration value is not a legal number, an error is thrown.
+     * requireObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript object. If
+     * it doesn't exist, or the configuration value is not a legal JSON string, an error is thrown.
      *
      * @param key The key to lookup.
      */
