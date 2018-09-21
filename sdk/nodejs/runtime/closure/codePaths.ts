@@ -70,7 +70,7 @@ interface CodePathOptions {
 export async function computeCodePaths(options?: CodePathOptions): Promise<Map<string, asset.Asset | asset.Archive>>;
 
 /**
- * @deprecated Use the [computeCodePaths] that takes a [CodePathOptions] instead.
+ * @deprecated Use the [computeCodePaths] overload that takes a [CodePathOptions] instead.
  */
 export async function computeCodePaths(extraIncludePaths?: string[], extraIncludePackages?: string[], extraExcludePackages?: string[]): Promise<Map<string, asset.Asset | asset.Archive>>;
 
