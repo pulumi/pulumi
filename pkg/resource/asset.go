@@ -637,7 +637,7 @@ func (a *Archive) Open() (ArchiveReader, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
-	return nil, nil
+	return nil, errors.New("unrecognized archive type")
 }
 
 // assetsArchiveReader is used to read an Assets archive.
@@ -771,7 +771,7 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't read archive path '%v'", path)
 		} else if !info.IsDir() {
-			return nil, errors.Wrapf(err, "'%v' is neither a recognized archive type nor a directory", path)
+			return nil, errors.Errorf("'%v' is neither a recognized archive type nor a directory", path)
 		}
 
 		// Accumulate the list of asset paths. This list is ordered deterministically by filepath.Walk.
