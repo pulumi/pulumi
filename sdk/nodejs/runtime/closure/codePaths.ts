@@ -24,7 +24,7 @@ import { RunError } from "../../errors";
 /**
  * Options for controlling what gets returned by [computeCodePaths].
  */
-interface CodePathOptions {
+export interface CodePathOptions {
     /**
      * Local file/directory paths that we always want to include when producing the Assets to be
      * included for a serialized closure.
