@@ -50,19 +50,19 @@ var (
 // documentation purposes.
 
 // A Chain is a sequence of Steps that must be executed in the given order.
-type Chain = []Step
+type chain = []Step
 
 // An Antichain is a set of Steps that can be executed in parallel.
-type Antichain = []Step
+type antichain = []Step
 
 // A CompletionToken is a token returned by the step executor that is completed when the chain has completed execution.
 // Callers can use it to optionally wait synchronously on the completion of a chain.
-type CompletionToken struct {
+type completionToken struct {
 	channel chan bool
 }
 
 // Wait blocks until the completion token is signalled or until the given context completes, whatever occurs first.
-func (c CompletionToken) Wait(ctx context.Context) {
+func (c completionToken) Wait(ctx context.Context) {
 	select {
 	case <-c.channel:
 	case <-ctx.Done():
@@ -71,7 +71,7 @@ func (c CompletionToken) Wait(ctx context.Context) {
 
 // incomingChain represents a request to the step executor to execute a chain.
 type incomingChain struct {
-	Chain          Chain     // The chain we intend to execute
+	Chain          chain     // The chain we intend to execute
 	CompletionChan chan bool // A completion channel to be closed when the chain has completed execution
 }
 
@@ -105,7 +105,7 @@ type stepExecutor struct {
 
 // Execute submits a Chain for asynchronous execution. The execution of the chain will begin as soon as there
 // is a worker available to execute it.
-func (se *stepExecutor) ExecuteSerial(chain Chain) CompletionToken {
+func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 	// The select here is to avoid blocking on a send to se.incomingChains if a cancellation is pending.
 	// If one is pending, we should exit early - we will shortly be tearing down the engine and exiting.
 
@@ -116,19 +116,19 @@ func (se *stepExecutor) ExecuteSerial(chain Chain) CompletionToken {
 		close(completion)
 	}
 
-	return CompletionToken{channel: completion}
+	return completionToken{channel: completion}
 }
 
 // ExecuteParallel submits an antichain for parallel execution. All of the steps within the antichain are submitted for
 // concurrent execution.
-func (se *stepExecutor) ExecuteParallel(antichain Antichain) CompletionToken {
+func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 	var wg sync.WaitGroup
 
 	// ExecuteParallel is implemented in terms of ExecuteSerial - it executes each step individually and waits for all
 	// of the steps to complete.
 	wg.Add(len(antichain))
 	for _, step := range antichain {
-		tok := se.ExecuteSerial(Chain{step})
+		tok := se.ExecuteSerial(chain{step})
 		go func() {
 			defer wg.Done()
 			tok.Wait(se.ctx)
@@ -141,7 +141,7 @@ func (se *stepExecutor) ExecuteParallel(antichain Antichain) CompletionToken {
 		close(done)
 	}()
 
-	return CompletionToken{channel: done}
+	return completionToken{channel: done}
 }
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
@@ -207,7 +207,7 @@ func (se *stepExecutor) WaitForCompletion() {
 
 // executeChain executes a chain, one step at a time. If any step in the chain fails to execute, or if the
 // context is canceled, the chain stops execution.
-func (se *stepExecutor) executeChain(workerID int, chain Chain) {
+func (se *stepExecutor) executeChain(workerID int, chain chain) {
 	for _, step := range chain {
 		select {
 		case <-se.ctx.Done():
