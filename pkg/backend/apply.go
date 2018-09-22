@@ -45,19 +45,6 @@ type ApplierOptions struct {
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error)
 
-var (
-	updateTextMap = map[apitype.UpdateKind]struct {
-		previewText string
-		text        string
-	}{
-		apitype.PreviewUpdate: {"update of", "Previewing"},
-		apitype.UpdateUpdate:  {"update of", "Updating"},
-		apitype.RefreshUpdate: {"refresh of", "Refreshing"},
-		apitype.DestroyUpdate: {"destroy of", "Destroying"},
-		apitype.ImportUpdate:  {"import to", "Importing into"},
-	}
-)
-
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
 	contract.Assert(v.previewText != "")
@@ -68,6 +55,17 @@ func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	}
 
 	return v.text
+}
+
+var updateTextMap = map[apitype.UpdateKind]struct {
+	previewText string
+	text        string
+}{
+	apitype.PreviewUpdate: {"update of", "Previewing"},
+	apitype.UpdateUpdate:  {"update of", "Updating"},
+	apitype.RefreshUpdate: {"refresh of", "Refreshing"},
+	apitype.DestroyUpdate: {"destroy of", "Destroying"},
+	apitype.ImportUpdate:  {"import to", "Importing into"},
 }
 
 type response string

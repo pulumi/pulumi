@@ -218,28 +218,22 @@ func renderSummaryEvent(
 }
 
 func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
+	// Only if we have been instructed to show configuration values will we print anything during the prelude.
+	if !opts.ShowConfig {
+		return ""
+	}
+
 	out := &bytes.Buffer{}
+	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset)))
 
-	if opts.ShowConfig {
-		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset)))
-
-		var keys []string
-		for key := range event.Config {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
-		}
+	var keys []string
+	for key := range event.Config {
+		keys = append(keys, key)
 	}
-
-	action := "Previewing"
-	if !event.IsPreview {
-		action = "Performing"
+	sort.Strings(keys)
+	for _, key := range keys {
+		fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
 	}
-
-	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
 
 	return out.String()
 }

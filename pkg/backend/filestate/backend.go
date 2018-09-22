@@ -282,7 +282,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Print a banner so it's clear this is a local deployment.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stackRef)
+		colors.BrightMagenta+"%s stack '%s':"+colors.Reset+"\n"), actionLabel, stackRef)
 
 	// Start the update.
 	update, err := b.newUpdate(stackName, op.Proj, op.Root)

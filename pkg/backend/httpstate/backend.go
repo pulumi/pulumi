@@ -701,7 +701,7 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stack.Ref())
+		colors.BrightMagenta+"%s stack '%s':"+colors.Reset+"\n"), actionLabel, stack.Ref())
 
 	// Create an update object to persist results.
 	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack.Ref(), op, opts.DryRun)
