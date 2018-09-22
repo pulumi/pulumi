@@ -16,11 +16,12 @@
 
 import * as assert from "assert";
 import * as resource from "../resource";
+import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
 describe("output", () => {
     it("propagates isKnown bit from inner Output", asyncTest(async () => {
-        resource.testingOptions.isDryRun = true;
+        runtime.setIsDryRun(true);
 
         const output1 = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
         const output2 = output1.apply(v => new resource.Output(new Set(), Promise.resolve("inner"), Promise.resolve(false)));

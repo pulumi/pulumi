@@ -401,15 +401,17 @@ export class Output<T> {
 
             return new Output<U>(resources, promise.then(async v => {
                 try {
-                    // During previews do not perform the apply if the engine was not able to
-                    // give us an actual value for this Output.
-                    const perform = await isKnown;
-                    const isDryRun = testingOptions.isDryRun || runtime.isDryRun();
+                    if (runtime.isDryRun()) {
+                        // During previews only perform the apply if the engine was able to
+                        // give us an actual value for this Output.
+                        const applyDuringPreview = await isKnown;
 
-                    if (isDryRun && !perform) {
-                        // We couldn't run the function, our new Output is definitely **not** known.
-                        innerIsKnownResolve(false);
-                        return <U><any>undefined;
+                        if (!applyDuringPreview) {
+                            // We didn't actually run the function, our new Output is definitely
+                            // **not** known.
+                            innerIsKnownResolve(false);
+                            return <U><any>undefined;
+                        }
                     }
 
                     const transformed = await func(v);
