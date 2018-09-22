@@ -688,7 +688,7 @@ func (op StepOp) Prefix() string {
 func (op StepOp) RawPrefix() string {
 	switch op {
 	case OpSame:
-		return "* "
+		return "  "
 	case OpCreate:
 		return "+ "
 	case OpDelete:
