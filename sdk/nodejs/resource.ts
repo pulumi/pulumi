@@ -430,12 +430,13 @@ export class Output<T> {
                         innerIsKnownResolve(true);
                         return transformed;
                     }
-                } catch (err) {
-                    // If anything failed along the way, consider this output to be not-known.
-                    // Awaiting this Output's promise() will still throw, but await'ing the isKnown
-                    // bit will just return 'false'.
+                }
+                finally {
+                    // Ensure we always resolve the inner isKnown value no matter what happens
+                    // above. If anything failed along the way, consider this output to be
+                    // not-known. Awaiting this Output's promise() will still throw, but await'ing
+                    // the isKnown bit will just return 'false'.
                     innerIsKnownResolve(false);
-                    throw err;
                 }
             }), resultIsKnown);
         };
