@@ -239,7 +239,11 @@ func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 	}
 
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, true /*dryRun*/, false /*persist*/, nil /*events*/)
+	opts := backend.ApplierOptions{
+		DryRun:   true,
+		ShowLink: true,
+	}
+	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
 }
 
 func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReference,
@@ -271,12 +275,12 @@ func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 
 // apply actually performs the provided type of update on a locally hosted stack.
 func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, dryRun, persist bool, events chan<- engine.Event) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation, opts backend.ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error) {
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
 
 	// Print a banner so it's clear this is a local deployment.
-	actionLabel := backend.ActionLabel(kind, dryRun)
+	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(
 		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stackRef)
 
@@ -294,7 +298,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
 
-	scope := op.Scopes.NewScope(engineEvents, dryRun)
+	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send them to the two listeners.
@@ -323,11 +327,11 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	case apitype.PreviewUpdate:
 		changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, dryRun)
+		changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.RefreshUpdate:
-		changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, dryRun)
+		changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
-		changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, dryRun)
+		changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
@@ -365,7 +369,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 
 	var saveErr error
 	var backupErr error
-	if !dryRun {
+	if !opts.DryRun {
 		saveErr = b.addToHistory(stackName, info)
 		backupErr = b.backupStack(stackName)
 	}
@@ -385,7 +389,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if persist {
+	if opts.ShowLink {
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
 				colors.BrightMagenta+"Permalink: file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())

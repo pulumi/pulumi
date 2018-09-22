@@ -33,10 +33,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// Applier applies the changes specified by this update operation against the target stack. If dryRun is true,
-// a preview is performed, rather than an actual update, and in any case events are written to the events channel.
+// ApplierOptions is a bag of configuration settings for an Applier.
+type ApplierOptions struct {
+	// DryRun indiciates if the update should not change any resource state and instead just preview changes.
+	DryRun bool
+	// ShowLink indiciates if a link to the update persisted result should be displayed.
+	ShowLink bool
+}
+
+// Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	dryRun, persist bool, events chan<- engine.Event) (engine.ResourceChanges, error)
+	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error)
 
 var (
 	updateTextMap = map[apitype.UpdateKind]struct {
@@ -98,7 +105,15 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
 	changes := engine.ResourceChanges(nil)
 	if !op.Opts.SkipPreview {
-		c, err := apply(ctx, kind, stack, op, true /*dryRun*/, false /*persist*/, eventsChannel)
+		// We perform the preview (DryRun), but don't display the cloud link since the
+		// thing the user cares about would be the link to the actual update if they
+		// confirm the prompt.
+		opts := ApplierOptions{
+			DryRun:   true,
+			ShowLink: false,
+		}
+
+		c, err := apply(ctx, kind, stack, op, opts, eventsChannel)
 		if err != nil {
 			close(eventsChannel)
 			return c, err
@@ -185,8 +200,13 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		return changes, err
 	}
 
-	// Now do the real operation. We don't care about the events it issues, so just pass a nil channel along.
-	return apply(ctx, kind, stack, op, false /*dryRun*/, true /*persist*/, nil /*events*/)
+	// Perform the change (!DryRun) and show the cloud link to the result.
+	// We don't care about the events it issues, so just pass a nil channel along.
+	opts := ApplierOptions{
+		DryRun:   false,
+		ShowLink: true,
+	}
+	return apply(ctx, kind, stack, op, opts, nil /*events*/)
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
