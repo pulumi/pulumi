@@ -390,10 +390,8 @@ export class Output<T> {
 
         this.apply = <U>(func: (t: T) => Input<U>) => {
             let innerIsKnownResolve: (val: boolean) => void;
-            let innerIsKnownReject: (reason: any) => void;
-            const innerIsKnown = new Promise<boolean>((resolve, reject) => {
+            const innerIsKnown = new Promise<boolean>(resolve => {
                 innerIsKnownResolve = resolve;
-                innerIsKnownReject = reject;
             });
 
             // The known state of the output we're returning depends on if we're known as well, and
@@ -425,7 +423,7 @@ export class Output<T> {
                         // The callback func has produced an inner Output that may be 'known' or 'unknown'.
                         // We have to properly forward that along to our outer output.  That way the Outer
                         // output doesn't consider itself 'known' then the inner Output did not.
-                        transformed.isKnown.then(innerIsKnownResolve, innerIsKnownReject);
+                        innerIsKnownResolve(await transformed.isKnown);
                         return await transformed.promise();
                     } else {
                         // We successfully ran the inner function.  Our new Output should be considered known.
@@ -433,10 +431,10 @@ export class Output<T> {
                         return transformed;
                     }
                 } catch (err) {
-                    // If anything failed along the way, reject the isKnown bit as well for the outer
-                    // Output, so that that exception can propogate as well for anyone awaiting that
-                    // promise.
-                    innerIsKnownReject(err);
+                    // If anything failed along the way, consider this output to be not-known.
+                    // Awaiting this Output's promise() will still throw, but await'ing the isKnown
+                    // bit will just return 'false'.
+                    innerIsKnownResolve(false);
                     throw err;
                 }
             }), resultIsKnown);
