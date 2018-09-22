@@ -280,6 +280,11 @@ export class ComponentResource extends Resource {
 (<any>ComponentResource).doNotCapture = true;
 (<any>ComponentResource.prototype).registerOutputs.doNotCapture = true;
 
+/* @internal */
+export const testingOptions = {
+    isDryRun: false,
+};
+
 /**
  * Output helps encode the relationship between Resources in a Pulumi application. Specifically an
  * Output holds onto a piece of Data and the Resource it was generated from. An Output value can
@@ -401,7 +406,9 @@ export class Output<T> {
                     // During previews do not perform the apply if the engine was not able to
                     // give us an actual value for this Output.
                     const perform = await isKnown;
-                    if (runtime.isDryRun() && !perform) {
+                    const isDryRun = testingOptions.isDryRun || runtime.isDryRun();
+
+                    if (isDryRun && !perform) {
                         // We couldn't run the function, our new Output is definitely **not** known.
                         innerIsKnownResolve(false);
                         return <U><any>undefined;
