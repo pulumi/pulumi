@@ -384,26 +384,55 @@ export class Output<T> {
         this.promise = () => promise;
 
         this.apply = <U>(func: (t: T) => Input<U>) => {
-            return new Output<U>(resources, promise.then(async v => {
-                // During previews do not perform the apply if the engine was not able to
-                // give us an actual value for this Output.
-                const perform = await isKnown;
-                if (runtime.isDryRun() && !perform) {
-                    return <U><any>undefined;
-                }
+            let innerIsKnownResolve: (val: boolean) => void;
+            let innerIsKnownReject: (reason: any) => void;
+            const innerIsKnown = new Promise<boolean>((resolve, reject) => {
+                innerIsKnownResolve = resolve;
+                innerIsKnownReject = reject;
+            });
 
-                const transformed = await func(v);
-                if (Output.isInstance(transformed)) {
-                    // Note: if the func returned a Output, we unwrap that to get the inner value
-                    // returned by that Output.  Note that we are *not* capturing the Resources of
-                    // this inner Output.  That's intentional.  As the Output returned is only
-                    // supposed to be related this *this* Output object, those resources should
-                    // already be in our transitively reachable resource graph.
-                    return await transformed.promise();
-                } else {
-                    return transformed;
+            // The known state of the output we're returning depends on if we're known as well, and
+            // if a potential lifted inner Output is known.  If we get an inner Output, and it is
+            // not known itself, then the result we return should not be known.
+            const resultIsKnown = Promise.all([isKnown, innerIsKnown]).then(([k1, k2]) => k1 && k2);
+
+            return new Output<U>(resources, promise.then(async v => {
+                try {
+                    // During previews do not perform the apply if the engine was not able to
+                    // give us an actual value for this Output.
+                    const perform = await isKnown;
+                    if (runtime.isDryRun() && !perform) {
+                        // We couldn't run the function, our new Output is definitely **not** known.
+                        innerIsKnownResolve(false);
+                        return <U><any>undefined;
+                    }
+
+                    const transformed = await func(v);
+                    if (Output.isInstance(transformed)) {
+                        // Note: if the func returned a Output, we unwrap that to get the inner value
+                        // returned by that Output.  Note that we are *not* capturing the Resources of
+                        // this inner Output.  That's intentional.  As the Output returned is only
+                        // supposed to be related this *this* Output object, those resources should
+                        // already be in our transitively reachable resource graph.
+
+                        // The callback func has produced an inner Output that may be 'known' or 'unknown'.
+                        // We have to properly forward that along to our outer output.  That way the Outer
+                        // output doesn't consider itself 'known' then the inner Output did not.
+                        transformed.isKnown.then(innerIsKnownResolve, innerIsKnownReject);
+                        return await transformed.promise();
+                    } else {
+                        // We successfully ran the inner function.  Our new Output should be considered known.
+                        innerIsKnownResolve(true);
+                        return transformed;
+                    }
+                } catch (err) {
+                    // If anything failed along the way, reject the isKnown bit as well for the outer
+                    // Output, so that that exception can propogate as well for anyone awaiting that
+                    // promise.
+                    innerIsKnownReject(err);
+                    throw err;
                 }
-            }), isKnown);
+            }), resultIsKnown);
         };
 
         this.get = () => {
