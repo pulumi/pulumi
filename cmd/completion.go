@@ -19,9 +19,10 @@ import (
 
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"io"
 	"os"
+
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 // newCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
@@ -182,10 +183,19 @@ _complete pulumi 2>/dev/null
 )
 
 func genZshCompletion(out io.Writer, root *cobra.Command) error {
-	fmt.Fprint(out, zshHead)
 	buf := new(bytes.Buffer)
-	root.GenBashCompletion(buf)
-	fmt.Fprint(out, buf.String())
-	fmt.Fprint(out, zshTail)
-	return nil
+	if err := root.GenBashCompletion(buf); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprint(out, zshHead); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprint(out, buf.String()); err != nil {
+		return err
+	}
+
+	_, err := fmt.Fprint(out, zshTail)
+	return err
 }
