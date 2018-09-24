@@ -79,7 +79,7 @@ export abstract class Resource {
             throw new ResourceError("Missing resource type argument", opts.parent);
         }
         if (!name) {
-            throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent;
+            throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
 
         // Check the parent type if one exists and fill in any default options.

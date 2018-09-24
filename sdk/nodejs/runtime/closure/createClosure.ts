@@ -17,7 +17,7 @@
 import { relative as pathRelative } from "path";
 import { basename } from "path";
 import * as ts from "typescript";
-import { RunError } from "../../errors";
+import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
@@ -150,6 +150,11 @@ interface Context {
     // __awaiter per .js file that uses 'async/await'.  Instead of needing to generate serialized
     // functions for each of those, we can just serialize out the function once.
     simpleFunctions: FunctionInfo[];
+
+    /**
+     * The resource to log any errors we encounter against.
+     */
+    logResource?: resource.Resource;
 }
 
 interface FunctionLocation {
@@ -201,7 +206,7 @@ class SerializedOutput<T> implements resource.Output<T> {
  * about the captured environment.
  */
 export async function createFunctionInfoAsync(
-    func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
+    func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<FunctionInfo> {
 
     const context: Context = {
         cache: new Map(),
@@ -210,6 +215,7 @@ export async function createFunctionInfoAsync(
         frames: [],
         asyncWorkQueue: [],
         simpleFunctions: [],
+        logResource,
     };
 
     // Add well-known javascript global variables into our cache.  This way, if there
@@ -647,7 +653,11 @@ Consider using import('${moduleName}') or require('${moduleName}') inside ${loca
         }
     }
 
-    throw new RunError(message);
+    // Hide the stack when printing out the closure serialization error.  We don't want both the
+    // closure serialization object stack *and* the function execution stack.  Furthermore, there
+    // is enough information about the Function printed (both line/col, and a few lines of its
+    // text) to give the user the appropriate info for fixing.
+    throw new ResourceError(message, context.logResource, /*hideStack:*/true);
 }
 
 function getTrimmedFunctionCode(func: Function): string {
