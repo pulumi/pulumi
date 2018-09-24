@@ -157,7 +157,7 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	return &cloudBackend{
 		d:      d,
 		url:    cloudURL,
-		client: client.NewClient(cloudURL, apiToken),
+		client: client.NewClient(cloudURL, apiToken, d),
 	}, nil
 }
 
@@ -1160,7 +1160,7 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
 	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	_, err := client.NewClient(cloudURL, accessToken).GetPulumiAccountName(ctx)
+	_, err := client.NewClient(cloudURL, accessToken, cmdutil.Diag()).GetPulumiAccountName(ctx)
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil

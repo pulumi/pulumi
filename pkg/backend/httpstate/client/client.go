@@ -24,6 +24,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/diag"
+
 	"github.com/blang/semver"
 
 	"github.com/pkg/errors"
@@ -44,32 +46,34 @@ type Client struct {
 	apiURL   string
 	apiToken apiAccessToken
 	apiUser  string
+	diag     diag.Sink
 }
 
 // NewClient creates a new Pulumi API client with the given URL and API token.
-func NewClient(apiURL, apiToken string) *Client {
+func NewClient(apiURL, apiToken string, d diag.Sink) *Client {
 	return &Client{
 		apiURL:   apiURL,
 		apiToken: apiAccessToken(apiToken),
+		diag:     d,
 	}
 }
 
 // apiCall makes a raw HTTP request to the Pulumi API using the given method, path, and request body.
 func (pc *Client) apiCall(ctx context.Context, method, path string, body []byte) (string, *http.Response, error) {
-	return pulumiAPICall(ctx, pc.apiURL, method, path, body, pc.apiToken, httpCallOptions{})
+	return pulumiAPICall(ctx, pc.diag, pc.apiURL, method, path, body, pc.apiToken, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
-	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, httpCallOptions{})
+	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
 	respObj interface{}, opts httpCallOptions) error {
-	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
+	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -78,7 +82,7 @@ func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, 
 func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
 	token updateAccessToken, httpOptions httpCallOptions) error {
 
-	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
+	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
 
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
