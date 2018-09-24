@@ -20,12 +20,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dustin/go-humanize/english"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 type Row interface {
@@ -336,19 +337,19 @@ func (data *resourceRowData) getInfoColumn() string {
 		// If we are done, show a summary of how many messages were printed.
 		if c := diagInfo.ErrorCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecError, cmdutil.Plural("error", c), colors.Reset))
+				c, colors.SpecError, english.PluralWord(c, "error", ""), colors.Reset))
 		}
 		if c := diagInfo.WarningCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecWarning, cmdutil.Plural("warning", c), colors.Reset))
+				c, colors.SpecWarning, english.PluralWord(c, "warning", ""), colors.Reset))
 		}
 		if c := diagInfo.InfoCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecInfo, cmdutil.Plural("message", c), colors.Reset))
+				c, colors.SpecInfo, english.PluralWord(c, "message", ""), colors.Reset))
 		}
 		if c := diagInfo.DebugCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecDebug, cmdutil.Plural("debug", c), colors.Reset))
+				c, colors.SpecDebug, english.PluralWord(c, "debug", ""), colors.Reset))
 		}
 	} else {
 		// If we're not totally done, and we're in the tree-view, just print out the worst diagnostic next to the

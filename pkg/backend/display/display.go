@@ -23,6 +23,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/dustin/go-humanize/english"
+
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -157,7 +159,8 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
 	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("    %s%d %s%s\n", colors.Bold, changeCount, cmdutil.Plural("change", changeCount), colors.Reset)))
+		fmt.Sprintf("    %s%d %s%s\n",
+			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset)))
 
 	var planTo string
 	if event.IsPreview {
