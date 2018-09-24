@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as grpc from "grpc";
+import { ResourceError } from "../errors";
 import * as log from "../log";
 import { CustomResourceOptions, ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
@@ -56,7 +57,7 @@ interface ResourceResolverOperation {
 export function readResource(res: Resource, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
     const id: Input<ID> | undefined = opts.id;
     if (!id) {
-        throw new Error("Cannot read resource whose options are lacking an ID value");
+        throw new ResourceError("Cannot read resource whose options are lacking an ID value", res);
     }
 
     const label = `resource:${name}[${t}]#...`;
