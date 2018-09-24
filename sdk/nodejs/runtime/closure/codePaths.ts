@@ -19,7 +19,8 @@ import * as normalize from "normalize-package-data";
 import * as filepath from "path";
 import * as readPackageTree from "read-package-tree";
 import * as asset from "../../asset";
-import { RunError } from "../../errors";
+import { ResourceError } from "../../errors";
+import { Resource } from "../../resource";
 
 /**
  * Options for controlling what gets returned by [computeCodePaths].
@@ -46,6 +47,11 @@ export interface CodePathOptions {
      * used at runtime.
      */
     extraExcludePackages?: string[];
+
+    /**
+     * The resource to log any errors we encounter against.
+     */
+    logResource?: Resource;
 }
 
 // computeCodePaths computes the local node_module paths to include in an uploaded cloud 'Lambda'.
@@ -103,7 +109,8 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
     // Find folders for all packages requested by the user
     const pathSet = await allFoldersForPackages(
         new Set<string>(options.extraIncludePackages || []),
-        new Set<string>(options.extraExcludePackages || []));
+        new Set<string>(options.extraExcludePackages || []),
+        options.logResource);
 
     // Add all paths explicitly requested by the user
     const extraIncludePaths = options.extraIncludePaths || [];
@@ -153,7 +160,10 @@ function isSubsumedByHigherPath(path: string, pathSet: Set<string>): boolean {
 
 // allFolders computes the set of package folders that are transitively required by the root
 // 'dependencies' node in the client's project.json file.
-function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: Set<string>): Promise<Set<string>> {
+function allFoldersForPackages(
+        includedPackages: Set<string>,
+        excludedPackages: Set<string>,
+        logResource: Resource | undefined): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
         readPackageTree(".", <any>undefined, (err: any, root: readPackageTree.Node) => {
             try {
@@ -168,13 +178,13 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
                 // as this is not an actual problem for determining the set of dependencies.
                 if (root.error) {
                     if (!root.realpath) {
-                        throw new RunError(
-                            "Failed to parse package.json. Underlying issue:\n  " + root.error.toString());
+                        throw new ResourceError(
+                            "Failed to parse package.json. Underlying issue:\n  " + root.error.toString(), logResource);
                     }
 
                     // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
                     root.package = computeDependenciesDirectlyFromPackageFile(
-                        filepath.join(root.realpath, "package.json"));
+                        filepath.join(root.realpath, "package.json"), logResource);
                 }
 
                 // This is the core starting point of the algorithm.  We use readPackageTree to get
@@ -202,7 +212,7 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
     });
 }
 
-function computeDependenciesDirectlyFromPackageFile(path: string): any {
+function computeDependenciesDirectlyFromPackageFile(path: string, logResource: Resource | undefined): any {
     // read the package.json file in directly.  if any of these fail an error will be thrown
     // and bubbled back out to user.
     const contents = readFile();
@@ -226,7 +236,7 @@ function computeDependenciesDirectlyFromPackageFile(path: string): any {
         try {
             return fs.readFileSync(path);
         } catch (err) {
-            throw new RunError(`Error reading file '${path}' when computing package dependencies. ${err}`);
+            throw new ResourceError(`Error reading file '${path}' when computing package dependencies. ${err}`, logResource);
         }
     }
 
@@ -234,7 +244,7 @@ function computeDependenciesDirectlyFromPackageFile(path: string): any {
         try {
             return JSON.parse(contents.toString());
         } catch (err) {
-            throw new RunError(`Error parsing file '${path}' when computing package dependencies. ${err}`);
+            throw new ResourceError(`Error parsing file '${path}' when computing package dependencies. ${err}`, logResource);
         }
     }
 }
