@@ -158,7 +158,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(stackRef, file, nil, nil, b)
-	fmt.Printf("Created stack '%s'.\n", stack.Ref())
+	fmt.Printf("Created stack '%s'\n", stack.Ref())
 
 	return stack, nil
 }
@@ -282,7 +282,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Print a banner so it's clear this is a local deployment.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stackRef)
+		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
 
 	// Start the update.
 	update, err := b.newUpdate(stackName, op.Proj, op.Root)
@@ -293,7 +293,8 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Spawn a display loop to show events on the CLI.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-	go display.ShowEvents(strings.ToLower(actionLabel), kind, displayEvents, displayDone, op.Opts.Display)
+	go display.ShowEvents(
+		strings.ToLower(actionLabel), kind, stackName, op.Proj.Name, displayEvents, displayDone, op.Opts.Display)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
@@ -392,7 +393,8 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	if opts.ShowLink {
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
-				colors.BrightMagenta+"Permalink: file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
+				colors.SpecHeadline+"Permalink: "+
+					colors.Underline+colors.BrightBlue+"file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
 	}
 
 	return changes, nil

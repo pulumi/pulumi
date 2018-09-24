@@ -45,19 +45,6 @@ type ApplierOptions struct {
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error)
 
-var (
-	updateTextMap = map[apitype.UpdateKind]struct {
-		previewText string
-		text        string
-	}{
-		apitype.PreviewUpdate: {"update of", "Previewing"},
-		apitype.UpdateUpdate:  {"update of", "Updating"},
-		apitype.RefreshUpdate: {"refresh of", "Refreshing"},
-		apitype.DestroyUpdate: {"destroy of", "Destroying"},
-		apitype.ImportUpdate:  {"import to", "Importing into"},
-	}
-)
-
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
 	contract.Assert(v.previewText != "")
@@ -68,6 +55,17 @@ func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	}
 
 	return v.text
+}
+
+var updateTextMap = map[apitype.UpdateKind]struct {
+	previewText string
+	text        string
+}{
+	apitype.PreviewUpdate: {"update", "Previewing"},
+	apitype.UpdateUpdate:  {"update", "Updating"},
+	apitype.RefreshUpdate: {"refresh", "Refreshing"},
+	apitype.DestroyUpdate: {"destroy", "Destroying"},
+	apitype.ImportUpdate:  {"import", "Importing"},
 }
 
 type response string
@@ -185,7 +183,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		if response == string(details) {
 			diff := createDiff(kind, events, opts.Display)
-			_, err := os.Stdout.WriteString(diff + "\n\n")
+			_, err := os.Stdout.WriteString(diff + "\n")
 			contract.IgnoreError(err)
 			continue
 		}
@@ -217,11 +215,7 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 
 	for _, e := range events {
 		msg := display.RenderDiffEvent(updateKind, e, seen, displayOpts)
-		if msg != "" {
-			if e.Type == engine.SummaryEvent {
-				msg = "\n" + msg
-			}
-
+		if msg != "" && e.Type != engine.SummaryEvent {
 			_, err := buff.WriteString(msg)
 			contract.IgnoreError(err)
 		}

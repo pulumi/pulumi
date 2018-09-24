@@ -294,7 +294,7 @@ func GetResourceOutputsPropertiesString(
 
 			if print {
 				if firstout {
-					writeWithIndentNoPrefix(b, indent, op, "---outputs:---\n")
+					writeString(b, colors.SpecHeadline+"Outputs:"+colors.Reset+"\n")
 					firstout = false
 				}
 				if outputDiff != nil {

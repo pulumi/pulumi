@@ -524,7 +524,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'.\n", stack.Ref())
+	fmt.Printf("Created stack '%s'\n", stack.Ref())
 
 	return stack, nil
 }
@@ -701,7 +701,7 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stack.Ref())
+		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
 
 	// Create an update object to persist results.
 	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack.Ref(), op, opts.DryRun)
@@ -722,7 +722,8 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 			defer func() {
 				fmt.Printf(
 					op.Opts.Display.Color.Colorize(
-						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
+						colors.SpecHeadline+"Permalink: "+
+							colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 			}()
 		}
 	}
@@ -774,7 +775,7 @@ func (b *cloudBackend) runEngineAction(
 	displayDone := make(chan bool)
 
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, displayEvents, displayDone, op.Opts.Display)
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op, displayEvents, displayDone, op.Opts.Display)
 
 	engineEvents := make(chan engine.Event)
 
