@@ -165,10 +165,10 @@ export function run(argv: minimist.ParsedArgs): void {
     const errorSet = new Set<Error>();
 
     const uncaughtHandler = (err: Error) => {
-        // We have seen the uncaughtHandler get called multiple times for the same error. We haven't
-        // been able to figure out what causes this (i.e. a bug somewhere else in pulumi), or
-        // something with how Node itself works.  So, for now, we just ensure that we only report
-        // issues the first time we encounter any specific error.
+        // In node, if you throw an error in a chained promise, but the exception is not finally
+        // handled, then you can end up getting an unhandledRejection for each exception/promise
+        // pair.  Because the exception is the same through all of these, we keep track of it and
+        // only report it once so the user doesn't get N messages for the same thing.
         if (errorSet.has(err)) {
             return;
         }
