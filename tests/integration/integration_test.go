@@ -70,7 +70,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
-		assert.Equal(t, "Updating stack 'main-abs'\n", stdout)
+		assert.Equal(t, "Updating (main-abs):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -86,7 +86,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
-		assert.Equal(t, "Updating stack 'main-parent'\n", stdout)
+		assert.Equal(t, "Updating (main-parent):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -186,9 +186,9 @@ func TestStackOutputsDisplayed(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			output := stdout.String()
 
-			// ensure we get the --outputs:-- info both for the normal update, and for the no-change update.
-			assert.Contains(t, output, "---outputs:---\n    foo: 42\n    xyz: \"ABC\"\n\ninfo: 1 change performed")
-			assert.Contains(t, output, "---outputs:---\n    foo: 42\n    xyz: \"ABC\"\n\ninfo: no changes required")
+			// ensure we get the outputs info both for the normal update, and for the no-change update.
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    1 change")
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    0 changes")
 		},
 	})
 }
