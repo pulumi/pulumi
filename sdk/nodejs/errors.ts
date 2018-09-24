@@ -41,10 +41,10 @@ export class RunError extends Error {
 }
 
 /**
- * ResourceError can be used for terminating a program abruptly, optionally associating the problem with
- * a Resource.  Depending on the nature of the problem, clients can choose whether or not a
- * callstack should be returned as well.  This should be very rare, and would only indicate no
- * usefulness of presenting that stack to the user.
+ * ResourceError can be used for terminating a program abruptly, specifically associating the
+ * problem with a Resource.  Depending on the nature of the problem, clients can choose whether or
+ * not a call stack should be returned as well.  This should be very rare, and would only indicate
+ * no usefulness of presenting that stack to the user.
  */
 export class ResourceError extends Error {
     /**
