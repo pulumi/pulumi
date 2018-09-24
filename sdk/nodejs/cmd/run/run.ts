@@ -19,7 +19,7 @@ import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
 import * as util from "util";
-import { RunError, ResourceError } from "../../errors";
+import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 
