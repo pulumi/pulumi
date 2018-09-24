@@ -67,3 +67,11 @@ func InitDiag(opts diag.FormatOptions) {
 	contract.Assertf(snk == nil, "Cannot initialize diagnostics sink more than once")
 	snk = diag.DefaultSink(os.Stdout, os.Stderr, opts)
 }
+
+// Plural uses a dumb pluralization scheme, simply appending an "s", to the given string s if c is not 1.
+func Plural(s string, c int) string {
+	if c != 1 {
+		s += "s"
+	}
+	return s
+}

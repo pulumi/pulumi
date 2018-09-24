@@ -17,6 +17,7 @@ package display
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 type Row interface {
@@ -81,7 +83,7 @@ func (data *headerRowData) SetDisplayOrderIndex(time int) {
 func (data *headerRowData) ColorizedColumns() []string {
 	if len(data.columns) == 0 {
 		blue := func(msg string) string {
-			return colors.BrightBlue + msg + colors.Reset
+			return colors.Underline + colors.BrightBlue + msg + colors.Reset
 		}
 
 		header := func(msg string) string {
@@ -206,15 +208,10 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 	}
 
 	payloads := diagInfo.StreamIDToDiagPayloads[payload.StreamID]
-
-	// Record the count if this is for the default stream, or this is the first event in a a
-	// non-default stream
-	recordCount := payload.StreamID == 0 || len(payloads) == 0
-
 	payloads = append(payloads, payload)
 	diagInfo.StreamIDToDiagPayloads[payload.StreamID] = payloads
 
-	if recordCount && !payload.Ephemeral {
+	if !payload.Ephemeral {
 		switch payload.Severity {
 		case diag.Error:
 			diagInfo.ErrorCount++
@@ -282,15 +279,13 @@ func (data *resourceRowData) ColorizedSuffix() string {
 func (data *resourceRowData) ColorizedColumns() []string {
 	step := data.step
 
-	var name string
-	var typ string
-	if data.step.URN == "" {
-		name = "global"
-		typ = "global"
-	} else {
-		name = string(data.step.URN.Name())
-		typ = simplifyTypeName(data.step.URN.Type())
+	urn := data.step.URN
+	if urn == "" {
+		// If we don't have a URN yet, mock parent it to the global stack.
+		urn = resource.DefaultRootStackURN(data.display.stack, data.display.proj)
 	}
+	name := string(urn.Name())
+	typ := simplifyTypeName(urn.Type())
 
 	columns := make([]string, 5)
 	columns[opColumn] = data.display.getStepOpLabel(step)
@@ -312,7 +307,6 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 func (data *resourceRowData) getInfoColumn() string {
 	step := data.step
-
 	if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced {
 		// if we're doing a replacement, see if we can find a replace step that contains useful
 		// information to display.
@@ -323,8 +317,74 @@ func (data *resourceRowData) getInfoColumn() string {
 		}
 	}
 
-	changesBuf := &bytes.Buffer{}
+	var diagMsg string
+	appendDiagMessage := func(msg string) {
+		if diagMsg != "" {
+			diagMsg += "; "
+		}
 
+		diagMsg += msg
+	}
+
+	changes := data.getDiffInfo()
+	if colors.Never.Colorize(changes) != "" {
+		appendDiagMessage("[" + changes + "]")
+	}
+
+	diagInfo := data.diagInfo
+	if data.display.done {
+		// If we are done, show a summary of how many messages were printed.
+		if c := diagInfo.ErrorCount; c > 0 {
+			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
+				c, colors.SpecError, cmdutil.Plural("error", c), colors.Reset))
+		}
+		if c := diagInfo.WarningCount; c > 0 {
+			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
+				c, colors.SpecWarning, cmdutil.Plural("warning", c), colors.Reset))
+		}
+		if c := diagInfo.InfoCount; c > 0 {
+			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
+				c, colors.SpecInfo, cmdutil.Plural("message", c), colors.Reset))
+		}
+		if c := diagInfo.DebugCount; c > 0 {
+			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
+				c, colors.SpecDebug, cmdutil.Plural("debug", c), colors.Reset))
+		}
+	} else {
+		// If we're not totally done, and we're in the tree-view, just print out the worst diagnostic next to the
+		// status message. This is helpful for long running tasks to know what's going on. However, once done, we
+		// print the diagnostics at the bottom, so we don't need to show this.
+		//
+		// if we're not in the tree-view (i.e. non-interactive mode), then we want to print out whatever the last
+		// diagnostics was that we got.  This way, as we're hearing about diagnostic events, we're always printing
+		// out the last one.
+
+		var diagnostic *engine.DiagEventPayload
+		if data.display.isTerminal {
+			diagnostic = data.diagInfo.LastDiag
+		} else {
+			diagnostic = getWorstDiagnostic(data.diagInfo)
+		}
+
+		if diagnostic != nil {
+			eventMsg := data.display.renderProgressDiagEvent(*diagnostic, true /*includePrefix:*/)
+			if eventMsg != "" {
+				appendDiagMessage(eventMsg)
+			}
+		}
+	}
+
+	newLineIndex := strings.Index(diagMsg, "\n")
+	if newLineIndex >= 0 {
+		diagMsg = diagMsg[0:newLineIndex]
+	}
+
+	return diagMsg
+}
+
+func (data *resourceRowData) getDiffInfo() string {
+	step := data.step
+	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
 		if data.diffOutputs {
@@ -358,7 +418,7 @@ func (data *resourceRowData) getInfoColumn() string {
 			resource.NewBoolProperty(step.Old.Protect), resource.NewBoolProperty(step.New.Protect))
 
 		if diff != nil {
-			writeString(changesBuf, "changes:")
+			writeString(changesBuf, "diff: ")
 
 			updates := make(resource.PropertyMap)
 			for k := range diff.Updates {
@@ -372,84 +432,30 @@ func (data *resourceRowData) getInfoColumn() string {
 	}
 
 	fprintIgnoreError(changesBuf, colors.Reset)
-	changes := changesBuf.String()
+	return changesBuf.String()
+}
 
-	diagMsg := ""
+func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {
+	if len(propMap) > 0 {
+		writeString(b, strings.Trim(op.Prefix(), " "))
 
-	if colors.Never.Colorize(changes) != "" {
-		diagMsg += changes
-	}
-
-	appendDiagMessage := func(msg string) {
-		if diagMsg != "" {
-			diagMsg += ", "
+		keys := make([]string, 0, len(propMap))
+		for k := range propMap {
+			keys = append(keys, string(k))
 		}
+		sort.Strings(keys)
 
-		diagMsg += msg
-	}
-
-	diagInfo := data.diagInfo
-
-	if diagInfo.ErrorCount == 1 {
-		appendDiagMessage("1 error")
-	} else if diagInfo.ErrorCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v errors", diagInfo.ErrorCount))
-	}
-
-	if diagInfo.WarningCount == 1 {
-		appendDiagMessage("1 warning")
-	} else if diagInfo.WarningCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v warnings", diagInfo.WarningCount))
-	}
-
-	if diagInfo.InfoCount == 1 {
-		appendDiagMessage("1 info message")
-	} else if diagInfo.InfoCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v info messages", diagInfo.InfoCount))
-	}
-
-	if diagInfo.DebugCount == 1 {
-		appendDiagMessage("1 debug message")
-	} else if diagInfo.DebugCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
-	}
-
-	if !data.display.done {
-		// If we're not totally done, and we're in the tree-view also print out the worst diagnostic
-		// next to the status message. This is helpful for long running tasks to know what's going
-		// on. However, once done, we print the diagnostics at the bottom, so we don't need to show
-		// this.
-		//
-		// if we're not in the tree-view (i.e. non-interactive mode), then we want to print out
-		// whatever the last diagnostics was that we got.  This way, as we're hearing about
-		// diagnostic events, we're always printing out the last one.
-
-		var diagnostic *engine.DiagEventPayload
-		if data.display.isTerminal {
-			diagnostic = data.diagInfo.LastDiag
-		} else {
-			diagnostic = getWorstDiagnostic(data.diagInfo)
-		}
-
-		if diagnostic != nil {
-			eventMsg := data.display.renderProgressDiagEvent(*diagnostic, true /*includePrefix:*/)
-			diagCount := diagInfo.DebugCount + diagInfo.ErrorCount + diagInfo.InfoCount + diagInfo.WarningCount
-			if diagCount > 0 {
-				diagMsg += ". "
+		index := 0
+		for _, k := range keys {
+			if index != 0 {
+				writeString(b, ",")
 			}
-
-			if eventMsg != "" {
-				diagMsg += eventMsg
-			}
+			writeString(b, k)
+			index++
 		}
-	}
 
-	newLineIndex := strings.Index(diagMsg, "\n")
-	if newLineIndex >= 0 {
-		diagMsg = diagMsg[0:newLineIndex]
+		writeString(b, colors.Reset)
 	}
-
-	return diagMsg
 }
 
 // Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
@@ -457,19 +463,12 @@ func (data *resourceRowData) getInfoColumn() string {
 func getWorstDiagnostic(diagInfo *DiagInfo) *engine.DiagEventPayload {
 	if diagInfo.LastError != nil {
 		return diagInfo.LastError
-	}
-
-	if diagInfo.LastWarning != nil {
+	} else if diagInfo.LastWarning != nil {
 		return diagInfo.LastWarning
-	}
-
-	if diagInfo.LastInfoError != nil {
+	} else if diagInfo.LastInfoError != nil {
 		return diagInfo.LastInfoError
-	}
-
-	if diagInfo.LastInfo != nil {
+	} else if diagInfo.LastInfo != nil {
 		return diagInfo.LastInfo
 	}
-
 	return diagInfo.LastDebug
 }
