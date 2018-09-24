@@ -154,7 +154,7 @@ interface Context {
     /**
      * The resource to log any errors we encounter against.
      */
-    logResource?: resource.Resource;
+    logResource: resource.Resource | undefined;
 }
 
 interface FunctionLocation {
