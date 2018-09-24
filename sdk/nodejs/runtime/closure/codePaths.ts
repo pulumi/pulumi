@@ -19,7 +19,6 @@ import * as normalize from "normalize-package-data";
 import * as filepath from "path";
 import * as readPackageTree from "read-package-tree";
 import * as asset from "../../asset";
-import { RunError } from "../../errors";
 
 /**
  * Options for controlling what gets returned by [computeCodePaths].
@@ -168,7 +167,7 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
                 // as this is not an actual problem for determining the set of dependencies.
                 if (root.error) {
                     if (!root.realpath) {
-                        throw new RunError(
+                        throw new Error(
                             "Failed to parse package.json. Underlying issue:\n  " + root.error.toString());
                     }
 
@@ -226,7 +225,7 @@ function computeDependenciesDirectlyFromPackageFile(path: string): any {
         try {
             return fs.readFileSync(path);
         } catch (err) {
-            throw new RunError(`Error reading file '${path}' when computing package dependencies. ${err}`);
+            throw new Error(`Error reading file '${path}' when computing package dependencies. ${err}`);
         }
     }
 
@@ -234,7 +233,7 @@ function computeDependenciesDirectlyFromPackageFile(path: string): any {
         try {
             return JSON.parse(contents.toString());
         } catch (err) {
-            throw new RunError(`Error parsing file '${path}' when computing package dependencies. ${err}`);
+            throw new Error(`Error parsing file '${path}' when computing package dependencies. ${err}`);
         }
     }
 }

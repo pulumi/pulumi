@@ -19,7 +19,7 @@ import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
 import * as util from "util";
-import { RunError } from "../../errors";
+import { RunError, ResourceError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 
@@ -169,7 +169,11 @@ export function run(argv: minimist.ParsedArgs): void {
 
         // First, log the error.
         if (RunError.isInstance(err)) {
-            // Hide the stack if requested to by the RunError creator.
+            // Always hide the stack for RunErrors.
+            log.error(err.message);
+        }
+        else if (ResourceError.isInstance(err)) {
+            // Hide the stack if requested to by the ResourceError creator.
             const message = err.hideStack ? err.message : defaultMessage;
             log.error(message, err.resource);
         }

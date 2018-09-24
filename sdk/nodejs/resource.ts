@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { RunError } from "./errors";
 import * as runtime from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
-import { getRootResource } from "./runtime/settings";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -77,17 +75,17 @@ export abstract class Resource {
      */
     constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
         if (!t) {
-            throw new RunError("Missing resource type argument");
+            throw new Error("Missing resource type argument");
         }
         if (!name) {
-            throw new RunError("Missing resource name argument (for URN creation)");
+            throw new Error("Missing resource name argument (for URN creation)");
         }
 
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
             if (!Resource.isInstance(opts.parent)) {
-                throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
+                throw new Error(`Resource parent is not a valid Resource: ${opts.parent}`);
             }
 
             if (opts.protect === undefined) {
@@ -114,7 +112,7 @@ export abstract class Resource {
         if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
             if (!custom) {
-                throw new RunError("Cannot read an existing resource unless it has a custom provider");
+                throw new Error("Cannot read an existing resource unless it has a custom provider");
             }
             readResource(this, t, name, props, opts);
         } else {
@@ -235,7 +233,7 @@ export abstract class ProviderResource extends CustomResource {
      */
     constructor(pkg: string, name: string, props?: Inputs, opts?: ResourceOptions) {
         if (opts && (<any>opts).provider !== undefined) {
-            throw new RunError("Explicit providers may not be used with provider resources");
+            throw new Error("Explicit providers may not be used with provider resources");
         }
 
         super(`pulumi:providers:${pkg}`, name, props, opts);
@@ -262,7 +260,7 @@ export class ComponentResource extends Resource {
      */
     constructor(t: string, name: string, props?: Inputs, opts?: ComponentResourceOptions) {
         if (opts && (<any>opts).provider !== undefined) {
-            throw new RunError("Explicit providers may not be used with component resources");
+            throw new Error("Explicit providers may not be used with component resources");
         }
 
         super(t, name, false, props, opts);
@@ -407,7 +405,7 @@ export class Output<T> {
         };
 
         this.get = () => {
-            throw new RunError(`Cannot call '.get' during update or preview.
+            throw new Error(`Cannot call '.get' during update or preview.
 To manipulate the value of this Output, use '.apply' instead.`);
         };
     }
