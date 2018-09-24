@@ -61,7 +61,7 @@ export class ResourceError extends Error {
         return obj && obj.__pulumiRunError;
     }
 
-    constructor(message: string, public resource: Resource, public hideStack?: boolean) {
+    constructor(message: string, public resource: Resource | undefined, public hideStack?: boolean) {
         super(message);
     }
 }
