@@ -162,7 +162,19 @@ export function run(argv: minimist.ParsedArgs): void {
 
     // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
     let uncaught: Error | undefined;
+    const errorSet = new Set<Error>();
+
     const uncaughtHandler = (err: Error) => {
+        // We have seen the uncaughtHandler get called multiple times for the same error. We haven't
+        // been able to figure out what causes this (i.e. a bug somewhere else in pulumi), or
+        // something with how Node itself works.  So, for now, we just ensure that we only report
+        // issues the first time we encounter any specific error.
+        if (errorSet.has(err)) {
+            return;
+        }
+
+        errorSet.add(err);
+
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
         const defaultMessage = err.stack || err.message;
