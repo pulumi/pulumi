@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Resource } from "./resource";
+
 /**
- * RunError can be used for terminating a program abruptly, but resulting in a clean exit rather than the usual
- * verbose unhandled error logic which emits the source program text and complete stack trace.
+ * RunError can be used for terminating a program abruptly, optionally associating the problem with
+ * a Resource.  Depending on the nature of the problem, clients can choose whether or not a
+ * callstack should be returned as well.  This should be very rare, and would only indicate no
+ * usefulness of presenting that stack to the user.
  */
 export class RunError extends Error {
     /**
@@ -31,8 +35,7 @@ export class RunError extends Error {
         return obj && obj.__pulumiRunError;
     }
 
-    constructor(message: string) {
+    constructor(message: string, public resource?: Resource, public hideStack?: boolean) {
         super(message);
     }
 }
-

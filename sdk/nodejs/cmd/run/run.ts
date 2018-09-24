@@ -163,20 +163,25 @@ export function run(argv: minimist.ParsedArgs): void {
     // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
     let uncaught: Error | undefined;
     const uncaughtHandler = (err: Error) => {
+        // Default message should be to include the full stack (which includes the message), or
+        // fallback to just the message if we can't get the stack.
+        const defaultMessage = err.stack || err.message;
+
         // First, log the error.
         if (RunError.isInstance(err)) {
-            // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
-            // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
-            log.error(err.message);
+            // Hide the stack if requested to by the RunError creator.
+            const message = err.hideStack ? err.message : defaultMessage;
+            log.error(message, err.resource);
         }
         else {
             log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(err.stack || err.message);
+            log.error(defaultMessage);
         }
 
         // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
         uncaught = err;
     };
+
     process.on("uncaughtException", uncaughtHandler);
     process.on("unhandledRejection", uncaughtHandler);
 
