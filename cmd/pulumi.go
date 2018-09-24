@@ -166,7 +166,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newVersionCmd())
 
 	// Less common, and thus hidden, commands:
-	cmd.AddCommand(newGenBashCompletionCmd(cmd))
+	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
 
 	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
