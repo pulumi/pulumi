@@ -666,6 +666,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	wroteDiagnosticHeader := false
 
 	for _, row := range display.eventUrnToResourceRow {
+		wroteResourceHeader := false
+
 		for id, payloads := range row.DiagInfo().StreamIDToDiagPayloads {
 			if len(payloads) > 0 {
 				if id != 0 {
@@ -676,7 +678,6 @@ func (display *ProgressDisplay) processEndSteps() {
 				}
 
 				wrote := false
-				wroteResourceHeader := false
 				for _, v := range payloads {
 					if v.Ephemeral {
 						continue
