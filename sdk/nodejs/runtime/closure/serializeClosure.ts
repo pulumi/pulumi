@@ -45,6 +45,12 @@ export interface SerializeFunctionArgs {
      * The resource to log any errors we encounter against.
      */
     logResource?: Resource;
+
+    /**
+     * A string representing a potential function wrapping the entrypoint. Defaults to an empty string, meaning that
+     * the entrypoint will not be wrapped by any function call.
+     */
+    wrappingCall?: string;
 }
 
 /**
@@ -93,9 +99,10 @@ export async function serializeFunction(
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || (_ => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
+    const wrappingCall = args.wrappingCall || "";
 
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize, args.logResource);
-    return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction);
+    return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction, wrappingCall);
 }
 
 /**
@@ -107,7 +114,7 @@ export async function serializeFunctionAsync(
         serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize, /*logResource:*/ undefined);
-    return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false).text;
+    return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false, "").text;
 }
 
 /**
@@ -119,7 +126,8 @@ export async function serializeFunctionAsync(
 function serializeJavaScriptText(
         outerFunction: closure.FunctionInfo,
         exportName: string,
-        isFactoryFunction: boolean): SerializedFunction {
+        isFactoryFunction: boolean,
+        wrappingCall: string): SerializedFunction {
 
     // Now produce a textual representation of the closure and its serialized captured environment.
 
@@ -151,7 +159,14 @@ function serializeJavaScriptText(
     // the module function we created by serializing it.  For a factory function this will export
     // the function produced by invoking the factory function once.
     let text: string;
-    const exportText = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};`;
+    let exportText: string;
+
+    if (wrappingCall) {
+      exportText = `exports.${exportName} = ${wrappingCall}(${outerFunctionName}${isFactoryFunction ? "()" : ""});`;
+    } else {
+      exportText = `exports.${exportName} = ${outerFunctionName}${isFactoryFunction ? "()" : ""};`;
+    }
+
     if (isFactoryFunction) {
         // for a factory function, we need to call the function at the end.  That way all the logic
         // to set up the environment has run.
