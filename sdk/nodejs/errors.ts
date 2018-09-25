@@ -58,7 +58,7 @@ export class ResourceError extends Error {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is ResourceError {
-        return obj && obj.__pulumiRunError;
+        return obj && obj.__pulumResourceError;
     }
 
     constructor(message: string, public resource: Resource | undefined, public hideStack?: boolean) {
