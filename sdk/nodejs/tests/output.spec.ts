@@ -20,7 +20,20 @@ import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
 describe("output", () => {
-    it("propagates isKnown bit from inner Output", asyncTest(async () => {
+    it("propagates true isKnown bit from inner Output", asyncTest(async () => {
+        runtime.setIsDryRun(true);
+
+        const output1 = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+        const output2 = output1.apply(v => new resource.Output(new Set(), Promise.resolve("inner"), Promise.resolve(true)));
+
+        const isKnown = await output2.isKnown;
+        assert.equal(isKnown, true);
+
+        const value = await output2.promise();
+        assert.equal(value, "inner");
+    }));
+
+    it("propagates false isKnown bit from inner Output", asyncTest(async () => {
         runtime.setIsDryRun(true);
 
         const output1 = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
@@ -28,5 +41,27 @@ describe("output", () => {
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, false);
+
+        const value = await output2.promise();
+        assert.equal(value, "inner");
+    }));
+
+    it("can await even when isKnown is a rejected promise.", asyncTest(async () => {
+        runtime.setIsDryRun(true);
+
+        const output1 = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+        const output2 = output1.apply(v => new resource.Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error())));
+
+        const isKnown = await output2.isKnown;
+        assert.equal(isKnown, false);
+
+        try {
+            const value = await output2.promise();
+        }
+        catch (err) {
+            return;
+        }
+
+        assert.fail("Should not read here");
     }));
 });
