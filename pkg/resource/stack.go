@@ -20,3 +20,8 @@ import (
 
 // RootStackType is the type name that will be used for the root component in the Pulumi resource tree.
 const RootStackType tokens.Type = "pulumi:pulumi:Stack"
+
+// DefaultRootStackURN constructs a default root stack URN for the given stack and project.
+func DefaultRootStackURN(stack tokens.QName, proj tokens.PackageName) URN {
+	return NewURN(stack, proj, "", RootStackType, tokens.QName(string(proj)+"-"+string(stack)))
+}

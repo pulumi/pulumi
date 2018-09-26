@@ -21,8 +21,9 @@ import (
 	"math"
 	"os"
 	"sort"
-	"strconv"
 	"time"
+
+	"github.com/dustin/go-humanize/english"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -30,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -37,11 +39,12 @@ import (
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
-func ShowEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+	events <-chan engine.Event, done chan<- bool, opts Options) {
 	if opts.DiffDisplay {
 		ShowDiffEvents(op, action, events, done, opts)
 	} else {
-		ShowProgressEvents(op, action, events, done, opts)
+		ShowProgressEvents(op, action, stack, proj, events, done, opts)
 	}
 }
 
@@ -138,14 +141,11 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderStdoutColorEvent(
-	payload engine.StdoutEventPayload, opts Options) string {
-
+func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(
-	action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
+func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -155,33 +155,12 @@ func renderSummaryEvent(
 		}
 	}
 
-	var actionVerbLabel string
-	if action == apitype.RefreshUpdate {
-		actionVerbLabel = "found during refresh"
-	} else if event.IsPreview {
-		actionVerbLabel = "previewed"
-	} else {
-		actionVerbLabel = "performed"
-	}
-
-	var changesLabel string
-	if changeCount == 0 {
-		changesLabel = "no"
-
-		if action != apitype.RefreshUpdate {
-			actionVerbLabel = "required"
-		}
-	} else {
-		changesLabel = strconv.Itoa(changeCount)
-	}
-
-	if changeCount > 0 || changes[deploy.OpSame] > 0 {
-		actionVerbLabel += ":"
-	}
-
 	out := &bytes.Buffer{}
-	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vinfo%v: %v %v %v\n",
-		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), actionVerbLabel)))
+	fprintIgnoreError(out, opts.Color.Colorize(
+		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
+	fprintIgnoreError(out, opts.Color.Colorize(
+		fmt.Sprintf("    %s%d %s%s\n",
+			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset)))
 
 	var planTo string
 	if event.IsPreview {
@@ -196,50 +175,43 @@ func renderSummaryEvent(
 				if !event.IsPreview {
 					opDescription = op.PastTense()
 				}
-				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %v%v %v %v%v%v\n",
-					op.Prefix(), c, plural("resource", c), planTo, opDescription, colors.Reset)))
+				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %s%d %s%s%s\n",
+					op.Prefix(), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}
 
 	if c := changes[deploy.OpSame]; c > 0 {
-		fprintfIgnoreError(out, "      %v %v unchanged\n", c, plural("resource", c))
+		fprintfIgnoreError(out, "    %d unchanged\n", c)
 	}
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
-		if changeCount > 0 {
-			fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vUpdate duration: %v%v\n",
-				colors.SpecUnimportant, event.Duration, colors.Reset)))
-		}
+		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration: %s%s\n",
+			colors.SpecHeadline, colors.Reset, event.Duration)))
 	}
 
 	return out.String()
 }
 
 func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
+	// Only if we have been instructed to show configuration values will we print anything during the prelude.
+	if !opts.ShowConfig {
+		return ""
+	}
+
 	out := &bytes.Buffer{}
-
-	if opts.ShowConfig {
-		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset)))
-
-		var keys []string
-		for key := range event.Config {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
-		}
-	}
-
-	action := "Previewing"
-	if !event.IsPreview {
-		action = "Performing"
-	}
-
 	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
+		fmt.Sprintf("%sConfiguration:%s\n", colors.SpecUnimportant, colors.Reset)))
+
+	var keys []string
+	for key := range event.Config {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
+	}
 
 	return out.String()
 }
@@ -299,7 +271,6 @@ func renderResourceOutputsEvent(
 
 		text := engine.GetResourceOutputsPropertiesString(
 			payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh)
-
 		fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
 	return out.String()
@@ -326,13 +297,6 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	}
 
 	return true
-}
-
-func plural(s string, c int) string {
-	if c != 1 {
-		s += "s"
-	}
-	return s
 }
 
 func fprintfIgnoreError(w io.Writer, format string, a ...interface{}) {

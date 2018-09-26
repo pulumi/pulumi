@@ -88,6 +88,10 @@ type ProgressDisplay struct {
 
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
+	// stack is the stack this progress pertains to.
+	stack tokens.QName
+	// proj is the project this progress pertains to.
+	proj tokens.PackageName
 
 	// Whether or not we're previewing.  We don't know what we are actually doing until
 	// we get the initial 'prelude' event.
@@ -228,9 +232,8 @@ func (display *ProgressDisplay) writeBlankLine() {
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
-func ShowProgressEvents(
-	op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
-
+func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+	events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
@@ -245,6 +248,8 @@ func ShowProgressEvents(
 	display := &ProgressDisplay{
 		action:                 action,
 		opts:                   opts,
+		stack:                  stack,
+		proj:                   proj,
 		progressOutput:         progressOutput,
 		eventUrnToResourceRow:  make(map[resource.URN]ResourceRow),
 		suffixColumn:           int(statusColumn),
@@ -256,13 +261,8 @@ func ShowProgressEvents(
 		nonInteractiveSpinner:  spinner,
 	}
 
-	// display.writeSimpleMessage(fmt.Sprintf("Max suffix length %v", display.maxSuffixLength))
-
-	_, stdout, _ := term.StdStreams()
-
 	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
 	contract.IgnoreError(err)
-
 	display.isTerminal = opts.IsInteractive
 	display.terminalWidth = terminalWidth
 
@@ -275,6 +275,7 @@ func ShowProgressEvents(
 		close(progressOutput)
 	}()
 
+	_, stdout, _ := term.StdStreams()
 	ShowProgressOutput(progressOutput, stdout, display.isTerminal)
 
 	ticker.Stop()
@@ -665,6 +666,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	wroteDiagnosticHeader := false
 
 	for _, row := range display.eventUrnToResourceRow {
+		wroteResourceHeader := false
+
 		for id, payloads := range row.DiagInfo().StreamIDToDiagPayloads {
 			if len(payloads) > 0 {
 				if id != 0 {
@@ -674,7 +677,7 @@ func (display *ProgressDisplay) processEndSteps() {
 					payloads = []engine.DiagEventPayload{p}
 				}
 
-				wroteResourceHeader := false
+				wrote := false
 				for _, v := range payloads {
 					if v.Ephemeral {
 						continue
@@ -690,15 +693,16 @@ func (display *ProgressDisplay) processEndSteps() {
 					if !wroteDiagnosticHeader {
 						wroteDiagnosticHeader = true
 						display.writeBlankLine()
-						display.writeSimpleMessage("Diagnostics:")
+						display.writeSimpleMessage(
+							display.opts.Color.Colorize(colors.SpecHeadline + "Diagnostics:" + colors.Reset))
 					}
 
 					if !wroteResourceHeader {
 						wroteResourceHeader = true
 						columns := row.ColorizedColumns()
 						display.writeSimpleMessage("  " +
-							columns[typeColumn] + ": " +
-							columns[nameColumn])
+							display.opts.Color.Colorize(
+								colors.BrightBlue+columns[typeColumn]+" ("+columns[nameColumn]+"):"+colors.Reset))
 					}
 
 					for _, line := range lines {
@@ -706,6 +710,10 @@ func (display *ProgressDisplay) processEndSteps() {
 						display.writeSimpleMessage("    " + line)
 					}
 
+					wrote = true
+				}
+
+				if wrote {
 					display.writeBlankLine()
 				}
 			}
@@ -713,6 +721,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	}
 
 	// If we get stack outputs, display them at the end.
+	var wroteOutputs bool
 	if display.stackUrn != "" && display.seenStackOutputs {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 		props := engine.GetResourceOutputsPropertiesString(
@@ -722,19 +731,18 @@ func (display *ProgressDisplay) processEndSteps() {
 				display.writeBlankLine()
 			}
 
-			wroteDiagnosticHeader = true
+			wroteOutputs = true
 			display.writeSimpleMessage(props)
 		}
 	}
 
 	// print the summary
 	if display.summaryEventPayload != nil {
-		msg := renderSummaryEvent(display.action, *display.summaryEventPayload, display.opts)
-
-		if !wroteDiagnosticHeader {
+		if !wroteDiagnosticHeader && !wroteOutputs {
 			display.writeBlankLine()
 		}
 
+		msg := renderSummaryEvent(display.action, *display.summaryEventPayload, display.opts)
 		display.writeSimpleMessage(msg)
 	}
 }
@@ -1009,11 +1017,6 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return op.Color() + display.getPreviewDoneText(step) + colors.Reset
 	}
 
-	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
-	if isRootStack(step) && op == deploy.OpSame {
-		return "done"
-	}
-
 	getDescription := func() string {
 		if failed {
 			switch op {
@@ -1033,10 +1036,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "refreshing failed"
 			}
 		} else {
-
 			switch op {
 			case deploy.OpSame:
-				return "unchanged"
+				return ""
 			case deploy.OpCreate:
 				return "created"
 			case deploy.OpUpdate:
@@ -1073,7 +1075,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) string {
 	switch step.Op {
 	case deploy.OpSame:
-		return "no change"
+		return ""
 	case deploy.OpCreate:
 		return "create"
 	case deploy.OpUpdate:
@@ -1104,7 +1106,7 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata) string {
 	switch step.Op {
 	case deploy.OpSame:
-		return "no change"
+		return ""
 	case deploy.OpCreate:
 		return "create"
 	case deploy.OpUpdate:
@@ -1169,7 +1171,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 
 		switch op {
 		case deploy.OpSame:
-			return "unchanged"
+			return ""
 		case deploy.OpCreate:
 			return "creating"
 		case deploy.OpUpdate:
@@ -1194,30 +1196,6 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		return ""
 	}
 	return op.Color() + getDescription() + colors.Reset
-}
-
-func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {
-	if len(propMap) > 0 {
-		writeString(b, " ")
-		writeString(b, op.Prefix())
-
-		keys := make([]string, 0, len(propMap))
-		for k := range propMap {
-			keys = append(keys, string(k))
-		}
-		sort.Strings(keys)
-
-		index := 0
-		for _, k := range keys {
-			if index != 0 {
-				writeString(b, ",")
-			}
-			writeString(b, k)
-			index++
-		}
-
-		writeString(b, colors.Reset)
-	}
 }
 
 func writeString(b *bytes.Buffer, s string) {

@@ -33,23 +33,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// Applier applies the changes specified by this update operation against the target stack. If dryRun is true,
-// a preview is performed, rather than an actual update, and in any case events are written to the events channel.
-type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	dryRun, persist bool, events chan<- engine.Event) (engine.ResourceChanges, error)
+// ApplierOptions is a bag of configuration settings for an Applier.
+type ApplierOptions struct {
+	// DryRun indiciates if the update should not change any resource state and instead just preview changes.
+	DryRun bool
+	// ShowLink indiciates if a link to the update persisted result should be displayed.
+	ShowLink bool
+}
 
-var (
-	updateTextMap = map[apitype.UpdateKind]struct {
-		previewText string
-		text        string
-	}{
-		apitype.PreviewUpdate: {"update of", "Previewing"},
-		apitype.UpdateUpdate:  {"update of", "Updating"},
-		apitype.RefreshUpdate: {"refresh of", "Refreshing"},
-		apitype.DestroyUpdate: {"destroy of", "Destroying"},
-		apitype.ImportUpdate:  {"import to", "Importing into"},
-	}
-)
+// Applier applies the changes specified by this update operation against the target stack.
+type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
+	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -61,6 +55,17 @@ func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	}
 
 	return v.text
+}
+
+var updateTextMap = map[apitype.UpdateKind]struct {
+	previewText string
+	text        string
+}{
+	apitype.PreviewUpdate: {"update", "Previewing"},
+	apitype.UpdateUpdate:  {"update", "Updating"},
+	apitype.RefreshUpdate: {"refresh", "Refreshing"},
+	apitype.DestroyUpdate: {"destroy", "Destroying"},
+	apitype.ImportUpdate:  {"import", "Importing"},
 }
 
 type response string
@@ -98,7 +103,15 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
 	changes := engine.ResourceChanges(nil)
 	if !op.Opts.SkipPreview {
-		c, err := apply(ctx, kind, stack, op, true /*dryRun*/, false /*persist*/, eventsChannel)
+		// We perform the preview (DryRun), but don't display the cloud link since the
+		// thing the user cares about would be the link to the actual update if they
+		// confirm the prompt.
+		opts := ApplierOptions{
+			DryRun:   true,
+			ShowLink: false,
+		}
+
+		c, err := apply(ctx, kind, stack, op, opts, eventsChannel)
 		if err != nil {
 			close(eventsChannel)
 			return c, err
@@ -170,7 +183,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		if response == string(details) {
 			diff := createDiff(kind, events, opts.Display)
-			_, err := os.Stdout.WriteString(diff + "\n\n")
+			_, err := os.Stdout.WriteString(diff + "\n")
 			contract.IgnoreError(err)
 			continue
 		}
@@ -185,8 +198,13 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		return changes, err
 	}
 
-	// Now do the real operation. We don't care about the events it issues, so just pass a nil channel along.
-	return apply(ctx, kind, stack, op, false /*dryRun*/, true /*persist*/, nil /*events*/)
+	// Perform the change (!DryRun) and show the cloud link to the result.
+	// We don't care about the events it issues, so just pass a nil channel along.
+	opts := ApplierOptions{
+		DryRun:   false,
+		ShowLink: true,
+	}
+	return apply(ctx, kind, stack, op, opts, nil /*events*/)
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
@@ -197,11 +215,7 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 
 	for _, e := range events {
 		msg := display.RenderDiffEvent(updateKind, e, seen, displayOpts)
-		if msg != "" {
-			if e.Type == engine.SummaryEvent {
-				msg = "\n" + msg
-			}
-
+		if msg != "" && e.Type != engine.SummaryEvent {
 			_, err := buff.WriteString(msg)
 			contract.IgnoreError(err)
 		}

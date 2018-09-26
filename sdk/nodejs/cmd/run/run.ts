@@ -19,7 +19,7 @@ import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
 import * as util from "util";
-import { RunError } from "../../errors";
+import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 
@@ -162,21 +162,42 @@ export function run(argv: minimist.ParsedArgs): void {
 
     // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
     let uncaught: Error | undefined;
+    const errorSet = new Set<Error>();
+
     const uncaughtHandler = (err: Error) => {
+        // In node, if you throw an error in a chained promise, but the exception is not finally
+        // handled, then you can end up getting an unhandledRejection for each exception/promise
+        // pair.  Because the exception is the same through all of these, we keep track of it and
+        // only report it once so the user doesn't get N messages for the same thing.
+        if (errorSet.has(err)) {
+            return;
+        }
+
+        errorSet.add(err);
+
+        // Default message should be to include the full stack (which includes the message), or
+        // fallback to just the message if we can't get the stack.
+        const defaultMessage = err.stack || err.message;
+
         // First, log the error.
         if (RunError.isInstance(err)) {
-            // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
-            // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
+            // Always hide the stack for RunErrors.
             log.error(err.message);
+        }
+        else if (ResourceError.isInstance(err)) {
+            // Hide the stack if requested to by the ResourceError creator.
+            const message = err.hideStack ? err.message : defaultMessage;
+            log.error(message, err.resource);
         }
         else {
             log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(err.stack || err.message);
+            log.error(defaultMessage);
         }
 
         // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
         uncaught = err;
     };
+
     process.on("uncaughtException", uncaughtHandler);
     process.on("unhandledRejection", uncaughtHandler);
 

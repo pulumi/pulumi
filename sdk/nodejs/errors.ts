@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Resource } from "./resource";
+
 /**
- * RunError can be used for terminating a program abruptly, but resulting in a clean exit rather than the usual
- * verbose unhandled error logic which emits the source program text and complete stack trace.
+ * RunError can be used for terminating a program abruptly, but resulting in a clean exit rather
+ * than the usual verbose unhandled error logic which emits the source program text and complete
+ * stack trace.  This type should be rarely used.  Ideally ResourceError should always be used so
+ * that as many errors as possible can be associated with a Resource.
  */
 export class RunError extends Error {
     /**
@@ -36,3 +40,28 @@ export class RunError extends Error {
     }
 }
 
+/**
+ * ResourceError can be used for terminating a program abruptly, specifically associating the
+ * problem with a Resource.  Depending on the nature of the problem, clients can choose whether or
+ * not a call stack should be returned as well.  This should be very rare, and would only indicate
+ * no usefulness of presenting that stack to the user.
+ */
+export class ResourceError extends Error {
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ private readonly __pulumResourceError: boolean = true;
+
+    /**
+     * Returns true if the given object is an instance of a ResourceError.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): obj is ResourceError {
+        return obj && obj.__pulumResourceError;
+    }
+
+    constructor(message: string, public resource: Resource | undefined, public hideStack?: boolean) {
+        super(message);
+    }
+}

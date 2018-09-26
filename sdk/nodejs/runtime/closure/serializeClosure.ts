@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Resource } from "../../resource";
 import * as closure from "./createClosure";
 
 /**
@@ -39,6 +40,11 @@ export interface SerializeFunctionArgs {
      * be what is exported.
      */
     isFactoryFunction?: boolean;
+
+    /**
+     * The resource to log any errors we encounter against.
+     */
+    logResource?: Resource;
 }
 
 /**
@@ -80,15 +86,15 @@ export interface SerializedFunction {
  * @param func The JavaScript function to serialize.
  * @param args Arguments to use to control the serialization of the JavaScript function.
  */
-export async function serializeFunction(func: Function, args?: SerializeFunctionArgs): Promise<SerializedFunction> {
-    if (!args) {
-        args = {};
-    }
+export async function serializeFunction(
+        func: Function,
+        args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
+
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || (_ => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
 
-    const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
+    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, args.logResource);
     return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction);
 }
 
@@ -100,7 +106,7 @@ export async function serializeFunctionAsync(
         func: Function,
         serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
-    const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
+    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, /*logResource:*/ undefined);
     return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false).text;
 }
 

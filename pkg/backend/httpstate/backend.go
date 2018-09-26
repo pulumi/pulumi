@@ -157,7 +157,7 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	return &cloudBackend{
 		d:      d,
 		url:    cloudURL,
-		client: client.NewClient(cloudURL, apiToken),
+		client: client.NewClient(cloudURL, apiToken, d),
 	}, nil
 }
 
@@ -524,7 +524,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'.\n", stack.Ref())
+	fmt.Printf("Created stack '%s'\n", stack.Ref())
 
 	return stack, nil
 }
@@ -606,18 +606,18 @@ func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackRefere
 
 func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) (engine.ResourceChanges, error) {
-	// Get the stack.
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	// Persisting update previews is a new feature to pulumi.com, and is enabled via a flag
-	// so performance data can be gathered before enabling it by default.
-	persist := os.Getenv("PULUMI_PERSIST_PREVIEWS") != ""
-
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, true /*dryRun*/, persist, nil /*events*/)
+	opts := backend.ApplierOptions{
+		DryRun:   true,
+		ShowLink: true,
+	}
+	return b.apply(
+		ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference,
@@ -697,29 +697,23 @@ func (b *cloudBackend) createAndStartUpdate(
 
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, dryRun, persist bool, events chan<- engine.Event) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation, opts backend.ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error) {
 	// Print a banner so it's clear this is going to the cloud.
-	actionLabel := backend.ActionLabel(kind, dryRun)
+	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"), actionLabel, stack.Ref())
+		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
 
-	// Create an update object if we will persist the results, e.g. when not doing a local preview.
-	var update client.UpdateIdentifier
-	var version int
-	var token string
-	var err error
-	if persist {
-		update, version, token, err = b.createAndStartUpdate(ctx, kind, stack.Ref(), op, dryRun)
-	}
+	// Create an update object to persist results.
+	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack.Ref(), op, opts.DryRun)
 	if err != nil {
 		return nil, err
 	}
 
-	if persist {
+	if opts.ShowLink {
 		// Print a URL at the end of the update pointing to the Pulumi Service.
 		var link string
 		base := b.cloudConsoleStackPath(update.StackIdentifier)
-		if !dryRun {
+		if !opts.DryRun {
 			link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
 		} else {
 			link = b.CloudConsoleURL(base, "previews", update.UpdateID)
@@ -728,12 +722,13 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 			defer func() {
 				fmt.Printf(
 					op.Opts.Display.Color.Colorize(
-						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
+						colors.SpecHeadline+"Permalink: "+
+							colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 			}()
 		}
 	}
 
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, dryRun, persist)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
 }
 
 // uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
@@ -767,8 +762,8 @@ func getUpdateContents(
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool, persist bool) (engine.ResourceChanges, error) {
-	contract.Assertf(!persist || token != "", "persisted actions require a token")
+	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, error) {
+	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
 	if err != nil {
 		return nil, err
@@ -780,7 +775,7 @@ func (b *cloudBackend) runEngineAction(
 	displayDone := make(chan bool)
 
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, displayEvents, displayDone, op.Opts.Display)
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op, displayEvents, displayDone, op.Opts.Display)
 
 	engineEvents := make(chan engine.Event)
 
@@ -831,16 +826,15 @@ func (b *cloudBackend) runEngineAction(
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
-	if persist {
-		status := apitype.UpdateStatusSucceeded
-		if err != nil {
-			status = apitype.UpdateStatusFailed
-		}
 
-		completeErr := u.Complete(status)
-		if completeErr != nil {
-			err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
-		}
+	status := apitype.UpdateStatusSucceeded
+	if err != nil {
+		status = apitype.UpdateStatusFailed
+	}
+
+	completeErr := u.Complete(status)
+	if completeErr != nil {
+		err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
 	}
 
 	return changes, err
@@ -1167,7 +1161,7 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
 	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	_, err := client.NewClient(cloudURL, accessToken).GetPulumiAccountName(ctx)
+	_, err := client.NewClient(cloudURL, accessToken, cmdutil.Diag()).GetPulumiAccountName(ctx)
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil

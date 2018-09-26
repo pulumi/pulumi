@@ -99,24 +99,23 @@ func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) (string, string) {
 	var prefix bytes.Buffer
+	if sev != diag.Info && sev != diag.Infoerr {
+		// Unless it's an ordinary stdout message, prepend the message category's prefix (error/warning).
+		switch sev {
+		case diag.Debug:
+			prefix.WriteString(colors.SpecDebug)
+		case diag.Error:
+			prefix.WriteString(colors.SpecError)
+		case diag.Warning:
+			prefix.WriteString(colors.SpecWarning)
+		default:
+			contract.Failf("Unrecognized diagnostic severity: %v", sev)
+		}
 
-	// Now print the message category's prefix (error/warning).
-	switch sev {
-	case diag.Debug:
-		prefix.WriteString(colors.SpecDebug)
-	case diag.Info, diag.Infoerr:
-		prefix.WriteString(colors.SpecInfo)
-	case diag.Error:
-		prefix.WriteString(colors.SpecError)
-	case diag.Warning:
-		prefix.WriteString(colors.SpecWarning)
-	default:
-		contract.Failf("Unrecognized diagnostic severity: %v", sev)
+		prefix.WriteString(string(sev))
+		prefix.WriteString(": ")
+		prefix.WriteString(colors.Reset)
 	}
-
-	prefix.WriteString(string(sev))
-	prefix.WriteString(": ")
-	prefix.WriteString(colors.Reset)
 
 	// Finally, actually print the message itself.
 	var buffer bytes.Buffer

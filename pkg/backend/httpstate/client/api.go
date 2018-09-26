@@ -24,6 +24,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/diag"
+
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -97,7 +99,7 @@ func (t updateAccessToken) String() string {
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []byte, tok accessToken,
+func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path string, body []byte, tok accessToken,
 	opts httpCallOptions) (string, *http.Response, error) {
 
 	// Normalize URL components
@@ -162,6 +164,12 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 
 	requestSpan.SetTag("responseCode", resp.Status)
 
+	if warningHeader, ok := resp.Header["X-Pulumi-Warning"]; ok {
+		for _, warning := range warningHeader {
+			d.Warningf(diag.RawMessage("", warning))
+		}
+	}
+
 	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.
 	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
 		defer contract.IgnoreClose(resp.Body)
@@ -194,8 +202,8 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(ctx context.Context, cloudAPI, method, path string, queryObj, reqObj, respObj interface{},
-	tok accessToken, opts httpCallOptions) error {
+func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
+	respObj interface{}, tok accessToken, opts httpCallOptions) error {
 
 	// Compute query string from query object
 	querystring := ""
@@ -221,7 +229,7 @@ func pulumiRESTCall(ctx context.Context, cloudAPI, method, path string, queryObj
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(ctx, cloudAPI, method, path+querystring, reqBody, tok, opts)
+	url, resp, err := pulumiAPICall(ctx, diag, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}
