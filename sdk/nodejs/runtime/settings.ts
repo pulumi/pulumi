@@ -32,16 +32,22 @@ export let excessiveDebugOutput: boolean = false;
 export interface Options {
     readonly project?: string; // the name of the current project.
     readonly stack?: string; // the name of the current stack being deployed into.
-    readonly dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
     readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
     readonly engineAddr?: string; // a connection string to the engine's RPC, in case we need to reestablish.
     readonly monitorAddr?: string; // a connection string to the monitor's RPC, in case we need to reestablish.
+
+    dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
 }
 
 /**
  * _options are the current deployment options being used for this entire session.
  */
 const options = loadOptions();
+
+/* @internal Used only for testing purposes */
+export function setIsDryRun(val: boolean) {
+    options.dryRun = val;
+}
 
 /**
  * Returns true if we're currently performing a dry-run, or false if this is a true update.
