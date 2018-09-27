@@ -527,9 +527,8 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 		logging.V(7).Infof("Planner beginning schedule of new deletion antichain")
 		for res := range condemned {
 			// Does res have any outgoing edges to resources that haven't already been removed from the graph?
-			// For the purposes of deletion calculation, res.Parent counts as an outgoing edge.
 			condemnedDependencies := dg.DependenciesOf(res).Intersect(condemned)
-			if len(condemnedDependencies) == 0 && !condemned[dg.ParentOf(res)] {
+			if len(condemnedDependencies) == 0 {
 				// If not, it's safe to delete res at this stage.
 				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
 				steps = append(steps, stepMap[res])

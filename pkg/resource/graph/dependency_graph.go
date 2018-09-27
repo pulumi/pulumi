@@ -69,7 +69,8 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 	return dependents
 }
 
-// DependenciesOf returns a ResourceSet of resources upon which the given resource depends.
+// DependenciesOf returns a ResourceSet of resources upon which the given resource depends. The resource's parent is
+// included in the returned set.
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 	set := make(ResourceSet)
 
@@ -86,13 +87,14 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 
 	cursorIndex, ok := dg.index[res]
 	contract.Assert(ok)
-	for i := cursorIndex; i >= 0; i-- {
+	for i := cursorIndex - 1; i >= 0; i-- {
 		candidate := dg.resources[i]
 		if dependentUrns[candidate.URN] {
 			set[candidate] = true
 		}
 	}
 
+	set[dg.ParentOf(res)] = true
 	return set
 }
 
