@@ -147,9 +147,10 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					deletes := pe.stepGen.GenerateDeletes()
+					deleteSteps := pe.stepGen.GenerateDeletes()
+					deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
-					// GenerateDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
+					// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
 					// parallel, but each list must execute completes before the next list can safely begin executing.
 					//
 					// This is not "true" delete parallelism, since there may be resources that could safely begin
@@ -231,17 +232,17 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
 // retirePendingDeletes re-uses the plan executor's step generator but uses its own step executor.
 func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Options, preview bool) error {
 	contract.Require(pe.stepGen != nil, "pe.stepGen != nil")
-	antichains := pe.stepGen.GeneratePendingDeletes()
-	if len(antichains) == 0 {
+	steps := pe.stepGen.GeneratePendingDeletes()
+	if len(steps) == 0 {
 		logging.V(4).Infoln("planExecutor.retirePendingDeletes(...): no pending deletions")
 		return nil
 	}
 
-	logging.V(4).Infof("planExecutor.retirePendingDeletes(...): executing %d antichains", len(antichains))
+	logging.V(4).Infof("planExecutor.retirePendingDeletes(...): executing %d steps", len(steps))
 	ctx, cancel := context.WithCancel(callerCtx)
 
 	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, false)
-
+	antichains := pe.stepGen.ScheduleDeletes(steps)
 	// Submit the deletes for execution and wait for them all to retire.
 	for _, antichain := range antichains {
 		for _, step := range antichain {

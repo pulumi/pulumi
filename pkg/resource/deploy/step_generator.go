@@ -402,116 +402,80 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes() []antichain {
+func (sg *stepGenerator) GenerateDeletes() []Step {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
-	prev := sg.plan.prev
-	if prev == nil {
-		return nil
-	}
+	var dels []Step
+	if prev := sg.plan.prev; prev != nil {
+		for i := len(prev.Resources) - 1; i >= 0; i-- {
+			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
+			res := prev.Resources[i]
+			if res.Delete {
+				// The below assert is commented-out because it's believed to be wrong.
+				//
+				// The original justification for this assert is that the author (swgillespie) believed that
+				// it was impossible for a single URN to be deleted multiple times in the same program.
+				// This has empirically been proven to be false - it is possible using today engine to construct
+				// a series of actions that puts arbitrarily many pending delete resources with the same URN in
+				// the snapshot.
+				//
+				// It is not clear whether or not this is OK. I (swgillespie), the author of this comment, have
+				// seen no evidence that it is *not* OK. However, concerns were raised about what this means for
+				// structural resources, and so until that question is answered, I am leaving this comment and
+				// assert in the code.
+				//
+				// Regardless, it is better to admit strange behavior in corner cases than it is to crash the CLI
+				// whenever we see multiple deletes for the same URN.
+				// contract.Assert(!sg.deletes[res.URN])
+				if sg.pendingDeletes[res] {
+					logging.V(7).Infof(
+						"Planner ignoring pending-delete resource (%v, %v) that was already deleted", res.URN, res.ID)
+					continue
+				}
 
-	var steps []antichain
+				if sg.deletes[res.URN] {
+					logging.V(7).Infof(
+						"Planner is deleting pending-delete urn '%v' that has already been deleted", res.URN)
+				}
 
-	// We'll build up a set of condemned resources if we trust our dependency graph, otherwise we'll generate a list
-	// of steps that need to be executed one-after-another. If our graph is potentially inaccurate, it's not safe to
-	// delete anything in parallel.
-	condemnedResources := make(graph.ResourceSet)
-	for i := len(prev.Resources) - 1; i >= 0; i-- {
-		// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
-		res := prev.Resources[i]
-		if res.Delete {
-			// The below assert is commented-out because it's believed to be wrong.
-			//
-			// The original justification for this assert is that the author (swgillespie) believed that
-			// it was impossible for a single URN to be deleted multiple times in the same program.
-			// This has empirically been proven to be false - it is possible using today engine to construct
-			// a series of actions that puts arbitrarily many pending delete resources with the same URN in
-			// the snapshot.
-			//
-			// It is not clear whether or not this is OK. I (swgillespie), the author of this comment, have
-			// seen no evidence that it is *not* OK. However, concerns were raised about what this means for
-			// structural resources, and so until that question is answered, I am leaving this comment and
-			// assert in the code.
-			//
-			// Regardless, it is better to admit strange behavior in corner cases than it is to crash the CLI
-			// whenever we see multiple deletes for the same URN.
-			// contract.Assert(!sg.deletes[res.URN])
-			if sg.pendingDeletes[res] {
-				logging.V(7).Infof(
-					"Planner ignoring pending-delete resource (%v, %v) that was already deleted", res.URN, res.ID)
-				continue
-			}
-
-			if sg.deletes[res.URN] {
-				logging.V(7).Infof(
-					"Planner is deleting pending-delete urn '%v' that has already been deleted", res.URN)
-			}
-
-			logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
-			sg.deletes[res.URN] = true
-			if sg.opts.TrustDependencies {
-				condemnedResources[res] = true
-			} else {
-				steps = append(steps, antichain{NewDeleteReplacementStep(sg.plan, res, true)})
-			}
-		} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
-			// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
-			// delete steps for the same URN if the old checkpoint contained pending deletes.
-			logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
-			sg.deletes[res.URN] = true
-			if sg.opts.TrustDependencies {
-				condemnedResources[res] = true
-			} else {
-				steps = append(steps, antichain{NewDeleteStep(sg.plan, res)})
+				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
+				sg.deletes[res.URN] = true
+				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, true))
+			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
+				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
+				// delete steps for the same URN if the old checkpoint contained pending deletes.
+				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
+				sg.deletes[res.URN] = true
+				dels = append(dels, NewDeleteStep(sg.plan, res))
 			}
 		}
 	}
-
-	if sg.opts.TrustDependencies {
-		return sg.scheduleDeletes(condemnedResources, true /* pendingDeletesAreReplaces */)
-	}
-	return steps
+	return dels
 }
 
 // GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
 // called at the start of a plan in order to find all resources that are pending deletion from the prevous plan.
-func (sg *stepGenerator) GeneratePendingDeletes() []antichain {
-	prev := sg.plan.prev
-	if prev == nil {
-		return nil
-	}
-
-	logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): scanning previous snapshot for pending deletes")
-
-	// We'll build up a set of condemned resources if we trust our dependency graph, otherwise we'll generate a list
-	// of steps that need to be executed one-after-another. If our graph is potentially inaccurate, it's not safe to
-	// delete anything in parallel.
-	var steps []antichain
-	condemnedResources := make(graph.ResourceSet)
-	for i := len(prev.Resources) - 1; i >= 0; i-- {
-		res := prev.Resources[i]
-		if res.Delete {
-			logging.V(7).Infof(
-				"stepGenerator.GeneratePendingDeletes(): resource (%v, %v) is pending deletion", res.URN, res.ID)
-			sg.pendingDeletes[res] = true
-			if sg.opts.TrustDependencies {
-				condemnedResources[res] = true
-			} else {
-				steps = append(steps, antichain{NewDeleteStep(sg.plan, res)})
+func (sg *stepGenerator) GeneratePendingDeletes() []Step {
+	var dels []Step
+	if prev := sg.plan.prev; prev != nil {
+		logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): scanning previous snapshot for pending deletes")
+		for i := len(prev.Resources) - 1; i >= 0; i-- {
+			res := prev.Resources[i]
+			if res.Delete {
+				logging.V(7).Infof(
+					"stepGenerator.GeneratePendingDeletes(): resource (%v, %v) is pending deletion", res.URN, res.ID)
+				sg.pendingDeletes[res] = true
+				dels = append(dels, NewDeleteStep(sg.plan, res))
 			}
 		}
 	}
-
-	if sg.opts.TrustDependencies {
-		return sg.scheduleDeletes(condemnedResources, false /* pendingDeletesAreReplaces */)
-	}
-	return steps
+	return dels
 }
 
-// scheduleDeletes takes a set of resources that are condemned for deletion and "schedules" them by producing a list of
-// list of steps, where each list can be executed in parallel but a previous list must be executed to completion before
-// advacing to the next list.
+// scheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
+// steps, where each list can be executed in parallel but a previous list must be executed to completion before advacing
+// to the next list.
 //
 // In lieu of tracking per-step dependencies and orienting the step executor around these dependencies, this function
 // provides a conservative approximation of what deletions can safely occur in parallel. The insight here is that the
@@ -533,10 +497,31 @@ func (sg *stepGenerator) GeneratePendingDeletes() []antichain {
 // The resulting list of antichains is a list of list of steps that can be safely executed in parallel. Since we must
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the plan executor for safe execution.
-func (sg *stepGenerator) scheduleDeletes(condemned graph.ResourceSet, pendingDeletesAreReplaces bool) []antichain {
-	contract.Assertf(sg.opts.TrustDependencies, "scheduleDeletes must only be run on a trusted dependency graph")
-	var antichains []antichain
-	dg := sg.plan.depGraph
+func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
+	var antichains []antichain                // the list of parallelizable steps we intend to return.
+	dg := sg.plan.depGraph                    // the current plan's dependency graph.
+	condemned := make(graph.ResourceSet)      // the set of condemned resources.
+	stepMap := make(map[*resource.State]Step) // a map from resource states to the steps that delete them.
+
+	// If we don't trust the dependency graph we've been given, we must be conservative and delete everything serially.
+	if !sg.opts.TrustDependencies {
+		logging.V(7).Infof("Planner does not trust dependency graph, scheduling deletions serially")
+		for _, step := range deleteSteps {
+			antichains = append(antichains, antichain{step})
+		}
+
+		return antichains
+	}
+
+	logging.V(7).Infof("Planner trusts dependency graph, scheduling deletions in parallel")
+
+	// For every step we've been given, record it as condemned and save the step that will be used to delete it. We'll
+	// iteratively place these steps into antichains as we remove elements from the condemned set.
+	for _, step := range deleteSteps {
+		condemned[step.Res()] = true
+		stepMap[step.Res()] = step
+	}
+
 	for len(condemned) > 0 {
 		var steps antichain
 		logging.V(7).Infof("Planner beginning schedule of new deletion antichain")
@@ -547,11 +532,7 @@ func (sg *stepGenerator) scheduleDeletes(condemned graph.ResourceSet, pendingDel
 			if len(condemnedDependencies) == 0 && !condemned[dg.ParentOf(res)] {
 				// If not, it's safe to delete res at this stage.
 				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
-				if res.Delete && pendingDeletesAreReplaces {
-					steps = append(steps, NewDeleteReplacementStep(sg.plan, res, true))
-				} else {
-					steps = append(steps, NewDeleteStep(sg.plan, res))
-				}
+				steps = append(steps, stepMap[res])
 			}
 
 			// If one of this resource's dependencies or this resource's parent hasn't been removed from the graph yet,
