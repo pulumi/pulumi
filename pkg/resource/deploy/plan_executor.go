@@ -147,17 +147,24 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					// TODO[pulumi/pulumi#1625] Today we lack the ability to parallelize deletions. We have all the
-					// information we need to do so (namely, a dependency graph). `GenerateDeletes` returns a single
-					// chain of every delete that needs to be executed.
-					deletes := pe.stepGen.GenerateDeletes()
-					pe.stepExec.Execute(deletes)
+					deleteSteps := pe.stepGen.GenerateDeletes()
+					deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
-					// Signal completion to the step executor. It'll exit once it's done retiring all of the steps in
-					// the chain that we just gave it.
+					// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
+					// parallel, but each list must execute completes before the next list can safely begin executing.
+					//
+					// This is not "true" delete parallelism, since there may be resources that could safely begin
+					// deleting but we won't until the previous set of deletes fully completes. This approximation is
+					// conservative, but correct.
+					for _, antichain := range deletes {
+						logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
+						tok := pe.stepExec.ExecuteParallel(antichain)
+						tok.Wait(ctx)
+						logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
+					}
+
+					// We're done here - signal completion so that the step executor knows to terminate.
 					pe.stepExec.SignalCompletion()
-					logging.V(4).Infof("planExecutor.Execute(...): issued deletes")
-
 					return false, nil
 				}
 
@@ -215,7 +222,7 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
 		return res
 	}
 
-	pe.stepExec.Execute(steps)
+	pe.stepExec.ExecuteSerial(steps)
 	return nil
 }
 
@@ -234,18 +241,19 @@ func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Opt
 	logging.V(4).Infof("planExecutor.retirePendingDeletes(...): executing %d steps", len(steps))
 	ctx, cancel := context.WithCancel(callerCtx)
 
-	opts.Parallel = 1 // deletes can't be executed in parallel yet (pulumi/pulumi#1625)
 	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, false)
-
+	antichains := pe.stepGen.ScheduleDeletes(steps)
 	// Submit the deletes for execution and wait for them all to retire.
-	stepExec.Execute(steps)
-	stepExec.SignalCompletion()
+	for _, antichain := range antichains {
+		for _, step := range antichain {
+			pe.plan.Ctx().StatusDiag.Infof(diag.RawMessage(step.URN(), "completing deletion from previous update"))
+		}
 
-	// Log an ephemeral diagnostic for each resource we're deleting so it's clear why we are deleting it.
-	for _, step := range steps {
-		pe.plan.Ctx().StatusDiag.Infof(diag.RawMessage(step.URN(), "completing deletion from previous update"))
+		tok := stepExec.ExecuteParallel(antichain)
+		tok.Wait(ctx)
 	}
 
+	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
 	// Like Refresh, we use the presence of an error in the caller's context to detect whether or not we have been
@@ -275,14 +283,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	// Fire up a worker pool and issue each refresh in turn.
 	ctx, cancel := context.WithCancel(callerCtx)
 	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, true)
-	for i := range steps {
-		if ctx.Err() != nil {
-			break
-		}
-
-		stepExec.Execute([]Step{steps[i]})
-	}
-
+	stepExec.ExecuteParallel(steps)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 

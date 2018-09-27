@@ -32,10 +32,11 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Events      Events // an optional events callback interface.
-	Parallel    int    // the degree of parallelism for resource operations (<=1 for serial).
-	Refresh     bool   // whether or not to refresh before executing the plan.
-	RefreshOnly bool   // whether or not to exit after refreshing.
+	Events            Events // an optional events callback interface.
+	Parallel          int    // the degree of parallelism for resource operations (<=1 for serial).
+	Refresh           bool   // whether or not to refresh before executing the plan.
+	RefreshOnly       bool   // whether or not to exit after refreshing.
+	TrustDependencies bool   // whether or not to trust the resource dependency graph.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

@@ -95,6 +95,12 @@ func (proj *Project) UseDefaultIgnores() bool {
 	return !(*proj.NoDefaultIgnores)
 }
 
+// TrustResourceDependencies returns whether or not this project's runtime can be trusted to accurately report
+// dependencies. Not all languages supported by Pulumi do this correctly.
+func (proj *Project) TrustResourceDependencies() bool {
+	return proj.RuntimeInfo.Name() != "python"
+}
+
 // Save writes a project definition to a file.
 func (proj *Project) Save(path string) error {
 	contract.Require(path != "", "path")

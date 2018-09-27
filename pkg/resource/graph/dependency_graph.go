@@ -69,6 +69,34 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 	return dependents
 }
 
+// DependenciesOf returns a ResourceSet of resources upon which the given resource depends. The resource's parent is
+// included in the returned set.
+func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
+	set := make(ResourceSet)
+
+	dependentUrns := make(map[resource.URN]bool)
+	for _, dep := range res.Dependencies {
+		dependentUrns[dep] = true
+	}
+
+	if res.Provider != "" {
+		ref, err := providers.ParseReference(res.Provider)
+		contract.Assert(err == nil)
+		dependentUrns[ref.URN()] = true
+	}
+
+	cursorIndex, ok := dg.index[res]
+	contract.Assert(ok)
+	for i := cursorIndex - 1; i >= 0; i-- {
+		candidate := dg.resources[i]
+		if dependentUrns[candidate.URN] || candidate.URN == res.Parent {
+			set[candidate] = true
+		}
+	}
+
+	return set
+}
+
 // NewDependencyGraph creates a new DependencyGraph from a list of resources.
 // The resources should be in topological order with respect to their dependencies.
 func NewDependencyGraph(resources []*resource.State) *DependencyGraph {

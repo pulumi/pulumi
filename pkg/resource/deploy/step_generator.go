@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -330,28 +331,30 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 					// we must also eagerly delete all resources that depend directly or indirectly on the resource
 					// being replaced.
 					//
-					// To do this, we'll utilize the dependency information contained in the snapshot, which is
-					// interpreted by the DependencyGraph type.
+					// To do this, we'll utilize the dependency information contained in the snapshot if it is
+					// trustworthy, which is interpreted by the DependencyGraph type.
 					var steps []Step
-					dependents := sg.plan.depGraph.DependingOn(old)
+					if sg.opts.TrustDependencies {
+						dependents := sg.plan.depGraph.DependingOn(old)
 
-					// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
-					// order, so we iterate in reverse.
-					for i := len(dependents) - 1; i >= 0; i-- {
-						dependentResource := dependents[i]
+						// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
+						// order, so we iterate in reverse.
+						for i := len(dependents) - 1; i >= 0; i-- {
+							dependentResource := dependents[i]
 
-						// If we already deleted this resource due to some other DBR, don't do it again.
-						if sg.deletes[urn] {
-							continue
+							// If we already deleted this resource due to some other DBR, don't do it again.
+							if sg.deletes[urn] {
+								continue
+							}
+
+							logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
+								dependentResource.URN, urn)
+
+							steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, false))
+							// Mark the condemned resource as deleted. We won't know until later in the plan whether
+							// or not we're going to be replacing this resource.
+							sg.deletes[dependentResource.URN] = true
 						}
-
-						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
-							dependentResource.URN, urn)
-
-						steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, false))
-						// Mark the condemned resource as deleted. We won't know until later in the plan whether
-						// or not we're going to be replacing this resource.
-						sg.deletes[dependentResource.URN] = true
 					}
 
 					return append(steps,
@@ -468,6 +471,93 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Step {
 		}
 	}
 	return dels
+}
+
+// scheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
+// steps, where each list can be executed in parallel but a previous list must be executed to completion before advacing
+// to the next list.
+//
+// In lieu of tracking per-step dependencies and orienting the step executor around these dependencies, this function
+// provides a conservative approximation of what deletions can safely occur in parallel. The insight here is that the
+// resource dependency graph is a partially-ordered set and all partially-ordered sets can be easily decomposed into
+// antichains - subsets of the set that are all not comparable to one another. (In this definition, "not comparable"
+// means "do not depend on one another").
+//
+// The algorithm for decomposing a poset into antichains is:
+//  1. While there exist elements in the poset,
+//    1a. There must exist at least one "maximal" element of the poset. Let E_max be those elements.
+//    2a. Remove all elements E_max from the poset. E_max is an antichain.
+//    3a. Goto 1.
+//
+// Translated to our dependency graph:
+//  1. While the set of condemned resources is not empty:
+//    1a. Remove all resources with no outgoing edges from the graph and add them to the current antichain.
+//    2a. Goto 1.
+//
+// The resulting list of antichains is a list of list of steps that can be safely executed in parallel. Since we must
+// process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
+// hand it back to the plan executor for safe execution.
+func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
+	var antichains []antichain                // the list of parallelizable steps we intend to return.
+	dg := sg.plan.depGraph                    // the current plan's dependency graph.
+	condemned := make(graph.ResourceSet)      // the set of condemned resources.
+	stepMap := make(map[*resource.State]Step) // a map from resource states to the steps that delete them.
+
+	// If we don't trust the dependency graph we've been given, we must be conservative and delete everything serially.
+	if !sg.opts.TrustDependencies {
+		logging.V(7).Infof("Planner does not trust dependency graph, scheduling deletions serially")
+		for _, step := range deleteSteps {
+			antichains = append(antichains, antichain{step})
+		}
+
+		return antichains
+	}
+
+	logging.V(7).Infof("Planner trusts dependency graph, scheduling deletions in parallel")
+
+	// For every step we've been given, record it as condemned and save the step that will be used to delete it. We'll
+	// iteratively place these steps into antichains as we remove elements from the condemned set.
+	for _, step := range deleteSteps {
+		condemned[step.Res()] = true
+		stepMap[step.Res()] = step
+	}
+
+	for len(condemned) > 0 {
+		var steps antichain
+		logging.V(7).Infof("Planner beginning schedule of new deletion antichain")
+		for res := range condemned {
+			// Does res have any outgoing edges to resources that haven't already been removed from the graph?
+			condemnedDependencies := dg.DependenciesOf(res).Intersect(condemned)
+			if len(condemnedDependencies) == 0 {
+				// If not, it's safe to delete res at this stage.
+				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
+				steps = append(steps, stepMap[res])
+			}
+
+			// If one of this resource's dependencies or this resource's parent hasn't been removed from the graph yet,
+			// it can't be deleted this round.
+		}
+
+		// For all reosurces that are to be deleted in this round, remove them from the graph.
+		for _, step := range steps {
+			delete(condemned, step.Res())
+		}
+
+		antichains = append(antichains, steps)
+	}
+
+	// Up until this point, all logic has been "backwards" - we're scheduling resources for deletion when all of their
+	// dependencies finish deletion, but that's exactly the opposite of what we need to do. We can only delete a
+	// resource when all *resources that depend on it* complete deletion. Our solution is still correct, though, it's
+	// just backwards.
+	//
+	// All we have to do here is reverse the list and then our solution is correct.
+	for i := len(antichains)/2 - 1; i >= 0; i-- {
+		opp := len(antichains) - 1 - i
+		antichains[i], antichains[opp] = antichains[opp], antichains[i]
+	}
+
+	return antichains
 }
 
 // diff returns a DiffResult for the given resource.

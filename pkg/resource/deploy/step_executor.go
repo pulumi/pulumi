@@ -41,8 +41,39 @@ var (
 	errStepApplyFailed = errors.New("step application failed")
 )
 
+// The step executor operates in terms of "chains" and "antichains". A chain is set of steps that are totally ordered
+// when ordered by dependency; each step in a chain depends directly on the step that comes before it. An antichain
+// is a set of steps that is completely incomparable when ordered by dependency. The step executor is aware that chains
+// must be executed serially and antichains can be executed concurrently.
+//
+// See https://en.wikipedia.org/wiki/Antichain for more complete definitions. The below type aliases are useful for
+// documentation purposes.
+
 // A Chain is a sequence of Steps that must be executed in the given order.
-type Chain = []Step
+type chain = []Step
+
+// An Antichain is a set of Steps that can be executed in parallel.
+type antichain = []Step
+
+// A CompletionToken is a token returned by the step executor that is completed when the chain has completed execution.
+// Callers can use it to optionally wait synchronously on the completion of a chain.
+type completionToken struct {
+	channel chan bool
+}
+
+// Wait blocks until the completion token is signalled or until the given context completes, whatever occurs first.
+func (c completionToken) Wait(ctx context.Context) {
+	select {
+	case <-c.channel:
+	case <-ctx.Done():
+	}
+}
+
+// incomingChain represents a request to the step executor to execute a chain.
+type incomingChain struct {
+	Chain          chain     // The chain we intend to execute
+	CompletionChan chan bool // A completion channel to be closed when the chain has completed execution
+}
 
 // stepExecutor is the component of the engine responsible for taking steps and executing
 // them, possibly in parallel if requested. The step generator operates on the granularity
@@ -58,8 +89,8 @@ type stepExecutor struct {
 	pendingNews     sync.Map // Resources that have been created but are pending a RegisterResourceOutputs.
 	continueOnError bool     // True if we want to continue the plan after a step error.
 
-	workers        sync.WaitGroup // WaitGroup tracking the worker goroutines that are owned by this step executor.
-	incomingChains chan Chain     // Incoming chains that we are to execute
+	workers        sync.WaitGroup     // WaitGroup tracking the worker goroutines that are owned by this step executor.
+	incomingChains chan incomingChain // Incoming chains that we are to execute
 
 	ctx      context.Context    // cancellation context for the current plan.
 	cancel   context.CancelFunc // CancelFunc that cancels the above context.
@@ -74,13 +105,43 @@ type stepExecutor struct {
 
 // Execute submits a Chain for asynchronous execution. The execution of the chain will begin as soon as there
 // is a worker available to execute it.
-func (se *stepExecutor) Execute(chain Chain) {
+func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 	// The select here is to avoid blocking on a send to se.incomingChains if a cancellation is pending.
 	// If one is pending, we should exit early - we will shortly be tearing down the engine and exiting.
+
+	completion := make(chan bool)
 	select {
-	case se.incomingChains <- chain:
+	case se.incomingChains <- incomingChain{Chain: chain, CompletionChan: completion}:
 	case <-se.ctx.Done():
+		close(completion)
 	}
+
+	return completionToken{channel: completion}
+}
+
+// ExecuteParallel submits an antichain for parallel execution. All of the steps within the antichain are submitted for
+// concurrent execution.
+func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
+	var wg sync.WaitGroup
+
+	// ExecuteParallel is implemented in terms of ExecuteSerial - it executes each step individually and waits for all
+	// of the steps to complete.
+	wg.Add(len(antichain))
+	for _, step := range antichain {
+		tok := se.ExecuteSerial(chain{step})
+		go func() {
+			defer wg.Done()
+			tok.Wait(se.ctx)
+		}()
+	}
+
+	done := make(chan bool)
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	return completionToken{channel: done}
 }
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
@@ -146,7 +207,7 @@ func (se *stepExecutor) WaitForCompletion() {
 
 // executeChain executes a chain, one step at a time. If any step in the chain fails to execute, or if the
 // context is canceled, the chain stops execution.
-func (se *stepExecutor) executeChain(workerID int, chain Chain) {
+func (se *stepExecutor) executeChain(workerID int, chain chain) {
 	for _, step := range chain {
 		select {
 		case <-se.ctx.Done():
@@ -272,14 +333,15 @@ func (se *stepExecutor) worker(workerID int) {
 	for {
 		se.log(workerID, "worker waiting for incoming chains")
 		select {
-		case chain := <-se.incomingChains:
-			if chain == nil {
+		case request := <-se.incomingChains:
+			if request.Chain == nil {
 				se.log(workerID, "worker received nil chain, exiting")
 				return
 			}
 
 			se.log(workerID, "worker received chain for execution")
-			se.executeChain(workerID, chain)
+			se.executeChain(workerID, request.Chain)
+			close(request.CompletionChan)
 		case <-se.ctx.Done():
 			se.log(workerID, "worker exiting due to cancellation")
 			return
@@ -294,7 +356,7 @@ func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan,
 		opts:            opts,
 		preview:         preview,
 		continueOnError: continueOnError,
-		incomingChains:  make(chan Chain),
+		incomingChains:  make(chan incomingChain),
 		ctx:             ctx,
 		cancel:          cancel,
 	}
