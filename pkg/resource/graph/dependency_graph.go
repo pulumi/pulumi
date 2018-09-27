@@ -89,33 +89,12 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 	contract.Assert(ok)
 	for i := cursorIndex - 1; i >= 0; i-- {
 		candidate := dg.resources[i]
-		if dependentUrns[candidate.URN] {
+		if dependentUrns[candidate.URN] || candidate.URN == res.Parent {
 			set[candidate] = true
 		}
 	}
 
-	set[dg.ParentOf(res)] = true
 	return set
-}
-
-// ParentOf returns the resource that is the direct parent of the provided resource, or nil if the provided resource
-// does not have a parent.
-func (dg *DependencyGraph) ParentOf(res *resource.State) *resource.State {
-	if res.Parent == "" {
-		return nil
-	}
-
-	cursorIndex, ok := dg.index[res]
-	contract.Assert(ok)
-	for i := cursorIndex; i >= 0; i-- {
-		candidate := dg.resources[i]
-		if candidate.URN == res.Parent {
-			return candidate
-		}
-	}
-
-	contract.Failf("Failed to find parent urn '%v' for resource '%v'", res.Parent, res.URN)
-	return nil
 }
 
 // NewDependencyGraph creates a new DependencyGraph from a list of resources.

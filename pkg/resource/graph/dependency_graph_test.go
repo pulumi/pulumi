@@ -105,12 +105,15 @@ func TestDependenciesOf(t *testing.T) {
 	a := NewResource("a", pA)
 	b := NewResource("b", pA, a.URN)
 	c := NewResource("c", pA)
+	d := NewResource("d", pA)
+	d.Parent = a.URN
 
 	dg := NewDependencyGraph([]*resource.State{
 		pA,
 		a,
 		b,
 		c,
+		d,
 	})
 
 	aDepends := dg.DependenciesOf(a)
@@ -127,31 +130,10 @@ func TestDependenciesOf(t *testing.T) {
 	assert.True(t, cDepends[pA])
 	assert.False(t, cDepends[a])
 	assert.False(t, cDepends[b])
-}
 
-func TestParentOf(t *testing.T) {
-	a := NewResource("a", nil)
-	// a.Parent is not defined - no parent.
-	b := NewResource("b", nil)
-	b.Parent = a.URN
-	aPendingDelete := NewResource("a", nil)
-	aPendingDelete.Delete = true
-	bPendingDelete := NewResource("b", nil)
-	bPendingDelete.Delete = true
-	bPendingDelete.Parent = aPendingDelete.URN
-
-	dg := NewDependencyGraph([]*resource.State{
-		a,
-		b,
-		aPendingDelete,
-		bPendingDelete,
-	})
-	assert.Equal(t, a.URN, aPendingDelete.URN)
-	assert.Nil(t, dg.ParentOf(a))
-	assert.Equal(t, a, dg.ParentOf(b))
-
-	// Despite having the same URN, bPendingDelete's parent is aPendingDelete because it is the first occurrence of that
-	// URN immediately above it in the snapshot.
-	assert.Nil(t, dg.ParentOf(aPendingDelete))
-	assert.Equal(t, aPendingDelete, dg.ParentOf(bPendingDelete))
+	dDepends := dg.DependenciesOf(d)
+	assert.True(t, dDepends[pA])
+	assert.True(t, dDepends[a]) // due to A being the parent of D
+	assert.False(t, dDepends[b])
+	assert.False(t, dDepends[c])
 }
