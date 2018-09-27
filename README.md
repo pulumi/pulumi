@@ -86,7 +86,7 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
 
 1. **Install**:
 
-    To install the latest Pulumi release, run:
+    To install the latest Pulumi release, run the following (see full [installation instructions](https://pulumi.io/install) for additional installation options):
 
     ```bash
     $ curl -fsSL https://get.pulumi.com/ | sh
