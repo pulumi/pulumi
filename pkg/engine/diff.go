@@ -715,17 +715,21 @@ func printAssetsDiff(
 
 				switch t := old.(type) {
 				case *resource.Archive:
-					newArchive := new.(*resource.Archive)
-
-					if t.Hash != newArchive.Hash {
+					newArchive, newIsArchive := new.(*resource.Archive)
+					switch {
+					case !newIsArchive:
+						printAssetArchiveDiff(b, titleFunc, t, new, planning, indent, summary, debug)
+					case t.Hash != newArchive.Hash:
 						printArchiveDiff(
 							b, titleFunc, t, newArchive,
 							planning, indent, summary, debug)
 					}
 				case *resource.Asset:
-					newAsset := new.(*resource.Asset)
-
-					if t.Hash != newAsset.Hash {
+					newAsset, newIsAsset := new.(*resource.Asset)
+					switch {
+					case !newIsAsset:
+						printAssetArchiveDiff(b, titleFunc, t, new, planning, indent, summary, debug)
+					case t.Hash != newAsset.Hash:
 						printAssetDiff(
 							b, titleFunc, t, newAsset,
 							planning, indent, summary, debug)
@@ -829,6 +833,12 @@ func printAssetDiff(
 	printAdd(
 		b, assetOrArchiveToPropertyValue(newAsset),
 		titleFunc, planning, indent, debug)
+}
+
+func printAssetArchiveDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool), old interface{}, new interface{},
+	planning bool, indent int, summary bool, debug bool) {
+	printDelete(b, assetOrArchiveToPropertyValue(old), titleFunc, planning, indent, debug)
+	printAdd(b, assetOrArchiveToPropertyValue(new), titleFunc, planning, indent, debug)
 }
 
 func getTextChangeString(old string, new string) string {
