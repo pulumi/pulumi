@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -72,20 +73,18 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
-			// Blow away stack specific settings if they exist
-			path, err := workspace.DetectProjectStackPath(s.Ref().Name())
-			if err != nil {
-				return err
-			}
-
-			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-				return err
+			// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
+			if path, err := workspace.DetectProjectStackPath(s.Ref().Name()); err == nil {
+				if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
+					return err
+				}
 			}
 
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
 
-			return state.SetCurrentStack("")
+			contract.IgnoreError(state.SetCurrentStack(""))
+			return nil
 		}),
 	}
 

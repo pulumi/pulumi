@@ -38,25 +38,25 @@ func newStackLsCmd() *cobra.Command {
 		Short: "List all known stacks",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Ensure we are in a project; if not, we will fail.
-			projPath, err := workspace.DetectProjectPath()
-			if err != nil {
-				return errors.Wrapf(err, "could not detect current project")
-			} else if projPath == "" {
-				return errors.New("no Pulumi.yaml found; please run this command in a project directory")
-			}
+			var packageFilter *tokens.PackageName
+			if !allStacks {
+				// Ensure we are in a project; if not, we will fail.
+				projPath, err := workspace.DetectProjectPath()
+				if err != nil {
+					return errors.Wrapf(err, "could not detect current project")
+				} else if projPath == "" {
+					return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+				}
 
-			proj, err := workspace.LoadProject(projPath)
-			if err != nil {
-				return errors.Wrap(err, "could not load current project")
-			}
-
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
+				proj, err := workspace.LoadProject(projPath)
+				if err != nil {
+					return errors.Wrap(err, "could not load current project")
+				}
+				packageFilter = &proj.Name
 			}
 
 			// Get the current backend.
-			b, err := currentBackend(opts)
+			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err
 			}
@@ -66,11 +66,6 @@ func newStackLsCmd() *cobra.Command {
 			if s, _ := state.CurrentStack(commandContext(), b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
 				current = s.Ref().String()
-			}
-
-			var packageFilter *tokens.PackageName
-			if !allStacks {
-				packageFilter = &proj.Name
 			}
 
 			// List all of the stacks available.
