@@ -185,7 +185,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	// planExecutor.refresh for details.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
-		if prev.PendingOperations != nil {
+		if prev.PendingOperations != nil && !preview {
 			return nil, PlanPendingOperationsError{prev.PendingOperations}
 		}
 		oldResources = prev.Resources
