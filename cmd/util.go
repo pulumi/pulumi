@@ -578,9 +578,13 @@ func printJSON(v interface{}) error {
 	return nil
 }
 
-// isInteractive returns true if the environment and command line options indicate we should
-// do things interactively
-func isInteractive(nonInteractive bool) bool {
+// nonInteractive may be set to true in order to disable prompts. This is useful when running in a non-attended
+// scenario, such as in continuous integration, or when using the Pulumi CLI/SDK in a programmatic way.
+var nonInteractive bool
+
+// isInteractive returns true if the environment and command line options indicate we should do things interactively.
+// It respects the nonInteractive flag as an override, but otherwise defaults by reading the terminal and CI settings.
+func isInteractive() bool {
 	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !testutil.IsCI()
 }
 

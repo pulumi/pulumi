@@ -39,7 +39,6 @@ func newRefreshCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var nonInteractive bool
 	var skipPreview bool
 	var yes bool
 
@@ -57,7 +56,7 @@ func newRefreshCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := isInteractive(nonInteractive)
+			interactive := isInteractive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
 			}
@@ -139,8 +138,6 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().BoolVar(
-		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")

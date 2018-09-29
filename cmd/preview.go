@@ -33,7 +33,6 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
 	var diffDisplay bool
-	var nonInteractive bool
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -68,7 +67,7 @@ func newPreviewCmd() *cobra.Command {
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
-					IsInteractive:        isInteractive(nonInteractive),
+					IsInteractive:        isInteractive(),
 					DiffDisplay:          diffDisplay,
 					Debug:                debug,
 				},
@@ -128,8 +127,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().BoolVar(
-		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
