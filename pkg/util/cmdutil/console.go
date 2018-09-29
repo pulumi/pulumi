@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/pulumi/pulumi/pkg/util/testutil"
 )
 
 // Emoji controls whether emojis will by default be printed in the output.
@@ -36,8 +38,18 @@ func EmojiOr(e, or string) string {
 	return or
 }
 
-// Interactive returns true if we're in an interactive terminal session.
+// DisableInteractive may be set to true in order to disable prompts. This is useful when running in a non-attended
+// scenario, such as in continuous integration, or when using the Pulumi CLI/SDK in a programmatic way.
+var DisableInteractive bool
+
+// Interactive returns true if we should be running in interactive mode. That is, we have an interactive terminal
+// session, interactivity hasn't been explicitly disabled, and we're not running in a known CI system.
 func Interactive() bool {
+	return !DisableInteractive && InteractiveTerminal() && !testutil.IsCI()
+}
+
+// InteractiveTerminal returns true if the current terminal session is interactive.
+func InteractiveTerminal() bool {
 	return terminal.IsTerminal(int(os.Stdin.Fd()))
 }
 

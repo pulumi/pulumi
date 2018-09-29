@@ -261,6 +261,11 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
+	} else if !cmdutil.Interactive() {
+		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
+		// Fail the attempt to login.
+		return nil, errors.Errorf(
+			"%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)
 	} else {
 		line1 := fmt.Sprintf("Manage your Pulumi stacks by logging in.")
 		line1len := len(line1)
