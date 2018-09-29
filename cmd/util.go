@@ -17,6 +17,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -565,6 +566,16 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	signal.Notify(c.sigint, os.Interrupt)
 
 	return c
+}
+
+// printJSON simply prints out some object, formatted as JSON, using standard indentation.
+func printJSON(v interface{}) error {
+	out, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
 }
 
 // isInteractive returns true if the environment and command line options indicate we should

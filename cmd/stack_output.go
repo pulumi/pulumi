@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -64,11 +63,9 @@ func newStackOutputCmd() *cobra.Command {
 				v, has := outputs[name]
 				if has {
 					if jsonOut {
-						out, err := json.MarshalIndent(v, "", "    ")
-						if err != nil {
+						if err := printJSON(v); err != nil {
 							return err
 						}
-						fmt.Println(string(out))
 					} else {
 						fmt.Printf("%v\n", stringifyOutput(v))
 					}
@@ -76,11 +73,9 @@ func newStackOutputCmd() *cobra.Command {
 					return errors.Errorf("current stack does not have output property '%v'", name)
 				}
 			} else if jsonOut {
-				out, err := json.MarshalIndent(outputs, "", "    ")
-				if err != nil {
+				if err := printJSON(outputs); err != nil {
 					return err
 				}
-				fmt.Println(string(out))
 			} else {
 				printStackOutputs(outputs)
 			}
