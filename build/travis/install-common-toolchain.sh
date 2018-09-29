@@ -5,17 +5,11 @@ nvm install ${NODE_VERSION-v8.11.1}
 # they would be set in the outer shell as well, so do as much logic as
 # we can in a subshell.
 (
-    set -o nounset -o errexit -o pipefail
+    set -o errexit -o pipefail
     [ -e "$(go env GOPATH)/bin" ] || mkdir -p "$(go env GOPATH)/bin"
 
-    YARN_VERSION="1.3.2"
-    DEP_VERSION="0.4.1"
-    GOMETALINTER_VERSION="2.0.3"
-    PIP_VERSION="10.0.0"
-    VIRTUALENV_VERSION="15.2.0"
-    AWSCLI_VERSION="1.14.30"
-    WHEEL_VERSION="0.30.0"
-    TWINE_VERSION="1.9.1"
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+    . ${DIR}/../tool-versions.sh
 
     OS=""
     case $(uname) in

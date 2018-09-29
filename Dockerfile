@@ -1,15 +1,21 @@
 # Build the image in a distinct stage so we don't need the Golang SDK.
 FROM golang:1.11-stretch as builder
 
+# Change directories and place the minimal build scripts we need to start installing things.
+WORKDIR /go/src/github.com/pulumi/pulumi
+COPY ./build/ ./build/
+
 # Install pre-reqs.
 #     - Update apt-get sources
 RUN apt-get update -y
 #     - Dep, for Go package management
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+RUN . ./build/tool-versions.sh && \
+    curl -L -o "$(go env GOPATH)/bin/dep" \
+        https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 && \
+    chmod +x "$(go env GOPATH)/bin/dep"
 
 # Copy the source code over, restore dependencies, and get ready to build everything. We copy the Gopkg
 # files explicitly first to avoid excessive rebuild times when dependencies did not change.
-WORKDIR /go/src/github.com/pulumi/pulumi
 COPY Gopkg.* ./
 RUN dep ensure -v --vendor-only
 COPY . .
@@ -23,7 +29,8 @@ RUN cd sdk/go && make install_plugin
 RUN cd sdk/nodejs && make install_plugin
 RUN cd sdk/python && make install_plugin
 
-# Install and run in Alpine Linux.
+# Install and run in Debian Stretch (to match the builder stage).
+# TODO[pulumi/pulumi#1986]: consider switching to, or supporting, Alpine Linux for smaller image sizes.
 FROM debian:stretch
 
 # Copy over the binaries built during the prior stage.
