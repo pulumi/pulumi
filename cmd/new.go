@@ -64,7 +64,7 @@ func newNewCmd() *cobra.Command {
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := isInteractive()
+			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
 			}

@@ -29,7 +29,6 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
@@ -45,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
-	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -576,16 +574,6 @@ func printJSON(v interface{}) error {
 	}
 	fmt.Println(string(out))
 	return nil
-}
-
-// nonInteractive may be set to true in order to disable prompts. This is useful when running in a non-attended
-// scenario, such as in continuous integration, or when using the Pulumi CLI/SDK in a programmatic way.
-var nonInteractive bool
-
-// isInteractive returns true if the environment and command line options indicate we should do things interactively.
-// It respects the nonInteractive flag as an override, but otherwise defaults by reading the terminal and CI settings.
-func isInteractive() bool {
-	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !testutil.IsCI()
 }
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions

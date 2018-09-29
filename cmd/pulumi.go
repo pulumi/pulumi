@@ -134,7 +134,7 @@ func NewPulumiCmd() *cobra.Command {
 		"Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false,
 		"Log to stderr instead of to files")
-	cmd.PersistentFlags().BoolVar(&nonInteractive, "non-interactive", false,
+	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")

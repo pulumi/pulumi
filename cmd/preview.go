@@ -67,7 +67,7 @@ func newPreviewCmd() *cobra.Command {
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
-					IsInteractive:        isInteractive(),
+					IsInteractive:        cmdutil.Interactive(),
 					DiffDisplay:          diffDisplay,
 					Debug:                debug,
 				},
