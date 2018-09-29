@@ -174,6 +174,28 @@ func TestStackOutputs(t *testing.T) {
 	})
 }
 
+// TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
+func TestStackOutputsJSON(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory("stack_outputs")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "stack-outs")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+	stdout, stderr := e.RunCommand("pulumi", "stack", "output", "--json")
+	assert.Equal(t, `{
+    "foo": 42,
+    "xyz": "ABC"
+}
+`, stdout)
+	assert.Equal(t, "", stderr)
+}
+
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
 func TestStackOutputsDisplayed(t *testing.T) {
 	stdout := &bytes.Buffer{}
