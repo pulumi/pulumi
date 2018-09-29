@@ -17,11 +17,10 @@ export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
 	$(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
-	tslint -c tslint.json -p tsconfig.json
+	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
 
-build::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
-	tsc
+build_package::
+	./node_modules/.bin/tsc
 	cp tests/runtime/jsClosureCases.js bin/tests/runtime
 	cp README.md ../../LICENSE package.json ./dist/* bin/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
@@ -30,11 +29,20 @@ build::
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
-install::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+build_plugin::
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+
+build:: build_package build_plugin
+
+install_package::
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	mkdir -p "$(PULUMI_BIN)/v6.10.2"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
+
+install_plugin::
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+
+install:: install_package install_plugin
 
 test_fast::
 	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'

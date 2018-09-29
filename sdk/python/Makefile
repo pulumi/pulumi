@@ -30,7 +30,7 @@ ensure::
 	pipenv $(PIPENV_PYTHON_VERSION) install --dev
 	mkdir -p $(PYENVSRC)
 
-build::
+build_package::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	if [ ! -z "$$(command -v pandoc)" ]; then \
@@ -40,18 +40,26 @@ build::
 		echo "" > "$(PYENVSRC)/README.rst"; \
 	fi
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
+
+build_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+build:: build_package build_plugin
 
 lint::
 	pipenv run pylint -E ./lib/pulumi --ignore-patterns '.*_pb2_.*.py'
 	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
 	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
 
-install::
+install_package::
 	cd $(PYENVSRC) && $(PIP) install --user -e .
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
+
+install_plugin::
 	GOBIN=$(PULUMI_BIN) go install \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+install:: install_package install_plugin
 
 test_fast::
 	pipenv run pip install ./env/src
