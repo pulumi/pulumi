@@ -14,7 +14,7 @@ set -e
 echo "* Building Protobuf/gRPC compilers:"
 docker build -t pulumi/protobuf-builder .
 
-DOCKER_RUN="docker run -it --rm -v $(pwd)/../python:/python -v $(pwd)/../nodejs:/nodejs -v $(pwd):/local pulumi/protobuf-builder"
+DOCKER_RUN="docker run -it --rm -v $(pwd)/../python:/python -v $(pwd)/../nodejs:/nodejs -v $(pwd)/../dotnet:/dotnet -v $(pwd):/local pulumi/protobuf-builder"
 PROTOC="$DOCKER_RUN protoc"
 
 # `status.proto` is in our source tree so that we can implement initialization failure in the
@@ -38,6 +38,11 @@ JS_PULUMIRPC=/nodejs/proto/
 JS_PROTOFLAGS="import_style=commonjs,binary"
 echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"
 $PROTOC --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=minimum_node_version=6:$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin $JS_PROTO_FILES
+
+DOTNET_PULUMIRPC=/dotnet/Pulumi/proto
+DOTNET_PROTOFLAGS=""
+echo -e "\tdotnet: $DOTNET_PULUMIRPC [$DOTNET_PROTOFLAGS]"
+$PROTOC $DOTNET_PROTOFLAGS --csharp_out=$DOTNET_PROTOFLAGS:$DOTNET_PULUMIRPC --grpc_out=$DOTNET_PULUMIRPC --plugin=protoc-gen-grpc=/packages/Grpc.Tools/tools/linux_x64/grpc_csharp_plugin $PROTO_FILES
 
 function on_exit() {
     rm -rf "$TEMP_DIR"
