@@ -43,6 +43,9 @@ RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
     apt-get install -y nodejs build-essential && \
     ln -s `which nodejs` /usr/bin/node
 
+# Copy the entrypoint script.
+COPY ./scripts/docker-entry.sh /usr/bin/run-pulumi
+
 # Copy over the binaries built during the prior stage.
 COPY --from=builder /opt/pulumi/* /usr/bin/
 
@@ -55,6 +58,6 @@ VOLUME ["/app"]
 # running the Docker container using `docker run pulumi/pulumi -e "PULUMI_ACCESS_TOKEN=a1b2c2def9"`.
 # ENV PULUMI_ACCESS_TOKEN
 
-# This image uses the `pulumi` CLI as an entrypoint. As a result, you may run commands simply by
-# running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
-ENTRYPOINT ["pulumi", "--non-interactive"]
+# This image uses a thin wrapper over the Pulumi CLI as its entrypoint. As a result, you may run commands
+# simply by running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
+ENTRYPOINT ["run-pulumi", "--non-interactive"]
