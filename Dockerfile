@@ -35,13 +35,12 @@ FROM debian:stretch
 
 # Install some runtime pre-reqs.
 RUN apt-get update -y
-RUN apt-get install -y ca-certificates
+RUN apt-get install -y ca-certificates curl gnupg
 
 # Install the necessary runtimes.
 #     - Node.js 10.x
 RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
-    apt-get install -y nodejs build-essential && \
-    ln -s `which nodejs` /usr/bin/node
+    apt-get install -y nodejs build-essential
 
 # Copy the entrypoint script.
 COPY ./scripts/docker-entry.sh /usr/bin/run-pulumi
