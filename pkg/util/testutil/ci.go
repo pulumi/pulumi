@@ -57,24 +57,25 @@ func (c envValueDetector) IsCI() bool {
 }
 
 var detectors = map[string]ciSystemDetector{
-	"Travis CI":              envVarDetector{envVar: []string{"TRAVIS"}},
-	"CircleCI":               envVarDetector{envVar: []string{"CIRCLECI"}},
-	"GitLab CI":              envVarDetector{envVar: []string{"GITLAB_CI"}},
 	"AppVeyor":               envVarDetector{envVar: []string{"APPVEYOR"}},
+	"AWS CodeBuild":          envVarDetector{envVar: []string{"CODEBUILD_BUILD_ARN"}},
+	"Bamboo":                 envVarDetector{envVar: []string{"bamboo_planKey"}},
+	"Bitbucket Pipelines":    envVarDetector{envVar: []string{"BITBUCKET_COMMIT"}},
+	"Buildkite":              envVarDetector{envVar: []string{"BUILDKITE"}},
+	"CircleCI":               envVarDetector{envVar: []string{"CIRCLECI"}},
+	"Codeship":               envValueDetector{envMap: map[string]string{"CI_NAME": "codeship"}},
 	"Drone":                  envVarDetector{envVar: []string{"DRONE"}},
+	"GitHub":                 envVarDetector{envVar: []string{"GITHUB_WORKFLOW"}},
+	"GitLab CI":              envVarDetector{envVar: []string{"GITLAB_CI"}},
+	"GoCD":                   envVarDetector{envVar: []string{"GO_PIPELINE_LABEL"}},
+	"Hudson":                 envVarDetector{envVar: []string{"HUDSON_URL"}},
+	"Jenkins":                envVarDetector{envVar: []string{"JENKINS_URL", "BUILD_ID"}},
 	"Magnum CI":              envVarDetector{envVar: []string{"MAGNUM"}},
 	"Semaphore":              envVarDetector{envVar: []string{"SEMAPHORE"}},
-	"Jenkins":                envVarDetector{envVar: []string{"JENKINS_URL", "BUILD_ID"}},
-	"Bamboo":                 envVarDetector{envVar: []string{"bamboo_planKey"}},
+	"TaskCluster":            envVarDetector{envVar: []string{"TASK_ID", "RUN_ID"}},
 	"Team Foundation Server": envVarDetector{envVar: []string{"TF_BUILD"}},
 	"TeamCity":               envVarDetector{envVar: []string{"TEAMCITY_VERSION"}},
-	"Buildkite":              envVarDetector{envVar: []string{"BUILDKITE"}},
-	"Hudson":                 envVarDetector{envVar: []string{"HUDSON_URL"}},
-	"TaskCluster":            envVarDetector{envVar: []string{"TASK_ID", "RUN_ID"}},
-	"GoCD":                   envVarDetector{envVar: []string{"GO_PIPELINE_LABEL"}},
-	"Bitbucket Pipelines":    envVarDetector{envVar: []string{"BITBUCKET_COMMIT"}},
-	"AWS CodeBuild":          envVarDetector{envVar: []string{"CODEBUILD_BUILD_ARN"}},
-	"CODESHIP":               envValueDetector{envMap: map[string]string{"CI_NAME": "codeship"}},
+	"Travis CI":              envVarDetector{envVar: []string{"TRAVIS"}},
 }
 
 // IsCI returns true when the current system looks like a CI system. Detection is based on environment variables
