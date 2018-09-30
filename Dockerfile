@@ -37,6 +37,11 @@ FROM debian:stretch
 RUN apt-get update -y
 RUN apt-get install -y ca-certificates
 
+# Install the necessary runtimes.
+#     - Node.js 10.x
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+    apt-get install -y nodejs build-essential
+
 # Copy over the binaries built during the prior stage.
 COPY --from=builder /opt/pulumi/* /usr/local/bin/
 
