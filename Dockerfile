@@ -33,6 +33,10 @@ RUN cd sdk/python && make install_plugin
 # TODO[pulumi/pulumi#1986]: consider switching to, or supporting, Alpine Linux for smaller image sizes.
 FROM debian:stretch
 
+# Install some runtime pre-reqs.
+RUN apt-get update -y
+RUN apt-get install -y ca-certificates
+
 # Copy over the binaries built during the prior stage.
 COPY --from=builder /opt/pulumi/* /usr/local/bin/
 
