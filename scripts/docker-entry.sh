@@ -21,6 +21,7 @@ if [ ! -z "$PULUMI_CI" ]; then
         else
             BRANCH="$GITHUB_REF"
         fi
+        BRANCH=$(echo $BRANCH | sed "s/refs\/heads\///g")
     fi
 
     # Respect the branch mappings file for stack selection. Note that this is *not* required, but if the file
