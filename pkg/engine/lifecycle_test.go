@@ -1983,3 +1983,59 @@ func TestProviderCancellation(t *testing.T) {
 	// Wait for the program to finish.
 	<-done
 }
+
+// Tests that a preview works for a stack with pending operations.
+func TestPreviewWithPendingOperations(t *testing.T) {
+	p := &TestPlan{}
+
+	const resType = "pkgA:m:typA"
+	urnA := p.NewURN(resType, "resA", "")
+
+	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+		return &resource.State{
+			Type:         urn.Type(),
+			URN:          urn,
+			Custom:       true,
+			Delete:       delete,
+			ID:           id,
+			Inputs:       resource.PropertyMap{},
+			Outputs:      resource.PropertyMap{},
+			Dependencies: dependencies,
+		}
+	}
+
+	old := &deploy.Snapshot{
+		PendingOperations: []resource.Operation{{
+			Resource: newResource(urnA, "0", false),
+			Type:     resource.OperationTypeUpdating,
+		}},
+		Resources: []*resource.State{
+			newResource(urnA, "0", false),
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+		return nil
+	})
+
+	op := TestOp(Update)
+	options := UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	project, target := p.GetProject(), p.GetTarget(old)
+
+	// A preview should succeed despite the pending operations.
+	_, err := op.Run(project, target, options, true, nil)
+	assert.NoError(t, err)
+
+	// But an update should fail.
+	_, err = op.Run(project, target, options, false, nil)
+	assert.EqualError(t, err, deploy.PlanPendingOperationsError{}.Error())
+}
