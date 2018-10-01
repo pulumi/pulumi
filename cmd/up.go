@@ -257,7 +257,7 @@ func newUpCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:        "up [url]",
 		Aliases:    []string{"update"},
-		SuggestFor: []string{"deploy", "push"},
+		SuggestFor: []string{"apply", "deploy", "push"},
 		Short:      "Create or update the resources in a stack",
 		Long: "Create or update the resources in a stack.\n" +
 			"\n" +
