@@ -35,7 +35,7 @@ FROM debian:stretch
 
 # Install some runtime pre-reqs.
 RUN apt-get update -y
-RUN apt-get install -y ca-certificates curl gnupg
+RUN apt-get install -y ca-certificates curl gnupg jq
 
 # Install the necessary runtimes.
 #     - Node.js 10.x
