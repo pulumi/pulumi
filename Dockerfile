@@ -57,6 +57,12 @@ VOLUME ["/app"]
 # running the Docker container using `docker run pulumi/pulumi -e "PULUMI_ACCESS_TOKEN=a1b2c2def9"`.
 # ENV PULUMI_ACCESS_TOKEN
 
+# Add some fixed labels for various integrations.
+LABEL "com.github.actions.name"="Pulumi"
+LABEL "com.github.actions.description"="Deploy apps and infra to any cloud!"
+LABEL "com.github.actions.icon"="cloud-lightning"
+LABEL "com.github.actions.color"="purple"
+
 # This image uses a thin wrapper over the Pulumi CLI as its entrypoint. As a result, you may run commands
 # simply by running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
 ENTRYPOINT ["run-pulumi", "--non-interactive"]
