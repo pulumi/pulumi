@@ -33,8 +33,20 @@ RUN cd sdk/python && make install_plugin
 # TODO[pulumi/pulumi#1986]: consider switching to, or supporting, Alpine Linux for smaller image sizes.
 FROM debian:stretch
 
+# Install some runtime pre-reqs.
+RUN apt-get update -y
+RUN apt-get install -y ca-certificates curl gnupg jq
+
+# Install the necessary runtimes.
+#     - Node.js 10.x
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+    apt-get install -y nodejs build-essential
+
+# Copy the entrypoint script.
+COPY ./scripts/docker-entry.sh /usr/bin/run-pulumi
+
 # Copy over the binaries built during the prior stage.
-COPY --from=builder /opt/pulumi/* /usr/local/bin/
+COPY --from=builder /opt/pulumi/* /usr/bin/
 
 # The app directory should contain the Pulumi program and is the pwd for the CLI.
 WORKDIR /app
@@ -45,6 +57,12 @@ VOLUME ["/app"]
 # running the Docker container using `docker run pulumi/pulumi -e "PULUMI_ACCESS_TOKEN=a1b2c2def9"`.
 # ENV PULUMI_ACCESS_TOKEN
 
-# This image uses the `pulumi` CLI as an entrypoint. As a result, you may run commands simply by
-# running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
-ENTRYPOINT ["pulumi", "--non-interactive"]
+# Add some fixed labels for various integrations.
+LABEL "com.github.actions.name"="Pulumi"
+LABEL "com.github.actions.description"="Deploy apps and infra to any cloud!"
+LABEL "com.github.actions.icon"="cloud-lightning"
+LABEL "com.github.actions.color"="purple"
+
+# This image uses a thin wrapper over the Pulumi CLI as its entrypoint. As a result, you may run commands
+# simply by running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
+ENTRYPOINT ["run-pulumi", "--non-interactive"]
