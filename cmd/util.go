@@ -24,6 +24,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/golang/glog"
 	multierror "github.com/hashicorp/go-multierror"
@@ -371,22 +373,23 @@ func isGitWorkTreeDirty() (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
-	m := backend.UpdateMetadata{
+func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
+	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
 	}
 
-	if err := addGitMetadataToEnvironment(root, m.Environment); err != nil {
+	if err := addGitMetadata(root, m); err != nil {
 		glog.V(3).Infof("errors detecting git metadata: %s", err)
 	}
+
 	addCIMetadataToEnvironment(m.Environment)
 
 	return m, nil
 }
 
-// addGitMetadataToEnvironment populate's the environment metadata bag with Git-related values.
-func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
+// addGitMetadata populate's the environment metadata bag with Git-related values.
+func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
@@ -398,11 +401,11 @@ func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
 		return nil
 	}
 
-	if err := addGitHubMetadataToEnvironment(repo, env); err != nil {
+	if err := addGitHubMetadataToEnvironment(repo, m.Environment); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	if err := addGitCommitMetadataToEnvironment(repo, env); err != nil {
+	if err := addGitCommitMetadata(repo, m); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
@@ -421,7 +424,7 @@ func addGitHubMetadataToEnvironment(repo *git.Repository, env map[string]string)
 	return nil
 }
 
-func addGitCommitMetadataToEnvironment(repo *git.Repository, env map[string]string) error {
+func addGitCommitMetadata(repo *git.Repository, m *backend.UpdateMetadata) error {
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
@@ -429,23 +432,42 @@ func addGitCommitMetadataToEnvironment(repo *git.Repository, env map[string]stri
 	}
 
 	hash := head.Hash()
-	env[backend.GitHead] = hash.String()
+	m.Environment[backend.GitHead] = hash.String()
 	commit, commitErr := repo.CommitObject(hash)
 	if commitErr != nil {
 		return errors.Wrap(commitErr, "getting HEAD commit info")
 	}
-	env[backend.GitCommitter] = commit.Committer.Name
-	env[backend.GitCommitterEmail] = commit.Committer.Email
-	env[backend.GitAuthor] = commit.Author.Name
-	env[backend.GitAuthorEmail] = commit.Author.Email
 
+	// If there is no message set manually, default to the Git title.
+	if m.Message == "" {
+		m.Message = gitCommitTitle(commit.Message)
+	}
+
+	// Store committer and author information.
+	m.Environment[backend.GitCommitter] = commit.Committer.Name
+	m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
+	m.Environment[backend.GitAuthor] = commit.Author.Name
+	m.Environment[backend.GitAuthorEmail] = commit.Author.Email
+
+	// If the worktree is dirty, set a bit, as this could be a mistake.
 	isDirty, err := isGitWorkTreeDirty()
 	if err != nil {
 		return errors.Wrapf(err, "checking git worktree dirty state")
 	}
-	env[backend.GitDirty] = fmt.Sprint(isDirty)
+	m.Environment[backend.GitDirty] = strconv.FormatBool(isDirty)
 
 	return nil
+}
+
+// gitCommitTitle turns a commit message into its title, simply by taking the first line.
+func gitCommitTitle(s string) string {
+	if ixCR := strings.Index(s, "\r"); ixCR != -1 {
+		s = s[:ixCR]
+	}
+	if ixLF := strings.Index(s, "\n"); ixLF != -1 {
+		s = s[:ixLF]
+	}
+	return s
 }
 
 // addCIMetadataToEnvironment populates the environment metadata bag with CI/CD-related values.

@@ -126,7 +126,7 @@ type Backend interface {
 type UpdateOperation struct {
 	Proj   *workspace.Project
 	Root   string
-	M      UpdateMetadata
+	M      *UpdateMetadata
 	Opts   UpdateOptions
 	Scopes CancellationScopeSource
 }
