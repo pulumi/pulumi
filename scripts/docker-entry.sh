@@ -17,7 +17,16 @@ if [ ! -z "$PULUMI_CI" ]; then
         # instance, that a PR for a topic branch merging into `master` will use the `master` branch as the
         # target for a preview. Note that for push events, we of course want to use the actual branch.
         if [ "$PULUMI_CI" = "pr" ]; then
-            BRANCH=$(cat $GITHUB_EVENT_PATH | jq -r ".pull_request.base.ref")
+            # Not all PR events warrant running a preview. Many of them pertain to changes in assignments
+            # and ownership, but we only want to run the preview if the action is "opened" or "edited".
+            PR_ACTION=$(jq -r ".action" < $GITHUB_EVENT_PATH)
+            if [ "$PR_ACTION" != "opened" ] && [ "$PR_ACTION" != "edited" ]; then
+                echo -e "PR event ($PR_ACTION) contains no changes and does not warrant a Pulumi Preview"
+                echo -e "Skipping Pulumi action altogether..."
+                exit 0
+            fi
+
+            BRANCH=$(jq -r ".pull_request.base.ref" < $GITHUB_EVENT_PATH)
         else
             BRANCH="$GITHUB_REF"
         fi
