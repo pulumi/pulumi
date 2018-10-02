@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
+	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
@@ -501,22 +502,12 @@ func addCIMetadataToEnvironment(env map[string]string) {
 
 	// If CI variables were not set in the environment, try to detect which
 	// CI system we are inside and set variables
-
-	// Check if running on Travis CI. See:
-	// https://docs.travis-ci.com/user/environment-variables/
-	if os.Getenv("TRAVIS") == "true" {
-		env[backend.CISystem] = "travis-ci"
-
-		// Pass build-related information.
-		env[backend.CIBuildID] = os.Getenv("TRAVIS_JOB_ID")
-		env[backend.CIBuildType] = os.Getenv("TRAVIS_EVENT_TYPE")
-		// Travis doesn't set a build URL in its environment, see:
-		// https://github.com/travis-ci/travis-ci/issues/8935
-
-		// Pass pull request-specific vales as appropriate.
-		if sha := os.Getenv("TRAVIS_PULL_REQUEST_SHA"); sha != "" {
-			env[backend.CIPRHeadSHA] = sha
-		}
+	vars := ciutil.DetectVars()
+	if vars.Name != "" {
+		env[backend.CISystem] = string(vars.Name)
+		env[backend.CIBuildID] = vars.BuildID
+		env[backend.CIBuildType] = vars.BuildType
+		env[backend.CIPRHeadSHA] = vars.SHA
 	}
 }
 

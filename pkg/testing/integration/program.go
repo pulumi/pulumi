@@ -43,10 +43,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/retry"
-	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -408,7 +408,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 
 	t.Parallel()
 
-	if testutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+	if ciutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skip("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
