@@ -23,7 +23,7 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/pkg/util/testutil"
+	"github.com/pulumi/pulumi/pkg/util/ciutil"
 )
 
 // Emoji controls whether emojis will by default be printed in the output.
@@ -45,7 +45,7 @@ var DisableInteractive bool
 // Interactive returns true if we should be running in interactive mode. That is, we have an interactive terminal
 // session, interactivity hasn't been explicitly disabled, and we're not running in a known CI system.
 func Interactive() bool {
-	return !DisableInteractive && InteractiveTerminal() && !testutil.IsCI()
+	return !DisableInteractive && InteractiveTerminal() && !ciutil.IsCI()
 }
 
 // InteractiveTerminal returns true if the current terminal session is interactive.
