@@ -116,6 +116,8 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
     // Add all paths explicitly requested by the user
     const extraIncludePaths = options.extraIncludePaths || [];
     for (const path of extraIncludePaths) {
+        // Note: use 'normalizeSafe' so that we don't unintentionally strip off "./" from the
+        // beginning in case that's what we were passed in.
         normalizedPathSet.add(upath.normalizeSafe(path));
     }
 
@@ -284,7 +286,9 @@ function addPackageAndDependenciesToSet(
         return;
     }
     else {
-        // Normal package.  Add the path to it, and all transitively add all of its dependencies.
+        // Normal package.  Add the normalized path to it, and all transitively add all of its
+        // dependencies.  Note: use 'normalizeSafe' so that we don't unintentionally strip off
+        // "./" from the beginning in case that's what we were passed in.
         normalizedPackagePaths.add(upath.normalizeSafe(child.path));
         recurse(child.package.dependencies);
     }
@@ -316,7 +320,7 @@ function findDependency(root: readPackageTree.Node | undefined | null, name: str
             const childFolderName = upath.basename(child.path);
             const parentFolderName = upath.basename(upath.dirname(child.path));
             if (parentFolderName[0] === "@") {
-                childName = upath.joinSafe(parentFolderName, childFolderName);
+                childName = upath.join(parentFolderName, childFolderName);
             }
 
             if (childName === name) {
