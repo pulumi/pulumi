@@ -271,7 +271,11 @@ func renderResourceOutputsEvent(
 
 		text := engine.GetResourceOutputsPropertiesString(
 			payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh)
-		fprintIgnoreError(out, opts.Color.Colorize(text))
+		if text != "" {
+			fprintfIgnoreError(out, "%v%v--outputs:--%v\n",
+				payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
+			fprintIgnoreError(out, opts.Color.Colorize(text))
+		}
 	}
 	return out.String()
 }
