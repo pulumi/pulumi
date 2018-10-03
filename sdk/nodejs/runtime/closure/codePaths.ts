@@ -106,8 +106,9 @@ export async function computeCodePaths(
 async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<string, asset.Asset | asset.Archive>> {
     // Construct the set of paths to include in the archive for upload.
 
-    // Find folders for all packages requested by the user
-    const pathSet = await allFoldersForPackages(
+    // Find folders for all packages requested by the user.  Note: all paths in this should
+    // be normalized.
+    const normalizedPathSet = await allFoldersForPackages(
         new Set<string>(options.extraIncludePackages || []),
         new Set<string>(options.extraExcludePackages || []),
         options.logResource);
@@ -115,43 +116,43 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
     // Add all paths explicitly requested by the user
     const extraIncludePaths = options.extraIncludePaths || [];
     for (const path of extraIncludePaths) {
-        pathSet.add(path);
+        normalizedPathSet.add(upath.normalizeSafe(path));
     }
 
     const codePaths: Map<string, asset.Asset | asset.Archive> = new Map();
 
     // For each of the required paths, add the corresponding FileArchive or FileAsset to the
     // AssetMap.
-    for (const path of pathSet) {
+    for (const normalizedPath of normalizedPathSet) {
         // Don't include a path if there is another path higher up that will include this one.
-        if (isSubsumedByHigherPath(path, pathSet)) {
+        if (isSubsumedByHigherPath(normalizedPath, normalizedPathSet)) {
             continue;
         }
 
         // The Asset model does not support a consistent way to embed a file-or-directory into an
         // `AssetArchive`, so we stat the path to figure out which it is and use the appropriate
         // Asset constructor.
-        const stats = fs.lstatSync(path);
+        const stats = fs.lstatSync(normalizedPath);
         if (stats.isDirectory()) {
-            codePaths.set(path, new asset.FileArchive(path));
+            codePaths.set(normalizedPath, new asset.FileArchive(normalizedPath));
         }
         else {
-            codePaths.set(path, new asset.FileAsset(path));
+            codePaths.set(normalizedPath, new asset.FileAsset(normalizedPath));
         }
     }
 
     return codePaths;
 }
 
-function isSubsumedByHigherPath(path: string, pathSet: Set<string>): boolean {
-    for (const otherPath of pathSet) {
-        if (path.length > otherPath.length &&
-            path.startsWith(otherPath)) {
+function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<string>): boolean {
+    for (const otherNormalizedPath of normalizedPathSet) {
+        if (normalizedPath.length > otherNormalizedPath.length &&
+            normalizedPath.startsWith(otherNormalizedPath)) {
 
             // Have to make sure we're actually a sub-directory of that other path.  For example,
             // if we have:  node_modules/mime-types, that's not subsumed by node_modules/mime
-            const nextChar = path.charAt(otherPath.length);
-            return nextChar === "/" || nextChar === "\\";
+            const nextChar = normalizedPath.charAt(otherNormalizedPath.length);
+            return nextChar === "/";
         }
     }
 
@@ -199,13 +200,14 @@ function allFoldersForPackages(
                     }
                 }
 
-                const packagePaths = new Set<string>();
+                const normalizedPackagePaths = new Set<string>();
                 for (const pkg of referencedPackages) {
-                    addPackageAndDependenciesToSet(root, pkg, packagePaths, excludedPackages);
+                    addPackageAndDependenciesToSet(root, pkg, normalizedPackagePaths, excludedPackages);
                 }
 
-                return resolve(packagePaths);
-            } catch (error) {
+                return resolve(normalizedPackagePaths);
+            }
+            catch (error) {
                 return reject(error);
             }
         });
@@ -252,7 +254,8 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
-    root: readPackageTree.Node, pkg: string, packagePaths: Set<string>, excludedPackages: Set<string>) {
+    root: readPackageTree.Node, pkg: string,
+    normalizedPackagePaths: Set<string>, excludedPackages: Set<string>) {
 
     // Don't process this packages if it was in the set the user wants to exclude.
     if (excludedPackages.has(pkg)) {
@@ -282,7 +285,7 @@ function addPackageAndDependenciesToSet(
     }
     else {
         // Normal package.  Add the path to it, and all transitively add all of its dependencies.
-        packagePaths.add(child.path);
+        normalizedPackagePaths.add(upath.normalizeSafe(child.path));
         recurse(child.package.dependencies);
     }
 
@@ -291,7 +294,7 @@ function addPackageAndDependenciesToSet(
     function recurse(dependencies: any) {
         if (dependencies) {
             for (const dep of Object.keys(dependencies)) {
-                addPackageAndDependenciesToSet(child!, dep, packagePaths, excludedPackages);
+                addPackageAndDependenciesToSet(child!, dep, normalizedPackagePaths, excludedPackages);
             }
         }
     }
@@ -313,7 +316,7 @@ function findDependency(root: readPackageTree.Node | undefined | null, name: str
             const childFolderName = upath.basename(child.path);
             const parentFolderName = upath.basename(upath.dirname(child.path));
             if (parentFolderName[0] === "@") {
-                childName = `${parentFolderName}/${childFolderName}`;
+                childName = upath.joinSafe(parentFolderName, childFolderName);
             }
 
             if (childName === name) {
