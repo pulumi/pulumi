@@ -1129,7 +1129,7 @@ function getOrCreateEntry(
             // will ensure that the module-name we load is a simple path that can be found off the
             // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? upath.join(moduleParts.slice(nodeModulesSegmentIndex + 1))
+                ? upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1))
                 : normalizedModuleName;
         }
     }
