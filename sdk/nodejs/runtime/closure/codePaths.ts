@@ -16,8 +16,8 @@
 
 import * as fs from "fs";
 import * as normalize from "normalize-package-data";
-import * as filepath from "path";
 import * as readPackageTree from "read-package-tree";
+import * as upath from "upath";
 import * as asset from "../../asset";
 import { ResourceError } from "../../errors";
 import { Resource } from "../../resource";
@@ -184,7 +184,7 @@ function allFoldersForPackages(
 
                     // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
                     root.package = computeDependenciesDirectlyFromPackageFile(
-                        filepath.join(root.realpath, "package.json"), logResource);
+                        upath.join(root.realpath, "package.json"), logResource);
                 }
 
                 // This is the core starting point of the algorithm.  We use readPackageTree to get
@@ -261,7 +261,7 @@ function addPackageAndDependenciesToSet(
 
     const child = findDependency(root, pkg);
     if (!child) {
-        console.warn(`Could not include required dependency '${pkg}' in '${filepath.resolve(root.path)}'.`);
+        console.warn(`Could not include required dependency '${pkg}' in '${upath.resolve(root.path)}'.`);
         return;
     }
 
@@ -310,8 +310,8 @@ function findDependency(root: readPackageTree.Node | undefined | null, name: str
             // from the `path` property instead. Match any name that ends with something that looks
             // like `@foo/bar`, such as `node_modules/@foo/bar` or
             // `node_modules/baz/node_modules/@foo/bar.
-            const childFolderName = filepath.basename(child.path);
-            const parentFolderName = filepath.basename(filepath.dirname(child.path));
+            const childFolderName = upath.basename(child.path);
+            const parentFolderName = upath.basename(upath.dirname(child.path));
             if (parentFolderName[0] === "@") {
                 childName = `${parentFolderName}/${childFolderName}`;
             }

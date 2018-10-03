@@ -14,9 +14,8 @@
 
 // tslint:disable:max-line-length
 
-import { relative as pathRelative } from "path";
-import { basename } from "path";
 import * as ts from "typescript";
+import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
@@ -681,7 +680,7 @@ function getTrimmedFunctionCode(func: Function): string {
 function getFunctionLocation(loc: FunctionLocation): string {
     let name = "'" + getFunctionName(loc) + "'";
     if (loc.file) {
-        name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
+        name += `: ${upath.basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
     const prefix = loc.isArrowFunction ? "" : "function ";
@@ -1181,7 +1180,7 @@ function findModuleName(obj: any): string | undefined {
         if (require.cache[path].exports === obj) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
-            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
+            const modPath = upath.relative(process.cwd(), path);
             return "./" + modPath;
         }
     }
