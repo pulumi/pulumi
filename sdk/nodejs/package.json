@@ -14,7 +14,8 @@
         "ts-node": "^7.0.0",
         "typescript": "^3.0.0",
         "read-package-tree": "^5.2.1",
-        "normalize-package-data": "^2.4.0"
+        "normalize-package-data": "^2.4.0",
+        "upath": "^1.1.0"
     },
     "devDependencies": {
         "@types/minimist": "^1.2.0",

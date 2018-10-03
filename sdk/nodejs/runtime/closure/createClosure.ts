@@ -14,9 +14,8 @@
 
 // tslint:disable:max-line-length
 
-import { relative as pathRelative } from "path";
-import { basename } from "path";
 import * as ts from "typescript";
+import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
@@ -492,7 +491,7 @@ function createFunctionInfo(
                     throwSerializationError(func, context, err.message);
                 }
 
-                const moduleName = findModuleName(value);
+                const moduleName = findNormalizedModuleName(value);
                 const frameLength = context.frames.length;
                 if (moduleName) {
                     context.frames.push({ capturedModule: { name: moduleName, value: value } });
@@ -681,7 +680,7 @@ function getTrimmedFunctionCode(func: Function): string {
 function getFunctionLocation(loc: FunctionLocation): string {
     let name = "'" + getFunctionName(loc) + "'";
     if (loc.file) {
-        name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
+        name += `: ${upath.basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
     const prefix = loc.isArrowFunction ? "" : "function ";
@@ -816,9 +815,9 @@ function getOrCreateEntry(
             return;
         }
 
-        const moduleName = findModuleName(obj);
-        if (moduleName) {
-            captureModule(moduleName);
+        const normalizedModuleName = findNormalizedModuleName(obj);
+        if (normalizedModuleName) {
+            captureModule(normalizedModuleName);
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
@@ -1086,12 +1085,15 @@ function getOrCreateEntry(
         return localEntry && localEntry.function && localEntry.function.usesNonLexicalThis;
     }
 
-    function captureModule(moduleName: string) {
-        const nodeModulesSegment = "/node_modules/";
-        const nodeModulesSegmentIndex = moduleName.indexOf(nodeModulesSegment);
+    function captureModule(normalizedModuleName: string) {
+        // Splitting on "/" is safe to do as this module name is already in a normalized form.
+        const moduleParts = normalizedModuleName.split("/");
+
+        const nodeModulesSegment = "node_modules";
+        const nodeModulesSegmentIndex = moduleParts.findIndex(v => v === nodeModulesSegment);
         const isInNodeModules = nodeModulesSegmentIndex >= 0;
 
-        const isLocalModule = moduleName.startsWith(".") && !isInNodeModules;
+        const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
         if (obj.deploymentOnlyModule || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
@@ -1127,8 +1129,8 @@ function getOrCreateEntry(
             // will ensure that the module-name we load is a simple path that can be found off the
             // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? moduleName.substring(nodeModulesSegmentIndex + nodeModulesSegment.length)
-                : moduleName;
+                ? upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1))
+                : normalizedModuleName;
         }
     }
 }
@@ -1161,12 +1163,15 @@ for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
 }
 
-// findRequirableModuleName attempts to find a global name bound to the object, which can be used as
+// findNormalizedModuleName attempts to find a global name bound to the object, which can be used as
 // a stable reference across serialization.  For built-in modules (i.e. "os", "fs", etc.) this will
 // return that exact name of the module.  Otherwise, this will return the relative path to the
 // module from the current working directory of the process.  This will normally be something of the
 // form ./node_modules/<package_name>...
-function findModuleName(obj: any): string | undefined {
+//
+// This function will also always return modules in a normalized form (i.e. all path components will
+// be '/').
+function findNormalizedModuleName(obj: any): string | undefined {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
     if (key) {
@@ -1181,7 +1186,7 @@ function findModuleName(obj: any): string | undefined {
         if (require.cache[path].exports === obj) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
-            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
+            const modPath = upath.relative(process.cwd(), path);
             return "./" + modPath;
         }
     }
