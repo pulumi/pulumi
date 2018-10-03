@@ -491,7 +491,7 @@ function createFunctionInfo(
                     throwSerializationError(func, context, err.message);
                 }
 
-                const moduleName = findModuleName(value);
+                const moduleName = findNormalizedModuleName(value);
                 const frameLength = context.frames.length;
                 if (moduleName) {
                     context.frames.push({ capturedModule: { name: moduleName, value: value } });
@@ -815,9 +815,9 @@ function getOrCreateEntry(
             return;
         }
 
-        const moduleName = findModuleName(obj);
-        if (moduleName) {
-            captureModule(moduleName);
+        const normalizedModuleName = findNormalizedModuleName(obj);
+        if (normalizedModuleName) {
+            captureModule(normalizedModuleName);
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
@@ -1085,12 +1085,14 @@ function getOrCreateEntry(
         return localEntry && localEntry.function && localEntry.function.usesNonLexicalThis;
     }
 
-    function captureModule(moduleName: string) {
-        const nodeModulesSegment = "/node_modules/";
-        const nodeModulesSegmentIndex = moduleName.indexOf(nodeModulesSegment);
+    function captureModule(normalizedModuleName: string) {
+        const moduleParts = normalizedModuleName.split("/");
+
+        const nodeModulesSegment = "node_modules";
+        const nodeModulesSegmentIndex = moduleParts.findIndex(v => v === nodeModulesSegment);
         const isInNodeModules = nodeModulesSegmentIndex >= 0;
 
-        const isLocalModule = moduleName.startsWith(".") && !isInNodeModules;
+        const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
         if (obj.deploymentOnlyModule || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
@@ -1126,8 +1128,8 @@ function getOrCreateEntry(
             // will ensure that the module-name we load is a simple path that can be found off the
             // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? moduleName.substring(nodeModulesSegmentIndex + nodeModulesSegment.length)
-                : moduleName;
+                ? upath.join(moduleParts.slice(nodeModulesSegmentIndex + 1))
+                : normalizedModuleName;
         }
     }
 }
@@ -1165,7 +1167,7 @@ for (const name of builtInModuleNames) {
 // return that exact name of the module.  Otherwise, this will return the relative path to the
 // module from the current working directory of the process.  This will normally be something of the
 // form ./node_modules/<package_name>...
-function findModuleName(obj: any): string | undefined {
+function findNormalizedModuleName(obj: any): string | undefined {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
     if (key) {
