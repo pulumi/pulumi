@@ -732,6 +732,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			}
 
 			wroteOutputs = true
+			display.writeSimpleMessage(colors.SpecHeadline + "Outputs:" + colors.Reset)
 			display.writeSimpleMessage(props)
 		}
 	}

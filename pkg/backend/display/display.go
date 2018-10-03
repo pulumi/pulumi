@@ -114,20 +114,28 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
+
+		// Currently, prelude, summar, and stdout events are printed the same for both the diff and
+		// progress displays.
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
 		return renderSummaryEvent(action, event.Payload.(engine.SummaryEventPayload), opts)
-	case engine.ResourceOperationFailed:
-		return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
-	case engine.ResourceOutputsEvent:
-		return renderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
-	case engine.ResourcePreEvent:
-		return renderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
+
+		// Resource operations have very specific displays for either diff or progress displays.
+		// These functions should not be directly used by the progress display without validating
+		// that the display is appropriate for both.
+	case engine.ResourceOperationFailed:
+		return renderDiffResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+	case engine.ResourceOutputsEvent:
+		return renderDiffResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
+	case engine.ResourcePreEvent:
+		return renderDiffResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
+
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
@@ -216,7 +224,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	return out.String()
 }
 
-func renderResourceOperationFailedEvent(
+func renderDiffResourceOperationFailedEvent(
 	payload engine.ResourceOperationFailedPayload, opts Options) string {
 
 	// It's not actually useful or interesting to print out any details about
@@ -229,7 +237,7 @@ func renderResourceOperationFailedEvent(
 	return ""
 }
 
-func renderResourcePreEvent(
+func renderDiffResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) string {
@@ -253,7 +261,7 @@ func renderResourcePreEvent(
 	return out.String()
 }
 
-func renderResourceOutputsEvent(
+func renderDiffResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) string {
@@ -271,7 +279,11 @@ func renderResourceOutputsEvent(
 
 		text := engine.GetResourceOutputsPropertiesString(
 			payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh)
-		fprintIgnoreError(out, opts.Color.Colorize(text))
+		if text != "" {
+			fprintfIgnoreError(out, "%v%v--outputs:--%v\n",
+				payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
+			fprintIgnoreError(out, opts.Color.Colorize(text))
+		}
 	}
 	return out.String()
 }
