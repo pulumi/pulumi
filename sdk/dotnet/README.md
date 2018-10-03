@@ -4,14 +4,17 @@ The Pulumi dotnet SDK lets you write cloud programs in any .NET language.
 
 ## !Experimental!
 
-This SDK is currently experimental. Packages are not currently published and a number of features are not yet done.
+This SDK is currently experimental. Packages are not currently published, and a
+number of features are not yet done.
 
 Missing features:
+
 - First class providers
 - Provider configs
 - Pulumi configs
 - Resource reads
-- non-string stack outputs
+- Non-string stack outputs
+- Closure serialization
 
 ## Installation
 
