@@ -25,6 +25,8 @@ import (
 
 var snk diag.Sink
 
+// By default we'll attempt to figure out if we should have colors or not. This can be overridden
+// for any command by passing --color=... at the command line.
 var globalColorization = colors.Auto
 
 // GetGlobalColorization gets the global setting for how things should be colored.
@@ -39,8 +41,7 @@ func GetGlobalColorization() colors.Colorization {
 	// Colorization is set to 'auto' (either explicit set to that by the user, or not set at all).
 	// Figure out the best thing to do here.
 
-	// If the external environment has requested no colors, then turn off all colors when in 'auto'
-	// mode.
+	// If the external environment has requested no colors, then turn off all colors when in 'auto' mode.
 	if _, ok := os.LookupEnv("NO_COLOR"); ok {
 		return colors.Never
 	}
@@ -51,7 +52,7 @@ func GetGlobalColorization() colors.Colorization {
 		return colors.Never
 	}
 
-	// Things otherwise look good.  Turn on colors in auto-mode.
+	// Things otherwise look good.  Turn on colors.
 	return colors.Always
 }
 
