@@ -26,7 +26,7 @@ var tagRegexp = regexp.MustCompile(`<\{%(.*?)%\}>`)
 type Colorization string
 
 const (
-	// Determine if we should colorize depending on the environment we're in.
+	// Auto determines if we should colorize depending on the surrounding environment we're in.
 	Auto Colorization = "auto"
 	// Always colorizes text.
 	Always Colorization = "always"
