@@ -54,7 +54,7 @@ func NewPulumiCmd() *cobra.Command {
 	var tracingHeaderFlag string
 	var profiling string
 	var verbose int
-	var color colorFlag
+	var color string
 
 	cmd := &cobra.Command{
 		Use:   "pulumi",
@@ -81,12 +81,10 @@ func NewPulumiCmd() *cobra.Command {
 			// get DisplayOptions passed in.
 			cmdFlag := cmd.Flag("color")
 			if cmdFlag != nil {
-				err := color.Set(cmdFlag.Value.String())
+				err := cmdutil.SetGlobalColorization(cmdFlag.Value.String())
 				if err != nil {
 					return err
 				}
-
-				cmdutil.SetGlobalColorization(color.Colorization())
 			}
 
 			if cwd != "" {
@@ -142,8 +140,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
-	cmd.PersistentFlags().Var(
-		&color, "color", "Colorize output. Choices are: always, never, raw, auto")
+	cmd.PersistentFlags().StringVar(
+		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
 	//     - Getting Started Commands

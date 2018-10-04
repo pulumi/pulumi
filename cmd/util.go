@@ -296,48 +296,6 @@ func readProject() (*workspace.Project, string, error) {
 	return proj, filepath.Dir(path), nil
 }
 
-type colorFlag struct {
-	value colors.Colorization
-}
-
-func (cf *colorFlag) String() string {
-	return string(cf.Colorization())
-}
-
-func (cf *colorFlag) Set(value string) error {
-	switch value {
-	case "always":
-		cf.value = colors.Always
-	case "never":
-		cf.value = colors.Never
-	case "raw":
-		cf.value = colors.Raw
-	// Backwards compat for old flag values.
-	case "auto":
-		cf.value = colors.Always
-	default:
-		return errors.Errorf("unsupported color option: '%s'.  Supported values are: always, never, raw", value)
-	}
-
-	return nil
-}
-
-func (cf *colorFlag) Type() string {
-	return "colors.Colorization"
-}
-
-func (cf *colorFlag) Colorization() colors.Colorization {
-	if _, ok := os.LookupEnv("NO_COLOR"); ok {
-		return colors.Never
-	}
-
-	if cf.value == "" {
-		return colors.Always
-	}
-
-	return cf.value
-}
-
 // anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a
 // non-zero-length slice. This can be used to determine whether or not any data was ever written to the writer.
 type anyWriter bool
