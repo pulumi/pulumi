@@ -162,6 +162,7 @@ func NewPulumiCmd() *cobra.Command {
 	//     - Advanced Commands:
 	cmd.AddCommand(newCancelCmd())
 	cmd.AddCommand(newRefreshCmd())
+	cmd.AddCommand(newStateCmd())
 	//     - Other Commands:
 	cmd.AddCommand(newLogsCmd())
 	cmd.AddCommand(newPluginCmd())
