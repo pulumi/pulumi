@@ -587,15 +587,10 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 		var maxColumnLengths []int
 		display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
 
-		for i, row := range rows {
-			var id string
-			if i == 0 {
-				id = "#"
-			} else {
-				id = fmt.Sprintf("%v", i)
-			}
+		removeInfoColumnIfUnneeded(rows)
 
-			display.refreshColumns(id, row, maxColumnLengths)
+		for i, row := range rows {
+			display.refreshColumns(fmt.Sprintf("%v", i), row, maxColumnLengths)
 		}
 
 		systemID := len(rows)
@@ -628,6 +623,19 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 			}
 		}
 	}
+}
+
+func removeInfoColumnIfUnneeded(rows [][]string) {
+	// If there have been no info messages, then don't print out the info column header.
+	for i := 1; i < len(rows); i++ {
+		row := rows[i]
+		if row[len(row)-1] != "" {
+			return
+		}
+	}
+
+	firstRow := rows[0]
+	firstRow[len(firstRow)-1] = ""
 }
 
 // Performs all the work at the end once we've heard about the last message from the engine.
