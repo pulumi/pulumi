@@ -201,9 +201,8 @@ func TestLocateResourceNotFound(t *testing.T) {
 
 	ty := tokens.Type("a:b:c")
 	urn := resource.NewURN("test", "test", "", ty, "not-present")
-	res, err := LocateResource(snap, urn)
-	assert.NoError(t, err)
-	assert.Nil(t, res)
+	resList := LocateResource(snap, urn)
+	assert.Nil(t, resList)
 }
 
 func TestLocateResourceAmbiguous(t *testing.T) {
@@ -219,17 +218,12 @@ func TestLocateResourceAmbiguous(t *testing.T) {
 		aPending,
 	})
 
-	_, err := LocateResource(snap, a.URN)
-	assert.Error(t, err)
-	ambigErr, ok := err.(AmbiguousResourceError)
-	if !assert.True(t, ok) {
-		t.FailNow()
-	}
-
-	assert.Contains(t, ambigErr.Resources, a)
-	assert.Contains(t, ambigErr.Resources, aPending)
-	assert.NotContains(t, ambigErr.Resources, pA)
-	assert.NotContains(t, ambigErr.Resources, b)
+	resList := LocateResource(snap, a.URN)
+	assert.Len(t, resList, 2)
+	assert.Contains(t, resList, a)
+	assert.Contains(t, resList, aPending)
+	assert.NotContains(t, resList, pA)
+	assert.NotContains(t, resList, b)
 }
 
 func TestLocateResourceExact(t *testing.T) {
@@ -244,7 +238,7 @@ func TestLocateResourceExact(t *testing.T) {
 		c,
 	})
 
-	res, err := LocateResource(snap, a.URN)
-	assert.NoError(t, err)
-	assert.Equal(t, a, res)
+	resList := LocateResource(snap, a.URN)
+	assert.Len(t, resList, 1)
+	assert.Contains(t, resList, a)
 }

@@ -54,53 +54,53 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 // given URN is ambiguous and this is an interactive terminal, it prompts the user to select one of the resources in
 // the list of resources with identical URNs to operate upon.
 func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resource.URN) (*resource.State, error) {
-	res, err := edit.LocateResource(snap, urn)
-	if err == nil {
-		return res, nil
+	candidateResources := edit.LocateResource(snap, urn)
+	switch {
+	case len(candidateResources) == 0: // resource was not found
+		return nil, nil
+	case len(candidateResources) == 1: // resource was unambiguously found
+		return candidateResources[0], nil
 	}
 
-	switch e := err.(type) {
-	case edit.AmbiguousResourceError:
-		if !cmdutil.Interactive() {
-			return nil, e
-		}
-
-		surveycore.DisableColor = true
-		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
-		prompt := "Multiple resources with the given URN exist, please select the one to edit:"
-		prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
-
-		var options []string
-		optionMap := make(map[string]*resource.State)
-		for _, ambiguousResource := range e.Resources {
-			// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.
-			message := fmt.Sprintf("Resource %q", ambiguousResource.ID)
-			if ambiguousResource.Protect {
-				message += " (Protected)"
-			}
-
-			if ambiguousResource.Delete {
-				message += " (Pending Deletion)"
-			}
-
-			options = append(options, message)
-			optionMap[message] = ambiguousResource
-		}
-
-		var option string
-		if err := survey.AskOne(&survey.Select{
-			Message:  prompt,
-			Options:  options,
-			PageSize: len(options),
-		}, &option, nil); err != nil {
-			return nil, errors.New("no resource selected")
-		}
-
-		return optionMap[option], nil
-	default:
-		return nil, e
+	// If there exist multiple resources that have the requested URN, prompt the user to select one if we're running
+	// interactively. If we're not, early exit.
+	if !cmdutil.Interactive() {
+		return nil, errors.Errorf("Resource URN %q ambiguously refers to multiple resources", urn)
 	}
+
+	surveycore.DisableColor = true
+	surveycore.QuestionIcon = ""
+	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
+	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
+	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
+
+	var options []string
+	optionMap := make(map[string]*resource.State)
+	for _, ambiguousResource := range candidateResources {
+		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.
+		message := fmt.Sprintf("Resource %q", ambiguousResource.ID)
+		if ambiguousResource.Protect {
+			message += " (Protected)"
+		}
+
+		if ambiguousResource.Delete {
+			message += " (Pending Deletion)"
+		}
+
+		options = append(options, message)
+		optionMap[message] = ambiguousResource
+	}
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message:  prompt,
+		Options:  options,
+		PageSize: len(options),
+	}, &option, nil); err != nil {
+		return nil, errors.New("no resource selected")
+	}
+
+	return optionMap[option], nil
 }
 
 // runStateEdit runs the given state edit function on a resource with the given URN in the current stack.

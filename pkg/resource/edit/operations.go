@@ -63,28 +63,16 @@ func UnprotectResource(_ *deploy.Snapshot, res *resource.State) {
 	res.Protect = false
 }
 
-// LocateResource locates a resource with the given URN within the given snapshot. If the resource exists and is
-// uniquely named by the given URN, it is returned with a nil error. If the resource does not exist, LocateResource
-// returns nil. If there exist multiple resources in the snapshot with the given URN, an instance of
-// AmbiguousResourceError is returned with the full list of ambiguous resources attached to it.
-func LocateResource(snap *deploy.Snapshot, urn resource.URN) (*resource.State, error) {
+// LocateResource returns all resources in the given shapshot that have the given URN.
+func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 	contract.Require(snap != nil, "snap")
 
-	urnMap := make(map[resource.URN][]*resource.State)
+	var resources []*resource.State
 	for _, res := range snap.Resources {
-		urnMap[res.URN] = append(urnMap[res.URN], res)
+		if res.URN == urn {
+			resources = append(resources, res)
+		}
 	}
 
-	resources := urnMap[urn]
-	switch {
-	case len(resources) == 0:
-		return nil, nil
-	case len(resources) == 1:
-		return resources[0], nil
-	case len(resources) > 1:
-		return nil, AmbiguousResourceError{URN: urn, Resources: resources}
-	default:
-		contract.Failf("unreachable")
-		return nil, nil
-	}
+	return resources
 }

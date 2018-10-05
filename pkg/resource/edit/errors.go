@@ -20,17 +20,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 )
 
-// AmbiguousResourceError is returned by LocateResource if the given URN could possibly refer to more than one resource
-// in the current snapshot. The `Resources` field contains all such resources in the snapshot.
-type AmbiguousResourceError struct {
-	URN       resource.URN
-	Resources []*resource.State
-}
-
-func (a AmbiguousResourceError) Error() string {
-	return fmt.Sprintf("URN %s is ambiguous among %d resources in the snapshot", a.URN, len(a.Resources))
-}
-
 // ResourceHasDependenciesError is returned by DeleteResource if a resource can't be deleted due to the presence of
 // resources that depend directly or indirectly upon it.
 type ResourceHasDependenciesError struct {
