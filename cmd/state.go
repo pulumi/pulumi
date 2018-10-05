@@ -139,8 +139,10 @@ func runTotalStateEdit(operation func(opts display.Options, snap *deploy.Snapsho
 		surveycore.DisableColor = true
 		surveycore.QuestionIcon = ""
 		surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
+		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
+		prompt += "This command will edit your stack's state directly. Confirm?"
 		if err = survey.AskOne(&survey.Confirm{
-			Message: "This command will edit your stack's state directly. Confirm?",
+			Message: prompt,
 		}, &confirm, nil); err != nil || !confirm {
 			return errors.New("confirmation declined")
 		}
