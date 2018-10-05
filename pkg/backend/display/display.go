@@ -277,12 +277,13 @@ func renderDiffResourceOutputsEvent(
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
-		text := engine.GetResourceOutputsPropertiesString(
-			payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh)
-		if text != "" {
-			fprintfIgnoreError(out, "%v%v--outputs:--%v\n",
-				payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
-			fprintIgnoreError(out, opts.Color.Colorize(text))
+		if !opts.SuppressOutputs {
+			if text := engine.GetResourceOutputsPropertiesString(
+				payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh); text != "" {
+				fprintfIgnoreError(out, "%v%v--outputs:--%v\n",
+					payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
+				fprintIgnoreError(out, opts.Color.Colorize(text))
+			}
 		}
 	}
 	return out.String()

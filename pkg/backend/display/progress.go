@@ -730,7 +730,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// If we get stack outputs, display them at the end.
 	var wroteOutputs bool
-	if display.stackUrn != "" && display.seenStackOutputs {
+	if display.stackUrn != "" && display.seenStackOutputs && !display.opts.SuppressOutputs {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 		props := engine.GetResourceOutputsPropertiesString(
 			stackStep, 1, display.isPreview, display.opts.Debug, false /* refresh */)
