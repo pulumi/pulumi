@@ -40,6 +40,7 @@ func newRefreshCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var skipPreview bool
+	var suppressOutputs bool
 	var yes bool
 
 	var cmd = &cobra.Command{
@@ -71,6 +72,7 @@ func newRefreshCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
@@ -150,6 +152,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not perform a preview before performing the refresh")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")

@@ -22,8 +22,9 @@ type Options struct {
 	ShowConfig           bool                // true if we should show configuration information.
 	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
 	ShowSameResources    bool                // true to show the resources that aren't updated in addition to updates.
+	SuppressOutputs      bool                // true to suppress output summarization, e.g. if contains sensitive info.
 	SummaryDiff          bool                // If the diff display should be summarized
 	IsInteractive        bool                // If we should display things interactively
 	DiffDisplay          bool                // true if we should display things as a rich diff
-	Debug                bool
+	Debug                bool                // true to enable debug output.
 }

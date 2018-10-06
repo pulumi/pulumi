@@ -215,6 +215,24 @@ func TestStackOutputsDisplayed(t *testing.T) {
 	})
 }
 
+// TestStackOutputsSuppressed ensures that outputs whose values are intentionally suppresses don't show.
+func TestStackOutputsSuppressed(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    "stack_outputs",
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  false,
+		Verbose:                true,
+		Stdout:                 stdout,
+		UpdateCommandlineFlags: []string{"--suppress-outputs"},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
+		},
+	})
+}
+
 // TestStackParenting tests out that stacks and components are parented correctly.
 func TestStackParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

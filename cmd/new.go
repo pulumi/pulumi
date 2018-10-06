@@ -49,14 +49,15 @@ import (
 // nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
 func newNewCmd() *cobra.Command {
 	var configArray []string
-	var name string
 	var description string
-	var stack string
-	var force bool
-	var yes bool
-	var offline bool
-	var generateOnly bool
 	var dir string
+	var force bool
+	var generateOnly bool
+	var name string
+	var offline bool
+	var stack string
+	var suppressOutputs bool
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:        "new [template]",
@@ -75,8 +76,9 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 			opts.Display = display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
+				Color:           cmdutil.GetGlobalColorization(),
+				SuppressOutputs: suppressOutputs,
+				IsInteractive:   interactive,
 			}
 			opts.Engine = engine.UpdateOptions{
 				Parallel: defaultParallel,
@@ -311,29 +313,32 @@ func newNewCmd() *cobra.Command {
 		&configArray, "config", "c", []string{},
 		"Config to save")
 	cmd.PersistentFlags().StringVarP(
-		&name, "name", "n", "",
-		"The project name; if not specified, a prompt will request it")
-	cmd.PersistentFlags().StringVarP(
 		&description, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
+	cmd.PersistentFlags().StringVar(
+		&dir, "dir", "",
+		"The location to place the generated project; if not specified, the current directory is used")
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Skip prompts and proceed with default values")
+		&generateOnly, "generate-only", "g", false,
+		"Generate the project only; do not create a stack, save config, or install dependencies")
+	cmd.PersistentFlags().StringVarP(
+		&name, "name", "n", "",
+		"The project name; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
-		&generateOnly, "generate-only", "g", false,
-		"Generate the project only; do not create a stack, save config, or install dependencies")
-	cmd.PersistentFlags().StringVar(
-		&dir, "dir", "",
-		"The location to place the generated project; if not specified, the current directory is used")
+		&yes, "yes", "y", false,
+		"Skip prompts and proceed with default values")
 
 	return cmd
 }
