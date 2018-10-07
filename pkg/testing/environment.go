@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -70,6 +71,14 @@ func (e *Environment) DeleteEnvironment() {
 	e.Helper()
 	err := os.RemoveAll(e.RootPath)
 	assert.NoError(e, err, "cleaning up the test directory")
+}
+
+// DeleteIfNotFailed deletes the environment's RootPath if the test hasn't failed. Otherwise
+// keeps the files around for aiding debugging.
+func (e *Environment) DeleteIfNotFailed() {
+	if !e.T.Failed() {
+		e.DeleteEnvironment()
+	}
 }
 
 // PathExists returns whether or not a file or directory exists relative to Environment's working directory.
@@ -130,4 +139,19 @@ func (e *Environment) GetCommandResults(t *testing.T, command string, args ...st
 
 	runErr := cmd.Run()
 	return outBuffer.String(), errBuffer.String(), runErr
+}
+
+// WriteTestFile writes a new test file relative to the Environment's CWD with the given contents.
+// Aborts the underlying test on any errors.
+func (e *Environment) WriteTestFile(filename string, contents string) {
+	filename = filepath.Join(e.CWD, filename)
+
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		e.T.Fatalf("error making directories for test file (%v): %v", filename, err)
+	}
+
+	if err := ioutil.WriteFile(filename, []byte(contents), os.ModePerm); err != nil {
+		e.T.Fatalf("writing test file (%v): %v", filename, err)
+	}
 }
