@@ -398,6 +398,12 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 		return errors.Wrap(commitErr, "getting HEAD commit info")
 	}
 
+	headName := head.Name().String()
+	// Ignore when in detached HEAD state, should be "re"
+	if headName != "HEAD" {
+		m.Environment[backend.GitHeadName] = head.Name().String()
+	}
+
 	// If there is no message set manually, default to the Git title.
 	if m.Message == "" {
 		m.Message = gitCommitTitle(commit.Message)
