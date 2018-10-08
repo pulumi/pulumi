@@ -57,7 +57,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
 	case len(candidateResources) == 0: // resource was not found
-		return nil, nil
+		return nil, errors.Errorf("No such resource %q exists in the current state", urn)
 	case len(candidateResources) == 1: // resource was unambiguously found
 		return candidateResources[0], nil
 	}
@@ -65,9 +65,14 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	// If there exist multiple resources that have the requested URN, prompt the user to select one if we're running
 	// interactively. If we're not, early exit.
 	if !cmdutil.Interactive() {
-		return nil, errors.Errorf("Resource URN %q ambiguously refers to multiple resources", urn)
+		errorMsg := "Resource URN ambiguously referred to multiple resources. Did you mean:\n"
+		for _, res := range candidateResources {
+			errorMsg += fmt.Sprintf("  %s\n", res.ID)
+		}
+		return nil, errors.New(errorMsg)
 	}
 
+	// Note: this is done to adhere to the same color scheme as the `pulumi new` picker, which also does this.
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
@@ -78,7 +83,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	optionMap := make(map[string]*resource.State)
 	for _, ambiguousResource := range candidateResources {
 		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.
-		message := fmt.Sprintf("Resource %q", ambiguousResource.ID)
+		message := fmt.Sprintf("%q", ambiguousResource.ID)
 		if ambiguousResource.Protect {
 			message += " (Protected)"
 		}
@@ -104,15 +109,11 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 }
 
 // runStateEdit runs the given state edit function on a resource with the given URN in the current stack.
-func runStateEdit(urn resource.URN, operation func(snap *deploy.Snapshot, res *resource.State) error) error {
+func runStateEdit(urn resource.URN, operation edit.OperationFunc) error {
 	return runTotalStateEdit(func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
 			return err
-		}
-
-		if res == nil {
-			return errors.Errorf("No such resource %q exists in the current state", urn)
 		}
 
 		return operation(snap, res)
@@ -148,6 +149,9 @@ func runTotalStateEdit(operation func(opts display.Options, snap *deploy.Snapsho
 		}
 	}
 
+	// The `operation` callback will mutate `snap` in-place. In order to validate the correctness of the transformation
+	// that we are doing here, we verify the integrity of the snapshot before the mutation. If the snapshot was valid
+	// before we mutated it, we'll assert that we didn't make it invalid by mutating it.
 	stackIsAlreadyHosed := snap.VerifyIntegrity() != nil
 	if err = operation(opts, snap); err != nil {
 		return err
@@ -157,6 +161,8 @@ func runTotalStateEdit(operation func(opts display.Options, snap *deploy.Snapsho
 	if !stackIsAlreadyHosed {
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
+
+	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
 	bytes, err := json.Marshal(stack.SerializeDeployment(snap))
 	if err != nil {
 		return err

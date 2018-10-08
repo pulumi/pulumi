@@ -21,6 +21,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// OperationFunc is the type of functions that edit resources within a snapshot. The edits are made in-place to the
+// given snapshot and pertain to the specific passed-in resource.
+type OperationFunc func(*deploy.Snapshot, *resource.State) error
+
 // DeleteResource deletes a given resource from the snapshot, if it is possible to do so. A resource can only be deleted
 // from a stack if there do not exist any resources that depend on it or descend from it. If such a resource does exist,
 // DeleteResource will return an error instance of `ResourceHasDependenciesError`.
@@ -35,10 +39,12 @@ func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) err
 	}
 
 	// If there are no resources that depend on condemnedRes, iterate through the snapshot and keep everything that's
-	// not condemnedRes while keeping track of every resource's parent.
+	// not condemnedRes.
 	var newSnapshot []*resource.State
 	var children []*resource.State
 	for _, res := range snapshot.Resources {
+		// While iterating, keep track of the set of resources that are parented to our condemned resource. We'll only
+		// actually perform the deletion if this set is empty, otherwise it is not legal to delete the resource.
 		if res.Parent == condemnedRes.URN {
 			children = append(children, res)
 		}
@@ -53,14 +59,16 @@ func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) err
 		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: children}
 	}
 
-	// Otherwise, we're good to go.
+	// Otherwise, we're good to go. Writing the new resource list into the snapshot persists the mutations that we have
+	// made above.
 	snapshot.Resources = newSnapshot
 	return nil
 }
 
 // UnprotectResource unprotects a resource.
-func UnprotectResource(_ *deploy.Snapshot, res *resource.State) {
+func UnprotectResource(_ *deploy.Snapshot, res *resource.State) error {
 	res.Protect = false
+	return nil
 }
 
 // LocateResource returns all resources in the given shapshot that have the given URN.

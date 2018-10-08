@@ -19,7 +19,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -36,16 +35,11 @@ there exist other resources that depend on it or are parented to it.`,
 		Args: cmdutil.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			urn := resource.URN(args[0])
-			err := runStateEdit(urn, func(snap *deploy.Snapshot, res *resource.State) error {
-				return edit.DeleteResource(snap, res)
-			})
-
+			err := runStateEdit(urn, edit.DeleteResource)
 			if err != nil {
 				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:
-					message := fmt.Sprintf(
-						"Resource %q can't be safely deleted because the following resources depend on it:\n",
-						urn)
+					message := "This resource can't be safely deleted because the following resources depend on it:\n"
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
 						message += fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn)
@@ -57,7 +51,7 @@ there exist other resources that depend on it or are parented to it.`,
 					return err
 				}
 			}
-			fmt.Printf("Deleted resource %q\n", urn)
+			fmt.Println("Resource deleted successfully")
 			return nil
 		}),
 	}

@@ -181,7 +181,8 @@ func TestUnprotectResource(t *testing.T) {
 		c,
 	})
 
-	UnprotectResource(snap, a)
+	err := UnprotectResource(snap, a)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 	assert.False(t, a.Protect)

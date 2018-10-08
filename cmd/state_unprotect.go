@@ -17,6 +17,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -39,19 +41,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if unprotectAll {
-				err := runTotalStateEdit(func(_ display.Options, snap *deploy.Snapshot) error {
-					for _, res := range snap.Resources {
-						edit.UnprotectResource(snap, res)
-					}
-
-					return nil
-				})
-
-				if err != nil {
-					return err
-				}
-				fmt.Printf("Unprotected all resources\n")
-				return nil
+				return unprotectAllResources()
 			}
 
 			if len(args) != 1 {
@@ -59,19 +49,36 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 			}
 
 			urn := resource.URN(args[0])
-			err := runStateEdit(urn, func(snap *deploy.Snapshot, res *resource.State) error {
-				edit.UnprotectResource(snap, res)
-				return nil
-			})
-
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Unprotected resource %q\n", urn)
-			return nil
+			return unprotectResource(urn)
 		}),
 	}
 
 	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
 	return cmd
+}
+
+func unprotectAllResources() error {
+	err := runTotalStateEdit(func(_ display.Options, snap *deploy.Snapshot) error {
+		for _, res := range snap.Resources {
+			err := edit.UnprotectResource(snap, res)
+			contract.AssertNoError(err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	fmt.Println("All resources successfully unprotected")
+	return nil
+}
+
+func unprotectResource(urn resource.URN) error {
+	err := runStateEdit(urn, edit.UnprotectResource)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Resource successfully unprotected")
+	return nil
 }
