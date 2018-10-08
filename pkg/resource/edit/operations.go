@@ -32,6 +32,10 @@ func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) err
 	contract.Require(snapshot != nil, "snapshot")
 	contract.Require(condemnedRes != nil, "state")
 
+	if condemnedRes.Protect {
+		return ResourceProtectedError{condemnedRes}
+	}
+
 	dg := graph.NewDependencyGraph(snapshot.Resources)
 	dependencies := dg.DependingOn(condemnedRes)
 	if len(dependencies) != 0 {

@@ -139,6 +139,21 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 }
 
+func TestFailedDeletionProtected(t *testing.T) {
+	pA := NewProviderResource("a", "p1", "0")
+	a := NewResource("a", pA)
+	a.Protect = true
+	snap := NewSnapshot([]*resource.State{
+		pA,
+		a,
+	})
+
+	err := DeleteResource(snap, a)
+	assert.Error(t, err)
+	_, ok := err.(ResourceProtectedError)
+	assert.True(t, ok)
+}
+
 func TestFailedDeletionParentDependency(t *testing.T) {
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)

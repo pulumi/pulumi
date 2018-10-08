@@ -30,3 +30,12 @@ type ResourceHasDependenciesError struct {
 func (r ResourceHasDependenciesError) Error() string {
 	return fmt.Sprintf("Can't delete resource %q due to dependent resources", r.Condemned.URN)
 }
+
+// ResourceProtectedError is returned by DeleteResource if a resource is protected.
+type ResourceProtectedError struct {
+	Condemned *resource.State
+}
+
+func (ResourceProtectedError) Error() string {
+	return "Can't delete protected resource"
+}
