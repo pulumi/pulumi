@@ -26,13 +26,16 @@ import (
 func newStackInitCmd() *cobra.Command {
 	var ppc string
 	cmd := &cobra.Command{
-		Use:   "init <stack-name>",
+		Use:   "init [<organization-name>/]<stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
-			"but afterwards it can become the target of a deployment using the `update` command.",
+			"but afterwards it can become the target of a deployment using the `update` command.\n" +
+			"\n" +
+			"To create a stack in an organization, prefix the stack name with the organization name\n" +
+			"and a slash (e.g. 'my-organization/my-great-stack')",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
