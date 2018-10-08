@@ -15,7 +15,6 @@
 package gitutil
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,7 +76,7 @@ func TestParseGitRepoURL(t *testing.T) {
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// Create local test repository.
 	repoPath := filepath.Join(e.RootPath, "repo")
@@ -190,37 +189,18 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 func createTestRepo(e *ptesting.Environment) {
 	e.RunCommand("git", "init")
 
-	writeTestFile(e, "README.md", "test repo")
+	e.WriteTestFile("README.md", "test repo")
 	e.RunCommand("git", "add", "*")
 	e.RunCommand("git", "commit", "-m", "'Initial commit'")
 
-	writeTestFile(e, "foo/bar.md", "foo-bar.md")
+	e.WriteTestFile("foo/bar.md", "foo-bar.md")
 	e.RunCommand("git", "add", "*")
 	e.RunCommand("git", "commit", "-m", "'foo dir'")
 
-	writeTestFile(e, "content/foo/bar.md", "content-foo-bar.md")
+	e.WriteTestFile("content/foo/bar.md", "content-foo-bar.md")
 	e.RunCommand("git", "add", "*")
 	e.RunCommand("git", "commit", "-m", "'content-foo dir'")
 
 	e.RunCommand("git", "branch", "my/content")
 	e.RunCommand("git", "tag", "my")
-}
-
-func writeTestFile(e *ptesting.Environment, filename string, contents string) {
-	filename = filepath.Join(e.CWD, filename)
-
-	dir := filepath.Dir(filename)
-	err := os.MkdirAll(dir, os.ModePerm)
-	assert.NoError(e, err, "making all directories %s", dir)
-
-	err = ioutil.WriteFile(filename, []byte(contents), os.ModePerm)
-	assert.NoError(e, err, "writing %s file", filename)
-}
-
-// deleteIfNotFailed deletes the files in the testing environment if the testcase has
-// not failed. (Otherwise they are left to aid debugging.)
-func deleteIfNotFailed(e *ptesting.Environment) {
-	if !e.T.Failed() {
-		e.DeleteEnvironment()
-	}
 }
