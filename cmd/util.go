@@ -308,7 +308,7 @@ func (w *anyWriter) Write(d []byte) (int, error) {
 }
 
 // isGitWorkTreeDirty returns true if the work tree for the current directory's repository is dirty.
-func isGitWorkTreeDirty() (bool, error) {
+func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 	gitBin, err := exec.LookPath("git")
 	if err != nil {
 		return false, err
@@ -318,6 +318,7 @@ func isGitWorkTreeDirty() (bool, error) {
 	gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
 	var anyOutput anyWriter
 	var stderr bytes.Buffer
+	gitStatusCmd.Dir = repoRoot
 	gitStatusCmd.Stdout = &anyOutput
 	gitStatusCmd.Stderr = &stderr
 	if err = gitStatusCmd.Run(); err != nil {
@@ -364,7 +365,7 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	if err := addGitCommitMetadata(repo, m); err != nil {
+	if err := addGitCommitMetadata(repo, repoRoot, m); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
@@ -383,7 +384,7 @@ func addGitHubMetadataToEnvironment(repo *git.Repository, env map[string]string)
 	return nil
 }
 
-func addGitCommitMetadata(repo *git.Repository, m *backend.UpdateMetadata) error {
+func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.UpdateMetadata) error {
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
@@ -409,7 +410,7 @@ func addGitCommitMetadata(repo *git.Repository, m *backend.UpdateMetadata) error
 	m.Environment[backend.GitAuthorEmail] = commit.Author.Email
 
 	// If the worktree is dirty, set a bit, as this could be a mistake.
-	isDirty, err := isGitWorkTreeDirty()
+	isDirty, err := isGitWorkTreeDirty(repoRoot)
 	if err != nil {
 		return errors.Wrapf(err, "checking git worktree dirty state")
 	}
