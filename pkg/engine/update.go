@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -266,6 +267,31 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh {
 			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug)
+		}
+	}
+
+	// See pulumi/pulumi#2011 for details. Terraform always returns the existing state with the diff applied to it in
+	// the event of an update failure. It's appropriate that we save this new state in the output of the resource, but
+	// it is not appropriate to save the inputs, because the resource that exists was not created or updated
+	// successfully with those inputs.
+	//
+	// If we were doing an update and got a `StatusPartialFailure`, the resource that ultimately gets persisted in the
+	// snapshot should be old inputs and new outputs. We accomplish that here by clobbering the new resource's inputs
+	// with the old inputs.
+	//
+	// This is a little kludgy given that these resources are global state. However, given the way that we have
+	// implemented the snapshot manager and engine today, it's the easiest way to accomplish what we are trying to do.
+	if status == resource.StatusPartialFailure && step.Op() == deploy.OpUpdate {
+		logging.V(7).Infof(
+			"OnResourceStepPost(%s): Step is partially-failed update, saving old inputs instead of new inputs",
+			step.URN())
+		new := step.New()
+		old := step.Old()
+		contract.Assert(new != nil)
+		contract.Assert(old != nil)
+		new.Inputs = make(resource.PropertyMap)
+		for key, value := range old.Inputs {
+			new.Inputs[key] = value
 		}
 	}
 

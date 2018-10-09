@@ -2039,3 +2039,91 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	_, err = op.Run(project, target, options, false, nil)
 	assert.EqualError(t, err, deploy.PlanPendingOperationsError{}.Error())
 }
+
+// Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
+func TestUpdatePartialFailure(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+					}, nil
+				},
+
+				UpdateF: func(urn resource.URN, id resource.ID, olds,
+					news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+						"output_prop": 42,
+					})
+
+					return outputs, resource.StatusPartialFailure, errors.New("update failed to apply")
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, _, err := mon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"input_prop": "new inputs",
+			}))
+
+		return err
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{host: host}}
+
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: true,
+		SkipPreview:   true,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+			assert.Error(t, err)
+			for _, entry := range j.Entries {
+				switch urn := entry.Step.URN(); urn {
+				case resURN:
+					assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
+					switch entry.Kind {
+					case JournalEntryBegin:
+						continue
+					case JournalEntrySuccess:
+						inputs := entry.Step.New().Inputs
+						outputs := entry.Step.New().Outputs
+						assert.Len(t, inputs, 1)
+						assert.Len(t, outputs, 1)
+						assert.Equal(t,
+							resource.NewStringProperty("old inputs"), inputs[resource.PropertyKey("input_prop")])
+						assert.Equal(t,
+							resource.NewNumberProperty(42), outputs[resource.PropertyKey("output_prop")])
+					default:
+						t.Fatalf("unexpected journal operation: %d", entry.Kind)
+					}
+				}
+			}
+
+			return err
+		},
+	}}
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   resURN.Type(),
+				URN:    resURN,
+				Custom: true,
+				ID:     "1",
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"input_prop": "old inputs",
+				}),
+				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"output_prop": 1,
+				}),
+			},
+		},
+	}
+
+	p.Run(t, old)
+}
