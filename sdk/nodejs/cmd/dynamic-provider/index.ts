@@ -81,6 +81,9 @@ async function checkRPC(call: any, callback: any): Promise<void> {
             if (result.failures) {
                 failures = result.failures;
             }
+        } else {
+            // If no check method was provided, propagate the new inputs as-is.
+            inputs = news;
         }
 
         inputs[providerKey] = news[providerKey];
