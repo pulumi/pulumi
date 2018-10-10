@@ -63,10 +63,10 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
                     // If the monitor is unavailable, it is in the process of shutting down or has already
-                    // shut down. Don't emit an error and don't do any more RPCs.
+                    // shut down. Don't emit an error and don't do any more RPCs, just exit.
                     if (err.code === grpc.status.UNAVAILABLE) {
                         log.debug("Resource monitor is terminating");
-                        waitForDeath();
+                        process.exit(0);
                     }
 
                     // If the RPC failed, rethrow the error with a native exception and the message that
@@ -90,13 +90,4 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
     finally {
         done();
     }
-}
-
-/**
- * waitForDeath loops forever. See the comments in resource.ts on the function with
- * the same name for an explanation as to why this exists.
- */
-function waitForDeath(): never {
-    // tslint:disable-next-line
-    while (true) {}
 }
