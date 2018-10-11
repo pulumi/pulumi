@@ -200,9 +200,18 @@ function allFoldersForPackages(
                     }
                 }
 
+                // package.json files can contain circularities.  For example es6-iterator depends
+                // on es5-ext, which depends on es6-iterator, which depends on es5-ext:
+                // https://github.com/medikoo/es6-iterator/blob/0eac672d3f4bb3ccc986bbd5b7ffc718a0822b74/package.json#L20
+                // https://github.com/medikoo/es5-ext/blob/792c9051e5ad9d7671dd4e3957eee075107e9e43/package.json#L29
+                //
+                // So keep track of the paths we've looked and don't recurse if we hit something again.
+                const seenPaths = new Set<string>();
+
                 const normalizedPackagePaths = new Set<string>();
                 for (const pkg of referencedPackages) {
-                    addPackageAndDependenciesToSet(root, pkg, normalizedPackagePaths, excludedPackages);
+                    addPackageAndDependenciesToSet(
+                        root, pkg, seenPaths, normalizedPackagePaths, excludedPackages);
                 }
 
                 return resolve(normalizedPackagePaths);
@@ -254,7 +263,7 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
-    root: readPackageTree.Node, pkg: string,
+    root: readPackageTree.Node, pkg: string, seenPaths: Set<string>,
     normalizedPackagePaths: Set<string>, excludedPackages: Set<string>) {
 
     // Don't process this packages if it was in the set the user wants to exclude.
@@ -267,6 +276,13 @@ function addPackageAndDependenciesToSet(
         console.warn(`Could not include required dependency '${pkg}' in '${upath.resolve(root.path)}'.`);
         return;
     }
+
+    // Don't process a child path if we've already encountered it.
+    const normalizedPath = upath.normalize(child.path);
+    if (seenPaths.has(normalizedPath)) {
+        return;
+    }
+    seenPaths.add(normalizedPath);
 
     if (child.package.pulumi) {
         // This was a pulumi deployment-time package.  Check if it had a:
@@ -286,7 +302,7 @@ function addPackageAndDependenciesToSet(
     else {
         // Normal package.  Add the normalized path to it, and all transitively add all of its
         // dependencies.
-        normalizedPackagePaths.add(upath.normalize(child.path));
+        normalizedPackagePaths.add(normalizedPath);
         recurse(child.package.dependencies);
     }
 
@@ -295,7 +311,8 @@ function addPackageAndDependenciesToSet(
     function recurse(dependencies: any) {
         if (dependencies) {
             for (const dep of Object.keys(dependencies)) {
-                addPackageAndDependenciesToSet(child!, dep, normalizedPackagePaths, excludedPackages);
+                addPackageAndDependenciesToSet(
+                    child!, dep, seenPaths, normalizedPackagePaths, excludedPackages);
             }
         }
     }
