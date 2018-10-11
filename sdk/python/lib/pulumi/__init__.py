@@ -26,3 +26,4 @@ from .config import *
 from .errors import *
 from .metadata import *
 from .resource import *
+from .log import *

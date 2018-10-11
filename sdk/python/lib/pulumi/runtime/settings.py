@@ -75,6 +75,12 @@ def get_monitor():
         raise RunError('Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?')
     return monitor
 
+def get_engine():
+    """
+    Returns the current engine service client for RPC communications.
+    """
+    return SETTINGS.engine
+
 ROOT = None
 
 def get_root_resource():
