@@ -828,13 +828,13 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	close(displayEvents)
 	close(displayDone)
 	contract.IgnoreClose(manager)
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
+	close(displayEvents)
 
 	status := apitype.UpdateStatusSucceeded
 	if err != nil {
