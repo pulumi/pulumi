@@ -4,6 +4,7 @@
 import argparse
 import os
 import sys
+import traceback
 import runpy
 
 try:
@@ -50,12 +51,19 @@ if __name__ == "__main__":
     sys.argv = [args.PROGRAM] + args.ARGS
     if not args.pwd is None:
         os.chdir(args.pwd)
+
+    successful = False
     try:
-        try:
-            pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
-        finally:
-            sys.stdout.flush()
-            sys.stderr.flush()
+        pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
+        successful = True
     except pulumi.RunError as e:
-        sys.stderr.write(e.message)
-        sys.exit(1)
+        pulumi.log.error(e.message)
+    except Exception as e:
+        pulumi.log.error("Program failed with an unhandled exception:")
+        pulumi.log.error(traceback.format_exc())
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+    exit_code = 0 if successful else 1
+    sys.exit(exit_code)
