@@ -614,7 +614,7 @@ type Unwrap<T> =
     T extends Output<infer U2> ? UnwrapSimple<U2> :
     UnwrapSimple<T>;
 
-type primitive = string | number | boolean | undefined | null;
+type primitive = Function | string | number | boolean | undefined | null;
 
 /**
  * Handles encountering basic types when unwrapping.
