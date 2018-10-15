@@ -123,8 +123,7 @@ export function getEngine(): Object | undefined {
  * serialize returns true if resource operations should be serialized.
  */
 export function serialize(): boolean {
-    const p = options.parallel;
-    return !p || p <= 1;
+    return options.parallel === 1;
 }
 
 /**
