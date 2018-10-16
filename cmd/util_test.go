@@ -14,6 +14,7 @@
 package cmd
 
 import (
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -35,6 +36,13 @@ func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 // TestReadingGitRepo tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
 func TestReadingGitRepo(t *testing.T) {
+	// Disable our CI/CD detection code, since if this unit test is ran under CI
+	// it will change the expected behavior.
+	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+	defer func() {
+		os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
+	}()
+
 	e := pul_testing.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -134,7 +142,7 @@ func TestReadingGitRepo(t *testing.T) {
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch2")
 	}
 
-	// Change refs by checkingout a tagged commit.
+	// Change refs by checking out a tagged commit.
 	// But since we'll be in a detached HEAD state, the git.headName isn't provided.
 	e.RunCommand("git", "checkout", "v0.0.0")
 
@@ -145,5 +153,37 @@ func TestReadingGitRepo(t *testing.T) {
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
 		_, ok := test.Environment[backend.GitHeadName]
 		assert.False(t, ok, "Expected no 'git.headName' key, since in detached head state.")
+	}
+
+	// Confirm that data can be inferred from the CI system if unavailable.
+	// Fake running under Travis CI.
+	varsToSave := []string{"TRAVIS", "TRAVIS_BRANCH"}
+	origEnvVars := make(map[string]string)
+	for _, varName := range varsToSave {
+		origEnvVars[varName] = os.Getenv(varName)
+	}
+	defer func() {
+		for _, varName := range varsToSave {
+			orig := origEnvVars[varName]
+			if orig == "" {
+				os.Unsetenv(varName)
+			} else {
+				os.Setenv(varName, orig)
+			}
+		}
+	}()
+
+	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	os.Setenv("TRAVIS", "1")
+	os.Setenv("TRAVIS_BRANCH", "branch-from-ci")
+
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		name, ok := test.Environment[backend.GitHeadName]
+		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
+		assert.Equal(t, "branch-from-ci", name)
 	}
 }
