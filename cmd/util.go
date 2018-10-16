@@ -385,6 +385,11 @@ func addGitHubMetadataToEnvironment(repo *git.Repository, env map[string]string)
 }
 
 func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.UpdateMetadata) error {
+	// When running in a CI/CD environment, the current git repo may be running from a
+	// detached HEAD and may not have have the latest commit message. We fall back to
+	// CI-system specific environment variables when possible.
+	ciVars := ciutil.DetectVars()
+
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
@@ -398,15 +403,23 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 		return errors.Wrap(commitErr, "getting HEAD commit info")
 	}
 
+	// If in detached head, will be "HEAD", and fallback to use value from CI/CD system if possible.
+	// Otherwise, the value will be like "refs/heads/master".
 	headName := head.Name().String()
-	// Ignore when in detached HEAD state, should be "re"
+	if headName == "HEAD" && ciVars.BranchName != "" {
+		headName = ciVars.BranchName
+	}
 	if headName != "HEAD" {
-		m.Environment[backend.GitHeadName] = head.Name().String()
+		m.Environment[backend.GitHeadName] = headName
 	}
 
-	// If there is no message set manually, default to the Git title.
+	// If there is no message set manually, default to the Git commit's title.
+	msg := commit.Message
+	if msg == "" && ciVars.CommitMessage != "" {
+		msg = ciVars.CommitMessage
+	}
 	if m.Message == "" {
-		m.Message = gitCommitTitle(commit.Message)
+		m.Message = gitCommitTitle(msg)
 	}
 
 	// Store committer and author information.

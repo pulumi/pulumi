@@ -30,6 +30,10 @@ type Vars struct {
 	BuildURL string
 	// SHA is the SHA hash of the code repo at which this build/job is running.
 	SHA string
+	// BranchName is the name of the feature branch currently being built.
+	BranchName string
+	// CommitMessage is the full message of the Git commit being built.
+	CommitMessage string
 }
 
 // DetectVars detects and returns the CI variables for the current environment.
@@ -44,12 +48,16 @@ func DetectVars() Vars {
 		v.BuildID = os.Getenv("CI_JOB_ID")
 		v.BuildURL = os.Getenv("CI_JOB_URL")
 		v.SHA = os.Getenv("CI_COMMIT_SHA")
+		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
+		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
 	case Travis:
 		// We are running in Travis. See https://docs.travis-ci.com/user/environment-variables/. Travis doesn't
 		// set a build URL in its environment -- see  https://github.com/travis-ci/travis-ci/issues/8935.
 		v.BuildID = os.Getenv("TRAVIS_JOB_ID")
 		v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
 		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
+		v.BranchName = os.Getenv("TRAVIS_BRANCH")
+		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
 	}
 	return v
 }
