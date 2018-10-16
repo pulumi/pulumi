@@ -88,6 +88,11 @@ func IsCI() bool {
 // DetectSystem returns a CI system name when the current system looks like a CI system. Detection is based on
 // environment variables that CI vendors we know about set.
 func DetectSystem() System {
+	// Provide a way to disable CI/CD detection, as it can interfere with the ability to test.
+	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
+		return ""
+	}
+
 	for sys, d := range detectors {
 		if d.IsCI() {
 			return sys
