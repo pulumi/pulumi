@@ -174,7 +174,8 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		}
 
 		if response == string(no) {
-			return errors.Errorf("confirmation declined, not proceeding with the %s", kind)
+			fmt.Printf("Confirmation declined, not processing with the %s\n", kind)
+			os.Exit(0)
 		}
 
 		if response == string(yes) {
