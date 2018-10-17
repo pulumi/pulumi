@@ -29,6 +29,7 @@ import (
 const (
 	// Dummy workerID for synchronous operations.
 	synchronousWorkerID = -1
+	infiniteWorkerID    = -2
 
 	// Utility constant for easy debugging.
 	stepExecutorLogLevel = 4
@@ -325,11 +326,14 @@ func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
 //
 
 // worker is the base function for all step executor worker goroutines. It continuously polls for new chains
-// and executes any that it gets from the channel.
-func (se *stepExecutor) worker(workerID int) {
+// and executes any that it gets from the channel. If `launchAsync` is true, worker launches a new goroutine
+// that will execute the chain so that the execution continues asynchronously and this worker can proceed to
+// the next chain.
+func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 	se.log(workerID, "worker coming online")
 	defer se.workers.Done()
 
+	oneshotWorkerID := 0
 	for {
 		se.log(workerID, "worker waiting for incoming chains")
 		select {
@@ -340,8 +344,24 @@ func (se *stepExecutor) worker(workerID int) {
 			}
 
 			se.log(workerID, "worker received chain for execution")
-			se.executeChain(workerID, request.Chain)
-			close(request.CompletionChan)
+			if !launchAsync {
+				se.executeChain(workerID, request.Chain)
+				close(request.CompletionChan)
+				continue
+			}
+
+			// If we're launching asynchronously, make up a new worker ID for this new oneshot worker and record its
+			// launch with our worker wait group.
+			se.workers.Add(1)
+			newWorkerID := oneshotWorkerID
+			go func() {
+				defer se.workers.Done()
+				se.log(newWorkerID, "launching oneshot worker")
+				se.executeChain(newWorkerID, request.Chain)
+				close(request.CompletionChan)
+			}()
+
+			oneshotWorkerID++
 		case <-se.ctx.Done():
 			se.log(workerID, "worker exiting due to cancellation")
 			return
@@ -362,10 +382,20 @@ func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan,
 	}
 
 	exec.sawError.Store(false)
+
+	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions
+	// asynchronously.
+	if opts.InfiniteParallelism() {
+		exec.workers.Add(1)
+		go exec.worker(infiniteWorkerID, true /*launchAsync*/)
+		return exec
+	}
+
+	// Otherwise, launch a worker goroutine for each degree of parallelism.
 	fanout := opts.DegreeOfParallelism()
 	for i := 0; i < fanout; i++ {
 		exec.workers.Add(1)
-		go exec.worker(i)
+		go exec.worker(i, false /*launchAsync*/)
 	}
 
 	return exec

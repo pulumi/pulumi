@@ -142,7 +142,7 @@ func newRefreshCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism, 0 for unbounded parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
