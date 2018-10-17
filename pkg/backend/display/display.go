@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize/english"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -166,8 +165,18 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
+
+	// Cleaner error message when there are no changes
+	if changeCount == 0 {
+		fprintIgnoreError(out, opts.Color.Colorize(
+			fmt.Sprintf("    %sThere are no changes to be made%s\n\n",
+				colors.Bold, colors.Reset)))
+
+		return out.String()
+	}
+
 	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("    %s%d %s%s\n",
+		fmt.Sprintf("    %sThere are a total of %d %s%s\n\n",
 			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset)))
 
 	var planTo string
@@ -183,14 +192,14 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 				if !event.IsPreview {
 					opDescription = op.PastTense()
 				}
-				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %s%d %s%s%s\n",
+				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %s %d %s%s%s\n",
 					op.Prefix(), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}
 
 	if c := changes[deploy.OpSame]; c > 0 {
-		fprintfIgnoreError(out, "    %d unchanged\n", c)
+		fprintfIgnoreError(out, "    %s %d unchanged\n", deploy.OpSame.Prefix(), c)
 	}
 
 	// For actual deploys, we print some additional summary information

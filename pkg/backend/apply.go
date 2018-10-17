@@ -125,6 +125,12 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return changes, nil
 	}
 
+	if !changes.HasChanges() {
+		close(eventsChannel)
+
+		os.Exit(0)
+	}
+
 	// Otherwise, ensure the user wants to proceed.
 	err := confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
