@@ -287,7 +287,7 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 	return nil
 }
 
-// readBody reads the contents of an http.Response into a byte array, returning an error if one occured while in the
+// readBody reads the contents of an http.Response into a byte array, returning an error if one occurred while in the
 // process of doing so. readBody uses the Content-Encoding of the response to pick the correct reader to use.
 func readBody(resp *http.Response) ([]byte, error) {
 	contentEncoding, ok := resp.Header["Content-Encoding"]
