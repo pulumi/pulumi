@@ -414,7 +414,7 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 	}
 
 	// If there is no message set manually, default to the Git commit's title.
-	msg := commit.Message
+	msg := strings.TrimSpace(commit.Message)
 	if msg == "" && ciVars.CommitMessage != "" {
 		msg = ciVars.CommitMessage
 	}
