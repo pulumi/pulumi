@@ -344,7 +344,13 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 		return "", err
 	}
 
-	return b.cloudConsoleStackPath(stackID), nil
+	path := b.cloudConsoleStackPath(stackID)
+
+	url := b.CloudConsoleURL(path)
+	if url == "" {
+		return "", errors.New("could not determine clould console URL")
+	}
+	return url, nil
 }
 
 func (b *cloudBackend) Name() string {

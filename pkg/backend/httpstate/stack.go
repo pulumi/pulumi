@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -144,15 +143,7 @@ func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 }
 
 func (s *cloudStack) ConsoleURL() (string, error) {
-	path, err := s.b.StackConsoleURL(s.ref)
-	if err != nil {
-		return "", nil
-	}
-	url := s.b.CloudConsoleURL(path)
-	if url == "" {
-		return "", errors.New("could not determine clould console URL")
-	}
-	return url, nil
+	return s.b.StackConsoleURL(s.ref)
 }
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping
