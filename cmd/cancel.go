@@ -20,8 +20,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -47,34 +47,36 @@ func newCancelCmd() *cobra.Command {
 				stack = args[0]
 			}
 
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts)
+			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
 			// Ensure that we are targeting the Pulumi cloud.
-			backend, ok := s.Backend().(cloud.Backend)
+			backend, ok := s.Backend().(httpstate.Backend)
 			if !ok {
 				return errors.New("the `cancel` command is not supported for local stacks")
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", s.Name())
-			if !yes && !confirmPrompt(prompt, s.Name().String(), opts) {
+			stackName := string(s.Ref().Name())
+			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
+			if !yes && !confirmPrompt(prompt, stackName, opts) {
 				return errors.New("confirmation declined")
 			}
 
 			// Cancel the update.
-			if err := backend.CancelCurrentUpdate(commandContext(), s.Name()); err != nil {
+			if err := backend.CancelCurrentUpdate(commandContext(), s.Ref()); err != nil {
 				return err
 			}
 
-			msg := fmt.Sprintf("%sThe currently running update for '%s' has been canceled!%s", colors.SpecAttention, s.Name(),
-				colors.Reset)
+			msg := fmt.Sprintf(
+				"%sThe currently running update for '%s' has been canceled!%s",
+				colors.SpecAttention, stackName, colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
 
 			return nil

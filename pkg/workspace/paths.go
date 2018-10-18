@@ -17,6 +17,7 @@ package workspace
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
+//nolint: lll
 const (
 	BackupDir      = "backups"    // the name of the folder where backup stack information is stored.
 	BookkeepingDir = ".pulumi"    // the name of our bookeeping folder, we store state here (like .git for git).
@@ -38,10 +40,11 @@ const (
 	TemplateDir    = "templates"  // the name of the directory containing templates.
 	WorkspaceDir   = "workspaces" // the name of the directory that holds workspace information for projects.
 
-	IgnoreFile    = ".pulumiignore"  // the name of the file that we use to control what to upload to the service.
-	ProjectFile   = "Pulumi"         // the base name of a project file.
-	RepoFile      = "settings.json"  // the name of the file that holds information specific to the entire repository.
-	WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
+	IgnoreFile        = ".pulumiignore"      // the name of the file that we use to control what to upload to the service.
+	ProjectFile       = "Pulumi"             // the base name of a project file.
+	RepoFile          = "settings.json"      // the name of the file that holds information specific to the entire repository.
+	WorkspaceFile     = "workspace.json"     // the name of the file that holds workspace information.
+	CachedVersionFile = ".cachedVersionInfo" // the name of the file we use to store when we last checked if the CLI was out of date
 )
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.
@@ -156,4 +159,15 @@ func isMarkupFile(path string, expect string) bool {
 	}
 
 	return false
+}
+
+// GetCachedVersionFilePath returns the location where the CLI caches information from pulumi.com on the newest
+// available version of the CLI
+func GetCachedVersionFilePath() (string, error) {
+	user, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(user.HomeDir, BookkeepingDir, CachedVersionFile), nil
 }

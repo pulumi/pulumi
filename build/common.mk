@@ -117,6 +117,7 @@ only_test:: $(SUB_PROJECTS:%=%_only_test)
 default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
 ensure:: $(SUB_PROJECTS:%=%_ensure)
+dist:: $(SUB_PROJECTS:%=%_dist)
 endif
 
 # `core` is like `default` except it does not build sub projects.
@@ -157,6 +158,9 @@ install::
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
 
+dist::
+	$(call STEP_MESSAGE)
+
 test_all:: test_fast
 	$(call STEP_MESSAGE)
 
@@ -168,7 +172,7 @@ install::
 	cp yarn.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/node_modules"
 	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
-	yarn install --offline --production && \
+	yarn install --prefer-offline --production && \
 	(yarn unlink > /dev/null 2>&1 || true) && \
 	yarn link
 endif
@@ -199,6 +203,8 @@ $(SUB_PROJECTS:%=%_only_build):
 	@$(MAKE) -C ./$(@:%_only_build=%) only_build
 $(SUB_PROJECTS:%=%_only_test):
 	@$(MAKE) -C ./$(@:%_only_test=%) only_test
+$(SUB_PROJECTS:%=%_dist):
+	@$(MAKE) -C ./$(@:%_dist=%) dist
 endif
 
 # As a convinece, we provide a format target that folks can build to

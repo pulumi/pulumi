@@ -1,13 +1,16 @@
 *.swp
 /vendor/
+**/node_modules/
 **/.vscode/
 coverage.cov
 *.coverprofile
-Pipfile.lock
 **/dist
 
 /.idea/
 *.iml
+
+# VSCode creates this binary when running tests in the debugger
+**/debug.test
 
 # Go tests run "in tree" and this folder will linger if they fail (the integration test framework cleans
 # it up when they pass.)

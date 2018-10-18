@@ -19,19 +19,18 @@ package stack
 import (
 	"encoding/json"
 
-	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV1, error) {
+func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV2, error) {
 	var versionedCheckpoint apitype.VersionedCheckpoint
 	if err := json.Unmarshal(bytes, &versionedCheckpoint); err != nil {
 		return nil, err
@@ -43,17 +42,28 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 		// json package did not support strict marshalling before 1.10, and we use 1.9 in our toolchain today.
 		// After we upgrade, we could consider rewriting this code to use DisallowUnknownFields() on the decoder
 		// to have the old checkpoint not even deserialize as an apitype.VersionedCheckpoint.
-		var checkpoint apitype.CheckpointV1
-		if err := json.Unmarshal(bytes, &checkpoint); err != nil {
+		var v1checkpoint apitype.CheckpointV1
+		if err := json.Unmarshal(bytes, &v1checkpoint); err != nil {
 			return nil, err
 		}
+
+		checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
 		return &checkpoint, nil
 	case 1:
-		var checkpoint apitype.CheckpointV1
-		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &checkpoint); err != nil {
+		var v1checkpoint apitype.CheckpointV1
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v1checkpoint); err != nil {
 			return nil, err
 		}
+
+		checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
 		return &checkpoint, nil
+	case 2:
+		var v2checkpoint apitype.CheckpointV2
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v2checkpoint); err != nil {
+			return nil, err
+		}
+
+		return &v2checkpoint, nil
 	default:
 		return nil, errors.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
 	}
@@ -62,12 +72,12 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
 func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *apitype.VersionedCheckpoint {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
-	var latest *apitype.Deployment
+	var latest *apitype.DeploymentV2
 	if snap != nil {
 		latest = SerializeDeployment(snap)
 	}
 
-	b, err := json.Marshal(apitype.CheckpointV1{
+	b, err := json.Marshal(apitype.CheckpointV2{
 		Stack:  stack,
 		Config: config,
 		Latest: latest,
@@ -80,48 +90,15 @@ func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Sna
 	}
 }
 
-// DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(chkpoint *apitype.CheckpointV1) (*deploy.Snapshot, error) {
+// DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot. Returns nil
+// if there have been no deployments performed on this checkpoint.
+func DeserializeCheckpoint(chkpoint *apitype.CheckpointV2) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
-
-	var snap *deploy.Snapshot
-	if latest := chkpoint.Latest; latest != nil {
-		// Unpack the versions.
-		manifest := deploy.Manifest{
-			Time:    latest.Manifest.Time,
-			Magic:   latest.Manifest.Magic,
-			Version: latest.Manifest.Version,
-		}
-		for _, plug := range latest.Manifest.Plugins {
-			var version *semver.Version
-			if v := plug.Version; v != "" {
-				sv, err := semver.ParseTolerant(v)
-				if err != nil {
-					return nil, err
-				}
-				version = &sv
-			}
-			manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
-				Name:    plug.Name,
-				Kind:    plug.Type,
-				Version: version,
-			})
-		}
-
-		// For every serialized resource vertex, create a ResourceDeployment out of it.
-		var resources []*resource.State
-		for _, res := range latest.Resources {
-			desres, err := DeserializeResource(res)
-			if err != nil {
-				return nil, err
-			}
-			resources = append(resources, desres)
-		}
-
-		snap = deploy.NewSnapshot(manifest, resources)
+	if chkpoint.Latest != nil {
+		return DeserializeDeploymentV2(*chkpoint.Latest)
 	}
 
-	return snap, nil
+	return nil, nil
 }
 
 // GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.  If the stack

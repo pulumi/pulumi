@@ -13,8 +13,10 @@ include ../../build/common.mk
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
-install::
+install_plugin::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+install:: install_plugin
 
 lint::
 	$(GOMETALINTER) ./pulumi/... | sort
@@ -22,3 +24,6 @@ lint::
 
 test_fast::
 	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+
+dist::
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}

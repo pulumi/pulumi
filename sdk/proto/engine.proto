@@ -15,13 +15,23 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
-// Engine is an interface into the core engine responsible for orchestrating resource operations.
+// Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+// to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+// that can't store their own global state.
 service Engine {
     // Log logs a global message in the engine, including errors and warnings.
     rpc Log(LogRequest) returns (google.protobuf.Empty) {}
+
+    // GetRootResource gets the URN of the root resource, the resource that should be the root of all
+    // otherwise-unparented resources.
+    rpc GetRootResource(GetRootResourceRequest) returns (GetRootResourceResponse) {}
+
+    // SetRootResource sets the URN of the root resource.
+    rpc SetRootResource(SetRootResourceRequest) returns (SetRootResourceResponse) {}
 }
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
@@ -33,7 +43,42 @@ enum LogSeverity {
 }
 
 message LogRequest {
-    LogSeverity severity = 1;   // the logging level of this message.
-    string message = 2;         // the contents of the logged message.
-    string urn = 3;             // the (optional) resource urn this log is associated with.
+    // the logging level of this message.
+    LogSeverity severity = 1;
+
+    // the contents of the logged message.
+    string message = 2;
+
+    // the (optional) resource urn this log is associated with.
+    string urn = 3;
+
+    // the (optional) stream id that a stream of log messages can be associated with. This allows
+    // clients to not have to buffer a large set of log messages that they all want to be
+    // conceptually connected.  Instead the messages can be sent as chunks (with the same stream id)
+    // and the end display can show the messages as they arrive, while still stitching them together
+    // into one total log message.
+    //
+    // 0/not-given means: do not associate with any stream.
+    int32 streamId = 4;
+
+    // Optional value indicating whether this is a status message.
+    bool ephemeral = 5;
+}
+
+message GetRootResourceRequest {
+    // empty.
+}
+
+message GetRootResourceResponse {
+    // the URN of the root resource, or the empty string if one was not set.
+    string urn = 1;
+}
+
+message SetRootResourceRequest {
+    // the URN of the root resource, or the empty string.
+    string urn = 1;
+}
+
+message SetRootResourceResponse {
+    // empty.
 }

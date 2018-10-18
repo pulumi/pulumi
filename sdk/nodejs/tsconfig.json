@@ -47,9 +47,12 @@
 
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
+        "cmd/run/run.ts",
 
         "tests/config.spec.ts",
         "tests/init.spec.ts",
+        "tests/output.spec.ts",
+        "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/closure.spec.ts",
         "tests/runtime/props.spec.ts",

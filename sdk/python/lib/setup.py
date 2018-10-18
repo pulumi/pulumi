@@ -16,9 +16,14 @@
 
 from setuptools import setup, find_packages
 
+def readme():
+    with open('README.rst') as f:
+        return f.read()
+
 setup(name='pulumi',
       version='${VERSION}',
       description='Pulumi\'s Python SDK',
+      long_description=readme(),
       url='https://github.com/pulumi/pulumi',
       license='Apache 2.0',
       packages=find_packages(),

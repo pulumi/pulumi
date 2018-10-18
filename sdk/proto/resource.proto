@@ -35,6 +35,8 @@ message ReadResourceRequest {
     string name = 3;                       // the name, for URN purposes, of the object.
     string parent = 4;                     // an optional parent URN that this child resource belongs to.
     google.protobuf.Struct properties = 5; // optional state sufficient to uniquely identify the resource.
+    repeated string dependencies = 6;      // a list of URNs that this read depends on, as observed by the language host.
+    string provider = 7;                   // an optional reference to the provider to use for this read.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -52,6 +54,7 @@ message RegisterResourceRequest {
     google.protobuf.Struct object = 5; // an object produced by the interpreter/source.
     bool protect = 6;                  // true if the resource should be marked protected.
     repeated string dependencies = 7;  // a list of URNs that this resource depends on, as observed by the language host.
+    string provider = 8;               // an optional reference to the provider to manage this resource's CRUD operations.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

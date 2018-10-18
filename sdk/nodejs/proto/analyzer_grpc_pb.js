@@ -26,7 +26,7 @@ function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
     throw new Error('Expected argument of type google.protobuf.Empty');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_google_protobuf_Empty(buffer_arg) {
@@ -37,7 +37,7 @@ function serialize_pulumirpc_AnalyzeRequest(arg) {
   if (!(arg instanceof analyzer_pb.AnalyzeRequest)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzeRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_AnalyzeRequest(buffer_arg) {
@@ -48,7 +48,7 @@ function serialize_pulumirpc_AnalyzeResponse(arg) {
   if (!(arg instanceof analyzer_pb.AnalyzeResponse)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzeResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_AnalyzeResponse(buffer_arg) {
@@ -59,7 +59,7 @@ function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_PluginInfo(buffer_arg) {

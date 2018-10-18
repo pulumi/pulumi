@@ -12,8 +12,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -67,8 +69,8 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
-		assert.Equal(t, "", stdout)
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+		assert.Equal(t, "Updating (main-abs):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -83,8 +85,8 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
-		assert.Equal(t, "", stdout)
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+		assert.Equal(t, "Updating (main-parent):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -172,6 +174,28 @@ func TestStackOutputs(t *testing.T) {
 	})
 }
 
+// TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
+func TestStackOutputsJSON(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory("stack_outputs")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "stack-outs")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+	stdout, stderr := e.RunCommand("pulumi", "stack", "output", "--json")
+	assert.Equal(t, `{
+    "foo": 42,
+    "xyz": "ABC"
+}
+`, stdout)
+	assert.Equal(t, "", stderr)
+}
+
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
 func TestStackOutputsDisplayed(t *testing.T) {
 	stdout := &bytes.Buffer{}
@@ -184,9 +208,27 @@ func TestStackOutputsDisplayed(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			output := stdout.String()
 
-			// ensure we get the --outputs:-- info both for the normal update, and for the no-change update.
-			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"\n\ninfo: 1 change performed")
-			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"\n\ninfo: no changes required")
+			// ensure we get the outputs info both for the normal update, and for the no-change update.
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    1 change")
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    0 changes")
+		},
+	})
+}
+
+// TestStackOutputsSuppressed ensures that outputs whose values are intentionally suppresses don't show.
+func TestStackOutputsSuppressed(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    "stack_outputs",
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  false,
+		Verbose:                true,
+		Stdout:                 stdout,
+		UpdateCommandlineFlags: []string{"--suppress-outputs"},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
 		},
 	})
 }
@@ -209,7 +251,7 @@ func TestStackParenting(t *testing.T) {
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
 			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 8, len(stackInfo.Deployment.Resources)) {
+			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
@@ -230,6 +272,9 @@ func TestStackParenting(t *testing.T) {
 						assert.Equal(t, urns["c"], res.Parent)
 					case "g":
 						assert.Equal(t, urns["f"], res.Parent)
+					case "default":
+						// Default providers are not parented.
+						assert.Equal(t, "", string(res.Parent))
 					default:
 						t.Fatalf("unexpected name %s", res.URN.Name())
 					}
@@ -294,8 +339,8 @@ func TestConfigSave(t *testing.T) {
 	// Initialize an empty stack.
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
 	err := (&workspace.Project{
-		Name:    "testing-config",
-		Runtime: "nodejs",
+		Name:        "testing-config",
+		RuntimeInfo: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -371,6 +416,26 @@ func TestConfigBasicNodeJS(t *testing.T) {
 	})
 }
 
+func TestConfigCaptureNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"value": "it works",
+		},
+	})
+}
+
+func TestInvalidVersionInPackageJson(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("invalid_package_json"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config:       map[string]string{},
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -396,5 +461,68 @@ func TestConfigBasicGo(t *testing.T) {
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
 		},
+	})
+}
+
+// Tests an explicit provider instance.
+func TestExplicitProvider(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "explicit_provider",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			latest := stackInfo.Deployment
+
+			// Expect one stack resource, two provider resources, and two custom resources.
+			assert.True(t, len(latest.Resources) == 5)
+
+			var defaultProvider *apitype.ResourceV2
+			var explicitProvider *apitype.ResourceV2
+			for _, res := range latest.Resources {
+				urn := res.URN
+				switch urn.Name() {
+				case "default":
+					assert.True(t, providers.IsProviderType(res.Type))
+					assert.Nil(t, defaultProvider)
+					prov := res
+					defaultProvider = &prov
+
+				case "p":
+					assert.True(t, providers.IsProviderType(res.Type))
+					assert.Nil(t, explicitProvider)
+					prov := res
+					explicitProvider = &prov
+
+				case "a":
+					prov, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					assert.NotNil(t, defaultProvider)
+					defaultRef, err := providers.NewReference(defaultProvider.URN, defaultProvider.ID)
+					assert.NoError(t, err)
+					assert.Equal(t, defaultRef.String(), prov.String())
+
+				case "b":
+					prov, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					assert.NotNil(t, explicitProvider)
+					explicitRef, err := providers.NewReference(explicitProvider.URN, explicitProvider.ID)
+					assert.NoError(t, err)
+					assert.Equal(t, explicitRef.String(), prov.String())
+				}
+			}
+
+			assert.NotNil(t, defaultProvider)
+			assert.NotNil(t, explicitProvider)
+		},
+	})
+}
+
+// Tests that reads of unknown IDs do not fail.
+func TestGetCreated(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "get_created",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
 	})
 }

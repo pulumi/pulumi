@@ -1,11 +1,7 @@
 {
     "name": "emptyjs",
-    "version": "0.9",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
-    "scripts": {
-        "build": "tsc"
-    },
+    "license": "Apache-2.0",
+    "version": "0.0.9",
     "devDependencies": {
         "typescript": "^2.5.3"
     },

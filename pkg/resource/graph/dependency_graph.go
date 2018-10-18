@@ -4,6 +4,7 @@ package graph
 
 import (
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -28,6 +29,22 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 	contract.Assert(ok)
 	dependentSet[res.URN] = true
 
+	isDependent := func(candidate *resource.State) bool {
+		if candidate.Provider != "" {
+			ref, err := providers.ParseReference(candidate.Provider)
+			contract.Assert(err == nil)
+			if dependentSet[ref.URN()] {
+				return true
+			}
+		}
+		for _, dependency := range candidate.Dependencies {
+			if dependentSet[dependency] {
+				return true
+			}
+		}
+		return false
+	}
+
 	// The dependency graph encoded directly within the snapshot is the reverse of
 	// the graph that we actually want to operate upon. Edges in the snapshot graph
 	// originate in a resource and go to that resource's dependencies.
@@ -42,17 +59,42 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 	// the list. All resources that depend directly or indirectly on `res` are prepended
 	// onto `dependents`.
 	for i := cursorIndex + 1; i < len(dg.resources); i++ {
-		cursorResource := dg.resources[i]
-		for _, dependency := range cursorResource.Dependencies {
-			if dependentSet[dependency] {
-				dependents = append(dependents, cursorResource)
-				dependentSet[cursorResource.URN] = true
-				break
-			}
+		candidate := dg.resources[i]
+		if isDependent(candidate) {
+			dependents = append(dependents, candidate)
+			dependentSet[candidate.URN] = true
 		}
 	}
 
 	return dependents
+}
+
+// DependenciesOf returns a ResourceSet of resources upon which the given resource depends. The resource's parent is
+// included in the returned set.
+func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
+	set := make(ResourceSet)
+
+	dependentUrns := make(map[resource.URN]bool)
+	for _, dep := range res.Dependencies {
+		dependentUrns[dep] = true
+	}
+
+	if res.Provider != "" {
+		ref, err := providers.ParseReference(res.Provider)
+		contract.Assert(err == nil)
+		dependentUrns[ref.URN()] = true
+	}
+
+	cursorIndex, ok := dg.index[res]
+	contract.Assert(ok)
+	for i := cursorIndex - 1; i >= 0; i-- {
+		candidate := dg.resources[i]
+		if dependentUrns[candidate.URN] || candidate.URN == res.Parent {
+			set[candidate] = true
+		}
+	}
+
+	return set
 }
 
 // NewDependencyGraph creates a new DependencyGraph from a list of resources.

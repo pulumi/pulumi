@@ -637,7 +637,7 @@ func (a *Archive) Open() (ArchiveReader, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
-	return nil, nil
+	return nil, errors.New("unrecognized archive type")
 }
 
 // assetsArchiveReader is used to read an Assets archive.
@@ -771,7 +771,7 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't read archive path '%v'", path)
 		} else if !info.IsDir() {
-			return nil, errors.Wrapf(err, "'%v' is neither a recognized archive type nor a directory", path)
+			return nil, errors.Errorf("'%v' is neither a recognized archive type nor a directory", path)
 		}
 
 		// Accumulate the list of asset paths. This list is ordered deterministically by filepath.Walk.
@@ -896,12 +896,20 @@ func (a *Archive) Archive(format ArchiveFormat, w io.Writer) error {
 
 // addNextFileToTar adds the next file in the given archive to the given tar file. Returns io.EOF if the archive
 // contains no more files.
-func addNextFileToTar(r ArchiveReader, tw *tar.Writer) error {
+func addNextFileToTar(r ArchiveReader, tw *tar.Writer, seenFiles map[string]bool) error {
 	file, data, err := r.Next()
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(data)
+
+	// It's possible to run into the same file multiple times in the list of archives we're passed.
+	// For example, if there is an archive pointing to foo/bar and an archive pointing to
+	// foo/bar/baz/quux.  Because of this only include the file the first time we see it.
+	if _, has := seenFiles[file]; has {
+		return nil
+	}
+	seenFiles[file] = true
 
 	sz := data.Size()
 	if err = tw.WriteHeader(&tar.Header{
@@ -928,8 +936,9 @@ func (a *Archive) archiveTar(w io.Writer) error {
 
 	// Now actually emit the contents, file by file.
 	tw := tar.NewWriter(w)
+	seenFiles := make(map[string]bool)
 	for err == nil {
-		err = addNextFileToTar(reader, tw)
+		err = addNextFileToTar(reader, tw, seenFiles)
 	}
 	if err != io.EOF {
 		return err
@@ -945,12 +954,20 @@ func (a *Archive) archiveTarGZIP(w io.Writer) error {
 
 // addNextFileToZIP adds the next file in the given archive to the given ZIP file. Returns io.EOF if the archive
 // contains no more files.
-func addNextFileToZIP(r ArchiveReader, zw *zip.Writer) error {
+func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool) error {
 	file, data, err := r.Next()
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(data)
+
+	// It's possible to run into the same file multiple times in the list of archives we're passed.
+	// For example, if there is an archive pointing to foo/bar and an archive pointing to
+	// foo/bar/baz/quux.  Because of this only include the file the first time we see it.
+	if _, has := seenFiles[file]; has {
+		return nil
+	}
+	seenFiles[file] = true
 
 	fh := &zip.FileHeader{
 		// These are the two fields set by zw.Create()
@@ -983,8 +1000,9 @@ func (a *Archive) archiveZIP(w io.Writer) error {
 
 	// Now actually emit the contents, file by file.
 	zw := zip.NewWriter(w)
+	seenFiles := make(map[string]bool)
 	for err == nil {
-		err = addNextFileToZIP(reader, zw)
+		err = addNextFileToZIP(reader, zw, seenFiles)
 	}
 	if err != io.EOF {
 		return err

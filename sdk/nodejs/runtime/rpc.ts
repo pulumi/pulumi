@@ -70,7 +70,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 }
 
 /**
- * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for propertoes with
+ * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for properties with
  * keys that match the provided filter, creating a reasonable POJO object that can be remoted over to
  * registerResource.
  */

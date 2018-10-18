@@ -26,7 +26,7 @@ function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
     throw new Error('Expected argument of type google.protobuf.Empty');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_google_protobuf_Empty(buffer_arg) {
@@ -37,7 +37,7 @@ function serialize_pulumirpc_InvokeRequest(arg) {
   if (!(arg instanceof provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_InvokeRequest(buffer_arg) {
@@ -48,7 +48,7 @@ function serialize_pulumirpc_InvokeResponse(arg) {
   if (!(arg instanceof provider_pb.InvokeResponse)) {
     throw new Error('Expected argument of type pulumirpc.InvokeResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
@@ -59,7 +59,7 @@ function serialize_pulumirpc_ReadResourceRequest(arg) {
   if (!(arg instanceof resource_pb.ReadResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.ReadResourceRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ReadResourceRequest(buffer_arg) {
@@ -70,7 +70,7 @@ function serialize_pulumirpc_ReadResourceResponse(arg) {
   if (!(arg instanceof resource_pb.ReadResourceResponse)) {
     throw new Error('Expected argument of type pulumirpc.ReadResourceResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
@@ -81,7 +81,7 @@ function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
   if (!(arg instanceof resource_pb.RegisterResourceOutputsRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_RegisterResourceOutputsRequest(buffer_arg) {
@@ -92,7 +92,7 @@ function serialize_pulumirpc_RegisterResourceRequest(arg) {
   if (!(arg instanceof resource_pb.RegisterResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_RegisterResourceRequest(buffer_arg) {
@@ -103,7 +103,7 @@ function serialize_pulumirpc_RegisterResourceResponse(arg) {
   if (!(arg instanceof resource_pb.RegisterResourceResponse)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_RegisterResourceResponse(buffer_arg) {

@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -45,15 +45,16 @@ func newStackImportCmd() *cobra.Command {
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 			"The updated deployment will be read from standard in.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and import a deployment.
-			s, err := requireStack(stackName, false, opts)
+			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			// Read from stdin or a specified file
 			reader := os.Stdin
@@ -74,15 +75,15 @@ func newStackImportCmd() *cobra.Command {
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
-			snapshot, err := stack.DeserializeDeployment(&deployment)
+			snapshot, err := stack.DeserializeUntypedDeployment(&deployment)
 			if err != nil {
 				switch err {
 				case stack.ErrDeploymentSchemaVersionTooOld:
 					return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-						s.Name().StackName())
+						stackName)
 				case stack.ErrDeploymentSchemaVersionTooNew:
 					return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-						"Please update your version of the Pulumi CLI", s.Name().StackName())
+						"Please update your version of the Pulumi CLI", stackName)
 				}
 
 				return errors.Wrap(err, "could not deserialize deployment")
@@ -90,9 +91,9 @@ func newStackImportCmd() *cobra.Command {
 
 			var result error
 			for _, res := range snapshot.Resources {
-				if res.URN.Stack() != s.Name().StackName() {
+				if res.URN.Stack() != stackName {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
-						res.URN, res.URN.Stack(), s.Name().StackName())
+						res.URN, res.URN.Stack(), stackName)
 					if force {
 						// If --force was passed, just issue a warning and proceed anyway.
 						// Note: we could associate this diagnostic with the resource URN
@@ -110,8 +111,28 @@ func newStackImportCmd() *cobra.Command {
 					errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
 			}
 
+			// Explicitly clear-out any pending operations.
+			if snapshot.PendingOperations != nil {
+				for _, op := range snapshot.PendingOperations {
+					msg := fmt.Sprintf(
+						"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
+					cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
+				}
+
+				snapshot.PendingOperations = nil
+			}
+			bytes, err := json.Marshal(stack.SerializeDeployment(snapshot))
+			if err != nil {
+				return err
+			}
+
+			dep := apitype.UntypedDeployment{
+				Version:    apitype.DeploymentSchemaVersionCurrent,
+				Deployment: bytes,
+			}
+
 			// Now perform the deployment.
-			if err = s.ImportDeployment(commandContext(), &deployment); err != nil {
+			if err = s.ImportDeployment(commandContext(), &dep); err != nil {
 				return errors.Wrap(err, "could not import deployment")
 			}
 			fmt.Printf("Import successful.\n")

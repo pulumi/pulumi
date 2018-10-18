@@ -6,13 +6,55 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-**The Pulumi Cloud Development Platform** is the easiest way to create and deploy cloud programs that use containers,
-serverless functions, hosted services, and infrastructure, on any cloud.
+**Pulumi's Cloud Native SDK** is the easiest way to create and deploy cloud programs that use
+containers, serverless functions, hosted services, and infrastructure, on any cloud.
 
-Simply write code in your favorite language and Pulumi automatically provisions and manages your AWS, Azure, Google
-Cloud, and/or Kubernetes resources, using an
-[immutable infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_as_Code) approach.  Skip the YAML, and
+Simply write code in your favorite language and Pulumi automatically provisions and manages your
+[AWS](https://pulumi.io/reference/aws.html), [Azure](https://pulumi.io/reference/azure.html),
+[Google Cloud Platform](https://pulumi.io/reference/gcp.html), and/or
+[Kubernetes](https://pulumi.io/reference/kubernetes.html) resources, using an
+[infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_as_Code) approach.  Skip the YAML, and
 use standard language features like loops, functions, classes, and package management that you already know and love.
+
+For example, create three web servers:
+
+```typescript
+let aws = require("@pulumi/aws");
+let sg = new aws.ec2.SecurityGroup("web-sg", {
+    ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"]}],
+});
+for (let i = 0; i < 3; i++) {
+    new aws.ec2.Instance(`web-${i}`, {
+        ami: "ami-7172b611",
+        instanceType: "t2.micro",
+        securityGroups: [ sg.name ],
+        userData: `#!/bin/bash
+            echo "Hello, World!" > index.html
+            nohup python -m SimpleHTTPServer 80 &`,
+    });
+}
+```
+
+Or a simple serverless timer that archives Hacker News every day at 8:30AM:
+
+```typescript
+let cloud = require("@pulumi/cloud");
+let snapshots = new cloud.Table("snapshots");
+cloud.timer.daily("daily-yc-snapshot", { hourUTC: 8, minuteUTC: 30 }, () => {
+    let req = require("https").get("https://news.ycombinator.com", (res) => {
+        let content = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => { content += chunk });
+        res.on("end", () => {
+           snapshots.insert({ date: Date.now(), content: content });
+        });
+    });
+    req.end();
+});
+```
+
+Many examples are available spanning containers, serverless, and infrastructure in
+[pulumi/examples](https://github.com/pulumi/examples).
 
 Pulumi is open source under the Apache 2.0 license, supports many languages and clouds, and is easy to extend.  This
 repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and individual libraries are in their own repos.
@@ -44,7 +86,7 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
 
 1. **Install**:
 
-    To install the latest Pulumi release, run:
+    To install the latest Pulumi release, run the following (see full [installation instructions](https://pulumi.io/install) for additional installation options):
 
     ```bash
     $ curl -fsSL https://get.pulumi.com/ | sh

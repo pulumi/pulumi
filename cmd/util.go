@@ -17,32 +17,36 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 
+	"github.com/golang/glog"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
+	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -50,15 +54,15 @@ func hasDebugCommands() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
 }
 
-func currentBackend(opts backend.DisplayOptions) (backend.Backend, error) {
+func currentBackend(opts display.Options) (backend.Backend, error) {
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil {
 		return nil, err
 	}
-	if local.IsLocalBackendURL(creds.Current) {
-		return local.New(cmdutil.Diag(), creds.Current), nil
+	if filestate.IsLocalBackendURL(creds.Current) {
+		return filestate.New(cmdutil.Diag(), creds.Current)
 	}
-	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -80,8 +84,9 @@ func commandContext() context.Context {
 	return ctx
 }
 
-// createStack creates a stack with the given name, and selects it as the current.
-func createStack(b backend.Backend, stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
+// createStack creates a stack with the given name, and optionally selects it as the current.
+func createStack(
+	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool) (backend.Stack, error) {
 	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
 		// If it's a StackAlreadyExistsError, don't wrap it.
@@ -91,8 +96,10 @@ func createStack(b backend.Backend, stackRef backend.StackReference, opts interf
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
-	if err = state.SetCurrentStack(stack.Name().String()); err != nil {
-		return nil, err
+	if setCurrent {
+		if err = state.SetCurrentStack(stack.Ref().String()); err != nil {
+			return nil, err
+		}
 	}
 
 	return stack, nil
@@ -101,9 +108,10 @@ func createStack(b backend.Backend, stackRef backend.StackReference, opts interf
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(stackName string, offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
+func requireStack(
+	stackName string, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(offerNew, opts)
+		return requireCurrentStack(offerNew, opts, setCurrent)
 	}
 
 	b, err := currentBackend(opts)
@@ -134,13 +142,13 @@ func requireStack(stackName string, offerNew bool, opts backend.DisplayOptions) 
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil)
+		return createStack(b, stackRef, nil, setCurrent)
 	}
 
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
+func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Search for the current stack.
 	b, err := currentBackend(opts)
 	if err != nil {
@@ -154,12 +162,13 @@ func requireCurrentStack(offerNew bool, opts backend.DisplayOptions) (backend.St
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(b, offerNew, opts)
+	return chooseStack(b, offerNew, opts, setCurrent)
 }
 
-// chooseStack will prompt the user to choose amongst the full set of stacks in the given backends.  If offerNew is
+// chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
+func chooseStack(
+	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if offerNew {
@@ -176,22 +185,20 @@ func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) 
 		return nil, err
 	}
 
-	// First create a list and map of stack names.
+	// List stacks as available options.
 	var options []string
-	stacks := make(map[string]backend.Stack)
-	allStacks, err := b.ListStacks(commandContext(), &proj.Name)
+	summaries, err := b.ListStacks(commandContext(), &proj.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
-	for _, stack := range allStacks {
-		name := stack.Name().String()
+	for _, summary := range summaries {
+		name := summary.Name().String()
 		options = append(options, name)
-		stacks[name] = stack
 	}
 	sort.Strings(options)
 
 	// If we are offering to create a new stack, add that to the end of the list.
-	newOption := "<create a new stack>"
+	const newOption = "<create a new stack>"
 	if offerNew {
 		options = append(options, newOption)
 	} else if len(options) == 0 {
@@ -204,7 +211,7 @@ func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) 
 	currStack, currErr := state.CurrentStack(commandContext(), b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
-		current = currStack.Name().String()
+		current = currStack.Ref().String()
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
@@ -217,10 +224,10 @@ func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) 
 	} else {
 		message += ":"
 	}
-	message = opts.Color.Colorize(colors.BrightWhite + message + colors.Reset)
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	var option string
-	if err := survey.AskOne(&survey.Select{
+	if err = survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
 		Default: current,
@@ -229,20 +236,37 @@ func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) 
 	}
 
 	if option == newOption {
-		stackName, err := cmdutil.ReadConsole("Please enter your desired stack name")
-		if err != nil {
-			return nil, err
+		stackName, readErr := cmdutil.ReadConsole("Please enter your desired stack name")
+		if readErr != nil {
+			return nil, readErr
 		}
 
-		stackRef, err := b.ParseStackReference(stackName)
-		if err != nil {
-			return nil, err
+		stackRef, parseErr := b.ParseStackReference(stackName)
+		if parseErr != nil {
+			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil)
+		return createStack(b, stackRef, nil, setCurrent)
 	}
 
-	return stacks[option], nil
+	// With the stack name selected, look it up from the backend.
+	stackRef, err := b.ParseStackReference(option)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing selected stack")
+	}
+	stack, err := b.GetStack(commandContext(), stackRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting selected stack")
+	}
+
+	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
+	if setCurrent {
+		if err = state.SetCurrentStack(stackRef.String()); err != nil {
+			return nil, err
+		}
+	}
+
+	return stack, nil
 }
 
 // readProject attempts to detect and read the project for the current workspace. If an error occurs, it will be
@@ -272,48 +296,6 @@ func readProject() (*workspace.Project, string, error) {
 	return proj, filepath.Dir(path), nil
 }
 
-type colorFlag struct {
-	value colors.Colorization
-}
-
-func (cf *colorFlag) String() string {
-	return string(cf.Colorization())
-}
-
-func (cf *colorFlag) Set(value string) error {
-	switch value {
-	case "always":
-		cf.value = colors.Always
-	case "never":
-		cf.value = colors.Never
-	case "raw":
-		cf.value = colors.Raw
-	// Backwards compat for old flag values.
-	case "auto":
-		cf.value = colors.Always
-	default:
-		return errors.Errorf("unsupported color option: '%s'.  Supported values are: always, never, raw", value)
-	}
-
-	return nil
-}
-
-func (cf *colorFlag) Type() string {
-	return "colors.Colorization"
-}
-
-func (cf *colorFlag) Colorization() colors.Colorization {
-	if _, ok := os.LookupEnv("NO_COLOR"); ok {
-		return colors.Never
-	}
-
-	if cf.value == "" {
-		return colors.Always
-	}
-
-	return cf.value
-}
-
 // anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a
 // non-zero-length slice. This can be used to determine whether or not any data was ever written to the writer.
 type anyWriter bool
@@ -326,7 +308,7 @@ func (w *anyWriter) Write(d []byte) (int, error) {
 }
 
 // isGitWorkTreeDirty returns true if the work tree for the current directory's repository is dirty.
-func isGitWorkTreeDirty() (bool, error) {
+func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 	gitBin, err := exec.LookPath("git")
 	if err != nil {
 		return false, err
@@ -336,6 +318,7 @@ func isGitWorkTreeDirty() (bool, error) {
 	gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
 	var anyOutput anyWriter
 	var stderr bytes.Buffer
+	gitStatusCmd.Dir = repoRoot
 	gitStatusCmd.Stdout = &anyOutput
 	gitStatusCmd.Stderr = &stderr
 	if err = gitStatusCmd.Run(); err != nil {
@@ -350,63 +333,166 @@ func isGitWorkTreeDirty() (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
-	m := backend.UpdateMetadata{
+func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
+	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
 	}
 
-	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
-	repo, err := gitutil.GetGitRepository(root)
-	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not detect Git repository: %v"), err)
-	}
-	if repo == nil {
-		logging.Infof("no git repository found")
-		return m, nil
+	if err := addGitMetadata(root, m); err != nil {
+		glog.V(3).Infof("errors detecting git metadata: %s", err)
 	}
 
+	addCIMetadataToEnvironment(m.Environment)
+
+	return m, nil
+}
+
+// addGitMetadata populate's the environment metadata bag with Git-related values.
+func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
+	var allErrors *multierror.Error
+
+	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
+	repo, err := gitutil.GetGitRepository(repoRoot)
+	if err != nil {
+		return errors.Wrapf(err, "detecting Git repository")
+	}
+	if repo == nil {
+		return nil
+	}
+
+	if err := addGitHubMetadataToEnvironment(repo, m.Environment); err != nil {
+		allErrors = multierror.Append(allErrors, err)
+	}
+
+	if err := addGitCommitMetadata(repo, repoRoot, m); err != nil {
+		allErrors = multierror.Append(allErrors, err)
+	}
+
+	return allErrors.ErrorOrNil()
+}
+
+func addGitHubMetadataToEnvironment(repo *git.Repository, env map[string]string) error {
 	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
 	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByRepo(repo)
 	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not detect GitHub project information: %v"), err)
-	} else {
-		m.Environment[backend.GitHubLogin] = ghLogin
-		m.Environment[backend.GitHubRepo] = ghRepo
+		return errors.Wrap(err, "detecting GitHub project information")
 	}
+	env[backend.GitHubLogin] = ghLogin
+	env[backend.GitHubRepo] = ghRepo
+
+	return nil
+}
+
+func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.UpdateMetadata) error {
+	// When running in a CI/CD environment, the current git repo may be running from a
+	// detached HEAD and may not have have the latest commit message. We fall back to
+	// CI-system specific environment variables when possible.
+	ciVars := ciutil.DetectVars()
 
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not fetch Git repository HEAD info: %v"), err)
-	} else {
-		hash := head.Hash()
-		m.Environment[backend.GitHead] = hash.String()
-		commit, commitErr := repo.CommitObject(hash)
-		if commitErr != nil {
-			cmdutil.Diag().Warningf(
-				diag.Message("", "could not fetch Git repository HEAD commit info: %v"), commitErr)
-		} else {
-			m.Environment[backend.GitCommitter] = commit.Committer.Name
-			m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
-			m.Environment[backend.GitAuthor] = commit.Author.Name
-			m.Environment[backend.GitAuthorEmail] = commit.Author.Email
-		}
+		return errors.Wrap(err, "getting repository HEAD")
 	}
 
-	isDirty, err := isGitWorkTreeDirty()
+	hash := head.Hash()
+	m.Environment[backend.GitHead] = hash.String()
+	commit, commitErr := repo.CommitObject(hash)
+	if commitErr != nil {
+		return errors.Wrap(commitErr, "getting HEAD commit info")
+	}
+
+	// If in detached head, will be "HEAD", and fallback to use value from CI/CD system if possible.
+	// Otherwise, the value will be like "refs/heads/master".
+	headName := head.Name().String()
+	if headName == "HEAD" && ciVars.BranchName != "" {
+		headName = ciVars.BranchName
+	}
+	if headName != "HEAD" {
+		m.Environment[backend.GitHeadName] = headName
+	}
+
+	// If there is no message set manually, default to the Git commit's title.
+	msg := commit.Message
+	if msg == "" && ciVars.CommitMessage != "" {
+		msg = ciVars.CommitMessage
+	}
+	if m.Message == "" {
+		m.Message = gitCommitTitle(msg)
+	}
+
+	// Store committer and author information.
+	m.Environment[backend.GitCommitter] = commit.Committer.Name
+	m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
+	m.Environment[backend.GitAuthor] = commit.Author.Name
+	m.Environment[backend.GitAuthorEmail] = commit.Author.Email
+
+	// If the worktree is dirty, set a bit, as this could be a mistake.
+	isDirty, err := isGitWorkTreeDirty(repoRoot)
 	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not Git repository dirty worktree info: %v"), err)
-	} else {
-		m.Environment[backend.GitDirty] = fmt.Sprint(isDirty)
+		return errors.Wrapf(err, "checking git worktree dirty state")
+	}
+	m.Environment[backend.GitDirty] = strconv.FormatBool(isDirty)
+
+	return nil
+}
+
+// gitCommitTitle turns a commit message into its title, simply by taking the first line.
+func gitCommitTitle(s string) string {
+	if ixCR := strings.Index(s, "\r"); ixCR != -1 {
+		s = s[:ixCR]
+	}
+	if ixLF := strings.Index(s, "\n"); ixLF != -1 {
+		s = s[:ixLF]
+	}
+	return s
+}
+
+// addCIMetadataToEnvironment populates the environment metadata bag with CI/CD-related values.
+func addCIMetadataToEnvironment(env map[string]string) {
+	// If CI variables have been set specifically for Pulumi in the environment,
+	// use that in preference to attempting to automatically detect the CI system.
+	// This allows Pulumi to work with any CI system with appropriate configuration,
+	// rather than requiring explicit support for each one.
+	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
+		env[backend.CISystem] = os.Getenv("PULUMI_CI_SYSTEM")
+
+		// Set whatever variables we have available in the environment
+		if buildID := os.Getenv("PULUMI_CI_BUILD_ID"); buildID != "" {
+			env[backend.CIBuildID] = buildID
+		}
+		if buildType := os.Getenv("PULUMI_CI_BUILD_TYPE"); buildType != "" {
+			env[backend.CIBuildType] = buildType
+		}
+		if buildURL := os.Getenv("PULUMI_CI_BUILD_URL"); buildURL != "" {
+			env[backend.CIBuildURL] = buildURL
+		}
+
+		// Pass pull request-specific vales as appropriate.
+		if sha := os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"); sha != "" {
+			env[backend.CIPRHeadSHA] = sha
+		}
+
+		// Don't proceed with automatic CI detection
+		return
 	}
 
-	return m, nil
+	// If CI variables were not set in the environment, try to detect which
+	// CI system we are inside and set variables
+	vars := ciutil.DetectVars()
+	if vars.Name != "" {
+		env[backend.CISystem] = string(vars.Name)
+		env[backend.CIBuildID] = vars.BuildID
+		env[backend.CIBuildType] = vars.BuildType
+		env[backend.CIPRHeadSHA] = vars.SHA
+	}
 }
 
 type cancellationScope struct {
 	context *cancel.Context
 	sigint  chan os.Signal
+	done    chan bool
 }
 
 func (s *cancellationScope) Context() *cancel.Context {
@@ -416,6 +502,7 @@ func (s *cancellationScope) Context() *cancel.Context {
 func (s *cancellationScope) Close() {
 	signal.Stop(s.sigint)
 	close(s.sigint)
+	<-s.done
 }
 
 type cancellationScopeSource int
@@ -428,6 +515,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	c := &cancellationScope{
 		context: cancelContext,
 		sigint:  make(chan os.Signal),
+		done:    make(chan bool),
 	}
 
 	go func() {
@@ -462,16 +550,21 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 				cancelSource.Terminate()
 			}
 		}
+		close(c.done)
 	}()
 	signal.Notify(c.sigint, os.Interrupt)
 
 	return c
 }
 
-// isInteractive returns true if the environment and command line options indicate we should
-// do things interactively
-func isInteractive(nonInteractive bool) bool {
-	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !testutil.IsCI()
+// printJSON simply prints out some object, formatted as JSON, using standard indentation.
+func printJSON(v interface{}) error {
+	out, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
 }
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions

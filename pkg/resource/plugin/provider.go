@@ -18,7 +18,6 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -38,8 +37,14 @@ type Provider interface {
 	io.Closer
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
+
+	// CheckConfig validates the configuration for this resource provider.
+	CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
+	DiffConfig(olds, news resource.PropertyMap) (DiffResult, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
-	Configure(vars map[config.Key]string) error
+	Configure(inputs resource.PropertyMap) error
+
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
 	Check(urn resource.URN, olds, news resource.PropertyMap,
@@ -52,7 +57,8 @@ type Provider interface {
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
-	Read(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.PropertyMap, error)
+	Read(urn resource.URN, id resource.ID,
+		props resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
@@ -62,6 +68,13 @@ type Provider interface {
 	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+
+	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
+	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
+	// will either a creation error or an initialization error. SignalCancellation is advisory and
+	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
+	// called before (e.g.) hard-closing any gRPC connection.
+	SignalCancellation() error
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

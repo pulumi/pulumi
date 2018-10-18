@@ -1,0 +1,3 @@
+name: read_dbr
+description: A program that has a DBR resource depending on a read resource
+runtime: nodejs

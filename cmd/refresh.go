@@ -21,12 +21,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newRefreshCmd() *cobra.Command {
 	var debug bool
+	var expectNop bool
 	var message string
 	var stack string
 
@@ -37,8 +39,8 @@ func newRefreshCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var nonInteractive bool
 	var skipPreview bool
+	var suppressOutputs bool
 	var yes bool
 
 	var cmd = &cobra.Command{
@@ -55,7 +57,7 @@ func newRefreshCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := isInteractive(nonInteractive)
+			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
 			}
@@ -65,17 +67,18 @@ func newRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			opts.Display = backend.DisplayOptions{
+			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, true, opts.Display)
+			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -96,17 +99,32 @@ func newRefreshCmd() *cobra.Command {
 				Debug:     debug,
 			}
 
-			_, err = s.Refresh(commandContext(), proj, root, m, opts, cancellationScopes)
-			if err == context.Canceled {
+			changes, err := s.Refresh(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
+			switch {
+			case err == context.Canceled:
 				return errors.New("refresh cancelled")
+			case err != nil:
+				return PrintEngineError(err)
+			case expectNop && changes != nil && changes.HasChanges():
+				return errors.New("error: no changes were expected but changes occurred")
+			default:
+				return nil
 			}
-			return err
 		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
+	cmd.PersistentFlags().BoolVar(
+		&expectNop, "expect-no-changes", false,
+		"Return an error if any changes occur during this update")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -122,11 +140,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().BoolVar(
-		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		&parallel, "parallel", "p", defaultParallel,
+		"Allow P resource operations to run in parallel at once (1 for no parallelism, 0 for unbounded parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
@@ -136,6 +152,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not perform a preview before performing the refresh")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")

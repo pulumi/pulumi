@@ -19,6 +19,7 @@
 //
 // As a side-effect of importing this file, we must enable the --allow-natives-syntax V8
 // flag. This is because we are using V8 intrinsics in order to implement this module.
+import * as semver from "semver";
 import * as v8 from "v8";
 v8.setFlagsFromString("--allow-natives-syntax");
 
@@ -39,15 +40,23 @@ interface V8Script {
     locationFromPosition(pos: V8SourcePosition): V8SourceLocation;
 }
 
+// Check if we're on node 10.  We need to call specific intrinsics depending on which version we're on.
+const isNodeV10 = semver.gte(process.version, "10.0.0");
+
 // The second intrinsic is `FunctionGetScriptSourcePosition`, which does about what you'd
 // expect. It returns a `V8SourcePosition`, which can be passed to `V8Script::locationFromPosition`
 // to produce a `V8SourceLocation`.
 const getSourcePosition: (func: Function) => V8SourcePosition =
     new Function("func", "return %FunctionGetScriptSourcePosition(func);") as any;
 
+const scriptPositionInfo: (script: V8Script, pos: V8SourcePosition) => { line: number, column: number } =
+    isNodeV10
+        ? new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any
+        : <any>undefined;
+
 // V8SourcePosition is an opaque value that should be passed verbatim to `V8Script.locationFromPosition`
 // in order to receive a V8SourceLocation.
-interface V8SourcePosition {}
+interface V8SourcePosition { }
 
 // V8SourceLocation contains metadata about a single location within a Script. For a function, it
 // refers to the last character of that function's declaration.
@@ -139,31 +148,32 @@ export function getFunctionFile(func: Function): string {
 }
 
 /**
- * Given a function, returns the line number in the file where this function was defined.
- * Returns 0 if the given function has no Script.
+ * Given a function, returns the line and column number in the file where this function was defined.
+ * Returns { 0, 0 } if the location cannot be found or if the given function has no Script.
  */
-export function getFunctionLine(func: Function): number {
+export function getFunctionLocation(func: Function): { line: number, column: number } {
     const script = getScript(func);
-    if (!script) {
-        return 0;
+    if (script) {
+        const pos = getSourcePosition(func);
+
+        try {
+            if (isNodeV10) {
+                return scriptPositionInfo(script, pos);
+            } else {
+                return script.locationFromPosition(pos);
+            }
+        } catch (err) {
+            // Be resilient to native functions not being available. In this case, we just return
+            // '0,0'.  That's not great, but it at least lets us run, and it isn't a terrible
+            // experience.
+            //
+            // Specifically, we only need these locations when we're printing out an error about not
+            // being able to serialize something.  In that case, we still print out the names of the
+            // functions (as well as the call-tree that got us there), *and* we print out the body
+            // of the function.  With both of these, it is generally not too difficult to find out
+            // where the code actually lives.
+        }
     }
 
-    const pos = getSourcePosition(func);
-    const location = script.locationFromPosition(pos);
-    return location.line;
-}
-
-/**
- * Given a function, returns the column in the file where this function was defined.
- * Returns 0 if the given function has no script.
- */
-export function getFunctionColumn(func: Function): number {
-    const script = getScript(func);
-    if (!script) {
-        return 0;
-    }
-
-    const pos = getSourcePosition(func);
-    const location = script.locationFromPosition(pos);
-    return location.column;
+    return { line: 0, column: 0 };
 }

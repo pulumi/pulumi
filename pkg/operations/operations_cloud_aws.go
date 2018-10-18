@@ -193,14 +193,15 @@ var (
 	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-g0-9\\-]{36}\t((?s).*)\n")
 )
 
-// extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific
-// metadata.  In particular, only the second line below is extracter, and it is extracted with the recorded timestamp.
+// extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping
+// Lambda-specific metadata.  In particular, only the second line below is extracted, and it is
+// extracted with the recorded timestamp.
 //
 // ```
 //  START RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723 Version: $LATEST
-//  2017-11-17T20:30:27.736Z	25e0d1e0-cbd6-11e7-9808-c7085dfe5723	GET /todo
+//  2017-11-17T20:30:27.736Z    25e0d1e0-cbd6-11e7-9808-c7085dfe5723    GET /todo
 //  END RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723
-//  REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723	Duration: 222.92 ms	Billed Duration: 300 ms 	<snip>
+//  REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723  Duration: 222.92 ms Billed Duration: 300 ms     <snip>
 // ```
 func extractLambdaLogMessage(message string, id string) *LogEntry {
 	innerMatches := logRegexp.FindAllStringSubmatch(message, -1)

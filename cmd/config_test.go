@@ -25,8 +25,19 @@ import (
 )
 
 func TestPrettyKeyForProject(t *testing.T) {
-	proj := &workspace.Project{Name: tokens.PackageName("test-package"), Runtime: "nodejs"}
+	proj := &workspace.Project{
+		Name:        tokens.PackageName("test-package"),
+		RuntimeInfo: workspace.NewProjectRuntimeInfo("nodejs", nil),
+	}
 
 	assert.Equal(t, "foo", prettyKeyForProject(config.MustMakeKey("test-package", "foo"), proj))
 	assert.Equal(t, "other-package:bar", prettyKeyForProject(config.MustMakeKey("other-package", "bar"), proj))
+}
+
+func TestSecretDetection(t *testing.T) {
+	assert.True(t, looksLikeSecret(config.MustMakeKey("test", "token"), "1415fc1f4eaeb5e096ee58c1480016638fff29bf"))
+	assert.True(t, looksLikeSecret(config.MustMakeKey("test", "apiToken"), "1415fc1f4eaeb5e096ee58c1480016638fff29bf"))
+
+	// The key name does not match the, so even though this "looks like" a secret, we say it is not.
+	assert.False(t, looksLikeSecret(config.MustMakeKey("test", "okay"), "1415fc1f4eaeb5e096ee58c1480016638fff29bf"))
 }

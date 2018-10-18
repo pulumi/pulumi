@@ -1,0 +1,3 @@
+name: first_class_providers
+description: A program that uses an explicit provider.
+runtime: nodejs

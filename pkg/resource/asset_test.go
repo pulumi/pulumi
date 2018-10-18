@@ -371,6 +371,54 @@ func TestNestedArchive(t *testing.T) {
 	assert.Equal(t, "fake.txt", files[2].Name)
 }
 
+func TestFileReferencedThroughMultiplePaths(t *testing.T) {
+	// Create temp dir and place some files.
+	dirName, err := ioutil.TempDir("", "")
+	assert.Nil(t, err)
+	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
+
+	// Construct an AssetArchive with a nested PathArchive.
+	outerArch, err := NewPathArchive(filepath.Join(dirName, "./foo"))
+	assert.Nil(t, err)
+	innerArch, err := NewPathArchive(filepath.Join(dirName, "./foo/bar"))
+	assert.Nil(t, err)
+	arch, err := NewAssetArchive(map[string]interface{}{
+		"./foo":     outerArch,
+		"./foo/bar": innerArch,
+	})
+	assert.Nil(t, err)
+
+	// Write a ZIP of the AssetArchive to disk.
+	tmpFile, err := ioutil.TempFile("", "")
+	fileName := tmpFile.Name()
+	assert.Nil(t, err)
+	err = arch.Archive(ZIPArchive, tmpFile)
+	assert.Nil(t, err)
+	tmpFile.Close()
+
+	// Read the ZIP back into memory, and validate its contents.
+	zipReader, err := zip.OpenReader(fileName)
+	defer contract.IgnoreClose(zipReader)
+	assert.Nil(t, err)
+	files := zipReader.File
+	assert.Len(t, files, 1)
+	assert.Equal(t, "foo/bar/b.txt", files[0].Name)
+}
+
+func TestInvalidPathArchive(t *testing.T) {
+	// Create a temp file that is not an asset.
+	tmpFile, err := ioutil.TempFile("", "")
+	fileName := tmpFile.Name()
+	assert.NoError(t, err)
+	fmt.Fprintf(tmpFile, "foo\n")
+	tmpFile.Close()
+
+	// Attempt to construct a PathArchive with the temp file.
+	_, err = NewPathArchive(fileName)
+	assert.Error(t, err)
+}
+
 func validateTestDirArchive(t *testing.T, arch *Archive) {
 	r, err := arch.Open()
 	assert.Nil(t, err)

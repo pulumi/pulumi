@@ -18,14 +18,23 @@ package backend
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
+)
+
+var (
+	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
+	ErrNoPreviousDeployment = errors.New("no previous deployment")
 )
 
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
@@ -44,10 +53,20 @@ func (e StackAlreadyExistsError) Error() string {
 type StackReference interface {
 	// fmt.Stringer's String() method returns a string of the stack identity, suitable for display in the CLI
 	fmt.Stringer
-	// StackName is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
+	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that informaion is not part of the StackName() we pass to the engine.
-	StackName() tokens.QName
+	Name() tokens.QName
+}
+
+// StackSummary provides a basic description of a stack, without the ability to inspect its resources or make changes.
+type StackSummary interface {
+	Name() StackReference
+
+	// LastUpdate returns when the stack was last updated, as applicable.
+	LastUpdate() *time.Time
+	// ResourceCount returns the stack's resource count, as applicable.
+	ResourceCount() *int
 }
 
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
@@ -55,6 +74,8 @@ type StackReference interface {
 type Backend interface {
 	// Name returns a friendly name for this backend.
 	Name() string
+	// URL returns a URL at which information about this backend may be seen.
+	URL() string
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
@@ -69,23 +90,19 @@ type Backend interface {
 	// first boolean return value will be set to true.
 	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]Stack, error)
+	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error)
 
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Update(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Refresh(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
@@ -105,12 +122,21 @@ type Backend interface {
 	CurrentUser() (string, error)
 }
 
+// UpdateOperation is a complete stack update operation (preview, update, refresh, or destroy).
+type UpdateOperation struct {
+	Proj   *workspace.Project
+	Root   string
+	M      *UpdateMetadata
+	Opts   UpdateOptions
+	Scopes CancellationScopeSource
+}
+
 // UpdateOptions is the full set of update options, including backend and engine options.
 type UpdateOptions struct {
 	// Engine contains all of the engine-specific options.
 	Engine engine.UpdateOptions
 	// Display contains all of the backend display options.
-	Display DisplayOptions
+	Display display.Options
 
 	// AutoApprove, when true, will automatically approve previews.
 	AutoApprove bool

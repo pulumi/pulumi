@@ -11,9 +11,20 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 - Go 1.9 or Later
 - NodeJS 6.10.X or 8.11.X (LTS releases).  Others may work, but there are [known issues using Node 10](https://github.com/pulumi/pulumi/issues/1270).
 - Python 2.7.X
+- [pipenv](https://github.com/pypa/pipenv)
 - [dep](https://github.com/golang/dep)
 - [Gometalinter](https://github.com/alecthomas/gometalinter)
 - [Yarn](https://yarnpkg.com/)
+
+## Getting dependencies on macOS
+
+You can easily get all required dependencies with brew
+
+```bash
+brew install node pipenv python@2 typescript dep yarn pandoc
+```
+
+## Make build system
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
 

@@ -20,13 +20,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackOutputCmd() *cobra.Command {
+	var jsonOut bool
 	var stackName string
+
 	cmd := &cobra.Command{
 		Use:   "output [property-name]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -36,12 +38,12 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and its output properties.
-			s, err := requireStack(stackName, false, opts)
+			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -60,9 +62,19 @@ func newStackOutputCmd() *cobra.Command {
 				name := args[0]
 				v, has := outputs[name]
 				if has {
-					fmt.Printf("%v\n", stringifyOutput(v))
+					if jsonOut {
+						if err := printJSON(v); err != nil {
+							return err
+						}
+					} else {
+						fmt.Printf("%v\n", stringifyOutput(v))
+					}
 				} else {
 					return errors.Errorf("current stack does not have output property '%v'", name)
+				}
+			} else if jsonOut {
+				if err := printJSON(outputs); err != nil {
+					return err
 				}
 			} else {
 				printStackOutputs(outputs)
@@ -70,7 +82,11 @@ func newStackOutputCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit outputs as JSON")
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+
 	return cmd
 }

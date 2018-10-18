@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -32,11 +33,11 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
 	var diffDisplay bool
-	var nonInteractive bool
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var suppressOutputs bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -62,18 +63,19 @@ func newPreviewCmd() *cobra.Command {
 					Parallel:  parallel,
 					Debug:     debug,
 				},
-				Display: backend.DisplayOptions{
+				Display: display.Options{
 					Color:                cmdutil.GetGlobalColorization(),
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
-					IsInteractive:        isInteractive(nonInteractive),
+					SuppressOutputs:      suppressOutputs,
+					IsInteractive:        cmdutil.Interactive(),
 					DiffDisplay:          diffDisplay,
 					Debug:                debug,
 				},
 			}
 
-			s, err := requireStack(stack, true, opts.Display)
+			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -88,10 +90,16 @@ func newPreviewCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
+			changes, err := s.Preview(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
 			switch {
 			case err != nil:
-				return err
+				return PrintEngineError(err)
 			case expectNop && changes != nil && changes.HasChanges():
 				return errors.New("error: no changes were expected but changes were proposed")
 			default:
@@ -121,11 +129,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().BoolVar(
-		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		&parallel, "parallel", "p", defaultParallel,
+		"Allow P resource operations to run in parallel at once (1 for no parallelism, 0 for unbounded parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -135,6 +141,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 
 	return cmd
 }

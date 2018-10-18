@@ -52,7 +52,7 @@ def invoke(tok, args):
         # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
         # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
-            wait_for_death()
+            sys.exit(0)
 
         # If the RPC otherwise failed, re-throw an exception with the message details - the contents
         # are suitable for user presentation.
@@ -109,7 +109,7 @@ def register_resource(typ, name, custom, props, opts):
         # this warning
         # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
-            wait_for_death()
+            sys.exit(0)
 
         # If the RPC otherwise failed, re-throw an exception with the message details - the contents
         # are suitable for user presentation.
@@ -155,24 +155,8 @@ def register_resource_outputs(res, outputs):
         # this warning
         # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
-            wait_for_death()
+            sys.exit(0)
             
         # If the RPC otherwise failed, re-throw an exception with the message details - the contents
         # are suitable for user presentation.
         raise Exception(exn.details())
-
-
-
-# wait_for_death loops forever. This is a hack.
-#
-# The purpose of this hack is to deal with graceful termination of the resource monitor.
-# When the engine decides that it needs to terminate, it shuts down the Log and ResourceMonitor RPC
-# endpoints. Shutting down RPC endpoints involves draining all outstanding RPCs and denying new connections.
-#
-# This is all fine for us as the language host, but we need to 1) not let the RPC that just failed due to
-# the ResourceMonitor server shutdown get displayed as an error and 2) not do any more RPCs, since they'll fail.
-#
-# We can accomplish both by just doing spinning forever until the engine kills us. It's ugly, but it works.
-def wait_for_death():
-    while True:
-        pass

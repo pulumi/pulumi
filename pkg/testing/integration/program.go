@@ -19,6 +19,7 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,6 +28,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,22 +39,22 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/retry"
-	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
-	Deployment   *apitype.Deployment
-	RootResource apitype.Resource
+	Deployment   *apitype.DeploymentV2
+	RootResource apitype.ResourceV2
 	Outputs      map[string]interface{}
 }
 
@@ -135,12 +137,17 @@ type ProgramTestOptions struct {
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
+	// ExpectRefreshChanges may be set to true if a test is expected to have changes yielded by an immediate refresh.
+	// This could occur, for example, is a resource's state is constantly changing outside of Pulumi (e.g., timestamps).
+	ExpectRefreshChanges bool
+	// SkipRefresh indicates that the refresh step should be skipped entirely.
+	SkipRefresh bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
-	// SkipBuild indicates that the build step should be skipped (e.g. no `yarn build` for `nodejs` programs)
-	SkipBuild bool
+	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
+	RunBuild bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
@@ -245,6 +252,16 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	return tokens.QName(opts.StackName)
 }
 
+// GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
+// We use this in CI to create test stacks in an organization that all developers have access to, for debugging.
+func (opts *ProgramTestOptions) GetStackNameWithOwner() tokens.QName {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		return tokens.QName(fmt.Sprintf("%s/%s", owner, opts.GetStackName()))
+	}
+
+	return opts.GetStackName()
+}
+
 // With combines a source set of options with a set of overrides.
 func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOptions {
 	if overrides.Dir != "" {
@@ -286,10 +303,65 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.ReportStats != nil {
 		opts.ReportStats = overrides.ReportStats
 	}
-	if overrides.SkipBuild {
-		opts.SkipBuild = overrides.SkipBuild
+	if overrides.RunBuild {
+		opts.RunBuild = overrides.RunBuild
+	}
+	if overrides.ExpectFailure {
+		opts.ExpectFailure = overrides.ExpectFailure
+	}
+	if overrides.ExpectRefreshChanges {
+		opts.ExpectRefreshChanges = overrides.ExpectRefreshChanges
+	}
+	if overrides.SkipRefresh {
+		opts.SkipRefresh = overrides.SkipRefresh
+	}
+	if overrides.AllowEmptyPreviewChanges {
+		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
+	}
+	if overrides.AllowEmptyUpdateChanges {
+		opts.AllowEmptyUpdateChanges = overrides.AllowEmptyUpdateChanges
+	}
+	if overrides.Bin != "" {
+		opts.Bin = overrides.Bin
+	}
+	if overrides.DebugLogLevel != 0 {
+		opts.DebugLogLevel = overrides.DebugLogLevel
+	}
+	if overrides.DebugUpdates {
+		opts.DebugUpdates = overrides.DebugUpdates
+	}
+	if overrides.Env != nil {
+		opts.Env = append(opts.Env, overrides.Env...)
 	}
 	return opts
+}
+
+type regexFlag struct {
+	re *regexp.Regexp
+}
+
+func (rf *regexFlag) String() string {
+	if rf.re == nil {
+		return ""
+	}
+	return rf.re.String()
+}
+
+func (rf *regexFlag) Set(v string) error {
+	r, err := regexp.Compile(v)
+	if err != nil {
+		return err
+	}
+	rf.re = r
+	return nil
+}
+
+var directoryMatcher regexFlag
+var listDirs bool
+
+func init() {
+	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
+	flag.BoolVar(&listDirs, "list-dirs", false, "list available integration tests without running them")
 }
 
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
@@ -297,7 +369,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 //   yarn install
 //   yarn link <each opts.Depencies>
-//   yarn run build
+//   (+) yarn run build
 //   pulumi init
 //   (*) pulumi login
 //   pulumi stack init integrationtesting
@@ -313,18 +385,30 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi stack rm --yes integrationtesting
 //
 //   (*) Only if PULUMI_ACCESS_TOKEN is set.
+//   (+) Only if `opts.RunBuild` is true.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	// If we're just listing tests, simply print this test's directory.
+	if listDirs {
+		fmt.Printf("%s\n", opts.Dir)
+		return
+	}
+
+	// If we have a matcher, ensure that this test matches its pattern.
+	if directoryMatcher.re != nil && !directoryMatcher.re.Match([]byte(opts.Dir)) {
+		t.Skip(fmt.Sprintf("Skipping: '%v' does not match '%v'", opts.Dir, directoryMatcher.re))
+	}
+
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	if err := os.Setenv(local.DisableCheckpointBackupsEnvVar, "1"); err != nil {
-		t.Errorf("error setting env var '%s': %v", local.DisableCheckpointBackupsEnvVar, err)
+	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
+		t.Errorf("error setting env var '%s': %v", filestate.DisableCheckpointBackupsEnvVar, err)
 	}
 
 	t.Parallel()
 
-	if testutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+	if ciutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skip("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
@@ -567,15 +651,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
-	// If an optional test owner is provided in the environment, create the stack under that owner. We use this in
-	// CI to ensure stacks are owned by an organization that all Pulumi developers have access to.
-	qualifiedStackName := string(stackName)
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
-		qualifiedStackName = owner + "/" + qualifiedStackName
-	}
-
 	// Stack init
-	stackInitArgs := []string{"stack", "init", qualifiedStackName}
+	stackInitArgs := []string{"stack", "init", string(pt.opts.GetStackNameWithOwner())}
 	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
 
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
@@ -610,9 +687,12 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return err
 	}
 
-	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
+	if pt.t.Failed() {
+		fprintf(pt.opts.Stdout, "Test failed, retaining stack '%s'\n", pt.opts.GetStackNameWithOwner())
+		return nil
+	}
 
-	return err
+	return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
 }
 
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
@@ -651,6 +731,20 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 		return err
 	}
 
+	if !pt.opts.SkipRefresh {
+		// Perform a refresh and ensure it doesn't yield changes.
+		refresh := []string{"refresh", "--non-interactive", "--skip-preview"}
+		if pt.opts.GetDebugUpdates() {
+			refresh = append(refresh, "-d")
+		}
+		if !pt.opts.ExpectRefreshChanges {
+			refresh = append(refresh, "--expect-no-changes")
+		}
+		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir); err != nil {
+			return err
+		}
+	}
+
 	// If there are any edits, apply them and run a preview and update for each one.
 	return pt.testEdits(dir)
 }
@@ -674,7 +768,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	expectNopUpdate bool) error {
 
 	preview := []string{"preview", "--non-interactive"}
-	update := []string{"update", "--non-interactive", "--skip-preview"}
+	update := []string{"up", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
@@ -689,6 +783,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
 	}
 
+	// If not in quick mode, run an explicit preview.
 	if !pt.opts.Quick {
 		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir); err != nil {
 			if shouldFail {
@@ -699,6 +794,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 		}
 	}
 
+	// Now run an update.
 	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir); err != nil {
 		if shouldFail {
 			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
@@ -860,13 +956,13 @@ func (pt *programTester) performExtraRuntimeValidation(
 	if err = json.NewDecoder(f).Decode(&untypedDeployment); err != nil {
 		return err
 	}
-	var deployment apitype.Deployment
+	var deployment apitype.DeploymentV2
 	if err = json.Unmarshal(untypedDeployment.Deployment, &deployment); err != nil {
 		return err
 	}
 
 	// Get the root resource and outputs from the deployment
-	var rootResource apitype.Resource
+	var rootResource apitype.ResourceV2
 	var outputs map[string]interface{}
 	for _, res := range deployment.Resources {
 		if res.Type == resource.RootStackType {
@@ -924,7 +1020,7 @@ func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
 	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
 	var tmpdir, projdir string
-	if projinfo.Proj.Runtime == "go" {
+	if projinfo.Proj.RuntimeInfo.Name() == "go" {
 		projdir = projinfo.Root
 	} else {
 		stackName := string(pt.opts.GetStackName())
@@ -966,7 +1062,7 @@ func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
 func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
-	switch rt := projinfo.Proj.Runtime; rt {
+	switch rt := projinfo.Proj.RuntimeInfo.Name(); rt {
 	case "nodejs":
 		return pt.prepareNodeJSProject(projinfo)
 	case "python":
@@ -1016,7 +1112,7 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
-	if !pt.opts.SkipBuild {
+	if pt.opts.RunBuild {
 		// And finally compile it using whatever build steps are in the package.json file.
 		if err = pt.runYarnCommand("yarn-build", []string{"run", "build"}, cwd); err != nil {
 			return err

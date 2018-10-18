@@ -1,10 +1,6 @@
 {
     "name": "stack_project_name",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
-    "scripts": {
-        "build": "tsc"
-    },
+    "license": "Apache-2.0",
     "devDependencies": {
         "typescript": "^2.5.3"
     },

@@ -19,11 +19,17 @@ else
 TEST_FAST_TIMEOUT := 2m
 endif
 
+build-proto::
+	cd sdk/proto && ./generate.sh
+
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
+
+dist::
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 LINT_SUPPRESS="or be unexported"
 lint::

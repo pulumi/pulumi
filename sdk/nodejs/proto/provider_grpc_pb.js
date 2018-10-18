@@ -26,7 +26,7 @@ function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
     throw new Error('Expected argument of type google.protobuf.Empty');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_google_protobuf_Empty(buffer_arg) {
@@ -37,7 +37,7 @@ function serialize_pulumirpc_CheckRequest(arg) {
   if (!(arg instanceof provider_pb.CheckRequest)) {
     throw new Error('Expected argument of type pulumirpc.CheckRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CheckRequest(buffer_arg) {
@@ -48,7 +48,7 @@ function serialize_pulumirpc_CheckResponse(arg) {
   if (!(arg instanceof provider_pb.CheckResponse)) {
     throw new Error('Expected argument of type pulumirpc.CheckResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CheckResponse(buffer_arg) {
@@ -59,7 +59,7 @@ function serialize_pulumirpc_ConfigureRequest(arg) {
   if (!(arg instanceof provider_pb.ConfigureRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConfigureRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ConfigureRequest(buffer_arg) {
@@ -70,7 +70,7 @@ function serialize_pulumirpc_CreateRequest(arg) {
   if (!(arg instanceof provider_pb.CreateRequest)) {
     throw new Error('Expected argument of type pulumirpc.CreateRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CreateRequest(buffer_arg) {
@@ -81,7 +81,7 @@ function serialize_pulumirpc_CreateResponse(arg) {
   if (!(arg instanceof provider_pb.CreateResponse)) {
     throw new Error('Expected argument of type pulumirpc.CreateResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CreateResponse(buffer_arg) {
@@ -92,7 +92,7 @@ function serialize_pulumirpc_DeleteRequest(arg) {
   if (!(arg instanceof provider_pb.DeleteRequest)) {
     throw new Error('Expected argument of type pulumirpc.DeleteRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_DeleteRequest(buffer_arg) {
@@ -103,7 +103,7 @@ function serialize_pulumirpc_DiffRequest(arg) {
   if (!(arg instanceof provider_pb.DiffRequest)) {
     throw new Error('Expected argument of type pulumirpc.DiffRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_DiffRequest(buffer_arg) {
@@ -114,7 +114,7 @@ function serialize_pulumirpc_DiffResponse(arg) {
   if (!(arg instanceof provider_pb.DiffResponse)) {
     throw new Error('Expected argument of type pulumirpc.DiffResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_DiffResponse(buffer_arg) {
@@ -125,7 +125,7 @@ function serialize_pulumirpc_InvokeRequest(arg) {
   if (!(arg instanceof provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_InvokeRequest(buffer_arg) {
@@ -136,7 +136,7 @@ function serialize_pulumirpc_InvokeResponse(arg) {
   if (!(arg instanceof provider_pb.InvokeResponse)) {
     throw new Error('Expected argument of type pulumirpc.InvokeResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
@@ -147,7 +147,7 @@ function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_PluginInfo(buffer_arg) {
@@ -158,7 +158,7 @@ function serialize_pulumirpc_ReadRequest(arg) {
   if (!(arg instanceof provider_pb.ReadRequest)) {
     throw new Error('Expected argument of type pulumirpc.ReadRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ReadRequest(buffer_arg) {
@@ -169,7 +169,7 @@ function serialize_pulumirpc_ReadResponse(arg) {
   if (!(arg instanceof provider_pb.ReadResponse)) {
     throw new Error('Expected argument of type pulumirpc.ReadResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ReadResponse(buffer_arg) {
@@ -180,7 +180,7 @@ function serialize_pulumirpc_UpdateRequest(arg) {
   if (!(arg instanceof provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type pulumirpc.UpdateRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_UpdateRequest(buffer_arg) {
@@ -191,7 +191,7 @@ function serialize_pulumirpc_UpdateResponse(arg) {
   if (!(arg instanceof provider_pb.UpdateResponse)) {
     throw new Error('Expected argument of type pulumirpc.UpdateResponse');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
@@ -301,6 +301,18 @@ var ResourceProviderService = exports.ResourceProviderService = {
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_DeleteRequest,
     requestDeserialize: deserialize_pulumirpc_DeleteRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Cancel signals the provider to abort all outstanding resource operations.
+  cancel: {
+    path: '/pulumirpc.ResourceProvider/Cancel',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

@@ -88,6 +88,10 @@ export interface CreateResult {
 
 export interface ReadResult {
     /**
+     * The ID of the resource ready back (or blank if missing).
+     */
+    readonly id?: resource.ID;
+    /**
      * The current property state read from the live environment.
      */
     readonly props?: any;
@@ -174,7 +178,7 @@ export abstract class Resource extends resource.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(provider: ResourceProvider, name: string, props: resource.Inputs,
-                opts?: resource.ResourceOptions) {
+                opts?: resource.CustomResourceOptions) {
         const providerKey: string = "__provider";
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");

@@ -39,16 +39,8 @@ import (
 const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema.
 	// Any deployments newer than this version will be rejected.
-	DeploymentSchemaVersionCurrent = 1
+	DeploymentSchemaVersionCurrent = 2
 )
-
-// We alias the latest versions of the various types below to their friendly names here.
-
-type Checkpoint = CheckpointV1
-type Deployment = DeploymentV1
-type Manifest = ManifestV1
-type PluginInfo = PluginInfoV1
-type Resource = ResourceV1
 
 // VersionedCheckpoint is a version number plus a json document. The version number describes what
 // version of the Checkpoint structure the Checkpoint member's json document can decode into.
@@ -67,6 +59,17 @@ type CheckpointV1 struct {
 	Latest *DeploymentV1 `json:"latest,omitempty" yaml:"latest,omitempty"`
 }
 
+// CheckpointV2 is the second version of the Checkpoint. It contains a newer version of
+// the latest deployment.
+type CheckpointV2 struct {
+	// Stack is the stack to update.
+	Stack tokens.QName `json:"stack" yaml:"stack"`
+	// Config contains a bag of optional configuration keys/values.
+	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	// Latest is the latest/current deployment (if an update has occurred).
+	Latest *DeploymentV2 `json:"latest,omitempty" yaml:"latest,omitempty"`
+}
+
 // DeploymentV1 represents a deployment that has actually occurred. It is similar to the engine's snapshot structure,
 // except that it flattens and rearranges a few data structures for serializability.
 type DeploymentV1 struct {
@@ -74,6 +77,42 @@ type DeploymentV1 struct {
 	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
 	Resources []ResourceV1 `json:"resources,omitempty" yaml:"resources,omitempty"`
+}
+
+// DeploymentV2 is the second version of the Deployment. It contains never versions of the
+// Resource API type.
+type DeploymentV2 struct {
+	// Manifest contains metadata about this deployment.
+	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
+	// Resources contains all resources that are currently part of this stack after this deployment has finished.
+	Resources []ResourceV2 `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// PendingOperations are all operations that were known by the engine to be currently executing.
+	PendingOperations []OperationV1 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+}
+
+// OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation
+// that the engine initiated.
+type OperationType string
+
+const (
+	// OperationTypeCreating is the state of resources that are being created.
+	OperationTypeCreating OperationType = "creating"
+	// OperationTypeUpdating is the state of resources that are being updated.
+	OperationTypeUpdating OperationType = "updating"
+	// OperationTypeDeleting is the state of resources that are being deleted.
+	OperationTypeDeleting OperationType = "deleting"
+	// OperationTypeReading is the state of resources that are being read.
+	OperationTypeReading OperationType = "reading"
+)
+
+// OperationV1 represents an operation that the engine is performing. It consists of a Resource, which is the state
+// that the engine used to initiate the operation, and a Status, which is a string representation of the operation
+// that the engine initiated.
+type OperationV1 struct {
+	// Resource is the state that the engine used to initiate this operation.
+	Resource ResourceV2 `json:"resource" yaml:"resource"`
+	// Status is a string representation of the operation that the engine is performing.
+	Type OperationType `json:"type" yaml:"type"`
 }
 
 // UntypedDeployment contains an inner, untyped deployment structure.
@@ -110,6 +149,53 @@ type ResourceV1 struct {
 	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
+	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+	// during create or update).
+	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
+}
+
+// ResourceV2 is the second version of the Resource API type. It absorbs a few breaking changes:
+//   1. The deprecated `Defaults` field is removed because it is not used anywhere,
+//   2. It adds an additional bool field, "External", which reflects whether or not this resource
+//      exists because of a call to `ReadResource`. This is motivated by a need to store
+//      resources that Pulumi does not own in the deployment.
+//   3. It adds an additional string field, "Provider", that is a reference to a first-class provider
+//      associated with this resource.
+//
+// Migrating from ResourceV1 to ResourceV2 involves:
+//  1. Dropping the `Defaults` field (it should be empty anyway)
+//  2. Setting the `External` field to "false", since a ResourceV1 existing for a resource
+//     implies that it is owned by Pulumi. Note that since this is the default value for
+//     booleans in Go, no explicit assignment needs to be made.
+//  3. Setting the "Provider" field to the empty string, because V1 deployments don't have first-class providers.
+type ResourceV2 struct {
+	// URN uniquely identifying this resource.
+	URN resource.URN `json:"urn" yaml:"urn"`
+	// Custom is true when it is managed by a plugin.
+	Custom bool `json:"custom" yaml:"custom"`
+	// Delete is true when the resource should be deleted during the next update.
+	Delete bool `json:"delete,omitempty" yaml:"delete,omitempty"`
+	// ID is the provider-assigned resource, if any, for custom resources.
+	ID resource.ID `json:"id,omitempty" yaml:"id,omitempty"`
+	// Type is the resource's full type token.
+	Type tokens.Type `json:"type" yaml:"type"`
+	// Inputs are the input properties supplied to the provider.
+	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	// Outputs are the output properties returned by the provider after provisioning.
+	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	// Parent is an optional parent URN if this resource is a child of it.
+	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
+	// Protect is set to true when this resource is "protected" and may not be deleted.
+	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
+	External bool `json:"external,omitempty" yaml:"external,omitempty"`
+	// Dependencies contains the dependency edges to other resources that this depends on.
+	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
+	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+	// during create or update).
+	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
+	// Provider is a reference to the provider that is associated with this resource.
+	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

@@ -21,7 +21,9 @@ install:
 - cmd: >-
     set GOPATH=%USERPROFILE%\go
 
-    set PATH=%PATH%;%GOPATH%\bin
+    set GOROOT=C:\go19
+
+    set PATH=C:\go19\bin;%PATH%;%GOPATH%\bin
 
     set PulumiRoot=C:\Pulumi
 
@@ -29,9 +31,11 @@ install:
 
     go version
 
-    go get -u github.com/golang/dep/cmd/dep
-
     git clone https://github.com/pulumi/scripts.git "%USERPROFILE%\go\src\github.com\pulumi\scripts"
+- ps: >-
+    New-Item -Type Directory "$env:USERPROFILE\go\bin"
+
+    Invoke-WebRequest -Uri https://github.com/golang/dep/releases/download/v0.4.1/dep-windows-amd64.exe -OutFile "$env:USERPROFILE\go\bin\dep.exe"
 build_script:
 - cmd: >-
     if defined APPVEYOR_PULL_REQUEST_NUMBER ( msbuild /t:AppVeyorPullRequest /v:Detailed build.proj ) else ( msbuild /t:AppVeyorPush /v:Detailed build.proj )

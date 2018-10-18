@@ -13,11 +13,12 @@
 // limitations under the License.
 
 import * as grpc from "grpc";
+import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs } from "../resource";
 import { debuggablePromise } from "./debuggable";
-import { deserializeProperties, serializeProperties } from "./rpc";
-import { excessiveDebugOutput, getMonitor, rpcKeepAlive, serialize } from "./settings";
+import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
+import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -27,9 +28,14 @@ const resproto = require("../proto/resource_pb.js");
  * can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
-export async function invoke(tok: string, props: Inputs): Promise<any> {
+export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): Promise<any> {
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
+
+    opts = opts || {};
+    if (opts.parent && opts.provider === undefined) {
+        opts.provider = opts.parent.getProvider(tok);
+    }
 
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
@@ -41,18 +47,26 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
 
+        let providerRef: string | undefined;
+        if (opts.provider !== undefined) {
+            const providerURN = await opts.provider.urn.promise();
+            const providerID = await opts.provider.id.promise() || unknownValue;
+            providerRef = `${providerURN}::${providerID}`;
+        }
+
         const req = new resproto.InvokeRequest();
         req.setTok(tok);
         req.setArgs(obj);
+        req.setProvider(providerRef);
         const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
             monitor.invoke(req, (err: grpc.StatusObject, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
                     // If the monitor is unavailable, it is in the process of shutting down or has already
-                    // shut down. Don't emit an error and don't do any more RPCs.
+                    // shut down. Don't emit an error and don't do any more RPCs, just exit.
                     if (err.code === grpc.status.UNAVAILABLE) {
                         log.debug("Resource monitor is terminating");
-                        waitForDeath();
+                        process.exit(0);
                     }
 
                     // If the RPC failed, rethrow the error with a native exception and the message that
@@ -76,13 +90,4 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
     finally {
         done();
     }
-}
-
-/**
- * waitForDeath loops forever. See the comments in resource.ts on the function with
- * the same name for an explanation as to why this exists.
- */
-function waitForDeath(): never {
-    // tslint:disable-next-line
-    while (true) {}
 }

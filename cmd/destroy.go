@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -35,11 +36,12 @@ func newDestroyCmd() *cobra.Command {
 	var analyzers []string
 	var diffDisplay bool
 	var parallel int
+	var refresh bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var nonInteractive bool
 	var skipPreview bool
+	var suppressOutputs bool
 	var yes bool
 
 	var cmd = &cobra.Command{
@@ -56,7 +58,7 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := isInteractive(nonInteractive)
+			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
 			}
@@ -66,17 +68,18 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			opts.Display = backend.DisplayOptions{
+			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, false, opts.Display)
+			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -94,13 +97,20 @@ func newDestroyCmd() *cobra.Command {
 				Analyzers: analyzers,
 				Parallel:  parallel,
 				Debug:     debug,
+				Refresh:   refresh,
 			}
 
-			_, err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)
+			_, err = s.Destroy(commandContext(), backend.UpdateOperation{
+				Proj:   proj,
+				Root:   root,
+				M:      m,
+				Opts:   opts,
+				Scopes: cancellationScopes,
+			})
 			if err == context.Canceled {
 				return errors.New("destroy cancelled")
 			}
-			return err
+			return PrintEngineError(err)
 		}),
 	}
 
@@ -121,11 +131,12 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().BoolVar(
-		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		&parallel, "parallel", "p", defaultParallel,
+		"Allow P resource operations to run in parallel at once (1 for no parallelism, 0 for unbounded parallelism)")
+	cmd.PersistentFlags().BoolVarP(
+		&refresh, "refresh", "r", false,
+		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -138,6 +149,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not perform a preview before performing the destroy")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")

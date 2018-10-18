@@ -562,7 +562,8 @@ proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance)
 proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    provider: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -608,6 +609,10 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setArgs(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProvider(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -650,6 +655,13 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getProvider();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
     );
   }
 };
@@ -697,6 +709,21 @@ proto.pulumirpc.InvokeRequest.prototype.clearArgs = function() {
  */
 proto.pulumirpc.InvokeRequest.prototype.hasArgs = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional string provider = 3;
+ * @return {string}
+ */
+proto.pulumirpc.InvokeRequest.prototype.getProvider = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.InvokeRequest.prototype.setProvider = function(value) {
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

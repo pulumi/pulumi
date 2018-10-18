@@ -17,7 +17,8 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -191,6 +192,66 @@ func TestStackCommands(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("FixingInvalidResources", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		stackName := addRandomSuffix("invalid-resources")
+		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/stack_dependencies")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", stackName)
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
+		// We're going to futz with the stack a little so that one of the resources we just created
+		// becomes invalid.
+		stackFile := path.Join(e.RootPath, "stack.json")
+		e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
+		stackJSON, err := ioutil.ReadFile(stackFile)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		var deployment apitype.UntypedDeployment
+		err = json.Unmarshal(stackJSON, &deployment)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		snap, err := stack.DeserializeUntypedDeployment(&deployment)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
+		// invalid resources in the snapshot.
+		res := snap.Resources[len(snap.Resources)-1]
+		snap.PendingOperations = append(snap.PendingOperations, resource.Operation{
+			Resource: res,
+			Type:     resource.OperationTypeDeleting,
+		})
+		v2deployment := stack.SerializeDeployment(snap)
+		data, err := json.Marshal(&v2deployment)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		deployment.Deployment = data
+		bytes, err := json.Marshal(&deployment)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
+		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
+		// The engine should be happy now that there are no invalid resources.
+		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+	})
 }
 
 func TestStackBackups(t *testing.T) {
@@ -206,9 +267,9 @@ func TestStackBackups(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs")
 
 		// We're testing that backups are created so ensure backups aren't disabled.
-		if env := os.Getenv(local.DisableCheckpointBackupsEnvVar); env != "" {
-			os.Unsetenv(local.DisableCheckpointBackupsEnvVar)
-			defer os.Setenv(local.DisableCheckpointBackupsEnvVar, env)
+		if env := os.Getenv(filestate.DisableCheckpointBackupsEnvVar); env != "" {
+			os.Unsetenv(filestate.DisableCheckpointBackupsEnvVar)
+			defer os.Setenv(filestate.DisableCheckpointBackupsEnvVar, env)
 		}
 
 		const stackName = "imulup"
@@ -229,11 +290,10 @@ func TestStackBackups(t *testing.T) {
 		// Build the project.
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "run", "build")
 
 		// Now run pulumi update.
 		before := time.Now().UnixNano()
-		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
@@ -289,7 +349,7 @@ func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string
 	), nil
 }
 
-func addRandomSufix(s string) string {
+func addRandomSuffix(s string) string {
 	b := make([]byte, 4)
 	_, err := cryptorand.Read(b)
 	contract.AssertNoError(err)

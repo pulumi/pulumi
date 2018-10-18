@@ -18,16 +18,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
+	zxcvbn "github.com/nbutton23/zxcvbn-go"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -46,11 +48,11 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			stack, err := requireStack(stack, true, opts)
+			stack, err := requireStack(stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -80,11 +82,11 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -107,21 +109,22 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Short: "Remove configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name().StackName())
+			ps, err := workspace.DetectProjectStack(stackName)
 			if err != nil {
 				return err
 			}
@@ -130,7 +133,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				delete(ps.Config, key)
 			}
 
-			return workspace.SaveProjectStack(s.Name().StackName(), ps)
+			return workspace.SaveProjectStack(stackName, ps)
 		}),
 	}
 
@@ -144,22 +147,23 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, false, opts)
+			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			c, err := backend.GetLatestConfiguration(commandContext(), s)
 			if err != nil {
 				return err
 			}
 
-			configPath, err := workspace.DetectProjectStackPath(s.Name().StackName())
+			configPath, err := workspace.DetectProjectStackPath(stackName)
 			if err != nil {
 				return err
 			}
@@ -197,7 +201,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 
 			err = ps.Save(configPath)
 			if err == nil {
-				fmt.Printf("refreshed configuration for stack '%s'\n", s.Name().String())
+				fmt.Printf("refreshed configuration for stack '%s'\n", stackName)
 			}
 			return err
 		}),
@@ -220,15 +224,16 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"may be set by piping a file to standard in.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, true, opts)
+			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
+			stackName := s.Ref().Name()
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
@@ -271,31 +276,24 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				v = config.NewSecureValue(enc)
 			} else {
 				v = config.NewValue(value)
+
+				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
+				if !plaintext && looksLikeSecret(key, value) {
+					return errors.Errorf(
+						"config value '%s' looks like a secret; "+
+							"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
+						value)
+				}
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name().StackName())
+			ps, err := workspace.DetectProjectStack(stackName)
 			if err != nil {
 				return err
 			}
 
 			ps.Config[key] = v
 
-			err = workspace.SaveProjectStack(s.Name().StackName(), ps)
-			if err != nil {
-				return err
-			}
-
-			// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
-			if !secret && !plaintext {
-				cmdutil.Diag().Warningf(
-					diag.Message("", /*urn*/
-						"saved config key '%s' value '%s' as plaintext; "+
-							"re-run with --secret to encrypt the value instead. Use "+
-							"--plaintext to avoid this warning"),
-					key, value)
-			}
-
-			return nil
+			return workspace.SaveProjectStack(stackName, ps)
 		}),
 	}
 
@@ -311,14 +309,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 func parseConfigKey(key string) (config.Key, error) {
 	// As a convience, we'll treat any key with no delimiter as if:
-	// <program-name>:config:<key> had been written instead
+	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
 		proj, err := workspace.DetectProject()
 		if err != nil {
 			return config.Key{}, err
 		}
 
-		return config.ParseKey(fmt.Sprintf("%s:config:%s", proj.Name, key))
+		return config.ParseKey(fmt.Sprintf("%s:%s", proj.Name, key))
 	}
 
 	return config.ParseKey(key)
@@ -342,7 +340,7 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	ps, err := workspace.DetectProjectStack(stack.Name().StackName())
+	ps, err := workspace.DetectProjectStack(stack.Ref().Name())
 	if err != nil {
 		return err
 	}
@@ -393,7 +391,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 }
 
 func getConfig(stack backend.Stack, key config.Key) error {
-	ps, err := workspace.DetectProjectStack(stack.Name().StackName())
+	ps, err := workspace.DetectProjectStack(stack.Ref().Name())
 	if err != nil {
 		return err
 	}
@@ -419,5 +417,39 @@ func getConfig(stack backend.Stack, key config.Key) error {
 	}
 
 	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Name())
+		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
+}
+
+var (
+	// keyPattern is the regular expression a configuration key must match before we check (and error) if we think
+	// it is a password
+	keyPattern = regexp.MustCompile("(?i)passwd|pass|password|pwd|secret|token")
+)
+
+const (
+	// maxEntropyCheckLength is the maximum length of a possible secret for entropy checking.
+	maxEntropyCheckLength = 16
+	// entropyThreshold is the total entropy threshold a potential secret needs to pass before being flagged.
+	entropyThreshold = 80.0
+	// entropyCharThreshold is the per-char entropy threshold a potential secret needs to pass before being flagged.
+	entropyPerCharThreshold = 3.0
+)
+
+// looksLikeSecret returns true if a configuration value "looks" like a secret. This is always going to be a heuristic
+// that suffers from false positives, but is better (a) than our prior approach of unconditionally printing a warning
+// for all plaintext values, and (b)  to be paranoid about such things. Inspired by the gas linter and securego project.
+func looksLikeSecret(k config.Key, v string) bool {
+	if !keyPattern.MatchString(k.Name()) {
+		return false
+	}
+
+	if len(v) > maxEntropyCheckLength {
+		v = v[:maxEntropyCheckLength]
+	}
+
+	// Compute the strength use the resulting entropy to flag whether this looks like a secret.
+	info := zxcvbn.PasswordStrength(v, nil)
+	entropyPerChar := info.Entropy / float64(len(v))
+	return (info.Entropy >= entropyThreshold ||
+		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold))
 }

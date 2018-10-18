@@ -21,10 +21,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -48,18 +49,18 @@ func newStackRmCmd() *cobra.Command {
 				stack = args[0]
 			}
 
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts)
+			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Name())
-			if !yes && !confirmPrompt(prompt, s.Name().String(), opts) {
+			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
+			if !yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
 				return errors.New("confirmation declined")
 			}
 
@@ -67,31 +68,29 @@ func newStackRmCmd() *cobra.Command {
 			if err != nil {
 				if hasResources {
 					return errors.Errorf(
-						"'%s' still has resources; removal rejected; pass --force to override", s.Name())
+						"'%s' still has resources; removal rejected; pass --force to override", s.Ref())
 				}
 				return err
 			}
 
-			// Blow away stack specific settings if they exist
-			path, err := workspace.DetectProjectStackPath(s.Name().StackName())
-			if err != nil {
-				return err
+			// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
+			if path, err := workspace.DetectProjectStackPath(s.Ref().Name()); err == nil {
+				if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
+					return err
+				}
 			}
 
-			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-				return err
-			}
-
-			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
+			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
 
-			return state.SetCurrentStack("")
+			contract.IgnoreError(state.SetCurrentStack(""))
+			return nil
 		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
-		"By default, removal of a stack with resources will be rejected; this forces it")
+		"Forces deletion of the stack, leaving behind any resources managed by the stack")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")

@@ -23,12 +23,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -39,25 +38,25 @@ func newStackLsCmd() *cobra.Command {
 		Short: "List all known stacks",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Ensure we are in a project; if not, we will fail.
-			projPath, err := workspace.DetectProjectPath()
-			if err != nil {
-				return errors.Wrapf(err, "could not detect current project")
-			} else if projPath == "" {
-				return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+			var packageFilter *tokens.PackageName
+			if !allStacks {
+				// Ensure we are in a project; if not, we will fail.
+				projPath, err := workspace.DetectProjectPath()
+				if err != nil {
+					return errors.Wrapf(err, "could not detect current project")
+				} else if projPath == "" {
+					return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+				}
+
+				proj, err := workspace.LoadProject(projPath)
+				if err != nil {
+					return errors.Wrap(err, "could not load current project")
+				}
+				packageFilter = &proj.Name
 			}
 
-			proj, err := workspace.LoadProject(projPath)
-			if err != nil {
-				return errors.Wrap(err, "could not load current project")
-			}
-
-			opts := backend.DisplayOptions{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			// Get a list of all known backends, as we will query them all.
-			b, err := currentBackend(opts)
+			// Get the current backend.
+			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err
 			}
@@ -66,108 +65,72 @@ func newStackLsCmd() *cobra.Command {
 			var current string
 			if s, _ := state.CurrentStack(commandContext(), b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Name().String()
+				current = s.Ref().String()
 			}
 
-			var packageFilter *tokens.PackageName
-			if !allStacks {
-				packageFilter = &proj.Name
-			}
-
-			// Now produce a list of summaries, and enumerate them sorted by name.
-			var result error
-			var stackNames []string
-			stacks := make(map[string]backend.Stack)
-			bs, err := b.ListStacks(commandContext(), packageFilter)
+			// List all of the stacks available.
+			stackSummaries, err := b.ListStacks(commandContext(), packageFilter)
 			if err != nil {
 				return err
 			}
-			showPPCColumn, maxPPC := hasAnyPPCStacks(bs)
-			_, showURLColumn := b.(cloud.Backend)
+			// Sort by stack name.
+			sort.Slice(stackSummaries, func(i, j int) bool {
+				return stackSummaries[i].Name().String() < stackSummaries[j].Name().String()
+			})
 
-			for _, stack := range bs {
-				name := stack.Name().String()
-				stacks[name] = stack
-				stackNames = append(stackNames, name)
-			}
-			sort.Strings(stackNames)
+			_, showURLColumn := b.(httpstate.Backend)
 
 			// Devote 48 characters to the name width, unless there is a longer name.
-			maxname := 48
-			for _, name := range stackNames {
-				if len(name) > maxname {
-					maxname = len(name)
+			maxName := 47
+			for _, summary := range stackSummaries {
+				name := summary.Name().String()
+				if len(name) > maxName {
+					maxName = len(name)
 				}
 			}
+			maxName++ // Account for adding the '*' to the currently selected stack.
 
-			// We have to fault in snapshots for all the stacks we are going to list here, because that's the easiest
-			// way to get the last update time and the resource count.  Since this is an expensive operation, we'll
-			// do it before printing any output so the latency happens all at once instead of line by line.
-			//
-			// TODO[pulumi/pulumi-service#1530]: We need a lighterweight way of fetching just the specific information
-			// we want to display here.
-			for _, name := range stackNames {
-				stack := stacks[name]
-				_, err := stack.Snapshot(commandContext())
-				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
-			}
-
-			formatDirective := "%-" + strconv.Itoa(maxname) + "s %-24s %-18s"
+			// Header string and formatting options to align columns.
+			formatDirective := "%-" + strconv.Itoa(maxName) + "s %-24s %-18s"
 			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
-
-			if showPPCColumn {
-				formatDirective += " %-" + strconv.Itoa(maxPPC) + "s"
-				headers = append(headers, "PPC")
-			}
 			if showURLColumn {
 				formatDirective += " %s"
 				headers = append(headers, "URL")
 			}
-
 			formatDirective = formatDirective + "\n"
 
 			fmt.Printf(formatDirective, headers...)
-			for _, name := range stackNames {
-				// Mark the name as current '*' if we've selected it.
-				stack := stacks[name]
+			for _, summary := range stackSummaries {
+				const none = "n/a"
+
+				// Name column
+				name := summary.Name().String()
 				if name == current {
 					name += "*"
 				}
 
-				// Get last deployment info, provided that it exists.
-				none := "n/a"
+				// Last update column
 				lastUpdate := none
+				if stackLastUpdate := summary.LastUpdate(); stackLastUpdate != nil {
+					lastUpdate = humanize.Time(*stackLastUpdate)
+				}
+
+				// ResourceCount column
 				resourceCount := none
-				snap, err := stack.Snapshot(commandContext())
-				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
-
-				if snap != nil {
-					if t := snap.Manifest.Time; !t.IsZero() {
-						lastUpdate = humanize.Time(t)
-					}
-					resourceCount = strconv.Itoa(len(snap.Resources))
+				if stackResourceCount := summary.ResourceCount(); stackResourceCount != nil {
+					resourceCount = strconv.Itoa(*stackResourceCount)
 				}
 
+				// Render the columns.
 				values := []interface{}{name, lastUpdate, resourceCount}
-				if showPPCColumn {
-					// Print out the PPC name.
-					var cloudInfo string
-					if cs, ok := stack.(cloud.Stack); ok && !cs.RunLocally() {
-						cloudInfo = cs.CloudName()
-					} else {
-						cloudInfo = none
-					}
-					values = append(values, cloudInfo)
-				}
 				if showURLColumn {
 					var url string
-					if cs, ok := stack.(cloud.Stack); ok {
-						if u, urlErr := cs.ConsoleURL(); urlErr == nil {
-							url = u
+					if httpBackend, ok := b.(httpstate.Backend); ok {
+						if nameSuffix, err := httpBackend.StackConsoleURL(summary.Name()); err != nil {
+							url = none
+						} else {
+							url = fmt.Sprintf("%s/%s", httpBackend.CloudURL(), nameSuffix)
 						}
-					}
-					if url == "" {
-						url = none
 					}
 					values = append(values, url)
 				}
@@ -175,25 +138,11 @@ func newStackLsCmd() *cobra.Command {
 				fmt.Printf(formatDirective, values...)
 			}
 
-			return result
+			return nil
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
 		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
 	return cmd
-}
-
-func hasAnyPPCStacks(stacks []backend.Stack) (bool, int) {
-	res, maxLen := false, 0
-	for _, s := range stacks {
-		if cs, ok := s.(cloud.Stack); ok {
-			if !cs.RunLocally() {
-				res = true
-				maxLen = len(cs.CloudName())
-			}
-		}
-	}
-
-	return res, maxLen
 }

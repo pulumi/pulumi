@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -61,10 +62,19 @@ func printStepHeader(b *bytes.Buffer, step StepEventMetadata) {
 	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
-func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
+func GetIndentationString(indent int) string {
 	var result string
 	for i := 0; i < indent; i++ {
 		result += "    "
+	}
+	return result
+}
+
+func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
+	var result = GetIndentationString(indent)
+
+	if !prefix {
+		return result
 	}
 
 	if result == "" {
@@ -72,12 +82,7 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 		return result
 	}
 
-	var rp string
-	if prefix {
-		rp = op.RawPrefix()
-	} else {
-		rp = "  "
-	}
+	rp := op.RawPrefix()
 	contract.Assert(len(rp) == 2)
 	contract.Assert(len(result) >= 2)
 	return result[:len(result)-2] + rp
@@ -132,12 +137,38 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 		id = old.ID
 	}
 
-	// Always print the ID and URN.
+	// Always print the ID, URN, and provider.
 	if id != "" {
 		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
 	if urn != "" {
 		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
+	}
+
+	if step.Provider != "" {
+		new := step.New
+		if old != nil && new != nil && old.Provider != new.Provider {
+			newProv, err := providers.ParseReference(new.Provider)
+			contract.Assert(err == nil)
+
+			writeWithIndentNoPrefix(&b, indent+1, deploy.OpUpdate, "[provider: ")
+			write(&b, deploy.OpDelete, "%s", old.Provider)
+			writeVerbatim(&b, deploy.OpUpdate, " => ")
+			if newProv.ID() == providers.UnknownID {
+				write(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::computed<string>")
+			} else {
+				write(&b, deploy.OpCreate, "%s", new.Provider)
+			}
+			writeVerbatim(&b, deploy.OpUpdate, "]\n")
+		} else {
+			prov, err := providers.ParseReference(step.Provider)
+			contract.Assert(err == nil)
+
+			// Elide references to default providers.
+			if prov.URN().Name() != "default" {
+				writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[provider=%s]\n", step.Provider)
+			}
+		}
 	}
 
 	return b.String()
@@ -149,11 +180,6 @@ func GetResourcePropertiesDetails(
 
 	// indent everything an additional level, like other properties.
 	indent++
-
-	var replaces []resource.PropertyKey
-	if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpReplace {
-		replaces = step.Keys
-	}
 
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
@@ -170,9 +196,9 @@ func GetResourcePropertiesDetails(
 			printObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
 	} else if len(new.Outputs) > 0 {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, replaces, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, planning, indent, step.Op, summary, debug)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, planning, indent, step.Op, summary, debug)
 	}
 
 	return b.String()
@@ -208,43 +234,74 @@ func printObject(
 // GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
-	step StepEventMetadata, indent int, planning bool, debug bool) string {
+	step StepEventMetadata, indent int, planning bool, debug bool, refresh bool) string {
+	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
+	//   1) not doing a preview
+	//   2) doing a refresh
+	//   3) doing a read
+	//
+	// Technically, 2 and 3 are the same, since they're both bottoming out at a provider's implementation of Read, but
+	// the upshot is that either way we're ending up with outputs that are exactly accurate. If we are not sure that we
+	// are in one of the above states, we shouldn't try to print outputs.
+	if planning {
+		printOutputDuringPlanning := refresh || step.Op == deploy.OpRead || step.Op == deploy.OpReadReplacement
+		if !printOutputDuringPlanning {
+			return ""
+		}
+	}
 
-	var b bytes.Buffer
+	// Resources that have initialization errors did not successfully complete, and therefore do not
+	// have outputs to render diffs for. So, simply return.
+	if step.Old != nil && len(step.Old.InitErrors) > 0 {
+		return ""
+	}
+
+	b := &bytes.Buffer{}
 
 	// Only certain kinds of steps have output properties associated with them.
 	new := step.New
 	if new == nil || new.Outputs == nil {
 		return ""
 	}
-	op := considerSameIfNotCreateOrDelete(step.Op)
+	op := step.Op
 
 	// First fetch all the relevant property maps that we may consult.
 	ins := new.Inputs
 	outs := new.Outputs
 
-	// Now sort the keys and enumerate each output property in a deterministic order.
-	firstout := true
-	keys := outs.StableKeys()
+	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
+	// the new outputs, we want to print the diffs.
+	var outputDiff *resource.ObjectDiff
+	if step.Old != nil && step.Old.Outputs != nil {
+		outputDiff = step.Old.Outputs.Diff(outs)
+	}
+
+	var keys []resource.PropertyKey
+	if outputDiff == nil {
+		keys = outs.StableKeys()
+	} else {
+		keys = outputDiff.Keys()
+	}
 	maxkey := maxKey(keys)
+
+	// Now sort the keys and enumerate each output property in a deterministic order.
 	for _, k := range keys {
 		out := outs[k]
+
 		// Print this property if it is printable and either ins doesn't have it or it's different.
-		if shouldPrintPropertyValue(out, true) {
-			var print bool
+		if outputDiff != nil || shouldPrintPropertyValue(out, true) {
+			print := true
 			if in, has := ins[k]; has {
 				print = (out.Diff(in) != nil)
-			} else {
-				print = true
 			}
 
 			if print {
-				if firstout {
-					writeWithIndentNoPrefix(&b, indent, op, "---outputs:---\n")
-					firstout = false
+				if outputDiff != nil {
+					printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
+				} else {
+					printPropertyTitle(b, string(k), maxkey, indent, op, false)
+					printPropertyValue(b, out, planning, indent, op, false, debug)
 				}
-				printPropertyTitle(&b, string(k), maxkey, indent, op, false)
-				printPropertyValue(&b, out, planning, indent, op, false, debug)
 			}
 		}
 	}
@@ -387,20 +444,20 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
-	replaces []resource.PropertyKey, planning bool, indent int, op deploy.StepOp,
-	summary bool, debug bool) {
+	planning bool, indent int, op deploy.StepOp, summary bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, replaces, false, planning, indent, summary, debug)
+		printObjectDiff(b, *diff, planning, indent, summary, debug)
 	} else {
-		printObject(b, news, planning, indent, op, true, debug)
+		// If there's no diff, report the op as Same - there's no diff to render
+		// so it should be rendered as if nothing changed.
+		printObject(b, news, planning, indent, deploy.OpSame, true, debug)
 	}
 }
 
 func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
-	replaces []resource.PropertyKey, causedReplace bool, planning bool,
-	indent int, summary bool, debug bool) {
+	planning bool, indent int, summary bool, debug bool) {
 
 	contract.Assert(indent > 0)
 
@@ -408,46 +465,34 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 	keys := diff.Keys()
 	maxkey := maxKey(keys)
 
-	// If a list of what causes a resource to get replaced exist, create a handy map.
-	var replaceMap map[resource.PropertyKey]bool
-	if len(replaces) > 0 {
-		replaceMap = make(map[resource.PropertyKey]bool)
-		for _, k := range replaces {
-			replaceMap[k] = true
-		}
-	}
-
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
-		titleFunc := func(top deploy.StepOp, prefix bool) {
-			printPropertyTitle(b, string(k), maxkey, indent, top, prefix)
-		}
-		if add, isadd := diff.Adds[k]; isadd {
-			if shouldPrintPropertyValue(add, planning) {
-				printAdd(b, add, titleFunc, planning, indent, debug)
-			}
-		} else if delete, isdelete := diff.Deletes[k]; isdelete {
-			if shouldPrintPropertyValue(delete, planning) {
-				printDelete(b, delete, titleFunc, planning, indent, debug)
-			}
-		} else if update, isupdate := diff.Updates[k]; isupdate {
-			if !causedReplace && replaceMap != nil {
-				causedReplace = replaceMap[k]
-			}
+		printObjectPropertyDiff(b, k, maxkey, diff, planning, indent, summary, debug)
+	}
+}
 
-			printPropertyValueDiff(
-				b, titleFunc, update, causedReplace, planning,
-				indent, summary, debug)
-		} else if same := diff.Sames[k]; !summary && shouldPrintPropertyValue(same, planning) {
-			titleFunc(deploy.OpSame, false)
-			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
-		}
+func printObjectPropertyDiff(b *bytes.Buffer, key resource.PropertyKey, maxkey int, diff resource.ObjectDiff,
+	planning bool, indent int, summary bool, debug bool) {
+
+	titleFunc := func(top deploy.StepOp, prefix bool) {
+		printPropertyTitle(b, string(key), maxkey, indent, top, prefix)
+	}
+	if add, isadd := diff.Adds[key]; isadd {
+		printAdd(b, add, titleFunc, planning, indent, debug)
+	} else if delete, isdelete := diff.Deletes[key]; isdelete {
+		printDelete(b, delete, titleFunc, planning, indent, debug)
+	} else if update, isupdate := diff.Updates[key]; isupdate {
+		printPropertyValueDiff(
+			b, titleFunc, update, planning, indent, summary, debug)
+	} else if same := diff.Sames[key]; !summary && shouldPrintPropertyValue(same, planning) {
+		titleFunc(deploy.OpSame, false)
+		printPropertyValue(b, diff.Sames[key], planning, indent, deploy.OpSame, false, debug)
 	}
 }
 
 func printPropertyValueDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	diff resource.ValueDiff, causedReplace bool, planning bool,
+	diff resource.ValueDiff, planning bool,
 	indent int, summary bool, debug bool) {
 
 	op := deploy.OpUpdate
@@ -468,7 +513,7 @@ func printPropertyValueDiff(
 				printDelete(b, delete, elemTitleFunc, planning, indent+2, debug)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(
-					b, elemTitleFunc, update, causedReplace, planning,
+					b, elemTitleFunc, update, planning,
 					indent+2, summary, debug)
 			} else if !summary {
 				elemTitleFunc(deploy.OpSame, false)
@@ -479,7 +524,7 @@ func printPropertyValueDiff(
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+1, summary, debug)
+		printObjectDiff(b, *diff.Object, planning, indent+1, summary, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
@@ -487,8 +532,7 @@ func printPropertyValueDiff(
 
 		if shouldPrintOld && shouldPrintNew {
 			if diff.Old.IsArchive() &&
-				diff.New.IsArchive() &&
-				!causedReplace {
+				diff.New.IsArchive() {
 
 				printArchiveDiff(
 					b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(),
@@ -571,9 +615,6 @@ func printArchiveDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
 	oldArchive *resource.Archive, newArchive *resource.Archive,
 	planning bool, indent int, summary bool, debug bool) {
-
-	// TODO: this could be called recursively from itself.  In the recursive case, we might have an
-	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
 
 	op := deploy.OpUpdate
 
@@ -663,18 +704,35 @@ func printAssetsDiff(
 					printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, top, tprefix)
 				}
 
-				oldAsset := oldAssets[oldName]
-				newAsset := newAssets[newName]
+				old := oldAssets[oldName]
+				new := newAssets[newName]
 
-				switch t := oldAsset.(type) {
+				// If the assets/archvies haven't changed, then don't bother printing them out.
+				// This happens routinely when we have an archive that has changed because some
+				// asset it in it changed.  We want *that* asset to be printed, but not all the
+				// unchanged assets.
+
+				switch t := old.(type) {
 				case *resource.Archive:
-					printArchiveDiff(
-						b, titleFunc, t, newAsset.(*resource.Archive),
-						planning, indent, summary, debug)
+					newArchive, newIsArchive := new.(*resource.Archive)
+					switch {
+					case !newIsArchive:
+						printAssetArchiveDiff(b, titleFunc, t, new, planning, indent, summary, debug)
+					case t.Hash != newArchive.Hash:
+						printArchiveDiff(
+							b, titleFunc, t, newArchive,
+							planning, indent, summary, debug)
+					}
 				case *resource.Asset:
-					printAssetDiff(
-						b, titleFunc, t, newAsset.(*resource.Asset),
-						planning, indent, summary, debug)
+					newAsset, newIsAsset := new.(*resource.Asset)
+					switch {
+					case !newIsAsset:
+						printAssetArchiveDiff(b, titleFunc, t, new, planning, indent, summary, debug)
+					case t.Hash != newAsset.Hash:
+						printAssetDiff(
+							b, titleFunc, t, newAsset,
+							planning, indent, summary, debug)
+					}
 				}
 
 				i++
@@ -718,43 +776,16 @@ func printAssetsDiff(
 	}
 }
 
-func makeAssetHeader(asset *resource.Asset) string {
-	var assetType string
-	var contents string
-
-	if path, has := asset.GetPath(); has {
-		assetType = "file"
-		contents = path
-	} else if uri, has := asset.GetURI(); has {
-		assetType = "uri"
-		contents = uri
-	} else {
-		assetType = "text"
-		contents = "..."
-	}
-
-	return fmt.Sprintf("asset(%s:%s) { %s }\n", assetType, shortHash(asset.Hash), contents)
-}
-
 func printAssetDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
 	oldAsset *resource.Asset, newAsset *resource.Asset,
 	planning bool, indent int, summary bool, debug bool) {
 
+	contract.Assertf(oldAsset.Hash != newAsset.Hash, "Should not call printAssetDiff on unchanged assets")
+
 	op := deploy.OpUpdate
 
-	// If the assets aren't changed, just print out: = assetName: type(hash)
-	if oldAsset.Hash == newAsset.Hash {
-		if !summary {
-			op = deploy.OpSame
-			titleFunc(op, false)
-			write(b, op, makeAssetHeader(oldAsset))
-		}
-		return
-	}
-
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
-
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
 	if oldAsset.IsText() {
@@ -801,6 +832,12 @@ func printAssetDiff(
 	printAdd(
 		b, assetOrArchiveToPropertyValue(newAsset),
 		titleFunc, planning, indent, debug)
+}
+
+func printAssetArchiveDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool), old interface{}, new interface{},
+	planning bool, indent int, summary bool, debug bool) {
+	printDelete(b, assetOrArchiveToPropertyValue(old), titleFunc, planning, indent, debug)
+	printAdd(b, assetOrArchiveToPropertyValue(new), titleFunc, planning, indent, debug)
 }
 
 func getTextChangeString(old string, new string) string {

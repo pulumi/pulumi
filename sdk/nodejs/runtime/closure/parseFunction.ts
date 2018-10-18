@@ -192,6 +192,11 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
     }
 
+    if (funcString.startsWith("get ") || funcString.startsWith("set ")) {
+        const trimmed = funcString.substr("get ".length);
+        return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
+    }
+
     if (funcString.startsWith("function")) {
         const trimmed = funcString.substr("function".length);
         return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ true);
@@ -247,7 +252,8 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             return [`the function form was not understood.`, <any>undefined];
         }
 
-        if (openParenIndex === 0) {
+        if (isComputed(v, openParenIndex)) {
+            v = v.substr(openParenIndex);
             return ["", {
                 funcExprWithoutName: prefix + v,
                 funcExprWithName: prefix + "__computed" + v,
@@ -270,6 +276,20 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             isArrowFunction: false,
         }];
     }
+}
+
+function isComputed(v: string, openParenIndex: number) {
+    if (openParenIndex === 0) {
+        // node 8 and lower use no name at all for computed members.
+        return true;
+    }
+
+    if (v.length > 0 && v.charAt(0) === "[") {
+        // node 10 actually has the name as: [expr]
+        return true;
+    }
+
+    return false;
 }
 
 function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.SourceFile | null] {

@@ -24,7 +24,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"unicode"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -56,6 +55,12 @@ func NewMissingError(info workspace.PluginInfo) error {
 }
 
 func (err *MissingError) Error() string {
+	if err.Info.Version != nil {
+		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
+			err.Info.Kind, err.Info.Name, err.Info.Version)
+	}
+
 	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
 		err.Info.Kind, err.Info.String())
 }
@@ -120,7 +125,6 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 				break
 			}
 
-			msg = strings.TrimRightFunc(msg, unicode.IsSpace)
 			if strings.TrimSpace(msg) != "" {
 				if stderr {
 					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
@@ -231,7 +235,7 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	// Flow the logging information if set.
 	if logging.LogFlow {
 		if logging.LogToStderr {
-			args = append(args, "--logtostderr")
+			args = append(args, "-logtostderr")
 		}
 		if logging.Verbose > 0 {
 			args = append(args, "-v="+strconv.Itoa(logging.Verbose))

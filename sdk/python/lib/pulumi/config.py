@@ -20,6 +20,7 @@ import six
 
 from . import errors
 from .runtime.config import get_config
+from .metadata import get_project
 
 class Config(object):
     """
@@ -31,11 +32,12 @@ class Config(object):
     """
     def __init__(self, name):
         if not name:
-            raise TypeError('Missing name argument')
+            name = get_project()
         if not isinstance(name, six.string_types):
             raise TypeError('Expected name to be a string')
         self.name = name
-        """The configuration bag's logical name that uniquely identifies it."""
+        """The configuration bag's logical name that uniquely identifies it.  The default is the name of the current
+        project."""
 
     def get(self, key):
         """

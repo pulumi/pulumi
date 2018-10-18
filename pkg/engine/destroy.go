@@ -33,12 +33,16 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, err
+	}
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
 		Events:        emitter,
-		Diag:          newEventSink(emitter),
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
 	}, dryRun)
 }
 
@@ -49,7 +53,7 @@ func newDestroySource(
 	// For destroy, we consult the manifest for the plugin versions/ required to destroy it.
 	if target != nil && target.Snapshot != nil {
 		// We don't need the language plugin, since destroy doesn't run code, so we will leave that out.
-		kinds := plugin.AllPlugins & ^plugin.LanguagePlugins
+		kinds := plugin.AnalyzerPlugins
 		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins, kinds); err != nil {
 			return nil, err
 		}

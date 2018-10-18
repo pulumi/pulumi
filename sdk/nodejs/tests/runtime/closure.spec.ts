@@ -17,14 +17,16 @@
 import * as assert from "assert";
 import { EOL } from "os";
 import { runtime } from "../../index";
-import * as resource from "../../resource";
-import { Output, output } from "../../resource";
+import * as pulumi from "../../index";
+import { output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
+import * as typescript from "typescript";
 
 interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
     title: string;                  // a title banner for the test case.
-    func: Function;                 // the function whose body and closure to serialize.
+    func?: Function;                // the function whose body and closure to serialize.
+    factoryFunc?: Function;         // the function whose body and closure to serialize (as a factory).
     expectText?: string;            // optionally also validate the serialization to JavaScript text.
     error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
@@ -808,22 +810,20 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
         const os = require("os");
 
         cases.push({
-            title: "Fail to capture built-in modules due to native functions",
+            title: "Capture built in module by ref",
             func: () => os,
-            expectText: undefined,
-            error:
-`Error serializing '() => os': closure.spec.js(0,0)
+            expectText: `exports.handler = __f0;
 
-'() => os': closure.spec.js(0,0): captured
-  module 'os' which indirectly referenced
-      (...)
-      it was a native code function.
+function __f0() {
+  return (function() {
+    with({ os: require("os") }) {
 
-Function code:
-  function (...)() { [native code] }
+return () => os;
 
-Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -839,19 +839,21 @@ Consider using import('os') or require('os') inside '() => os': closure.spec.js(
                            os;
                        return { v };
                    },
-            expectText: undefined,
-            error: `Error serializing '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)
+            expectText: `exports.handler = __f0;
 
-'(a, b, c) => { const v = os; ...': closure.spec.js(0,0): captured
-  module 'os' which indirectly referenced
-    (...)
-      it was a native code function.
+function __f0() {
+  return (function() {
+    with({ os: require("os") }) {
 
-Function code:
-  function (...)() { [native code] }
+return (a, b, c) => {
+                const v = os;
+                return { v };
+            };
 
-Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)`,
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -864,48 +866,119 @@ Consider using import('os') or require('os') inside '(a, b, c) => { const v = os
         const func = wrap(() => os);
 
         cases.push({
-            title: "Fail to capture module through indirect function references",
+            title: "Capture module through indirect function references",
             func: func,
-            expectText: undefined,
-            error:
-`Error serializing '() => handler': closure.spec.js(0,0)
+            expectText: `exports.handler = __f0;
 
-'() => handler': closure.spec.js(0,0): captured
-  'handler', a function defined at
-    '() => os': closure.spec.js(0,0): which captured
-      module 'os' which indirectly referenced
-        (...)
-          it was a native code function.
+function __f1() {
+  return (function() {
+    with({ os: require("os") }) {
 
-Function code:
-  function (...)() { [native code] }
+return () => os;
 
-Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ handler: __f1 }) {
+
+return () => handler;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
     {
         const util = require("../util");
         cases.push({
-            title: "Fail to capture user-defined modules due to native functions",
+            title: "Capture user-defined module by value",
             func: () => util,
-            expectText: undefined,
-            error:
-`Error serializing '() => util': closure.spec.js(0,0)
+            expectText: `exports.handler = __f0;
 
-'() => util': closure.spec.js(0,0): captured
-  module './bin/tests/util.js' which indirectly referenced
-    function 'assertAsyncThrows': util.js(0,0): which captured
-      module 'assert' which indirectly referenced
-        (...)
-          it was a native code function.
+var __util = {};
+Object.defineProperty(__util, "__esModule", { value: true });
+__util.asyncTest = __asyncTest;
+__util.assertAsyncThrows = __assertAsyncThrows;
 
-Function code:
-  function (...)() { [native code] }
+function __f1() {
+  return (function() {
+    with({  }) {
 
-Capturing modules can sometimes cause problems.
-Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside '() => util': closure.spec.js(0,0)`,
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __asyncTest() {
+  return (function() {
+    with({ __awaiter: __f1, asyncTest: __asyncTest }) {
+
+return function /*asyncTest*/(test) {
+    return (done) => {
+        const go = () => __awaiter(this, void 0, void 0, function* () {
+            let caught;
+            try {
+                yield test();
+            }
+            catch (err) {
+                caught = err;
+            }
+            finally {
+                done(caught);
+            }
+        });
+        go();
+    };
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __assertAsyncThrows() {
+  return (function() {
+    with({ __awaiter: __f1, assert: require("assert"), assertAsyncThrows: __assertAsyncThrows }) {
+
+return function /*assertAsyncThrows*/(test) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            yield test();
+        }
+        catch (err) {
+            return err.message;
+        }
+        assert(false, "Function was expected to throw, but didn't");
+        return "";
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ util: __util }) {
+
+return () => util;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -1261,7 +1334,8 @@ __v.d1 = __v_d1;
 var __v_d2 = Object.create(__v_d1_proto);
 var __v_d2_value = {};
 __v_d2_value.a = 1;
-__v_d2_value.b = __v;
+var __v_d2_value_b = {d1: 4, d2: undefined};
+__v_d2_value.b = __v_d2_value_b;
 __v_d2.value = __v_d2_value;
 __v.d2 = __v_d2;
 
@@ -4695,6 +4769,426 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
         });
     }
 
+    {
+        cases.push({
+            title: "Capture non-built-in module",
+            func: function () { typescript.parseCommandLine([""]); },
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ typescript: require("typescript/lib/typescript.js") }) {
+
+return function () { typescript.parseCommandLine([""]); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Fail to capture non-deployment module due to native code",
+            func: function () { console.log(pulumi); },
+            error: `Error serializing function 'func': closure.spec.js(0,0)
+
+function 'func': closure.spec.js(0,0): captured
+  module './bin/index.js' which indirectly referenced
+    function 'debug': index.js(0,0): which captured
+      module './bin/runtime/settings.js' which indirectly referenced
+        function 'getEngine': settings.js(0,0): which captured
+          module './bin/proto/engine_grpc_pb.js' which indirectly referenced
+(...)
+Function code:
+(...)
+Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
+        });
+    }
+
+    {
+        // Used just to validate that if we capture a Config object we see these values serialized over.
+        // Specifically, the module that Config uses needs to be captured by value and not be
+        // 'require-reference'.
+        runtime.setConfig("test:TestingKey1", "TestingValue1");
+        const testConfig = new pulumi.Config("test");
+
+        cases.push({
+            title: "Capture config created on the outside",
+            func: function () { const v = testConfig.get("TestingKey1"); console.log(v); },
+            expectText: `exports.handler = __f0;
+
+var __testConfig_proto = {};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __options = {project: undefined};
+var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
+var __metadata_1 = {getProject: __getProject};
+__f1.prototype = __testConfig_proto;
+Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+(...)
+Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f17 });
+var __testConfig = Object.create(__testConfig_proto);
+__testConfig.name = "test";
+
+function __getConfig() {
+  return (function() {
+    with({ config: __config, getConfig: __getConfig }) {
+
+return function /*getConfig*/(k) {
+    return config[k];
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __0_getProject() {
+  return (function() {
+    with({ options: __options, getProject: __0_getProject }) {
+
+return function /*getProject*/() {
+    return options.project;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getProject() {
+  return (function() {
+    with({ runtime: __runtime, getProject: __getProject }) {
+
+return function /*getProject*/() {
+    const project = runtime.getProject();
+    if (project) {
+        return project;
+    }
+    throw new Error("Project unknown; are you using the Pulumi CLI?");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ metadata_1: __metadata_1 }) {
+
+return function /*constructor*/(name) {
+        if (name === undefined) {
+            name = metadata_1.getProject();
+        }
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+        this.name = name;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+(...)
+function __f0() {
+  return (function() {
+    with({ testConfig: __testConfig }) {
+
+return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        runtime.setConfig("test:TestingKey2", "TestingValue2");
+
+        cases.push({
+            title: "Capture config created on the inside",
+            func: function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); },
+            expectText: `exports.handler = __f0;
+
+var __options = {project: undefined};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
+var __metadata_1 = {getProject: __getProject};
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+(...)
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f17 });
+__f1.prototype = __f1_prototype;
+var __pulumi = {Config: __f1};
+
+function __0_getProject() {
+  return (function() {
+    with({ options: __options, getProject: __0_getProject }) {
+
+return function /*getProject*/() {
+    return options.project;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getConfig() {
+  return (function() {
+    with({ config: __config, getConfig: __getConfig }) {
+
+return function /*getConfig*/(k) {
+    return config[k];
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getProject() {
+  return (function() {
+    with({ runtime: __runtime, getProject: __getProject }) {
+
+return function /*getProject*/() {
+    const project = runtime.getProject();
+    if (project) {
+        return project;
+    }
+    throw new Error("Project unknown; are you using the Pulumi CLI?");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ metadata_1: __metadata_1 }) {
+
+return function /*constructor*/(name) {
+        if (name === undefined) {
+            name = metadata_1.getProject();
+        }
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+        this.name = name;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+(...)
+function __f0() {
+  return (function() {
+    with({ pulumi: __pulumi }) {
+
+return function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Capture factory func #1",
+            factoryFunc: () => {
+                const serverlessExpress = require("aws-serverless-express");
+                const express = require("express");
+                const app = express();
+                app.get("/", (req: any, res: any) => {
+                    res.json({ succeeded: true });
+                });
+
+                const server = serverlessExpress.createServer(app);
+
+                return (event: any, context: any) => {
+                    serverlessExpress.proxy(server, event, context);
+                };
+            },
+            expectText: `
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => {
+                const serverlessExpress = require("aws-serverless-express");
+                const express = require("express");
+                const app = express();
+                app.get("/", (req, res) => {
+                    res.json({ succeeded: true });
+                });
+                const server = serverlessExpress.createServer(app);
+                return (event, context) => {
+                    serverlessExpress.proxy(server, event, context);
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+exports.handler = __f0();`,
+        });
+    }
+
+    {
+        const outerVal = [{}];
+        (<any>outerVal[0]).inner = outerVal;
+
+        function foo() {
+            outerVal.pop();
+        }
+
+        function bar() {
+            outerVal.join();
+        }
+
+        cases.push({
+            title: "Capture factory func #2",
+            factoryFunc: () => {
+                outerVal.push({});
+                foo();
+
+                return (event: any, context: any) => {
+                    bar();
+                };
+            },
+            expectText: `
+var __outerVal = [];
+var __outerVal_0 = {};
+__outerVal_0.inner = __outerVal;
+__outerVal[0] = __outerVal_0;
+
+function __foo() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo }) {
+
+return function /*foo*/() {
+            outerVal.pop();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __bar() {
+  return (function() {
+    with({ outerVal: __outerVal, bar: __bar }) {
+
+return function /*bar*/() {
+            outerVal.join();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo, bar: __bar }) {
+
+return () => {
+                outerVal.push({});
+                foo();
+                return (event, context) => {
+                    bar();
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+exports.handler = __f0();`,
+        });
+    }
+
+    cases.push({
+        title: "Deconstructing function",
+        // @ts-ignore
+        func: function f({ whatever }) { },
+        expectText: `exports.handler = __f;
+
+function __f() {
+  return (function() {
+    with({ f: __f }) {
+
+return function /*f*/({ whatever }) { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
+    {
+        const regex = /(abc)[\(123-456]\\a\b\z/gi;
+
+        cases.push({
+            title: "Regex #1",
+            // @ts-ignore
+            func: function() { console.log(regex); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)[\\\\(123-456]\\\\\\\\a\\\\b\\\\z", "gi");
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex }) {
+
+return function () { console.log(regex); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const regex = /(abc)/g;
+
+        function foo() {
+            console.log(regex);
+        }
+
+        cases.push({
+            title: "Regex #2",
+            // @ts-ignore
+            func: function() { console.log(regex); foo(); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)", "g");
+
+function __foo() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function /*foo*/() {
+            console.log(regex);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function () { console.log(regex); foo(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
@@ -4713,7 +5207,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
             return;
         }
 
-        // if (test.title !== "Invocation of async function that does not capture this.") {
+        // if (test.title !== "Two level static inheritance") {
         //     continue;
         // }
 
@@ -4725,12 +5219,12 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
 
             // Invoke the test case.
             if (test.expectText) {
-                const sf = await runtime.serializeFunction(test.func);
-                assert.equal(sf.text, test.expectText);
+                const sf = await serializeFunction(test);
+                compareTextWithWildcards(test.expectText, sf.text);
             }
             else {
                 const message = await assertAsyncThrows(async () => {
-                    await runtime.serializeFunction(test.func);
+                    await serializeFunction(test);
                 });
 
                 // replace real locations with (0,0) so that our test baselines do not need to
@@ -4738,7 +5232,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
                 const regex = /\([0-9]+,[0-9]+\)/g;
                 const withoutLocations = message.replace(regex, "(0,0)");
                 if (test.error) {
-                    compareErrorText(test.error, withoutLocations);
+                    compareTextWithWildcards(test.error, withoutLocations);
                 }
             }
         }));
@@ -4746,6 +5240,18 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
         // Schedule any additional tests.
         if (test.afters) {
             remaining = test.afters.concat(remaining);
+        }
+    }
+
+    async function serializeFunction(test: ClosureCase) {
+        if (test.func) {
+            return await runtime.serializeFunction(test.func);
+        }
+        else if (test.factoryFunc) {
+            return await runtime.serializeFunction(test.factoryFunc!, { isFactoryFunction: true });
+        }
+        else {
+            throw new Error("Have to supply [func] or [factoryFunc]!");
         }
     }
 });
@@ -4767,7 +5273,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
  * @param expected The expected error message string, potentially containing repetitions
  * @param actual The actual error message string
  */
-function compareErrorText(expected: string, actual: string) {
+function compareTextWithWildcards(expected: string, actual: string) {
     const wildcard = "(...)";
 
     if (!expected.includes(wildcard)) {
@@ -4804,6 +5310,9 @@ function compareErrorText(expected: string, actual: string) {
             const indexAfter = index + wildcard.length;
             assert.equal(line.substring(0, index), expectedLine.substring(0, index));
 
+            if (indexAfter === expectedLine.length) {
+                continue;
+            }
             let repetitionIndex = index;
             for (; repetitionIndex < line.length; repetitionIndex++) {
                 if (line[repetitionIndex] === expectedLine[indexAfter]) {

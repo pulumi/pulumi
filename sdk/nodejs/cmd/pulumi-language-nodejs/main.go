@@ -39,6 +39,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/hashicorp/go-multierror"
+
+	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -53,7 +56,7 @@ import (
 const (
 	// The path to the "run" program which will spawn the rest of the language host. This may be overriden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
-	defaultRunPath = "./node_modules/@pulumi/pulumi/cmd/run"
+	defaultRunPath = "@pulumi/pulumi/cmd/run"
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -64,10 +67,13 @@ const (
 // endpoint.
 func main() {
 	var tracing string
+	var typescript bool
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-
+	flag.BoolVar(&typescript, "typescript", true,
+		"Use ts-node at runtime to support typescript source natively")
 	flag.Parse()
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-langauge-nodejs", tracing)
@@ -82,7 +88,8 @@ func main() {
 		runPath = defaultRunPath
 	}
 
-	if _, err = os.Stat(runPath); err != nil {
+	runPath, err = locateModule(runPath, nodePath)
+	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
 	}
@@ -96,7 +103,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -114,6 +121,17 @@ func main() {
 	}
 }
 
+// locateModule resolves a node module name to a file path that can be loaded
+func locateModule(mod string, nodePath string) (string, error) {
+	program := fmt.Sprintf("console.log(require.resolve('%s'));", mod)
+	cmd := exec.Command(nodePath, "-e", program) // nolint: gas, intentionally running dynamic program name.
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
@@ -121,14 +139,16 @@ type nodeLanguageHost struct {
 	runPath       string
 	engineAddress string
 	tracing       string
+	typescript    bool
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(nodePath, runPath, engineAddress, tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		typescript:    typescript,
 	}
 }
 
@@ -136,12 +156,12 @@ func newLanguageHost(nodePath, runPath, engineAddress, tracing string) pulumirpc
 func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	// To get the plugins required by a program, find all node_modules/ packages that contain { "pulumi": true }
-	// inside of their packacge.json files.  We begin this search in the same directory that contains the project.
+	// inside of their package.json files.  We begin this search in the same directory that contains the project.
 	// It's possible that a developer would do a `require("../../elsewhere")` and that we'd miss this as a
 	// dependency, however the solution for that is simple: install the package in the project root.
 	plugins, err := getPluginsFromDir(req.GetProgram(), false)
 	if err != nil {
-		return nil, err
+		glog.V(3).Infof("one or more errors while discovering plugins: %s", err)
 	}
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: plugins,
@@ -156,6 +176,7 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 	}
 
 	var plugins []*pulumirpc.PluginDependency
+	var allErrors *multierror.Error
 	for _, file := range files {
 		name := file.Name()
 		curr := filepath.Join(dir, name)
@@ -163,24 +184,27 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 		// Re-stat the directory, in case it is a symlink.
 		file, err = os.Stat(curr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "re-statting file %s", curr)
+			allErrors = multierror.Append(allErrors, err)
+			continue
 		}
 		if file.IsDir() {
 			// if a directory, recurse.
 			more, err := getPluginsFromDir(curr, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
-				return nil, err
+				allErrors = multierror.Append(allErrors, err)
+				continue
 			}
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
 			b, err := ioutil.ReadFile(curr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "reading package.json %s", curr)
+				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "reading package.json %s", curr))
+				continue
 			}
 			ok, name, version, err := getPackageInfo(b)
 			if err != nil {
-				return nil, errors.Wrapf(err, "unmarshaling package.json %s", curr)
+				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "unmarshaling package.json %s", curr))
 			} else if ok {
 				plugins = append(plugins, &pulumirpc.PluginDependency{
 					Name:    name,
@@ -190,7 +214,7 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 			}
 		}
 	}
-	return plugins, nil
+	return plugins, allErrors.ErrorOrNil()
 }
 
 // packageJSON is the minimal amount of package.json information we care about.
@@ -264,28 +288,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		return nil, err
 	}
 
-	ourCmd, err := os.Executable()
-	if err != nil {
-		err = errors.Wrap(err, "failed to find our working directory")
-		return nil, err
-	}
-
-	// Older versions of the pulumi runtime used a custom node module (which only worked on node 6.10.X) to support
-	// closure serialization. While we no longer use this, we continue to ship this module with the language host in
-	// the SDK, so we can deploy programs using older versions of the Pulumi framework.  So, for now, let's add this
-	// folder with our native modules to the NODE_PATH so Node can find it.
-	//
-	// TODO(ellismg)[pulumi/pulumi#1298]: Remove this block of code when we no longer need to support older
-	// @pulumi/pulumi versions.
 	env := os.Environ()
-	existingNodePath := os.Getenv("NODE_PATH")
-	if existingNodePath != "" {
-		env = append(env, fmt.Sprintf("NODE_PATH=%s/v6.10.2:%s", filepath.Dir(ourCmd), existingNodePath))
-	} else {
-		env = append(env, "NODE_PATH="+filepath.Dir(ourCmd)+"/v6.10.2")
-	}
-
 	env = append(env, pulumiConfigVar+"="+string(config))
+
+	if host.typescript {
+		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+	}
 
 	if logging.V(5) {
 		commandStr := strings.Join(args, " ")

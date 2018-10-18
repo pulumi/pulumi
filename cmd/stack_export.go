@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -40,12 +40,12 @@ func newStackExportCmd() *cobra.Command {
 			"in a stack's state due to failed deployments, manual changes to cloud\n" +
 			"resources, etc.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(stackName, false, opts)
+			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}

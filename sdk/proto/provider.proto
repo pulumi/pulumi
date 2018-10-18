@@ -45,6 +45,8 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+    // Cancel signals the provider to abort all outstanding resource operations.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 }
@@ -66,6 +68,7 @@ message ConfigureErrorMissingKeys {
 message InvokeRequest {
     string tok = 1;                  // the function token to invoke.
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
+    string provider = 3;             // an optional reference to the provider to use for this invoke.
 }
 
 message InvokeResponse {

@@ -69,10 +69,13 @@ func TestDeploymentSerialization(t *testing.T) {
 		}),
 		"",
 		false,
+		false,
 		[]resource.URN{
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
 		},
+		[]string{},
+		"",
 	)
 
 	dep := SerializeResource(res)
@@ -149,7 +152,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
-	deployment, err := DeserializeDeployment(untypedDeployment)
+	deployment, err := DeserializeUntypedDeployment(untypedDeployment)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
@@ -160,7 +163,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
 
-	deployment, err := DeserializeDeployment(untypedDeployment)
+	deployment, err := DeserializeUntypedDeployment(untypedDeployment)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)

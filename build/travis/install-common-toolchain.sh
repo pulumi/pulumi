@@ -5,17 +5,11 @@ nvm install ${NODE_VERSION-v8.11.1}
 # they would be set in the outer shell as well, so do as much logic as
 # we can in a subshell.
 (
-    set -o nounset -o errexit -o pipefail
+    set -o errexit -o pipefail
     [ -e "$(go env GOPATH)/bin" ] || mkdir -p "$(go env GOPATH)/bin"
 
-    YARN_VERSION="1.3.2"
-    DEP_VERSION="0.4.1"
-    GOMETALINTER_VERSION="2.0.3"
-    PIP_VERSION="10.0.0"
-    VIRTUALENV_VERSION="15.2.0"
-    AWSCLI_VERSION="1.14.30"
-    WHEEL_VERSION="0.30.0"
-    TWINE_VERSION="1.9.1"
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+    . ${DIR}/../tool-versions.sh
 
     OS=""
     case $(uname) in
@@ -24,10 +18,13 @@ nvm install ${NODE_VERSION-v8.11.1}
         *) echo "error: unknown host os $(uname)" ; exit 1;;
     esac
 
-    # On Travis, pip is called pip2.7, so alias it, also install jq
+    # Tool installs and workarounds specific to macOS.
     if [ "${TRAVIS_OS_NAME:-}" = "osx" ]; then
-        sudo ln -s $(which pip2.7) /usr/local/bin/pip
         brew install jq
+        # On Travis, pip is called pip2.7, so alias it.
+        if [ ! -f /usr/local/bin/pip ]; then
+            sudo ln -s $(which pip2.7) /usr/local/bin/pip
+        fi
     fi
 
     echo "installing yarn ${YARN_VERSION}"
@@ -67,6 +64,14 @@ nvm install ${NODE_VERSION-v8.11.1}
 
     echo "installing Wheel and Twine, so we can publish Python packages"
     pip install --user "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
+
+    echo "installing pandoc, so we can generate README.rst for Python packages"
+    if [ "${TRAVIS_OS_NAME:-}" = "linux" ]; then
+        sudo apt-get update
+        sudo apt-get install pandoc
+    else
+        brew install pandoc
+    fi
 )
 
 # If the sub shell failed, bail out now.
@@ -76,7 +81,7 @@ nvm install ${NODE_VERSION-v8.11.1}
 
 # On OSX, the user folder that `pip` installs tools to is not on the
 # $PATH by default.
-if [[ "${TRAVIS_OS_NAME:-}" == "osx" ]]; then
+if [ "${TRAVIS_OS_NAME:-}" = "osx" ]; then
     export PATH=$PATH:$HOME/Library/Python/2.7/bin
     export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages
 fi

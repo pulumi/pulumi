@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { relative as pathRelative } from "path";
-import { basename } from "path";
+// tslint:disable:max-line-length
+
 import * as ts from "typescript";
-import { RunError } from "../../errors";
+import * as upath from "upath";
+import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
@@ -85,6 +86,9 @@ export interface Entry {
     // a value which can be safely json serialized.
     json?: any;
 
+    // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
+    regexp?: RegExp;
+
     // a closure we are dependent on.
     function?: FunctionInfo;
 
@@ -94,6 +98,9 @@ export interface Entry {
 
     // an array which may contain nested closures.
     array?: Entry[];
+
+    // a reference to a requirable module name.
+    module?: string;
 
     // A promise value.  this will be serialized as the underlyign value the promise
     // points to.  And deserialized as Promise.resolve(<underlying_value>)
@@ -142,6 +149,11 @@ interface Context {
     // __awaiter per .js file that uses 'async/await'.  Instead of needing to generate serialized
     // functions for each of those, we can just serialize out the function once.
     simpleFunctions: FunctionInfo[];
+
+    /**
+     * The resource to log any errors we encounter against.
+     */
+    logResource: resource.Resource | undefined;
 }
 
 interface FunctionLocation {
@@ -157,7 +169,7 @@ interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
-    capturedModuleName?: string;
+    capturedModule?: { name: string, value: any };
 }
 
 /*
@@ -181,9 +193,9 @@ class SerializedOutput<T> implements resource.Output<T> {
 "'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
     }
 
-     public get(): T {
-         return this.value;
-     }
+    public get(): T {
+        return this.value;
+    }
 }
 
 /**
@@ -193,7 +205,7 @@ class SerializedOutput<T> implements resource.Output<T> {
  * about the captured environment.
  */
 export async function createFunctionInfoAsync(
-    func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
+    func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<FunctionInfo> {
 
     const context: Context = {
         cache: new Map(),
@@ -202,7 +214,8 @@ export async function createFunctionInfoAsync(
         frames: [],
         asyncWorkQueue: [],
         simpleFunctions: [],
-     };
+        logResource,
+    };
 
     // Add well-known javascript global variables into our cache.  This way, if there
     // is any code that references them, we can just emit that as simple expressions
@@ -246,7 +259,7 @@ export async function createFunctionInfoAsync(
 
     function addGlobalInfo(key: string) {
         const globalObj = (<any>global)[key];
-        const text = isLegalMemberName(key) ? `global.${key}` :  `global["${key}"]`;
+        const text = isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
 
         if (!context.cache.has(globalObj)) {
             context.cache.set(globalObj, { expr: text });
@@ -254,12 +267,12 @@ export async function createFunctionInfoAsync(
 
         const proto1 = Object.getPrototypeOf(globalObj);
         if (proto1 && !context.cache.has(proto1)) {
-            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})`});
+            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})` });
         }
 
         const proto2 = globalObj.prototype;
         if (proto2 && !context.cache.has(proto2)) {
-            context.cache.set(proto2, { expr: `${text}.prototype`});
+            context.cache.set(proto2, { expr: `${text}.prototype` });
         }
     }
 
@@ -281,7 +294,7 @@ export async function createFunctionInfoAsync(
     // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
     function addGeneratorEntries() {
         // tslint:disable-next-line:no-empty
-        const emptyGenerator = function*(): any {};
+        const emptyGenerator = function* (): any { };
 
         context.cache.set(Object.getPrototypeOf(emptyGenerator),
             { expr: "Object.getPrototypeOf(function*(){})" });
@@ -316,9 +329,8 @@ function createFunctionInfo(
 
     // logInfo = logInfo || func.name === "addHandler";
 
-    const file: string =  v8.getFunctionFile(func);
-    const line: number = v8.getFunctionLine(func);
-    const column: number = v8.getFunctionColumn(func);
+    const file = v8.getFunctionFile(func);
+    const { line, column } = v8.getFunctionLocation(func);
     const functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
@@ -468,7 +480,7 @@ function createFunctionInfo(
         return functionInfo;
 
         function processCapturedVariables(
-                capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
+            capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
 
             for (const name of capturedVariables.keys()) {
                 let value: any;
@@ -479,10 +491,10 @@ function createFunctionInfo(
                     throwSerializationError(func, context, err.message);
                 }
 
-                const moduleName = findModuleName(value);
+                const moduleName = findNormalizedModuleName(value);
                 const frameLength = context.frames.length;
                 if (moduleName) {
-                    context.frames.push({ capturedModuleName: moduleName });
+                    context.frames.push({ capturedModule: { name: moduleName, value: value } });
                 }
                 else if (value instanceof Function) {
                     // Only bother pushing on context frame if the name of the variable
@@ -562,7 +574,9 @@ function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
     return names.concat(Object.getOwnPropertySymbols(obj));
 }
 
-function throwSerializationError(func: Function, context: Context, info: string): never {
+function throwSerializationError(
+    func: Function, context: Context, info: string): never {
+
     let message = "";
 
     const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
@@ -603,8 +617,13 @@ function throwSerializationError(func: Function, context: Context, info: string)
         else if (frame.capturedFunctionName) {
             message += `'${frame.capturedFunctionName}', a function defined at\n`;
         }
-        else if (frame.capturedModuleName) {
-            message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
+        else if (frame.capturedModule) {
+            if (i === n - 1) {
+                message += `module '${frame.capturedModule.name}'\n`;
+            }
+            else {
+                message += `module '${frame.capturedModule.name}' which indirectly referenced\n`;
+            }
         }
         else if (frame.capturedVariableName) {
             message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
@@ -614,18 +633,30 @@ function throwSerializationError(func: Function, context: Context, info: string)
     message += "  ".repeat(i) + info + "\n\n";
     message += getTrimmedFunctionCode(func);
 
-    const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
+    const moduleIndex = context.frames.findIndex(
+            f => f.capturedModule !== undefined);
+
     if (moduleIndex >= 0) {
-        const moduleName = context.frames[moduleIndex].capturedModuleName;
+        const module = context.frames[moduleIndex].capturedModule!;
+        const moduleName = module.name;
         message += "\n";
 
-        const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
-        const location = getFunctionLocation(functionLocation);
-        message += `Capturing modules can sometimes cause problems.
+        if (module.value.deploymentOnlyModule) {
+            message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
+        }
+        else {
+            const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
+            const location = getFunctionLocation(functionLocation);
+            message += `Capturing modules can sometimes cause problems.
 Consider using import('${moduleName}') or require('${moduleName}') inside ${location}`;
+        }
     }
 
-    throw new RunError(message);
+    // Hide the stack when printing out the closure serialization error.  We don't want both the
+    // closure serialization object stack *and* the function execution stack.  Furthermore, there
+    // is enough information about the Function printed (both line/col, and a few lines of its
+    // text) to give the user the appropriate info for fixing.
+    throw new ResourceError(message, context.logResource, /*hideStack:*/true);
 }
 
 function getTrimmedFunctionCode(func: Function): string {
@@ -649,7 +680,7 @@ function getTrimmedFunctionCode(func: Function): string {
 function getFunctionLocation(loc: FunctionLocation): string {
     let name = "'" + getFunctionName(loc) + "'";
     if (loc.file) {
-        name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
+        name += `: ${upath.basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
     const prefix = loc.isArrowFunction ? "" : "function ";
@@ -745,23 +776,48 @@ function getOrCreateEntry(
     dispatchAny();
     return entry;
 
-    function dispatchAny(): void {
+    function doNotCapture() {
         if (!serialize(obj)) {
             // caller explicitly does not want us to capture this value.
-            entry.json = undefined;
+            return true;
         }
-        else if (obj && obj.doNotCapture) {
+
+        if (obj && obj.doNotCapture) {
             // object has set itself as something that should not be captured.
-            entry.json = undefined;
+            return true;
         }
-        else if (isDerivedNoCaptureConstructor(obj)) {
+
+        if (isDerivedNoCaptureConstructor(obj)) {
             // this was a constructor that derived from something that should not be captured.
-            entry.json = undefined;
+            return true;
         }
-        else if (obj === undefined || obj === null ||
+
+        return false;
+    }
+
+    function dispatchAny(): void {
+        if (doNotCapture()) {
+            // We do not want to capture this object.  Explicit set .json to undefined so
+            // that we will see that the property is set and we will simply roundtrip this
+            // as the 'undefined value.
+            entry.json = undefined;
+            return;
+        }
+
+        if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
             // Serialize primitives as-is.
             entry.json = obj;
+            return;
+        }
+        else if (obj instanceof RegExp) {
+            entry.regexp = obj;
+            return;
+        }
+
+        const normalizedModuleName = findNormalizedModuleName(obj);
+        if (normalizedModuleName) {
+            captureModule(normalizedModuleName);
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
@@ -809,7 +865,6 @@ function getOrCreateEntry(
             }
         }
         else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
-            // tslint:disable-next-line:max-line-length
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.array = [];
             for (const elem of obj) {
@@ -980,7 +1035,7 @@ function getOrCreateEntry(
     }
 
     function propInfoUsesNonLexicalThis(
-            capturedInfos: CapturedPropertyInfo[], propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
+        capturedInfos: CapturedPropertyInfo[], propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
         if (capturedInfos.some(info => info.invoked)) {
             // If the property was invoked, then we have to check if that property ends
             // up using this/super.  if so, then we actually have to serialize out this
@@ -1029,6 +1084,55 @@ function getOrCreateEntry(
     function usesNonLexicalThis(localEntry: Entry | undefined) {
         return localEntry && localEntry.function && localEntry.function.usesNonLexicalThis;
     }
+
+    function captureModule(normalizedModuleName: string) {
+        // Splitting on "/" is safe to do as this module name is already in a normalized form.
+        const moduleParts = normalizedModuleName.split("/");
+
+        const nodeModulesSegment = "node_modules";
+        const nodeModulesSegmentIndex = moduleParts.findIndex(v => v === nodeModulesSegment);
+        const isInNodeModules = nodeModulesSegmentIndex >= 0;
+
+        const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
+
+        if (obj.deploymentOnlyModule || isLocalModule) {
+            // Try to serialize deployment-time and local-modules by-value.
+            //
+            // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
+            // parts of it may be serializable on the inside (i.e. pulumi.Config).  So just try to
+            // capture this as a value.  If it fails, we will give the user a good message.
+            // Otherwise, it may succeed if the user is only using a small part of the API that is
+            // serializable (like pulumi.Config)
+            //
+            // Or this is a reference to a local module (i.e. starts with '.', but isn't in
+            // /node_modules/ somewhere). Always capture the local module as a value.  We do this
+            // because capturing as a reference (i.e. 'require(...)') has the following problems:
+            //
+            // 1. 'require(...)' will not work at run-time, because the user's code will not be
+            //    serialized in a way that can actually be require'd (i.e. it is not ) serialized
+            //    into any sort of appropriate file/folder structure for those 'require's to work.
+            //
+            // 2. if we stop here and capture as a reference, then we won't actually see and walk
+            //    the code that exists in those local modules (direct or transitive). So we won't
+            //    actually generate the serialized code for the functions or values in that module.
+            //    This will also lead to code that simply will not work at run-time.
+            serializeObject();
+        }
+        else  {
+            // If the path goes into node_modules, strip off the node_modules part. This will help
+            // ensure that lookup of those modules will work on the cloud-side even if the module
+            // isn't in a relative node_modules directory.  For example, this happens with aws-sdk.
+            // It ends up actually being in /var/runtime/node_modules inside aws lambda.
+            //
+            // This also helps ensure that modules that are 'yarn link'ed are found properly. The
+            // module path we have may be on some non-local path due to the linking, however this
+            // will ensure that the module-name we load is a simple path that can be found off the
+            // node_modules that we actually upload with our serialized functions.
+            entry.module = isInNodeModules
+                ? upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1))
+                : normalizedModuleName;
+        }
+    }
 }
 
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
@@ -1059,9 +1163,15 @@ for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
 }
 
-// findRequirableModuleName attempts to find a global name bound to the object, which can
-// be used as a stable reference across serialization.
-function findModuleName(obj: any): string | undefined  {
+// findNormalizedModuleName attempts to find a global name bound to the object, which can be used as
+// a stable reference across serialization.  For built-in modules (i.e. "os", "fs", etc.) this will
+// return that exact name of the module.  Otherwise, this will return the relative path to the
+// module from the current working directory of the process.  This will normally be something of the
+// form ./node_modules/<package_name>...
+//
+// This function will also always return modules in a normalized form (i.e. all path components will
+// be '/').
+function findNormalizedModuleName(obj: any): string | undefined {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
     if (key) {
@@ -1074,9 +1184,9 @@ function findModuleName(obj: any): string | undefined  {
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
         if (require.cache[path].exports === obj) {
-            // Rewrite the path to be a local module reference relative to the
-            // current working directory
-            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
+            // Rewrite the path to be a local module reference relative to the current working
+            // directory.
+            const modPath = upath.relative(process.cwd(), path);
             return "./" + modPath;
         }
     }

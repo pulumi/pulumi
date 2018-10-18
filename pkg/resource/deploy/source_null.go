@@ -15,7 +15,10 @@
 package deploy
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"
@@ -29,9 +32,9 @@ type nullSource struct {
 func (src *nullSource) Close() error                { return nil }
 func (src *nullSource) Project() tokens.PackageName { return "" }
 func (src *nullSource) Info() interface{}           { return nil }
-func (src *nullSource) IsRefresh() bool             { return false }
 
-func (src *nullSource) Iterate(opts Options) (SourceIterator, error) {
+func (src *nullSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {
+	contract.Ignore(ctx)
 	return &nullSourceIterator{}, nil
 }
 

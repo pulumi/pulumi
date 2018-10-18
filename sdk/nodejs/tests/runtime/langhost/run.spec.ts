@@ -19,6 +19,8 @@ import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
 
+const enginerpc = require("../../../proto/engine_grpc_pb.js");
+const engineproto = require("../../../proto/engine_pb.js");
 const gempty = require("google-protobuf/google/protobuf/empty_pb.js");
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const grpc = require("grpc");
@@ -36,13 +38,23 @@ interface RunCase {
     config?: {[key: string]: any};
     expectError?: string;
     expectResourceCount?: number;
+    expectedLogs?: {
+        count?: number;
+        ignoreDebug?: boolean;
+    };
+    skipRootResourceEndpoints?: boolean;
+    showRootResourceRegistration?: boolean;
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
         urn: URN | undefined, props: any | undefined };
-    registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[]) => {
+    registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                        custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
         urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
+    log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
+    getRootResource?: (ctx: any) => { urn: string };
+    setRootResource?: (ctx: any, urn: string) => void;
 }
 
 function makeUrn(t: string, name: string): URN {
@@ -314,8 +326,8 @@ describe("rpc", () => {
             project: "runtimeSettingsProject",
             stack: "runtimeSettingsStack",
             config: {
-                "myBag:config:A": "42",
-                "myBag:config:bbbb": "a string o' b's",
+                "myBag:A": "42",
+                "myBag:bbbb": "a string o' b's",
             },
             program: path.join(base, "010.runtime_settings"),
             expectResourceCount: 0,
@@ -366,17 +378,176 @@ describe("rpc", () => {
         "runtime_sxs": {
             program: path.join(base, "015.runtime_sxs"),
             config: {
-                "sxs:config:message": "SxS config works!",
+                "sxs:message": "SxS config works!",
             },
             expectResourceCount: 2,
+            expectedLogs: {
+                count: 2,
+                ignoreDebug: true,
+            },
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 return { urn: makeUrn(t, name), id: name, props: undefined };
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                assert.strictEqual(/logging via (.*) works/.test(message), true);
             },
         },
         // Test that leaked debuggable promises fail the deployment.
         "promise_leak": {
             program: path.join(base, "016.promise_leak"),
             expectError: "Program exited with non-zero exit code: 1",
+        },
+        // A test of parent default behaviors.
+        "parent_defaults": {
+            program: path.join(base, "017.parent_defaults"),
+            expectResourceCount: 240,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
+
+                if (custom && !t.startsWith("pulumi:providers:")) {
+                    let expectProtect = false;
+                    let expectProviderName = "";
+
+                    const rpath = name.split("/");
+                    for (let i = 1; i < rpath.length; i++) {
+                        switch (rpath[i]) {
+                        case "c0":
+                        case "r0":
+                            // Pass through parent values
+                            break;
+                        case "c1":
+                        case "r1":
+                            // Force protect to false
+                            expectProtect = false;
+                            break;
+                        case "c2":
+                        case "r2":
+                            // Force protect to true
+                            expectProtect = true;
+                            break;
+                        case "c3":
+                            // Force provider
+                            expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
+                            break;
+                        case "r3":
+                            // Do nothing.
+                            break;
+                        default:
+                            assert.fail(`unexpected path element in name: ${rpath[i]}`);
+                        }
+                    }
+
+                    // r3 explicitly overrides its provider.
+                    if (rpath[rpath.length-1] === "r3") {
+                        expectProviderName = `${rpath.slice(0, rpath.length-1).join("/")}-p`;
+                    }
+
+                    const providerName = provider!.split("::").reduce((_, v) => v);
+
+                    assert.strictEqual(protect!, expectProtect);
+                    assert.strictEqual(providerName, expectProviderName);
+                }
+
+                return { urn: makeUrn(t, name), id: name, props: {} };
+            },
+        },
+        "logging": {
+            program: path.join(base, "018.logging"),
+            expectResourceCount: 1,
+            expectedLogs: {
+                count: 5,
+                ignoreDebug: true,
+            },
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                // "test" is the one resource this test creates - save the URN so we can assert
+                // it gets passed to log later on.
+                if (name === "test") {
+                    ctx.testUrn = makeUrn(t, name);
+                }
+
+                return { urn: makeUrn(t, name), id: name, props: res};
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                switch (message) {
+                    case "info message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        return;
+                    case "warning message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.WARNING);
+                        return;
+                    case "error message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
+                        return;
+                    case "attached to resource":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        assert.strictEqual(urn, ctx.testUrn);
+                        return;
+                    case "with streamid":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        assert.strictEqual(urn, ctx.testUrn);
+                        assert.strictEqual(streamId, 42);
+                        return;
+                    default:
+                        assert.fail("unexpected message: " + message);
+                        break;
+                }
+            },
+        },
+        // Test stack outputs via exports.
+        "stack_exports": {
+            program: path.join(base, "019.stack_exports"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    a: {
+                        x: 99,
+                        y: "z",
+                    },
+                    b: 42,
+                    c: {
+                        d: "a",
+                        e: false,
+                    },
+                });
+            },
+        },
+        "root_resource": {
+            program: path.join(base, "001.one_resource"),
+            expectResourceCount: 2,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
+
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.strictEqual(parent, ctx.stackUrn);
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "backcompat_root_resource": {
+            program: path.join(base, "001.one_resource"),
+            expectResourceCount: 2,
+            skipRootResourceEndpoints: true,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
+
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.strictEqual(parent, ctx.stackUrn);
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
         },
     };
 
@@ -390,8 +561,10 @@ describe("rpc", () => {
                 // First we need to mock the resource monitor.
                 const ctx: any = {};
                 const regs: any = {};
+                let rootResource: string | undefined;
                 let regCnt = 0;
-                const monitor = createMockResourceMonitor(
+                let logCnt = 0;
+                const monitor = createMockEngine(opts,
                     // Invoke callback
                     (call: any, callback: any) => {
                         const resp = new resproto.InvokeResponse();
@@ -426,13 +599,18 @@ describe("rpc", () => {
                         const resp = new resproto.RegisterResourceResponse();
                         const req: any = call.request;
                         // Skip the automatically generated root component resource.
-                        if (req.getType() !== runtime.rootPulumiStackTypeName) {
+                        if (req.getType() !== runtime.rootPulumiStackTypeName || opts.showRootResourceRegistration) {
                             if (opts.registerResource) {
                                 const t = req.getType();
                                 const name = req.getName();
                                 const res: any = req.getObject().toJavaScript();
                                 const deps: string[] = req.getDependenciesList();
-                                const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps);
+                                const custom: boolean = req.getCustom();
+                                const protect: boolean = req.getProtect();
+                                const parent: string = req.getParent();
+                                const provider: string = req.getProvider();
+                                const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
+                                    custom, protect, parent, provider);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));
@@ -457,10 +635,56 @@ describe("rpc", () => {
                         }
                         callback(undefined, new gempty.Empty());
                     },
+                    // Log callback
+                    (call: any, callback: any) => {
+                        const req: any = call.request;
+                        const severity = req.getSeverity();
+                        const message = req.getMessage();
+                        const urn = req.getUrn();
+                        const streamId = req.getStreamid();
+                        if (severity === engineproto.LogSeverity.ERROR) {
+                            console.log("log: " + message);
+                        }
+                        if (opts.expectedLogs) {
+                            if (!opts.expectedLogs.ignoreDebug || severity !== engineproto.LogSeverity.DEBUG) {
+                                logCnt++;
+                                if (opts.log) {
+                                    opts.log(ctx, severity, message, urn, streamId);
+                                }
+                            }
+                        }
+
+                        callback(undefined, new gempty.Empty());
+                    },
+                    // GetRootResource callback
+                    (call: any, callback: any) => {
+                        let root: { urn: string };
+                        if (opts.getRootResource) {
+                            root = opts.getRootResource(ctx);
+                        } else {
+                            root = { urn: rootResource! };
+                        }
+
+                        const resp = new engineproto.GetRootResourceResponse();
+                        resp.setUrn(root.urn);
+                        callback(undefined, resp);
+                    },
+                    // SetRootResource callback
+                    (call: any, callback: any) => {
+                        const req: any = call.request;
+                        const urn: string = req.getUrn();
+                        if (opts.setRootResource) {
+                            opts.setRootResource(ctx, urn);
+                        } else {
+                            rootResource = urn;
+                        }
+
+                        callback(undefined, new engineproto.SetRootResourceResponse());
+                    },
                 );
 
                 // Next, go ahead and spawn a new language host that connects to said monitor.
-                const langHost = serveLanguageHostProcess();
+                const langHost = serveLanguageHostProcess(monitor.addr);
                 const langHostAddr: string = await langHost.addr;
 
                 // Fake up a client RPC connection to the language host so that we can invoke run.
@@ -485,6 +709,14 @@ describe("rpc", () => {
                 }
                 assert.strictEqual(regCnt, expectResourceCount,
                                    `Expected exactly ${expectResourceCount} resource registrations; got ${regCnt}`);
+
+                if (opts.expectedLogs) {
+                    const logs = opts.expectedLogs;
+                    if (logs.count) {
+                        assert.strictEqual(logCnt, logs.count,
+                            `Expected exactly ${logs.count} logs; got ${logCnt}`);
+                    }
+                }
 
                 // Finally, tear down everything so each test case starts anew.
                 await new Promise<void>((resolve, reject) => {
@@ -540,11 +772,17 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
     );
 }
 
-function createMockResourceMonitor(
+// Despite the name, the "engine" RPC endpoint is only a logging endpoint. createMockEngine fires up a fake
+// logging server so tests can assert that certain things get logged.
+function createMockEngine(
+        opts: RunCase,
         invokeCallback: (call: any, request: any) => any,
         readResourceCallback: (call: any, request: any) => any,
         registerResourceCallback: (call: any, request: any) => any,
-        registerResourceOutputsCallback: (call: any, request: any) => any): { server: any, addr: string } {
+        registerResourceOutputsCallback: (call: any, request: any) => any,
+        logCallback: (call: any, request: any) => any,
+        getRootResourceCallback: (call: any, request: any) => any,
+        setRootResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
     server.addService(resrpc.ResourceMonitorService, {
@@ -553,12 +791,26 @@ function createMockResourceMonitor(
         registerResource: registerResourceCallback,
         registerResourceOutputs: registerResourceOutputsCallback,
     });
+
+    let engineImpl: Object = {
+        log: logCallback,
+    };
+
+    if (!opts.skipRootResourceEndpoints) {
+        engineImpl = {
+            ... engineImpl,
+            getRootResource: getRootResourceCallback,
+            setRootResource: setRootResourceCallback,
+        };
+    }
+
+    server.addService(enginerpc.EngineService, engineImpl);
     const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
     server.start();
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 
-function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Promise<string> } {
+function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // A quick note about this:
     //
     // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is responsible
@@ -570,7 +822,7 @@ function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Pr
     // set, it will use that path instead of the default value. For our tests here, we set it and point at the
     // just built version of run.
     process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = "./bin/cmd/run";
-    const proc = childProcess.spawn("pulumi-language-nodejs");
+    const proc = childProcess.spawn("pulumi-language-nodejs", [engineAddr]);
 
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.

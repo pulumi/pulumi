@@ -23,8 +23,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -43,11 +43,11 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := backend.DisplayOptions{
+			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireCurrentStack(true, opts)
+			s, err := requireCurrentStack(true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -57,19 +57,16 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %s:\n", s.Name())
+			fmt.Printf("Current stack is %s:\n", s.Ref())
 
 			be := s.Backend()
-			cloudBe, isCloud := be.(cloud.Backend)
-			if !isCloud || cloudBe.CloudURL() != cloud.PulumiCloudURL {
+			cloudBe, isCloud := be.(httpstate.Backend)
+			if !isCloud || cloudBe.CloudURL() != httpstate.PulumiCloudURL {
 				fmt.Printf("    Managed by %s\n", be.Name())
 			}
 			if isCloud {
-				if cs, ok := s.(cloud.Stack); ok {
+				if cs, ok := s.(httpstate.Stack); ok {
 					fmt.Printf("    Owner: %s\n", cs.OrgName())
-					if !cs.RunLocally() {
-						fmt.Printf("    PPC: %s\n", cs.CloudName())
-					}
 				}
 			}
 
@@ -136,7 +133,7 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// Add a link to the pulumi.com console page for this stack, if it has one.
-			if cs, ok := s.(cloud.Stack); ok {
+			if cs, ok := s.(httpstate.Stack); ok {
 				if consoleURL, err := cs.ConsoleURL(); err == nil {
 					fmt.Printf("\n")
 					fmt.Printf("More information at: %s\n", consoleURL)
