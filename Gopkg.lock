@@ -2,6 +2,18 @@
 
 
 [[projects]]
+  name = "github.com/Azure/azure-pipeline-go"
+  packages = ["pipeline"]
+  revision = "b8e3409182fd52e74f7d7bdfbff5833591b3b655"
+  version = "v0.1.8"
+
+[[projects]]
+  name = "github.com/Azure/azure-storage-blob-go"
+  packages = ["2016-05-31/azblob"]
+  revision = "bb46532f68b79e9e1baca8fb19a382ef5d40ed33"
+  version = "0.2.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/Azure/go-ansiterm"
   packages = [
@@ -284,6 +296,12 @@
   ]
   revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
   version = "v1.0.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/otiai10/copy"
+  packages = ["."]
+  revision = "7e9a647135a142c2669943d4a4d29be015ce9392"
 
 [[projects]]
   name = "github.com/pelletier/go-buffruneio"

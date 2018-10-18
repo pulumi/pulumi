@@ -92,7 +92,7 @@ func ValueOrDefaultURL(cloudURL string) string {
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
 	// to ignore the local cloud.
 	if creds, err := workspace.GetStoredCredentials(); err == nil {
-		if creds.Current != "" && !filestate.IsLocalBackendURL(creds.Current) {
+		if creds.Current != "" && !filestate.IsFileBackendURL(creds.Current) {
 			return creds.Current
 		}
 	}

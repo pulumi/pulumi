@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -30,6 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/filestate/storage"
+	"github.com/pulumi/pulumi/pkg/backend/filestate/storage/azure"
+	"github.com/pulumi/pulumi/pkg/backend/filestate/storage/local"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/encoding"
@@ -44,103 +46,157 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// localBackendURL is fake URL scheme we use to signal we want to use the local backend vs a cloud one.
-const localBackendURLPrefix = "file://"
+var backends = []string{
+	local.URLPrefix,
+	azure.URLPrefix,
+}
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
-	local() // at the moment, no local specific info, so just use a marker function.
+	info() // at the moment, no specific info, so just use a marker function.
 }
 
-type localBackend struct {
-	d   diag.Sink
-	url string
+type fileBackend struct {
+	d      diag.Sink
+	url    string
+	bucket storage.Bucket
 }
 
-type localBackendReference struct {
+type fileBackendReference struct {
 	name tokens.QName
 }
 
-func (r localBackendReference) String() string {
+func (r fileBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) Name() tokens.QName {
+func (r fileBackendReference) Name() tokens.QName {
 	return r.name
 }
 
-func IsLocalBackendURL(url string) bool {
-	return strings.HasPrefix(url, localBackendURLPrefix)
-}
-
-func New(d diag.Sink, url string) (Backend, error) {
-	if !IsLocalBackendURL(url) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
+func loginAndNew(ctx context.Context, d diag.Sink, url string, logIn bool) (Backend, error) {
+	switch {
+	case isMatchingBackendURL(url, local.URLPrefix):
+		// Local file system file provider
+		if logIn {
+			if err := local.Login(ctx, url); err != nil {
+				return nil, err
+			}
+		}
+		return newBackend(d, url, local.NewBucket)
+	case isMatchingBackendURL(url, azure.URLPrefix):
+		// Azure blob storage provider
+		if logIn {
+			if err := azure.Login(ctx, url); err != nil {
+				return nil, err
+			}
+		}
+		return newBackend(d, url, azure.NewBucket)
+	default:
+		return nil,
+			errors.Errorf("backend URL %s has an illegal prefix; expected one of %v",
+				url, backends)
 	}
-	return &localBackend{
-		d:   d,
-		url: url,
-	}, nil
 }
 
-func Login(d diag.Sink, url string) (Backend, error) {
-	be, err := New(d, url)
+// New creates a new Pulumi backend for the given file provider
+func New(d diag.Sink, url string) (Backend, error) {
+	return loginAndNew(context.Background(), d, url, false)
+}
+
+// Login logs in an creates a new Pulumi backend
+func Login(ctx context.Context, d diag.Sink, url string) (Backend, error) {
+	return loginAndNew(ctx, d, url, true)
+}
+
+// IsFileBackendURL returns whether or not the URL pattern matches
+// any of the provided file implementations.
+func IsFileBackendURL(url string) bool {
+	for _, be := range backends {
+		if isMatchingBackendURL(url, be) {
+			return true
+		}
+	}
+	return false
+}
+
+func isMatchingBackendURL(url, prefix string) bool {
+	return strings.HasPrefix(url, prefix)
+}
+
+func newBackend(d diag.Sink, url string, createrFn storage.BucketCreater) (Backend, error) {
+	accessToken, err := workspace.GetAccessToken(url)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting stored credentials")
+	}
+
+	bucket, err := createrFn(url, accessToken)
 	if err != nil {
 		return nil, err
 	}
-	return be, workspace.StoreAccessToken(url, "", true)
+
+	return &fileBackend{
+		d:      d,
+		url:    url,
+		bucket: bucket,
+	}, nil
 }
 
-func (b *localBackend) local() {}
+func (b *fileBackend) info() {}
 
-func (b *localBackend) Name() string {
+func (b *fileBackend) Name() string {
 	name, err := os.Hostname()
 	contract.IgnoreError(err)
 	if name == "" {
-		name = "local"
+		name = "file"
 	}
 	return name
 }
 
-func (b *localBackend) URL() string {
+func (b *fileBackend) URL() string {
 	return b.url
 }
 
-func (b *localBackend) Dir() string {
-	path := b.url[len(localBackendURLPrefix):]
-	if path == "~" {
-		user, err := user.Current()
-		contract.AssertNoErrorf(err, "could not determine current user")
-		path = user.HomeDir
-	} else if path == "." {
-		pwd, err := os.Getwd()
-		contract.AssertNoErrorf(err, "could not determine current working directory")
-		path = pwd
+func (b *fileBackend) Dir() string {
+	var path string
+	// For local backends return a suitable local directory.
+	// For all remote file providers just return an empty string.
+	if isMatchingBackendURL(b.url, local.URLPrefix) {
+		path = b.url[len(local.URLPrefix):]
+		if path == "~" {
+			user, err := user.Current()
+			contract.AssertNoErrorf(err, "could not determine current user")
+			path = user.HomeDir
+		} else if path == "." {
+			pwd, err := os.Getwd()
+			contract.AssertNoErrorf(err, "could not determine current working directory")
+			path = pwd
+		}
 	}
 	return path
 }
 
-func (b *localBackend) StateDir() string {
+func (b *fileBackend) StateDir() string {
 	dir := b.Dir()
 	return filepath.Join(dir, workspace.BookkeepingDir)
 }
 
-func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+func (b *fileBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
+	return fileBackendReference{name: tokens.QName(stackRefName)}, nil
 }
 
-func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
+func (b *fileBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
-	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
+	contract.Requiref(opts == nil, "opts", "file stacks do not support any options")
 
 	stackName := stackRef.Name()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, _, err := b.getStack(stackName); err == nil {
+	if _, _, _, err := b.getStack(ctx, stackName); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
@@ -152,7 +208,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.Wrap(err, "validating stack properties")
 	}
 
-	file, err := b.saveStack(stackName, nil, nil)
+	file, err := b.saveStack(ctx, stackName, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -163,11 +219,11 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	return stack, nil
 }
 
-func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
+func (b *fileBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
-	config, snapshot, path, err := b.getStack(stackName)
+	config, snapshot, path, err := b.getStack(ctx, stackName)
 	switch {
-	case os.IsNotExist(errors.Cause(err)):
+	case b.bucket.IsNotExist(errors.Cause(err)):
 		return nil, nil
 	case err != nil:
 		return nil, err
@@ -176,30 +232,30 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	}
 }
 
-func (b *localBackend) ListStacks(
+func (b *fileBackend) ListStacks(
 	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
-	stacks, err := b.getLocalStacks()
+	stacks, err := b.getFileStacks(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
-		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
+		stack, err := b.GetStack(ctx, fileBackendReference{name: stackName})
 		if err != nil {
 			return nil, err
 		}
-		localStack, ok := stack.(*localStack)
-		contract.Assertf(ok, "localBackend GetStack returned non-localStack")
-		results = append(results, newLocalStackSummary(localStack))
+		fileStack, ok := stack.(*fileStack)
+		contract.Assertf(ok, "fileBackend GetStack returned non-fileStack")
+		results = append(results, newFileStackSummary(fileStack))
 	}
 
 	return results, nil
 }
 
-func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
+func (b *fileBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
 	stackName := stackRef.Name()
-	_, snapshot, _, err := b.getStack(stackName)
+	_, snapshot, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return false, err
 	}
@@ -209,14 +265,14 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 		return true, errors.New("refusing to remove stack because it still contains resources")
 	}
 
-	return false, b.removeStack(stackName)
+	return false, b.removeStack(ctx, stackName)
 }
 
-func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
+func (b *fileBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
 	return symmetricCrypter(stackRef.Name())
 }
 
-func (b *localBackend) GetLatestConfiguration(ctx context.Context,
+func (b *fileBackend) GetLatestConfiguration(ctx context.Context,
 	stackRef backend.StackReference) (config.Map, error) {
 
 	hist, err := b.GetHistory(ctx, stackRef)
@@ -230,7 +286,7 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	return hist[0].Config, nil
 }
 
-func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackReference,
+func (b *fileBackend) Preview(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	// Get the stack.
 	stack, err := b.GetStack(ctx, stackRef)
@@ -246,7 +302,7 @@ func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
 }
 
-func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReference,
+func (b *fileBackend) Update(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
@@ -255,7 +311,7 @@ func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReferen
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
-func (b *localBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
+func (b *fileBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
@@ -264,7 +320,7 @@ func (b *localBackend) Refresh(ctx context.Context, stackRef backend.StackRefere
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
-func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
+func (b *fileBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
@@ -274,7 +330,7 @@ func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
-func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
+func (b *fileBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error) {
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -285,7 +341,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
 
 	// Start the update.
-	update, err := b.newUpdate(stackName, op.Proj, op.Root)
+	update, err := b.newUpdate(ctx, stackName, op.Proj, op.Root)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +372,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(stackName)
+	persister := b.newSnapshotPersister(ctx, stackName)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
 
@@ -371,8 +427,8 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	var saveErr error
 	var backupErr error
 	if !opts.DryRun {
-		saveErr = b.addToHistory(stackName, info)
-		backupErr = b.backupStack(stackName)
+		saveErr = b.addToHistory(ctx, stackName, info)
+		backupErr = b.backupStack(ctx, stackName)
 	}
 
 	if updateErr != nil {
@@ -394,26 +450,26 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
-					colors.Underline+colors.BrightBlue+"file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
+					colors.Underline+colors.BrightBlue+"file://%s"+colors.Reset+"\n"), stack.(*fileStack).Path())
 	}
 
 	return changes, nil
 }
 
-func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
+func (b *fileBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
 	stackName := stackRef.Name()
-	updates, err := b.getHistory(stackName)
+	updates, err := b.getHistory(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
 	return updates, nil
 }
 
-func (b *localBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
+func (b *fileBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stackRef.Name()
-	target, err := b.getTarget(stackName)
+	target, err := b.getTarget(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -440,11 +496,11 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 	return *logs, err
 }
 
-func (b *localBackend) ExportDeployment(ctx context.Context,
+func (b *fileBackend) ExportDeployment(ctx context.Context,
 	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
 
 	stackName := stackRef.Name()
-	_, snap, _, err := b.getStack(stackName)
+	_, snap, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -464,11 +520,11 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	}, nil
 }
 
-func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
+func (b *fileBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
 	deployment *apitype.UntypedDeployment) error {
 
 	stackName := stackRef.Name()
-	config, _, _, err := b.getStack(stackName)
+	config, _, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return err
 	}
@@ -478,15 +534,15 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	_, err = b.saveStack(stackName, config, snap)
+	_, err = b.saveStack(ctx, stackName, config, snap)
 	return err
 }
 
-func (b *localBackend) Logout() error {
+func (b *fileBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.url)
 }
 
-func (b *localBackend) CurrentUser() (string, error) {
+func (b *fileBackend) CurrentUser() (string, error) {
 	user, err := user.Current()
 	if err != nil {
 		return "", err
@@ -494,25 +550,21 @@ func (b *localBackend) CurrentUser() (string, error) {
 	return user.Username, nil
 }
 
-func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
+func (b *fileBackend) getFileStacks(ctx context.Context) ([]tokens.QName, error) {
 	var stacks []tokens.QName
 
 	// Read the stack directory.
 	path := b.stackPath("")
 
-	files, err := ioutil.ReadDir(path)
+	files, err := b.bucket.ListFiles(ctx, path)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, errors.Errorf("could not read stacks: %v", err)
 	}
 
 	for _, file := range files {
-		// Ignore directories.
-		if file.IsDir() {
-			continue
-		}
 
 		// Skip files without valid extensions (e.g., *.bak files).
-		stackfn := file.Name()
+		stackfn := filepath.Base(file)
 		ext := filepath.Ext(stackfn)
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue
@@ -520,7 +572,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, _, err := b.getStack(name)
+		_, _, _, err := b.getStack(ctx, name)
 		if err != nil {
 			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
 			continue // failure reading the stack information.

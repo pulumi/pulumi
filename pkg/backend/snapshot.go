@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"reflect"
 	"sort"
 	"time"
@@ -490,7 +491,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 }
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
-func (sm *SnapshotManager) saveSnapshot() error {
+func (sm *SnapshotManager) saveSnapshot(ctx context.Context) error {
 	snap := sm.snap()
 	if err := sm.persister.Save(snap); err != nil {
 		return errors.Wrap(err, "failed to save snapshot")
@@ -511,6 +512,8 @@ func (sm *SnapshotManager) saveSnapshot() error {
 // SnapshotManager depends on being able to observe this mutation. (This is not ideal...)
 func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
+
+	ctx := context.Background()
 
 	manager := &SnapshotManager{
 		persister:        persister,
@@ -534,7 +537,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 			case request := <-mutationRequests:
 				var err error
 				if request.mutator() {
-					err = manager.saveSnapshot()
+					err = manager.saveSnapshot(ctx)
 					hasElidedWrites = false
 				} else {
 					hasElidedWrites = true
@@ -549,7 +552,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		var err error
 		if hasElidedWrites {
 			logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-			err = manager.saveSnapshot()
+			err = manager.saveSnapshot(ctx)
 		}
 		done <- err
 	}()

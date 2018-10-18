@@ -86,8 +86,8 @@ func newLoginCmd() *cobra.Command {
 
 			var be backend.Backend
 			var err error
-			if filestate.IsLocalBackendURL(cloudURL) {
-				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
+			if filestate.IsFileBackendURL(cloudURL) {
+				be, err = filestate.Login(commandContext(), cmdutil.Diag(), cloudURL)
 			} else {
 				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
 			}

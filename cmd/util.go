@@ -59,8 +59,8 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	if filestate.IsLocalBackendURL(creds.Current) {
-		return filestate.New(cmdutil.Diag(), creds.Current)
+	if filestate.IsFileBackendURL(creds.Current) {
+		return filestate.Login(commandContext(), cmdutil.Diag(), creds.Current)
 	}
 	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
 }

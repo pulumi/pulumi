@@ -11,3 +11,7 @@
   name = "github.com/golang/glog"
   source = "github.com/pulumi/glog"
   branch = "pulumi-master"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/otiai10/copy"

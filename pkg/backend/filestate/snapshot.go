@@ -15,34 +15,40 @@
 package filestate
 
 import (
+	"context"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-// localSnapshotManager is a simple SnapshotManager implementation that persists snapshots
-// to disk on the local machine.
-type localSnapshotPersister struct {
+// fileSnapshotPersister is a simple SnapshotManager implementation that persists snapshots
+// to disk on file storage.
+type fileSnapshotPersister struct {
+	context context.Context // The context to use for client requests.
 	name    tokens.QName
-	backend *localBackend
+	backend *fileBackend
 }
 
-func (sm *localSnapshotPersister) Invalidate() error {
+func (sm *fileSnapshotPersister) Invalidate() error {
 	return nil
 }
 
-func (sm *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	config, _, _, err := sm.backend.getStack(sm.name)
+func (sm *fileSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
+	config, _, _, err := sm.backend.getStack(sm.context, sm.name)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	_, err = sm.backend.saveStack(sm.name, config, snapshot)
+	_, err = sm.backend.saveStack(sm.context, sm.name, config, snapshot)
 	return err
 
 }
 
-func (b *localBackend) newSnapshotPersister(stackName tokens.QName) *localSnapshotPersister {
-	return &localSnapshotPersister{name: stackName, backend: b}
+func (b *fileBackend) newSnapshotPersister(ctx context.Context, stackName tokens.QName) *fileSnapshotPersister {
+	return &fileSnapshotPersister{
+		context: ctx,
+		name:    stackName,
+		backend: b,
+	}
 }

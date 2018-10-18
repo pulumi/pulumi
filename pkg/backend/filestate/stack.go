@@ -26,24 +26,24 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 )
 
-// Stack is a local stack.  This simply adds some local-specific properties atop the standard backend stack interface.
+// Stack is a file stack.  This simply adds some file-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
 	Path() string // a path to the stack's checkpoint file on disk.
 }
 
-// localStack is a local stack descriptor.
-type localStack struct {
+// fileStack is a file stack descriptor.
+type fileStack struct {
 	ref      backend.StackReference // the stack's reference (qualified name).
 	path     string                 // a path to the stack's checkpoint file on disk.
 	config   config.Map             // the stack's config bag.
 	snapshot *deploy.Snapshot       // a snapshot representing the latest deployment state.
-	b        *localBackend          // a pointer to the backend this stack belongs to.
+	b        *fileBackend           // a pointer to the backend this stack belongs to.
 }
 
 func newStack(ref backend.StackReference, path string, config config.Map,
-	snapshot *deploy.Snapshot, b *localBackend) Stack {
-	return &localStack{
+	snapshot *deploy.Snapshot, b *fileBackend) Stack {
+	return &fileStack{
 		ref:      ref,
 		path:     path,
 		config:   config,
@@ -52,57 +52,57 @@ func newStack(ref backend.StackReference, path string, config config.Map,
 	}
 }
 
-func (s *localStack) Ref() backend.StackReference                            { return s.ref }
-func (s *localStack) Config() config.Map                                     { return s.config }
-func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
-func (s *localStack) Backend() backend.Backend                               { return s.b }
-func (s *localStack) Path() string                                           { return s.path }
+func (s *fileStack) Ref() backend.StackReference                            { return s.ref }
+func (s *fileStack) Config() config.Map                                     { return s.config }
+func (s *fileStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
+func (s *fileStack) Backend() backend.Backend                               { return s.b }
+func (s *fileStack) Path() string                                           { return s.path }
 
-func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
+func (s *fileStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *fileStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *fileStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
-func (s *localStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *fileStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *fileStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *localStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
+func (s *fileStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
 	return backend.GetStackLogs(ctx, s, query)
 }
 
-func (s *localStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
+func (s *fileStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
 	return backend.ExportStackDeployment(ctx, s)
 }
 
-func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
+func (s *fileStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
-type localStackSummary struct {
-	s *localStack
+type fileStackSummary struct {
+	s *fileStack
 }
 
-func newLocalStackSummary(s *localStack) localStackSummary {
-	return localStackSummary{s}
+func newFileStackSummary(s *fileStack) fileStackSummary {
+	return fileStackSummary{s}
 }
 
-func (lss localStackSummary) Name() backend.StackReference {
+func (lss fileStackSummary) Name() backend.StackReference {
 	return lss.s.Ref()
 }
 
-func (lss localStackSummary) LastUpdate() *time.Time {
+func (lss fileStackSummary) LastUpdate() *time.Time {
 	snap := lss.s.snapshot
 	if snap != nil {
 		if t := snap.Manifest.Time; !t.IsZero() {
@@ -112,7 +112,7 @@ func (lss localStackSummary) LastUpdate() *time.Time {
 	return nil
 }
 
-func (lss localStackSummary) ResourceCount() *int {
+func (lss fileStackSummary) ResourceCount() *int {
 	snap := lss.s.snapshot
 	if snap != nil {
 		count := len(snap.Resources)
