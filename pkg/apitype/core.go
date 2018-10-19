@@ -243,6 +243,12 @@ const (
 	// GitHubRepositoryNameTag is a tag that represents the name of a repository on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	GitHubRepositoryNameTag StackTagName = "gitHub:repo"
+	// GitLabOwnerNameTag is a tag that represents the name of the owner on GitLab that this stack
+	// may be associated with (inferred by the CLI based on git remote info).
+	GitLabOwnerNameTag StackTagName = "gitlab:owner"
+	// GitLabRepositoryNameTag is a tag that represents the name of a repository on GitLab that this stack
+	// may be associated with (inferred by the CLI based on git remote info).
+	GitLabRepositoryNameTag StackTagName = "gitlab:repo"
 )
 
 // Stack describes a Stack running on a Pulumi Cloud.

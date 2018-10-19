@@ -31,6 +31,19 @@ import (
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
+// Constants related to detecting the right type of source control provider for git
+const (
+	defaultGitCloudRepositorySuffix = ".git"
+
+	gitHubSSHPrefix        = "git@github.com:"
+	gitHubHTTPSPrefix      = "https://github.com/"
+	gitHubRepositorySuffix = defaultGitCloudRepositorySuffix
+
+	gitLabSSHPrefix        = "git@gitlab.com:"
+	gitLabHTTPSPrefix      = "https://gitlab.com/"
+	gitLabRepositorySuffix = defaultGitCloudRepositorySuffix
+)
+
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
 func GetGitRepository(dir string) (*git.Repository, error) {
@@ -63,37 +76,74 @@ func GetGitHubProjectForOrigin(dir string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	return GetGitHubProjectForOriginByRepo(repo)
+	remoteURL, err := GetGitRemoteURL(repo, "origin")
+
+	if err != nil {
+		return "", "", err
+	}
+	return GetGitHubProjectForOriginByURL(remoteURL)
 }
 
-// GetGitHubProjectForOriginByRepo returns the GitHub login, and GitHub repo name if the "origin" remote is
-// a GitHub URL.
-func GetGitHubProjectForOriginByRepo(repo *git.Repository) (string, string, error) {
-	remote, err := repo.Remote("origin")
+// GetGitRemoteURL returns the remote URL for the given remoteName in the repo
+func GetGitRemoteURL(repo *git.Repository, remoteName string) (string, error) {
+	remote, err := repo.Remote(remoteName)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not read origin information")
+		return "", errors.Wrap(err, "could not read origin information")
 	}
 
 	remoteURL := ""
 	if len(remote.Config().URLs) > 0 {
 		remoteURL = remote.Config().URLs[0]
 	}
+
+	return remoteURL, nil
+}
+
+// GetGitHubProjectForOriginByURL returns the GitHub login, and GitHub repo name if the "origin" remote is
+// a GitHub URL.
+func GetGitHubProjectForOriginByURL(remoteURL string) (string, string, error) {
 	project := ""
 
-	const GitHubSSHPrefix = "git@github.com:"
-	const GitHubHTTPSPrefix = "https://github.com/"
-	const GitHubRepositorySuffix = ".git"
-
-	if strings.HasPrefix(remoteURL, GitHubSSHPrefix) {
-		project = trimGitRemoteURL(remoteURL, GitHubSSHPrefix, GitHubRepositorySuffix)
-	} else if strings.HasPrefix(remoteURL, GitHubHTTPSPrefix) {
-		project = trimGitRemoteURL(remoteURL, GitHubHTTPSPrefix, GitHubRepositorySuffix)
+	if strings.HasPrefix(remoteURL, gitHubSSHPrefix) {
+		project = trimGitRemoteURL(remoteURL, gitHubSSHPrefix, gitHubRepositorySuffix)
+	} else if strings.HasPrefix(remoteURL, gitHubHTTPSPrefix) {
+		project = trimGitRemoteURL(remoteURL, gitHubHTTPSPrefix, gitHubRepositorySuffix)
 	}
 
 	split := strings.Split(project, "/")
 
 	if len(split) != 2 {
-		return "", "", errors.Errorf("could not detect GitHub project from url: %v", remote)
+		return "", "", errors.Errorf("could not detect GitHub project from url: %v", remoteURL)
+	}
+
+	return split[0], split[1], nil
+}
+
+// IsGitOriginURLGitHub returns true if the provided remoteURL is detected as GitHub
+func IsGitOriginURLGitHub(remoteURL string) bool {
+	return strings.HasPrefix(remoteURL, gitHubSSHPrefix) || strings.HasPrefix(remoteURL, gitHubHTTPSPrefix)
+}
+
+// IsGitOriginURLGitLab returns true if the provided remoteURL is detected as GitHub
+func IsGitOriginURLGitLab(remoteURL string) bool {
+	return strings.HasPrefix(remoteURL, gitLabSSHPrefix) || strings.HasPrefix(remoteURL, gitLabHTTPSPrefix)
+}
+
+// GetGitLabProjectForOriginByURL returns the GitHub login, and GitHub repo name if the "origin" remote is
+// a GitHub URL.
+func GetGitLabProjectForOriginByURL(remoteURL string) (string, string, error) {
+	project := ""
+
+	if strings.HasPrefix(remoteURL, gitLabSSHPrefix) {
+		project = trimGitRemoteURL(remoteURL, gitLabSSHPrefix, gitLabRepositorySuffix)
+	} else if strings.HasPrefix(remoteURL, gitLabHTTPSPrefix) {
+		project = trimGitRemoteURL(remoteURL, gitLabHTTPSPrefix, gitLabRepositorySuffix)
+	}
+
+	split := strings.Split(project, "/")
+
+	if len(split) != 2 {
+		return "", "", errors.Errorf("could not detect GitLab project from url: %v", remoteURL)
 	}
 
 	return split[0], split[1], nil

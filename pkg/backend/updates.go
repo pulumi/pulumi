@@ -64,6 +64,11 @@ const (
 	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
 	GitHubRepo = "github.repo"
 
+	// GitLabLogin is the user who owns the local repo, if the origin remote is hosted on gitlab.com.
+	GitLabLogin = "gitlab.login"
+	// GitLabRepo is the name of the GitLab repo, if the local git repo's remote origin is hosted on gitlab.com.
+	GitLabRepo = "gitlab.repo"
+
 	// CISystem is the name of the CI system running the pulumi operation.
 	CISystem = "ci.system"
 	// CIBuildID is an opaque ID of the build in the CI system.
