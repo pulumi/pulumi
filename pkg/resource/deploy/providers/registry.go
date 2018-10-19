@@ -97,17 +97,19 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool) (*Reg
 			return nil, errors.Errorf("duplicate provider found in old state: '%v'", ref)
 		}
 
+		providerPkg := getProviderPackage(urn.Type())
+
 		// Parse the provider version, then load, configure, and register the provider.
 		version, err := getProviderVersion(res.Inputs)
 		if err != nil {
-			return nil, errors.Errorf("could not parse version for provider '%v': %v", urn, err)
+			return nil, errors.Errorf("could not parse version for %v provider '%v': %v", providerPkg, urn, err)
 		}
-		provider, err := host.Provider(getProviderPackage(urn.Type()), version)
+		provider, err := host.Provider(providerPkg, version)
 		if err != nil {
-			return nil, errors.Errorf("could not load plugin for provider '%v': %v", urn, err)
+			return nil, errors.Errorf("could not load plugin for %v provider '%v': %v", providerPkg, urn, err)
 		}
 		if provider == nil {
-			return nil, errors.Errorf("could not find plugin for provider '%v'", urn)
+			return nil, errors.Errorf("could not find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
 		}
 		if err := provider.Configure(res.Inputs); err != nil {
 			closeErr := host.CloseProvider(provider)
