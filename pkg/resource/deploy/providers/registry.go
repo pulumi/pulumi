@@ -103,11 +103,11 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool) (*Reg
 			return nil, errors.Errorf("could not parse version for provider '%v': %v", urn, err)
 		}
 		provider, err := host.Provider(getProviderPackage(urn.Type()), version)
-		if provider == nil {
-			return nil, errors.Errorf("could not find plugin for provider '%v'", urn)
-		}
 		if err != nil {
 			return nil, errors.Errorf("could not load plugin for provider '%v': %v", urn, err)
+		}
+		if provider == nil {
+			return nil, errors.Errorf("could not find plugin for provider '%v'", urn)
 		}
 		if err := provider.Configure(res.Inputs); err != nil {
 			closeErr := host.CloseProvider(provider)
