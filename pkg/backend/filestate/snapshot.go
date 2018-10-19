@@ -42,7 +42,6 @@ func (sm *fileSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 
 	_, err = sm.backend.saveStack(sm.context, sm.name, config, snapshot)
 	return err
-
 }
 
 func (b *fileBackend) newSnapshotPersister(ctx context.Context, stackName tokens.QName) *fileSnapshotPersister {

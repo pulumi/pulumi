@@ -168,7 +168,7 @@ func (b *fileBackend) saveStack(ctx context.Context, name tokens.QName,
 	bck := backupTarget(ctx, b, file)
 
 	// And now write out the new snapshot file, overwriting that location.
-	if err = b.bucket.WriteFile(context.Background(), file, byts); err != nil {
+	if err = b.bucket.WriteFile(ctx, file, byts); err != nil {
 		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
@@ -176,7 +176,7 @@ func (b *fileBackend) saveStack(ctx context.Context, name tokens.QName,
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
-		if err = b.bucket.WriteFile(context.Background(), fmt.Sprintf("%v.%v",
+		if err = b.bucket.WriteFile(ctx, fmt.Sprintf("%v.%v",
 			file, time.Now().UnixNano()), byts); err != nil {
 			return "", errors.Wrap(err, "An IO error occurred during the current operation")
 		}
