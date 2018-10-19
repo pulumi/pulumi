@@ -127,16 +127,10 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 			tags[apitype.ProjectDescriptionTag] = *proj.Description
 		}
 
-		if owner, repo, err := gitutil.GetGitHubProjectForOrigin(filepath.Dir(projPath)); err == nil {
-			tags[apitype.GitHubOwnerNameTag] = owner
-			tags[apitype.GitHubRepositoryNameTag] = repo
-		}
-
 		// Add the git metadata to the tags
-		if err := addGitMetadataToStackTags(tags, projPath); err != nil {
+		if err := addGitMetadataToStackTags(tags, projPath); err != nil { // nolint
 			// Intentionally ignore errors adding git metadata to stack tags.
 		}
-
 	}
 
 	return tags, nil
