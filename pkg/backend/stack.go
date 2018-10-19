@@ -16,11 +16,11 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"regexp"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -132,9 +132,47 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 			tags[apitype.GitHubRepositoryNameTag] = repo
 		}
 
+		// Add the git metadata to the tags
+		if err := addGitMetadataToStackTags(tags, projPath); err != nil {
+			// Intentionally ignore errors adding git metadata to stack tags.
+		}
+
 	}
 
 	return tags, nil
+}
+
+// addGitMetadataToStackTags fetches the git repository from the directory, and attempts to detect
+// and add any relevant git metadata as stack tags
+func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath string) error {
+	repo, err := gitutil.GetGitRepository(filepath.Dir(projPath))
+	if repo == nil {
+		return fmt.Errorf("no git repository found from %v", projPath)
+	}
+	if err != nil {
+		return err
+	}
+
+	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
+
+	if err != nil {
+		return err
+	}
+
+	// check if the remote URL is a GitHub or a GitLab URL
+	if gitutil.IsGitOriginURLGitHub(remoteURL) {
+		if owner, repo, err := gitutil.GetGitHubProjectForOriginByURL(remoteURL); err != nil {
+			tags[apitype.GitHubOwnerNameTag] = owner
+			tags[apitype.GitHubRepositoryNameTag] = repo
+		}
+	} else if gitutil.IsGitOriginURLGitLab(remoteURL) {
+		if owner, repo, err := gitutil.GetGitLabProjectForOriginByURL(remoteURL); err != nil {
+			tags[apitype.GitLabOwnerNameTag] = owner
+			tags[apitype.GitLabRepositoryNameTag] = repo
+		}
+	}
+
+	return nil
 }
 
 // validateStackName checks if s is a valid stack name, otherwise returns a descritive error.

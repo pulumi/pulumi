@@ -31,10 +31,6 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
-	git "gopkg.in/src-d/go-git.v4"
-
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
@@ -48,6 +44,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	git "gopkg.in/src-d/go-git.v4"
 )
 
 func hasDebugCommands() bool {
@@ -361,7 +360,8 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 		return nil
 	}
 
-	if err := addGitHubMetadataToEnvironment(repo, m.Environment); err != nil {
+	// Add the relevant git metadata from the git repo
+	if err := AddGitRemoteMetadataToMap(repo, m.Environment); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
@@ -372,14 +372,50 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 	return allErrors.ErrorOrNil()
 }
 
-func addGitHubMetadataToEnvironment(repo *git.Repository, env map[string]string) error {
+// AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag
+func AddGitRemoteMetadataToMap(repo *git.Repository, bag map[string]string) error {
+	var allErrors *multierror.Error
+
+	// Get the remote URL for this repo
+	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
+	if err != nil {
+		return errors.Wrap(err, "detecting Git remote URL")
+	}
+
+	// check if the remote URL is a GitHub or a GitLab URL
+	if gitutil.IsGitOriginURLGitHub(remoteURL) {
+		if err := addGitHubMetadataToEnvironment(remoteURL, bag); err != nil {
+			allErrors = multierror.Append(allErrors, err)
+		}
+	} else if gitutil.IsGitOriginURLGitLab(remoteURL) {
+		if err := addGitLabMetadataToEnvironment(remoteURL, bag); err != nil {
+			allErrors = multierror.Append(allErrors, err)
+		}
+	}
+
+	return allErrors.ErrorOrNil()
+}
+
+func addGitHubMetadataToEnvironment(remoteURL string, env map[string]string) error {
 	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
-	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByRepo(repo)
+	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByURL(remoteURL)
 	if err != nil {
 		return errors.Wrap(err, "detecting GitHub project information")
 	}
 	env[backend.GitHubLogin] = ghLogin
 	env[backend.GitHubRepo] = ghRepo
+
+	return nil
+}
+
+func addGitLabMetadataToEnvironment(remoteURL string, env map[string]string) error {
+	// GitLab repo slug if applicable. We don't require GitLab, so swallow errors.
+	glLogin, glRepo, err := gitutil.GetGitLabProjectForOriginByURL(remoteURL)
+	if err != nil {
+		return errors.Wrap(err, "detecting GitLab project information")
+	}
+	env[backend.GitLabLogin] = glLogin
+	env[backend.GitLabRepo] = glRepo
 
 	return nil
 }
