@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"sync"
 	"testing"
+	"time"
 
 	copier "github.com/otiai10/copy"
 	"github.com/pulumi/pulumi/pkg/backend/display"
@@ -283,6 +285,114 @@ func TestUpdate(t *testing.T) {
 		up2 := applyUpdate(ctx, testDir, proj, stackRef, t)
 		if up2.HasChanges() {
 			t.Fatalf("expected no changes between first and second update")
+		}
+
+		tearDownPulumi()                // Removes the dirty .pulumi between test cases
+		tearDownProject(test.stackName) // Removes generated project files and node_modules between test cases
+	}
+}
+
+func TestUpdateLocking(t *testing.T) {
+	tt := []struct {
+		stackName string
+	}{
+		{
+			stackName: "test",
+		},
+	}
+
+	tearDown := setUp(t)
+	defer tearDown()
+
+	for _, test := range tt {
+		ctx := context.Background()
+		stackRef, err := be.ParseStackReference(test.stackName)
+		if err != nil {
+			t.Fatalf("error parsing stack %s: %+v", test.stackName, err)
+		}
+		createStack(ctx, stackRef, t)
+		stackExists(stackRef, t)
+
+		// Load project and a new project stack
+		proj, err := workspace.LoadProject("Pulumi.yaml")
+		if err != nil {
+			t.Fatalf("error loading project from file %s: %+v", testProjectPath, err)
+		}
+		projStack, err := workspace.DetectProjectStack(stackRef.Name())
+		if err != nil {
+			t.Fatalf("error detecting project stack for stack %s: %+v", stackRef.Name(), err)
+		}
+
+		// os.Chdir() does not update the shell working directory
+		// so we need to pass the test dir path to npm install.
+		testDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("error getting testdata working directory: %+v", err)
+		}
+		installNPMPackages(testDir, t)
+
+		// Set the configuration values (w,x,y) for the test
+		// pulumi project to use.
+		keys := []string{"simple:w", "simple:x", "simple:y"}
+		for _, key := range keys {
+			k, err := config.ParseKey(key)
+			if err != nil {
+				t.Fatalf("error parsing key %s: %+v", key, err)
+			}
+			v := config.NewValue("10")
+			projStack.Config[k] = v
+		}
+		if err := workspace.SaveProjectStack(stackRef.Name(), projStack); err != nil {
+			t.Fatalf("error saving project stack: %+v", err)
+		}
+
+		// Perform two parallel updates and check that
+		// the locking mechanism stops overlaps
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		timeApplyUpdate := func(c context.Context, d string, p *workspace.Project,
+			r backend.StackReference, t *testing.T) time.Duration {
+			start := time.Now()
+			applyUpdate(c, d, p, r, t)
+			elapsed := time.Since(start)
+			return elapsed
+		}
+
+		times := make([]time.Duration, 0) // Used to ignore ordering of goroutine execution
+		var time1 time.Duration
+		var time2 time.Duration
+		go func() {
+			time1 = timeApplyUpdate(ctx, testDir, proj, stackRef, t)
+			wg.Done()
+			times = append(times, time1)
+		}()
+		go func() {
+			time2 = timeApplyUpdate(ctx, testDir, proj, stackRef, t)
+			wg.Done()
+			times = append(times, time2)
+		}()
+		wg.Wait()
+
+		// Take a benchmark from the first goroutine
+		// to complete minus an offset to allow for
+		// the initial goroutine startup cost.
+		base := times[0].Seconds() * 0.7
+		// Create a range of between +/- 30% of the
+		// base benchmark and make sure the second
+		// goroutine falls in it.
+		// The lower treshold gives us an indicator
+		// that the goroutines ran in sequence.
+		// The upper treshold gives us an indiciator
+		// we're not deadlocking.
+		upperTreshold := base * 1.3
+		lowerTreshold := base * 0.7
+		diff := times[1] - times[0]
+		diffSec := diff.Seconds()
+		if diffSec < lowerTreshold || diffSec > upperTreshold {
+			t.Fatalf(`expected time diff between updates to be above %f seconds and below %f
+			seconds but was %f seconds`,
+				lowerTreshold, upperTreshold, diffSec)
 		}
 
 		tearDownPulumi()                // Removes the dirty .pulumi between test cases

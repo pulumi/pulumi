@@ -346,6 +346,8 @@ func (b *fileBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack 
 		return nil, err
 	}
 
+	defer update.unlockFn() // nolint: errcheck
+
 	// Spawn a display loop to show events on the CLI.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
@@ -447,6 +449,8 @@ func (b *fileBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack 
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
 	if opts.ShowLink {
+		update.unlockFn() // nolint: errcheck
+
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+

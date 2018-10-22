@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/filestate/storage"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -49,10 +50,11 @@ var DisableIntegrityChecking bool
 
 // update is an implementation of engine.Update backed by file state.
 type update struct {
-	root    string
-	proj    *workspace.Project
-	target  *deploy.Target
-	backend *fileBackend
+	root     string
+	unlockFn storage.UnlockFn
+	proj     *workspace.Project
+	target   *deploy.Target
+	backend  *fileBackend
 }
 
 func (u *update) GetRoot() string {
@@ -70,6 +72,11 @@ func (u *update) GetTarget() *deploy.Target {
 func (b *fileBackend) newUpdate(ctx context.Context, stackName tokens.QName, proj *workspace.Project, root string) (*update, error) { // nolint: lll
 	contract.Require(stackName != "", "stackName")
 
+	unlocker, err := b.bucket.Lock(ctx, stackName.Name().String())
+	if err != nil {
+		return nil, err
+	}
+
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, stackName)
 	if err != nil {
@@ -78,10 +85,11 @@ func (b *fileBackend) newUpdate(ctx context.Context, stackName tokens.QName, pro
 
 	// Construct and return a new update.
 	return &update{
-		root:    root,
-		proj:    proj,
-		target:  target,
-		backend: b,
+		root:     root,
+		proj:     proj,
+		target:   target,
+		backend:  b,
+		unlockFn: unlocker,
 	}, nil
 }
 

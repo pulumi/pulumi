@@ -88,6 +88,12 @@
   version = "v3.5.1"
 
 [[projects]]
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  revision = "2ea60e5f094469f9e65adb9cd103795b73ae743e"
+  version = "v2.0.0"
+
+[[projects]]
   name = "github.com/cheggaaa/pb"
   packages = ["."]
   revision = "657164d0228d6bebe316fdf725c69f131a50fb10"
@@ -141,6 +147,12 @@
   packages = ["."]
   revision = "a343d9870e3952dd8a0b894f9e221e210189fefe"
   version = "v1.31.0"
+
+[[projects]]
+  name = "github.com/gofrs/flock"
+  packages = ["."]
+  revision = "7f43ea2e6a643ad441fc12d0ecc0d3388b300c53"
+  version = "v0.7.0"
 
 [[projects]]
   branch = "pulumi-master"
@@ -222,6 +234,12 @@
   packages = ["."]
   revision = "fa48d7ff1cfb9f26c514b80d520880394293bf08"
   version = "0.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/lawrencegripper/goazurelocking"
+  packages = ["."]
+  revision = "e671b77be6948847c68293d69112376233f03a5a"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"

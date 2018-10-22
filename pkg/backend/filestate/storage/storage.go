@@ -19,4 +19,9 @@ type Bucket interface {
 	DeleteFile(ctx context.Context, path string) error
 	RenameFile(ctx context.Context, path, newPath string) error
 	IsNotExist(err error) bool
+
+	Lock(ctx context.Context, stackName string) (UnlockFn, error)
 }
+
+// UnlockFn defines methods to operate on a providers lock
+type UnlockFn func() error

@@ -2,12 +2,15 @@ package azure
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-storage-blob-go/2016-05-31/azblob"
+	azlock "github.com/lawrencegripper/goazurelocking"
 	"github.com/pulumi/pulumi/pkg/backend/filestate/storage"
 )
 
@@ -18,27 +21,38 @@ const (
 	accessTokenEnvVar = "AZURE_STORAGE_ACCOUNT_KEY"
 )
 
-var _ storage.Bucket = (*Bucket)(nil) // enforces compile time check for interface compatibility
+var _ storage.Bucket = (*bucket)(nil) // enforces compile time check for interface compatibility
 
-// Bucket is a blob storage implementation using Azure Blob Storage
-type Bucket struct {
-	url *azblob.ContainerURL
+// bucket is a blob storage implementation using Azure Blob Storage
+type bucket struct {
+	url     *azblob.ContainerURL
+	lock    azlock.Lock
+	accKey  string
+	accName string
 }
 
-// AccountName returns the buckets associated Azure Blob Storage account name
-func (b *Bucket) AccountName() string {
-	u := b.url.URL()
-	return extractAccountNameFromURL(&u)
+func extractAccountNameFromURL(u *url.URL) (string, error) {
+	var parts []string
+	if parts = strings.Split(u.Hostname(), "."); len(parts) < 1 {
+		return "", fmt.Errorf("unexpected format for url %s", u.String())
+	}
+	return parts[0], nil
 }
 
-func extractAccountNameFromURL(u *url.URL) string {
-	return strings.Split(u.Hostname(), ".")[0]
-}
+// NewBucket creates a new bucket instance
+func NewBucket(cloudURL, accountKey string) (storage.Bucket, error) {
 
-// NewBucket creates a new Bucket instance
-func NewBucket(url, accountKey string) (storage.Bucket, error) {
+	URL, err := url.Parse(strings.Replace(cloudURL, URLPrefix, "https://", 1))
+	if err != nil {
+		return nil, err
+	}
 
-	contURL, err := newContainerURL(url, accountKey)
+	accountName, err := extractAccountNameFromURL(URL)
+	if err != nil {
+		return nil, err
+	}
+
+	contURL, err := newContainerURL(*URL, accountName, accountKey)
 	if err != nil {
 		return nil, err
 	}
@@ -52,20 +66,16 @@ func NewBucket(url, accountKey string) (storage.Bucket, error) {
 		}
 	}
 
-	bucket := Bucket{
-		url: contURL,
+	bkt := bucket{
+		url:     contURL,
+		accName: accountName,
+		accKey:  accountKey,
 	}
 
-	return &bucket, nil
+	return &bkt, nil
 }
 
-func newContainerURL(cloudURL, accountKey string) (*azblob.ContainerURL, error) {
-	URL, err := url.Parse(strings.Replace(cloudURL, URLPrefix, "https://", 1))
-	if err != nil {
-		return nil, err
-	}
-
-	accountName := extractAccountNameFromURL(URL)
+func newContainerURL(URL url.URL, accountName, accountKey string) (*azblob.ContainerURL, error) {
 	creds := azblob.NewSharedKeyCredential(accountName, accountKey)
 	pipe := azblob.NewPipeline(creds, azblob.PipelineOptions{
 		Retry: azblob.RetryOptions{
@@ -74,14 +84,14 @@ func newContainerURL(cloudURL, accountKey string) (*azblob.ContainerURL, error) 
 		},
 	})
 
-	cURL := azblob.NewContainerURL(*URL, pipe)
+	cURL := azblob.NewContainerURL(URL, pipe)
 	return &cURL, nil
 }
 
 // ListFiles will list all blobs under a given prefix. This method will handle paging of
 // responses and create an aggregated array of blob paths. We don't anticipate loading
 // enough blobs to cause any significant memory pressure in Pulumi.
-func (b *Bucket) ListFiles(ctx context.Context, prefix string) ([]string, error) {
+func (b *bucket) ListFiles(ctx context.Context, prefix string) ([]string, error) {
 	var blobs []string
 
 	// Page through all the blobs in the container and build a list of blob names
@@ -101,7 +111,7 @@ func (b *Bucket) ListFiles(ctx context.Context, prefix string) ([]string, error)
 }
 
 // WriteFile will create a new block blob
-func (b *Bucket) WriteFile(ctx context.Context, path string, bytes []byte) error {
+func (b *bucket) WriteFile(ctx context.Context, path string, bytes []byte) error {
 	blobURL := b.url.NewBlockBlobURL(path)
 	numCores := uint16(runtime.NumCPU())
 	_, err := azblob.UploadBufferToBlockBlob(ctx, bytes, blobURL, azblob.UploadToBlockBlobOptions{
@@ -111,7 +121,7 @@ func (b *Bucket) WriteFile(ctx context.Context, path string, bytes []byte) error
 }
 
 // ReadFile will read the specified blob's contents
-func (b *Bucket) ReadFile(ctx context.Context, path string) ([]byte, error) {
+func (b *bucket) ReadFile(ctx context.Context, path string) ([]byte, error) {
 	blobURL := b.url.NewBlockBlobURL(path)
 	res, err := blobURL.GetBlob(ctx, azblob.BlobRange{}, azblob.BlobAccessConditions{}, false)
 	if err != nil {
@@ -127,7 +137,7 @@ func (b *Bucket) ReadFile(ctx context.Context, path string) ([]byte, error) {
 }
 
 // DeleteFile will delete the specified blob
-func (b *Bucket) DeleteFile(ctx context.Context, path string) error {
+func (b *bucket) DeleteFile(ctx context.Context, path string) error {
 	blboURL := b.url.NewBlockBlobURL(path)
 	_, err := blboURL.Delete(ctx, azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
 	return err
@@ -135,7 +145,7 @@ func (b *Bucket) DeleteFile(ctx context.Context, path string) error {
 
 // RenameFile will rename a specified blob with a new name. This method is not handle
 // atomically and failure may result in duplicate blobs.
-func (b *Bucket) RenameFile(ctx context.Context, path, newPath string) error {
+func (b *bucket) RenameFile(ctx context.Context, path, newPath string) error {
 	original, err := b.ReadFile(ctx, path)
 	if err != nil {
 		return err
@@ -148,7 +158,7 @@ func (b *Bucket) RenameFile(ctx context.Context, path, newPath string) error {
 }
 
 // DeleteFiles will delete all the blobs under a given prefix
-func (b *Bucket) DeleteFiles(ctx context.Context, prefix string) error {
+func (b *bucket) DeleteFiles(ctx context.Context, prefix string) error {
 	blobs, err := b.ListFiles(ctx, prefix)
 	if err != nil {
 		return err
@@ -163,7 +173,7 @@ func (b *Bucket) DeleteFiles(ctx context.Context, prefix string) error {
 }
 
 // IsNotExist will return true if a given error is a blob not found error
-func (b *Bucket) IsNotExist(err error) bool {
+func (b *bucket) IsNotExist(err error) bool {
 	if err != nil {
 		if serr, ok := err.(azblob.StorageError); ok {
 			if serr.ServiceCode() == azblob.ServiceCodeBlobNotFound {
@@ -172,4 +182,22 @@ func (b *Bucket) IsNotExist(err error) bool {
 		}
 	}
 	return false
+}
+
+// Lock is a blocking call to try and take the lock for this
+// stack. Once it has the lock it will return a unlocker
+// function that can then be used by the client.
+func (b *bucket) Lock(ctx context.Context, stackName string) (storage.UnlockFn, error) {
+	lock, err := azlock.NewLockInstance(ctx, b.accName,
+		b.accKey, stackName, time.Second*30)
+	if err != nil {
+		return nil, err
+	}
+	err = lock.Lock()
+	if err != nil {
+		return nil, err
+	}
+
+	b.lock = *lock
+	return lock.Unlock, nil
 }
