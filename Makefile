@@ -48,6 +48,11 @@ publish_tgz:
 	$(call STEP_MESSAGE)
 	./scripts/publish_tgz.sh
 
+.PHONY: publish_os_packages
+publish_os_packages:
+	$(call STEP_MESSAGE)
+	nfpm
+
 .PHONY: publish_packages
 publish_packages:
 	$(call STEP_MESSAGE)

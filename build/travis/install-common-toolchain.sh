@@ -40,6 +40,17 @@ nvm install ${NODE_VERSION-v8.11.1}
     chmod +x "$(go env GOPATH)/bin/gometalinter"
     chmod +x "$(go env GOPATH)/bin/linters/"*
 
+    echo "installing nfpm ${NFPM_VERSION}"
+    curl -L "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${OS}_x86_64.tar.gz" | tar -xzv -C "$(go env GOPATH)/bin" nfpm
+
+    echo "installing rpmbuild"
+    if [ "${TRAVIS_OS_NAME:-}" = "linux" ]; then
+        sudo apt-get update
+        sudo apt-get install -y rpm
+    else
+        brew install rpm
+    fi
+
     # Gometalinter looks for linters on the $PATH, so let's move them out
     # of the linters folder and into GOBIN (which we know is on the $PATH)
     mv "$(go env GOPATH)/bin/linters/"* "$(go env GOPATH)/bin/."
@@ -68,7 +79,7 @@ nvm install ${NODE_VERSION-v8.11.1}
     echo "installing pandoc, so we can generate README.rst for Python packages"
     if [ "${TRAVIS_OS_NAME:-}" = "linux" ]; then
         sudo apt-get update
-        sudo apt-get install pandoc
+        sudo apt-get install -y pandoc
     else
         brew install pandoc
     fi
