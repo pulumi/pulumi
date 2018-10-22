@@ -42,7 +42,7 @@ const (
 // The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
 // CAUTION! If you are renaming the group name owner_and_repo to something else,
 // be sure to update its usage in this package as well.
-var cloudSourceControlSSHRegex = regexp.MustCompile(`git@[a-zA-Z]*\.com:(?P<owner_and_repo>.*)\.git`)
+var cloudSourceControlSSHRegex = regexp.MustCompile(`git@[a-zA-Z]*\.com:(?P<owner_and_repo>.*)`)
 
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
@@ -126,6 +126,7 @@ func TryGetCloudSourceControlOwnerAndRepoName(remoteURL string) (string, string,
 		}
 		// The named group that we are interested in, is the owner_and_repo group
 		project = groups["owner_and_repo"]
+		project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
 	} else {
 		if parsedURL, err := url.Parse(remoteURL); err == nil {
 			project = parsedURL.Path
