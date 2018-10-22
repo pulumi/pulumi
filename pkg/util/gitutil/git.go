@@ -35,14 +35,14 @@ import (
 const (
 	defaultGitCloudRepositorySuffix = ".git"
 
-	gitHubSSHPrefix        = "git@github.com:"
-	gitHubHTTPSPrefix      = "https://github.com/"
-	gitHubRepositorySuffix = defaultGitCloudRepositorySuffix
-
-	gitLabSSHPrefix        = "git@gitlab.com:"
-	gitLabHTTPSPrefix      = "https://gitlab.com/"
-	gitLabRepositorySuffix = defaultGitCloudRepositorySuffix
+	gitlabHostName = "gitlab.com"
+	githubHostName = "github.com"
 )
+
+// The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
+// CAUTION! If you are renaming the group name owner_and_repo to something else,
+// be sure to update its usage in this package as well.
+var cloudSourceControlSSHRegex = regexp.MustCompile("git@[a-zA-Z]*\\.com:(?P<owner_and_repo>.*)\\.git")
 
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
@@ -81,7 +81,7 @@ func GetGitHubProjectForOrigin(dir string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	return GetGitHubProjectForOriginByURL(remoteURL)
+	return TryGetCloudSourceControlOwnerAndRepoName(remoteURL)
 }
 
 // GetGitRemoteURL returns the remote URL for the given remoteName in the repo
@@ -99,47 +99,48 @@ func GetGitRemoteURL(repo *git.Repository, remoteName string) (string, error) {
 	return remoteURL, nil
 }
 
-// GetGitHubProjectForOriginByURL returns the GitHub login, and GitHub repo name if the "origin" remote is
-// a GitHub URL.
-func GetGitHubProjectForOriginByURL(remoteURL string) (string, string, error) {
-	project := ""
-
-	if strings.HasPrefix(remoteURL, gitHubSSHPrefix) {
-		project = trimGitRemoteURL(remoteURL, gitHubSSHPrefix, gitHubRepositorySuffix)
-	} else if strings.HasPrefix(remoteURL, gitHubHTTPSPrefix) {
-		project = trimGitRemoteURL(remoteURL, gitHubHTTPSPrefix, gitHubRepositorySuffix)
-	}
-
-	split := strings.Split(project, "/")
-
-	if len(split) != 2 {
-		return "", "", errors.Errorf("could not detect GitHub project from url: %v", remoteURL)
-	}
-
-	return split[0], split[1], nil
-}
-
 // IsGitOriginURLGitHub returns true if the provided remoteURL is detected as GitHub
 func IsGitOriginURLGitHub(remoteURL string) bool {
-	return strings.HasPrefix(remoteURL, gitHubSSHPrefix) || strings.HasPrefix(remoteURL, gitHubHTTPSPrefix)
+	return strings.Contains(remoteURL, githubHostName)
 }
 
 // IsGitOriginURLGitLab returns true if the provided remoteURL is detected as GitHub
 func IsGitOriginURLGitLab(remoteURL string) bool {
-	return strings.HasPrefix(remoteURL, gitLabSSHPrefix) || strings.HasPrefix(remoteURL, gitLabHTTPSPrefix)
+	return strings.Contains(remoteURL, gitlabHostName)
 }
 
-// GetGitLabProjectForOriginByURL returns the GitHub login, and GitHub repo name if the "origin" remote is
-// a GitHub URL.
-func GetGitLabProjectForOriginByURL(remoteURL string) (string, string, error) {
+// TryGetCloudSourceControlOwnerAndRepoName attempts to detect whether the provided remoteURL
+// is an SSH or an HTTPS remote URL. It then extracts the repo and owner name from it.
+func TryGetCloudSourceControlOwnerAndRepoName(remoteURL string) (string, string, error) {
 	project := ""
 
-	if strings.HasPrefix(remoteURL, gitLabSSHPrefix) {
-		project = trimGitRemoteURL(remoteURL, gitLabSSHPrefix, gitLabRepositorySuffix)
-	} else if strings.HasPrefix(remoteURL, gitLabHTTPSPrefix) {
-		project = trimGitRemoteURL(remoteURL, gitLabHTTPSPrefix, gitLabRepositorySuffix)
+	if cloudSourceControlSSHRegex.MatchString(remoteURL) {
+		// Get all matching groups.
+		matches := cloudSourceControlSSHRegex.FindAllStringSubmatch(remoteURL, -1)[0]
+		// Get the named groups in our regex. There is only one at the time of this writing.
+		groupNames := cloudSourceControlSSHRegex.SubexpNames()
+
+		groups := map[string]string{}
+		for i, value := range matches {
+			groups[groupNames[i]] = value
+		}
+		// The named group that we are interested in, is the owner_and_repo group
+		project = groups["owner_and_repo"]
+	} else {
+		if parsedURL, err := url.Parse(remoteURL); err == nil {
+			project = parsedURL.Path
+			// Replace the .git extension from the path.
+			project = strings.Replace(project, defaultGitCloudRepositorySuffix, "", -1)
+			// Remove the prefix "/". TrimPrefix returns the same value if there is no prefix.
+			// So it is safe to use it instead of doing any sort of substring matches.
+			project = strings.TrimPrefix(project, "/")
+		} else {
+			return "", "", err
+		}
 	}
 
+	// At this point, project is either an empty string or contains the information that we want.
+	// It is OK to run the split on the empty string anyway.
 	split := strings.Split(project, "/")
 
 	if len(split) != 2 {

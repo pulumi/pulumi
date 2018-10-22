@@ -360,7 +360,7 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 		return nil
 	}
 
-	// Add the relevant git metadata from the git repo
+	// Add the relevant git metadata from the git repo.
 	if err := AddGitRemoteMetadataToMap(repo, m.Environment); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
@@ -372,11 +372,11 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 	return allErrors.ErrorOrNil()
 }
 
-// AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag
+// AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.
 func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) error {
 	var allErrors *multierror.Error
 
-	// Get the remote URL for this repo
+	// Get the remote URL for this repo.
 	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
 	if err != nil {
 		return errors.Wrap(err, "detecting Git remote URL")
@@ -386,7 +386,7 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 		return nil
 	}
 
-	// check if the remote URL is a GitHub or a GitLab URL
+	// Check if the remote URL is a GitHub or a GitLab URL.
 	if gitutil.IsGitOriginURLGitHub(remoteURL) {
 		if err := addGitHubMetadataToEnvironment(remoteURL, env); err != nil {
 			allErrors = multierror.Append(allErrors, err)
@@ -402,7 +402,7 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 
 func addGitHubMetadataToEnvironment(remoteURL string, env map[string]string) error {
 	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
-	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByURL(remoteURL)
+	ghLogin, ghRepo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL)
 	if err != nil {
 		return errors.Wrap(err, "detecting GitHub project information")
 	}
@@ -414,7 +414,7 @@ func addGitHubMetadataToEnvironment(remoteURL string, env map[string]string) err
 
 func addGitLabMetadataToEnvironment(remoteURL string, env map[string]string) error {
 	// GitLab repo slug if applicable. We don't require GitLab, so swallow errors.
-	glLogin, glRepo, err := gitutil.GetGitLabProjectForOriginByURL(remoteURL)
+	glLogin, glRepo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL)
 	if err != nil {
 		return errors.Wrap(err, "detecting GitLab project information")
 	}

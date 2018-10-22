@@ -20,9 +20,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseGitRepoURL(t *testing.T) {
@@ -203,4 +202,37 @@ func createTestRepo(e *ptesting.Environment) {
 
 	e.RunCommand("git", "branch", "my/content")
 	e.RunCommand("git", "tag", "my")
+}
+
+func TestIsGitOriginURLGitLab(t *testing.T) {
+	isGitLab := IsGitOriginURLGitLab("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git")
+	assert.True(t, isGitLab)
+}
+
+func TestTryGetCloudSourceControlOwnerAndRepoNameFromSSHRemote(t *testing.T) {
+	glOwner, glRepo, err := TryGetCloudSourceControlOwnerAndRepoName("git@gitlab.com:owner-name/repo-name.git")
+	assert.Nil(t, err)
+
+	assert.Equal(t, glOwner, "owner-name")
+	assert.Equal(t, glRepo, "repo-name")
+
+	ghOwner, ghRepo, err := TryGetCloudSourceControlOwnerAndRepoName("git@github.com:owner-name/repo-name.git")
+	assert.Nil(t, err)
+
+	assert.Equal(t, ghOwner, "owner-name")
+	assert.Equal(t, ghRepo, "repo-name")
+}
+
+func TestTryGetCloudSourceControlOwnerAndRepoNameFromHTTPSRemote(t *testing.T) {
+	glOwner, glRepo, err := TryGetCloudSourceControlOwnerAndRepoName("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git")
+	assert.Nil(t, err)
+
+	assert.Equal(t, glOwner, "owner-name")
+	assert.Equal(t, glRepo, "repo-name")
+
+	ghOwner, ghRepo, err := TryGetCloudSourceControlOwnerAndRepoName("https://github.com/owner-name/repo-name.git")
+	assert.Nil(t, err)
+
+	assert.Equal(t, ghOwner, "owner-name")
+	assert.Equal(t, ghRepo, "repo-name")
 }

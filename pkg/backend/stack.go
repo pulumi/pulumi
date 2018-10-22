@@ -127,7 +127,7 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 			tags[apitype.ProjectDescriptionTag] = *proj.Description
 		}
 
-		// Add the git metadata to the tags
+		// Add the git metadata to the tags.
 		if err := addGitMetadataToStackTags(tags, projPath); err != nil { // nolint
 			// Intentionally ignore errors adding git metadata to stack tags.
 		}
@@ -137,7 +137,7 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 }
 
 // addGitMetadataToStackTags fetches the git repository from the directory, and attempts to detect
-// and add any relevant git metadata as stack tags
+// and add any relevant git metadata as stack tags.
 func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath string) error {
 	repo, err := gitutil.GetGitRepository(filepath.Dir(projPath))
 	if repo == nil {
@@ -153,14 +153,18 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		return err
 	}
 
-	// check if the remote URL is a GitHub or a GitLab URL
+	if remoteURL == "" {
+		return nil
+	}
+
+	// Check if the remote URL is a GitHub or a GitLab URL.
 	if gitutil.IsGitOriginURLGitHub(remoteURL) {
-		if owner, repo, err := gitutil.GetGitHubProjectForOriginByURL(remoteURL); err != nil {
+		if owner, repo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL); err != nil {
 			tags[apitype.GitHubOwnerNameTag] = owner
 			tags[apitype.GitHubRepositoryNameTag] = repo
 		}
 	} else if gitutil.IsGitOriginURLGitLab(remoteURL) {
-		if owner, repo, err := gitutil.GetGitLabProjectForOriginByURL(remoteURL); err != nil {
+		if owner, repo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL); err != nil {
 			tags[apitype.GitLabOwnerNameTag] = owner
 			tags[apitype.GitLabRepositoryNameTag] = repo
 		}
