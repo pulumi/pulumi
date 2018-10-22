@@ -131,7 +131,8 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 			return "", nil, errors.Wrapf(err, "flushing compressed payload")
 		}
 
-		logging.V(7).Infof("gzip compression ratio: %f", float64(len(body))/float64(len(buf.Bytes())))
+		logging.V(7).Infof("gzip compression ratio: %f, original size: %d bytes",
+			float64(len(body))/float64(len(buf.Bytes())), len(body))
 		bodyReader = &buf
 	} else {
 		bodyReader = bytes.NewReader(body)
@@ -291,31 +292,31 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 // process of doing so. readBody uses the Content-Encoding of the response to pick the correct reader to use.
 func readBody(resp *http.Response) ([]byte, error) {
 	contentEncoding, ok := resp.Header["Content-Encoding"]
-	body := resp.Body
-	defer contract.IgnoreClose(body)
+	defer contract.IgnoreClose(resp.Body)
 	if !ok {
-		// no header -> no additional encoding
+		// No header implies that there's no additional encoding on this response.
 		return ioutil.ReadAll(resp.Body)
 	}
 
 	if len(contentEncoding) > 1 {
-		// we only know how to deal with gzip. We can't handle additional encodings layered on top of it.
-		return nil, errors.Errorf("can't read body: can't handle content encodings %v", contentEncoding)
+		// We only know how to deal with gzip. We can't handle additional encodings layered on top of it.
+		return nil, errors.Errorf("can't handle content encodings %v", contentEncoding)
 	}
 
 	switch contentEncoding[0] {
 	case "x-gzip":
-		// The HTTP/1.1 spec recommends we treat x-gzip as an alias of gzip
+		// The HTTP/1.1 spec recommends we treat x-gzip as an alias of gzip.
 		fallthrough
 	case "gzip":
 		logging.V(7).Infoln("decompressing gzipped response from service")
 		reader, err := gzip.NewReader(resp.Body)
+		defer contract.IgnoreClose(reader)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't read body")
+			return nil, errors.Wrap(err, "reading gzip-compressed body")
 		}
 
 		return ioutil.ReadAll(reader)
 	default:
-		return nil, errors.Errorf("can't read body: unrecognized encoding %s", contentEncoding[0])
+		return nil, errors.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}
 }
