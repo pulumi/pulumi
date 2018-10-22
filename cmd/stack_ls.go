@@ -124,12 +124,10 @@ func newStackLsCmd() *cobra.Command {
 				// Render the columns.
 				values := []interface{}{name, lastUpdate, resourceCount}
 				if showURLColumn {
-					var url string
+					url := none
 					if httpBackend, ok := b.(httpstate.Backend); ok {
-						if nameSuffix, err := httpBackend.StackConsoleURL(summary.Name()); err != nil {
-							url = none
-						} else {
-							url = fmt.Sprintf("%s/%s", httpBackend.CloudURL(), nameSuffix)
+						if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
+							url = consoleURL
 						}
 					}
 					values = append(values, url)

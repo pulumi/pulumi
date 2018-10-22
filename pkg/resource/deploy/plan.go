@@ -48,6 +48,11 @@ func (o Options) DegreeOfParallelism() int {
 	return o.Parallel
 }
 
+// InfiniteParallelism returns whether or not the requested level of parallelism is unbounded.
+func (o Options) InfiniteParallelism() bool {
+	return o.Parallel == 0
+}
+
 // Events is an interface that can be used to hook interesting engine/planning events.
 type Events interface {
 	OnResourceStepPre(step Step) (interface{}, error)

@@ -6,7 +6,7 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-**The Pulumi Cloud Native Development Platform** is the easiest way to create and deploy cloud programs that use
+**Pulumi's Cloud Native SDK** is the easiest way to create and deploy cloud programs that use
 containers, serverless functions, hosted services, and infrastructure, on any cloud.
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your
