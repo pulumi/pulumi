@@ -42,7 +42,7 @@ const (
 // The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
 // CAUTION! If you are renaming the group name owner_and_repo to something else,
 // be sure to update its usage in this package as well.
-var cloudSourceControlSSHRegex = regexp.MustCompile("git@[a-zA-Z]*\\.com:(?P<owner_and_repo>.*)\\.git")
+var cloudSourceControlSSHRegex = regexp.MustCompile(`git@[a-zA-Z]*\.com:(?P<owner_and_repo>.*)\.git`)
 
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
@@ -130,7 +130,7 @@ func TryGetCloudSourceControlOwnerAndRepoName(remoteURL string) (string, string,
 		if parsedURL, err := url.Parse(remoteURL); err == nil {
 			project = parsedURL.Path
 			// Replace the .git extension from the path.
-			project = strings.Replace(project, defaultGitCloudRepositorySuffix, "", -1)
+			project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
 			// Remove the prefix "/". TrimPrefix returns the same value if there is no prefix.
 			// So it is safe to use it instead of doing any sort of substring matches.
 			project = strings.TrimPrefix(project, "/")
@@ -376,10 +376,6 @@ func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
 	sort.Sort(byShortNameLengthDesc(results))
 
 	return results, nil
-}
-
-func trimGitRemoteURL(url string, prefix string, suffix string) string {
-	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }
 
 type byShortNameLengthDesc []plumbing.ReferenceName

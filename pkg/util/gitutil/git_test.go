@@ -224,7 +224,7 @@ func TestTryGetCloudSourceControlOwnerAndRepoNameFromSSHRemote(t *testing.T) {
 }
 
 func TestTryGetCloudSourceControlOwnerAndRepoNameFromHTTPSRemote(t *testing.T) {
-	glOwner, glRepo, err := TryGetCloudSourceControlOwnerAndRepoName("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git")
+	glOwner, glRepo, err := TryGetCloudSourceControlOwnerAndRepoName("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git") //nolint
 	assert.Nil(t, err)
 
 	assert.Equal(t, glOwner, "owner-name")
