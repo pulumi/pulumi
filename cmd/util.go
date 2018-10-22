@@ -382,6 +382,10 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 		return errors.Wrap(err, "detecting Git remote URL")
 	}
 
+	if remoteURL == "" {
+		return nil
+	}
+
 	// check if the remote URL is a GitHub or a GitLab URL
 	if gitutil.IsGitOriginURLGitHub(remoteURL) {
 		if err := addGitHubMetadataToEnvironment(remoteURL, env); err != nil {
