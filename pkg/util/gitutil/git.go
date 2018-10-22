@@ -31,7 +31,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
-// Constants related to detecting the right type of source control provider for git
+// Constants related to detecting the right type of source control provider for git.
 const (
 	defaultGitCloudRepositorySuffix = ".git"
 
@@ -84,7 +84,7 @@ func GetGitHubProjectForOrigin(dir string) (string, string, error) {
 	return TryGetCloudSourceControlOwnerAndRepoName(remoteURL)
 }
 
-// GetGitRemoteURL returns the remote URL for the given remoteName in the repo
+// GetGitRemoteURL returns the remote URL for the given remoteName in the repo.
 func GetGitRemoteURL(repo *git.Repository, remoteName string) (string, error) {
 	remote, err := repo.Remote(remoteName)
 	if err != nil {
@@ -99,12 +99,12 @@ func GetGitRemoteURL(repo *git.Repository, remoteName string) (string, error) {
 	return remoteURL, nil
 }
 
-// IsGitOriginURLGitHub returns true if the provided remoteURL is detected as GitHub
+// IsGitOriginURLGitHub returns true if the provided remoteURL is detected as GitHub.
 func IsGitOriginURLGitHub(remoteURL string) bool {
 	return strings.Contains(remoteURL, githubHostName)
 }
 
-// IsGitOriginURLGitLab returns true if the provided remoteURL is detected as GitHub
+// IsGitOriginURLGitLab returns true if the provided remoteURL is detected as GitLab.
 func IsGitOriginURLGitLab(remoteURL string) bool {
 	return strings.Contains(remoteURL, gitlabHostName)
 }
