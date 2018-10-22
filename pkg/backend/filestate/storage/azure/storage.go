@@ -18,6 +18,17 @@ func isValidAccountKey(key string) bool {
 	return keyRegEx.MatchString(key)
 }
 
+func isValidateCredential(url, accountKey string) bool {
+	bucket, err := NewBucket(url, accountKey)
+	if err != nil {
+		return false
+	}
+	if _, err = bucket.ListFiles(context.Background(), ""); err != nil {
+		return false
+	}
+	return true
+}
+
 // Login will handle getting the user's Azure Blob Storage
 // credentials and writing them into the current workspace.
 func Login(ctx context.Context, cloudURL string) error {
@@ -28,9 +39,9 @@ func Login(ctx context.Context, cloudURL string) error {
 			return fmt.Errorf("the format of the existing Azure storage account key is invalid")
 		}
 
-		// TODO: Validate existing token works
-
-		return nil
+		if isValidateCredential(cloudURL, existingToken) {
+			return nil // Credential is ok to use
+		}
 	}
 
 	accessToken := os.Getenv(accessTokenEnvVar)
@@ -39,7 +50,12 @@ func Login(ctx context.Context, cloudURL string) error {
 		if !isValidAccountKey(accessToken) {
 			return fmt.Errorf("the format of the provided Azure storage account key is invalid")
 		}
+
 		fmt.Printf("Using access token from %s\n", accessTokenEnvVar)
+
+		if !isValidateCredential(cloudURL, accessToken) {
+			return fmt.Errorf("the provided Azure storage account key and URL are not valid")
+		}
 	} else {
 
 		// TODO: Support other login modes.
@@ -63,7 +79,10 @@ func Login(ctx context.Context, cloudURL string) error {
 			return fmt.Errorf("the format of the provided Azure storage account key is invalid")
 		}
 		accessToken = response
-		// TODO: Validate existing token works
+
+		if !isValidateCredential(cloudURL, accessToken) {
+			return fmt.Errorf("the provided Azure storage account key and URL are not valid")
+		}
 	}
 
 	if err = workspace.StoreAccessToken(cloudURL, accessToken, true); err != nil {
