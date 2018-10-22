@@ -373,7 +373,7 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 }
 
 // AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag
-func AddGitRemoteMetadataToMap(repo *git.Repository, bag map[string]string) error {
+func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) error {
 	var allErrors *multierror.Error
 
 	// Get the remote URL for this repo
@@ -384,11 +384,11 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, bag map[string]string) erro
 
 	// check if the remote URL is a GitHub or a GitLab URL
 	if gitutil.IsGitOriginURLGitHub(remoteURL) {
-		if err := addGitHubMetadataToEnvironment(remoteURL, bag); err != nil {
+		if err := addGitHubMetadataToEnvironment(remoteURL, env); err != nil {
 			allErrors = multierror.Append(allErrors, err)
 		}
 	} else if gitutil.IsGitOriginURLGitLab(remoteURL) {
-		if err := addGitLabMetadataToEnvironment(remoteURL, bag); err != nil {
+		if err := addGitLabMetadataToEnvironment(remoteURL, env); err != nil {
 			allErrors = multierror.Append(allErrors, err)
 		}
 	}
