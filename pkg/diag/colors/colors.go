@@ -60,7 +60,7 @@ func TrimPartialCommand(s string) string {
 
 	// If there is a complete left delimiter, look for a matching complete right delimiter. If there is a match, return
 	// the string as-is.
-	if strings.Index(s[lastDelimLeft:], colorRight) != -1 {
+	if strings.Contains(s[lastDelimLeft:], colorRight) {
 		return s
 	}
 

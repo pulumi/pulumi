@@ -160,6 +160,7 @@ func (u *cloudUpdate) recordEvent(
 	opts.Color = colors.Raw
 	msg := display.RenderDiffEvent(action, event, seen, opts)
 
+	// If we have a message, upload it as <= 1MB chunks.
 	for msg != "" {
 		chunk := msg
 		const maxLen = 1 << 20 // 1 MB
