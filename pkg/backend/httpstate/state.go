@@ -166,8 +166,8 @@ func (u *cloudUpdate) recordEvent(
 		const maxLen = 1 << 20 // 1 MB
 		if len(chunk) > maxLen {
 			chunk = colors.TrimPartialCommand(msg)
-			msg = msg[len(chunk):]
 		}
+		msg = msg[len(chunk):]
 
 		token, err := u.tokenSource.GetToken()
 		if err != nil {
