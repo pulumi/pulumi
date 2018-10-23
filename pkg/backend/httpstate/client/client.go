@@ -514,7 +514,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
 }
 
 // CancelUpdate cancels the indicated update.
