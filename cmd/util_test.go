@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	pul_testing "github.com/pulumi/pulumi/pkg/testing"
+	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -222,6 +223,6 @@ func TestReadingGitLabMetadata(t *testing.T) {
 
 		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
 		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
-		assertEnvValue(t, test, backend.VCSRepoKind, "gitlab.com")
+		assertEnvValue(t, test, backend.VCSRepoKind, gitutil.GitLabHostName)
 	}
 }

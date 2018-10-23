@@ -205,61 +205,58 @@ func createTestRepo(e *ptesting.Environment) {
 }
 
 func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
-	glOwner, glRepo, kind, err := TryGetVCSInfo("git@gitlab.com:owner-name/repo-name.git")
-	assert.Nil(t, err)
+	gitTests := []struct {
+		Remote      string
+		WantVCSInfo *VCSInfo
+	}{
+		// SSH remotes
+		{
+			"git@gitlab.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitLabHostName},
+		},
+		{
+			"git@github.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"git@bitbucket.org:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: BitbucketHostName},
+		},
+		{
+			"git@ssh.dev.azure.com:v3/owner-name/project/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "project/repo-name", Kind: AzureDevOpsHostName},
+		},
 
-	assert.Equal(t, "owner-name", glOwner)
-	assert.Equal(t, "repo-name", glRepo)
-	assert.Equal(t, GitLabHostName, kind)
+		//HTTPS remotes
+		{
+			"https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitLabHostName},
+		},
+		{
+			"https://github.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"https://ploke@bitbucket.org/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: BitbucketHostName},
+		},
+		{
+			"https://user@dev.azure.com/owner-name/project/_git/repo-name",
+			&VCSInfo{Owner: "owner-name", Repo: "project/_git/repo-name", Kind: AzureDevOpsHostName},
+		},
 
-	ghOwner, ghRepo, kind, err := TryGetVCSInfo("git@github.com:owner-name/repo-name.git")
-	assert.Nil(t, err)
+		//Unknown or bad remotes
+		{"", nil},
+		{"dummy", nil},
+		{"svn:something.com/owner/repo", nil},
+	}
 
-	assert.Equal(t, "owner-name", ghOwner)
-	assert.Equal(t, "repo-name", ghRepo)
-	assert.Equal(t, GitHubHostName, kind)
-
-	bitbucketOwner, bitbucketRepo, kind, err := TryGetVCSInfo("git@bitbucket.org:owner-name/repo-name.git")
-	assert.Nil(t, err)
-
-	assert.Equal(t, "owner-name", bitbucketOwner)
-	assert.Equal(t, "repo-name", bitbucketRepo)
-	assert.Equal(t, BitbucketHostName, kind)
-
-	azureRepoOwner, azureRepo, kind, err := TryGetVCSInfo("git@ssh.dev.azure.com:v3/owner-name/project/repo-name.git")
-	assert.Nil(t, err)
-
-	assert.Equal(t, "owner-name", azureRepoOwner)
-	assert.Equal(t, "project/repo-name", azureRepo)
-	assert.Equal(t, AzureDevOpsHostName, kind)
-}
-
-func TestTryGetVCSInfoFromHTTPSRemote(t *testing.T) {
-	glOwner, glRepo, kind, err := TryGetVCSInfo("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git") //nolint
-	assert.Nil(t, err)
-
-	assert.Equal(t, "owner-name", glOwner)
-	assert.Equal(t, "repo-name", glRepo)
-	assert.Equal(t, GitLabHostName, kind)
-
-	ghOwner, ghRepo, kind, err := TryGetVCSInfo("https://github.com/owner-name/repo-name.git")
-	assert.Nil(t, err)
-
-	assert.Equal(t, "owner-name", ghOwner)
-	assert.Equal(t, "repo-name", ghRepo)
-	assert.Equal(t, GitHubHostName, kind)
-
-	bitbucketOwner, bitbucketRepo, kind, err := TryGetVCSInfo("https://ploke@bitbucket.org/owner-name/repo-name.git")
-	assert.Nil(t, err)
-
-	assert.Equal(t, "owner-name", bitbucketOwner)
-	assert.Equal(t, "repo-name", bitbucketRepo)
-	assert.Equal(t, BitbucketHostName, kind)
-
-	azureRepoOwner, azureRepo, kind, err := TryGetVCSInfo("https://user@dev.azure.com/owner-name/project/_git/repo-name")
-	assert.Nil(t, err)
-
-	assert.Equal(t, "owner-name", azureRepoOwner)
-	assert.Equal(t, "project/_git/repo-name", azureRepo)
-	assert.Equal(t, AzureDevOpsHostName, kind)
+	for _, test := range gitTests {
+		got, err := TryGetVCSInfo(test.Remote)
+		// Only assert the returned error if we don't expect to get an error.
+		if test.WantVCSInfo != nil {
+			assert.Nil(t, err)
+		}
+		assert.Equal(t, test.WantVCSInfo, got)
+	}
 }

@@ -31,27 +31,40 @@ import (
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
+// VCSKind represents the hostname of a specific type of VCS.
+// For eg., github.com, gitlab.com etc.
+type VCSKind = string
+
 // Constants related to detecting the right type of source control provider for git.
 const (
 	defaultGitCloudRepositorySuffix = ".git"
 
 	// The host name for GitLab.
-	GitLabHostName = "gitlab.com"
+	GitLabHostName VCSKind = "gitlab.com"
 	// The host name for GitHub.
-	GitHubHostName = "github.com"
+	GitHubHostName VCSKind = "github.com"
 	// The host name for Azure DevOps
-	AzureDevOpsHostName = "dev.azure.com"
+	AzureDevOpsHostName VCSKind = "dev.azure.com"
 	// The host name for Bitbucket
-	BitbucketHostName = "bitbucket.org"
+	BitbucketHostName VCSKind = "bitbucket.org"
 )
 
 // The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
 // CAUTION! If you are renaming any of the group names in the regex (the ?P<group_name> part) to something else,
 // be sure to update its usage in this package as well.
+// The nolint instruction prevents gometalinter from complaining about the length of the line.
 var (
 	cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
 	azureSourceControlSSHRegex = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
 )
+
+// VCSInfo describes a cloud-hosted version control system.
+// Cloud hosted VCS' typically have
+type VCSInfo struct {
+	Owner string
+	Repo  string
+	Kind  VCSKind
+}
 
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
@@ -77,18 +90,18 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 
 // GetGitHubProjectForOrigin returns the GitHub login, and GitHub repo name if the "origin" remote is
 // a GitHub URL.
-func GetGitHubProjectForOrigin(dir string) (string, string, string, error) {
+func GetGitHubProjectForOrigin(dir string) (*VCSInfo, error) {
 	repo, err := GetGitRepository(dir)
 	if repo == nil {
-		return "", "", "", fmt.Errorf("no git repository found from %v", dir)
+		return nil, fmt.Errorf("no git repository found from %v", dir)
 	}
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 	remoteURL, err := GetGitRemoteURL(repo, "origin")
 
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 	return TryGetVCSInfo(remoteURL)
 }
@@ -116,21 +129,29 @@ func IsGitOriginURLGitHub(remoteURL string) bool {
 // TryGetVCSInfo attempts to detect whether the provided remoteURL
 // is an SSH or an HTTPS remote URL. It then extracts the repo, owner name,
 // and the type (kind) of VCS from it.
-func TryGetVCSInfo(remoteURL string) (string, string, string, error) {
+func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 	project := ""
 	vcsKind := ""
 
-	if cloudSourceControlSSHRegex.MatchString(remoteURL) {
-		groups := getMatchedGroupsFromRegex(cloudSourceControlSSHRegex, remoteURL)
-		vcsKind = groups["host_name"]
-		project = groups["owner_and_repo"]
-		project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
-	} else if azureSourceControlSSHRegex.MatchString(remoteURL) {
-		groups := getMatchedGroupsFromRegex(azureSourceControlSSHRegex, remoteURL)
-		vcsKind = groups["host_name"]
-		project = groups["owner_and_repo"]
-		project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
-	} else {
+	// If the remote is using git SSH, then we extract the named groups by matching
+	// with the pre-compiled regex pattern.
+	if strings.HasPrefix(remoteURL, "git@") {
+		// Most cloud-hosted VCS have the ssh URL of the format git@somehostname.com:owner/repo
+		if cloudSourceControlSSHRegex.MatchString(remoteURL) {
+			groups := getMatchedGroupsFromRegex(cloudSourceControlSSHRegex, remoteURL)
+			vcsKind = groups["host_name"]
+			project = groups["owner_and_repo"]
+			project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
+		} else if azureSourceControlSSHRegex.MatchString(remoteURL) {
+			// Azure's DevOps service uses a git SSH url, that is completely different
+			// from the rest of the services.
+			groups := getMatchedGroupsFromRegex(azureSourceControlSSHRegex, remoteURL)
+			vcsKind = groups["host_name"]
+			project = groups["owner_and_repo"]
+			project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
+		}
+	} else if strings.HasPrefix(remoteURL, "http") {
+		// This could be an HTTP(S)-based remote.
 		if parsedURL, err := url.Parse(remoteURL); err == nil {
 			vcsKind = parsedURL.Host
 			project = parsedURL.Path
@@ -139,9 +160,11 @@ func TryGetVCSInfo(remoteURL string) (string, string, string, error) {
 			// Remove the prefix "/". TrimPrefix returns the same value if there is no prefix.
 			// So it is safe to use it instead of doing any sort of substring matches.
 			project = strings.TrimPrefix(project, "/")
-		} else {
-			return "", "", "", errors.Wrapf(err, "detecting the VCS info from the HTTPS remote URL %v", remoteURL)
 		}
+	}
+
+	if project == "" {
+		return nil, errors.Errorf("detecting the VCS info from the remote URL %v", remoteURL)
 	}
 
 	// At this point, project is either an empty string or contains the information that we want.
@@ -152,12 +175,20 @@ func TryGetVCSInfo(remoteURL string) (string, string, string, error) {
 	// Ex: owner/project/repo.git
 	if len(split) > 2 {
 		azureSplit := strings.SplitN(project, "/", 2)
-		return azureSplit[0], azureSplit[1], vcsKind, nil
+		return &VCSInfo{
+			Owner: azureSplit[0],
+			Repo:  azureSplit[1],
+			Kind:  vcsKind,
+		}, nil
 	} else if len(split) != 2 {
-		return "", "", "", errors.Errorf("could not detect VCS project from url: %v", remoteURL)
+		return nil, errors.Errorf("could not detect VCS project from url: %v", remoteURL)
 	}
 
-	return split[0], split[1], vcsKind, nil
+	return &VCSInfo{
+		Owner: split[0],
+		Repo:  split[1],
+		Kind:  vcsKind,
+	}, nil
 }
 
 func getMatchedGroupsFromRegex(regex *regexp.Regexp, remoteURL string) map[string]string {

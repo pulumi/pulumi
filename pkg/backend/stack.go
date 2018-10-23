@@ -152,15 +152,14 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	if err != nil {
 		return err
 	}
-
 	if remoteURL == "" {
 		return nil
 	}
 
-	if owner, repo, kind, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
-		tags[apitype.VCSOwnerNameTag] = owner
-		tags[apitype.VCSRepositoryNameTag] = repo
-		tags[apitype.VCSRepositoryKindTag] = kind
+	if vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
+		tags[apitype.VCSOwnerNameTag] = vcsInfo.Owner
+		tags[apitype.VCSRepositoryNameTag] = vcsInfo.Repo
+		tags[apitype.VCSRepositoryKindTag] = vcsInfo.Kind
 	} else {
 		return errors.Wrapf(err, "detecting VCS info for stack tags for remote %v", remoteURL)
 	}
