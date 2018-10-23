@@ -50,8 +50,8 @@ const (
 )
 
 // The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
-// CAUTION! If you are renaming any of the group names in the regex (the ?P<group_name> part) to something else,
-// be sure to update its usage in this package as well.
+// Note: If you are renaming any of the group names in the regex (the ?P<group_name> part) to something else,
+// be sure to update its usage elsewhere in the code as well.
 // The nolint instruction prevents gometalinter from complaining about the length of the line.
 var (
 	cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
