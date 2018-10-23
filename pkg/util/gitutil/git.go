@@ -35,14 +35,16 @@ import (
 const (
 	defaultGitCloudRepositorySuffix = ".git"
 
-	gitlabHostName = "gitlab.com"
-	githubHostName = "github.com"
+	// The host name for GitLab.
+	GitLabHostName = "gitlab.com"
+	// The host name for GitHub.
+	GitHubHostName = "github.com"
 )
 
 // The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
-// CAUTION! If you are renaming the group name owner_and_repo to something else,
+// CAUTION! If you are renaming any of the group names in the regex (the ?P<group_name> part) to something else,
 // be sure to update its usage in this package as well.
-var cloudSourceControlSSHRegex = regexp.MustCompile(`git@[a-zA-Z]*\.com:(?P<owner_and_repo>.*)`)
+var cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`) //nolint
 
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
@@ -68,20 +70,20 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 
 // GetGitHubProjectForOrigin returns the GitHub login, and GitHub repo name if the "origin" remote is
 // a GitHub URL.
-func GetGitHubProjectForOrigin(dir string) (string, string, error) {
+func GetGitHubProjectForOrigin(dir string) (string, string, string, error) {
 	repo, err := GetGitRepository(dir)
 	if repo == nil {
-		return "", "", fmt.Errorf("no git repository found from %v", dir)
+		return "", "", "", fmt.Errorf("no git repository found from %v", dir)
 	}
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	remoteURL, err := GetGitRemoteURL(repo, "origin")
 
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	return TryGetCloudSourceControlOwnerAndRepoName(remoteURL)
+	return TryGetVCSInfo(remoteURL)
 }
 
 // GetGitRemoteURL returns the remote URL for the given remoteName in the repo.
@@ -101,34 +103,32 @@ func GetGitRemoteURL(repo *git.Repository, remoteName string) (string, error) {
 
 // IsGitOriginURLGitHub returns true if the provided remoteURL is detected as GitHub.
 func IsGitOriginURLGitHub(remoteURL string) bool {
-	return strings.Contains(remoteURL, githubHostName)
+	return strings.Contains(remoteURL, GitHubHostName)
 }
 
-// IsGitOriginURLGitLab returns true if the provided remoteURL is detected as GitLab.
-func IsGitOriginURLGitLab(remoteURL string) bool {
-	return strings.Contains(remoteURL, gitlabHostName)
-}
-
-// TryGetCloudSourceControlOwnerAndRepoName attempts to detect whether the provided remoteURL
-// is an SSH or an HTTPS remote URL. It then extracts the repo and owner name from it.
-func TryGetCloudSourceControlOwnerAndRepoName(remoteURL string) (string, string, error) {
+// TryGetVCSInfo attempts to detect whether the provided remoteURL
+// is an SSH or an HTTPS remote URL. It then extracts the repo, owner name,
+// and the type (kind) of VCS from it.
+func TryGetVCSInfo(remoteURL string) (string, string, string, error) {
 	project := ""
+	vcsKind := ""
 
 	if cloudSourceControlSSHRegex.MatchString(remoteURL) {
 		// Get all matching groups.
 		matches := cloudSourceControlSSHRegex.FindAllStringSubmatch(remoteURL, -1)[0]
-		// Get the named groups in our regex. There is only one at the time of this writing.
+		// Get the named groups in our regex.
 		groupNames := cloudSourceControlSSHRegex.SubexpNames()
 
 		groups := map[string]string{}
 		for i, value := range matches {
 			groups[groupNames[i]] = value
 		}
-		// The named group that we are interested in, is the owner_and_repo group
+		vcsKind = groups["host_name"]
 		project = groups["owner_and_repo"]
 		project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
 	} else {
 		if parsedURL, err := url.Parse(remoteURL); err == nil {
+			vcsKind = parsedURL.Host
 			project = parsedURL.Path
 			// Replace the .git extension from the path.
 			project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
@@ -136,7 +136,7 @@ func TryGetCloudSourceControlOwnerAndRepoName(remoteURL string) (string, string,
 			// So it is safe to use it instead of doing any sort of substring matches.
 			project = strings.TrimPrefix(project, "/")
 		} else {
-			return "", "", err
+			return "", "", "", errors.Wrapf(err, "detecting the VCS info from the HTTPS remote URL %v", remoteURL)
 		}
 	}
 
@@ -145,10 +145,10 @@ func TryGetCloudSourceControlOwnerAndRepoName(remoteURL string) (string, string,
 	split := strings.Split(project, "/")
 
 	if len(split) != 2 {
-		return "", "", errors.Errorf("could not detect GitLab project from url: %v", remoteURL)
+		return "", "", "", errors.Errorf("could not detect VCS project from url: %v", remoteURL)
 	}
 
-	return split[0], split[1], nil
+	return split[0], split[1], vcsKind, nil
 }
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.

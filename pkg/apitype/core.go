@@ -243,12 +243,15 @@ const (
 	// GitHubRepositoryNameTag is a tag that represents the name of a repository on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	GitHubRepositoryNameTag StackTagName = "gitHub:repo"
-	// GitLabOwnerNameTag is a tag that represents the name of the owner on GitLab that this stack
+	// VCSOwnerNameTag is a tag that represents the name of the owner on the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
-	GitLabOwnerNameTag StackTagName = "gitlab:owner"
-	// GitLabRepositoryNameTag is a tag that represents the name of a repository on GitLab that this stack
+	VCSOwnerNameTag StackTagName = "vcs:owner"
+	// VCSRepositoryNameTag is a tag that represents the name of a repository on the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
-	GitLabRepositoryNameTag StackTagName = "gitlab:repo"
+	VCSRepositoryNameTag StackTagName = "vcs:repo"
+	// VCSRepositoryKindTag is a tag that represents the kind of the cloud VCS that this stack
+	// may be associated with (inferred by the CLI based on the git remote info).
+	VCSRepositoryKindTag StackTagName = "vcs:kind"
 )
 
 // Stack describes a Stack running on a Pulumi Cloud.

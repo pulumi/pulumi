@@ -204,35 +204,48 @@ func createTestRepo(e *ptesting.Environment) {
 	e.RunCommand("git", "tag", "my")
 }
 
-func TestIsGitOriginURLGitLab(t *testing.T) {
-	isGitLab := IsGitOriginURLGitLab("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git")
-	assert.True(t, isGitLab)
-}
-
-func TestTryGetCloudSourceControlOwnerAndRepoNameFromSSHRemote(t *testing.T) {
-	glOwner, glRepo, err := TryGetCloudSourceControlOwnerAndRepoName("git@gitlab.com:owner-name/repo-name.git")
+func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
+	glOwner, glRepo, kind, err := TryGetVCSInfo("git@gitlab.com:owner-name/repo-name.git")
 	assert.Nil(t, err)
 
 	assert.Equal(t, glOwner, "owner-name")
 	assert.Equal(t, glRepo, "repo-name")
+	assert.Equal(t, kind, GitLabHostName)
 
-	ghOwner, ghRepo, err := TryGetCloudSourceControlOwnerAndRepoName("git@github.com:owner-name/repo-name.git")
+	ghOwner, ghRepo, kind, err := TryGetVCSInfo("git@github.com:owner-name/repo-name.git")
 	assert.Nil(t, err)
 
 	assert.Equal(t, ghOwner, "owner-name")
 	assert.Equal(t, ghRepo, "repo-name")
+	assert.Equal(t, kind, GitHubHostName)
+
+	bitbucketOwner, bitbucketRepo, kind, err := TryGetVCSInfo("git@bitbucket.org:owner-name/repo-name.git")
+	assert.Nil(t, err)
+
+	assert.Equal(t, bitbucketOwner, "owner-name")
+	assert.Equal(t, bitbucketRepo, "repo-name")
+	assert.Equal(t, kind, "bitbucket.org")
 }
 
-func TestTryGetCloudSourceControlOwnerAndRepoNameFromHTTPSRemote(t *testing.T) {
-	glOwner, glRepo, err := TryGetCloudSourceControlOwnerAndRepoName("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git") //nolint
+func TestTryGetVCSInfoFromHTTPSRemote(t *testing.T) {
+	glOwner, glRepo, kind, err := TryGetVCSInfo("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git") //nolint
 	assert.Nil(t, err)
 
 	assert.Equal(t, glOwner, "owner-name")
 	assert.Equal(t, glRepo, "repo-name")
+	assert.Equal(t, kind, GitLabHostName)
 
-	ghOwner, ghRepo, err := TryGetCloudSourceControlOwnerAndRepoName("https://github.com/owner-name/repo-name.git")
+	ghOwner, ghRepo, kind, err := TryGetVCSInfo("https://github.com/owner-name/repo-name.git")
 	assert.Nil(t, err)
 
 	assert.Equal(t, ghOwner, "owner-name")
 	assert.Equal(t, ghRepo, "repo-name")
+	assert.Equal(t, kind, GitHubHostName)
+
+	bitbucketOwner, bitbucketRepo, kind, err := TryGetVCSInfo("https://ploke@bitbucket.org/owner-name/repo-name.git")
+	assert.Nil(t, err)
+
+	assert.Equal(t, bitbucketOwner, "owner-name")
+	assert.Equal(t, bitbucketRepo, "repo-name")
+	assert.Equal(t, kind, "bitbucket.org")
 }

@@ -387,39 +387,35 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 	}
 
 	// Check if the remote URL is a GitHub or a GitLab URL.
-	if gitutil.IsGitOriginURLGitHub(remoteURL) {
-		if err := addGitHubMetadataToEnvironment(remoteURL, env); err != nil {
-			allErrors = multierror.Append(allErrors, err)
-		}
-	} else if gitutil.IsGitOriginURLGitLab(remoteURL) {
-		if err := addGitLabMetadataToEnvironment(remoteURL, env); err != nil {
-			allErrors = multierror.Append(allErrors, err)
-		}
+	if err := addVCSMetadataToEnvironment(remoteURL, env); err != nil {
+		allErrors = multierror.Append(allErrors, err)
+	}
+
+	// If the environment map contains the vcs kind and if it is GitHub,
+	// then let's set the old metadata keys as well, so that the UI can continue to read those.
+	// TODO once the UI is updated and we no longer need these keys, we can remove them.
+	if env[backend.VCSRepoKind] == gitutil.GitHubHostName && env[backend.VCSRepoOwner] != "" {
+		addOldGitHubMetadataToEnvironment(env)
 	}
 
 	return allErrors.ErrorOrNil()
 }
 
-func addGitHubMetadataToEnvironment(remoteURL string, env map[string]string) error {
-	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
-	ghLogin, ghRepo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL)
-	if err != nil {
-		return errors.Wrap(err, "detecting GitHub project information")
-	}
-	env[backend.GitHubLogin] = ghLogin
-	env[backend.GitHubRepo] = ghRepo
-
-	return nil
+func addOldGitHubMetadataToEnvironment(env map[string]string) {
+	// For backwards compatibility, let's set the old GitHub keys as well.
+	env[backend.GitHubLogin] = env[backend.VCSRepoOwner]
+	env[backend.GitHubRepo] = env[backend.VCSRepoName]
 }
 
-func addGitLabMetadataToEnvironment(remoteURL string, env map[string]string) error {
-	// GitLab repo slug if applicable. We don't require GitLab, so swallow errors.
-	glLogin, glRepo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL)
+func addVCSMetadataToEnvironment(remoteURL string, env map[string]string) error {
+	// GitLab repo slug if applicable. We don't require a cloud-hosted VCS, so swallow errors.
+	vcsLogin, vcsRepo, vcsRepoKind, err := gitutil.TryGetVCSInfo(remoteURL)
 	if err != nil {
-		return errors.Wrap(err, "detecting GitLab project information")
+		return errors.Wrap(err, "detecting VCS project information")
 	}
-	env[backend.GitLabLogin] = glLogin
-	env[backend.GitLabRepo] = glRepo
+	env[backend.VCSRepoOwner] = vcsLogin
+	env[backend.VCSRepoName] = vcsRepo
+	env[backend.VCSRepoKind] = vcsRepoKind
 
 	return nil
 }

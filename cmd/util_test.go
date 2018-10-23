@@ -220,7 +220,8 @@ func TestReadingGitLabMetadata(t *testing.T) {
 		_, ok := test.Environment[backend.GitHead]
 		assert.True(t, ok, "Expected to find Git SHA in update environment map")
 
-		assertEnvValue(t, test, backend.GitLabLogin, "owner-name")
-		assertEnvValue(t, test, backend.GitLabRepo, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoKind, "gitlab.com")
 	}
 }

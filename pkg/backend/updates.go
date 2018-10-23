@@ -64,10 +64,12 @@ const (
 	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
 	GitHubRepo = "github.repo"
 
-	// GitLabLogin is the user who owns the local repo, if the origin remote is hosted on gitlab.com.
-	GitLabLogin = "gitlab.login"
-	// GitLabRepo is the name of the GitLab repo, if the local git repo's remote origin is hosted on gitlab.com.
-	GitLabRepo = "gitlab.repo"
+	// VCSRepoOwner is the user who owns the local repo, if the origin remote is a cloud host.
+	VCSRepoOwner = "vcs.owner"
+	// VCSRepoName is the name of the repo, if the local git repo's remote origin is a cloud host.
+	VCSRepoName = "vcs.repo"
+	//VCSRepoKind is the cloud host where the repo is hosted.
+	VCSRepoKind = "vcs.kind"
 
 	// CISystem is the name of the CI system running the pulumi operation.
 	CISystem = "ci.system"

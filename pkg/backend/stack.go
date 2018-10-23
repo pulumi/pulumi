@@ -157,17 +157,16 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		return nil
 	}
 
-	// Check if the remote URL is a GitHub or a GitLab URL.
-	if gitutil.IsGitOriginURLGitHub(remoteURL) {
-		if owner, repo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL); err != nil {
-			tags[apitype.GitHubOwnerNameTag] = owner
-			tags[apitype.GitHubRepositoryNameTag] = repo
-		}
-	} else if gitutil.IsGitOriginURLGitLab(remoteURL) {
-		if owner, repo, err := gitutil.TryGetCloudSourceControlOwnerAndRepoName(remoteURL); err != nil {
-			tags[apitype.GitLabOwnerNameTag] = owner
-			tags[apitype.GitLabRepositoryNameTag] = repo
-		}
+	if owner, repo, kind, err := gitutil.TryGetVCSInfo(remoteURL); err != nil {
+		tags[apitype.VCSOwnerNameTag] = owner
+		tags[apitype.VCSRepositoryNameTag] = repo
+		tags[apitype.VCSRepositoryKindTag] = kind
+	}
+	// Check if the remote URL is a GitHub URL and set the old stack tags keys for GitHub.
+	// TODO remove these when the UI no longer needs them.
+	if tags[apitype.VCSRepositoryKindTag] == gitutil.GitHubHostName && tags[apitype.VCSOwnerNameTag] != "" {
+		tags[apitype.GitHubOwnerNameTag] = tags[apitype.VCSOwnerNameTag]
+		tags[apitype.GitHubRepositoryNameTag] = tags[apitype.VCSRepositoryNameTag]
 	}
 
 	return nil
