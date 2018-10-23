@@ -208,44 +208,44 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 	glOwner, glRepo, kind, err := TryGetVCSInfo("git@gitlab.com:owner-name/repo-name.git")
 	assert.Nil(t, err)
 
-	assert.Equal(t, glOwner, "owner-name")
-	assert.Equal(t, glRepo, "repo-name")
-	assert.Equal(t, kind, GitLabHostName)
+	assert.Equal(t, "owner-name", glOwner)
+	assert.Equal(t, "repo-name", glRepo)
+	assert.Equal(t, GitLabHostName, kind)
 
 	ghOwner, ghRepo, kind, err := TryGetVCSInfo("git@github.com:owner-name/repo-name.git")
 	assert.Nil(t, err)
 
-	assert.Equal(t, ghOwner, "owner-name")
-	assert.Equal(t, ghRepo, "repo-name")
-	assert.Equal(t, kind, GitHubHostName)
+	assert.Equal(t, "owner-name", ghOwner)
+	assert.Equal(t, "repo-name", ghRepo)
+	assert.Equal(t, GitHubHostName, kind)
 
 	bitbucketOwner, bitbucketRepo, kind, err := TryGetVCSInfo("git@bitbucket.org:owner-name/repo-name.git")
 	assert.Nil(t, err)
 
-	assert.Equal(t, bitbucketOwner, "owner-name")
-	assert.Equal(t, bitbucketRepo, "repo-name")
-	assert.Equal(t, kind, "bitbucket.org")
+	assert.Equal(t, "owner-name", bitbucketOwner)
+	assert.Equal(t, "repo-name", bitbucketRepo)
+	assert.Equal(t, "bitbucket.org", kind)
 }
 
 func TestTryGetVCSInfoFromHTTPSRemote(t *testing.T) {
 	glOwner, glRepo, kind, err := TryGetVCSInfo("https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git") //nolint
 	assert.Nil(t, err)
 
-	assert.Equal(t, glOwner, "owner-name")
-	assert.Equal(t, glRepo, "repo-name")
-	assert.Equal(t, kind, GitLabHostName)
+	assert.Equal(t, "owner-name", glOwner)
+	assert.Equal(t, "repo-name", glRepo)
+	assert.Equal(t, GitLabHostName, kind)
 
 	ghOwner, ghRepo, kind, err := TryGetVCSInfo("https://github.com/owner-name/repo-name.git")
 	assert.Nil(t, err)
 
-	assert.Equal(t, ghOwner, "owner-name")
-	assert.Equal(t, ghRepo, "repo-name")
-	assert.Equal(t, kind, GitHubHostName)
+	assert.Equal(t, "owner-name", ghOwner)
+	assert.Equal(t, "repo-name", ghRepo)
+	assert.Equal(t, GitHubHostName, kind)
 
 	bitbucketOwner, bitbucketRepo, kind, err := TryGetVCSInfo("https://ploke@bitbucket.org/owner-name/repo-name.git")
 	assert.Nil(t, err)
 
-	assert.Equal(t, bitbucketOwner, "owner-name")
-	assert.Equal(t, bitbucketRepo, "repo-name")
-	assert.Equal(t, kind, "bitbucket.org")
+	assert.Equal(t, "owner-name", bitbucketOwner)
+	assert.Equal(t, "repo-name", bitbucketRepo)
+	assert.Equal(t, "bitbucket.org", kind)
 }
