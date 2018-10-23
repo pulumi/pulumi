@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"path/filepath"
 	"regexp"
 
@@ -127,9 +128,9 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 			tags[apitype.ProjectDescriptionTag] = *proj.Description
 		}
 
-		// Add the git metadata to the tags.
-		if err := addGitMetadataToStackTags(tags, projPath); err != nil { // nolint
-			// Intentionally ignore errors adding git metadata to stack tags.
+		// Add the git metadata to the tags, ignoring any errors that come from it.
+		if err := addGitMetadataToStackTags(tags, projPath); err != nil {
+			contract.IgnoreError(err)
 		}
 	}
 

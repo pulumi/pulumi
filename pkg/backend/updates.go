@@ -60,6 +60,7 @@ const (
 	GitAuthorEmail = "git.author.email"
 
 	// GitHubLogin is the user/organization who owns the local repo, if the origin remote is hosted on GitHub.com.
+	// TODO [pulumi/pulumi-service#2306] Once the UI is updated, we would no longer need the GitHub specific keys.
 	GitHubLogin = "github.login"
 	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
 	GitHubRepo = "github.repo"
