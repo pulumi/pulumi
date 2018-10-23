@@ -36,6 +36,38 @@ func Command(s string) string {
 	return colorLeft + s + colorRight
 }
 
+// TrimPartialCommand returns the input string with any partial colorization command trimmed off of the right end of
+// the string.
+func TrimPartialCommand(s string) string {
+	// First check for a partial left delimiter at the end of the string.
+	partialDelimLeft := colorLeft
+	if len(partialDelimLeft) > len(s) {
+		partialDelimLeft = partialDelimLeft[:len(s)]
+	}
+	for len(partialDelimLeft) > 0 {
+		trailer := s[len(s)-len(partialDelimLeft):]
+		if trailer == partialDelimLeft {
+			return s[:len(s)-len(partialDelimLeft)]
+		}
+		partialDelimLeft = partialDelimLeft[:len(partialDelimLeft)-1]
+	}
+
+	// Next check for a complete left delimiter. If there no complete left delimiter, just return the string as-is.
+	lastDelimLeft := strings.LastIndex(s, colorLeft)
+	if lastDelimLeft == -1 {
+		return s
+	}
+
+	// If there is a complete left delimiter, look for a matching complete right delimiter. If there is a match, return
+	// the string as-is.
+	if strings.Index(s[lastDelimLeft:], colorRight) != -1 {
+		return s
+	}
+
+	// Otherwise, return the string up to but not including the incomplete left delimiter.
+	return s[:lastDelimLeft]
+}
+
 func Colorize(s fmt.Stringer) string {
 	txt := s.String()
 	return colorizeText(txt)

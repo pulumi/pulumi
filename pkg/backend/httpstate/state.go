@@ -159,18 +159,27 @@ func (u *cloudUpdate) recordEvent(
 	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
 	msg := display.RenderDiffEvent(action, event, seen, opts)
-	if msg == "" {
-		return nil
-	}
 
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
+	for msg != "" {
+		chunk := msg
+		const maxLen = 1 << 20 // 1 MB
+		if len(chunk) > maxLen {
+			chunk = colors.TrimPartialCommand(msg)
+			msg = msg[len(chunk):]
+		}
 
-	fields["text"] = msg
-	fields["colorize"] = colors.Always
-	return u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token)
+		token, err := u.tokenSource.GetToken()
+		if err != nil {
+			return err
+		}
+
+		fields["text"] = chunk
+		fields["colorize"] = colors.Always
+		if err = u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (u *cloudUpdate) RecordAndDisplayEvents(label string, action apitype.UpdateKind, stackRef backend.StackReference,
