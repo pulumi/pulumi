@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	pul_testing "github.com/pulumi/pulumi/pkg/testing"
+	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -185,5 +186,43 @@ func TestReadingGitRepo(t *testing.T) {
 		name, ok := test.Environment[backend.GitHeadName]
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
 		assert.Equal(t, "branch-from-ci", name)
+	}
+}
+
+// TestReadingGitLabMetadata tests the functions which read data fom the local Git repo
+// to add metadata to any updates.
+func TestReadingGitLabMetadata(t *testing.T) {
+	// Disable our CI/CD detection code, since if this unit test is ran under CI
+	// it will change the expected behavior.
+	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+	defer func() {
+		os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
+	}()
+
+	e := pul_testing.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("git", "init")
+	e.RunCommand("git", "remote", "add", "origin", "git@gitlab.com:owner-name/repo-name")
+	e.RunCommand("git", "checkout", "-b", "master")
+
+	// Commit alpha
+	e.WriteTestFile("alpha.txt", "")
+	e.RunCommand("git", "add", ".")
+	e.RunCommand("git", "commit", "-m", "message for commit alpha\n\nDescription for commit alpha")
+
+	// Test the state of the world from an empty git repo
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		assert.NoError(t, addGitMetadata(e.RootPath, test))
+
+		_, ok := test.Environment[backend.GitHead]
+		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+
+		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoKind, gitutil.GitLabHostName)
 	}
 }
