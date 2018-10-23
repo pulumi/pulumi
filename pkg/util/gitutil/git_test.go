@@ -247,7 +247,7 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 
 		//Unknown or bad remotes
 		{"", nil},
-		{"dummy", nil},
+		{"asdf", nil},
 		{"svn:something.com/owner/repo", nil},
 	}
 

@@ -129,9 +129,8 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 		}
 
 		// Add the git metadata to the tags, ignoring any errors that come from it.
-		if err := addGitMetadataToStackTags(tags, projPath); err != nil {
-			contract.IgnoreError(err)
-		}
+		ignoredErr := addGitMetadataToStackTags(tags, projPath)
+		contract.IgnoreError(ignoredErr)
 	}
 
 	return tags, nil

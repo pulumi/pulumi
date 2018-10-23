@@ -59,7 +59,8 @@ var (
 )
 
 // VCSInfo describes a cloud-hosted version control system.
-// Cloud hosted VCS' typically have
+// Cloud hosted VCS' typically have an owner (could be an organization),
+// to whom the repo belongs.
 type VCSInfo struct {
 	Owner string
 	Repo  string
@@ -99,7 +100,6 @@ func GetGitHubProjectForOrigin(dir string) (*VCSInfo, error) {
 		return nil, err
 	}
 	remoteURL, err := GetGitRemoteURL(repo, "origin")
-
 	if err != nil {
 		return nil, err
 	}
@@ -167,20 +167,20 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 		return nil, errors.Errorf("detecting the VCS info from the remote URL %v", remoteURL)
 	}
 
-	// At this point, project is either an empty string or contains the information that we want.
-	// It is OK to run the split on the empty string anyway.
-	split := strings.Split(project, "/")
-
 	// For Azure, we will have more than 2 parts in the array.
 	// Ex: owner/project/repo.git
-	if len(split) > 2 {
+	if vcsKind == AzureDevOpsHostName {
 		azureSplit := strings.SplitN(project, "/", 2)
 		return &VCSInfo{
 			Owner: azureSplit[0],
 			Repo:  azureSplit[1],
 			Kind:  vcsKind,
 		}, nil
-	} else if len(split) != 2 {
+	}
+
+	// Since the vcsKind is not Azure, we can try to detect the other kinds of VCS.
+	split := strings.Split(project, "/")
+	if len(split) != 2 {
 		return nil, errors.Errorf("could not detect VCS project from url: %v", remoteURL)
 	}
 

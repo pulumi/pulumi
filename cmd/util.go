@@ -396,7 +396,6 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 	// when the origin remote was truly a github remote.
 	// TODO [pulumi/pulumi-service#2306] Once the UI is updated and we no longer need these keys, we can remove this block.
 	if env[backend.VCSRepoKind] == gitutil.GitHubHostName && env[backend.VCSRepoOwner] != "" {
-		// For backwards compatibility, let's set the old GitHub keys as well.
 		env[backend.GitHubLogin] = env[backend.VCSRepoOwner]
 		env[backend.GitHubRepo] = env[backend.VCSRepoName]
 	}
