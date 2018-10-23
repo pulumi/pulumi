@@ -157,10 +157,12 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		return nil
 	}
 
-	if owner, repo, kind, err := gitutil.TryGetVCSInfo(remoteURL); err != nil {
+	if owner, repo, kind, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
 		tags[apitype.VCSOwnerNameTag] = owner
 		tags[apitype.VCSRepositoryNameTag] = repo
 		tags[apitype.VCSRepositoryKindTag] = kind
+	} else {
+		return errors.Wrapf(err, "detecting VCS info for stack tags for remote %v", remoteURL)
 	}
 	// Check if the remote URL is a GitHub URL and set the old stack tags keys for GitHub.
 	// TODO remove these when the UI no longer needs them.
