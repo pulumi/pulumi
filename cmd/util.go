@@ -393,6 +393,8 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 
 	// If the environment map contains the vcs kind and if it is GitHub,
 	// then let's set the old metadata keys as well, so that the UI can continue to read those.
+	// As of this writing, none of the other VCS are detected and only the `github` keys are set
+	// when the origin remote is truly a github remote.
 	// TODO once the UI is updated and we no longer need these keys, we can remove them.
 	if env[backend.VCSRepoKind] == gitutil.GitHubHostName && env[backend.VCSRepoOwner] != "" {
 		addOldGitHubMetadataToEnvironment(env)
@@ -408,7 +410,8 @@ func addOldGitHubMetadataToEnvironment(env map[string]string) {
 }
 
 func addVCSMetadataToEnvironment(remoteURL string, env map[string]string) error {
-	// GitLab repo slug if applicable. We don't require a cloud-hosted VCS, so swallow errors.
+	// GitLab, Bitbucket, Azure DevOps etc. repo slug if applicable.
+	// We don't require a cloud-hosted VCS, so swallow errors.
 	vcsLogin, vcsRepo, vcsRepoKind, err := gitutil.TryGetVCSInfo(remoteURL)
 	if err != nil {
 		return errors.Wrap(err, "detecting VCS project information")

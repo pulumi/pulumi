@@ -224,7 +224,14 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 
 	assert.Equal(t, "owner-name", bitbucketOwner)
 	assert.Equal(t, "repo-name", bitbucketRepo)
-	assert.Equal(t, "bitbucket.org", kind)
+	assert.Equal(t, BitbucketHostName, kind)
+
+	azureRepoOwner, azureRepo, kind, err := TryGetVCSInfo("git@ssh.dev.azure.com:v3/owner-name/project/repo-name.git")
+	assert.Nil(t, err)
+
+	assert.Equal(t, "owner-name", azureRepoOwner)
+	assert.Equal(t, "project/repo-name", azureRepo)
+	assert.Equal(t, AzureDevOpsHostName, kind)
 }
 
 func TestTryGetVCSInfoFromHTTPSRemote(t *testing.T) {
@@ -247,5 +254,12 @@ func TestTryGetVCSInfoFromHTTPSRemote(t *testing.T) {
 
 	assert.Equal(t, "owner-name", bitbucketOwner)
 	assert.Equal(t, "repo-name", bitbucketRepo)
-	assert.Equal(t, "bitbucket.org", kind)
+	assert.Equal(t, BitbucketHostName, kind)
+
+	azureRepoOwner, azureRepo, kind, err := TryGetVCSInfo("https://user@dev.azure.com/owner-name/project/_git/repo-name")
+	assert.Nil(t, err)
+
+	assert.Equal(t, "owner-name", azureRepoOwner)
+	assert.Equal(t, "project/_git/repo-name", azureRepo)
+	assert.Equal(t, AzureDevOpsHostName, kind)
 }

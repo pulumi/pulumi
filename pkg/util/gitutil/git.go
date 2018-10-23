@@ -39,12 +39,19 @@ const (
 	GitLabHostName = "gitlab.com"
 	// The host name for GitHub.
 	GitHubHostName = "github.com"
+	// The host name for Azure DevOps
+	AzureDevOpsHostName = "dev.azure.com"
+	// The host name for Bitbucket
+	BitbucketHostName = "bitbucket.org"
 )
 
 // The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
 // CAUTION! If you are renaming any of the group names in the regex (the ?P<group_name> part) to something else,
 // be sure to update its usage in this package as well.
-var cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`) //nolint
+var (
+	cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
+	azureSourceControlSSHRegex = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+)
 
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
@@ -114,15 +121,12 @@ func TryGetVCSInfo(remoteURL string) (string, string, string, error) {
 	vcsKind := ""
 
 	if cloudSourceControlSSHRegex.MatchString(remoteURL) {
-		// Get all matching groups.
-		matches := cloudSourceControlSSHRegex.FindAllStringSubmatch(remoteURL, -1)[0]
-		// Get the named groups in our regex.
-		groupNames := cloudSourceControlSSHRegex.SubexpNames()
-
-		groups := map[string]string{}
-		for i, value := range matches {
-			groups[groupNames[i]] = value
-		}
+		groups := getMatchedGroupsFromRegex(cloudSourceControlSSHRegex, remoteURL)
+		vcsKind = groups["host_name"]
+		project = groups["owner_and_repo"]
+		project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
+	} else if azureSourceControlSSHRegex.MatchString(remoteURL) {
+		groups := getMatchedGroupsFromRegex(azureSourceControlSSHRegex, remoteURL)
 		vcsKind = groups["host_name"]
 		project = groups["owner_and_repo"]
 		project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
@@ -144,11 +148,30 @@ func TryGetVCSInfo(remoteURL string) (string, string, string, error) {
 	// It is OK to run the split on the empty string anyway.
 	split := strings.Split(project, "/")
 
-	if len(split) != 2 {
+	// For Azure, we will have more than 2 parts in the array.
+	// Ex: owner/project/repo.git
+	if len(split) > 2 {
+		azureSplit := strings.SplitN(project, "/", 2)
+		return azureSplit[0], azureSplit[1], vcsKind, nil
+	} else if len(split) != 2 {
 		return "", "", "", errors.Errorf("could not detect VCS project from url: %v", remoteURL)
 	}
 
 	return split[0], split[1], vcsKind, nil
+}
+
+func getMatchedGroupsFromRegex(regex *regexp.Regexp, remoteURL string) map[string]string {
+	// Get all matching groups.
+	matches := regex.FindAllStringSubmatch(remoteURL, -1)[0]
+	// Get the named groups in our regex.
+	groupNames := regex.SubexpNames()
+
+	groups := map[string]string{}
+	for i, value := range matches {
+		groups[groupNames[i]] = value
+	}
+
+	return groups
 }
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
