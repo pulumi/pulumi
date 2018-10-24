@@ -16,8 +16,8 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	$(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
-	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
+	# $(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
+	# ./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
 
 build_package::
 	./node_modules/.bin/tsc
