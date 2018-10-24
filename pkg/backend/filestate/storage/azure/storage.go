@@ -23,6 +23,9 @@ func isValidateCredential(url, accountKey string) bool {
 	if err != nil {
 		return false
 	}
+	// NewBucket should fail if the credentials are invalid but we'll
+	// add a secondary check to make sure we can use the credentials
+	// to list files too.
 	if _, err = bucket.ListFiles(context.Background(), ""); err != nil {
 		return false
 	}

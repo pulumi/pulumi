@@ -2,10 +2,15 @@ package filestate
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,11 +28,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-const (
-	localURL         = "file://."
-	localBackendPath = ".pulumi"
-	testDir          = "testdata"
-	testProjectPath  = "testdata/Pulumi.yaml"
+var (
+	localURL        = "file://."
+	testDir         = "testdata"
+	testProjectPath = "testdata/Pulumi.yaml"
 )
 
 type mockCancellationScope struct {
@@ -55,19 +59,86 @@ func (mockCancellationScopeSource) NewScope(events chan<- engine.Event, isPrevie
 	return c
 }
 
-var be Backend
+var be Backend // Shared, do not run tests in parallel
+var stores map[string]string
 
 func TestMain(m *testing.M) {
-	var err error
-	be, err = New(cmdutil.Diag(), localURL)
-	if err != nil {
-		panic(fmt.Sprintf("error creating new local backend to test: %+v", err))
+
+	stores = make(map[string]string)
+	flag.Parse()
+	if !testing.Short() {
+		// If not -short then use remote backends
+		if azureURL := os.Getenv("AZURE_URL"); azureURL != "" {
+			stores["azure"] = azureURL
+		}
+	}
+	stores["local"] = localURL
+
+	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
+	// backups of test stacks.
+	if err := os.Setenv(DisableCheckpointBackupsEnvVar, "1"); err != nil {
+		fmt.Printf("error setting env var '%s': %v\n", DisableCheckpointBackupsEnvVar, err)
+		os.Exit(1)
 	}
 
 	exCode := m.Run()
 	os.Exit(exCode)
 }
-func TestParseStackReference(t *testing.T) {
+
+type backendInfo struct {
+	name string
+	url  string
+}
+
+func TestStorageBackends(t *testing.T) {
+	backends := []backendInfo{}
+	for k, v := range stores {
+		backends = append(backends, backendInfo{
+			name: k,
+			url:  v,
+		})
+	}
+
+	ctx := context.Background()
+	for _, backend := range backends {
+		var err error
+		be, err = Login(ctx, cmdutil.Diag(), backend.url)
+		if err != nil {
+			panic(fmt.Sprintf("error creating new %s backend to test: %+v", backend.name, err))
+		}
+		runTestPlan(backend.name, t) // TODO: Handle success/failure
+	}
+}
+
+func runTestPlan(backendName string, t *testing.T) bool {
+	testPlan := []func(t *testing.T){
+		ParseStackReference,
+		CreateStack,
+		RemoveStack,
+		GetStack,
+		ListStacks,
+		Update,
+		UpdateLocking,
+	}
+	for _, test := range testPlan {
+		if success := runTest(backendName, test, t); !success {
+			return false
+		}
+	}
+	return true
+}
+
+func runTest(backendName string, testFn func(t *testing.T), t *testing.T) bool {
+	testName := strings.Replace(fmt.Sprintf("%s%s", strings.Title(backendName), getFunctionName(testFn)), ".", "", -1)
+	return t.Run(testName, testFn)
+}
+
+func getFunctionName(i interface{}) string {
+	parts := strings.Split(runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name(), ".")
+	return parts[len(parts)-1]
+}
+
+func ParseStackReference(t *testing.T) {
 	tt := []struct {
 		stackName string
 	}{
@@ -87,7 +158,7 @@ func TestParseStackReference(t *testing.T) {
 	}
 }
 
-func TestCreateStack(t *testing.T) {
+func CreateStack(t *testing.T) {
 	tt := []struct {
 		stackName string
 	}{
@@ -112,7 +183,7 @@ func TestCreateStack(t *testing.T) {
 	}
 }
 
-func TestGetStack(t *testing.T) {
+func GetStack(t *testing.T) {
 	tt := []struct {
 		stackName   string
 		createStack bool
@@ -153,7 +224,7 @@ func TestGetStack(t *testing.T) {
 	}
 }
 
-func TestListStacks(t *testing.T) {
+func ListStacks(t *testing.T) {
 	tt := []struct {
 		numStacks int
 	}{
@@ -194,7 +265,7 @@ func TestListStacks(t *testing.T) {
 	}
 }
 
-func TestRemoveStack(t *testing.T) {
+func RemoveStack(t *testing.T) {
 	tt := []struct {
 		stackName string
 	}{
@@ -221,7 +292,7 @@ func TestRemoveStack(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func Update(t *testing.T) {
 	tt := []struct {
 		stackName string
 	}{
@@ -255,7 +326,7 @@ func TestUpdate(t *testing.T) {
 
 		// os.Chdir() does not update the shell working directory
 		// so we need to pass the test dir path to npm install.
-		testDir, err := os.Getwd()
+		testDir, err := os.Getwd() // nolint: vetshadow
 		if err != nil {
 			t.Fatalf("error getting testdata working directory: %+v", err)
 		}
@@ -278,21 +349,24 @@ func TestUpdate(t *testing.T) {
 
 		// Perform two sequential updates and check that
 		// the expected number of changes are detected
-		up1 := applyUpdate(ctx, testDir, proj, stackRef, t)
+		up1, _ := applyUpdate(ctx, testDir, proj, stackRef, t)
 		if !up1.HasChanges() {
 			t.Fatalf("expected changes on first update")
 		}
-		up2 := applyUpdate(ctx, testDir, proj, stackRef, t)
+		up2, destroy := applyUpdate(ctx, testDir, proj, stackRef, t)
 		if up2.HasChanges() {
 			t.Fatalf("expected no changes between first and second update")
 		}
+
+		// Remove provisioned resources
+		destroy()
 
 		tearDownPulumi()                // Removes the dirty .pulumi between test cases
 		tearDownProject(test.stackName) // Removes generated project files and node_modules between test cases
 	}
 }
 
-func TestUpdateLocking(t *testing.T) {
+func UpdateLocking(t *testing.T) {
 	tt := []struct {
 		stackName string
 	}{
@@ -325,7 +399,7 @@ func TestUpdateLocking(t *testing.T) {
 
 		// os.Chdir() does not update the shell working directory
 		// so we need to pass the test dir path to npm install.
-		testDir, err := os.Getwd()
+		testDir, err := os.Getwd() // nolint: vetshadow
 		if err != nil {
 			t.Fatalf("error getting testdata working directory: %+v", err)
 		}
@@ -352,23 +426,25 @@ func TestUpdateLocking(t *testing.T) {
 		wg.Add(2)
 
 		timeApplyUpdate := func(c context.Context, d string, p *workspace.Project,
-			r backend.StackReference, t *testing.T) time.Duration {
+			r backend.StackReference, t *testing.T) (time.Duration, func()) {
 			start := time.Now()
-			applyUpdate(c, d, p, r, t)
+			_, destroy := applyUpdate(c, d, p, r, t)
+
 			elapsed := time.Since(start)
-			return elapsed
+			return elapsed, destroy
 		}
 
 		times := make([]time.Duration, 0) // Used to ignore ordering of goroutine execution
 		var time1 time.Duration
 		var time2 time.Duration
+		var destroy func()
 		go func() {
-			time1 = timeApplyUpdate(ctx, testDir, proj, stackRef, t)
+			time1, destroy = timeApplyUpdate(ctx, testDir, proj, stackRef, t)
 			wg.Done()
 			times = append(times, time1)
 		}()
 		go func() {
-			time2 = timeApplyUpdate(ctx, testDir, proj, stackRef, t)
+			time2, destroy = timeApplyUpdate(ctx, testDir, proj, stackRef, t)
 			wg.Done()
 			times = append(times, time2)
 		}()
@@ -378,15 +454,15 @@ func TestUpdateLocking(t *testing.T) {
 		// to complete minus an offset to allow for
 		// the initial goroutine startup cost.
 		base := times[0].Seconds() * 0.7
-		// Create a range of between +/- 30% of the
-		// base benchmark and make sure the second
-		// goroutine falls in it.
+		// Create a range of acceptable times based
+		// on the base benchmark and make sure the
+		// second goroutine falls in it.
 		// The lower treshold gives us an indicator
 		// that the goroutines ran in sequence.
 		// The upper treshold gives us an indiciator
 		// we're not deadlocking.
-		upperTreshold := base * 1.3
-		lowerTreshold := base * 0.7
+		upperTreshold := base * 1.5
+		lowerTreshold := base * 0.5
 		diff := times[1] - times[0]
 		diffSec := diff.Seconds()
 		if diffSec < lowerTreshold || diffSec > upperTreshold {
@@ -394,6 +470,8 @@ func TestUpdateLocking(t *testing.T) {
 			seconds but was %f seconds`,
 				lowerTreshold, upperTreshold, diffSec)
 		}
+
+		destroy() // Remove provisioned resources
 
 		tearDownPulumi()                // Removes the dirty .pulumi between test cases
 		tearDownProject(test.stackName) // Removes generated project files and node_modules between test cases
@@ -410,7 +488,7 @@ func setUp(t *testing.T) func() {
 	if err != nil {
 		t.Fatalf("error getting current working directory: %+v", err)
 	}
-	tmp, err := ioutil.TempDir("", t.Name())
+	tmp, err := ioutil.TempDir("", filepath.Base(t.Name()))
 	if err != nil {
 		t.Fatalf("error creating temp dir: %+v", err)
 	}
@@ -431,17 +509,31 @@ func setUp(t *testing.T) func() {
 	}
 }
 
+// tearDownPulumi cleans the pulumi directory of any
+// stacks created during the test
 func tearDownPulumi() {
-	_ = os.RemoveAll(localBackendPath)
+	ctx := context.Background()
+	stacks, err := be.ListStacks(ctx, nil)
+	if err != nil {
+		panic("unable to list stacks during teardown")
+	}
+	for _, stack := range stacks {
+		_, err = be.RemoveStack(ctx, stack.Name(), false)
+		if err != nil {
+			panic(fmt.Errorf("unable to destroy resources for stack %s during teardown", stack.Name().String()))
+		}
+	}
 }
 
+// tearDownProject remove any project files created
+// during a test run
 func tearDownProject(stackName string) {
 	_ = os.RemoveAll(fmt.Sprintf("Pulumi.%s.yaml", stackName))
 	_ = os.RemoveAll("node_modules")
 }
 
 func applyUpdate(ctx context.Context, root string, project *workspace.Project,
-	stackRef backend.StackReference, t *testing.T) engine.ResourceChanges {
+	stackRef backend.StackReference, t *testing.T) (engine.ResourceChanges, func()) {
 	m := backend.UpdateMetadata{
 		Message:     "",
 		Environment: make(map[string]string),
@@ -454,7 +546,7 @@ func applyUpdate(ctx context.Context, root string, project *workspace.Project,
 		Refresh:   false,
 	}
 
-	res, err := be.Update(ctx, stackRef, backend.UpdateOperation{
+	op := backend.UpdateOperation{
 		Proj: project,
 		Root: root,
 		M:    m,
@@ -467,11 +559,15 @@ func applyUpdate(ctx context.Context, root string, project *workspace.Project,
 			SkipPreview: true,
 		},
 		Scopes: cancellationScopes,
-	})
+	}
+
+	res, err := be.Update(ctx, stackRef, op)
 	if err != nil {
 		t.Fatalf("error updating resources: %+v", err)
 	}
-	return res
+	return res, func() {
+		be.Destroy(ctx, stackRef, op)
+	}
 }
 
 // installNPMPackages runs npm install in the desired directory.
@@ -493,16 +589,22 @@ func createStack(ctx context.Context, stackRef backend.StackReference, t *testin
 }
 
 func stackExists(stackRef backend.StackReference, t *testing.T) {
-	expectStackPath := fmt.Sprintf("%s/stacks/%s.json", localBackendPath, stackRef.Name().String())
-	if _, err := os.Stat(expectStackPath); os.IsNotExist(err) {
-		t.Fatalf("expected file %s to have been created on disk", expectStackPath)
+	stack, err := be.GetStack(context.Background(), stackRef)
+	if err != nil {
+		t.Fatalf("error getting stack %s: %+v", stackRef.Name().String(), err)
+	}
+	if stack == nil {
+		t.Fatalf("expected stack %s to have been created", stackRef.Name().String())
 	}
 }
 
 func stackDoesNotExist(stackRef backend.StackReference, t *testing.T) {
-	expectStackPath := fmt.Sprintf("%s/stacks/%s.json", localBackendPath, stackRef.Name().String())
-	if _, err := os.Stat(expectStackPath); !os.IsNotExist(err) {
-		t.Fatalf("expected file %s to have been removed from disk", expectStackPath)
+	stack, err := be.GetStack(context.Background(), stackRef)
+	if err != nil {
+		t.Fatalf("error getting stack %s: %+v", stackRef.Name().String(), err)
+	}
+	if stack != nil {
+		t.Fatalf("expected stack %s to have been removed", stackRef.Name().String())
 	}
 }
 

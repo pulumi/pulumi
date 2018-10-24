@@ -125,6 +125,15 @@ func (b *bucket) ReadFile(ctx context.Context, path string) ([]byte, error) {
 	blobURL := b.url.NewBlockBlobURL(path)
 	res, err := blobURL.GetBlob(ctx, azblob.BlobRange{}, azblob.BlobAccessConditions{}, false)
 	if err != nil {
+		if serr, ok := err.(azblob.StorageError); ok {
+			// See error.go for justification
+			werr := &StorageErrorWithoutCause{
+				msg:         serr.Error(),
+				serviceCode: string(serr.ServiceCode()),
+				res:         serr.Response(),
+			}
+			return nil, werr
+		}
 		return nil, err
 	}
 	defer res.Body().Close() // nolint: errcheck
