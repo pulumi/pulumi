@@ -74,9 +74,17 @@ func Colorize(s fmt.Stringer) string {
 }
 
 func colorizeText(s string) string {
-	c, err := loreley.CompileAndExecuteToString(s, nil, nil)
+	style, err := loreley.Compile(s, nil /*extensions*/)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
-	return c
+
+	// Loreley does its own tty detection and disables colors if there is no tty.  We don't want
+	// that behavior as we control the colorization strategy and allow users to specify if they
+	// alway want colors or not.
+	style.NoColors = false
+	result, err := style.ExecuteToString(nil)
+	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
+
+	return result
 }
 
 // Highlight takes an input string, a sequence of commands, and replaces all occurrences of that string with

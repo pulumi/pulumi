@@ -705,7 +705,7 @@ func (display *ProgressDisplay) processEndSteps() {
 						message := colors.SpecHeadline + "Diagnostics:" + colors.Reset
 						fmt.Printf("Precolorized message: %v\n", message)
 						colorized := display.opts.Color.Colorize(message)
-						fmt.Printf("Precolorized message: %v\n", colorized)
+						fmt.Printf("Postcolorized message: %v\n", colorized)
 
 						display.writeSimpleMessage(colorized)
 					}
