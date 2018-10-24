@@ -701,13 +701,8 @@ func (display *ProgressDisplay) processEndSteps() {
 					if !wroteDiagnosticHeader {
 						wroteDiagnosticHeader = true
 						display.writeBlankLine()
-						fmt.Printf("About to write diagnostics: %v\n", display.opts.Color)
-						message := colors.SpecHeadline + "Diagnostics:" + colors.Reset
-						fmt.Printf("Precolorized message: %v\n", message)
-						colorized := display.opts.Color.Colorize(message)
-						fmt.Printf("Postcolorized message: %v\n", colorized)
-
-						display.writeSimpleMessage(colorized)
+						display.writeSimpleMessage(
+							display.opts.Color.Colorize(colors.SpecHeadline + "Diagnostics:" + colors.Reset))
 					}
 
 					if !wroteResourceHeader {
