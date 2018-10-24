@@ -77,9 +77,13 @@ func colorizeText(s string) string {
 	style, err := loreley.Compile(s, nil /*extensions*/)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
 
-	// Loreley does its own tty detection and disables colors if there is no tty.  We don't want
-	// that behavior as we control the colorization strategy and allow users to specify if they
-	// alway want colors or not.
+	// Note: we only get into this codepath if we determined colors should be on.  This was either
+	// because we were in color=auto mode and our env detection determined colors were reasonable to
+	// have, or because we're in color=always mode.
+	//
+	// However, Loreley does its own tty detection and disables colors if there is no tty.  We don't
+	// want that behavior if we've determined colors should be on.  So we explicitly override their
+	// automatic detection.
 	style.NoColors = false
 	result, err := style.ExecuteToString(nil /*data*/)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
