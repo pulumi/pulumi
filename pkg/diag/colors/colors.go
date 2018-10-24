@@ -81,7 +81,7 @@ func colorizeText(s string) string {
 	// that behavior as we control the colorization strategy and allow users to specify if they
 	// alway want colors or not.
 	style.NoColors = false
-	result, err := style.ExecuteToString(nil)
+	result, err := style.ExecuteToString(nil /*data*/)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
 
 	return result
