@@ -501,24 +501,9 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
-// CreateStackOptions is an optional bag of options specific to creating cloud stacks.
-type CreateStackOptions struct {
-	// CloudName is the optional PPC name to create the stack in.  If omitted, the organization's default PPC is used.
-	CloudName string
-}
-
-func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	opts interface{}) (backend.Stack, error) {
-
-	if opts == nil {
-		opts = CreateStackOptions{}
-	}
-
-	cloudOpts, ok := opts.(CreateStackOptions)
-	if !ok {
-		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
-	}
-
+func (b *cloudBackend) CreateStack(
+	ctx context.Context, stackRef backend.StackReference, _ interface{} /* No custom options for httpstate backend. */) (
+	backend.Stack, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -529,7 +514,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, cloudOpts.CloudName, tags)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags)
 	if err != nil {
 		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -1144,7 +1129,6 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it and keep
 			// continuing.  The sole exception is if we've done this 10 times.  At that point, we will have
 			// been waiting for many seconds, and want to let the user know something might be wrong.
-			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
 			if try < 10 {
 				warn = false
 			}

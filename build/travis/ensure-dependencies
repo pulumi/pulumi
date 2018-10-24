@@ -8,5 +8,5 @@ make ensure
 $(go env GOPATH)/src/github.com/pulumi/scripts/ci/check-worktree-is-clean.sh
 
 # Set stdout back to blocking to avoid problems writing large outputs.
-# https://github.com/pulumi/pulumi-ppc/issues/176
+# https://github.com/travis-ci/travis-ci/issues/4704
 python -c 'import fcntl, os, sys; flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL); print("stdout was " + ("nonblocking" if flags & os.O_NONBLOCK else "blocking")); fcntl.fcntl(sys.stdout, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)'
