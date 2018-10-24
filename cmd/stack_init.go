@@ -19,12 +19,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackInitCmd() *cobra.Command {
-	var ppc string
 	cmd := &cobra.Command{
 		Use:   "init [<organization-name>/]<stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -44,13 +42,6 @@ func newStackInitCmd() *cobra.Command {
 			b, err := currentBackend(opts)
 			if err != nil {
 				return err
-			}
-
-			var createOpts interface{}
-			if _, ok := b.(httpstate.Backend); ok {
-				createOpts = httpstate.CreateStackOptions{
-					CloudName: ppc,
-				}
 			}
 
 			var stackName string
@@ -73,11 +64,10 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
+			var createOpts interface{} // Backend-specific config options, none currently.
 			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/)
 			return err
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&ppc, "ppc", "p", "", "An optional Pulumi Private Cloud (PPC) name to initialize this stack in")
 	return cmd
 }
