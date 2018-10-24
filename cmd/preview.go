@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -57,6 +58,8 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			color := cmdutil.GetGlobalColorization()
+			fmt.Printf("Preview color is %v\n", color)
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					Analyzers: analyzers,
@@ -64,7 +67,7 @@ func newPreviewCmd() *cobra.Command {
 					Debug:     debug,
 				},
 				Display: display.Options{
-					Color:                cmdutil.GetGlobalColorization(),
+					Color:                color,
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,

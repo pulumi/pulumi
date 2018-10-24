@@ -33,7 +33,7 @@ var globalColorization = colors.Auto
 // GetGlobalColorization gets the global setting for how things should be colored.
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
 func GetGlobalColorization() colors.Colorization {
-	fmt.Printf("Color is: %v", globalColorization)
+	fmt.Printf("Color is: %v\n", globalColorization)
 	if globalColorization != colors.Auto {
 		// User has set an explicit colorization preference.  We'll respect whatever they asked for,
 		// no matter what.
@@ -61,7 +61,7 @@ func GetGlobalColorization() colors.Colorization {
 // SetGlobalColorization sets the global setting for how things should be colored.
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
 func SetGlobalColorization(value string) error {
-	fmt.Printf("Setting global color to %v", value)
+	fmt.Printf("Setting global color to %v\n", value)
 	switch value {
 	case "auto":
 		globalColorization = colors.Auto
