@@ -101,8 +101,6 @@ type TestCommandStats struct {
 	IsError bool `json:"isError"`
 	// The Cloud that the test was run against, or empty for local deployments
 	CloudURL string `json:"cloudURL"`
-	// The PPC that the test was run against, or empty for local deployments or for the default PPC
-	CloudPPC string `json:"cloudPPC"`
 }
 
 // TestStatsReporter reports results and metadata from a test run.
@@ -152,9 +150,6 @@ type ProgramTestOptions struct {
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
 	CloudURL string
-	// PPCName is the name of the PPC to use when running a test against the hosted service. If
-	// not set, the --ppc flag will not be set on `pulumi stack init`.
-	PPCName string
 
 	// StackName allows the stack name to be explicitly provided instead of computed from the
 	// environment during tests.
@@ -284,9 +279,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
-	}
-	if overrides.PPCName != "" {
-		opts.PPCName = overrides.PPCName
 	}
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
@@ -624,14 +616,6 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
-	// Set the target PPC from an environment variable if not overridden in options.
-	if pt.opts.PPCName == "" {
-		ppcName := os.Getenv("PULUMI_API_PPC_NAME")
-		if ppcName != "" {
-			pt.opts.PPCName = ppcName
-		}
-	}
-
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
@@ -653,8 +637,6 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 
 	// Stack init
 	stackInitArgs := []string{"stack", "init", string(pt.opts.GetStackNameWithOwner())}
-	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
-
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}

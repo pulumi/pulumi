@@ -86,7 +86,6 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 			TestName:       filepath.Base(opts.Dir),
 			IsError:        runerr != nil,
 			CloudURL:       opts.CloudURL,
-			CloudPPC:       opts.PPCName,
 		})
 	}
 
