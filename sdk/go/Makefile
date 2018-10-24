@@ -19,11 +19,11 @@ install_plugin::
 install:: install_plugin
 
 lint::
-	# $(GOMETALINTER) ./pulumi/... | sort
-	# $(GOMETALINTER) ./pulumi-language-go/... | sort
+	$(GOMETALINTER) ./pulumi/... | sort
+	$(GOMETALINTER) ./pulumi-language-go/... | sort
 
 test_fast::
-	# go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}

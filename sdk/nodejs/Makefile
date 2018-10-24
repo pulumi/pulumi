@@ -16,8 +16,8 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	# $(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
-	# ./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
+	$(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
+	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
 
 build_package::
 	./node_modules/.bin/tsc
@@ -45,10 +45,10 @@ install_plugin::
 install:: install_package install_plugin
 
 test_fast::
-	# istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
-	# istanbul report text-summary
-	# istanbul report text
-	# go test -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	istanbul report text-summary
+	istanbul report text
+	go test -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}

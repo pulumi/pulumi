@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi SDK
-SUB_PROJECTS := sdk/nodejs sdk/go
+SUB_PROJECTS := sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
@@ -33,15 +33,15 @@ dist::
 
 LINT_SUPPRESS="or be unexported"
 lint::
-	# $(GOMETALINTER) main.go | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	# $(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	# $(GOMETALINTER) ./cmd/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) main.go | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) ./cmd/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 
 test_fast::
-	# go test -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 test_all::
-	# PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
+	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
@@ -55,8 +55,8 @@ publish_packages:
 
 .PHONY: coverage
 coverage:
-	# $(call STEP_MESSAGE)
-	# ./scripts/gocover.sh
+	$(call STEP_MESSAGE)
+	./scripts/gocover.sh
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
