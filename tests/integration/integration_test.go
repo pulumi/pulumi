@@ -189,8 +189,8 @@ func TestStackOutputsJSON(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 	stdout, stderr := e.RunCommand("pulumi", "stack", "output", "--json")
 	assert.Equal(t, `{
-    "foo": 42,
-    "xyz": "ABC"
+  "foo": 42,
+  "xyz": "ABC"
 }
 `, stdout)
 	assert.Equal(t, "", stderr)
