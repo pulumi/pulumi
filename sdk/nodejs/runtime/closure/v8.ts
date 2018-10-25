@@ -164,7 +164,9 @@ function getScopeForFunction(func: Function, index: number): V8ScopeDetails {
  * @param throwOnFailure If true, throws if the free variable can't be found.
  * @returns The value of the free variable. If `throwOnFailure` is false, returns `undefined` if not found.
  */
-export function lookupCapturedVariableValue(func: Function, freeVariable: string, throwOnFailure: boolean): any {
+export async function lookupCapturedVariableValueAsync(
+        func: Function, freeVariable: string, throwOnFailure: boolean): Promise<any> {
+
     // The implementation of this function is now very straightforward since the intrinsics do all of the
     // difficult work.
     const count = getFunctionScopeCount(func);
@@ -186,7 +188,7 @@ export function lookupCapturedVariableValue(func: Function, freeVariable: string
  * Given a function, returns the name of the file where this function was defined.
  * Returns the empty string if the given function has no Script. (e.g. a native function)
  */
-export function getFunctionFile(func: Function): string {
+export async function getFunctionFileAsync(func: Function): Promise<string> {
     const script = getScript(func);
     return script ? script.name : "";
 }
@@ -195,7 +197,7 @@ export function getFunctionFile(func: Function): string {
  * Given a function, returns the line and column number in the file where this function was defined.
  * Returns { 0, 0 } if the location cannot be found or if the given function has no Script.
  */
-export function getFunctionLocation(func: Function): { line: number, column: number } {
+export async function getFunctionLocationAsync(func: Function): Promise<{ line: number, column: number }> {
     const script = getScript(func);
     if (script) {
         const pos = getSourcePosition(func);
