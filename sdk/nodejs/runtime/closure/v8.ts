@@ -19,8 +19,24 @@
 //
 // As a side-effect of importing this file, we must enable the --allow-natives-syntax V8
 // flag. This is because we are using V8 intrinsics in order to implement this module.
+import * as inspector from "inspector";
+
+const inspectorSession = new inspector.Session();
+inspectorSession.connect();
+
+// First, register to hear about scripts getting parsed.  This is the only supported way
+// to map from a scriptId to a file-name with the inspector API.
+const scriptIdToUrlMap = new Map<string, string>();
+inspectorSession.addListener("Debugger.scriptParsed", m => {
+    const { scriptId, url } = m.params;
+    console.log("Mapping: " + scriptId + " to " + url);
+    scriptIdToUrlMap.set(scriptId, url);
+});
+
 import * as semver from "semver";
 import * as v8 from "v8";
+
+console.log("Loading v8 module");
 v8.setFlagsFromString("--allow-natives-syntax");
 
 // We depend on V8 intrinsics to inspect JavaScript functions and runtime values. These intrinsics
@@ -32,18 +48,152 @@ v8.setFlagsFromString("--allow-natives-syntax");
 const isNodeAtLeastV10 = semver.gte(process.version, "10.0.0");
 const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
 
-function throwUnsupportedNodeVersion(): never {
+function throwUnsupportedNodeVersion(func: string): never {
     throw new Error(
         `Function serialization with Node version ${process.version} is not supported by Pulumi at this time. ` +
-        "Please use Node 10 or older.");
+        `Please use Node 10 or older. ${func}`);
+}
+/** Unique object identifier. */
+type RemoteObjectId = string;
+
+/**
+ * Primitive value which cannot be JSON-stringified. Includes values `-0`, `NaN`, `Infinity`,
+ * `-Infinity`, and bigint literals.
+ */
+type UnserializableValue = string;
+
+interface Mirror {
+    /** Object type. */
+    type: "function" | "object" | "number";
+    /** Object subtype hint. Specified for `object` type values only. */
+    subtype?: string;
+    /** Object class (constructor) name. Specified for `object` type values only. */
+    className?: string;
+    /** Remote object value in case of primitive values or JSON values (if it was requested). */
+    value?: any;
+    /** Primitive value which can not be JSON-stringified does not have `value`, but gets this property. */
+    unserializableValue?: UnserializableValue;
+    /** Unique object identifier (for non-primitive values). */
+    objectId?: RemoteObjectId;
+}
+
+interface FunctionMirror extends Mirror {
+    type: "function";
+    subtype: never;
+    className: "Function";
+    value: never;
+    unserializableValue: never;
+    objectId: RemoteObjectId;
+}
+
+let currentFunctionId = 0;
+
+async function getFunctionMirrorAsync(func: Function): Promise<FunctionMirror> {
+    const currentFunctionName = "__functionToSerialize" + currentFunctionId++;
+    (<any>global)[currentFunctionName] = func;
+
+    try {
+        const mirror = await runtimeEvaluateAsync(`global.${currentFunctionName}`);
+        if (mirror.type !== "function") {
+            throw new Error("Mirror was not 'function': " + mirror.type);
+        }
+
+        return <FunctionMirror>mirror;
+    }
+    finally {
+        delete (<any>global)[currentFunctionName];
+    }
+}
+
+async function runtimeGetPropertiesAsync(
+        objectId: inspector.Runtime.RemoteObjectId,
+        ownProperties: boolean | undefined) {
+
+    const retType = await new Promise<inspector.Runtime.GetPropertiesReturnType>((resolve, reject) => {
+        inspectorSession.post(
+            "Runtime.getProperties",
+            { objectId, ownProperties },
+            (err, ret) => err ? reject(err) : resolve(ret));
+    });
+
+    if (retType.exceptionDetails) {
+        throw new Error(`Error calling "Runtime.getProperties(${objectId}, ${ownProperties})": `
+            + retType.exceptionDetails.text);
+    }
+
+    return { internalProperties: retType.internalProperties || [], properties: retType.result };
+}
+
+async function runtimeEvaluateAsync(expression: string): Promise<Mirror> {
+    const retType = await new Promise<inspector.Runtime.EvaluateReturnType>((resolve, reject) => {
+        inspectorSession.post(
+            "Runtime.evaluate",
+            { expression },
+            (err, ret) => err ? reject(err) : resolve(ret));
+    });
+
+    if (retType.exceptionDetails) {
+        throw new Error(`Error calling "Runtime.evaluate(${expression})": ` + retType.exceptionDetails.text);
+    }
+
+    console.log(JSON.stringify(retType.result));
+
+    const remoteObj = retType.result;
+    checkRemoteObject(remoteObj);
+    return <Mirror>remoteObj;
+}
+
+function checkRemoteObject(obj: inspector.Runtime.RemoteObject) {
+    switch (obj.type) {
+        case "function":
+            checkRemoteFunction(obj);
+            break;
+        case "object":
+        case "number":
+            break;
+        default:
+            throw new Error("Unexpected type: " + obj.type);
+    }
+
+    if (obj.className) {
+        switch (obj.className) {
+            case "Function":
+            case "Array":
+                break;
+            default:
+                throw new Error("Unexpected className: " + obj.className);
+        }
+    }
+}
+
+function checkRemoteFunction(obj: inspector.Runtime.RemoteObject) {
+    if (obj.className !== "Function") {
+        throw new Error("Function's className was: " + obj.className);
+    }
+
+    if (obj.subtype) {
+        throw new Error("Function had subtype: " + obj.subtype);
+    }
+
+    if (obj.value) {
+        throw new Error("Function had value: " + obj.subtype);
+    }
+
+    if (obj.unserializableValue) {
+        throw new Error("Function had unserializableValue: " + obj.unserializableValue);
+    }
+
+    if (!obj.objectId) {
+        throw new Error("Function did not have objectId");
+    }
 }
 
 // We use four V8 intrinsics in this file. The first, `FunctionGetScript`, gets
 // a `Script` object given a JavaScript function. The `Script` object contains metadata
 // about the function's source definition.
-function getScript(func: Function): V8Script | undefined {
+function getScriptPreV11(func: Function): V8Script | undefined {
     if (isNodeAtLeastV11) {
-        throwUnsupportedNodeVersion();
+        throwUnsupportedNodeVersion("getScript_pre_v11");
     }
 
     // The use of the Function constructor here and elsewhere in this file is because
@@ -70,7 +220,7 @@ const getSourcePosition: (func: Function) => V8SourcePosition =
 
 function scriptPositionInfo(script: V8Script, pos: V8SourcePosition): {line: number, column: number} {
     if (isNodeAtLeastV11) {
-        throwUnsupportedNodeVersion();
+        throwUnsupportedNodeVersion("scriptPositionInfo");
     }
 
     if (isNodeAtLeastV10) {
@@ -101,7 +251,7 @@ interface V8SourceLocation {
 // index i.
 function getFunctionScopeDetails(func: Function, index: number): any[] {
     if (isNodeAtLeastV11) {
-        throwUnsupportedNodeVersion();
+        throwUnsupportedNodeVersion("getFunctionScopeDetails");
     }
 
     const getFunctionScopeDetailsFunc =
@@ -112,7 +262,7 @@ function getFunctionScopeDetails(func: Function, index: number): any[] {
 
 function getFunctionScopeCount(func: Function): number {
     if (isNodeAtLeastV11) {
-        throwUnsupportedNodeVersion();
+        throwUnsupportedNodeVersion("getFunctionScopeCount");
     }
 
     const getFunctionScopeCountFunc = new Function("func", "return %GetFunctionScopeCount(func);") as any;
@@ -122,7 +272,7 @@ function getFunctionScopeCount(func: Function): number {
 // All of these functions contain syntax that is not legal TS/JS (i.e. "%Whatever").  As such,
 // we cannot serialize them.  In case they somehow get captured, just block them from closure
 // serialization entirely.
-(<any>getScript).doNotCapture = true;
+(<any>getScriptPreV11).doNotCapture = true;
 (<any>getSourcePosition).doNotCapture = true;
 (<any>getFunctionScopeDetails).doNotCapture = true;
 (<any>getFunctionScopeCount).doNotCapture = true;
@@ -188,13 +338,47 @@ export async function lookupCapturedVariableValueAsync(
  * Given a function, returns the file, line and column number in the file where this function was
  * defined. Returns { "", 0, 0 } if the location cannot be found or if the given function has no Script.
  */
-export async function getFunctionLocationAsync(func: Function):
-        Promise<{ file: string, line: number, column: number }> {
+export function getFunctionLocationAsync(func: Function) {
 
-    const script = getScript(func);
+    if (isNodeAtLeastV11) {
+        return getFunctionLocationPostV11Async(func);
+    }
+    else {
+        return getFunctionLocationPreV11Async(func);
+    }
+}
+
+async function getFunctionLocationPreV11Async(func: Function) {
+    const script = getScriptPreV11(func);
     const { line, column } = getLineColumn(func, script);
 
     return { file: script ? script.name : "", line, column };
+}
+
+export async function getFunctionLocationPostV11Async(func: Function) {
+    const functionMirror = await getFunctionMirrorAsync(func);
+    const { properties, internalProperties } = await runtimeGetPropertiesAsync(
+        functionMirror.objectId, /*ownProperties:*/ false);
+
+    for (const prop of properties) {
+        console.log(JSON.stringify(prop));
+    }
+    for (const prop of internalProperties) {
+        console.log(JSON.stringify(prop));
+    }
+
+    const functionLocation = internalProperties.find(p => p.name === "[[FunctionLocation]]");
+    if (functionLocation && functionLocation.value && functionLocation.value.value) {
+        const value = functionLocation.value.value;
+        const scriptId = value.scriptId;
+        const line = value.lineNumber;
+        const column = value.columnNumber;
+
+        const file = scriptIdToUrlMap.get(scriptId) || "";
+        return { file, line, column };
+    }
+
+    return { file: "", line: 0, column: 0 };
 }
 
 function getLineColumn(func: Function, script: V8Script | undefined) {
@@ -222,3 +406,4 @@ function getLineColumn(func: Function, script: V8Script | undefined) {
 
     return { line: 0, column: 0 };
 }
+
