@@ -29,12 +29,12 @@ v8.setFlagsFromString("--allow-natives-syntax");
 //
 // We were broken especially badly by Node 11, which removed most of the intrinsics that we used.
 // We will need to find replacements for them.
-const isNodeV10 = semver.gte(process.version, "10.0.0");
-const isNodeV11 = semver.gte(process.version, "11.0.0");
+const isNodeAtLeastV10 = semver.gte(process.version, "10.0.0");
+const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
 
 function throwUnsupportedNodeVersion(): never {
     throw new Error(
-        `Closure serialization with Node version ${process.version} is not supported by Pulumi at this time. ` +
+        `Function serialization with Node version ${process.version} is not supported by Pulumi at this time. ` +
         "Please use Node 10 or older.");
 }
 
@@ -42,7 +42,7 @@ function throwUnsupportedNodeVersion(): never {
 // a `Script` object given a JavaScript function. The `Script` object contains metadata
 // about the function's source definition.
 function getScript(func: Function): V8Script | undefined {
-    if (isNodeV11) {
+    if (isNodeAtLeastV11) {
         throwUnsupportedNodeVersion();
     }
 
@@ -69,11 +69,11 @@ const getSourcePosition: (func: Function) => V8SourcePosition =
     new Function("func", "return %FunctionGetScriptSourcePosition(func);") as any;
 
 function scriptPositionInfo(script: V8Script, pos: V8SourcePosition): {line: number, column: number} {
-    if (isNodeV11) {
+    if (isNodeAtLeastV11) {
         throwUnsupportedNodeVersion();
     }
 
-    if (isNodeV10) {
+    if (isNodeAtLeastV10) {
         const scriptPositionInfoFunc =
             new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any;
 
@@ -100,7 +100,7 @@ interface V8SourceLocation {
 // the latter function returns the i'th entry in a function's scope chain, given a function and
 // index i.
 function getFunctionScopeDetails(func: Function, index: number): any[] {
-    if (isNodeV11) {
+    if (isNodeAtLeastV11) {
         throwUnsupportedNodeVersion();
     }
 
@@ -111,7 +111,7 @@ function getFunctionScopeDetails(func: Function, index: number): any[] {
 }
 
 function getFunctionScopeCount(func: Function): number {
-    if (isNodeV11) {
+    if (isNodeAtLeastV11) {
         throwUnsupportedNodeVersion();
     }
 
@@ -201,7 +201,7 @@ export function getFunctionLocation(func: Function): { line: number, column: num
         const pos = getSourcePosition(func);
 
         try {
-            if (isNodeV10) {
+            if (isNodeAtLeastV10) {
                 return scriptPositionInfo(script, pos);
             } else {
                 return script.locationFromPosition(pos);
