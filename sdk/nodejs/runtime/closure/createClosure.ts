@@ -329,8 +329,7 @@ async function analyzeFunctionInfoAsync(
 
     // logInfo = logInfo || func.name === "addHandler";
 
-    const file = await v8.getFunctionFileAsync(func);
-    const { line, column } = await v8.getFunctionLocationAsync(func);
+    const { file, line, column } = await v8.getFunctionLocationAsync(func);
     const functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 

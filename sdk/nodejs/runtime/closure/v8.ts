@@ -185,20 +185,19 @@ export async function lookupCapturedVariableValueAsync(
 }
 
 /**
- * Given a function, returns the name of the file where this function was defined.
- * Returns the empty string if the given function has no Script. (e.g. a native function)
+ * Given a function, returns the file, line and column number in the file where this function was
+ * defined. Returns { "", 0, 0 } if the location cannot be found or if the given function has no Script.
  */
-export async function getFunctionFileAsync(func: Function): Promise<string> {
+export async function getFunctionLocationAsync(func: Function):
+        Promise<{ file: string, line: number, column: number }> {
+
     const script = getScript(func);
-    return script ? script.name : "";
+    const { line, column } = getLineColumn(func, script);
+
+    return { file: script ? script.name : "", line, column };
 }
 
-/**
- * Given a function, returns the line and column number in the file where this function was defined.
- * Returns { 0, 0 } if the location cannot be found or if the given function has no Script.
- */
-export async function getFunctionLocationAsync(func: Function): Promise<{ line: number, column: number }> {
-    const script = getScript(func);
+function getLineColumn(func: Function, script: V8Script | undefined) {
     if (script) {
         const pos = getSourcePosition(func);
 
