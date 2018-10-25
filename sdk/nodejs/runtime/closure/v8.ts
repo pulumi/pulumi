@@ -23,14 +23,35 @@ import * as semver from "semver";
 import * as v8 from "v8";
 v8.setFlagsFromString("--allow-natives-syntax");
 
+// We depend on V8 intrinsics to inspect JavaScript functions and runtime values. These intrinsics
+// are unstable and change radically between versions. These two version checks are used by this module
+// to determine whether or not it is safe to use particular intrinsincs.
+//
+// We were broken especially badly by Node 11, which removed most of the intrinsics that we used.
+// We will need to find replacements for them.
+const isNodeAtLeastV10 = semver.gte(process.version, "10.0.0");
+const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
+
+function throwUnsupportedNodeVersion(): never {
+    throw new Error(
+        `Function serialization with Node version ${process.version} is not supported by Pulumi at this time. ` +
+        "Please use Node 10 or older.");
+}
+
 // We use four V8 intrinsics in this file. The first, `FunctionGetScript`, gets
 // a `Script` object given a JavaScript function. The `Script` object contains metadata
 // about the function's source definition.
-const getScript: (func: Function) => V8Script | undefined =
+function getScript(func: Function): V8Script | undefined {
+    if (isNodeAtLeastV11) {
+        throwUnsupportedNodeVersion();
+    }
+
     // The use of the Function constructor here and elsewhere in this file is because
     // because V8 intrinsics are not valid JavaScript identifiers; they all begin with '%',
     // which means that the TypeScript compiler issues errors for them.
-    new Function("func", "return %FunctionGetScript(func);") as any;
+    const scriptFunc = new Function("func", "return %FunctionGetScript(func);") as any;
+    return scriptFunc(func);
+}
 
 // The V8 script object contains the name of the file that defined a function and a function
 // that convert a `V8SourcePosition` into a `V8SourceLocation`. (Conceptually - Positions are offsets
@@ -40,8 +61,6 @@ interface V8Script {
     locationFromPosition(pos: V8SourcePosition): V8SourceLocation;
 }
 
-// Check if we're on node 10.  We need to call specific intrinsics depending on which version we're on.
-const isNodeV10 = semver.gte(process.version, "10.0.0");
 
 // The second intrinsic is `FunctionGetScriptSourcePosition`, which does about what you'd
 // expect. It returns a `V8SourcePosition`, which can be passed to `V8Script::locationFromPosition`
@@ -49,10 +68,21 @@ const isNodeV10 = semver.gte(process.version, "10.0.0");
 const getSourcePosition: (func: Function) => V8SourcePosition =
     new Function("func", "return %FunctionGetScriptSourcePosition(func);") as any;
 
-const scriptPositionInfo: (script: V8Script, pos: V8SourcePosition) => { line: number, column: number } =
-    isNodeV10
-        ? new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any
-        : <any>undefined;
+function scriptPositionInfo(script: V8Script, pos: V8SourcePosition): {line: number, column: number} {
+    if (isNodeAtLeastV11) {
+        throwUnsupportedNodeVersion();
+    }
+
+    if (isNodeAtLeastV10) {
+        const scriptPositionInfoFunc =
+            new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any;
+
+        return scriptPositionInfoFunc(script, pos);
+    }
+
+    // Should not be called if running on Node<10.0.0.
+    return <any>undefined;
+}
 
 // V8SourcePosition is an opaque value that should be passed verbatim to `V8Script.locationFromPosition`
 // in order to receive a V8SourceLocation.
@@ -69,11 +99,25 @@ interface V8SourceLocation {
 // The former function returns the number of scopes in a given function's scope chain, while
 // the latter function returns the i'th entry in a function's scope chain, given a function and
 // index i.
-const getFunctionScopeDetails: (func: Function, index: number) => any[] =
-    new Function("func", "index", "return %GetFunctionScopeDetails(func, index);") as any;
+function getFunctionScopeDetails(func: Function, index: number): any[] {
+    if (isNodeAtLeastV11) {
+        throwUnsupportedNodeVersion();
+    }
 
-const getFunctionScopeCount: (func: Function) => number =
-    new Function("func", "return %GetFunctionScopeCount(func);") as any;
+    const getFunctionScopeDetailsFunc =
+        new Function("func", "index", "return %GetFunctionScopeDetails(func, index);") as any;
+
+    return getFunctionScopeDetailsFunc(func, index);
+}
+
+function getFunctionScopeCount(func: Function): number {
+    if (isNodeAtLeastV11) {
+        throwUnsupportedNodeVersion();
+    }
+
+    const getFunctionScopeCountFunc = new Function("func", "return %GetFunctionScopeCount(func);") as any;
+    return getFunctionScopeCountFunc(func);
+}
 
 // All of these functions contain syntax that is not legal TS/JS (i.e. "%Whatever").  As such,
 // we cannot serialize them.  In case they somehow get captured, just block them from closure
@@ -157,7 +201,7 @@ export function getFunctionLocation(func: Function): { line: number, column: num
         const pos = getSourcePosition(func);
 
         try {
-            if (isNodeV10) {
+            if (isNodeAtLeastV10) {
                 return scriptPositionInfo(script, pos);
             } else {
                 return script.locationFromPosition(pos);
