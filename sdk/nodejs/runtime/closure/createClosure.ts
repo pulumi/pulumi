@@ -30,7 +30,8 @@ import {
     isUndefinedOrNullMirror,
     isTruthy,
     isFalsy,
-    Mirror } from "./mirrors";
+    Mirror,
+    isFunctionMirror} from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -317,7 +318,7 @@ async function analyzeFunctionMirrorAsync(
         // process down the pipeline.
         const [error, parsedFunction] = parseFunction(funcMirror.description);
         if (error) {
-            throwSerializationError(funcMirror, context, error);
+            await throwSerializationErrorAsync(funcMirror, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
@@ -433,7 +434,7 @@ async function analyzeFunctionMirrorAsync(
                     valueMirror = await v8.lookupCapturedVariableAsync(funcMirror, name, throwOnFailure);
                 }
                 catch (err) {
-                    return throwSerializationError(funcMirror, context, err.message);
+                    return await throwSerializationErrorAsync(funcMirror, context, err.message);
                     // TODO(cyrusn): should be able to remove this.
                     // throw err;
                 }
@@ -441,9 +442,9 @@ async function analyzeFunctionMirrorAsync(
                 const moduleName = await findNormalizedModuleNameAsync(valueMirror);
                 const frameLength = context.frames.length;
                 if (moduleName) {
-                    context.frames.push({ capturedModule: { name: moduleName, value: value } });
+                    context.frames.push({ capturedModule: { name: moduleName, mirror: valueMirror } });
                 }
-                else if (value instanceof Function) {
+                else if (isFunctionMirror(valueMirror)) {
                     // Only bother pushing on context frame if the name of the variable
                     // we captured is different from the name of the function.  If the
                     // names are the same, this is a direct reference, and we don't have
@@ -458,7 +459,7 @@ async function analyzeFunctionMirrorAsync(
                     context.frames.push({ capturedVariableName: name });
                 }
 
-                await processCapturedVariableAsync(capturedVariables, name, value);
+                await processCapturedVariableAsync(capturedVariables, name, valueMirror);
 
                 // Only if we pushed a frame on should we pop it off.
                 if (context.frames.length !== frameLength) {
@@ -468,13 +469,13 @@ async function analyzeFunctionMirrorAsync(
         }
 
         async function processCapturedVariableAsync(
-            capturedVariables: CapturedVariableMap, name: string, value: any) {
+            capturedVariables: CapturedVariableMap, name: string, valueMirror: Mirror) {
 
             const properties = capturedVariables.get(name);
             const serializedName = await getOrCreateNameEntryAsync(name, undefined, context, serialize, logInfo);
 
             // try to only serialize out the properties that were used by the user's code.
-            const serializedValue = await getOrCreateEntryAsync(value, properties, context, serialize, logInfo);
+            const serializedValue = await getOrCreateEntryAsync(valueMirror, properties, context, serialize, logInfo);
 
             capturedValues.set(serializedName, { entry: serializedValue });
         }
@@ -487,7 +488,7 @@ async function analyzeFunctionMirrorAsync(
 
         // We're processing the derived class constructor itself.  Just map it directly to the base
         // class function.
-        context.classInstanceMemberToSuperEntry.set(func, protoEntry);
+        context.classInstanceMemberToSuperEntry.set(funcMirror, protoEntry);
 
         // Also, make sure our methods can also find this entry so they too can refer to
         // 'super'.
@@ -540,8 +541,8 @@ function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
     return names.concat(Object.getOwnPropertySymbols(obj));
 }
 
-function throwSerializationError(
-    funcMirror: FunctionMirror, context: Context, info: string): never {
+async function throwSerializationErrorAsync(
+    funcMirror: FunctionMirror, context: Context, info: string): Promise<never> {
 
     let message = "";
 
@@ -607,7 +608,7 @@ function throwSerializationError(
         const moduleName = module.name;
         message += "\n";
 
-        if (module.value.deploymentOnlyModule) {
+        if (isTruthy(await getMirrorMemberAsync(module.mirror, "deploymentOnlyModule"))) {
             message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
         }
         else {
