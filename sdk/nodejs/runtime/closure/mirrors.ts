@@ -20,7 +20,7 @@ type UnserializableValue = string;
 
 export interface Mirror {
     /** Object type. */
-    type: "function" | "object" | "number" | "string";
+    type: "function" | "object" | "number" | "string" | "undefined";
     /** Object subtype hint. Specified for `object` type values only. */
     subtype?: string;
     /** Object class (constructor) name. Specified for `object` type values only. */
@@ -63,7 +63,41 @@ export interface StringMirror extends Mirror {
     description?: never;
 }
 
+export interface UndefinedMirror extends Mirror {
+    type: "undefined";
+
+    // properties that never appear
+    value?: never;
+    subtype?: never;
+    className?: never;
+    unserializableValue?: never;
+    objectId?: never;
+    description?: never;
+}
+
+export interface ObjectMirror extends Mirror {
+    type: "object";
+
+    // ObjectMirrors always have a subtype.
+    subtype: string;
+}
+
+export interface NullMirror extends ObjectMirror {
+    subtype: "null";
+
+    // NullMirror always has a null value.
+    value: null;
+
+    // properties that never appear
+    className?: never;
+    unserializableValue?: never;
+    objectId?: never;
+    description?: never;
+}
+
 type MirrorType<T> =
+    T extends undefined ? UndefinedMirror :
+    T extends null ? NullMirror :
     T extends string ? StringMirror :
     T extends Function ? FunctionMirror : Mirror;
 
@@ -177,4 +211,26 @@ export function callFunctionOn(mirror: Mirror, funcName: string, args: Mirror[] 
     // if (resType.exceptionDetails) {
 
     // }
+}
+
+export async function getMirrorMemberAsync(mirror: Mirror, memberName: string): Promise<Mirror> {
+    const val = getValueForMirror(mirror);
+    const member = val[memberName];
+    return getMirrorAsync(member);
+}
+
+export function isUndefinedOrNullMirror(mirror: Mirror) {
+    return isUndefinedMirror(mirror) || isNullMirror(mirror);
+}
+
+export function isUndefinedMirror(mirror: Mirror): mirror is UndefinedMirror {
+    return mirror.type === "undefined";
+}
+
+export function isNullMirror(mirror: Mirror): mirror is NullMirror {
+    return isObjectMirror(mirror) && mirror.subtype === "null";
+}
+
+export function isObjectMirror(mirror: Mirror): mirror is ObjectMirror {
+    return mirror.type === "object";
 }
