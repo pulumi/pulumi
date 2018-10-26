@@ -316,12 +316,6 @@
   version = "v1.5.1"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/sabhiram/go-gitignore"
-  packages = ["."]
-  revision = "362f9845770f1606d61ba3ddf9cfb1f0780d2ffe"
-
-[[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
@@ -599,6 +593,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e630b1d5be6ad07a0dd9c522a17fc628e34c0698e50f1546f0b600cdfdde11f3"
+  inputs-digest = "eaeb2282f35a265330a240be239886c91ab253b40dc2cf92469c7cbe29c78f9d"
   solver-name = "gps-cdcl"
   solver-version = 1

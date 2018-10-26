@@ -28,6 +28,7 @@ import (
 
 func newCancelCmd() *cobra.Command {
 	var yes bool
+	var stack string
 	var cmd = &cobra.Command{
 		Use:   "cancel [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -42,8 +43,11 @@ func newCancelCmd() *cobra.Command {
 			"updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Use the stack provided or, if missing, default to the current one.
-			stack := ""
 			if len(args) > 0 {
+				if stack != "" {
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
+				}
+
 				stack = args[0]
 			}
 
@@ -86,6 +90,9 @@ func newCancelCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with cancellation anyway")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }

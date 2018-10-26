@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -50,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -655,7 +653,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	programContext, main, err := getContextAndMain(op.Proj, op.Root)
+	_, main, err := getContextAndMain(op.Proj, op.Root)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -667,12 +665,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-	getContents := func() (io.ReadCloser, int64, error) {
-		const showProgress = true
-		return getUpdateContents(programContext, op.Proj.UseDefaultIgnores(), showProgress, op.Opts.Display)
-	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stack, op.Proj, workspaceStack.Config, main, metadata, op.Opts.Engine, dryRun, getContents)
+		ctx, action, stack, op.Proj, workspaceStack.Config, main, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -729,34 +723,6 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	}
 
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
-}
-
-// uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
-// meaning whatever Pulumi program is found in the CWD or parent directory.
-// If set, printSize will print the size of the data being uploaded.
-func getUpdateContents(
-	context string, useDefaultIgnores bool,
-	progress bool, opts display.Options) (io.ReadCloser, int64, error) {
-
-	archiveContents, err := archive.Process(context, useDefaultIgnores)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "creating archive")
-	}
-
-	archiveReader := ioutil.NopCloser(archiveContents)
-
-	// If progress is requested, show a little animated ASCII progress bar.
-	if progress {
-		bar := pb.New(archiveContents.Len())
-		archiveReader = newBarProxyReadCloser(bar, archiveReader)
-		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Uploading program: "))
-		bar.Postfix(opts.Color.Colorize(colors.Reset))
-		bar.SetMaxWidth(80)
-		bar.SetUnits(pb.U_BYTES)
-		bar.Start()
-	}
-
-	return archiveReader, int64(archiveContents.Len()), nil
 }
 
 func (b *cloudBackend) runEngineAction(
