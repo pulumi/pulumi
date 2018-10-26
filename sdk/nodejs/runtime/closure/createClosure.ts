@@ -390,7 +390,7 @@ async function analyzeFunctionInfoAsync(
             // this was a class constructor or method.  We need to put a special __super
             // entry into scope, and then rewrite any calls to super() to refer to it.
             capturedValues.set(
-                await getOrCreateEntryAsync("__super", undefined, context, serialize, logInfo),
+                await getOrCreateNameEntryAsync("__super", undefined, context, serialize, logInfo),
                 { entry: superEntry });
 
             functionInfo.code = rewriteSuperReferences(
@@ -410,7 +410,7 @@ async function analyzeFunctionInfoAsync(
         // itself.
         if (functionDeclarationName !== undefined) {
             capturedValues.set(
-                await getOrCreateEntryAsync(functionDeclarationName, undefined, context, serialize, logInfo),
+                await getOrCreateNameEntryAsync(functionDeclarationName, undefined, context, serialize, logInfo),
                 { entry: funcEntry });
         }
 
@@ -461,7 +461,7 @@ async function analyzeFunctionInfoAsync(
             capturedVariables: CapturedVariableMap, name: string, value: any) {
 
             const properties = capturedVariables.get(name);
-            const serializedName = await getOrCreateEntryAsync(name, undefined, context, serialize, logInfo);
+            const serializedName = await getOrCreateNameEntryAsync(name, undefined, context, serialize, logInfo);
 
             // try to only serialize out the properties that were used by the user's code.
             const serializedValue = await getOrCreateEntryAsync(value, properties, context, serialize, logInfo);
@@ -672,6 +672,15 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
     }
 
     return false;
+}
+
+function getOrCreateNameEntryAsync(
+    name: string, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+    context: Context,
+    serialize: (o: any) => boolean,
+    logInfo: boolean | undefined): Promise<Entry> {
+
+    return getOrCreateEntryAsync(name, capturedObjectProperties, context, serialize, logInfo);
 }
 
 /**
@@ -927,7 +936,7 @@ async function getOrCreateEntryAsync(
             const propChains = localCapturedPropertyChains.filter(chain => chain.infos[0].name === propName);
 
             // Now, make an entry just for this name.
-            const keyEntry = await getOrCreateEntryAsync(propName, undefined, context, serialize, logInfo);
+            const keyEntry = await getOrCreateNameEntryAsync(propName, undefined, context, serialize, logInfo);
 
             if (environment.has(keyEntry)) {
                 continue;
