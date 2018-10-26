@@ -118,8 +118,8 @@ async def serialize_property(value: Input[Any], deps: List[Resource]) -> Any:
 
     if isinstance(value, dict):
         obj = {}
-        for k, v in value:
-            obj[k] = await serialize_property(v)
+        for k, v in value.items():
+            obj[k] = await serialize_property(v, deps)
 
         return obj
 
