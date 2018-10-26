@@ -37,6 +37,8 @@ export interface FunctionMirror extends Mirror {
     type: "function";
     className: "Function" | "Array";
     objectId: RemoteObjectId;
+
+    /** contains the result of calling '.toString()' on the function instance. */
     description: string;
 
     // properties that never appear
@@ -66,8 +68,19 @@ type MirrorType<T> =
     T extends Function ? FunctionMirror : Mirror;
 
 let currentMirrorId = 0;
-const valToMirror = new Map<any, Mirror>();
 const functionIdToFunc = new Map<RemoteObjectId, Function>();
+
+const valToMirror = new Map<any, Mirror>();
+const mirrorToVal = new Map<Mirror, any>();
+
+function getValueForMirror(mirror: Mirror): any {
+    const val = mirrorToVal.get(mirror);
+    if (!val) {
+        throw new Error("Didn't have value for mirror: " + JSON.stringify(mirror));
+    }
+
+    return val;
+}
 
 export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
     let mirror = valToMirror.get(val);
@@ -77,6 +90,7 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
     mirror = await createMirrorAsync();
     valToMirror.set(val, mirror);
+    mirrorToVal.set(mirror, val);
     return <any>mirror;
 
     async function createMirrorAsync(): Promise<Mirror> {
@@ -116,4 +130,51 @@ export function getFunction(funcMirror: FunctionMirror): Function {
     }
 
     return func;
+}
+
+export async function getPrototypeOfMirror(mirror: Mirror): Promise<Mirror> {
+    const proto = Object.getPrototypeOf(getValueForMirror(mirror));
+    return getMirrorAsync(proto);
+}
+
+export function callFunctionOn(mirror: Mirror, funcName: string, args: Mirror[] = []): Promise<Mirror> {
+    if (!mirror.objectId) {
+        throw new Error("Can't call function on mirror without an objectId: " + JSON.stringify(mirror));
+    }
+
+    let index = 0;
+    for (const arg of args) {
+        if (!arg.objectId) {
+            throw new Error(`$args[${index} did not have objectId: ${JSON.stringify(arg)}`);
+        }
+
+        index++;
+    }
+
+    const realInstance = getValueForMirror(mirror);
+    const realArgs = args.map(a => getValueForMirror(a));
+    const func: Function = realInstance[funcName];
+
+    if (!func) {
+        throw new Error(`No function called ${funcName} found on mirror: ${JSON.stringify(mirror)}`);
+    }
+
+    if (!(func instanceof Function)) {
+        throw new Error(`${funcName} was not a function: ${JSON.stringify(func)}`);
+    }
+
+    const res = func.call(realInstance, ...realArgs);
+    return getMirrorAsync(res);
+
+    // const resType = await new Promise<inspector.Runtime.CallFunctionOnReturnType>((resolve, reject) => {
+    //     session.post("Runtime.callFunctionOn", {
+    //         objectId: mirror.objectId,
+    //         functionDeclaration: funcName,
+    //         arguments: args.map(a => ({ objectId: a.objectId })),
+    //     }, (err, res) => err ? reject(err) : resolve(res));
+    // });
+
+    // if (resType.exceptionDetails) {
+
+    // }
 }

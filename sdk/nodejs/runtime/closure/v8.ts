@@ -191,13 +191,9 @@ export async function lookupCapturedVariableAsync(
     return undefined;
 }
 
-import * as inspector from "inspector";
-var session = new inspector.Session();
-session.post("Runtime.callFunctionOn")
-
-export async function getPrototypeOf(mirror: Mirror): Promise<Mirror> {
-
-}
+// import * as inspector from "inspector";
+// var session = new inspector.Session();
+// session.post("Runtime.callFunctionOn");
 
 /**
  * Given a function, returns the file, line and column number in the file where this function was

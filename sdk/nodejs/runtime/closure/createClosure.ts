@@ -328,11 +328,11 @@ async function analyzeFunctionMirrorAsync(
             name: functionDeclarationName,
         };
 
-        const proto = Object.getPrototypeOf(func);
+        const protoMirror = mirrors.getPrototypeOfMirror(funcMirror);
 
         const isDerivedClassConstructor =
-            func.toString().startsWith("class ") &&
-            proto !== Function.prototype(func);
+            funcMirror.description.startsWith("class ") &&
+            protoMirror !== Function.prototype(func);
 
         // Note, i can't think of a better way to determine this.  This is particularly hard because
         // we can't even necessary refer to async function objects here as this code is rewritten by
