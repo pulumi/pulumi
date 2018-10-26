@@ -75,9 +75,6 @@ type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
 	// well as poll for its progress.
 	UpdateID string `json:"updateID"`
-
-	// UploadURL is a URL the client can use to upload their program's contents into. Ignored for destroys.
-	UploadURL string `json:"uploadURL"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.

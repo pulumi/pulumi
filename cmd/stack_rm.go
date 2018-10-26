@@ -30,6 +30,7 @@ import (
 )
 
 func newStackRmCmd() *cobra.Command {
+	var stack string
 	var yes bool
 	var force bool
 	var cmd = &cobra.Command{
@@ -44,8 +45,10 @@ func newStackRmCmd() *cobra.Command {
 			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Use the stack provided or, if missing, default to the current one.
-			var stack string
 			if len(args) > 0 {
+				if stack != "" {
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
+				}
 				stack = args[0]
 			}
 
@@ -94,6 +97,9 @@ func newStackRmCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }
