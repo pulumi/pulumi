@@ -152,13 +152,24 @@ type MirrorType<T> =
     T extends Promise<infer U> ? PromiseMirror :
     T extends Function ? FunctionMirror : Mirror;
 
+type ValueType<TMirror> =
+    TMirror extends UndefinedMirror ? undefined :
+    TMirror extends NullMirror ? null :
+    TMirror extends StringMirror ? string :
+    TMirror extends NumberMirror ? number :
+    TMirror extends BooleanMirror ? boolean :
+    TMirror extends RegExpMatchArray ? RegExp :
+    TMirror extends PromiseMirror ? Promise<any> :
+    TMirror extends FunctionMirror ? Function : any;
+
 let currentMirrorId = 0;
 const functionIdToFunc = new Map<RemoteObjectId, Function>();
 
 const valToMirror = new Map<any, Mirror>();
 const mirrorToVal = new Map<Mirror, any>();
 
-function getValueForMirror(mirror: Mirror): any {
+// Not for general use.  Only when transitioning over to the inspector API.
+export function getValueForMirror<TMirror extends Mirror>(mirror: TMirror): ValueType<TMirror> {
     const val = mirrorToVal.get(mirror);
     if (!val) {
         throw new Error("Didn't have value for mirror: " + JSON.stringify(mirror));
@@ -206,15 +217,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
         throw new Error("NYI: unhandled createMirrorAsync case.");
     }
-}
-
-export function getFunction(funcMirror: FunctionMirror): Function {
-    const func = functionIdToFunc.get(funcMirror.objectId);
-    if (!func) {
-        throw new Error("Couldn't find func for " + funcMirror.objectId);
-    }
-
-    return func;
 }
 
 export async function getPrototypeOfMirror(mirror: Mirror): Promise<Mirror> {
@@ -303,7 +305,7 @@ export function isPromiseMirror(mirror: Mirror): mirror is PromiseMirror {
 }
 
 export function isFunctionMirror(mirror: Mirror): mirror is FunctionMirror {
-    return 
+    return mirror.type === "function";
 }
 
 export function isTruthy(mirror: Mirror) {

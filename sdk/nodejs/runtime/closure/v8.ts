@@ -171,7 +171,7 @@ function getScopeForFunction(func: Function, index: number): V8ScopeDetails {
 export async function lookupCapturedVariableAsync(
         funcMirror: FunctionMirror, freeVariable: string, throwOnFailure: boolean): Promise<Mirror> {
 
-    const func = mirrors.getFunction(funcMirror);
+    const func = mirrors.getValueForMirror(funcMirror);
 
     // The implementation of this function is now very straightforward since the intrinsics do all of the
     // difficult work.
