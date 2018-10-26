@@ -15,9 +15,9 @@
 """The Resource module, containing all resource-related definitions."""
 from typing import Optional, List, Any
 
-from ..runtime import known_types
+from .runtime import known_types
 from ..runtime.resource import register_resource, register_resource_outputs
-from ..runtime.settings import get_root_resource
+from .runtime.settings import get_root_resource
 from ..runtime.unknown import Unknown
 from .output import Output
 
