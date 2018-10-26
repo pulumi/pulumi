@@ -14,12 +14,12 @@
 
 // tslint:disable:max-line-length
 
-import * as ts from "typescript";
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
+import * as utils from "./utils";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -217,35 +217,15 @@ export async function createFunctionInfoAsync(
         logResource,
     };
 
-    // Add well-known javascript global variables into our cache.  This way, if there
-    // is any code that references them, we can just emit that as simple expressions
-    // (like "new Array"), instead of trying to actually serialize out these core types.
-
-    // Front load these guys so we prefer emitting code that references them directly,
-    // instead of in unexpected ways.  i.e. we'd prefer to have Number.prototype vs
-    // Object.getPrototypeOf(Infinity) (even though they're the same thing.)
-
-    addGlobalInfo("Object");
-    addGlobalInfo("Function");
-    addGlobalInfo("Array");
-    addGlobalInfo("Number");
-    addGlobalInfo("String");
-
-    for (let current = global; current; current = Object.getPrototypeOf(current)) {
-        for (const key of Object.getOwnPropertyNames(current)) {
-            // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
-            // just skip them.
-            if (key !== "GLOBAL" && key !== "root") {
-                if ((<any>global)[key]) {
-                    addGlobalInfo(key);
-                }
-            }
-        }
+    // Pre-populate our context's cache with global well-known values.  These are values for things
+    // like global.Number, or Function.prototype.  Actually trying to serialize/deserialize these
+    // would be a bad idea as that would mean once deserialized the objects wouldn't point to the
+    // well known globals that were expected.  Furthermore, most of these are almost certain to fail
+    // to serialize due to hitting things like native-builtins.
+    const wellKnownMap = await v8.getWellKnownObjectToEmitExprMap();
+    for (const [wellKnownObj, expr] of wellKnownMap) {
+        context.cache.set(wellKnownObj, { expr });
     }
-
-    // Add information so that we can properly serialize over generators/iterators.
-    addGeneratorEntries();
-    context.cache.set(Symbol.iterator, { expr: "Symbol.iterator" });
 
     // Make sure this func is in the cache itself as we may hit it again while recursing.
     const entry: Entry = {};
@@ -256,52 +236,6 @@ export async function createFunctionInfoAsync(
     // await processAsyncWorkQueue();
 
     return entry.function;
-
-    function addGlobalInfo(key: string) {
-        const globalObj = (<any>global)[key];
-        const text = isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
-
-        if (!context.cache.has(globalObj)) {
-            context.cache.set(globalObj, { expr: text });
-        }
-
-        const proto1 = Object.getPrototypeOf(globalObj);
-        if (proto1 && !context.cache.has(proto1)) {
-            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})` });
-        }
-
-        const proto2 = globalObj.prototype;
-        if (proto2 && !context.cache.has(proto2)) {
-            context.cache.set(proto2, { expr: `${text}.prototype` });
-        }
-    }
-
-    // A generator function ('f') has ends up creating two interesting objects in the js
-    // environment:
-    //
-    // 1. the generator function itself ('f').  This generator function has an __proto__ that is
-    //    shared will all other generator functions.
-    //
-    // 2. a property 'prototype' on 'f'.  This property's __proto__ will be shared will all other
-    //    'prototype' properties of other generator functions.
-    //
-    // So, to properly serialize a generator, we stash these special objects away so that we can
-    // refer to the well known instance on the other side when we desirialize. Otherwise, if we
-    // actually tried to deserialize the instances/prototypes we have we would end up failing when
-    // we hit native functions.
-    //
-    // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
-    // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
-    function addGeneratorEntries() {
-        // tslint:disable-next-line:no-empty
-        const emptyGenerator = function* (): any { };
-
-        context.cache.set(Object.getPrototypeOf(emptyGenerator),
-            { expr: "Object.getPrototypeOf(function*(){})" });
-
-        context.cache.set(Object.getPrototypeOf(emptyGenerator.prototype),
-            { expr: "Object.getPrototypeOf((function*(){}).prototype)" });
-    }
 
     // async function processAsyncWorkQueue() {
     //     while (context.asyncWorkQueue.length > 0) {
@@ -1199,25 +1133,4 @@ function findNormalizedModuleName(obj: any): string | undefined {
 
     // Else, return that no global name is available for this object.
     return undefined;
-}
-
-const legalNameRegex = /^[a-zA-Z_][0-9a-zA-Z_]*$/;
-export function isLegalMemberName(n: string) {
-    return legalNameRegex.test(n);
-}
-
-export function isLegalFunctionName(n: string) {
-    if (!isLegalMemberName(n)) {
-        return false;
-    }
-
-    const scanner = ts.createScanner(
-        ts.ScriptTarget.Latest, /*skipTrivia:*/false, ts.LanguageVariant.Standard, n);
-    const tokenKind = scanner.scan();
-    if (tokenKind !== ts.SyntaxKind.Identifier &&
-        tokenKind !== ts.SyntaxKind.ConstructorKeyword) {
-        return false;
-    }
-
-    return true;
 }
