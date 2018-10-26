@@ -101,22 +101,18 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}()
 
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
-	changes := engine.ResourceChanges(nil)
-	if !op.Opts.SkipPreview {
-		// We perform the preview (DryRun), but don't display the cloud link since the
-		// thing the user cares about would be the link to the actual update if they
-		// confirm the prompt.
-		opts := ApplierOptions{
-			DryRun:   true,
-			ShowLink: false,
-		}
+	// We perform the preview (DryRun), but don't display the cloud link since the
+	// thing the user cares about would be the link to the actual update if they
+	// confirm the prompt.
+	opts := ApplierOptions{
+		DryRun:   true,
+		ShowLink: false,
+	}
 
-		c, err := apply(ctx, kind, stack, op, opts, eventsChannel)
-		if err != nil {
-			close(eventsChannel)
-			return c, err
-		}
-		changes = c
+	changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
+	if err != nil {
+		close(eventsChannel)
+		return changes, err
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
@@ -126,7 +122,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	err := confirmBeforeUpdating(kind, stack, events, op.Opts)
+	err = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
 	return changes, err
 }
@@ -193,9 +189,12 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier) (engine.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
-	changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
-	if err != nil || kind == apitype.PreviewUpdate {
-		return changes, err
+
+	if !op.Opts.SkipPreview {
+		changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		if err != nil || kind == apitype.PreviewUpdate {
+			return changes, err
+		}
 	}
 
 	// Perform the change (!DryRun) and show the cloud link to the result.
