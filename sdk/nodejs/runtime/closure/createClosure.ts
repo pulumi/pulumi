@@ -755,7 +755,7 @@ async function getOrCreateEntryAsync(
     await dispatchAnyAsync();
     return entry;
 
-    function doNotCapture() {
+    async function doNotCaptureAsync(): Promise<boolean> {
         if (!serialize(obj)) {
             // caller explicitly does not want us to capture this value.
             return true;
@@ -766,7 +766,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (isDerivedNoCaptureConstructor(obj)) {
+        if (await isDerivedNoCaptureConstructorAsync(obj)) {
             // this was a constructor that derived from something that should not be captured.
             return true;
         }
@@ -775,7 +775,7 @@ async function getOrCreateEntryAsync(
     }
 
     async function dispatchAnyAsync(): Promise<void> {
-        if (doNotCapture()) {
+        if (await doNotCaptureAsync()) {
             // We do not want to capture this object.  Explicit set .json to undefined so
             // that we will see that the property is set and we will simply roundtrip this
             // as the 'undefined value.
