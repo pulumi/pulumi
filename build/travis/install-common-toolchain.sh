@@ -83,7 +83,7 @@ nvm install ${NODE_VERSION-v8.11.1}
 # $PATH by default.
 if [ "${TRAVIS_OS_NAME:-}" = "osx" ]; then
     export PATH=$PATH:$HOME/Library/Python/2.7/bin
-    export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages
+    #export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages
 fi
 
 # Add yarn to the $PATH
