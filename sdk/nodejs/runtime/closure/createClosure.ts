@@ -309,7 +309,7 @@ async function analyzeFunctionInfoAsync(
         // process down the pipeline.
         const [error, parsedFunction] = parseFunction(functionString);
         if (error) {
-            throwSerializationError(func, context, error);
+            await throwSerializationErrorAsync(func, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
@@ -425,7 +425,7 @@ async function analyzeFunctionInfoAsync(
                     value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
                 }
                 catch (err) {
-                    throwSerializationError(func, context, err.message);
+                    await throwSerializationErrorAsync(func, context, err.message);
                 }
 
                 const moduleName = await findNormalizedModuleNameAsync(value);
@@ -520,8 +520,8 @@ function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
     return names.concat(Object.getOwnPropertySymbols(obj));
 }
 
-function throwSerializationError(
-    func: Function, context: Context, info: string): never {
+async function throwSerializationErrorAsync(
+    func: Function, context: Context, info: string): Promise<never> {
 
     let message = "";
 
