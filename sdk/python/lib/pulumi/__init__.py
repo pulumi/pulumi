@@ -23,6 +23,8 @@ __all__ = ['runtime']
 
 # Make all module members inside of this package available as package members.
 if six.PY3:
+    __all__.append('next')
+
     # While we are converting the Pulumi SDK to Python 3, we're incrementally replacing
     # parts of the existing SDK with the "next" subpackage.
     from .next.asset import *

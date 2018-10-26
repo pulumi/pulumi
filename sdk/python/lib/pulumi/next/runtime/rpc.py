@@ -15,10 +15,14 @@
 Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
+import inspect
+from typing import Callable, List, Mapping, Any
 
 from google.protobuf import struct_pb2
 from ...runtime.unknown import Unknown
 from . import known_types
+from ..output import Output, Inputs, Input
+from ..resource import Resource
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -32,6 +36,7 @@ _special_asset_sig = "c44067f5952c0a294b673a41bacd8c17"
 _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 """specialArchiveSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go."""
 
+
 def serialize_resource_props(props):
     """
     Serializes resource properties so that they are ready for marshaling to the gRPC endpoint.
@@ -40,6 +45,89 @@ def serialize_resource_props(props):
     for k, v in list(props.items()):
         struct[k] = serialize_resource_value(v) # pylint: disable=unsupported-assignment-operation
     return struct
+
+
+async def serialize_filtered_props(props: Inputs,
+                                   accept_key: Callable[[str], bool],
+                                   deps: List[Resource]) -> Mapping[str, Any]:
+    result = {}
+    for key, value in props:
+        if accept_key(key):
+            result[key] = await serialize_property(value, deps)
+
+    return result
+
+
+async def serialize_property(value: Input[Any], deps: List[Resource]) -> Any:
+    if isinstance(value, list):
+        props = []
+        for elem in value:
+            # TODO(sean, undefined check)
+            props.append(await serialize_property(elem, deps))
+
+        return props
+
+    if known_types.is_custom_resource(value):
+        deps.append(value)
+        return await serialize_property(value.id, deps)
+
+    if known_types.is_asset(value):
+        # Serializing an asset requires the use of a magical signature key, since otherwise it would look
+        # like any old weakly typed object/map when received by the other side of the RPC boundary.
+        obj = {
+            _special_sig_key: _special_asset_sig
+        }
+
+        if hasattr(value, "path"):
+            obj["path"] = await serialize_property(value.path, deps)
+        elif hasattr(value, "text"):
+            obj["text"] = await serialize_property(value.text, deps)
+        elif hasattr(value, "uri"):
+            obj["uri"] = await serialize_property(value.uri, deps)
+        else:
+            raise AssertionError(f"unknown asset type: {value}")
+
+        return obj
+
+    if known_types.is_archive(value):
+        # Serializing an archive requires the use of a magical signature key, since otherwise it would look
+        # like any old weakly typed object/map when received by the other side of the RPC boundary.
+        obj = {
+            _special_sig_key: _special_archive_sig
+        }
+
+        if hasattr(value, "assets"):
+            obj["assets"] = await serialize_property(value.assets, deps)
+        elif hasattr(value, "path"):
+            obj["path"] = await serialize_property(value.path, deps)
+        elif hasattr(value, "uri"):
+            obj["uri"] = await serialize_property(value.uri, deps)
+        else:
+            raise AssertionError(f"unknown archive type: {value}")
+
+        return obj
+
+    if inspect.isawaitable(value):
+        return await serialize_property(await value, deps)
+
+    if isinstance(value, Output):
+        deps.extend(value.resources())
+
+        # TODO(sean, is_known)
+        return await serialize_property(value.future(), deps)
+
+    if isinstance(value, dict):
+        obj = {}
+        for k, v in value:
+            obj[k] = await serialize_property(v)
+
+        return obj
+
+    if isinstance(value, Unknown):
+        return UNKNOWN
+
+    return value
+
 
 def serialize_resource_value(value):
     """

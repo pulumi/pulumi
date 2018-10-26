@@ -13,7 +13,6 @@
 # limitations under the License.
 from typing import TypeVar, Generic, Set, Callable, Awaitable, Union, cast, Mapping, Any
 from inspect import isawaitable
-from .resource import Resource
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -22,20 +21,20 @@ U = TypeVar('U')
 class Output(Generic[T]):
     _is_known: Awaitable[bool]
     _future: Awaitable[T]
-    _resources: Set[Resource]
+    _resources: Set['pulumi.next.Resource']
 
-    def __init__(self, resources: Set[Resource], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
+    def __init__(self, resources: Set['Resource'], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
         self._resources = resources
         self._future = future
         self._is_known = is_known
 
-    def resources(self) -> Set[Resource]:
+    def resources(self) -> Set['Resource']:
         return self._resources
 
     def future(self) -> Awaitable[T]:
         return self._future
 
-    async def apply(self, func: Callable[[T], Union[U, Awaitable[U], 'Output'[U]]]) -> 'Output'[U]:
+    async def apply(self, func: Callable):
         async def result_is_known() -> bool:
             is_known = await self._is_known
             return is_known
