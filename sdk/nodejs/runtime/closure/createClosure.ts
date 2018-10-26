@@ -792,7 +792,7 @@ async function getOrCreateEntryAsync(
             return;
         }
 
-        const normalizedModuleName = findNormalizedModuleName(obj);
+        const normalizedModuleName = await findNormalizedModuleNameAsync(obj);
         if (normalizedModuleName) {
             await captureModuleAsync(normalizedModuleName);
         }
