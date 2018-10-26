@@ -19,6 +19,7 @@ from ..runtime import known_types
 from ..runtime.resource import register_resource, register_resource_outputs
 from ..runtime.settings import get_root_resource
 from ..runtime.unknown import Unknown
+from .output import Output
 
 
 class ResourceOptions:
@@ -47,13 +48,13 @@ class Resource:
     """
     The stable, logical URN used to distinctly address a resource, both before and after deployments.
     """
-    urn: str
+    urn: Output[str]
 
     """
     The provider-assigned unique ID for this managed resource.  It is set during deployments and may
     be missing during planning phases.
     """
-    id: str
+    id: Output[str]
 
     def __init__(self,
                  t: str,
