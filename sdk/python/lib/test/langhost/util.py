@@ -29,14 +29,9 @@ from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful
-# test output.
-#
-# To combat this, we set the root logger handler to be `NullHandler`, which is
-# a logger that does nothing.
-class NullHandler(logging.Handler):
-    def emit(self, record):
-        pass
-logging.getLogger().addHandler(NullHandler())
+# test output. Just turn it off.
+logging.disable(level=logging.CRITICAL)
+
 
 class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
     """
@@ -67,7 +62,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         state = rpc.deserialize_resource_props(request.properties)
         outs = self.langhost_test.read_resource(context, type_, name, id_,
                                                 parent, state)
-        if outs.has_key("properties"):
+        if "properties" in outs:
             props_proto = rpc.serialize_resource_props(outs["properties"])
         else:
             props_proto = None
@@ -92,7 +87,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
                 }
 
             self.reg_count += 1
-        if outs.has_key("object"):
+        if "object" in outs:
             obj_proto = rpc.serialize_resource_props(outs["object"])
         else:
             obj_proto = None
@@ -184,8 +179,8 @@ class LanghostTest(unittest.TestCase):
             self.assertEqual(result, expected)
 
             if expected_stderr_contains:
-                if not expected_stderr_contains in stderr:
-                    print("stderr:", stderr)
+                if expected_stderr_contains not in str(stderr):
+                    print("stderr:", str(stderr))
                     self.fail("expected stderr to contain '" + expected_stderr_contains + "'")
 
             if expected_resource_count is not None:
