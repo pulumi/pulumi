@@ -329,11 +329,7 @@ async function analyzeFunctionInfoAsync(
         };
 
         const proto = Object.getPrototypeOf(func);
-
-        // Note, i can't think of a better way to determine this.  This is particularly hard because
-        // we can't even necessary refer to async function objects here as this code is rewritten by
-        // TS, converting all async functions to non async functions.
-        const isAsyncFunction = func.constructor && func.constructor.name === "AsyncFunction";
+        const isAsyncFunction = await computeIsAsyncFunction(func);
 
         // Ensure that the prototype of this function is properly serialized as well. We only need to do
         // this for functions with a custom prototype (like a derived class constructor, or a function
@@ -347,20 +343,19 @@ async function analyzeFunctionInfoAsync(
             functionInfo.proto = protoEntry;
 
             if (functionString.startsWith("class ")) {
-                // This was a class (which is effectively synonymous with a constructor-function),
-                // they're a bit trickier to serialize than just a straight function. First, we have
-                // to keep track of the inheritance relationship between classes.  That way if any
-                // of the class members references 'super' we'll:
+                // This was a class (which is effectively synonymous with a constructor-function).
+                // We also know that it's a derived class because of the `proto !==
+                // Function.prototype` check above.  (The prototype of a non-derived class points at
+                // Function.prototype).
                 //
-                //  1. Know what class that actually refers to
-                //  2. Be able to rewrite the 'super' keyword accordingly (since we emit classes as
-                //     Functions)
-                processClassConstructor(protoEntry);
+                // they're a bit trickier to serialize than just a straight function. Specifically,
+                // we have to keep track of the inheritance relationship between classes.  That way
+                // if any of the class members references 'super' we'll be able to rewrite it
+                // accordingly (since we emit classes as Functions)
+                processDerivedClassConstructor(protoEntry);
 
                 // Because this was was class constructor function, rewrite any 'super' references
-                // in it do its derived type if it has one.  If it is not a derived class, then
-                // using 'super' is illegal anyways, so this won't end up doing anything in that
-                // case.
+                // in it do its derived type if it has one.
                 functionInfo.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
             }
         }
@@ -475,13 +470,13 @@ async function analyzeFunctionInfoAsync(
         }
     }
 
-    function processClassConstructor(protoEntry: Entry) {
+    function processDerivedClassConstructor(protoEntry: Entry) {
         // Map from derived class' constructor and members, to the entry for the base class (i.e.
         // the base class' constructor function). We'll use this when serializing out those members
         // to rewrite any usages of 'super' appropriately.
 
-        // We're processing the constructor function itself.  Just map it directly to the base class
-        // function.
+        // We're processing the derived class constructor itself.  Just map it directly to the base
+        // class function.
         context.classInstanceMemberToSuperEntry.set(func, protoEntry);
 
         // Also, make sure our methods can also find this entry so they too can refer to
@@ -511,6 +506,13 @@ async function analyzeFunctionInfoAsync(
             }
         }
     }
+}
+
+async function computeIsAsyncFunction(func: Function): Promise<boolean> {
+    // Note, i can't think of a better way to determine this.  This is particularly hard because we
+    // can't even necessary refer to async function objects here as this code is rewritten by TS,
+    // converting all async functions to non async functions.
+    return func.constructor && func.constructor.name === "AsyncFunction";
 }
 
 function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
