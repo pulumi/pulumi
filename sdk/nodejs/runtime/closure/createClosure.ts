@@ -330,10 +330,6 @@ async function analyzeFunctionInfoAsync(
 
         const proto = Object.getPrototypeOf(func);
 
-        const isDerivedClassConstructor =
-            func.toString().startsWith("class ") &&
-            proto !== Function.prototype(func);
-
         // Note, i can't think of a better way to determine this.  This is particularly hard because
         // we can't even necessary refer to async function objects here as this code is rewritten by
         // TS, converting all async functions to non async functions.
@@ -350,8 +346,21 @@ async function analyzeFunctionInfoAsync(
             const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
 
-            if (isDerivedClassConstructor) {
-                processDerivedClassConstructor(protoEntry);
+            if (functionString.startsWith("class ")) {
+                // This was a class (which is effectively synonymous with a constructor-function),
+                // they're a bit trickier to serialize than just a straight function. First, we have
+                // to keep track of the inheritance relationship between classes.  That way if any
+                // of the class members references 'super' we'll:
+                //
+                //  1. Know what class that actually refers to
+                //  2. Be able to rewrite the 'super' keyword accordingly (since we emit classes as
+                //     Functions)
+                processClassConstructor(protoEntry);
+
+                // Because this was was class constructor function, rewrite any 'super' references
+                // in it do its derived type if it has one.  If it is not a derived class, then
+                // using 'super' is illegal anyways, so this won't end up doing anything in that
+                // case.
                 functionInfo.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
             }
         }
@@ -466,11 +475,13 @@ async function analyzeFunctionInfoAsync(
         }
     }
 
-    function processDerivedClassConstructor(protoEntry: Entry) {
-        // A reference to the base constructor function.  Used so that the derived constructor and
-        // class-methods can refer to the base class for "super" calls.
+    function processClassConstructor(protoEntry: Entry) {
+        // Map from derived class' constructor and members, to the entry for the base class (i.e.
+        // the base class' constructor function). We'll use this when serializing out those members
+        // to rewrite any usages of 'super' appropriately.
 
-        // constructor
+        // We're processing the constructor function itself.  Just map it directly to the base class
+        // function.
         context.classInstanceMemberToSuperEntry.set(func, protoEntry);
 
         // Also, make sure our methods can also find this entry so they too can refer to
