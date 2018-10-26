@@ -99,11 +99,12 @@ func newStackLsCmd() *cobra.Command {
 // of stackSummaryJSON objects.  While we can add fields to this structure in the future, we should not change
 // existing fields.
 type stackSummaryJSON struct {
-	Name          string `json:"name"`
-	Current       bool   `json:"current"`
-	LastUpdate    string `json:"lastUpdate,omitEmpty"`
-	ResourceCount *int   `json:"resourceCount,omitEmpty"`
-	URL           string `json:"url,omitEmpty"`
+	Name             string `json:"name"`
+	Current          bool   `json:"current"`
+	LastUpdate       string `json:"lastUpdate,omitempty"`
+	UpdateInProgress bool   `json:"updateInProgress"`
+	ResourceCount    *int   `json:"resourceCount,omitempty"`
+	URL              string `json:"url,omitempty"`
 }
 
 func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
@@ -116,7 +117,11 @@ func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend
 		}
 
 		if summary.LastUpdate() != nil {
-			summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(timeFormat)
+			if isUpdateInProgress(summary) {
+				summaryJSON.UpdateInProgress = true
+			} else {
+				summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(timeFormat)
+			}
 		}
 
 		if httpBackend, ok := b.(httpstate.Backend); ok {
@@ -166,7 +171,11 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 		// Last update column
 		lastUpdate := none
 		if stackLastUpdate := summary.LastUpdate(); stackLastUpdate != nil {
-			lastUpdate = humanize.Time(*stackLastUpdate)
+			if isUpdateInProgress(summary) {
+				lastUpdate = "in progress"
+			} else {
+				lastUpdate = humanize.Time(*stackLastUpdate)
+			}
 		}
 
 		// ResourceCount column
@@ -191,4 +200,9 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 	}
 
 	return nil
+}
+
+func isUpdateInProgress(u backend.StackSummary) bool {
+	// When an update is in progress the last update time is set to zero.
+	return u.LastUpdate() != nil && u.LastUpdate().Unix() == 0
 }
