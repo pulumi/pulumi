@@ -639,3 +639,22 @@ interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
+
+interface Instance {
+    id: Output<string>;
+    ami: Output<string>;
+}
+
+let instances: Instance[] =  [];
+//     { id: pulumi.output("i-123"), ami: pulumi.output("ami-7172b611") },
+//     { id: pulumi.output("i-456"), ami: pulumi.output("ami-6869aa05") },
+//     { id: pulumi.output("i-789"), ami: pulumi.output("ami-31490d51") },
+// ];
+
+export function toMap<T, K, V>(iter: Input<Input<T>[]>, func: (t: T) => Input<[Input<K>, Input<V>]>): Output<Map<K, V>> {
+    const unwrapped = output(iter);
+    const val = unwrapped.apply(arr => arr.map(t => func(<any>t)));
+    return output(val).apply(kvps => new Map(<any>kvps));
+}
+
+let amiMap = toMap(instances, i => [i.id, i.ami]);

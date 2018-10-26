@@ -20,6 +20,9 @@ import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import * as utils from "./utils";
+
+import { FunctionMirror, Mirror } from "./mirrors";
+import * as mirrors from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -118,7 +121,7 @@ interface Context {
     // The cache stores a map of objects to the entries we've created for them.  It's used so that
     // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
     // object multiple times while walking the memory graph, we only emit it once.
-    cache: Map<Object, Entry>;
+    cache: Map<Mirror, Entry>;
 
     // The 'frames' we push/pop as we're walking the object graph serializing things.
     // These frames allow us to present a useful error message to the user in the context
@@ -132,8 +135,8 @@ interface Context {
     //
     // We will also rewrite usages of "super" in the methods to refer to __super.  This way we can
     // accurately serialize out the class members, while preserving functionality.
-    classInstanceMemberToSuperEntry: Map<Function, Entry>;
-    classStaticMemberToSuperEntry: Map<Function, Entry>;
+    classInstanceMemberToSuperEntry: Map<FunctionMirror, Entry>;
+    classStaticMemberToSuperEntry: Map<FunctionMirror, Entry>;
 
     // // The set of async jobs we have to complete after serializing the object graph. This happens
     // // when we encounter Promises/Outputs while walking the graph.  We'll add that work here and
@@ -157,11 +160,7 @@ interface Context {
 }
 
 interface FunctionLocation {
-    func: Function;
-    file: string;
-    line: number;
-    column: number;
-    functionString: string;
+    mirror: FunctionMirror;
     isArrowFunction?: boolean;
 }
 
@@ -169,7 +168,7 @@ interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
-    capturedModule?: { name: string, value: any };
+    capturedModule?: { name: string, mirror: Mirror };
 }
 
 /*
@@ -222,16 +221,18 @@ export async function createFunctionInfoAsync(
     // would be a bad idea as that would mean once deserialized the objects wouldn't point to the
     // well known globals that were expected.  Furthermore, most of these are almost certain to fail
     // to serialize due to hitting things like native-builtins.
-    const wellKnownMap = await v8.getWellKnownObjectToEmitExprMap();
-    for (const [wellKnownObj, expr] of wellKnownMap) {
-        context.cache.set(wellKnownObj, { expr });
+    const mirrorToEmitExprMap = await v8.getMirrorToEmitExprMap();
+    for (const [mirror, expr] of mirrorToEmitExprMap) {
+        context.cache.set(mirror, { expr });
     }
+
+    const funcMirror = await mirrors.getMirrorAsync(func);
 
     // Make sure this func is in the cache itself as we may hit it again while recursing.
     const entry: Entry = {};
-    context.cache.set(func, entry);
+    context.cache.set(funcMirror, entry);
 
-    entry.function = await analyzeFunctionInfoAsync(func, context, serialize);
+    entry.function = await analyzeFunctionMirrorAsync(funcMirror, context, serialize);
 
     // await processAsyncWorkQueue();
 
@@ -257,15 +258,14 @@ export async function createFunctionInfoAsync(
  * analyzeFunctionInfoAsync does the work to create an asynchronous dataflow graph that resolves to a
  * final FunctionInfo.
  */
-async function analyzeFunctionInfoAsync(
-        func: Function, context: Context,
+async function analyzeFunctionMirrorAsync(
+        funcMirror: FunctionMirror, context: Context,
         serialize: (o: any) => boolean, logInfo?: boolean): Promise<FunctionInfo> {
 
     // logInfo = logInfo || func.name === "addHandler";
 
-    const { file, line, column } = await v8.getFunctionLocationAsync(func);
-    const functionString = func.toString();
-    const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
+    // const { file, line, column } = await v8.getFunctionLocationAsync(funcMirror);
+    const frame = { functionLocation: { mirror: funcMirror, isArrowFunction: false } };
 
     context.frames.push(frame);
     const result = await serializeWorkerAsync();
@@ -297,7 +297,7 @@ async function analyzeFunctionInfoAsync(
     }
 
     async function serializeWorkerAsync(): Promise<FunctionInfo> {
-        const funcEntry = context.cache.get(func);
+        const funcEntry = context.cache.get(funcMirror);
         if (!funcEntry) {
             throw new Error("Entry for this this function was not created by caller");
         }
@@ -307,9 +307,9 @@ async function analyzeFunctionInfoAsync(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(functionString);
+        const [error, parsedFunction] = parseFunction(funcMirror.description);
         if (error) {
-            throwSerializationError(func, context, error);
+            throwSerializationError(funcMirror, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
@@ -380,17 +380,17 @@ async function analyzeFunctionInfoAsync(
                 { entry: await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo) });
         }
 
-        const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
-                           context.classStaticMemberToSuperEntry.get(func);
+        const superEntry = context.classInstanceMemberToSuperEntry.get(funcMirror) ||
+                           context.classStaticMemberToSuperEntry.get(funcMirror);
         if (superEntry) {
             // this was a class constructor or method.  We need to put a special __super
             // entry into scope, and then rewrite any calls to super() to refer to it.
             capturedValues.set(
-                await getOrCreateEntryAsync("__super", undefined, context, serialize, logInfo),
+                await getOrCreateNameEntryAsync("__super", undefined, context, serialize, logInfo),
                 { entry: superEntry });
 
             functionInfo.code = rewriteSuperReferences(
-                funcExprWithName!, context.classStaticMemberToSuperEntry.has(func));
+                funcExprWithName!, context.classStaticMemberToSuperEntry.has(funcMirror));
         }
 
         // If this was a named function (literally, only a named function-expr or function-decl), then
@@ -406,7 +406,7 @@ async function analyzeFunctionInfoAsync(
         // itself.
         if (functionDeclarationName !== undefined) {
             capturedValues.set(
-                await getOrCreateEntryAsync(functionDeclarationName, undefined, context, serialize, logInfo),
+                await getOrCreateNameEntryAsync(functionDeclarationName, undefined, context, serialize, logInfo),
                 { entry: funcEntry });
         }
 
@@ -416,15 +416,15 @@ async function analyzeFunctionInfoAsync(
             capturedVariables: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
 
             for (const name of capturedVariables.keys()) {
-                let value: any;
+                let valueMirror: Mirror | undefined;
                 try {
-                    value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
+                    valueMirror = await v8.lookupCapturedVariableAsync(funcMirror, name, throwOnFailure);
                 }
                 catch (err) {
-                    throwSerializationError(func, context, err.message);
+                    return throwSerializationError(funcMirror, context, err.message);
                 }
 
-                const moduleName = findNormalizedModuleName(value);
+                const moduleName = await findNormalizedModuleNameAsync(valueMirror);
                 const frameLength = context.frames.length;
                 if (moduleName) {
                     context.frames.push({ capturedModule: { name: moduleName, value: value } });
@@ -457,7 +457,7 @@ async function analyzeFunctionInfoAsync(
             capturedVariables: CapturedVariableMap, name: string, value: any) {
 
             const properties = capturedVariables.get(name);
-            const serializedName = await getOrCreateEntryAsync(name, undefined, context, serialize, logInfo);
+            const serializedName = await getOrCreateNameEntryAsync(name, undefined, context, serialize, logInfo);
 
             // try to only serialize out the properties that were used by the user's code.
             const serializedValue = await getOrCreateEntryAsync(value, properties, context, serialize, logInfo);
@@ -508,7 +508,7 @@ function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
 }
 
 function throwSerializationError(
-    func: Function, context: Context, info: string): never {
+    funcMirror: FunctionMirror, context: Context, info: string): never {
 
     let message = "";
 
@@ -564,7 +564,7 @@ function throwSerializationError(
     }
 
     message += "  ".repeat(i) + info + "\n\n";
-    message += getTrimmedFunctionCode(func);
+    message += getTrimmedFunctionCode(funcMirror);
 
     const moduleIndex = context.frames.findIndex(
             f => f.capturedModule !== undefined);
@@ -592,8 +592,8 @@ Consider using import('${moduleName}') or require('${moduleName}') inside ${loca
     throw new ResourceError(message, context.logResource, /*hideStack:*/true);
 }
 
-function getTrimmedFunctionCode(func: Function): string {
-    const funcString = func.toString();
+function getTrimmedFunctionCode(funcMirror: FunctionMirror): string {
+    const funcString = funcMirror.description;
 
     // include up to the first 5 lines of the function to help show what is wrong with it.
     let split = funcString.split(/\r?\n/);
@@ -643,8 +643,8 @@ function getFunctionName(loc: FunctionLocation): string {
         return funcString;
     }
 
-    if (loc.func.name) {
-        return loc.func.name;
+    if (loc.funcMirror.name) {
+        return loc.funcMirror.name;
     }
 
     return "<anonymous>";
@@ -661,19 +661,29 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
     return false;
 }
 
+async function getOrCreateNameEntryAsync(
+    name: string, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+    context: Context,
+    serialize: (o: any) => boolean,
+    logInfo: boolean | undefined): Promise<Entry> {
+
+    const mirror = await mirrors.getMirrorAsync(name);
+    return await getOrCreateEntryAsync(mirror, capturedObjectProperties, context, serialize, logInfo);
+}
+
 /**
  * serializeAsync serializes an object, deeply, into something appropriate for an environment
  * entry.  If propNames is provided, and is non-empty, then only attempt to serialize out those
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
 async function getOrCreateEntryAsync(
-        obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+        mirror: Mirror, capturedObjectProperties: CapturedPropertyChain[] | undefined,
         context: Context,
         serialize: (o: any) => boolean,
         logInfo: boolean | undefined): Promise<Entry> {
 
     // See if we have a cache hit.  If yes, use the object as-is.
-    let entry = context.cache.get(obj)!;
+    let entry = context.cache.get(mirror)!;
     if (entry) {
         // Even though we've already serialized out this object, it might be the case
         // that we serialized out a different set of properties than the current set
@@ -705,7 +715,7 @@ async function getOrCreateEntryAsync(
     // entry in the cache.  That way, if we encounter this obj again while recursing we can just
     // return that placeholder.
     entry = {};
-    context.cache.set(obj, entry);
+    context.cache.set(mirror, entry);
     await dispatchAnyAsync();
     return entry;
 
@@ -914,7 +924,7 @@ async function getOrCreateEntryAsync(
             const propChains = localCapturedPropertyChains.filter(chain => chain.infos[0].name === propName);
 
             // Now, make an entry just for this name.
-            const keyEntry = await getOrCreateEntryAsync(propName, undefined, context, serialize, logInfo);
+            const keyEntry = await getOrCreateNameEntryAsync(propName, undefined, context, serialize, logInfo);
 
             if (environment.has(keyEntry)) {
                 continue;
@@ -1111,7 +1121,7 @@ for (const name of builtInModuleNames) {
 //
 // This function will also always return modules in a normalized form (i.e. all path components will
 // be '/').
-function findNormalizedModuleName(obj: any): string | undefined {
+async function findNormalizedModuleNameAsync(obj: Mirror): Promise<string | undefined> {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
     if (key) {
@@ -1123,7 +1133,8 @@ function findNormalizedModuleName(obj: any): string | undefined {
     // don't pre-compute this because the require cache will get populated
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
-        if (require.cache[path].exports === obj) {
+        const exportsMirror = await mirrors.getMirrorAsync(require.cache[path].exports);
+        if (exportsMirror === obj) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
             const modPath = upath.relative(process.cwd(), path);

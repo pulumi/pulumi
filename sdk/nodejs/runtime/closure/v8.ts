@@ -23,6 +23,8 @@ import * as semver from "semver";
 import * as v8 from "v8";
 v8.setFlagsFromString("--allow-natives-syntax");
 
+import { FunctionMirror, Mirror } from "./mirrors";
+import * as mirrors from "./mirrors";
 import * as utils from "./utils";
 
 // We depend on V8 intrinsics to inspect JavaScript functions and runtime values. These intrinsics
@@ -166,8 +168,10 @@ function getScopeForFunction(func: Function, index: number): V8ScopeDetails {
  * @param throwOnFailure If true, throws if the free variable can't be found.
  * @returns The value of the free variable. If `throwOnFailure` is false, returns `undefined` if not found.
  */
-export async function lookupCapturedVariableValueAsync(
-        func: Function, freeVariable: string, throwOnFailure: boolean): Promise<any> {
+export async function lookupCapturedVariableAsync(
+        funcMirror: FunctionMirror, freeVariable: string, throwOnFailure: boolean): Promise<Mirror | undefined> {
+
+    const func = mirrors.getFunction(funcMirror);
 
     // The implementation of this function is now very straightforward since the intrinsics do all of the
     // difficult work.
@@ -175,7 +179,8 @@ export async function lookupCapturedVariableValueAsync(
     for (let i = 0; i < count; i++) {
         const scope = getScopeForFunction(func, i);
         if (freeVariable in scope.scopeObject) {
-            return scope.scopeObject[freeVariable];
+            const val = scope.scopeObject[freeVariable];
+            return await mirrors.getMirrorAsync(val);
         }
     }
 
@@ -184,6 +189,14 @@ export async function lookupCapturedVariableValueAsync(
     }
 
     return undefined;
+}
+
+import * as inspector from "inspector";
+var session = new inspector.Session();
+session.post("Runtime.callFunctionOn")
+
+export async function getPrototypeOf(mirror: Mirror): Promise<Mirror> {
+
 }
 
 /**
@@ -225,7 +238,7 @@ function getLineColumn(func: Function, script: V8Script | undefined) {
     return { line: 0, column: 0 };
 }
 
-const wellKnownObjectMaps = computeWellKnownObjectMapsAsync();
+const mirrorToEmitExprMapPromise = computeMirrorToEmitExprMapAsync();
 
 // In the future, will return the local well-known in-memory object for the given remote-id
 // async function getWellKnownObjectAsync(id: string): Promise<any> {
@@ -234,17 +247,16 @@ const wellKnownObjectMaps = computeWellKnownObjectMapsAsync();
 //     return idToValueMap.get(id);
 // }
 
-export async function getWellKnownObjectToEmitExprMap(): Promise<Map<any, string>> {
-    const [_, valToExprMap] = await wellKnownObjectMaps;
-    return valToExprMap;
+export async function getMirrorToEmitExprMap(): Promise<Map<Mirror, string>> {
+    return mirrorToEmitExprMapPromise;
 }
 
-async function computeWellKnownObjectMapsAsync(): Promise<[Map<string, any>, Map<any, string>]> {
-    // currently not used.  will be used once we actually start using the remote inspector API.
-    const remoteIdToValueMap = new Map<string, any>();
+async function computeMirrorToEmitExprMapAsync(): Promise<Map<Mirror, string>> {
+    // // currently not used.  will be used once we actually start using the remote inspector API.
+    // const remoteIdToValueMap = new Map<RemoteObjectId, Mirror>();
 
     // Mapping from well known global value to the emit-expression we should generate for it.
-    const valueToEmitExprMap = new Map<any, string>();
+    const mirrorToEmitExprMap = new Map<Mirror, string>();
 
     // Add well-known javascript global variables into our cache.  This way, if there
     // is any code that references them, we can just emit that as simple expressions
@@ -274,20 +286,22 @@ async function computeWellKnownObjectMapsAsync(): Promise<[Map<string, any>, Map
     await addGeneratorEntriesAsync();
     await addEntriesAsync(Symbol.iterator, "Symbol.iterator");
 
-    return [remoteIdToValueMap, valueToEmitExprMap];
+    return mirrorToEmitExprMap;
 
     async function addEntriesAsync(val: any, emitExpr: string) {
         if (val === undefined || val === null) {
             return;
         }
 
+        const mirror = await mirrors.getMirrorAsync(val);
+
         // No need to add values twice.  Ths can happen as we walk the global namespace and
         // sometimes run into multiple names aliasing to the same value.
-        if (valueToEmitExprMap.has(val)) {
+        if (mirrorToEmitExprMap.has(mirror)) {
             return;
         }
 
-        valueToEmitExprMap.set(val, emitExpr);
+        mirrorToEmitExprMap.set(mirror, emitExpr);
     }
 
     async function addGlobalInfoAsync(key: string) {
