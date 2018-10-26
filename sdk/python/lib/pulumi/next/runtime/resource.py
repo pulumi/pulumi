@@ -26,7 +26,6 @@ import grpc
 
 from ..output import Output, Inputs
 from .. import log
-from ..resource import Resource, ResourceOptions
 
 
 async def invoke(tok: str, args: Inputs) -> dict:
@@ -41,8 +40,7 @@ async def invoke(tok: str, args: Inputs) -> dict:
     # TODO(sean, providers) - first class provider reference stuff goes here
 
     # Set up our RPC call. Before we get started we allocate a future
-    loop = asyncio.get_event_loop()
-    fut: asyncio.Future = loop.create_future()
+    fut = asyncio.Future()
     req = provider_pb2.InvokeRequest(tok=tok, args=props)
     monitor = get_monitor()
 
@@ -75,7 +73,7 @@ async def invoke(tok: str, args: Inputs) -> dict:
             # are suitable for user presentation.
             fut.set_exception(Exception(exn.details()))
 
-    loop.call_soon(do_invoke)
+    asyncio.ensure_future(do_invoke())
     return await fut
 
 
@@ -169,34 +167,3 @@ def register_resource_outputs(res, outputs):
         # If the RPC otherwise failed, re-throw an exception with the message details - the contents
         # are suitable for user presentation.
         raise Exception(exn.details())
-
-
-class PreparedResourceOp(NamedTuple):
-    urn_future: asyncio.Future
-    id_future: Optional[asyncio.Future]
-
-
-async def prepare_resource(res: Resource, custom: bool, props: Inputs, opts: ResourceOptions):
-    loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
-
-    # Set up a future to resolve the URN of this resource.
-    urn_future = loop.create_future()
-    urn_known_future = loop.create_future()
-    urn_known_future.set_result(True)
-    res.urn = Output({res}, urn_future, urn_known_future)
-
-    # If this is a custom resource, set up a future for the ID.
-    id_future = None
-    if custom:
-        resolve_value_future = loop.create_future()
-        resolve_perform_apply = loop.create_future()
-        id_future = loop.create_future()
-
-        async def resolve_id():
-            (v, perform_apply) = await id_future
-            resolve_value_future.set_result(v)
-            resolve_perform_apply.set_result(perform_apply)
-        loop.call_soon(resolve_id)
-
-        res.id = Output({res}, resolve_value_future, resolve_perform_apply)
-
