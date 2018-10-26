@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as v8 from "./v8";
+import { isString } from "util";
 
 type RemoteObjectId = string;
 
@@ -20,7 +21,7 @@ type UnserializableValue = string;
 
 export interface Mirror {
     /** Object type. */
-    type: "function" | "object" | "number" | "string" | "undefined";
+    type: "function" | "object" | "number" | "string" | "undefined" | "boolean";
     /** Object subtype hint. Specified for `object` type values only. */
     subtype?: string;
     /** Object class (constructor) name. Specified for `object` type values only. */
@@ -63,6 +64,30 @@ export interface StringMirror extends Mirror {
     description?: never;
 }
 
+export interface NumberMirror extends Mirror {
+    type: "number";
+    value: number;
+
+    // properties that never appear
+    subtype?: never;
+    className?: never;
+    unserializableValue?: never;
+    objectId?: never;
+    description?: never;
+}
+
+export interface BooleanMirror extends Mirror {
+    type: "boolean";
+    value: boolean;
+
+    // properties that never appear
+    subtype?: never;
+    className?: never;
+    unserializableValue?: never;
+    objectId?: never;
+    description?: never;
+}
+
 export interface UndefinedMirror extends Mirror {
     type: "undefined";
 
@@ -79,7 +104,7 @@ export interface ObjectMirror extends Mirror {
     type: "object";
 
     // ObjectMirrors always have a subtype.
-    subtype: string;
+    subtype: "null" | "regexp" | "promise";
 }
 
 export interface NullMirror extends ObjectMirror {
@@ -95,10 +120,36 @@ export interface NullMirror extends ObjectMirror {
     description?: never;
 }
 
+export interface RegExpMirror extends ObjectMirror {
+    subtype: "regexp";
+    className: "RegExp";
+    objectId: string;
+
+    // properties that never appear
+    value?: null;
+    unserializableValue?: never;
+    description?: never;
+}
+
+export interface PromiseMirror extends ObjectMirror {
+    subtype: "promise";
+    className: "Promise";
+    objectId: string;
+
+    // properties that never appear
+    value?: null;
+    unserializableValue?: never;
+    description?: never;
+}
+
 type MirrorType<T> =
     T extends undefined ? UndefinedMirror :
     T extends null ? NullMirror :
     T extends string ? StringMirror :
+    T extends number ? NumberMirror :
+    T extends boolean ? BooleanMirror :
+    T extends RegExp ? RegExpMirror :
+    T extends Promise<infer U> ? PromiseMirror :
     T extends Function ? FunctionMirror : Mirror;
 
 let currentMirrorId = 0;
@@ -227,10 +278,63 @@ export function isUndefinedMirror(mirror: Mirror): mirror is UndefinedMirror {
     return mirror.type === "undefined";
 }
 
+export function isObjectMirror(mirror: Mirror): mirror is ObjectMirror {
+    return mirror.type === "object";
+}
+
+export function isStringMirror(mirror: Mirror): mirror is StringMirror {
+    return mirror.type === "string";
+}
+
+export function isBooleanMirror(mirror: Mirror): mirror is BooleanMirror {
+    return mirror.type === "boolean";
+}
+
+export function isNumberMirror(mirror: Mirror): mirror is NumberMirror {
+    return mirror.type === "number";
+}
+
 export function isNullMirror(mirror: Mirror): mirror is NullMirror {
     return isObjectMirror(mirror) && mirror.subtype === "null";
 }
 
-export function isObjectMirror(mirror: Mirror): mirror is ObjectMirror {
-    return mirror.type === "object";
+export function isPromiseMirror(mirror: Mirror): mirror is PromiseMirror {
+    return isObjectMirror(mirror) && mirror.subtype === "promise";
+}
+
+export function isFunctionMirror(mirror: Mirror): mirror is FunctionMirror {
+    return 
+}
+
+export function isTruthy(mirror: Mirror) {
+    if (isUndefinedMirror(mirror)) {
+        return false;
+    }
+    if (isNullMirror(mirror)) {
+        return false;
+    }
+    if (isStringMirror(mirror)) {
+        return mirror.value ? true : false;
+    }
+    if (isBooleanMirror(mirror)) {
+        return mirror.value;
+    }
+    if (isNumberMirror(mirror)) {
+        return mirror.value ? true : false;
+    }
+    if (isObjectMirror(mirror)) {
+        return true;
+    }
+    if (isPromiseMirror(mirror)) {
+        return true;
+    }
+    if (isFunctionMirror(mirror)) {
+        return true;
+    }
+
+    throw new Error("Unhandled isTruthy case: " + JSON.stringify(mirror));
+}
+
+export function isFalsy(mirror: Mirror) {
+    return !isTruthy(mirror);
 }

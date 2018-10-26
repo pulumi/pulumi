@@ -169,7 +169,7 @@ function getScopeForFunction(func: Function, index: number): V8ScopeDetails {
  * @returns The value of the free variable. If `throwOnFailure` is false, returns `undefined` if not found.
  */
 export async function lookupCapturedVariableAsync(
-        funcMirror: FunctionMirror, freeVariable: string, throwOnFailure: boolean): Promise<Mirror | undefined> {
+        funcMirror: FunctionMirror, freeVariable: string, throwOnFailure: boolean): Promise<Mirror> {
 
     const func = mirrors.getFunction(funcMirror);
 
@@ -188,7 +188,7 @@ export async function lookupCapturedVariableAsync(
         throw new Error("Unexpected missing variable in closure environment: " + freeVariable);
     }
 
-    return undefined;
+    return await mirrors.getMirrorAsync(undefined);
 }
 
 // import * as inspector from "inspector";

@@ -26,7 +26,10 @@ import {
     getMirrorAsync,
     getMirrorMemberAsync,
     getPrototypeOfMirror,
+    isStringMirror,
     isUndefinedOrNullMirror,
+    isTruthy,
+    isFalsy,
     Mirror } from "./mirrors";
 import * as v8 from "./v8";
 
@@ -333,35 +336,34 @@ async function analyzeFunctionMirrorAsync(
             name: functionDeclarationName,
         };
 
-        const protoMirror = getPrototypeOfMirror(funcMirror);
+        const protoMirror = await getPrototypeOfMirror(funcMirror);
         const isAsyncFunction = await computeIsAsyncFunction(funcMirror);
 
         // Ensure that the prototype of this function is properly serialized as well. We only need to do
         // this for functions with a custom prototype (like a derived class constructor, or a function
         // that a user has explicit set the prototype for). Normal functions will pick up
         // Function.prototype by default, so we don't need to do anything for them.
-        if (proto !== Function.prototype &&
+        if (protoMirror !== await getMirrorAsync(Function.prototype) &&
             !isAsyncFunction &&
-            !isDerivedNoCaptureConstructor(func)) {
+            !await isDerivedNoCaptureConstructorAsync(funcMirror)) {
 
-            const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
+            const protoEntry = await getOrCreateEntryAsync(protoMirror, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
 
-            if (functionString.startsWith("class ")) {
-                // This was a class (which is effectively synonymous with a constructor-function),
-                // they're a bit trickier to serialize than just a straight function. First, we have
-                // to keep track of the inheritance relationship between classes.  That way if any
-                // of the class members references 'super' we'll:
+            if (funcMirror.description.startsWith("class ")) {
+                // This was a class (which is effectively synonymous with a constructor-function).
+                // We also know that it's a derived class because of the `proto !==
+                // Function.prototype` check above.  (The prototype of a non-derived class points at
+                // Function.prototype).
                 //
-                //  1. Know what class that actually refers to
-                //  2. Be able to rewrite the 'super' keyword accordingly (since we emit classes as
-                //     Functions)
-                processClassConstructor(protoEntry);
+                // they're a bit trickier to serialize than just a straight function. Specifically,
+                // we have to keep track of the inheritance relationship between classes.  That way
+                // if any of the class members references 'super' we'll be able to rewrite it
+                // accordingly (since we emit classes as Functions)
+                processDerivedClassConstructor(protoEntry);
 
                 // Because this was was class constructor function, rewrite any 'super' references
-                // in it do its derived type if it has one.  If it is not a derived class, then
-                // using 'super' is illegal anyways, so this won't end up doing anything in that
-                // case.
+                // in it do its derived type if it has one.
                 functionInfo.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
             }
         }
@@ -426,12 +428,14 @@ async function analyzeFunctionMirrorAsync(
             capturedVariables: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
 
             for (const name of capturedVariables.keys()) {
-                let valueMirror: Mirror | undefined;
+                let valueMirror: Mirror;
                 try {
                     valueMirror = await v8.lookupCapturedVariableAsync(funcMirror, name, throwOnFailure);
                 }
                 catch (err) {
                     return throwSerializationError(funcMirror, context, err.message);
+                    // TODO(cyrusn): should be able to remove this.
+                    // throw err;
                 }
 
                 const moduleName = await findNormalizedModuleNameAsync(valueMirror);
@@ -476,13 +480,13 @@ async function analyzeFunctionMirrorAsync(
         }
     }
 
-    function processClassConstructor(protoEntry: Entry) {
+    function processDerivedClassConstructor(protoEntry: Entry) {
         // Map from derived class' constructor and members, to the entry for the base class (i.e.
         // the base class' constructor function). We'll use this when serializing out those members
         // to rewrite any usages of 'super' appropriately.
 
-        // We're processing the constructor function itself.  Just map it directly to the base class
-        // function.
+        // We're processing the derived class constructor itself.  Just map it directly to the base
+        // class function.
         context.classInstanceMemberToSuperEntry.set(func, protoEntry);
 
         // Also, make sure our methods can also find this entry so they too can refer to
@@ -514,16 +518,21 @@ async function analyzeFunctionMirrorAsync(
     }
 }
 
-function computeIsAsyncFunction(funcMirror: Mirror) {
-        // Note, i can't think of a better way to determine this.  This is particularly hard because
-        // we can't even necessary refer to async function objects here as this code is rewritten by
-        // TS, converting all async functions to non async functions.
-
-
+async function computeIsAsyncFunction(funcMirror: Mirror): Promise<boolean> {
+    // Note, i can't think of a better way to determine this.  This is particularly hard because
+    // we can't even necessary refer to async function objects here as this code is rewritten by
+    // TS, converting all async functions to non async functions.
     const funcConstructorMirror = await getMirrorMemberAsync(funcMirror, "constructor");
+    if (isFalsy(funcConstructorMirror)) {
+        return false;
+    }
 
-    !isUndefinedOrNullMirror(funcConstructorMirror) && func.constructor && func.constructor.name === "AsyncFunction";
+    const constructorNameMirror = await getMirrorMemberAsync(funcConstructorMirror, "name");
+    if (!isStringMirror(constructorNameMirror)) {
+        return false;
+    }
 
+    return constructorNameMirror.value === "AsyncFunction";
 }
 
 function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
@@ -691,7 +700,7 @@ async function getOrCreateNameEntryAsync(
     serialize: (o: any) => boolean,
     logInfo: boolean | undefined): Promise<Entry> {
 
-    const mirror = await mirrors.getMirrorAsync(name);
+    const mirror = await getMirrorAsync(name);
     return await getOrCreateEntryAsync(mirror, capturedObjectProperties, context, serialize, logInfo);
 }
 
@@ -1112,9 +1121,9 @@ async function getOrCreateEntryAsync(
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
 // emit it.  We would be unable to actually hook up the "super()" call as one of the base
 // constructors was set to not be captured.
-function isDerivedNoCaptureConstructor(func: Function) {
-    for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
-        if (current && current.doNotCapture) {
+async function isDerivedNoCaptureConstructorAsync(func: FunctionMirror) {
+    for (let current: Mirror = func; isTruthy(current); current = await getPrototypeOfMirror(current)) {
+        if (isTruthy(await getMirrorMemberAsync(current, "doNotCapture"))) {
             return true;
         }
     }
@@ -1157,7 +1166,7 @@ async function findNormalizedModuleNameAsync(obj: Mirror): Promise<string | unde
     // don't pre-compute this because the require cache will get populated
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
-        const exportsMirror = await mirrors.getMirrorAsync(require.cache[path].exports);
+        const exportsMirror = await getMirrorAsync(require.cache[path].exports);
         if (exportsMirror === obj) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
