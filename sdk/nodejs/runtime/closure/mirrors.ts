@@ -47,7 +47,7 @@ export interface FunctionMirror extends Mirror {
     value?: never;
     unserializableValue?: never;
 
-    // Temporary Deviation from v8 to make transition easyer.
+    // Temporary Deviation from v8 to make transition easier.
     name: string;
     location: { file: string, line: number, column: number };
 }

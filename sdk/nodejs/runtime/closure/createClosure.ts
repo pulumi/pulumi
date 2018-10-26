@@ -451,7 +451,8 @@ async function analyzeFunctionMirrorAsync(
                     // to list both the name of the capture and of the function.  if they
                     // are different, it's an indirect reference, and the name should be
                     // included for clarity.
-                    if (name !== value.name) {
+                    const funcNameMirror = await getMirrorMemberAsync(valueMirror, "name");
+                    if (isStringMirror(funcNameMirror) && name !== funcNameMirror.value) {
                         context.frames.push({ capturedFunctionName: name });
                     }
                 }
@@ -500,7 +501,7 @@ async function analyzeFunctionMirrorAsync(
             }
         }
 
-        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func.prototype)) {
+        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols( func.prototype)) {
             // instance method.
             const classProp = func.prototype[keyOrSymbol];
             addIfFunction(classProp, /*isStatic*/ false);
@@ -644,19 +645,20 @@ function getTrimmedFunctionCode(funcMirror: FunctionMirror): string {
     return code;
 }
 
-function getFunctionLocation(loc: FunctionLocation): string {
-    let name = "'" + getFunctionName(loc) + "'";
+function getFunctionLocation(funcLoc: FunctionLocation): string {
+    const loc = funcLoc.mirror.location;
+    let name = "'" + getFunctionName(funcLoc) + "'";
     if (loc.file) {
         name += `: ${upath.basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
-    const prefix = loc.isArrowFunction ? "" : "function ";
+    const prefix = funcLoc.isArrowFunction ? "" : "function ";
     return prefix + name;
 }
 
 function getFunctionName(loc: FunctionLocation): string {
     if (loc.isArrowFunction) {
-        let funcString = loc.functionString;
+        let funcString = loc.mirror.description;
 
         // If there's a semicolon in the text, only include up to that.  we don't want to pull in
         // the entire lambda if it's lots of statements.
@@ -677,8 +679,8 @@ function getFunctionName(loc: FunctionLocation): string {
         return funcString;
     }
 
-    if (loc.funcMirror.name) {
-        return loc.funcMirror.name;
+    if (loc.mirror.name) {
+        return loc.mirror.name;
     }
 
     return "<anonymous>";
@@ -730,19 +732,19 @@ async function getOrCreateEntryAsync(
         return entry;
     }
 
-    if (obj instanceof Function && obj.doNotCapture) {
+    if (isFunctionMirror(mirror) && isTruthy(await getMirrorMemberAsync(mirror, "doNotCapture"))) {
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
-        const funcName = obj.name || "anonymous";
-        const funcCode = getTrimmedFunctionCode(obj);
+        const funcName = mirror.name || "anonymous";
+        const funcCode = getTrimmedFunctionCode(mirror);
 
         const message =
             `Function '${funcName}' cannot be called at runtime. ` +
             `It can only be used at deployment time.\n\n${funcCode}`;
         const errorFunc = () => { throw new Error(message); };
 
-        obj = errorFunc;
+        mirror = await getMirrorAsync(errorFunc);
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
@@ -759,7 +761,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (obj && obj.doNotCapture) {
+        if (isTruthy(mirror) && isTruthy(await getMirrorMemberAsync(mirror, "doNotCapture"))) {
             // object has set itself as something that should not be captured.
             return true;
         }
