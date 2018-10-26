@@ -337,7 +337,7 @@ async function analyzeFunctionInfoAsync(
         // Function.prototype by default, so we don't need to do anything for them.
         if (proto !== Function.prototype &&
             !isAsyncFunction &&
-            !isDerivedNoCaptureConstructor(func)) {
+            !await isDerivedNoCaptureConstructorAsync(func)) {
 
             const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
@@ -731,7 +731,7 @@ async function getOrCreateEntryAsync(
     await dispatchAnyAsync();
     return entry;
 
-    function doNotCapture() {
+    async function doNotCaptureAsync(): Promise<boolean> {
         if (!serialize(obj)) {
             // caller explicitly does not want us to capture this value.
             return true;
@@ -742,7 +742,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (isDerivedNoCaptureConstructor(obj)) {
+        if (await isDerivedNoCaptureConstructorAsync(obj)) {
             // this was a constructor that derived from something that should not be captured.
             return true;
         }
@@ -751,7 +751,7 @@ async function getOrCreateEntryAsync(
     }
 
     async function dispatchAnyAsync(): Promise<void> {
-        if (doNotCapture()) {
+        if (await doNotCaptureAsync()) {
             // We do not want to capture this object.  Explicit set .json to undefined so
             // that we will see that the property is set and we will simply roundtrip this
             // as the 'undefined value.
@@ -1100,7 +1100,7 @@ async function getOrCreateEntryAsync(
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
 // emit it.  We would be unable to actually hook up the "super()" call as one of the base
 // constructors was set to not be captured.
-function isDerivedNoCaptureConstructor(func: Function) {
+async function isDerivedNoCaptureConstructorAsync(func: Function): Promise<boolean> {
     for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
         if (current && current.doNotCapture) {
             return true;
