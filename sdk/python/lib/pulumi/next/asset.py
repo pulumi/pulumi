@@ -17,7 +17,7 @@ Assets are the Pulumi notion of data blobs that can be passed to resources.
 """
 from typing import Dict, Union, Any
 
-from ..runtime import known_types
+from .runtime import known_types
 
 
 @known_types.asset

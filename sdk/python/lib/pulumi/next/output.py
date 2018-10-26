@@ -60,17 +60,17 @@ class Output(Generic[T]):
     Future that actually produces the concrete value of this output.
     """
 
-    _resources: Set[Resource]
+    _resources: Set['Resource']
     """
     The list of resources that this output value depends on.
     """
 
-    def __init__(self, resources: Set[Resource], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
+    def __init__(self, resources: Set['Resource'], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
         self._resources = resources
         self._future = future
         self._is_known = is_known
 
-    def resources(self) -> Set[Resource]:
+    def resources(self) -> Set['Resource']:
         return self._resources
 
     def future(self) -> Awaitable[T]:
@@ -150,7 +150,7 @@ class Output(Generic[T]):
 
         return Output(self._resources, run(), is_known())
 
-    def __getattribute__(self, item: str) -> 'Output[Any]':
+    def __getattr__(self, item: str) -> 'Output[Any]':
         """
         Syntax sugar for retrieving attributes off of outputs.
         """

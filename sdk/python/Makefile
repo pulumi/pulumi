@@ -10,10 +10,10 @@ ifeq ($(PIP),)
 	PIP := pip
 endif
 
-ifneq ($(PYTHON_3),)
-	PIPENV_PYTHON_VERSION := --three
-else
+ifneq ($(PYTHON_2),)
 	PIPENV_PYTHON_VERSION := --two
+else
+	PIPENV_PYTHON_VERSION := --three
 endif
 
 PIPENV_VERSION := 2018.05.18
