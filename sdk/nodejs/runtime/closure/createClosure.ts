@@ -428,7 +428,7 @@ async function analyzeFunctionInfoAsync(
                     throwSerializationError(func, context, err.message);
                 }
 
-                const moduleName = findNormalizedModuleName(value);
+                const moduleName = await findNormalizedModuleNameAsync(value);
                 const frameLength = context.frames.length;
                 if (moduleName) {
                     context.frames.push({ capturedModule: { name: moduleName, value: value } });
@@ -770,7 +770,7 @@ async function getOrCreateEntryAsync(
             return;
         }
 
-        const normalizedModuleName = findNormalizedModuleName(obj);
+        const normalizedModuleName = await findNormalizedModuleNameAsync(obj);
         if (normalizedModuleName) {
             await captureModuleAsync(normalizedModuleName);
         }
@@ -1133,7 +1133,7 @@ for (const name of builtInModuleNames) {
 //
 // This function will also always return modules in a normalized form (i.e. all path components will
 // be '/').
-function findNormalizedModuleName(obj: any): string | undefined {
+async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefined> {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
     if (key) {
