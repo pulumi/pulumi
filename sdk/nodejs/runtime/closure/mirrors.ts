@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import * as v8 from "./v8";
-import { isString } from "util";
 
 type RemoteObjectId = string;
 
@@ -66,12 +65,17 @@ export interface StringMirror extends Mirror {
 
 export interface NumberMirror extends Mirror {
     type: "number";
+
+    // The numeric value, when that numeric value is representable in JSON
     value: number;
+
+    // A string representation of the numeric value is not representable in JSON (for example
+    // 'NaN').
+    unserializableValue: string;
 
     // properties that never appear
     subtype?: never;
     className?: never;
-    unserializableValue?: never;
     objectId?: never;
     description?: never;
 }

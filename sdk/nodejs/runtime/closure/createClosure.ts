@@ -727,6 +727,20 @@ async function getOrCreateEntryAsync(
         serialize: (o: any) => boolean,
         logInfo: boolean | undefined): Promise<Entry> {
 
+    // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
+    // the code necessary to represent the number on the other side.  Note: we have to do this
+    // before we do *anything* else.  This is because these special numbers don't even work in maps
+    // properly.  So, if we lookup the value in a map, we may get the cached value for something
+    // else *entirely*.  For example, 0 and -0 will map to the same entry.
+    if (isNumberMirror(mirror)) {
+        if (mirror.unserializableValue) {
+            return { expr: mirror.unserializableValue };
+        }
+
+        // Not special, just use normal json serialization.
+        return { json: mirror.value };
+    }
+
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(mirror)!;
     if (entry) {
@@ -797,7 +811,6 @@ async function getOrCreateEntryAsync(
         if (isUndefinedMirror(mirror) ||
             isNullMirror(mirror) ||
             isBooleanMirror(mirror) ||
-            isNumberMirror(mirror) ||
             isStringMirror(mirror)) {
 
                 // Serialize primitives as-is.
