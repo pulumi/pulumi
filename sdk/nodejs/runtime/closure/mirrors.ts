@@ -283,7 +283,7 @@ export function callFunctionOn(mirror: Mirror, funcName: string, args: Mirror[] 
     // }
 }
 
-export function callAccessorPropertyOn(mirror: Mirror, accessorName: string): Promise<Mirror> {
+export function callAccessorOn(mirror: Mirror, accessorName: string): Promise<Mirror> {
     if (!mirror.objectId) {
         throw new Error("Can't call function on mirror without an objectId: " + JSON.stringify(mirror));
     }

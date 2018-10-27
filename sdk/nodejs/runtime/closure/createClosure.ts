@@ -22,6 +22,7 @@ import { rewriteSuperReferences } from "./rewriteSuper";
 import * as utils from "./utils";
 
 import {
+    callAccessorOn,
     FunctionMirror,
     getMirrorAsync,
     getMirrorMemberAsync,
@@ -108,7 +109,7 @@ export interface Entry {
     json?: any;
 
     // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
-    regexp?: RegExpMirror;
+    regexp?: { source: string, flags: string };
 
     // a closure we are dependent on.
     function?: FunctionInfo;
@@ -741,6 +742,21 @@ async function getOrCreateEntryAsync(
         return { json: mirror.value };
     }
 
+    // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
+    // the code necessary to represent the number on the other side.  Note: we have to do this
+    // before we do *anything* else.  This is because these special numbers don't even work in maps
+    // properly.  So, if we lookup the value in a map, we may get the cached value for something
+    // else *entirely*.  For example, 0 and -0 will map to the same entry.
+    if (typeof obj === "number") {
+        if (Object.is(obj, -0)) { return { expr: "-0" }; }
+        if (Object.is(obj, Number.NaN)) { return { expr: "Number.NaN" }; }
+        if (Object.is(obj, Number.POSITIVE_INFINITY)) { return { expr: "Number.POSITIVE_INFINITY"}; }
+        if (Object.is(obj, Number.NEGATIVE_INFINITY)) { return { expr: "Number.NEGATIVE_INFINITY"}; }
+
+        // Not special, just use normal json serialization.
+        return { json: obj };
+    }
+
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(mirror)!;
     if (entry) {
@@ -818,6 +834,8 @@ async function getOrCreateEntryAsync(
             return;
         }
         else if (isRegExpMirror(mirror)) {
+            const sourceMirror = await callAccessorOn(mirror, "source");
+            const flagsMirror = await
             entry.regexp = mirror;
             return;
         }
