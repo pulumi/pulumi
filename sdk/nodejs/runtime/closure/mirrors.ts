@@ -267,6 +267,10 @@ export function callFunctionOn(mirror: Mirror, funcName: string, args: Mirror[] 
 }
 
 export async function getMirrorMemberAsync(mirror: Mirror, memberName: string): Promise<Mirror> {
+    if (isUndefinedOrNullMirror(mirror)) {
+        throw new Error(`Trying to get member ${memberName} off null/undefined: ${JSON.stringify(mirror)}`);
+    }
+
     const val = getValueForMirror(mirror);
     const member = val[memberName];
     return getMirrorAsync(member);

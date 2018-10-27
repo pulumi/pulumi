@@ -609,7 +609,7 @@ async function throwSerializationErrorAsync(
         const moduleName = module.name;
         message += "\n";
 
-        if (isTruthy(await getMirrorMemberAsync(module.mirror, "deploymentOnlyModule"))) {
+        if (await hasTruthyMemberAsync(module.mirror, "deploymentOnlyModule")) {
             message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
         }
         else {
@@ -732,7 +732,7 @@ async function getOrCreateEntryAsync(
         return entry;
     }
 
-    if (isFunctionMirror(mirror) && isTruthy(await getMirrorMemberAsync(mirror, "doNotCapture"))) {
+    if (isFunctionMirror(mirror) && await hasTruthyMemberAsync(obj, "doNotCapture")) {
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
@@ -761,7 +761,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (isTruthy(mirror) && isTruthy(await getMirrorMemberAsync(mirror, "doNotCapture"))) {
+        if (await hasTruthyMemberAsync(obj, "doNotCapture")) {
             // object has set itself as something that should not be captured.
             return true;
         }
@@ -783,8 +783,12 @@ async function getOrCreateEntryAsync(
             return;
         }
 
-        if (obj === undefined || obj === null ||
-            typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
+        if (obj === undefined ||
+            obj === null ||
+            typeof obj === "boolean" ||
+            typeof obj === "number" ||
+            typeof obj === "string") {
+
             // Serialize primitives as-is.
             entry.json = obj;
             return;
@@ -1081,7 +1085,7 @@ async function getOrCreateEntryAsync(
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
-        if (obj.deploymentOnlyModule || isLocalModule) {
+        if (await hasTruthyMemberAsync(obj, "deploymentOnlyModule") || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
             //
             // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
@@ -1126,7 +1130,7 @@ async function getOrCreateEntryAsync(
 // constructors was set to not be captured.
 async function isDerivedNoCaptureConstructorAsync(func: FunctionMirror) {
     for (let current: Mirror = func; isTruthy(current); current = await getPrototypeOfMirror(current)) {
-        if (isTruthy(await getMirrorMemberAsync(current, "doNotCapture"))) {
+        if (await hasTruthyMemberAsync(current, "doNotCapture")) {
             return true;
         }
     }
@@ -1180,4 +1184,12 @@ async function findNormalizedModuleNameAsync(obj: Mirror): Promise<string | unde
 
     // Else, return that no global name is available for this object.
     return undefined;
+}
+
+async function hasTruthyMemberAsync(mirror: Mirror, memberName: string): Promise<boolean> {
+    if (!isUndefinedOrNullMirror(mirror)) {
+        return false;
+    }
+
+    return isTruthy(await getMirrorMemberAsync(mirror, memberName));
 }
