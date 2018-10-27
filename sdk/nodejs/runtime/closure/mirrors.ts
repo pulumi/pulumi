@@ -313,6 +313,10 @@ export function isNumberMirror(mirror: Mirror): mirror is NumberMirror {
     return mirror.type === "number";
 }
 
+export function isFunctionMirror(mirror: Mirror): mirror is FunctionMirror {
+    return mirror.type === "function";
+}
+
 export function isNullMirror(mirror: Mirror): mirror is NullMirror {
     return isObjectMirror(mirror) && mirror.subtype === "null";
 }
@@ -325,8 +329,8 @@ export function isArrayMirror(mirror: Mirror): mirror is ArrayMirror {
     return isObjectMirror(mirror) && mirror.subtype === "array";
 }
 
-export function isFunctionMirror(mirror: Mirror): mirror is FunctionMirror {
-    return mirror.type === "function";
+export function isRegExpMirror(mirror: Mirror): mirror is ArrayMirror {
+    return isObjectMirror(mirror) && mirror.subtype === "regexp";
 }
 
 export function isTruthy(mirror: Mirror) {
@@ -359,4 +363,10 @@ export function isTruthy(mirror: Mirror) {
 
 export function isFalsy(mirror: Mirror) {
     return !isTruthy(mirror);
+}
+
+export async function getPromiseMirrorValueAsync(mirror: PromiseMirror): Promise<Mirror> {
+    const promise = getValueForMirror(mirror);
+    const value = await promise;
+    return await getMirrorAsync(value);
 }

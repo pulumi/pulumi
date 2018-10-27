@@ -25,13 +25,22 @@ import {
     FunctionMirror,
     getMirrorAsync,
     getMirrorMemberAsync,
+    getPromiseMirrorValueAsync,
     getPrototypeOfMirrorAsync,
+    isArrayMirror,
     isFalsy,
     isFunctionMirror,
+    isPromiseMirror,
+    isRegExpMirror,
     isStringMirror,
     isTruthy,
     isUndefinedOrNullMirror,
-    Mirror } from "./mirrors";
+    Mirror,
+    RegExpMirror,
+    isUndefinedMirror,
+    isNullMirror,
+    isNumberMirror,
+    isBooleanMirror} from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -99,7 +108,7 @@ export interface Entry {
     json?: any;
 
     // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
-    regexp?: RegExp;
+    regexp?: RegExpMirror;
 
     // a closure we are dependent on.
     function?: FunctionInfo;
@@ -766,7 +775,9 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (await isDerivedNoCaptureConstructorAsync(obj)) {
+        if (isFunctionMirror(mirror) &&
+            await isDerivedNoCaptureConstructorAsync(mirror)) {
+
             // this was a constructor that derived from something that should not be captured.
             return true;
         }
@@ -783,28 +794,28 @@ async function getOrCreateEntryAsync(
             return;
         }
 
-        if (obj === undefined ||
-            obj === null ||
-            typeof obj === "boolean" ||
-            typeof obj === "number" ||
-            typeof obj === "string") {
+        if (isUndefinedMirror(mirror) ||
+            isNullMirror(mirror) ||
+            isBooleanMirror(mirror) ||
+            isNumberMirror(mirror) ||
+            isStringMirror(mirror)) {
 
-            // Serialize primitives as-is.
-            entry.json = obj;
+                // Serialize primitives as-is.
+            entry.json = mirror.value;
             return;
         }
-        else if (obj instanceof RegExp) {
-            entry.regexp = obj;
+        else if (isRegExpMirror(mirror)) {
+            entry.regexp = mirror;
             return;
         }
 
-        const normalizedModuleName = await findNormalizedModuleNameAsync(obj);
+        const normalizedModuleName = await findNormalizedModuleNameAsync(mirror);
         if (normalizedModuleName) {
             await captureModuleAsync(normalizedModuleName);
         }
-        else if (obj instanceof Function) {
+        else if (isFunctionMirror(mirror)) {
             // Serialize functions recursively, and store them in a closure property.
-            entry.function = await analyzeFunctionInfoAsync(obj, context, serialize, logInfo);
+            entry.function = await analyzeFunctionMirrorAsync(mirror, context, serialize, logInfo);
         }
         else if (resource.Output.isInstance(obj)) {
             const val = await obj.promise();
@@ -824,7 +835,7 @@ async function getOrCreateEntryAsync(
             //     context.frames = oldFrames;
             // });
         }
-        else if (obj instanceof Promise) {
+        else if (isPromiseMirror(mirror)) {
             // // captures the frames up to this point. so we can give a good message if we
             // // fail when we resume serializing this promise.
             // const framesCopy = context.frames.slice();
@@ -839,10 +850,10 @@ async function getOrCreateEntryAsync(
             //     context.frames = oldFrames;
             // });
 
-            const val = await obj;
-            entry.promise = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo);
+            const underlyingValueMirror = await getPromiseMirrorValueAsync(mirror);
+            entry.promise = await getOrCreateEntryAsync(underlyingValueMirror, undefined, context, serialize, logInfo);
         }
-        else if (obj instanceof Array) {
+        else if (isArrayMirror(mirror)) {
             // Recursively serialize elements of an array. Note: we use getOwnPropertyNames as the array
             // may be sparse and we want to properly respect that when serializing.
             entry.array = [];
