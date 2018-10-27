@@ -849,9 +849,26 @@ async function getOrCreateEntryAsync(
             // Serialize functions recursively, and store them in a closure property.
             entry.function = await analyzeFunctionMirrorAsync(mirror, context, serialize, logInfo);
         }
-        else if (await isOutputAsync(obj)) {
-            const val = await obj.promise();
-            entry.output = await getOrCreateEntryAsync(new SerializedOutput(val), undefined, context, serialize, logInfo);
+        else if (await isOutputAsync(mirror)) {
+            // First, extract out the inner value this Output wraps.
+            const promiseMirror = await callFunctionOn(mirror, "promise");
+            if (!isPromiseMirror(promiseMirror)) {
+                throw new Error("output.promise() did not return a promise: " + JSON.stringify(promiseMirror));
+            }
+
+            const valMirror = await getPromiseMirrorValueAsync(promiseMirror);
+
+            // Now, wrap that inner value with a SerializedOutput value.  This is an Output that
+            // will work at cloud-runtime, with a proper .get impl that returns the value.
+            //
+            // Note: there's definite subtlty here.  The value we're passing into SerializedOutput
+            // is a Mirror. If we then try to serialize SerializedOutput, we'd normally end up
+            // serializing a Mirror (i.e. we'd get a Mirror<Mirror>).  However, that problem is
+            // avoided because serialization will not try to double wrap Mirrors.
+            const serializedOutput = new SerializedOutput(valMirror);
+
+            const serializedOutputMirror = await getMirrorAsync(serializedOutput);
+            entry.output = await getOrCreateEntryAsync(serializedOutputMirror, undefined, context, serialize, logInfo);
 
             // // captures the frames up to this point. so we can give a good message if we
             // // fail when we resume serializing this promise.

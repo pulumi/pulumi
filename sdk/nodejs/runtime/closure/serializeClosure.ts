@@ -15,7 +15,6 @@
 import { Resource } from "../../resource";
 import * as closure from "./createClosure";
 import * as utils from "./utils";
-import { callAccessorPropertyOn } from "./mirrors";
 
 /**
  * SerializeFunctionArgs are arguments used to serialize a JavaScript function
@@ -281,9 +280,6 @@ function serializeJavaScriptText(
             emitArray(envVar, envEntry.array, varName);
         }
         else if (envEntry.regexp) {
-            const regexpMirror = envEntry.regexp;
-            const sourceMirror =
-
             const { source, flags } = envEntry.regexp;
             const regexVal = `new RegExp(${JSON.stringify(source)}, ${JSON.stringify(flags)})`;
             const entryString = `var ${envVar} = ${regexVal};\n`;
