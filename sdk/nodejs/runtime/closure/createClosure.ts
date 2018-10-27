@@ -587,7 +587,7 @@ async function throwSerializationErrorAsync(
         const moduleName = module.name;
         message += "\n";
 
-        if (module.value.deploymentOnlyModule) {
+        if (await hasTruthyMemberAsync(module.value, "deploymentOnlyModule")) {
             message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
         }
         else {
@@ -708,7 +708,7 @@ async function getOrCreateEntryAsync(
         return entry;
     }
 
-    if (obj instanceof Function && obj.doNotCapture) {
+    if (obj instanceof Function && await hasTruthyMemberAsync(obj, "doNotCapture")) {
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
@@ -737,7 +737,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (obj && obj.doNotCapture) {
+        if (obj && await hasTruthyMemberAsync(obj, "doNotCapture")) {
             // object has set itself as something that should not be captured.
             return true;
         }
@@ -759,8 +759,12 @@ async function getOrCreateEntryAsync(
             return;
         }
 
-        if (obj === undefined || obj === null ||
-            typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
+        if (obj === undefined ||
+            obj === null ||
+            typeof obj === "boolean" ||
+            typeof obj === "number" ||
+            typeof obj === "string") {
+
             // Serialize primitives as-is.
             entry.json = obj;
             return;
@@ -1057,7 +1061,7 @@ async function getOrCreateEntryAsync(
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
-        if (obj.deploymentOnlyModule || isLocalModule) {
+        if (await hasTruthyMemberAsync(obj, "deploymentOnlyModule") || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
             //
             // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
@@ -1102,7 +1106,7 @@ async function getOrCreateEntryAsync(
 // constructors was set to not be captured.
 async function isDerivedNoCaptureConstructorAsync(func: Function): Promise<boolean> {
     for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
-        if (current && current.doNotCapture) {
+        if (await hasTruthyMemberAsync(current, "doNotCapture")) {
             return true;
         }
     }
@@ -1155,4 +1159,12 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
 
     // Else, return that no global name is available for this object.
     return undefined;
+}
+
+async function hasTruthyMemberAsync(obj: any, memberName: string): Promise<boolean> {
+    if (!obj) {
+        return false;
+    }
+
+    return obj[memberName] ? true : false;
 }
