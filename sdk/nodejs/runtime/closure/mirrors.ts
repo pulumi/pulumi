@@ -283,6 +283,29 @@ export function callFunctionOn(mirror: Mirror, funcName: string, args: Mirror[] 
     // }
 }
 
+export function callAccessorPropertyOn(mirror: Mirror, accessorName: string): Promise<Mirror> {
+    if (!mirror.objectId) {
+        throw new Error("Can't call function on mirror without an objectId: " + JSON.stringify(mirror));
+    }
+
+    const realInstance = getValueForMirror(mirror);
+    const res = realInstance[accessorName];
+
+    return getMirrorAsync(res);
+
+    // const resType = await new Promise<inspector.Runtime.CallFunctionOnReturnType>((resolve, reject) => {
+    //     session.post("Runtime.callFunctionOn", {
+    //         objectId: mirror.objectId,
+    //         functionDeclaration: funcName,
+    //         arguments: args.map(a => ({ objectId: a.objectId })),
+    //     }, (err, res) => err ? reject(err) : resolve(res));
+    // });
+
+    // if (resType.exceptionDetails) {
+
+    // }
+}
+
 export async function getMirrorMemberAsync(mirror: Mirror, memberName: string): Promise<Mirror> {
     if (isUndefinedOrNullMirror(mirror)) {
         throw new Error(`Trying to get member ${memberName} off null/undefined: ${JSON.stringify(mirror)}`);
@@ -333,7 +356,7 @@ export function isArrayMirror(mirror: Mirror): mirror is ArrayMirror {
     return isObjectMirror(mirror) && mirror.subtype === "array";
 }
 
-export function isRegExpMirror(mirror: Mirror): mirror is ArrayMirror {
+export function isRegExpMirror(mirror: Mirror): mirror is RegExpMirror {
     return isObjectMirror(mirror) && mirror.subtype === "regexp";
 }
 
