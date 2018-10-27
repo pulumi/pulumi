@@ -15,6 +15,36 @@
 import { Input, Output } from "../resource";
 
 /**
+ * toObject takes an array of T values, and a selector that produces key/value pairs from those inputs,
+ * and converts this array into an output object with those keys and values.
+ *
+ * For instance, given an array as follows
+ *
+ *     [{ s: "a", n: 1 }, { s: "b", n: 2 }, { s: "c", n: 3 }]
+ *
+ * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting object will be
+ *
+ *     { "a": 1, "b": 2, "c": 3 }
+ *
+ */
+export function toObject<T, V>(
+        iter: Input<Input<T>[]>, selector: (t: T) => [Input<string>, Input<V>]): Output<{[key: string]: V}> {
+    return Output.create(iter).apply(elems => {
+        const array: [Input<string>, Input<V>][] = [];
+        for (const e of elems) {
+            array.push(selector(<any>e));
+        }
+        return Output.create(array).apply(a => {
+            const obj: {[key: string]: V} = {};
+            for (const e of a) {
+                obj[<any>e[0]] = <any>e[1];
+            }
+            return obj;
+        });
+    });
+}
+
+/**
  * toMap takes an array of T values, and a selector that produces key/value pairs from those inputs,
  * and converts this array into an output map with those keys and values.
  *
