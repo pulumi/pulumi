@@ -971,7 +971,7 @@ async function getOrCreateEntryAsync(
             // loops, put a dummy entry in the environment map.  That way, if we hit
             // this object again while recursing we won't try to generate this property.
             environment.set(keyEntry, <any>undefined);
-            const objPropValue = obj[propName];
+            const objPropValue = await getPropertyAsync(obj, propName);
 
             const propertyInfo = await getPropertyInfoAsync(obj, propName);
             if (!propertyInfo) {
@@ -1312,6 +1312,10 @@ async function getOwnPropertyDescriptors(obj: any): Promise<ClosurePropertyDescr
 
 async function getOwnPropertyAsync(obj: any, descriptor: ClosurePropertyDescriptor): Promise<any> {
     return obj[getNameOrSymbol(descriptor)];
+}
+
+async function getPropertyAsync(obj: any, name: string): Promise<any> {
+    return obj[name];
 }
 
 function getNameOrSymbol(descriptor: ClosurePropertyDescriptor): symbol | string {
