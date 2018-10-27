@@ -13,6 +13,11 @@
 // limitations under the License.
 
 import * as v8 from "./v8";
+// import * as inspector from "inspector";
+// const session = new inspector.Session();
+// session.connect();
+
+// session.post("Runtime.getProperties")
 
 type RemoteObjectId = string;
 
@@ -412,4 +417,64 @@ export async function getPromiseMirrorValueAsync(mirror: PromiseMirror): Promise
     const promise = getValueForMirror(mirror);
     const value = await promise;
     return await getMirrorAsync(value);
+}
+
+export interface MirrorPropertyDescriptor {
+    /** Property name or symbol description. */
+    name: string;
+    /** Property symbol object, if the property is of the `symbol` type. */
+    symbol?: Mirror;
+    /** The value associated with the property. */
+    value?: Mirror;
+    /** True if the value associated with the property may be changed (data descriptors only). */
+    writable?: boolean;
+    /**
+     * A function which serves as a getter for the property, or `undefined` if there is no getter
+     * (accessor descriptors only).
+     */
+    get?: FunctionMirror;
+    /**
+     * A function which serves as a setter for the property, or `undefined` if there is no setter
+     * (accessor descriptors only).
+     */
+    set?: FunctionMirror;
+    /**
+     * True if the type of this property descriptor may be changed and if the property may be
+     * deleted from the corresponding object.
+     */
+    configurable: boolean;
+    /**
+     * True if this property shows up during enumeration of the properties on the corresponding
+     * object.
+     */
+    enumerable: boolean;
+}
+
+export async function getMirrorPropertyDescriptors(mirror: Mirror): Promise<MirrorPropertyDescriptor[]> {
+    const val = getValueForMirror(mirror);
+
+    const result: MirrorPropertyDescriptor[] = [];
+    for (const name of Object.getOwnPropertyNames(val)) {
+        const descriptor = Object.getOwnPropertyDescriptor(val, name);
+        if (!descriptor) {
+            throw new Error(`Couldn't get descriptor for '${name}' in: ${JSON.stringify(mirror)}`);
+        }
+
+        const mirrorDescriptor = convertDescriptor(descriptor);
+        mirrorDescriptor.name = name;
+        result.push(mirrorDescriptor);
+    }
+
+    for (const symbol of Object.getOwnPropertySymbols(val)) {
+        const descriptor = Object.getOwnPropertyDescriptor(val, symbol);
+        if (!descriptor) {
+            throw new Error(`Couldn't get descriptor for symbol '${symbol.toString()}' in: ${JSON.stringify(mirror)}`);
+        }
+
+        const mirrorDescriptor = convertDescriptor(descriptor);
+        mirrorDescriptor.symbol = await getMirrorAsync(symbol);
+        result.push(mirrorDescriptor);
+    }
+
+    return result;
 }

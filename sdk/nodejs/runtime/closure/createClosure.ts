@@ -42,7 +42,7 @@ import {
     isUndefinedMirror,
     isUndefinedOrNullMirror,
     Mirror,
-    callFunctionOn} from "./mirrors";
+    callFunctionOn } from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
