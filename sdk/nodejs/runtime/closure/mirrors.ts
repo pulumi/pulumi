@@ -31,6 +31,8 @@ export interface Mirror {
     unserializableValue?: UnserializableValue;
     /** Unique object identifier (for non-primitive values). */
     objectId?: RemoteObjectId;
+
+    __isMirror: true;
 }
 
 export interface FunctionMirror extends Mirror {
@@ -164,8 +166,8 @@ type MirrorType<T> =
     T extends number ? NumberMirror :
     T extends boolean ? BooleanMirror :
     T extends RegExp ? RegExpMirror :
-    T extends Array<infer U> ? ArrayMirror :
-    T extends Promise<infer U> ? PromiseMirror :
+    T extends Array<infer A> ? ArrayMirror :
+    T extends Promise<infer B> ? PromiseMirror :
     T extends Function ? FunctionMirror : Mirror;
 
 type ValueType<TMirror> =
@@ -196,6 +198,21 @@ export function getValueForMirror<TMirror extends Mirror>(mirror: TMirror): Valu
 }
 
 export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
+    // If we were passed in a mirror, just return it back out.  This happens in one case during
+    // serialization.  Specifically, when we have an Output<V>.  In that case we'll await the
+    // Output.promise() and get back a Mirror for the value inside.  That part works fine.
+    //
+    // **However**, we then want to serialize over "new SerializedOutput(mirror)" over. This is the
+    // the type that implements the Output interface, but has the 'get()' method which will return
+    // the output's value on the cloud-runtime side of things.  When we make the mirror for the
+    // SerializedOutput instance, and then try to walk it, we'll then hit this inner 'mirror' that
+    // it points at.  We don't want to then try to serialize an *actual* mirror (which would wrap
+    // the mirror in more layers or mirrors).  We just want to realize that SerializedOutput is
+    // pointing at a mirror already, and just handle that as normal.
+    if (isMirror(val)) {
+        return <any>val;
+    }
+
     let mirror = valToMirror.get(val);
     if (mirror) {
         return <any>mirror;
@@ -211,6 +228,7 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
         if (typeof val === "string") {
             const stringMirror: StringMirror = {
+                __isMirror: true,
                 type: "string",
                 value: val,
             };
@@ -220,6 +238,7 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
         if (val instanceof Function) {
             const funcMirror: FunctionMirror = {
+                __isMirror: true,
                 type: "function",
                 className: "Function",
                 objectId: mirrorId,
@@ -316,8 +335,8 @@ export async function getMirrorMemberAsync(mirror: Mirror, memberName: string): 
     return getMirrorAsync(member);
 }
 
-export function isUndefinedOrNullMirror(mirror: Mirror) {
-    return isUndefinedMirror(mirror) || isNullMirror(mirror);
+export function isMirror(val: any): val is Mirror {
+    return val.__isMirror;
 }
 
 export function isUndefinedMirror(mirror: Mirror): mirror is UndefinedMirror {
@@ -390,6 +409,10 @@ export function isTruthy(mirror: Mirror) {
 
 export function isFalsy(mirror: Mirror) {
     return !isTruthy(mirror);
+}
+
+export function isUndefinedOrNullMirror(mirror: Mirror) {
+    return isUndefinedMirror(mirror) || isNullMirror(mirror);
 }
 
 export async function getPromiseMirrorValueAsync(mirror: PromiseMirror): Promise<Mirror> {

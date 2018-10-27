@@ -29,19 +29,19 @@ import {
     getPromiseMirrorValueAsync,
     getPrototypeOfMirrorAsync,
     isArrayMirror,
+    isBooleanMirror,
     isFalsy,
     isFunctionMirror,
+    isMirror,
+    isNullMirror,
+    isNumberMirror,
     isPromiseMirror,
     isRegExpMirror,
     isStringMirror,
     isTruthy,
-    isUndefinedOrNullMirror,
-    Mirror,
-    RegExpMirror,
     isUndefinedMirror,
-    isNullMirror,
-    isNumberMirror,
-    isBooleanMirror} from "./mirrors";
+    isUndefinedOrNullMirror,
+    Mirror } from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -280,6 +280,13 @@ export async function createFunctionInfoAsync(
 async function analyzeFunctionMirrorAsync(
         funcMirror: FunctionMirror, context: Context,
         serialize: (o: any) => boolean, logInfo?: boolean): Promise<FunctionInfo> {
+
+    if (!isMirror(funcMirror)) {
+        throw new Error("Was not passed a mirror to analyzeFunctionMirrorAsync: " + JSON.stringify(funcMirror));
+    }
+    if (!isFunctionMirror(funcMirror)) {
+        throw new Error("Was not passed a function mirror to analyzeFunctionMirrorAsync: " + JSON.stringify(funcMirror));
+    }
 
     // logInfo = logInfo || func.name === "addHandler";
 
@@ -727,6 +734,10 @@ async function getOrCreateEntryAsync(
         context: Context,
         serialize: (o: any) => boolean,
         logInfo: boolean | undefined): Promise<Entry> {
+
+    if (!isMirror(mirror)) {
+        throw new Error("Was not passed a mirror to getOrCreateEntryAsync: " + JSON.stringify(mirror));
+    }
 
     // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
     // the code necessary to represent the number on the other side.  Note: we have to do this
