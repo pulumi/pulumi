@@ -21,10 +21,14 @@ import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parse
 import { rewriteSuperReferences } from "./rewriteSuper";
 
 import {
+    MirrorPropertyDescriptor,
     callAccessorOn,
     FunctionMirror,
+    isStringValue,
     getMirrorAsync,
     getMirrorMemberAsync,
+    getNameOrSymbol,
+    getOwnPropertyAsync,
     getPromiseMirrorValueAsync,
     getPrototypeOfMirrorAsync,
     isArrayMirror,
@@ -41,7 +45,8 @@ import {
     isUndefinedMirror,
     isUndefinedOrNullMirror,
     Mirror,
-    callFunctionOn } from "./mirrors";
+    callFunctionOn,
+    getOwnPropertyDescriptorsAsync} from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -188,20 +193,6 @@ interface ContextFrame {
     capturedFunctionName?: string;
     capturedVariableName?: string;
     capturedModule?: { name: string, mirror: Mirror };
-}
-
-interface ClosurePropertyDescriptor {
-    /** name of the property for a normal property. either 'name' or 'symbol' will be present.  but not both. */
-    name?: string;
-    /** symbol-name of the property.  either 'name' or 'symbol' will be present.  but not both. */
-    symbol?: symbol;
-
-    configurable?: boolean;
-    enumerable?: boolean;
-    value?: any;
-    writable?: boolean;
-    get?: () => any;
-    set?: (v: any)=> void;
 }
 
 /*
@@ -405,12 +396,12 @@ async function analyzeFunctionMirrorAsync(
 
         // capture any properties placed on the function itself.  Don't bother with
         // "length/name" as those are not things we can actually change.
-        for (const descriptor of await getOwnPropertyDescriptors(func)) {
-            if (descriptor.name === "length" || descriptor.name === "name") {
+        for (const descriptor of await getOwnPropertyDescriptors(funcMirror)) {
+            if (isStringValue(descriptor.name, "length") || isStringValue(descriptor.name, "name")) {
                 continue;
             }
 
-            const funcProp = await getOwnPropertyAsync(func, descriptor);
+            const funcPropMirror = await getOwnPropertyAsync(funcMirror, descriptor);
 
             // We don't need to emit code to serialize this function's .prototype object
             // unless that .prototype object was actually changed.
@@ -418,15 +409,15 @@ async function analyzeFunctionMirrorAsync(
             // In other words, in general, we will not emit the prototype for a normal
             // 'function foo() {}' declaration.  but we will emit the prototype for the
             // constructor function of a class.
-            if (descriptor.name === "prototype" &&
-                await isDefaultFunctionPrototypeAsync(func, funcProp)) {
+            if (isStringValue(descriptor.name, "prototype") &&
+                await isDefaultFunctionPrototypeAsync(funcMirror, funcPropMirror)) {
 
                 continue;
             }
 
             functionInfo.env.set(
                 await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo),
-                { entry: await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo) });
+                { entry: await getOrCreateEntryAsync(funcPropMirror, undefined, context, serialize, logInfo) });
         }
 
         const superEntry = context.classInstanceMemberToSuperEntry.get(funcMirror) ||
@@ -488,7 +479,7 @@ async function analyzeFunctionMirrorAsync(
                     // are different, it's an indirect reference, and the name should be
                     // included for clarity.
                     const funcNameMirror = await getMirrorMemberAsync(valueMirror, "name");
-                    if (isStringMirror(funcNameMirror) && name !== funcNameMirror.value) {
+                    if (isStringValue(funcNameMirror, name)) {
                         context.frames.push({ capturedFunctionName: name });
                     }
                 }
@@ -720,7 +711,7 @@ function getFunctionName(loc: FunctionLocation): string {
     return "<anonymous>";
 }
 
-async function isDefaultFunctionPrototypeAsync(func: Function, prototypeProp: any) {
+async function isDefaultFunctionPrototypeAsync(funcMirror: Function, prototypePropMirror: any) {
     // The initial value of prototype on any newly-created Function instance is a new instance of
     // Object, but with the own-property 'constructor' set to point back to the new function.
     if (prototypeProp && prototypeProp.constructor === func) {
@@ -876,12 +867,12 @@ async function getOrCreateEntryAsync(
             // Recursively serialize elements of an array. Note: we use getOwnPropertyDescriptors as the array
             // may be sparse and we want to properly respect that when serializing.
             entry.array = [];
-            for (const descriptor of await getOwnPropertyDescriptors(obj)) {
+            for (const descriptor of await getOwnPropertyDescriptors(mirror)) {
                 if (descriptor.name !== undefined &&
-                    descriptor.name !== "length") {
+                    !isStringValue(descriptor.name, "length")) {
 
-                    entry.array[<any>descriptor.name] = await getOrCreateEntryAsync(
-                        await getOwnPropertyAsync(obj, descriptor), undefined, context, serialize, logInfo);
+                    entry.array[<any>descriptor.name.value] = await getOrCreateEntryAsync(
+                        await getOwnPropertyAsync(mirror, descriptor), undefined, context, serialize, logInfo);
                 }
             }
 
@@ -931,7 +922,7 @@ async function getOrCreateEntryAsync(
     // only a subset of properties are used on this object.
     async function serializeAllObjectPropertiesAsync(environment: PropertyMap) {
         // we wanted to capture everything (including the prototype chain)
-        const descriptors = await getOwnPropertyDescriptors(obj);
+        const descriptors = await getOwnPropertyDescriptors(mirror);
 
         for (const descriptor of descriptors) {
             // we're about to recurse inside this object.  In order to prever infinite
@@ -942,7 +933,7 @@ async function getOrCreateEntryAsync(
                 environment.set(keyEntry, <any>undefined);
 
                 const propertyInfo = await createPropertyInfoAsync(descriptor);
-                const prop = await getOwnPropertyAsync(obj, descriptor);
+                const prop = await getOwnPropertyAsync(mirror, descriptor);
                 const valEntry = await getOrCreateEntryAsync(
                     prop, undefined, context, serialize, logInfo);
 
@@ -1009,7 +1000,7 @@ async function getOrCreateEntryAsync(
             environment.set(keyEntry, <any>undefined);
             const objPropValue = await getPropertyAsync(obj, propName);
 
-            const propertyInfo = await getPropertyInfoAsync(obj, propName);
+            const propertyInfo = await getPropertyInfoAsync(mirror, propName);
             if (!propertyInfo) {
                 if (objPropValue !== undefined) {
                     throw new Error("Could not find property info for real property on object: " + propName);
@@ -1080,12 +1071,12 @@ async function getOrCreateEntryAsync(
         return false;
     }
 
-    async function getPropertyInfoAsync(on: any, key: string | symbol): Promise<PropertyInfo | undefined> {
-        for (let current = on; current; current = Object.getPrototypeOf(current)) {
-            const desc = Object.getOwnPropertyDescriptor(current, key);
-            if (desc) {
-                const closurePropDescriptor = createClosurePropertyDescriptor(key, desc);
-                const propertyInfo = await createPropertyInfoAsync(closurePropDescriptor);
+    async function getPropertyInfoAsync(on: Mirror, key: string): Promise<PropertyInfo | undefined> {
+        for (let current = on; isTruthy(current); current = await getPrototypeOfMirrorAsync(current)) {
+            const descriptors = await getOwnPropertyDescriptorsAsync(current);
+            const descriptor = descriptors.find(d => d.name !== undefined && d.name.value === key);
+            if (descriptor) {
+                const propertyInfo = await createPropertyInfoAsync(descriptor);
                 return propertyInfo;
             }
         }
@@ -1093,7 +1084,7 @@ async function getOrCreateEntryAsync(
         return undefined;
     }
 
-    async function createPropertyInfoAsync(descriptor: ClosurePropertyDescriptor): Promise<PropertyInfo> {
+    async function createPropertyInfoAsync(descriptor: MirrorPropertyDescriptor): Promise<PropertyInfo> {
         const propertyInfo = <PropertyInfo>{ hasValue: descriptor.value !== undefined };
         propertyInfo.configurable = descriptor.configurable;
         propertyInfo.enumerable = descriptor.enumerable;
@@ -1310,70 +1301,4 @@ async function hasTruthyMemberAsync(mirror: Mirror, memberName: string): Promise
     }
 
     return isTruthy(await getMirrorMemberAsync(mirror, memberName));
-}
-
-function createClosurePropertyDescriptor(
-    nameOrSymbol: string | symbol, descriptor: PropertyDescriptor): ClosurePropertyDescriptor {
-
-    if (nameOrSymbol === undefined) {
-        throw new Error("Was not given a name or symbol");
-    }
-
-    const copy: ClosurePropertyDescriptor = { ...descriptor };
-    if (typeof nameOrSymbol === "string") {
-        copy.name = nameOrSymbol;
-    }
-    else {
-        copy.symbol = nameOrSymbol;
-    }
-
-    return copy;
-}
-
-async function getOwnPropertyDescriptors(obj: any): Promise<ClosurePropertyDescriptor[]> {
-    const result: ClosurePropertyDescriptor[] = [];
-
-    for (const name of Object.getOwnPropertyNames(obj)) {
-        if (name === "__proto__") {
-            // don't return prototypes here.  If someone wants one, they should call
-            // Object.getPrototypeOf. Note: this is the standard behavior of
-            // Object.getOwnPropertyNames.  However, the Inspector API returns these, and we want to
-            // filter them out.
-            continue;
-        }
-
-        const descriptor = Object.getOwnPropertyDescriptor(obj, name);
-        if (!descriptor) {
-            throw new Error(`Could not get descriptor for ${name} on: ${JSON.stringify(obj)}`);
-        }
-
-        result.push(createClosurePropertyDescriptor(name, descriptor));
-    }
-
-    for (const symbol of Object.getOwnPropertySymbols(obj)) {
-        const descriptor = Object.getOwnPropertyDescriptor(obj, symbol);
-        if (!descriptor) {
-            throw new Error(`Could not get descriptor for symbol ${symbol.toString()} on: ${JSON.stringify(obj)}`);
-        }
-
-        result.push(createClosurePropertyDescriptor(symbol, descriptor));
-    }
-
-    return result;
-}
-
-async function getOwnPropertyAsync(obj: any, descriptor: ClosurePropertyDescriptor): Promise<any> {
-    return obj[getNameOrSymbol(descriptor)];
-}
-
-async function getPropertyAsync(obj: any, name: string): Promise<any> {
-    return obj[name];
-}
-
-function getNameOrSymbol(descriptor: ClosurePropertyDescriptor): symbol | string {
-    if (descriptor.symbol === undefined && descriptor.name === undefined) {
-        throw new Error("Descriptor didn't have symbol or name: " + JSON.stringify(descriptor));
-    }
-
-    return descriptor.symbol || descriptor.name!!;
 }

@@ -25,7 +25,7 @@ type UnserializableValue = string;
 
 export interface Mirror {
     /** Object type. */
-    type: "function" | "object" | "number" | "string" | "undefined" | "boolean";
+    type: "function" | "object" | "number" | "string" | "undefined" | "boolean" | "symbol";
     /** Object subtype hint. Specified for `object` type values only. */
     subtype?: string;
     /** Object class (constructor) name. Specified for `object` type values only. */
@@ -42,7 +42,7 @@ export interface Mirror {
 
 export interface FunctionMirror extends Mirror {
     type: "function";
-    className: "Function" | "Array";
+    className: "Function";
     objectId: RemoteObjectId;
 
     /** contains the result of calling '.toString()' on the function instance. */
@@ -56,6 +56,18 @@ export interface FunctionMirror extends Mirror {
     // Temporary Deviation from v8 to make transition easier.
     name: string;
     location: { file: string, line: number, column: number };
+}
+
+export interface SymbolMirror extends Mirror {
+    type: "symbol";
+    objectId: RemoteObjectId;
+
+    // properties that never appear
+    subtype?: never;
+    className?: never;
+    unserializableValue?: never;
+    description?: never;
+    value?: never;
 }
 
 export interface StringMirror extends Mirror {
@@ -171,6 +183,7 @@ type MirrorType<T> =
     T extends number ? NumberMirror :
     T extends boolean ? BooleanMirror :
     T extends RegExp ? RegExpMirror :
+    T extends symbol ? SymbolMirror :
     T extends Array<infer A> ? ArrayMirror :
     T extends Promise<infer B> ? PromiseMirror :
     T extends Function ? FunctionMirror : Mirror;
@@ -182,6 +195,7 @@ type ValueType<TMirror> =
     TMirror extends NumberMirror ? number :
     TMirror extends BooleanMirror ? boolean :
     TMirror extends RegExpMatchArray ? RegExp :
+    TMirror extends SymbolMirror ? symbol :
     TMirror extends ArrayMirror ? any[] :
     TMirror extends PromiseMirror ? Promise<any> :
     TMirror extends FunctionMirror ? Function : any;
@@ -334,46 +348,46 @@ export async function getMirrorMemberAsync(mirror: Mirror, memberName: string): 
 }
 
 export function isMirror(val: any): val is Mirror {
-    return val.__isMirror;
+    return val && val.__isMirror;
 }
 
-export function isUndefinedMirror(mirror: Mirror): mirror is UndefinedMirror {
-    return mirror.type === "undefined";
+export function isUndefinedMirror(mirror: Mirror | undefined): mirror is UndefinedMirror {
+    return isMirror(mirror) && mirror.type === "undefined";
 }
 
-export function isObjectMirror(mirror: Mirror): mirror is ObjectMirror {
-    return mirror.type === "object";
+export function isObjectMirror(mirror: Mirror | undefined): mirror is ObjectMirror {
+    return isMirror(mirror) && mirror.type === "object";
 }
 
-export function isStringMirror(mirror: Mirror): mirror is StringMirror {
-    return mirror.type === "string";
+export function isStringMirror(mirror: Mirror | undefined): mirror is StringMirror {
+    return isMirror(mirror) && mirror.type === "string";
 }
 
-export function isBooleanMirror(mirror: Mirror): mirror is BooleanMirror {
-    return mirror.type === "boolean";
+export function isBooleanMirror(mirror: Mirror | undefined): mirror is BooleanMirror {
+    return isMirror(mirror) && mirror.type === "boolean";
 }
 
-export function isNumberMirror(mirror: Mirror): mirror is NumberMirror {
-    return mirror.type === "number";
+export function isNumberMirror(mirror: Mirror | undefined): mirror is NumberMirror {
+    return isMirror(mirror) && mirror.type === "number";
 }
 
-export function isFunctionMirror(mirror: Mirror): mirror is FunctionMirror {
-    return mirror.type === "function";
+export function isFunctionMirror(mirror: Mirror | undefined): mirror is FunctionMirror {
+    return isMirror(mirror) && mirror.type === "function";
 }
 
-export function isNullMirror(mirror: Mirror): mirror is NullMirror {
+export function isNullMirror(mirror: Mirror | undefined): mirror is NullMirror {
     return isObjectMirror(mirror) && mirror.subtype === "null";
 }
 
-export function isPromiseMirror(mirror: Mirror): mirror is PromiseMirror {
+export function isPromiseMirror(mirror: Mirror | undefined): mirror is PromiseMirror {
     return isObjectMirror(mirror) && mirror.subtype === "promise";
 }
 
-export function isArrayMirror(mirror: Mirror): mirror is ArrayMirror {
+export function isArrayMirror(mirror: Mirror | undefined): mirror is ArrayMirror {
     return isObjectMirror(mirror) && mirror.subtype === "array";
 }
 
-export function isRegExpMirror(mirror: Mirror): mirror is RegExpMirror {
+export function isRegExpMirror(mirror: Mirror | undefined): mirror is RegExpMirror {
     return isObjectMirror(mirror) && mirror.subtype === "regexp";
 }
 
@@ -413,6 +427,10 @@ export function isUndefinedOrNullMirror(mirror: Mirror) {
     return isUndefinedMirror(mirror) || isNullMirror(mirror);
 }
 
+export function isStringValue(mirror: Mirror | undefined, val: string): boolean {
+    return isStringMirror(mirror) && mirror.value === val;
+}
+
 export async function getPromiseMirrorValueAsync(mirror: PromiseMirror): Promise<Mirror> {
     const promise = getValueForMirror(mirror);
     const value = await promise;
@@ -420,10 +438,10 @@ export async function getPromiseMirrorValueAsync(mirror: PromiseMirror): Promise
 }
 
 export interface MirrorPropertyDescriptor {
-    /** Property name or symbol description. */
-    name: string;
-    /** Property symbol object, if the property is of the `symbol` type. */
-    symbol?: Mirror;
+    /** Property name or symbol description. Only one of [name] or [symbol] will be set. */
+    name?: StringMirror;
+    /** Property symbol object, if the property is of the `symbol` type.  Only one of [name] or [symbol] will be set. */
+    symbol?: SymbolMirror;
     /** The value associated with the property. */
     value?: Mirror;
     /** True if the value associated with the property may be changed (data descriptors only). */
@@ -442,39 +460,100 @@ export interface MirrorPropertyDescriptor {
      * True if the type of this property descriptor may be changed and if the property may be
      * deleted from the corresponding object.
      */
-    configurable: boolean;
+    configurable?: boolean;
     /**
      * True if this property shows up during enumeration of the properties on the corresponding
      * object.
      */
-    enumerable: boolean;
+    enumerable?: boolean;
 }
 
-export async function getMirrorPropertyDescriptors(mirror: Mirror): Promise<MirrorPropertyDescriptor[]> {
-    const val = getValueForMirror(mirror);
+export async function getOwnPropertyDescriptorsAsync(mirror: Mirror): Promise<MirrorPropertyDescriptor[]> {
+    const obj = getValueForMirror(mirror);
 
     const result: MirrorPropertyDescriptor[] = [];
-    for (const name of Object.getOwnPropertyNames(val)) {
-        const descriptor = Object.getOwnPropertyDescriptor(val, name);
-        if (!descriptor) {
-            throw new Error(`Couldn't get descriptor for '${name}' in: ${JSON.stringify(mirror)}`);
+    for (const name of  Object.getOwnPropertyNames(obj)) {
+        if (name === "__proto__") {
+            // don't return prototypes here.  If someone wants one, they should call
+            // Object.getPrototypeOf. Note: this is the standard behavior of
+            // Object.getOwnPropertyNames.  However, the Inspector API returns these, and we want to
+            // filter them out.
+            continue;
         }
 
-        const mirrorDescriptor = convertDescriptor(descriptor);
-        mirrorDescriptor.name = name;
-        result.push(mirrorDescriptor);
+        const descriptor = Object.getOwnPropertyDescriptor(obj, name);
+        if (!descriptor) {
+            throw new Error(`Could not get descriptor for ${name} on: ${JSON.stringify(obj)}`);
+        }
+
+        result.push(await createMirrorPropertyDescriptorAsync(name, descriptor));
     }
 
-    for (const symbol of Object.getOwnPropertySymbols(val)) {
-        const descriptor = Object.getOwnPropertyDescriptor(val, symbol);
+    for (const symbol of Object.getOwnPropertySymbols(obj)) {
+        const descriptor = Object.getOwnPropertyDescriptor(obj, symbol);
         if (!descriptor) {
-            throw new Error(`Couldn't get descriptor for symbol '${symbol.toString()}' in: ${JSON.stringify(mirror)}`);
+            throw new Error(`Could not get descriptor for symbol ${symbol.toString()} on: ${JSON.stringify(obj)}`);
         }
 
-        const mirrorDescriptor = convertDescriptor(descriptor);
-        mirrorDescriptor.symbol = await getMirrorAsync(symbol);
-        result.push(mirrorDescriptor);
+        result.push(await createMirrorPropertyDescriptorAsync(symbol, descriptor));
     }
 
     return result;
+}
+
+async function createMirrorPropertyDescriptorAsync(
+    nameOrSymbol: string | symbol, descriptor: PropertyDescriptor): Promise<MirrorPropertyDescriptor> {
+
+    if (nameOrSymbol === undefined) {
+        throw new Error("Was not given a name or symbol");
+    }
+
+    const copy: MirrorPropertyDescriptor = {
+        configurable: descriptor.configurable,
+        writable: descriptor.writable,
+        enumerable: descriptor.enumerable,
+    };
+
+    if (descriptor.hasOwnProperty("value")) {
+        copy.value = await getMirrorAsync(descriptor.value);
+    }
+
+    if (descriptor.get) {
+        copy.get = await getMirrorAsync(descriptor.get);
+    }
+
+    if (descriptor.set) {
+        copy.set = await getMirrorAsync(descriptor.set);
+    }
+
+    if (typeof nameOrSymbol === "string") {
+        copy.name = await getMirrorAsync(nameOrSymbol);
+    }
+    else {
+        copy.symbol = await getMirrorAsync(nameOrSymbol);
+    }
+
+    return copy;
+}
+
+
+export async function getOwnPropertyAsync(mirror: Mirror, descriptor: MirrorPropertyDescriptor): Promise<Mirror> {
+    const obj = getValueForMirror(mirror);
+    const nameOrSymbolMirror = getNameOrSymbol(descriptor);
+    const nameOrSymbol = getValueForMirror(nameOrSymbolMirror);
+
+    const prop = obj[nameOrSymbol];
+    return await getMirrorAsync(prop);
+}
+
+async function getPropertyAsync(obj: any, name: string): Promise<any> {
+    return obj[name];
+}
+
+export function getNameOrSymbol(descriptor: MirrorPropertyDescriptor): SymbolMirror | StringMirror {
+    if (descriptor.symbol === undefined && descriptor.name === undefined) {
+        throw new Error("Descriptor didn't have symbol or name: " + JSON.stringify(descriptor));
+    }
+
+    return descriptor.symbol || descriptor.name!!;
 }
