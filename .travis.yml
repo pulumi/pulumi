@@ -8,6 +8,10 @@ matrix:
       env: NODE_VERSION=v10.7
     - os: osx
       env: NODE_VERSION=v6.10.3
+    - os: linux
+      env: NODE_VERSION=v11.0.0
+  allow_failures:
+    - env: NODE_VERSION=v11.0.0
 language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.

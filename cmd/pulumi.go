@@ -170,11 +170,9 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
 
-	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
+	// We have a set of options that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
 	// set to true.
 	if hasDebugCommands() {
-		cmd.AddCommand(newArchiveCommand())
-
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
 	}

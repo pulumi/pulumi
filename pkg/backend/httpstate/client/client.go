@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path"
 	"time"
 
@@ -331,8 +330,7 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
-	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool,
-	getContents func() (io.ReadCloser, int64, error)) (UpdateIdentifier, error) {
+	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool) (UpdateIdentifier, error) {
 
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -388,32 +386,6 @@ func (pc *Client) CreateUpdate(
 	var updateResponse apitype.UpdateProgramResponse
 	if err := pc.restCall(ctx, "POST", path, nil, &updateRequest, &updateResponse); err != nil {
 		return UpdateIdentifier{}, err
-	}
-
-	// Now upload the program if necessary.
-	if kind != apitype.DestroyUpdate && updateResponse.UploadURL != "" {
-		uploadURL, err := url.Parse(updateResponse.UploadURL)
-		if err != nil {
-			return UpdateIdentifier{}, errors.Wrap(err, "parsing upload URL")
-		}
-
-		contents, size, err := getContents()
-		if err != nil {
-			return UpdateIdentifier{}, err
-		}
-
-		resp, err := http.DefaultClient.Do(&http.Request{
-			Method:        "PUT",
-			URL:           uploadURL,
-			ContentLength: size,
-			Body:          contents,
-		})
-		if err != nil {
-			return UpdateIdentifier{}, err
-		}
-		if resp.StatusCode != http.StatusOK {
-			return UpdateIdentifier{}, errors.Errorf("upload failed: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-		}
 	}
 
 	return UpdateIdentifier{

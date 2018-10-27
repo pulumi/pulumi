@@ -592,7 +592,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
 func printJSON(v interface{}) error {
-	out, err := json.MarshalIndent(v, "", "    ")
+	out, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
