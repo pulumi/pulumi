@@ -41,7 +41,8 @@ import {
     isTruthy,
     isUndefinedMirror,
     isUndefinedOrNullMirror,
-    Mirror } from "./mirrors";
+    Mirror,
+    callFunctionOn} from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -1167,8 +1168,14 @@ async function getOrCreateEntryAsync(
     }
 }
 
-async function isOutputAsync(obj: any): Promise<boolean> {
-    return resource.Output.isInstance(obj);
+async function isOutputAsync(mirror: Mirror): Promise<boolean> {
+    const outputClassMirror = await getMirrorAsync(resource.Output);
+    const isInstanceMirror = await callFunctionOn(outputClassMirror, "isInstance", [mirror]);
+    if (!isBooleanMirror(isInstanceMirror)) {
+        throw new Error("Calling isInstance did not return a boolean: " + JSON.stringify(isInstanceMirror));
+    }
+
+    return isInstanceMirror.value;
 }
 
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
