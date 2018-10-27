@@ -219,7 +219,7 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
     }
 }
 
-export async function getPrototypeOfMirror(mirror: Mirror): Promise<Mirror> {
+export async function getPrototypeOfMirrorAsync(mirror: Mirror): Promise<Mirror> {
     const proto = Object.getPrototypeOf(getValueForMirror(mirror));
     return getMirrorAsync(proto);
 }

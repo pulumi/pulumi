@@ -25,13 +25,13 @@ import {
     FunctionMirror,
     getMirrorAsync,
     getMirrorMemberAsync,
-    getPrototypeOfMirror,
-    isStringMirror,
-    isUndefinedOrNullMirror,
-    isTruthy,
+    getPrototypeOfMirrorAsync,
     isFalsy,
-    Mirror,
-    isFunctionMirror} from "./mirrors";
+    isFunctionMirror,
+    isStringMirror,
+    isTruthy,
+    isUndefinedOrNullMirror,
+    Mirror } from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -337,7 +337,7 @@ async function analyzeFunctionMirrorAsync(
             name: functionDeclarationName,
         };
 
-        const protoMirror = await getPrototypeOfMirror(funcMirror);
+        const protoMirror = await getPrototypeOfMirrorAsync(funcMirror);
         const isAsyncFunction = await computeIsAsyncFunction(funcMirror);
 
         // Ensure that the prototype of this function is properly serialized as well. We only need to do
@@ -732,7 +732,7 @@ async function getOrCreateEntryAsync(
         return entry;
     }
 
-    if (isFunctionMirror(mirror) && await hasTruthyMemberAsync(obj, "doNotCapture")) {
+    if (isFunctionMirror(mirror) && await hasTruthyMemberAsync(mirror, "doNotCapture")) {
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
@@ -924,10 +924,10 @@ async function getOrCreateEntryAsync(
         //
         // We don't need to capture the prototype if the user is not capturing 'this' either.
         if (!entry.object!.proto) {
-            const proto = Object.getPrototypeOf(obj);
-            if (proto !== Object.prototype) {
+            const mirrorProto = await getPrototypeOfMirrorAsync(mirror);
+            if (mirrorProto !== await getMirrorAsync(Object.prototype)) {
                 entry.object!.proto = await getOrCreateEntryAsync(
-                    proto, undefined, context, serialize, logInfo);
+                    mirrorProto, undefined, context, serialize, logInfo);
             }
         }
     }
@@ -1085,7 +1085,7 @@ async function getOrCreateEntryAsync(
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
-        if (await hasTruthyMemberAsync(obj, "deploymentOnlyModule") || isLocalModule) {
+        if (await hasTruthyMemberAsync(mirror, "deploymentOnlyModule") || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
             //
             // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
@@ -1129,7 +1129,10 @@ async function getOrCreateEntryAsync(
 // emit it.  We would be unable to actually hook up the "super()" call as one of the base
 // constructors was set to not be captured.
 async function isDerivedNoCaptureConstructorAsync(func: FunctionMirror) {
-    for (let current: Mirror = func; isTruthy(current); current = await getPrototypeOfMirror(current)) {
+    for (let current: Mirror = func;
+         isTruthy(current);
+         current = await getPrototypeOfMirrorAsync(current)) {
+
         if (await hasTruthyMemberAsync(current, "doNotCapture")) {
             return true;
         }
