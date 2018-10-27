@@ -104,7 +104,7 @@ export interface ObjectMirror extends Mirror {
     type: "object";
 
     // ObjectMirrors always have a subtype.
-    subtype: "null" | "regexp" | "promise";
+    subtype: "null" | "regexp" | "promise" | "array";
 }
 
 export interface NullMirror extends ObjectMirror {
@@ -142,6 +142,17 @@ export interface PromiseMirror extends ObjectMirror {
     description?: never;
 }
 
+export interface ArrayMirror extends ObjectMirror {
+    subtype: "array";
+    className: "Array";
+    objectId: string;
+
+    // properties that never appear
+    value?: null;
+    unserializableValue?: never;
+    description?: never;
+}
+
 type MirrorType<T> =
     T extends undefined ? UndefinedMirror :
     T extends null ? NullMirror :
@@ -149,6 +160,7 @@ type MirrorType<T> =
     T extends number ? NumberMirror :
     T extends boolean ? BooleanMirror :
     T extends RegExp ? RegExpMirror :
+    T extends Array<infer U> ? ArrayMirror :
     T extends Promise<infer U> ? PromiseMirror :
     T extends Function ? FunctionMirror : Mirror;
 
@@ -159,6 +171,7 @@ type ValueType<TMirror> =
     TMirror extends NumberMirror ? number :
     TMirror extends BooleanMirror ? boolean :
     TMirror extends RegExpMatchArray ? RegExp :
+    TMirror extends ArrayMirror ? any[] :
     TMirror extends PromiseMirror ? Promise<any> :
     TMirror extends FunctionMirror ? Function : any;
 
@@ -308,6 +321,10 @@ export function isPromiseMirror(mirror: Mirror): mirror is PromiseMirror {
     return isObjectMirror(mirror) && mirror.subtype === "promise";
 }
 
+export function isArrayMirror(mirror: Mirror): mirror is ArrayMirror {
+    return isObjectMirror(mirror) && mirror.subtype === "array";
+}
+
 export function isFunctionMirror(mirror: Mirror): mirror is FunctionMirror {
     return mirror.type === "function";
 }
@@ -329,9 +346,6 @@ export function isTruthy(mirror: Mirror) {
         return mirror.value ? true : false;
     }
     if (isObjectMirror(mirror)) {
-        return true;
-    }
-    if (isPromiseMirror(mirror)) {
         return true;
     }
     if (isFunctionMirror(mirror)) {
