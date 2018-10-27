@@ -501,7 +501,7 @@ async function analyzeFunctionMirrorAsync(
             }
         }
 
-        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols( func.prototype)) {
+        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func.prototype)) {
             // instance method.
             const classProp = func.prototype[keyOrSymbol];
             addIfFunction(classProp, /*isStatic*/ false);
@@ -761,7 +761,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (await hasTruthyMemberAsync(obj, "doNotCapture")) {
+        if (await hasTruthyMemberAsync(mirror, "doNotCapture")) {
             // object has set itself as something that should not be captured.
             return true;
         }

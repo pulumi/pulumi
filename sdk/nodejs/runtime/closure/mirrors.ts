@@ -345,10 +345,12 @@ export function isTruthy(mirror: Mirror) {
     if (isNumberMirror(mirror)) {
         return mirror.value ? true : false;
     }
-    if (isObjectMirror(mirror)) {
+    if (isFunctionMirror(mirror)) {
         return true;
     }
-    if (isFunctionMirror(mirror)) {
+
+    // 'object' test handles things like regexp/array/promise/null.
+    if (isObjectMirror(mirror)) {
         return true;
     }
 
