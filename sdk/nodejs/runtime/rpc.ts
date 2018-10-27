@@ -56,7 +56,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
             resolveIsKnown(isKnown);
         };
 
-        (<any>onto)[k] = Output.create(
+        (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolveValue = resolve),
@@ -159,7 +159,7 @@ export function resolveProperties(
             // are still made available on the object.  This isn't ideal, because any code running
             // prior to the actual resource CRUD operation can't hang computations off of it, but
             // it's better than tossing it.
-            (res as any)[k] = Output.create(
+            (res as any)[k] = new Output(
                 res,
                 debuggablePromise(new Promise<any>(r => resolveValue = r)),
                 debuggablePromise(new Promise<boolean>(r => resolveIsKnown = r)));
