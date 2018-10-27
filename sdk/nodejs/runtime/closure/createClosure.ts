@@ -521,20 +521,23 @@ async function analyzeFunctionMirrorAsync(
 
         // Also, make sure our methods can also find this entry so they too can refer to
         // 'super'.
-        for (const descriptor of await getOwnPropertyDescriptorsAsync(func)) {
-            if (descriptor.name !== "length" &&
-                descriptor.name !== "name" &&
-                descriptor.name !== "prototype") {
+        for (const descriptor of await getOwnPropertyDescriptorsAsync(funcMirror)) {
+            if (isStringValue(descriptor.name, "length") ||
+                isStringValue(descriptor.name, "name") ||
+                isStringValue(descriptor.name, "prototype")) {
 
-                // static method.
-                const classProp = await getOwnPropertyAsync(func, descriptor);
-                addIfFunction(classProp, /*isStatic*/ true);
+                continue;
             }
+
+            // static method.
+            const classProp = await getOwnPropertyAsync(funcMirror, descriptor);
+            addIfFunction(classProp, /*isStatic*/ true);
         }
 
-        for (const descriptor of await getOwnPropertyDescriptorsAsync(func.prototype)) {
+        const funcPrototypeMirror = await getPropertyAsync(funcMirror, "prototype");
+        for (const descriptor of await getOwnPropertyDescriptorsAsync(funcPrototypeMirror)) {
             // instance method.
-            const classProp = await getOwnPropertyAsync(func.prototype, descriptor);
+            const classProp = await getOwnPropertyAsync(funcPrototypeMirror, descriptor);
             addIfFunction(classProp, /*isStatic*/ false);
         }
 
@@ -804,7 +807,7 @@ async function getOrCreateEntryAsync(
     return entry;
 
     async function doNotCaptureAsync(): Promise<boolean> {
-        if (!serialize(obj)) {
+        if (!serialize(mirror)) {
             // caller explicitly does not want us to capture this value.
             return true;
         }
@@ -885,13 +888,14 @@ async function getOrCreateEntryAsync(
             // array.  For example, if someone put on a property with a symbolic name, we'd lose
             // that here. Unlikely, but something we may need to handle in the future.
         }
-        else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
-            // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
-            entry.array = [];
-            for (const elem of obj) {
-                entry.array.push(await getOrCreateEntryAsync(elem, undefined, context, serialize, logInfo));
-            }
-        }
+        // TODO(cyrusn): Get 'Arguments' working again.
+        // else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
+        //     // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
+        //     entry.array = [];
+        //     for (const elem of obj) {
+        //         entry.array.push(await getOrCreateEntryAsync(elem, undefined, context, serialize, logInfo));
+        //     }
+        // }
         else {
             // For all other objects, serialize out the properties we've been asked to serialize
             // out.
