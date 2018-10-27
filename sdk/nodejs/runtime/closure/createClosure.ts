@@ -837,15 +837,21 @@ async function getOrCreateEntryAsync(
             entry.promise = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo);
         }
         else if (obj instanceof Array) {
-            // Recursively serialize elements of an array. Note: we use getOwnPropertyNames as the array
-            // may be sparse and we want to properly respect that when serializing.
+            // Recursively serialize elements of an array. Note: we use getOwnPropertyNames as the
+            // array may be sparse and we want to properly respect that when serializing.
             entry.array = [];
-            for (const key of Object.getOwnPropertyNames(obj)) {
-                if (key !== "length" && obj.hasOwnProperty(key)) {
-                    entry.array[<any>key] = await getOrCreateEntryAsync(
-                        obj[<any>key], undefined, context, serialize, logInfo);
+            for (const descriptor of await getOwnPropertyDescriptors(obj)) {
+                if (descriptor.name !== undefined &&
+                    descriptor.name !== "length") {
+
+                    entry.array[<any>descriptor.name] = await getOrCreateEntryAsync(
+                        await getOwnPropertyAsync(obj, descriptor), undefined, context, serialize, logInfo);
                 }
             }
+
+            // TODO(cyrusn): It feels weird that we're not examining any other descriptors of an
+            // array.  For example, if someone put on a property with a symbolic name, we'd lose
+            // that here. Unlikely, but something we may need to handle in the future.
         }
         else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
@@ -1276,6 +1282,14 @@ async function getOwnPropertyDescriptors(obj: any): Promise<ClosurePropertyDescr
     const result: ClosurePropertyDescriptor[] = [];
 
     for (const name of Object.getOwnPropertyNames(obj)) {
+        if (name === "__proto__") {
+            // don't return prototypes here.  If someone wants one, they should call
+            // Object.getPrototypeOf. Note: this is the standard behavior of
+            // Object.getOwnPropertyNames.  However, the Inspector API returns these, and we want to
+            // filter them out.
+            continue;
+        }
+
         const descriptor = Object.getOwnPropertyDescriptor(obj, name);
         if (!descriptor) {
             throw new Error(`Could not get descriptor for ${name} on: ${JSON.stringify(obj)}`);
