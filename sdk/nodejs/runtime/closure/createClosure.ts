@@ -737,12 +737,14 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (obj && await hasTruthyMemberAsync(obj, "doNotCapture")) {
+        if (await hasTruthyMemberAsync(obj, "doNotCapture")) {
             // object has set itself as something that should not be captured.
             return true;
         }
 
-        if (await isDerivedNoCaptureConstructorAsync(obj)) {
+        if (obj instanceof Function &&
+            await isDerivedNoCaptureConstructorAsync(obj)) {
+
             // this was a constructor that derived from something that should not be captured.
             return true;
         }
