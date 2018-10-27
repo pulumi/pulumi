@@ -569,6 +569,34 @@ return () => { console.log("Just a global object reference"); };
 `,
     });
     {
+        const a = -0;
+        const b = -0.0;
+        const c = Infinity;
+        const d = -Infinity;
+        const e = NaN;
+        const f = Number.MAX_SAFE_INTEGER;
+        const g = Number.MAX_VALUE;
+        const h = Number.MIN_SAFE_INTEGER;
+        const i = Number.MIN_VALUE;
+
+        cases.push({
+            title: "Handle edge-case literals",
+            func: () => { const x = [a, b, c, d, e, f, g, h, i]; },
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ a: -0, b: -0, c: Number.POSITIVE_INFINITY, d: Number.NEGATIVE_INFINITY, e: Number.NaN, f: 9007199254740991, g: 1.7976931348623157e+308, h: -9007199254740991, i: 5e-324 }) {
+
+return () => { const x = [a, b, c, d, e, f, g, h, i]; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+    {
         const wcap = "foo";
         const xcap = 97;
         const ycap = [ true, -1, "yup" ];
