@@ -67,7 +67,7 @@ export function groupBy<T, V>(
         }
         return Output.create(array).apply(kvps => {
             const obj: {[key: string]: V[]} = {};
-            for (let kvp of kvps) {
+            for (const kvp of kvps) {
                 let r = obj[<any>kvp[0]];
                 if (!r) {
                     r = [];

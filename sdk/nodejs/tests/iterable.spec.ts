@@ -33,7 +33,7 @@ describe("iterable", () => {
         const isKnown = await result.isKnown;
         assert.equal(isKnown, true);
         const value = await result.promise();
-        assert.deepEqual(value, {"i-1234":"192.168.1.2","i-5678":"192.168.1.5"});
+        assert.deepEqual(value, { "i-1234": "192.168.1.2", "i-5678": "192.168.1.5" });
     }));
     it("groupBy does its job", asyncTest(async () => {
         interface Instance {
@@ -51,6 +51,6 @@ describe("iterable", () => {
         const isKnown = await result.isKnown;
         assert.equal(isKnown, true);
         const value = await result.promise();
-        assert.deepEqual(value, {"us-east-1a":["i-1234","i-5678"],"us-west-2c":["i-1538"]});
+        assert.deepEqual(value, { "us-east-1a": ["i-1234", "i-5678"], "us-west-2c": ["i-1538"] });
     }));
 });

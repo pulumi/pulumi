@@ -294,16 +294,6 @@ export const testingOptions = {
  */
 export class Output<T> {
     /**
-     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
-     * values as necessary.
-     */
-    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
-    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
-    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
-        return output<T>(<any>val);
-    }
-
-    /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
@@ -375,6 +365,16 @@ export class Output<T> {
     public readonly get: () => T;
 
     // Statics
+
+    /**
+     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
+     * values as necessary.
+     */
+    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
+    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+        return output<T>(<any>val);
+    }
 
     /**
      * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
@@ -577,7 +577,8 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
     }
 }
 
-async function getPromisedObject<T>(keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
+async function getPromisedObject<T>(
+        keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
     const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await kvp.value.promise();
