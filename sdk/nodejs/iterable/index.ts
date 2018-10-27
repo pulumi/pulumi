@@ -28,9 +28,9 @@ import { Input, Output } from "../resource";
  *
  */
 export function toObject<T, V>(
-        iter: Input<Input<T>[]>, selector: (t: T) => [Input<string>, Input<V>]): Output<{[key: string]: V}> {
+        iter: Input<Input<T>[]>, selector: (t: T) => Input<[Input<string>, Input<V>]>): Output<{[key: string]: V}> {
     return Output.create(iter).apply(elems => {
-        const array: [Input<string>, Input<V>][] = [];
+        const array: Input<[Input<string>, Input<V>]>[] = [];
         for (const e of elems) {
             array.push(selector(<any>e));
         }
@@ -59,9 +59,9 @@ export function toObject<T, V>(
  *
  */
 export function groupBy<T, V>(
-        iter: Input<Input<T>[]>, selector: (t: T) => [Input<string>, Input<V>]): Output<{[key: string]: V[]}> {
+        iter: Input<Input<T>[]>, selector: (t: T) => Input<[Input<string>, Input<V>]>): Output<{[key: string]: V[]}> {
     return Output.create(iter).apply(elems => {
-        const array: [Input<string>, Input<V>][] = [];
+        const array: Input<[Input<string>, Input<V>]>[] = [];
         for (const e of elems) {
             array.push(selector(<any>e));
         }
