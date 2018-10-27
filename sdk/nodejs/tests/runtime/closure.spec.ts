@@ -1417,6 +1417,224 @@ return function () { console.log(v); };
     }
 
     {
+        const x = { a: 1, b: true };
+
+        const o1 = output(x);
+        const o2 = output(x);
+
+        const y = { o1, o2 };
+        const o3 = output(y);
+        const o4 = output(y);
+
+        const o5: any = { o3, o4 };
+
+        o5.a = output(y);
+        o5.b = y;
+        o5.c = [output(y)];
+        o5.d = [y];
+
+        o5.a_1 = o5.a;
+        o5.b_1 = o5.b;
+        o5.c_1 = o5.c;
+        o5.d_1 = o5.d;
+
+        const o6 = output(o5);
+
+        const v = { x, o1, o2, y, o3, o4, o5, o6 };
+        cases.push({
+            title: "Capturing same value through outputs multiple times",
+            func: function () { console.log(v); },
+            expectText: `exports.handler = __f0;
+
+var __v = {};
+var __v_x = {a: 1, b: true};
+__v.x = __v_x;
+var __v_o1_proto = {};
+__f1.prototype = __v_o1_proto;
+Object.defineProperty(__v_o1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__v_o1_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__v_o1_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __v_o1 = Object.create(__v_o1_proto);
+var __v_o1_value = {a: 1, b: true};
+__v_o1.value = __v_o1_value;
+__v.o1 = __v_o1;
+var __v_o2 = Object.create(__v_o1_proto);
+var __v_o2_value = {a: 1, b: true};
+__v_o2.value = __v_o2_value;
+__v.o2 = __v_o2;
+var __v_y = {};
+__v_y.o1 = __v_o1;
+__v_y.o2 = __v_o2;
+__v.y = __v_y;
+var __v_o3 = Object.create(__v_o1_proto);
+var __v_o3_value = {};
+var __v_o3_value_o1 = {a: 1, b: true};
+__v_o3_value.o1 = __v_o3_value_o1;
+var __v_o3_value_o2 = {a: 1, b: true};
+__v_o3_value.o2 = __v_o3_value_o2;
+__v_o3.value = __v_o3_value;
+__v.o3 = __v_o3;
+var __v_o4 = Object.create(__v_o1_proto);
+var __v_o4_value = {};
+var __v_o4_value_o1 = {a: 1, b: true};
+__v_o4_value.o1 = __v_o4_value_o1;
+var __v_o4_value_o2 = {a: 1, b: true};
+__v_o4_value.o2 = __v_o4_value_o2;
+__v_o4.value = __v_o4_value;
+__v.o4 = __v_o4;
+var __v_o5 = {};
+__v_o5.o3 = __v_o3;
+__v_o5.o4 = __v_o4;
+var __v_o5_a = Object.create(__v_o1_proto);
+var __v_o5_a_value = {};
+var __v_o5_a_value_o1 = {a: 1, b: true};
+__v_o5_a_value.o1 = __v_o5_a_value_o1;
+var __v_o5_a_value_o2 = {a: 1, b: true};
+__v_o5_a_value.o2 = __v_o5_a_value_o2;
+__v_o5_a.value = __v_o5_a_value;
+__v_o5.a = __v_o5_a;
+__v_o5.b = __v_y;
+var __v_o5_c = [];
+var __v_o5_c_0 = Object.create(__v_o1_proto);
+var __v_o5_c_0_value = {};
+var __v_o5_c_0_value_o1 = {a: 1, b: true};
+__v_o5_c_0_value.o1 = __v_o5_c_0_value_o1;
+var __v_o5_c_0_value_o2 = {a: 1, b: true};
+__v_o5_c_0_value.o2 = __v_o5_c_0_value_o2;
+__v_o5_c_0.value = __v_o5_c_0_value;
+__v_o5_c[0] = __v_o5_c_0;
+__v_o5.c = __v_o5_c;
+var __v_o5_d = [];
+__v_o5_d[0] = __v_y;
+__v_o5.d = __v_o5_d;
+__v_o5.a_1 = __v_o5_a;
+__v_o5.b_1 = __v_y;
+__v_o5.c_1 = __v_o5_c;
+__v_o5.d_1 = __v_o5_d;
+__v.o5 = __v_o5;
+var __v_o6 = Object.create(__v_o1_proto);
+var __v_o6_value = {};
+var __v_o6_value_o3 = {};
+var __v_o6_value_o3_o1 = {a: 1, b: true};
+__v_o6_value_o3.o1 = __v_o6_value_o3_o1;
+var __v_o6_value_o3_o2 = {a: 1, b: true};
+__v_o6_value_o3.o2 = __v_o6_value_o3_o2;
+__v_o6_value.o3 = __v_o6_value_o3;
+var __v_o6_value_o4 = {};
+var __v_o6_value_o4_o1 = {a: 1, b: true};
+__v_o6_value_o4.o1 = __v_o6_value_o4_o1;
+var __v_o6_value_o4_o2 = {a: 1, b: true};
+__v_o6_value_o4.o2 = __v_o6_value_o4_o2;
+__v_o6_value.o4 = __v_o6_value_o4;
+var __v_o6_value_a = {};
+var __v_o6_value_a_o1 = {a: 1, b: true};
+__v_o6_value_a.o1 = __v_o6_value_a_o1;
+var __v_o6_value_a_o2 = {a: 1, b: true};
+__v_o6_value_a.o2 = __v_o6_value_a_o2;
+__v_o6_value.a = __v_o6_value_a;
+var __v_o6_value_b = {};
+var __v_o6_value_b_o1 = {a: 1, b: true};
+__v_o6_value_b.o1 = __v_o6_value_b_o1;
+var __v_o6_value_b_o2 = {a: 1, b: true};
+__v_o6_value_b.o2 = __v_o6_value_b_o2;
+__v_o6_value.b = __v_o6_value_b;
+var __v_o6_value_c = [];
+var __v_o6_value_c_0 = {};
+var __v_o6_value_c_0_o1 = {a: 1, b: true};
+__v_o6_value_c_0.o1 = __v_o6_value_c_0_o1;
+var __v_o6_value_c_0_o2 = {a: 1, b: true};
+__v_o6_value_c_0.o2 = __v_o6_value_c_0_o2;
+__v_o6_value_c[0] = __v_o6_value_c_0;
+__v_o6_value.c = __v_o6_value_c;
+var __v_o6_value_d = [];
+var __v_o6_value_d_0 = {};
+var __v_o6_value_d_0_o1 = {a: 1, b: true};
+__v_o6_value_d_0.o1 = __v_o6_value_d_0_o1;
+var __v_o6_value_d_0_o2 = {a: 1, b: true};
+__v_o6_value_d_0.o2 = __v_o6_value_d_0_o2;
+__v_o6_value_d[0] = __v_o6_value_d_0;
+__v_o6_value.d = __v_o6_value_d;
+var __v_o6_value_a_1 = {};
+var __v_o6_value_a_1_o1 = {a: 1, b: true};
+__v_o6_value_a_1.o1 = __v_o6_value_a_1_o1;
+var __v_o6_value_a_1_o2 = {a: 1, b: true};
+__v_o6_value_a_1.o2 = __v_o6_value_a_1_o2;
+__v_o6_value.a_1 = __v_o6_value_a_1;
+var __v_o6_value_b_1 = {};
+var __v_o6_value_b_1_o1 = {a: 1, b: true};
+__v_o6_value_b_1.o1 = __v_o6_value_b_1_o1;
+var __v_o6_value_b_1_o2 = {a: 1, b: true};
+__v_o6_value_b_1.o2 = __v_o6_value_b_1_o2;
+__v_o6_value.b_1 = __v_o6_value_b_1;
+var __v_o6_value_c_1 = [];
+var __v_o6_value_c_1_0 = {};
+var __v_o6_value_c_1_0_o1 = {a: 1, b: true};
+__v_o6_value_c_1_0.o1 = __v_o6_value_c_1_0_o1;
+var __v_o6_value_c_1_0_o2 = {a: 1, b: true};
+__v_o6_value_c_1_0.o2 = __v_o6_value_c_1_0_o2;
+__v_o6_value_c_1[0] = __v_o6_value_c_1_0;
+__v_o6_value.c_1 = __v_o6_value_c_1;
+var __v_o6_value_d_1 = [];
+var __v_o6_value_d_1_0 = {};
+var __v_o6_value_d_1_0_o1 = {a: 1, b: true};
+__v_o6_value_d_1_0.o1 = __v_o6_value_d_1_0_o1;
+var __v_o6_value_d_1_0_o2 = {a: 1, b: true};
+__v_o6_value_d_1_0.o2 = __v_o6_value_d_1_0_o2;
+__v_o6_value_d_1[0] = __v_o6_value_d_1_0;
+__v_o6_value.d_1 = __v_o6_value_d_1;
+__v_o6.value = __v_o6_value;
+__v.o6 = __v_o6;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ v: __v }) {
+
+return function () { console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const obj = { method1() { return this.method2(); }, method2: () => { return; } };
 
         cases.push({

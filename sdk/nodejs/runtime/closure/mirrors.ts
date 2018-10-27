@@ -198,19 +198,12 @@ export function getValueForMirror<TMirror extends Mirror>(mirror: TMirror): Valu
 }
 
 export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
-    // If we were passed in a mirror, just return it back out.  This happens in one case during
-    // serialization.  Specifically, when we have an Output<V>.  In that case we'll await the
-    // Output.promise() and get back a Mirror for the value inside.  That part works fine.
-    //
-    // **However**, we then want to serialize over "new SerializedOutput(mirror)" over. This is the
-    // the type that implements the Output interface, but has the 'get()' method which will return
-    // the output's value on the cloud-runtime side of things.  When we make the mirror for the
-    // SerializedOutput instance, and then try to walk it, we'll then hit this inner 'mirror' that
-    // it points at.  We don't want to then try to serialize an *actual* mirror (which would wrap
-    // the mirror in more layers or mirrors).  We just want to realize that SerializedOutput is
-    // pointing at a mirror already, and just handle that as normal.
+    // We should never be passed a Mirror here.  It indicates that somehow during serialization we
+    // creates a Mirror, then pointed at that Mirror with something, then tried to actually
+    // serialize the Mirror (instead of the value the Mirror represents).  This should not be
+    // possible and indicates a bug somewhere in serialization.  Catch early to prevent any bugs.
     if (isMirror(val)) {
-        return <any>val;
+        throw new Error("Should never be trying to get the Mirror for a Mirror: " + JSON.stringify(val));
     }
 
     let mirror = valToMirror.get(val);

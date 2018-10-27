@@ -196,6 +196,9 @@ interface ContextFrame {
  * into the environment for a closure.  The output will go from something you call 'apply' on to
  * transform during deployment, to something you call .get on to get the raw underlying value from
  * inside a cloud callback.
+ *
+ * IMPORTANT: Do not change the structure of this type.  Closure serialization code takes a
+ * dependency on the actual shape (including the names of properties like 'value').
  */
 class SerializedOutput<T> implements resource.Output<T> {
     /* @internal */ public isKnown: Promise<boolean>;
@@ -850,55 +853,9 @@ async function getOrCreateEntryAsync(
             entry.function = await analyzeFunctionMirrorAsync(mirror, context, serialize, logInfo);
         }
         else if (await isOutputAsync(mirror)) {
-            // First, extract out the inner value this Output wraps.
-            const promiseMirror = await callFunctionOn(mirror, "promise");
-            if (!isPromiseMirror(promiseMirror)) {
-                throw new Error("output.promise() did not return a promise: " + JSON.stringify(promiseMirror));
-            }
-
-            const valMirror = await getPromiseMirrorValueAsync(promiseMirror);
-
-            // Now, wrap that inner value with a SerializedOutput value.  This is an Output that
-            // will work at cloud-runtime, with a proper .get impl that returns the value.
-            //
-            // Note: there's definite subtlty here.  The value we're passing into SerializedOutput
-            // is a Mirror. If we then try to serialize SerializedOutput, we'd normally end up
-            // serializing a Mirror (i.e. we'd get a Mirror<Mirror>).  However, that problem is
-            // avoided because serialization will not try to double wrap Mirrors.
-            const serializedOutput = new SerializedOutput(valMirror);
-
-            const serializedOutputMirror = await getMirrorAsync(serializedOutput);
-            entry.output = await getOrCreateEntryAsync(serializedOutputMirror, undefined, context, serialize, logInfo);
-
-            // // captures the frames up to this point. so we can give a good message if we
-            // // fail when we resume serializing this promise.
-            // const framesCopy = context.frames.slice();
-
-            // // Push handling this output to the async work queue.  It will be processed in batches
-            // // after we've walked as much of the graph synchronously as possible.
-            // context.asyncWorkQueue.push(async () => {
-            //     const val = await obj.promise();
-            //     const oldFrames = context.frames;
-            //     context.frames = framesCopy;
-            //     entry.output = getOrCreateEntry(new SerializedOutput(val), undefined, context, serialize, logInfo);
-            //     context.frames = oldFrames;
-            // });
+            entry.output = await createOutputEntryAsync(mirror);
         }
         else if (isPromiseMirror(mirror)) {
-            // // captures the frames up to this point. so we can give a good message if we
-            // // fail when we resume serializing this promise.
-            // const framesCopy = context.frames.slice();
-
-            // // Push handling this promise to the async work queue.  It will be processed in batches
-            // // after we've walked as much of the graph synchronously as possible.
-            // context.asyncWorkQueue.push(async () => {
-            //     const val = await obj;
-            //     const oldFrames = context.frames;
-            //     context.frames = framesCopy;
-            //     entry.promise = getOrCreateEntry(val, undefined, context, serialize, logInfo);
-            //     context.frames = oldFrames;
-            // });
-
             const underlyingValueMirror = await getPromiseMirrorValueAsync(mirror);
             entry.promise = await getOrCreateEntryAsync(underlyingValueMirror, undefined, context, serialize, logInfo);
         }
@@ -1182,6 +1139,72 @@ async function getOrCreateEntryAsync(
                 ? upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1))
                 : normalizedModuleName;
         }
+    }
+
+    async function createOutputEntryAsync(outputMirror: Mirror): Promise<Entry> {
+        // We have an Output<T>.  This is effectively just a wrapped value 'V' at deployment-time.
+        // We want to effectively generate a value post serialization effectively equivalent to `new
+        // SerializedOutput(V)`.  It is tempting to want to just do the following:
+        //
+        //      const val = await output.promise();
+        //      return await getOrCreateEntryAsync(new SerializedOutput(val), undefined, context, serialize, logInfo);
+        //
+        // That seems like it would work.  We're instantiating a SerializedOutput that will point at
+        // the underlying 'val' instance, and we're then serializing that entire object to be
+        // rehydrated on the other side.
+        //
+        // However, there's a subtlety here that we need to avoid.  Specifically, in a world where
+        // we are never actually looking at real values, but are instead looking at 'Mirrors' of
+        // values, we never want to serialize something that actually points at a Mirror (like the
+        // SerializedOutput instance would).  The reason for this is that if we then go to serialize
+        // the SerializedOutput, our Inspector APIs will hit the Mirror value and then get a Mirror
+        // for *that* Mirror. I.e. a Mirror<Mirror>.  This is not what we want and will cause us to
+        // generate code that actually produces a Mirror object at cloud-runtime time instead of
+        // producing the real value.
+        //
+        // To avoid this, do something tricky.  We first create an 'empty' SerializedObject.  i.e.
+        //
+        //      new SerializedOutput(undefined)
+        //
+        // We then serialize that instance (which we know must be an 'Object-Entry').  We then
+        // serialize out 'V', getting back the Entry for it.  We then manually jam in that Entry
+        // into the Object-Entry for the SerializedOutput instance.
+
+        // First, extract out the inner value this Output wraps.
+        const promiseMirror = await callFunctionOn(mirror, "promise");
+        if (!isPromiseMirror(promiseMirror)) {
+            throw new Error("output.promise() did not return a promise: " + JSON.stringify(promiseMirror));
+        }
+
+        // Then, get the underlying value of the out, and create the environment entry for it.
+        const valMirror = await getPromiseMirrorValueAsync(promiseMirror);
+        const valEntry = await getOrCreateEntryAsync(valMirror, undefined, context, serialize, logInfo);
+
+        // Now, create an empty-serialized output and create an environment entry for it.  It
+        // will have a property 'value' that points to an Entry for 'undefined'.
+        const emptyOutputMirror = await getMirrorAsync(new SerializedOutput(undefined));
+        const emptyOutputEntry = await getOrCreateEntryAsync(emptyOutputMirror, undefined, context, serialize, logInfo);
+
+        // validate that we created the right sort of entry.  It should be an Object-Entry with
+        // a single property called 'value' in it.
+        if (!emptyOutputEntry.object) {
+            throw new Error("Did not get an 'object' in the entry for a serialized output");
+        }
+
+        const envEntries = [...emptyOutputEntry.object.env.entries()];
+        if (envEntries.length !== 1) {
+            throw new Error("Expected SerializedOutput object to only have one property: " + envEntries.length);
+        }
+
+        const [envEntry] = envEntries[0];
+        if (envEntry.json !== "value") {
+            throw new Error("Expected SerializedOutput object sole property to be called 'value': " + envEntry.json);
+        }
+
+        // Everything looked good.  Replace the `"value" -> undefined-Entry` mapping in this entry
+        // with `"value" -> V-Entry`
+        emptyOutputEntry.object.env.set(envEntry, { entry: valEntry });
+        return emptyOutputEntry;
     }
 }
 
