@@ -546,8 +546,10 @@ export async function getOwnPropertyAsync(mirror: Mirror, descriptor: MirrorProp
     return await getMirrorAsync(prop);
 }
 
-async function getPropertyAsync(obj: any, name: string): Promise<any> {
-    return obj[name];
+export async function getPropertyAsync(mirror: Mirror, name: string): Promise<Mirror> {
+    const obj = getValueForMirror(mirror);
+    const prop = obj[name];
+    return await getMirrorAsync(prop);
 }
 
 export function getNameOrSymbol(descriptor: MirrorPropertyDescriptor): SymbolMirror | StringMirror {

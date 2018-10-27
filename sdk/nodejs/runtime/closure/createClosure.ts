@@ -21,15 +21,16 @@ import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parse
 import { rewriteSuperReferences } from "./rewriteSuper";
 
 import {
-    MirrorPropertyDescriptor,
     callAccessorOn,
+    callFunctionOn,
     FunctionMirror,
-    isStringValue,
     getMirrorAsync,
     getMirrorMemberAsync,
     getNameOrSymbol,
     getOwnPropertyAsync,
+    getOwnPropertyDescriptorsAsync,
     getPromiseMirrorValueAsync,
+    getPropertyAsync,
     getPrototypeOfMirrorAsync,
     isArrayMirror,
     isBooleanMirror,
@@ -41,12 +42,12 @@ import {
     isPromiseMirror,
     isRegExpMirror,
     isStringMirror,
+    isStringValue,
     isTruthy,
     isUndefinedMirror,
     isUndefinedOrNullMirror,
     Mirror,
-    callFunctionOn,
-    getOwnPropertyDescriptorsAsync} from "./mirrors";
+    MirrorPropertyDescriptor } from "./mirrors";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -396,7 +397,7 @@ async function analyzeFunctionMirrorAsync(
 
         // capture any properties placed on the function itself.  Don't bother with
         // "length/name" as those are not things we can actually change.
-        for (const descriptor of await getOwnPropertyDescriptors(funcMirror)) {
+        for (const descriptor of await getOwnPropertyDescriptorsAsync(funcMirror)) {
             if (isStringValue(descriptor.name, "length") || isStringValue(descriptor.name, "name")) {
                 continue;
             }
@@ -520,7 +521,7 @@ async function analyzeFunctionMirrorAsync(
 
         // Also, make sure our methods can also find this entry so they too can refer to
         // 'super'.
-        for (const descriptor of await getOwnPropertyDescriptors(func)) {
+        for (const descriptor of await getOwnPropertyDescriptorsAsync(func)) {
             if (descriptor.name !== "length" &&
                 descriptor.name !== "name" &&
                 descriptor.name !== "prototype") {
@@ -531,7 +532,7 @@ async function analyzeFunctionMirrorAsync(
             }
         }
 
-        for (const descriptor of await getOwnPropertyDescriptors(func.prototype)) {
+        for (const descriptor of await getOwnPropertyDescriptorsAsync(func.prototype)) {
             // instance method.
             const classProp = await getOwnPropertyAsync(func.prototype, descriptor);
             addIfFunction(classProp, /*isStatic*/ false);
@@ -711,12 +712,16 @@ function getFunctionName(loc: FunctionLocation): string {
     return "<anonymous>";
 }
 
-async function isDefaultFunctionPrototypeAsync(funcMirror: Function, prototypePropMirror: any) {
+async function isDefaultFunctionPrototypeAsync(funcMirror: FunctionMirror, prototypePropMirror: Mirror) {
     // The initial value of prototype on any newly-created Function instance is a new instance of
     // Object, but with the own-property 'constructor' set to point back to the new function.
-    if (prototypeProp && prototypeProp.constructor === func) {
-        const descriptors = await getOwnPropertyDescriptors(prototypeProp);
-        return descriptors.length === 1 && descriptors[0].name === "constructor";
+    if (isTruthy(prototypePropMirror) &&
+        await getPropertyAsync(prototypePropMirror, "constructor") === funcMirror) {
+
+        const descriptors = await getOwnPropertyDescriptorsAsync(prototypePropMirror);
+        return descriptors.length === 1 &&
+               descriptors[0].name &&
+               descriptors[0].name.value === "constructor";
     }
 
     return false;
@@ -867,7 +872,7 @@ async function getOrCreateEntryAsync(
             // Recursively serialize elements of an array. Note: we use getOwnPropertyDescriptors as the array
             // may be sparse and we want to properly respect that when serializing.
             entry.array = [];
-            for (const descriptor of await getOwnPropertyDescriptors(mirror)) {
+            for (const descriptor of await getOwnPropertyDescriptorsAsync(mirror)) {
                 if (descriptor.name !== undefined &&
                     !isStringValue(descriptor.name, "length")) {
 
@@ -922,7 +927,7 @@ async function getOrCreateEntryAsync(
     // only a subset of properties are used on this object.
     async function serializeAllObjectPropertiesAsync(environment: PropertyMap) {
         // we wanted to capture everything (including the prototype chain)
-        const descriptors = await getOwnPropertyDescriptors(mirror);
+        const descriptors = await getOwnPropertyDescriptorsAsync(mirror);
 
         for (const descriptor of descriptors) {
             // we're about to recurse inside this object.  In order to prever infinite
@@ -998,11 +1003,11 @@ async function getOrCreateEntryAsync(
             // loops, put a dummy entry in the environment map.  That way, if we hit
             // this object again while recursing we won't try to generate this property.
             environment.set(keyEntry, <any>undefined);
-            const objPropValue = await getPropertyAsync(obj, propName);
+            const objPropValue = await getPropertyAsync(mirror, propName);
 
             const propertyInfo = await getPropertyInfoAsync(mirror, propName);
             if (!propertyInfo) {
-                if (objPropValue !== undefined) {
+                if (!isUndefinedMirror(objPropValue)) {
                     throw new Error("Could not find property info for real property on object: " + propName);
                 }
 
