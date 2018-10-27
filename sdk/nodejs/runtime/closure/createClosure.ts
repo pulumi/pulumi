@@ -848,7 +848,7 @@ async function getOrCreateEntryAsync(
             // Serialize functions recursively, and store them in a closure property.
             entry.function = await analyzeFunctionMirrorAsync(mirror, context, serialize, logInfo);
         }
-        else if (resource.Output.isInstance(obj)) {
+        else if (await isOutputAsync(obj)) {
             const val = await obj.promise();
             entry.output = await getOrCreateEntryAsync(new SerializedOutput(val), undefined, context, serialize, logInfo);
 
@@ -1165,6 +1165,10 @@ async function getOrCreateEntryAsync(
                 : normalizedModuleName;
         }
     }
+}
+
+async function isOutputAsync(obj: any): Promise<boolean> {
+    return resource.Output.isInstance(obj);
 }
 
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
