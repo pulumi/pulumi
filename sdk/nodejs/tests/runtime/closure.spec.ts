@@ -5217,6 +5217,46 @@ return function () { console.log(regex); foo(); };
         });
     }
 
+    {
+        const regex = /(abc)/;
+
+        function foo() {
+            console.log(regex);
+        }
+
+        cases.push({
+            title: "Regex #3 (no flags)",
+            // @ts-ignore
+            func: function() { console.log(regex); foo(); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)", "");
+
+function __foo() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function /*foo*/() {
+            console.log(regex);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function () { console.log(regex); foo(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
