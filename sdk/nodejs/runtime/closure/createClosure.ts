@@ -87,7 +87,7 @@ export interface Entry {
     json?: any;
 
     // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
-    regexp?: RegExp;
+    regexp?: { source: string, flags: string };
 
     // a closure we are dependent on.
     function?: FunctionInfo;
