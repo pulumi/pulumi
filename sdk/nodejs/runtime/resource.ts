@@ -183,7 +183,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // Note: a resource urn will always get a value, and thus the output property
     // for it can always run .apply calls.
     let resolveURN: (urn: URN) => void;
-    (res as any).urn = Output.create(
+    (res as any).urn = new Output(
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
@@ -195,7 +195,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     if (custom) {
         let resolveValue: (v: ID) => void;
         let resolvePerformApply: (v: boolean) => void;
-        (res as any).id = Output.create(
+        (res as any).id = new Output(
             res,
             debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
             debuggablePromise(new Promise<boolean>(

@@ -294,6 +294,76 @@ export const testingOptions = {
  */
 export class Output<T> {
     /**
+     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
+     * values as necessary.
+     */
+    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
+    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+        return output<T>(<any>val);
+    }
+
+    /**
+     * createMap takes an array of T values, and a selector that produces key/value pairs from those inputs,
+     * and converts this array into an output map with those keys and values.
+     *
+     * For instance, given an array as follows
+     *
+     *     [{ s: "a", n: 1 }, { s: "b", n: 2 }, { s: "c", n: 3 }]
+     *
+     * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting map will contain
+     *
+     *     [[ "a", 1 ], [ "b", 2 ], [ "c", 3 ]]
+     *
+     */
+    public static createMap<T, K, V>(
+            iter: Input<Input<T>[]>, selector: (t: T) => [Input<K>, Input<V>]): Output<Map<K, V>> {
+        return Output.create(iter).apply(elems => {
+            const array: [Input<K>, Input<V>][] = [];
+            for (const e of elems) {
+                array.push(selector(<any>e));
+            }
+            return output(array).apply(a => new Map<K, V>(<any>a));
+        });
+    }
+
+    /**
+     * createGroupByMap takes an array of T values, and a selector that prduces key/value pairs from those inputs,
+     * and converts this array into an output map, with those keys, and where each entry is an array of values,
+     * in the case that the same key shows up multiple times in the input.
+     *
+     * For instance, given an array as follows
+     *
+     *     [{ s: "a", n: 1 }, { s: "a", n: 2 }, { s: "b", n: 1 }]
+     *
+     * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting map will contain
+     *
+     *     [[ "a", [1, 2] ], [ "b", [1] ]]
+     *
+     */
+    public static createGroupByMap<T, K, V>(
+            iter: Input<Input<T>[]>, selector: (t: T) => [Input<K>, Input<V>]): Output<Map<K, V[]>> {
+        return Output.create(iter).apply(elems => {
+            const array: [Input<K>, Input<V>][] = [];
+            for (const e of elems) {
+                array.push(selector(<any>e));
+            }
+            return output(array).apply(kvps => {
+                const m = new Map<K, V[]>();
+                for (let kvp of kvps) {
+                    let r = m.get(<any>kvp[0]);
+                    if (!r) {
+                        r = [];
+                        m.set(<any>kvp[0], r);
+                    }
+                    r.push(<any>kvp[1]);
+                }
+                return m;
+            });
+        });
+    }
+
+    /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
@@ -362,7 +432,7 @@ export class Output<T> {
      * would allow Output values to flow into Resources while losing the data that would allow
      * the dependency graph to be changed.
      */
-     public readonly get: () => T;
+    public readonly get: () => T;
 
     // Statics
 
@@ -374,17 +444,18 @@ export class Output<T> {
         return obj && obj.__pulumiOutput;
     }
 
-    /* @internal */ public static create<T>(
-            resource: Resource, promise: Promise<T>, isKnown: Promise<boolean>): Output<T> {
-        return new Output<T>(new Set<Resource>([resource]), promise, isKnown);
-    }
-
     /* @internal */ public constructor(
-            resources: Set<Resource>, promise: Promise<T>, isKnown: Promise<boolean>) {
+            resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
         this.isKnown = isKnown;
 
         // Always create a copy so that no one accidentally modifies our Resource list.
-        this.resources = () => new Set<Resource>(resources);
+        if (Array.isArray(resources)) {
+            this.resources = () => new Set<Resource>(resources);
+        } else if (resources instanceof Set) {
+            this.resources = () => new Set<Resource>(resources);
+        } else {
+            this.resources = () => new Set<Resource>([resources]);
+        }
 
         this.promise = () => promise;
 
@@ -452,7 +523,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
 
 /**
  * [output] takes any Input value and converts it into an Output, deeply unwrapping nested Input
- * values as necessary".
+ * values as necessary.
  *
  * The expected way to use this function is like so:
  *
@@ -523,14 +594,28 @@ function createSimpleOutput(val: any) {
  * In this example, taking a dependency on d3 means a resource will depend on all the resources of
  * d1 and d2.
  */
-// tslint:disable:max-line-length
 export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
-export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
-export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
-export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
-export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
-export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
-export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(
+    values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined,
+        Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]):
+            Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(
+    values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined,
+        Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]):
+            Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
+export function all<T1, T2, T3, T4, T5, T6>(
+    values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined,
+        Input<T5> | undefined, Input<T6> | undefined]):
+            Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
+export function all<T1, T2, T3, T4, T5>(
+    values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined,
+        Input<T5> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
+export function all<T1, T2, T3, T4>(
+    values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]):
+        Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
+export function all<T1, T2, T3>(
+    values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]):
+        Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
 export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>]>;
 export function all<T>(ds: (Input<T> | undefined)[]): Output<Unwrap<T>[]>;
 export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
