@@ -34,10 +34,10 @@ export function toObject<T, V>(
         for (const e of elems) {
             array.push(selector(<any>e));
         }
-        return Output.create(array).apply(a => {
+        return Output.create(array).apply(kvps => {
             const obj: {[key: string]: V} = {};
-            for (const e of a) {
-                obj[<any>e[0]] = <any>e[1];
+            for (const kvp of kvps) {
+                obj[<any>kvp[0]] = <any>kvp[1];
             }
             return obj;
         });
@@ -45,61 +45,37 @@ export function toObject<T, V>(
 }
 
 /**
- * toMap takes an array of T values, and a selector that produces key/value pairs from those inputs,
- * and converts this array into an output map with those keys and values.
- *
- * For instance, given an array as follows
- *
- *     [{ s: "a", n: 1 }, { s: "b", n: 2 }, { s: "c", n: 3 }]
- *
- * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting map will contain
- *
- *     [[ "a", 1 ], [ "b", 2 ], [ "c", 3 ]]
- *
- */
-export function toMap<T, K, V>(
-        iter: Input<Input<T>[]>, selector: (t: T) => [Input<K>, Input<V>]): Output<Map<K, V>> {
-    return Output.create(iter).apply(elems => {
-        const array: [Input<K>, Input<V>][] = [];
-        for (const e of elems) {
-            array.push(selector(<any>e));
-        }
-        return Output.create(array).apply(a => new Map<K, V>(<any>a));
-    });
-}
-
-/**
  * groupBy takes an array of T values, and a selector that prduces key/value pairs from those inputs,
- * and converts this array into an output map, with those keys, and where each entry is an array of values,
+ * and converts this array into an output object, with those keys, and where each property is an array of values,
  * in the case that the same key shows up multiple times in the input.
  *
  * For instance, given an array as follows
  *
  *     [{ s: "a", n: 1 }, { s: "a", n: 2 }, { s: "b", n: 1 }]
  *
- * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting map will contain
+ * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting object will be
  *
- *     [[ "a", [1, 2] ], [ "b", [1] ]]
+ *     { "a": [1, 2], "b": [1] }
  *
  */
-export function groupBy<T, K, V>(
-        iter: Input<Input<T>[]>, selector: (t: T) => [Input<K>, Input<V>]): Output<Map<K, V[]>> {
+export function groupBy<T, V>(
+        iter: Input<Input<T>[]>, selector: (t: T) => [Input<string>, Input<V>]): Output<{[key: string]: V[]}> {
     return Output.create(iter).apply(elems => {
-        const array: [Input<K>, Input<V>][] = [];
+        const array: [Input<string>, Input<V>][] = [];
         for (const e of elems) {
             array.push(selector(<any>e));
         }
         return Output.create(array).apply(kvps => {
-            const m = new Map<K, V[]>();
+            const obj: {[key: string]: V[]} = {};
             for (let kvp of kvps) {
-                let r = m.get(<any>kvp[0]);
+                let r = obj[<any>kvp[0]];
                 if (!r) {
                     r = [];
-                    m.set(<any>kvp[0], r);
+                    obj[<any>kvp[0]] = r;
                 }
                 r.push(<any>kvp[1]);
             }
-            return m;
+            return obj;
         });
     });
 }
