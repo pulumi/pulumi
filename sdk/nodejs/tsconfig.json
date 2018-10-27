@@ -29,6 +29,8 @@
 
         "dynamic/index.ts",
 
+        "iterable/index.ts",
+
         "log/index.ts",
 
         "runtime/index.ts",

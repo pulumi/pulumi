@@ -304,66 +304,6 @@ export class Output<T> {
     }
 
     /**
-     * createMap takes an array of T values, and a selector that produces key/value pairs from those inputs,
-     * and converts this array into an output map with those keys and values.
-     *
-     * For instance, given an array as follows
-     *
-     *     [{ s: "a", n: 1 }, { s: "b", n: 2 }, { s: "c", n: 3 }]
-     *
-     * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting map will contain
-     *
-     *     [[ "a", 1 ], [ "b", 2 ], [ "c", 3 ]]
-     *
-     */
-    public static createMap<T, K, V>(
-            iter: Input<Input<T>[]>, selector: (t: T) => [Input<K>, Input<V>]): Output<Map<K, V>> {
-        return Output.create(iter).apply(elems => {
-            const array: [Input<K>, Input<V>][] = [];
-            for (const e of elems) {
-                array.push(selector(<any>e));
-            }
-            return output(array).apply(a => new Map<K, V>(<any>a));
-        });
-    }
-
-    /**
-     * createGroupByMap takes an array of T values, and a selector that prduces key/value pairs from those inputs,
-     * and converts this array into an output map, with those keys, and where each entry is an array of values,
-     * in the case that the same key shows up multiple times in the input.
-     *
-     * For instance, given an array as follows
-     *
-     *     [{ s: "a", n: 1 }, { s: "a", n: 2 }, { s: "b", n: 1 }]
-     *
-     * and whose selector is roughly `(e) => [e.s, e.n]`, the resulting map will contain
-     *
-     *     [[ "a", [1, 2] ], [ "b", [1] ]]
-     *
-     */
-    public static createGroupByMap<T, K, V>(
-            iter: Input<Input<T>[]>, selector: (t: T) => [Input<K>, Input<V>]): Output<Map<K, V[]>> {
-        return Output.create(iter).apply(elems => {
-            const array: [Input<K>, Input<V>][] = [];
-            for (const e of elems) {
-                array.push(selector(<any>e));
-            }
-            return output(array).apply(kvps => {
-                const m = new Map<K, V[]>();
-                for (let kvp of kvps) {
-                    let r = m.get(<any>kvp[0]);
-                    if (!r) {
-                        r = [];
-                        m.set(<any>kvp[0], r);
-                    }
-                    r.push(<any>kvp[1]);
-                }
-                return m;
-            });
-        });
-    }
-
-    /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
