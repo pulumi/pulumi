@@ -19,7 +19,6 @@ import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
-import * as utils from "./utils";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -170,6 +169,20 @@ interface ContextFrame {
     capturedFunctionName?: string;
     capturedVariableName?: string;
     capturedModule?: { name: string, value: any };
+}
+
+interface ClosurePropertyDescriptor {
+    /** name of the property for a normal property. either 'name' or 'symbol' will be present.  but not both. */
+    name?: string;
+    /** symbol-name of the property.  either 'name' or 'symbol' will be present.  but not both. */
+    symbol?: symbol;
+
+    configurable?: boolean;
+    enumerable?: boolean;
+    value?: any;
+    writable?: boolean;
+    get?: () => any;
+    set?: (v: any)=> void;
 }
 
 /*
@@ -355,7 +368,7 @@ async function analyzeFunctionInfoAsync(
                 // we have to keep track of the inheritance relationship between classes.  That way
                 // if any of the class members references 'super' we'll be able to rewrite it
                 // accordingly (since we emit classes as Functions)
-                processDerivedClassConstructor(protoEntry);
+                await processDerivedClassConstructorAsync(protoEntry);
 
                 // Because this was was class constructor function, rewrite any 'super' references
                 // in it do its derived type if it has one.
@@ -365,12 +378,12 @@ async function analyzeFunctionInfoAsync(
 
         // capture any properties placed on the function itself.  Don't bother with
         // "length/name" as those are not things we can actually change.
-        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func)) {
-            if (keyOrSymbol === "length" || keyOrSymbol === "name") {
+        for (const descriptor of await getOwnPropertyDescriptors(func)) {
+            if (descriptor.name === "length" || descriptor.name === "name") {
                 continue;
             }
 
-            const funcProp = (<any>func)[keyOrSymbol];
+            const funcProp = await getOwnPropertyAsync(func, descriptor);
 
             // We don't need to emit code to serialize this function's .prototype object
             // unless that .prototype object was actually changed.
@@ -378,12 +391,14 @@ async function analyzeFunctionInfoAsync(
             // In other words, in general, we will not emit the prototype for a normal
             // 'function foo() {}' declaration.  but we will emit the prototype for the
             // constructor function of a class.
-            if (keyOrSymbol === "prototype" && isDefaultFunctionPrototype(func, funcProp)) {
+            if (descriptor.name === "prototype" &&
+                await isDefaultFunctionPrototypeAsync(func, funcProp)) {
+
                 continue;
             }
 
             functionInfo.env.set(
-                await getOrCreateEntryAsync(keyOrSymbol, undefined, context, serialize, logInfo),
+                await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo),
                 { entry: await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo) });
         }
 
@@ -473,7 +488,7 @@ async function analyzeFunctionInfoAsync(
         }
     }
 
-    function processDerivedClassConstructor(protoEntry: Entry) {
+    async function processDerivedClassConstructorAsync(protoEntry: Entry) {
         // Map from derived class' constructor and members, to the entry for the base class (i.e.
         // the base class' constructor function). We'll use this when serializing out those members
         // to rewrite any usages of 'super' appropriately.
@@ -484,17 +499,20 @@ async function analyzeFunctionInfoAsync(
 
         // Also, make sure our methods can also find this entry so they too can refer to
         // 'super'.
-        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func)) {
-            if (keyOrSymbol !== "length" && keyOrSymbol !== "name" && keyOrSymbol !== "prototype") {
+        for (const descriptor of await getOwnPropertyDescriptors(func)) {
+            if (descriptor.name !== "length" &&
+                descriptor.name !== "name" &&
+                descriptor.name !== "prototype") {
+
                 // static method.
-                const classProp = (<any>func)[keyOrSymbol];
+                const classProp = await getOwnPropertyAsync(func, descriptor);
                 addIfFunction(classProp, /*isStatic*/ true);
             }
         }
 
-        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func.prototype)) {
+        for (const descriptor of await getOwnPropertyDescriptors(func.prototype)) {
             // instance method.
-            const classProp = func.prototype[keyOrSymbol];
+            const classProp = await getOwnPropertyAsync(func.prototype, descriptor);
             addIfFunction(classProp, /*isStatic*/ false);
         }
 
@@ -516,11 +534,6 @@ async function computeIsAsyncFunction(func: Function): Promise<boolean> {
     // can't even necessary refer to async function objects here as this code is rewritten by TS,
     // converting all async functions to non async functions.
     return func.constructor && func.constructor.name === "AsyncFunction";
-}
-
-function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
-    const names: (string | symbol)[] = Object.getOwnPropertyNames(obj);
-    return names.concat(Object.getOwnPropertySymbols(obj));
 }
 
 async function throwSerializationErrorAsync(
@@ -666,12 +679,12 @@ function getFunctionName(loc: FunctionLocation): string {
     return "<anonymous>";
 }
 
-function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
+async function isDefaultFunctionPrototypeAsync(func: Function, prototypeProp: any) {
     // The initial value of prototype on any newly-created Function instance is a new instance of
     // Object, but with the own-property 'constructor' set to point back to the new function.
     if (prototypeProp && prototypeProp.constructor === func) {
-        const keysAndSymbols = getOwnPropertyNamesAndSymbols(prototypeProp);
-        return keysAndSymbols.length === 1 && keysAndSymbols[0] === "constructor";
+        const descriptors = await getOwnPropertyDescriptors(prototypeProp);
+        return descriptors.length === 1 && descriptors[0].name === "constructor";
     }
 
     return false;
@@ -876,23 +889,20 @@ async function getOrCreateEntryAsync(
     // only a subset of properties are used on this object.
     async function serializeAllObjectPropertiesAsync(environment: PropertyMap) {
         // we wanted to capture everything (including the prototype chain)
-        const ownPropertyNamesAndSymbols = getOwnPropertyNamesAndSymbols(obj);
+        const descriptors = await getOwnPropertyDescriptors(obj);
 
-        for (const keyOrSymbol of ownPropertyNamesAndSymbols) {
+        for (const descriptor of descriptors) {
             // we're about to recurse inside this object.  In order to prever infinite
             // loops, put a dummy entry in the environment map.  That way, if we hit
             // this object again while recursing we won't try to generate this property.
-            const keyEntry = await getOrCreateEntryAsync(keyOrSymbol, undefined, context, serialize, logInfo);
+            const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
             if (!environment.has(keyEntry)) {
                 environment.set(keyEntry, <any>undefined);
 
-                const propertyInfo = await getPropertyInfoAsync(obj, keyOrSymbol);
-                if (!propertyInfo) {
-                    throw new Error("Could not find property info for 'own' property.");
-                }
-
+                const propertyInfo = await createPropertyInfoAsync(descriptor);
+                const prop = await getOwnPropertyAsync(obj, descriptor);
                 const valEntry = await getOrCreateEntryAsync(
-                    obj[keyOrSymbol], undefined, context, serialize, logInfo);
+                    prop, undefined, context, serialize, logInfo);
 
                 // Now, replace the dummy entry with the actual one we want.
                 environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
@@ -1028,28 +1038,34 @@ async function getOrCreateEntryAsync(
         return false;
     }
 
-    async function getPropertyInfoAsync(on: any, key: PropertyKey): Promise<PropertyInfo | undefined> {
+    async function getPropertyInfoAsync(on: any, key: string | symbol): Promise<PropertyInfo | undefined> {
         for (let current = on; current; current = Object.getPrototypeOf(current)) {
             const desc = Object.getOwnPropertyDescriptor(current, key);
             if (desc) {
-                const propertyInfo = <PropertyInfo>{ hasValue: desc.value !== undefined };
-                propertyInfo.configurable = desc.configurable;
-                propertyInfo.enumerable = desc.enumerable;
-                propertyInfo.writable = desc.writable;
-                if (desc.get) {
-                    propertyInfo.get = await getOrCreateEntryAsync(
-                        desc.get, undefined, context, serialize, logInfo);
-                }
-                if (desc.set) {
-                    propertyInfo.set = await getOrCreateEntryAsync(
-                        desc.set, undefined, context, serialize, logInfo);
-                }
-
+                const closurePropDescriptor = createClosurePropertyDescriptor(key, desc);
+                const propertyInfo = await createPropertyInfoAsync(closurePropDescriptor);
                 return propertyInfo;
             }
         }
 
         return undefined;
+    }
+
+    async function createPropertyInfoAsync(descriptor: ClosurePropertyDescriptor): Promise<PropertyInfo> {
+        const propertyInfo = <PropertyInfo>{ hasValue: descriptor.value !== undefined };
+        propertyInfo.configurable = descriptor.configurable;
+        propertyInfo.enumerable = descriptor.enumerable;
+        propertyInfo.writable = descriptor.writable;
+        if (descriptor.get) {
+            propertyInfo.get = await getOrCreateEntryAsync(
+                descriptor.get, undefined, context, serialize, logInfo);
+        }
+        if (descriptor.set) {
+            propertyInfo.set = await getOrCreateEntryAsync(
+                descriptor.set, undefined, context, serialize, logInfo);
+        }
+
+        return propertyInfo;
     }
 
     function usesNonLexicalThis(localEntry: Entry | undefined) {
@@ -1236,4 +1252,58 @@ async function hasTruthyMemberAsync(obj: any, memberName: string): Promise<boole
     }
 
     return obj[memberName] ? true : false;
+}
+
+function createClosurePropertyDescriptor(
+    nameOrSymbol: string | symbol, descriptor: PropertyDescriptor): ClosurePropertyDescriptor {
+
+    if (nameOrSymbol === undefined) {
+        throw new Error("Was not given a name or symbol");
+    }
+
+    const copy: ClosurePropertyDescriptor = { ...descriptor };
+    if (typeof nameOrSymbol === "string") {
+        copy.name = nameOrSymbol;
+    }
+    else {
+        copy.symbol = nameOrSymbol;
+    }
+
+    return copy;
+}
+
+async function getOwnPropertyDescriptors(obj: any): Promise<ClosurePropertyDescriptor[]> {
+    const result: ClosurePropertyDescriptor[] = [];
+
+    for (const name of Object.getOwnPropertyNames(obj)) {
+        const descriptor = Object.getOwnPropertyDescriptor(obj, name);
+        if (!descriptor) {
+            throw new Error(`Could not get descriptor for ${name} on: ${JSON.stringify(obj)}`);
+        }
+
+        result.push(createClosurePropertyDescriptor(name, descriptor));
+    }
+
+    for (const symbol of Object.getOwnPropertySymbols(obj)) {
+        const descriptor = Object.getOwnPropertyDescriptor(obj, symbol);
+        if (!descriptor) {
+            throw new Error(`Could not get descriptor for symbol ${symbol.toString()} on: ${JSON.stringify(obj)}`);
+        }
+
+        result.push(createClosurePropertyDescriptor(symbol, descriptor));
+    }
+
+    return result;
+}
+
+async function getOwnPropertyAsync(obj: any, descriptor: ClosurePropertyDescriptor): Promise<any> {
+    return obj[getNameOrSymbol(descriptor)];
+}
+
+function getNameOrSymbol(descriptor: ClosurePropertyDescriptor): symbol | string {
+    if (descriptor.symbol === undefined && descriptor.name === undefined) {
+        throw new Error("Descriptor didn't have symbol or name: " + JSON.stringify(descriptor));
+    }
+
+    return descriptor.symbol || descriptor.name!!;
 }
