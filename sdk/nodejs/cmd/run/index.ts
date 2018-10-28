@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// As the very first thing we do, ensure that we're connected to v8's inspector API.  We need to do
+// this as some information is only sent out as events, without any way to query for it after the
+// fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
+// report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
+// by register to hear about scripts being parsed.
+import "../../runtime/closure/v8Hooks";
+
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 import * as minimist from "minimist";
 
