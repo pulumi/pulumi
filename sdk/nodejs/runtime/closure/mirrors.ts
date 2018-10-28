@@ -35,7 +35,7 @@ export interface Mirror {
     /** Primitive value which can not be JSON-stringified does not have `value`, but gets this property. */
     unserializableValue?: UnserializableValue;
     /** Unique object identifier (for non-primitive values). */
-    objectId?: RemoteObjectId;
+    objectId: RemoteObjectId;
 
     __isMirror: true;
 }
@@ -43,7 +43,7 @@ export interface Mirror {
 export interface FunctionMirror extends Mirror {
     type: "function";
     className: "Function";
-    objectId: RemoteObjectId;
+    // objectId: RemoteObjectId;
 
     /** contains the result of calling '.toString()' on the function instance. */
     description: string;
@@ -60,7 +60,7 @@ export interface FunctionMirror extends Mirror {
 
 export interface SymbolMirror extends Mirror {
     type: "symbol";
-    objectId: RemoteObjectId;
+    // objectId: RemoteObjectId;
 
     // properties that never appear
     subtype?: never;
@@ -78,7 +78,7 @@ export interface StringMirror extends Mirror {
     subtype?: never;
     className?: never;
     unserializableValue?: never;
-    objectId?: never;
+    // objectId?: never;
     description?: never;
 }
 
@@ -95,7 +95,7 @@ export interface NumberMirror extends Mirror {
     // properties that never appear
     subtype?: never;
     className?: never;
-    objectId?: never;
+    // objectId?: never;
     description?: never;
 }
 
@@ -107,7 +107,7 @@ export interface BooleanMirror extends Mirror {
     subtype?: never;
     className?: never;
     unserializableValue?: never;
-    objectId?: never;
+    // objectId?: never;
     description?: never;
 }
 
@@ -119,7 +119,7 @@ export interface UndefinedMirror extends Mirror {
     subtype?: never;
     className?: never;
     unserializableValue?: never;
-    objectId?: never;
+    // objectId?: never;
     description?: never;
 }
 
@@ -139,14 +139,14 @@ export interface NullMirror extends ObjectMirror {
     // properties that never appear
     className?: never;
     unserializableValue?: never;
-    objectId?: never;
+    // objectId?: never;
     description?: never;
 }
 
 export interface RegExpMirror extends ObjectMirror {
     subtype: "regexp";
     className: "RegExp";
-    objectId: string;
+    // objectId: string;
 
     // properties that never appear
     value?: null;
@@ -157,7 +157,7 @@ export interface RegExpMirror extends ObjectMirror {
 export interface PromiseMirror extends ObjectMirror {
     subtype: "promise";
     className: "Promise";
-    objectId: string;
+    // objectId: string;
 
     // properties that never appear
     value?: null;
@@ -168,7 +168,7 @@ export interface PromiseMirror extends ObjectMirror {
 export interface ArrayMirror extends ObjectMirror {
     subtype: "array";
     className: "Array";
-    objectId: string;
+    // objectId: string;
 
     // properties that never appear
     value?: null;
@@ -201,7 +201,7 @@ type ValueType<TMirror> =
     TMirror extends FunctionMirror ? Function : any;
 
 let currentMirrorId = 0;
-const functionIdToFunc = new Map<RemoteObjectId, Function>();
+// const functionIdToFunc = new Map<RemoteObjectId, Function>();
 
 const valToMirror = new Map<any, Mirror>();
 const mirrorToVal = new Map<Mirror, any>();
@@ -216,6 +216,16 @@ export function getValueForMirror<TMirror extends Mirror>(mirror: TMirror): Valu
     return val;
 }
 
+// Negative-zero has to be handled specially.  It cannot be placed in valToMirror map as it will
+// collide with 0.
+const negativeZeroMirror: NumberMirror = {
+    __isMirror: true,
+    type: "number",
+    value: undefined,
+    unserializableValue: "-0",
+    objectId: "id" + currentMirrorId++,
+};
+
 export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
     // We should never be passed a Mirror here.  It indicates that somehow during serialization we
     // creates a Mirror, then pointed at that Mirror with something, then tried to actually
@@ -225,23 +235,29 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
         throw new Error("Should never be trying to get the Mirror for a Mirror: " + JSON.stringify(val));
     }
 
+    if (Object.is(val, -0)) {
+        return <any>negativeZeroMirror;
+    }
+
     let mirror = valToMirror.get(val);
     if (mirror) {
         return <any>mirror;
     }
 
-    const mirrorId = "id" + currentMirrorId++;
     mirror = await createMirrorAsync();
-    mirror.objectId = mirrorId;
-
     valToMirror.set(val, mirror);
     mirrorToVal.set(mirror, val);
     return <any>mirror;
 
     async function createMirrorAsync(): Promise<Mirror> {
+        const objectId = "id" + currentMirrorId++;
+        // tslint:disable-next-line:variable-name
+        const __isMirror = true;
+
         if (typeof val === "undefined") {
             const undefinedMirror: UndefinedMirror = {
-                __isMirror: true,
+                __isMirror,
+                objectId,
                 type: "undefined",
             };
 
@@ -250,7 +266,8 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
         if (typeof val === "boolean") {
             const booleanMirror: BooleanMirror = {
-                __isMirror: true,
+                __isMirror,
+                objectId,
                 type: "boolean",
                 value: val,
             };
@@ -260,7 +277,8 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
         if (typeof val === "string") {
             const stringMirror: StringMirror = {
-                __isMirror: true,
+                __isMirror,
+                objectId,
                 type: "string",
                 value: val,
             };
@@ -276,7 +294,8 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
                 Object.is(val, -Infinity) ? "-Infinity" : undefined;
 
             const numberMirror: NumberMirror = {
-                __isMirror: true,
+                __isMirror,
+                objectId,
                 type: "number",
                 value: unserializableValue ? undefined : val,
                 unserializableValue: unserializableValue,
@@ -287,24 +306,24 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
         if (typeof val === "function") {
             const funcMirror: FunctionMirror = {
-                __isMirror: true,
+                __isMirror,
+                objectId,
                 type: "function",
                 className: "Function",
-                objectId: mirrorId,
                 description: val.toString(),
                 name: val.name,
                 location: await v8.getFunctionLocationAsync(val),
             };
 
-            functionIdToFunc.set(mirrorId, val);
+            // functionIdToFunc.set(objectId, val);
             return funcMirror;
         }
 
         if (typeof val === "symbol") {
             const symbolMirror: SymbolMirror =  {
-                __isMirror: true,
+                __isMirror,
+                objectId,
                 type: "symbol",
-                objectId: mirrorId,
             };
 
             return symbolMirror;
@@ -314,7 +333,8 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
             // "null" | "regexp" | "promise" | "array"
             if (val === null) {
                 const nullMirror: NullMirror = {
-                    __isMirror: true,
+                    __isMirror,
+                    objectId,
                     type: "object",
                     subtype: "null",
                     value: null,
@@ -325,11 +345,11 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
             if (val instanceof RegExp) {
                 const regExpMirror: RegExpMirror = {
-                    __isMirror: true,
+                    __isMirror,
+                    objectId,
                     type: "object",
                     subtype: "regexp",
                     className: "RegExp",
-                    objectId: mirrorId,
                 };
 
                 return regExpMirror;
@@ -337,11 +357,11 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
             if (Array.isArray(val)) {
                 const arrayMirror: ArrayMirror = {
-                    __isMirror: true,
+                    __isMirror,
+                    objectId,
                     type: "object",
                     subtype: "array",
                     className: "Array",
-                    objectId: mirrorId,
                 };
 
                 return arrayMirror;
@@ -354,7 +374,8 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
             }
 
             const objectMirror: ObjectMirror = {
-                __isMirror: true,
+                __isMirror,
+                objectId,
                 type: "object",
                 className: className,
             };
