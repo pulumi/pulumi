@@ -19,6 +19,7 @@ import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
+import * as utils from "./utils";
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -223,6 +224,8 @@ class SerializedOutput<T> implements resource.Output<T> {
 export async function createFunctionInfoAsync(
     func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<FunctionInfo> {
 
+    // Initialize our Context object.  It is effectively used to keep track of the work we're doing
+    // as well as to keep track of the graph as we're walking it so we don't infinitely recurse.
     const context: Context = {
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),
@@ -238,10 +241,7 @@ export async function createFunctionInfoAsync(
     // would be a bad idea as that would mean once deserialized the objects wouldn't point to the
     // well known globals that were expected.  Furthermore, most of these are almost certain to fail
     // to serialize due to hitting things like native-builtins.
-    const wellKnownMap = await v8.getWellKnownObjectToEmitExprMap();
-    for (const [wellKnownObj, expr] of wellKnownMap) {
-        context.cache.set(wellKnownObj, { expr });
-    }
+    await addEntriesForWellKnownGlobalObjectsAsync();
 
     // Make sure this func is in the cache itself as we may hit it again while recursing.
     const entry: Entry = {};
@@ -253,16 +253,90 @@ export async function createFunctionInfoAsync(
 
     return entry.function;
 
-    // async function processAsyncWorkQueue() {
-    //     while (context.asyncWorkQueue.length > 0) {
-    //         const queue = context.asyncWorkQueue;
-    //         context.asyncWorkQueue = [];
+    async function addEntriesForWellKnownGlobalObjectsAsync() {
+        const seenGlobalObjects = new Set<any>();
 
-    //         for (const work of queue) {
-    //             await work();
-    //         }
-    //     }
-    // }
+        // Front load these guys so we prefer emitting code that references them directly,
+        // instead of in unexpected ways.  i.e. we'd prefer to have Number.prototype vs
+        // Object.getPrototypeOf(Infinity) (even though they're the same thing.)
+
+        await addGlobalInfoAsync("Object");
+        await addGlobalInfoAsync("Function");
+        await addGlobalInfoAsync("Array");
+        await addGlobalInfoAsync("Number");
+        await addGlobalInfoAsync("String");
+
+        for (let current = global; current; current = Object.getPrototypeOf(current)) {
+            for (const key of Object.getOwnPropertyNames(current)) {
+                // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
+                // just skip them.
+                if (key !== "GLOBAL" && key !== "root") {
+                    await addGlobalInfoAsync(key);
+                }
+            }
+        }
+
+        // Add information so that we can properly serialize over generators/iterators.
+        await addGeneratorEntriesAsync();
+        await addEntriesAsync(Symbol.iterator, "Symbol.iterator");
+
+        return;
+
+        async function addEntriesAsync(val: any, emitExpr: string) {
+            if (val === undefined || val === null) {
+                return;
+            }
+
+            // No need to add values twice.  Ths can happen as we walk the global namespace and
+            // sometimes run into multiple names aliasing to the same value.
+            if (seenGlobalObjects.has(val)) {
+                return;
+            }
+
+            seenGlobalObjects.add(val);
+            context.cache.set(val, { expr: emitExpr });
+        }
+
+        async function addGlobalInfoAsync(key: string) {
+            const globalObj = (<any>global)[key];
+            const text = utils.isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
+
+            if (globalObj !== undefined && globalObj !== null) {
+                await addEntriesAsync(globalObj, text);
+                await addEntriesAsync(Object.getPrototypeOf(globalObj), `Object.getPrototypeOf(${text})`);
+                await addEntriesAsync(globalObj.prototype, `${text}.prototype`);
+            }
+        }
+
+        // A generator function ('f') has ends up creating two interesting objects in the js
+        // environment:
+        //
+        // 1. the generator function itself ('f').  This generator function has an __proto__ that is
+        //    shared will all other generator functions.
+        //
+        // 2. a property 'prototype' on 'f'.  This property's __proto__ will be shared will all other
+        //    'prototype' properties of other generator functions.
+        //
+        // So, to properly serialize a generator, we stash these special objects away so that we can
+        // refer to the well known instance on the other side when we desirialize. Otherwise, if we
+        // actually tried to deserialize the instances/prototypes we have we would end up failing when
+        // we hit native functions.
+        //
+        // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
+        // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
+        async function addGeneratorEntriesAsync() {
+            // tslint:disable-next-line:no-empty
+            const emptyGenerator = function* (): any { };
+
+            await addEntriesAsync(
+                Object.getPrototypeOf(emptyGenerator),
+                "Object.getPrototypeOf(function*(){})");
+
+            await addEntriesAsync(
+                Object.getPrototypeOf(emptyGenerator.prototype),
+                "Object.getPrototypeOf((function*(){}).prototype)");
+        }
+    }
 }
 
 // This function ends up capturing many external modules that cannot themselves be serialized.
