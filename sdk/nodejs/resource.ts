@@ -371,7 +371,7 @@ export class Output<T> {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance<T>(obj: any): obj is Output<T> {
-        return obj && obj.__pulumiOutput;
+        return obj && obj.__pulumiOutput ? true : false;
     }
 
     /* @internal */ public static create<T>(
