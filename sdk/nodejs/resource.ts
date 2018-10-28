@@ -362,9 +362,19 @@ export class Output<T> {
      * would allow Output values to flow into Resources while losing the data that would allow
      * the dependency graph to be changed.
      */
-     public readonly get: () => T;
+    public readonly get: () => T;
 
     // Statics
+
+    /**
+     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
+     * values as necessary.
+     */
+    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
+    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+        return output<T>(<any>val);
+    }
 
     /**
      * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
@@ -374,17 +384,18 @@ export class Output<T> {
         return obj && obj.__pulumiOutput;
     }
 
-    /* @internal */ public static create<T>(
-            resource: Resource, promise: Promise<T>, isKnown: Promise<boolean>): Output<T> {
-        return new Output<T>(new Set<Resource>([resource]), promise, isKnown);
-    }
-
     /* @internal */ public constructor(
-            resources: Set<Resource>, promise: Promise<T>, isKnown: Promise<boolean>) {
+            resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
         this.isKnown = isKnown;
 
         // Always create a copy so that no one accidentally modifies our Resource list.
-        this.resources = () => new Set<Resource>(resources);
+        if (Array.isArray(resources)) {
+            this.resources = () => new Set<Resource>(resources);
+        } else if (resources instanceof Set) {
+            this.resources = () => new Set<Resource>(resources);
+        } else {
+            this.resources = () => new Set<Resource>([resources]);
+        }
 
         this.promise = () => promise;
 
@@ -452,7 +463,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
 
 /**
  * [output] takes any Input value and converts it into an Output, deeply unwrapping nested Input
- * values as necessary".
+ * values as necessary.
  *
  * The expected way to use this function is like so:
  *
@@ -552,7 +563,8 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
     }
 }
 
-async function getPromisedObject<T>(keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
+async function getPromisedObject<T>(
+        keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
     const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await kvp.value.promise();
