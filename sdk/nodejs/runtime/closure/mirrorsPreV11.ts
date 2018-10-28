@@ -23,6 +23,7 @@ import {
     isUndefinedOrNullMirror,
     Mirror,
     MirrorPropertyDescriptor,
+    MirrorType,
     NullMirror,
     NumberMirror,
     ObjectMirror,
@@ -32,18 +33,6 @@ import {
     SymbolMirror,
     UndefinedMirror,
 } from "./mirrors";
-
-type MirrorType<T> =
-    T extends undefined ? UndefinedMirror :
-    T extends null ? NullMirror :
-    T extends string ? StringMirror :
-    T extends number ? NumberMirror :
-    T extends boolean ? BooleanMirror :
-    T extends RegExp ? RegExpMirror :
-    T extends symbol ? SymbolMirror :
-    T extends Array<infer A> ? ArrayMirror :
-    T extends Promise<infer B> ? PromiseMirror :
-    T extends Function ? FunctionMirror : Mirror;
 
 type ValueType<TMirror> =
     TMirror extends UndefinedMirror ? undefined :
@@ -83,11 +72,7 @@ const negativeZeroMirror: NumberMirror = {
 };
 mirrorToVal.set(negativeZeroMirror, -0);
 
-/**
- * Converts a normal JS values into a Mirror.  Note: this function is not exported and should
- * only be used by helpers in this file.
- */
-async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
+export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
     // We should never be passed a Mirror here.  It indicates that somehow during serialization we
     // creates a Mirror, then pointed at that Mirror with something, then tried to actually
     // serialize the Mirror (instead of the value the Mirror represents).  This should not be
@@ -260,10 +245,6 @@ async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
         console.log("NYI: unhandled createMirrorAsync case: " + JSON.stringify(val));
         throw new Error("NYI: unhandled createMirrorAsync case: " + typeof val + " " + JSON.stringify(val));
     }
-}
-
-export function getFunctionMirrorAsync(func: Function): Promise<FunctionMirror> {
-    return getMirrorAsync(func);
 }
 
 export async function getPrototypeOfMirrorAsync(mirror: Mirror): Promise<Mirror> {

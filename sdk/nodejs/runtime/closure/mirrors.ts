@@ -295,8 +295,20 @@ export function getNameOrSymbol(descriptor: MirrorPropertyDescriptor): SymbolMir
     return descriptor.symbol || descriptor.name!!;
 }
 
-/** Given a Function, returns the Mirror for that function */
-export let getFunctionMirrorAsync: (val: Function) => Promise<FunctionMirror>;
+export type MirrorType<T> =
+    T extends undefined ? UndefinedMirror :
+    T extends null ? NullMirror :
+    T extends string ? StringMirror :
+    T extends number ? NumberMirror :
+    T extends boolean ? BooleanMirror :
+    T extends RegExp ? RegExpMirror :
+    T extends symbol ? SymbolMirror :
+    T extends Array<infer A> ? ArrayMirror :
+    T extends Promise<infer B> ? PromiseMirror :
+    T extends Function ? FunctionMirror : Mirror;
+
+/** Given a value, returns the Mirror for that value. */
+export let getMirrorAsync: <T>(val: T) => Promise<MirrorType<T>>;
 
 /** Given a Mirror of some value V, returns the Mirror for Object.getPrototypeOf(V) */
 export let getPrototypeOfMirrorAsync: (mirror: Mirror) => Promise<Mirror>;
@@ -326,7 +338,7 @@ if (v8.isNodeAtLeastV11) {
     throw new Error("Node v11 not supported yet");
 }
 else {
-    getFunctionMirrorAsync = mirrorsPreV11.getFunctionMirrorAsync;
+    getMirrorAsync = mirrorsPreV11.getMirrorAsync;
     getPrototypeOfMirrorAsync = mirrorsPreV11.getPrototypeOfMirrorAsync;
     callFunctionOn = mirrorsPreV11.callFunctionOn;
     callAccessorOn = mirrorsPreV11.callAccessorOn;
