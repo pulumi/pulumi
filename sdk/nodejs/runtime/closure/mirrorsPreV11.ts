@@ -321,22 +321,11 @@ export function callAccessorOn(mirror: Mirror, accessorName: string): Promise<Mi
     // }
 }
 
-export async function getMirrorMemberAsync(mirror: Mirror, memberName: string): Promise<Mirror> {
-    if (isUndefinedOrNullMirror(mirror)) {
-        throw new Error(`Trying to get member ${memberName} off null/undefined: ${JSON.stringify(mirror)}`);
-    }
-
-    const val = getValueForMirror(mirror);
-    const member = val[memberName];
-    return getMirrorAsync(member);
-}
-
 export async function getPromiseMirrorValueAsync(mirror: PromiseMirror): Promise<Mirror> {
     const promise = getValueForMirror(mirror);
     const value = await promise;
     return await getMirrorAsync(value);
 }
-
 
 export async function getOwnPropertyDescriptorsAsync(mirror: Mirror): Promise<MirrorPropertyDescriptor[]> {
     const obj = getValueForMirror(mirror);
@@ -412,12 +401,6 @@ export async function getOwnPropertyAsync(mirror: Mirror, descriptor: MirrorProp
     const nameOrSymbol = getValueForMirror(nameOrSymbolMirror);
 
     const prop = obj[nameOrSymbol];
-    return await getMirrorAsync(prop);
-}
-
-export async function getPropertyAsync(mirror: Mirror, name: string): Promise<Mirror> {
-    const obj = getValueForMirror(mirror);
-    const prop = obj[name];
     return await getMirrorAsync(prop);
 }
 
