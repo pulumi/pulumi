@@ -149,7 +149,7 @@ export interface RegExpMirror extends ObjectMirror {
     // objectId: string;
 
     // properties that never appear
-    value?: null;
+    value?: never;
     unserializableValue?: never;
     description?: never;
 }
@@ -160,7 +160,7 @@ export interface PromiseMirror extends ObjectMirror {
     // objectId: string;
 
     // properties that never appear
-    value?: null;
+    value?: never;
     unserializableValue?: never;
     description?: never;
 }
@@ -171,7 +171,7 @@ export interface ArrayMirror extends ObjectMirror {
     // objectId: string;
 
     // properties that never appear
-    value?: null;
+    value?: never;
     unserializableValue?: never;
     description?: never;
 }
@@ -353,6 +353,18 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
                 };
 
                 return regExpMirror;
+            }
+
+            if (val instanceof Promise) {
+                const promiseMirror: PromiseMirror = {
+                    __isMirror,
+                    objectId,
+                    type: "object",
+                    subtype: "promise",
+                    className: "Promise",
+                };
+
+                return promiseMirror;
             }
 
             if (Array.isArray(val)) {
