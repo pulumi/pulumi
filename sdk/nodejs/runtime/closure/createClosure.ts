@@ -746,9 +746,9 @@ function getOrCreateEntry(
     // else *entirely*.  For example, 0 and -0 will map to the same entry.
     if (typeof obj === "number") {
         if (Object.is(obj, -0)) { return { expr: "-0" }; }
-        if (Object.is(obj, Number.NaN)) { return { expr: "Number.NaN" }; }
-        if (Object.is(obj, Number.POSITIVE_INFINITY)) { return { expr: "Number.POSITIVE_INFINITY"}; }
-        if (Object.is(obj, Number.NEGATIVE_INFINITY)) { return { expr: "Number.NEGATIVE_INFINITY"}; }
+        if (Object.is(obj, NaN)) { return { expr: "NaN" }; }
+        if (Object.is(obj, Infinity)) { return { expr: "Infinity"}; }
+        if (Object.is(obj, -Infinity)) { return { expr: "-Infinity"}; }
 
         // Not special, just use normal json serialization.
         return { json: obj };
