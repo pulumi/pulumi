@@ -86,11 +86,11 @@ export interface NumberMirror extends Mirror {
     type: "number";
 
     // The numeric value, when that numeric value is representable in JSON
-    value: number;
+    value: number | undefined;
 
     // A string representation of the numeric value is not representable in JSON (for example
     // 'NaN').
-    unserializableValue: string;
+    unserializableValue: string | undefined;
 
     // properties that never appear
     subtype?: never;
@@ -126,8 +126,8 @@ export interface UndefinedMirror extends Mirror {
 export interface ObjectMirror extends Mirror {
     type: "object";
 
-    // ObjectMirrors always have a subtype.
-    subtype: "null" | "regexp" | "promise" | "array";
+    // Some ObjectMirrors always have a subtype.
+    subtype?: "null" | "regexp" | "promise" | "array";
 }
 
 export interface NullMirror extends ObjectMirror {
@@ -230,14 +230,15 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
         return <any>mirror;
     }
 
+    const mirrorId = "id" + currentMirrorId++;
     mirror = await createMirrorAsync();
+    mirror.objectId = mirrorId;
+
     valToMirror.set(val, mirror);
     mirrorToVal.set(mirror, val);
     return <any>mirror;
 
     async function createMirrorAsync(): Promise<Mirror> {
-        const mirrorId = "id" + currentMirrorId++;
-
         if (typeof val === "string") {
             const stringMirror: StringMirror = {
                 __isMirror: true,
@@ -248,7 +249,24 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
             return stringMirror;
         }
 
-        if (val instanceof Function) {
+        if (typeof val === "number") {
+            const unserializableValue =
+                Object.is(val, -0) ? "-0" :
+                Object.is(val, NaN) ? "NaN" :
+                Object.is(val, Infinity) ? "Infinity" :
+                Object.is(val, -Infinity) ? "-Infinity" : undefined;
+
+            const numberMirror: NumberMirror = {
+                __isMirror: true,
+                type: "number",
+                value: unserializableValue ? undefined : val,
+                unserializableValue: unserializableValue,
+            };
+
+            return numberMirror;
+        }
+
+        if (typeof val === "function") {
             const funcMirror: FunctionMirror = {
                 __isMirror: true,
                 type: "function",
@@ -263,7 +281,61 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
             return funcMirror;
         }
 
-        throw new Error("NYI: unhandled createMirrorAsync case.");
+        if (typeof val === "object") {
+            // "null" | "regexp" | "promise" | "array"
+            if (val === null) {
+                const nullMirror: NullMirror = {
+                    __isMirror: true,
+                    type: "object",
+                    subtype: "null",
+                    value: null,
+                };
+
+                return nullMirror;
+            }
+
+            if (val instanceof RegExp) {
+                const regExpMirror: RegExpMirror = {
+                    __isMirror: true,
+                    type: "object",
+                    subtype: "regexp",
+                    className: "RegExp",
+                    objectId: mirrorId,
+                };
+
+                return regExpMirror;
+            }
+
+            if (Array.isArray(val)) {
+                const arrayMirror: ArrayMirror = {
+                    __isMirror: true,
+                    type: "object",
+                    subtype: "array",
+                    className: "Array",
+                    objectId: mirrorId,
+                };
+
+                return arrayMirror;
+            }
+
+            let className = "unknown";
+            const anyVal = <any>val;
+            if (anyVal.constructor && anyVal.constructor.name) {
+                className = anyVal.constructor.name;
+            }
+
+            const objectMirror: ObjectMirror = {
+                __isMirror: true,
+                type: "object",
+                className: className,
+            };
+
+            return objectMirror;
+        }
+
+        console.log("NYI: unhandled createMirrorAsync case: " + typeof val);
+        console.log("NYI: unhandled createMirrorAsync case: " + JSON.stringify(val));
+        throw new Error("NYI: unhandled createMirrorAsync case: " + typeof val + " " + JSON.stringify(val));
     }
 }
 

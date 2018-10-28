@@ -234,7 +234,7 @@ function getLineColumn(func: Function, script: V8Script | undefined) {
     return { line: 0, column: 0 };
 }
 
-const mirrorToEmitExprMapPromise = computeMirrorToEmitExprMapAsync();
+let mirrorToEmitExprMapPromise: Promise<Map<Mirror, string>> | undefined;
 
 // In the future, will return the local well-known in-memory object for the given remote-id
 // async function getWellKnownObjectAsync(id: string): Promise<any> {
@@ -243,7 +243,11 @@ const mirrorToEmitExprMapPromise = computeMirrorToEmitExprMapAsync();
 //     return idToValueMap.get(id);
 // }
 
-export async function getMirrorToEmitExprMap(): Promise<Map<Mirror, string>> {
+export function getMirrorToEmitExprMap(): Promise<Map<Mirror, string>> {
+    if (!mirrorToEmitExprMapPromise) {
+        mirrorToEmitExprMapPromise = computeMirrorToEmitExprMapAsync();
+    }
+
     return mirrorToEmitExprMapPromise;
 }
 
@@ -289,6 +293,8 @@ async function computeMirrorToEmitExprMapAsync(): Promise<Map<Mirror, string>> {
             return;
         }
 
+        console.log("mirrors: '" + JSON.stringify(mirrors) + '"');
+        console.log("mirrors.getMirrorAsync: '" + mirrors.getMirrorAsync + '"');
         const mirror = await mirrors.getMirrorAsync(val);
 
         // No need to add values twice.  Ths can happen as we walk the global namespace and
