@@ -38,6 +38,8 @@ import {
     UndefinedMirror,
 } from "./mirrors";
 
+const objectGroup = "pulumiObjectGroup";
+
 const inspectorSession = new inspector.Session();
 inspectorSession.connect();
 
@@ -91,7 +93,7 @@ async function runtimeEvaluateAsync(expression: string): Promise<Mirror> {
     const retType = await new Promise<inspector.Runtime.EvaluateReturnType>((resolve, reject) => {
         inspectorSession.post(
             "Runtime.evaluate",
-            { expression },
+            { expression, objectGroup },
             (err, ret) => err ? reject(err) : resolve(ret));
     });
 
@@ -116,14 +118,22 @@ function convertRemoteObject(remoteObj: inspector.Runtime.RemoteObject): Mirror 
             return convertObject(remoteObj);
         case "number":
             return convertNumber(remoteObj);
+        case "string":
+            return convertString(remoteObj);
         case "symbol":
             return convertSymbol(remoteObj);
+        case "undefined":
+            return convertUndefined(remoteObj);
         default:
             throw new Error("NYI: unhandled convertRemoteObject case: " + JSON.stringify(remoteObj));
     }
 }
 
 function convertObject(remoteObj: inspector.Runtime.RemoteObject): ObjectMirror {
+    if (remoteObj.subtype === "null") {
+        return convertNull(remoteObj);
+    }
+
     if (remoteObj.objectId === undefined) {
         throw new Error("Remote object did not have an objectId: " + JSON.stringify(remoteObj));
     }
@@ -183,19 +193,92 @@ function convertNumber(remoteObj: inspector.Runtime.RemoteObject): NumberMirror 
         type: "number",
         value: remoteObj.value,
         unserializableValue: remoteObj.value,
-    }
+    };
 }
+
+function convertString(remoteObj: inspector.Runtime.RemoteObject): StringMirror {
+    return {
+        __isMirror: true,
+        type: "string",
+        value: remoteObj.value,
+    };
+}
+
+function convertUndefined(remoteObj: inspector.Runtime.RemoteObject): UndefinedMirror {
+    return {
+        __isMirror: true,
+        type: "undefined",
+    };
+}
+
+function convertNull(remoteObj: inspector.Runtime.RemoteObject): NullMirror {
+    return {
+        __isMirror: true,
+        type: "object",
+        subtype: "null",
+        value: null,
+    };
+}
+
+const mirrorToPrototypeMap = new Map<Mirror, Mirror>();
 
 export async function getPrototypeOfMirrorAsync(mirror: Mirror): Promise<Mirror> {
-    throw new Error("getPrototypeOfMirrorAsync NYI");
+    // Calling Object.getPrototypeOf(mirror_value)
+
+    let result = mirrorToPrototypeMap.get(mirror);
+    if (!result) {
+        const objectMirror = await getMirrorAsync(Object);
+        result = await callFunctionOn(objectMirror, "getPrototypeOf", [mirror]);
+        mirrorToPrototypeMap.set(mirror, result);
+    }
+
+    console.log(`Prototype of ${JSON.stringify(mirror)} was ${JSON.stringify(result)}`);
+    return result;
 }
 
-export function callFunctionOn(mirror: Mirror, funcName: string, args: Mirror[] = []): Promise<Mirror> {
-    throw new Error("callFunctionOn NYI");
+export async function callFunctionOn(mirror: Mirror, funcName: string, mirrorArgs: Mirror[] = []): Promise<Mirror> {
+    const objectId = getObjectId(mirror);
+    const args: inspector.Runtime.CallArgument[] = mirrorArgs.map(a => ({
+        objectId: getObjectId(a),
+    }));
+
+    const retType = await new Promise<inspector.Runtime.CallFunctionOnReturnType>((resolve, reject) => {
+        inspectorSession.post("Runtime.callFunctionOn", {
+            objectId: objectId,
+            functionDeclaration: `function (...args) {
+                return this["${funcName}"](...args);
+            }`,
+            arguments: args,
+        }, (err, ret) => err ? reject(err) : resolve(ret));
+    });
+
+    if (retType.exceptionDetails) {
+        throw new Error(`Error calling Runtime.callFunctionOn(${JSON.stringify(mirror)}, "${funcName}"): `
+            + retType.exceptionDetails.text);
+    }
+
+    return convertRemoteObject(retType.result);
 }
 
-export function callAccessorOn(mirror: Mirror, accessorName: string): Promise<Mirror> {
-    throw new Error("callAccessorOn NYI");
+export async function callAccessorOn(mirror: Mirror, accessorName: string): Promise<Mirror> {
+    const objectId = getObjectId(mirror);
+
+    const retType = await new Promise<inspector.Runtime.CallFunctionOnReturnType>((resolve, reject) => {
+        inspectorSession.post("Runtime.callFunctionOn", {
+            objectId: objectId,
+            functionDeclaration: `function () {
+                return this["${accessorName}"];
+            }`,
+            // arguments: [],
+        }, (err, ret) => err ? reject(err) : resolve(ret));
+    });
+
+    if (retType.exceptionDetails) {
+        throw new Error(`Error calling Runtime.callAccessorOn(${JSON.stringify(mirror)}, "${accessorName}"): `
+            + retType.exceptionDetails.text);
+    }
+
+    return convertRemoteObject(retType.result);
 }
 
 export async function getPromiseMirrorValueAsync(mirror: PromiseMirror): Promise<Mirror> {
@@ -231,6 +314,8 @@ export async function getFunctionDetailsAsync(funcMirror: FunctionMirror): Promi
 
     const name = isStringMirror(nameMirror) ? nameMirror.value || "" : "";
     const code = codeMirror.value;
+
+    console.log(`details for ${JSON.stringify(funcMirror)}: '${name}', ${code}`);
     const location = getFunctionLocation(internalProperties);
 
     return { name, location, code };
@@ -257,18 +342,24 @@ function getFunctionLocation(properties: inspector.Runtime.InternalPropertyDescr
     return { file: "", line: 0, column: 0 };
 }
 
-async function runtimeGetPropertiesAsync(
-        mirror: Mirror,
-        ownProperties: boolean | undefined) {
-
+function getObjectId(mirror: Mirror): string {
     if (!isMirror(mirror)) {
-        throw new Error("Asking for the properties of non-mirror: " + JSON.stringify(mirror));
+        throw new Error("Asking for objectId of a non-mirror: " + JSON.stringify(mirror));
     }
 
     const objectId = mirror.objectId;
     if (objectId === undefined) {
-        throw new Error("Asking for the properties of mirror without objectId: " + JSON.stringify(mirror));
+        throw new Error("Asking for the objectId of mirror without objectId: " + JSON.stringify(mirror));
     }
+
+    return objectId;
+}
+
+async function runtimeGetPropertiesAsync(
+        mirror: Mirror,
+        ownProperties: boolean | undefined) {
+
+    const objectId = getObjectId(mirror);
 
     const retType = await new Promise<inspector.Runtime.GetPropertiesReturnType>((resolve, reject) => {
         inspectorSession.post(

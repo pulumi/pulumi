@@ -442,13 +442,17 @@ async function analyzeFunctionMirrorAsync(
         const protoMirror = await getPrototypeOfMirrorAsync(funcMirror);
         const isAsyncFunction = await computeIsAsyncFunction(funcMirror);
 
+        const globalFunctionPrototypeMirror = await getMirrorAsync(Function.prototype);
+
         // Ensure that the prototype of this function is properly serialized as well. We only need to do
         // this for functions with a custom prototype (like a derived class constructor, or a function
         // that a user has explicit set the prototype for). Normal functions will pick up
         // Function.prototype by default, so we don't need to do anything for them.
-        if (protoMirror !== await getMirrorAsync(Function.prototype) &&
+        if (protoMirror !== globalFunctionPrototypeMirror &&
             !isAsyncFunction &&
             !await isDerivedNoCaptureConstructorAsync(funcMirror)) {
+
+            console.log(`Object.getPrototypeOf(${JSON.stringify(funcMirror)}) is ${JSON.stringify(protoMirror)} which wasn't ${JSON.stringify(globalFunctionPrototypeMirror)}`);
 
             const protoEntry = await getOrCreateEntryAsync(protoMirror, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
