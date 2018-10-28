@@ -1256,6 +1256,15 @@ async function isDerivedNoCaptureConstructorAsync(func: FunctionMirror) {
     return false;
 }
 
+let builtInModules: Promise<Map<Mirror, string>> | undefined;
+async function getBuiltInModulesAsync(): Promise<Map<Mirror, string>> {
+    if (!builtInModules) {
+        builtInModules = computeBuiltInModules();
+    }
+
+    return builtInModules();
+}
+
 // These modules are built-in to Node.js, and are available via `require(...)`
 // but are not stored in the `require.cache`.  They are guaranteed to be
 // available at the unqualified names listed below. _Note_: This list is derived
@@ -1266,7 +1275,7 @@ const builtInModuleNames = [
     "path", "process", "punycode", "querystring", "readline", "repl", "stream", "string_decoder",
     /* "sys" deprecated ,*/ "timers", "tls", "tty", "url", "util", "v8", "vm", "zlib",
 ];
-const builtInModules = new Map<any, string>();
+const builtInModules = new Map<Mirror, string>();
 for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
 }
