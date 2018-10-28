@@ -378,6 +378,8 @@ async function analyzeFunctionMirrorAsync(
             functionInfo.proto = protoEntry;
 
             if (funcMirror.description.startsWith("class ")) {
+                // console.log("Processing class: " + funcMirror.description);
+
                 // This was a class (which is effectively synonymous with a constructor-function).
                 // We also know that it's a derived class because of the `proto !==
                 // Function.prototype` check above.  (The prototype of a non-derived class points at
@@ -543,8 +545,8 @@ async function analyzeFunctionMirrorAsync(
 
         return;
 
-        function addIfFunction(prop: any, isStatic: boolean) {
-            if (prop instanceof Function) {
+        function addIfFunction(prop: Mirror, isStatic: boolean) {
+            if (isFunctionMirror(prop)) {
                 const set = isStatic
                     ? context.classStaticMemberToSuperEntry
                     : context.classInstanceMemberToSuperEntry;
