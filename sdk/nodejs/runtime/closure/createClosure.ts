@@ -19,18 +19,19 @@ import { ResourceError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
+import * as utils from "./utils";
 
 import {
     callAccessorOn,
     callFunctionOn,
     FunctionMirror,
-    getMirrorAsync,
-    getMirrorMemberAsync,
+    getFunctionMirrorAsync,
+    // getMirrorMemberAsync,
     getNameOrSymbol,
     getOwnPropertyAsync,
     getOwnPropertyDescriptorsAsync,
     getPromiseMirrorValueAsync,
-    getPropertyAsync,
+    // getPropertyAsync,
     getPrototypeOfMirrorAsync,
     isArrayMirror,
     isBooleanMirror,
@@ -46,8 +47,11 @@ import {
     isTruthy,
     isUndefinedMirror,
     isUndefinedOrNullMirror,
+    lookupCapturedVariableAsync,
     Mirror,
-    MirrorPropertyDescriptor } from "./mirrors";
+    MirrorPropertyDescriptor,
+} from "./mirrors";
+
 import * as v8 from "./v8";
 
 export interface ObjectInfo {
@@ -225,6 +229,110 @@ class SerializedOutput<T> implements resource.Output<T> {
     }
 }
 
+let mirrorToEmitExprMapPromise: Promise<Map<Mirror, string>> | undefined;
+
+export function getMirrorToEmitExprMap(): Promise<Map<Mirror, string>> {
+    if (!mirrorToEmitExprMapPromise) {
+        mirrorToEmitExprMapPromise = computeMirrorToEmitExprMapAsync();
+    }
+
+    return mirrorToEmitExprMapPromise;
+}
+
+async function computeMirrorToEmitExprMapAsync(): Promise<Map<Mirror, string>> {
+    // // currently not used.  will be used once we actually start using the remote inspector API.
+    // const remoteIdToValueMap = new Map<RemoteObjectId, Mirror>();
+
+    // Mapping from well known global value to the emit-expression we should generate for it.
+    const mirrorToEmitExprMap = new Map<Mirror, string>();
+
+    // Add well-known javascript global variables into our cache.  This way, if there
+    // is any code that references them, we can just emit that as simple expressions
+    // (like "new Array"), instead of trying to actually serialize out these core types.
+
+    // Front load these guys so we prefer emitting code that references them directly,
+    // instead of in unexpected ways.  i.e. we'd prefer to have Number.prototype vs
+    // Object.getPrototypeOf(Infinity) (even though they're the same thing.)
+
+    await addGlobalInfoAsync("Object");
+    await addGlobalInfoAsync("Function");
+    await addGlobalInfoAsync("Array");
+    await addGlobalInfoAsync("Number");
+    await addGlobalInfoAsync("String");
+
+    for (let current = global; current; current = Object.getPrototypeOf(current)) {
+        for (const key of Object.getOwnPropertyNames(current)) {
+            // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
+            // just skip them.
+            if (key !== "GLOBAL" && key !== "root") {
+                await addGlobalInfoAsync(key);
+            }
+        }
+    }
+
+    // Add information so that we can properly serialize over generators/iterators.
+    await addGeneratorEntriesAsync();
+    await addEntriesAsync(Symbol.iterator, "Symbol.iterator");
+
+    return mirrorToEmitExprMap;
+
+    async function addEntriesAsync(val: any, emitExpr: string) {
+        if (val === undefined || val === null) {
+            return;
+        }
+
+        const mirror = await mirrors.getMirrorAsync(val);
+
+        // No need to add values twice.  Ths can happen as we walk the global namespace and
+        // sometimes run into multiple names aliasing to the same value.
+        if (mirrorToEmitExprMap.has(mirror)) {
+            return;
+        }
+
+        mirrorToEmitExprMap.set(mirror, emitExpr);
+    }
+
+    async function addGlobalInfoAsync(key: string) {
+        const globalObj = (<any>global)[key];
+        const text = utils.isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
+
+        if (globalObj !== undefined && globalObj !== null) {
+            await addEntriesAsync(globalObj, text);
+            await addEntriesAsync(Object.getPrototypeOf(globalObj), `Object.getPrototypeOf(${text})`);
+            await addEntriesAsync(globalObj.prototype, `${text}.prototype`);
+        }
+    }
+
+    // A generator function ('f') has ends up creating two interesting objects in the js
+    // environment:
+    //
+    // 1. the generator function itself ('f').  This generator function has an __proto__ that is
+    //    shared will all other generator functions.
+    //
+    // 2. a property 'prototype' on 'f'.  This property's __proto__ will be shared will all other
+    //    'prototype' properties of other generator functions.
+    //
+    // So, to properly serialize a generator, we stash these special objects away so that we can
+    // refer to the well known instance on the other side when we desirialize. Otherwise, if we
+    // actually tried to deserialize the instances/prototypes we have we would end up failing when
+    // we hit native functions.
+    //
+    // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
+    // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
+    async function addGeneratorEntriesAsync() {
+        // tslint:disable-next-line:no-empty
+        const emptyGenerator = function* (): any { };
+
+        await addEntriesAsync(
+            Object.getPrototypeOf(emptyGenerator),
+            "Object.getPrototypeOf(function*(){})");
+
+        await addEntriesAsync(
+            Object.getPrototypeOf(emptyGenerator.prototype),
+            "Object.getPrototypeOf((function*(){}).prototype)");
+    }
+}
+
 /**
  * createFunctionInfo serializes a function and its closure environment into a form that is
  * amenable to persistence as simple JSON.  Like toString, it includes the full text of the
@@ -249,12 +357,12 @@ export async function createFunctionInfoAsync(
     // would be a bad idea as that would mean once deserialized the objects wouldn't point to the
     // well known globals that were expected.  Furthermore, most of these are almost certain to fail
     // to serialize due to hitting things like native-builtins.
-    const mirrorToEmitExprMap = await v8.getMirrorToEmitExprMap();
+    const mirrorToEmitExprMap = await getMirrorToEmitExprMap();
     for (const [mirror, expr] of mirrorToEmitExprMap) {
         context.cache.set(mirror, { expr });
     }
 
-    const funcMirror = await getMirrorAsync(func);
+    const funcMirror = await getFunctionMirrorAsync(func);
 
     // Make sure this func is in the cache itself as we may hit it again while recursing.
     const entry: Entry = {};
@@ -370,7 +478,7 @@ async function analyzeFunctionMirrorAsync(
         // this for functions with a custom prototype (like a derived class constructor, or a function
         // that a user has explicit set the prototype for). Normal functions will pick up
         // Function.prototype by default, so we don't need to do anything for them.
-        if (protoMirror !== await getMirrorAsync(Function.prototype) &&
+        if (protoMirror !== await getFunctionMirrorAsync(Function.prototype) &&
             !isAsyncFunction &&
             !await isDerivedNoCaptureConstructorAsync(funcMirror)) {
 
@@ -461,7 +569,7 @@ async function analyzeFunctionMirrorAsync(
             for (const name of capturedVariables.keys()) {
                 let valueMirror: Mirror;
                 try {
-                    valueMirror = await v8.lookupCapturedVariableAsync(funcMirror, name, throwOnFailure);
+                    valueMirror = await lookupCapturedVariableAsync(funcMirror, name, throwOnFailure);
                 }
                 catch (err) {
                     return await throwSerializationErrorAsync(funcMirror, context, err.message);
@@ -481,7 +589,7 @@ async function analyzeFunctionMirrorAsync(
                     // to list both the name of the capture and of the function.  if they
                     // are different, it's an indirect reference, and the name should be
                     // included for clarity.
-                    const funcNameMirror = await getMirrorMemberAsync(valueMirror, "name");
+                    const funcNameMirror = await callAccessorOn(valueMirror, "name");
                     if (isStringValue(funcNameMirror, name)) {
                         context.frames.push({ capturedFunctionName: name });
                     }
@@ -536,7 +644,7 @@ async function analyzeFunctionMirrorAsync(
             addIfFunction(classProp, /*isStatic*/ true);
         }
 
-        const funcPrototypeMirror = await getPropertyAsync(funcMirror, "prototype");
+        const funcPrototypeMirror = await callAccessorOn(funcMirror, "prototype");
         for (const descriptor of await getOwnPropertyDescriptorsAsync(funcPrototypeMirror)) {
             // instance method.
             const classProp = await getOwnPropertyAsync(funcPrototypeMirror, descriptor);
@@ -560,12 +668,12 @@ async function computeIsAsyncFunction(funcMirror: Mirror): Promise<boolean> {
     // Note, i can't think of a better way to determine this.  This is particularly hard because
     // we can't even necessary refer to async function objects here as this code is rewritten by
     // TS, converting all async functions to non async functions.
-    const funcConstructorMirror = await getMirrorMemberAsync(funcMirror, "constructor");
+    const funcConstructorMirror = await callAccessorOn(funcMirror, "constructor");
     if (isFalsy(funcConstructorMirror)) {
         return false;
     }
 
-    const constructorNameMirror = await getMirrorMemberAsync(funcConstructorMirror, "name");
+    const constructorNameMirror = await callAccessorOn(funcConstructorMirror, "name");
     if (!isStringMirror(constructorNameMirror)) {
         return false;
     }
@@ -721,7 +829,7 @@ async function isDefaultFunctionPrototypeAsync(funcMirror: FunctionMirror, proto
     // The initial value of prototype on any newly-created Function instance is a new instance of
     // Object, but with the own-property 'constructor' set to point back to the new function.
     if (isTruthy(prototypePropMirror) &&
-        await getPropertyAsync(prototypePropMirror, "constructor") === funcMirror) {
+        await callAccessorOn(prototypePropMirror, "constructor") === funcMirror) {
 
         const descriptors = await getOwnPropertyDescriptorsAsync(prototypePropMirror);
         return descriptors.length === 1 &&
@@ -797,7 +905,7 @@ async function getOrCreateEntryAsync(
             `It can only be used at deployment time.\n\n${funcCode}`;
         const errorFunc = () => { throw new Error(message); };
 
-        mirror = await getMirrorAsync(errorFunc);
+        mirror = await getFunctionMirrorAsync(errorFunc);
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
@@ -1009,7 +1117,7 @@ async function getOrCreateEntryAsync(
             // loops, put a dummy entry in the environment map.  That way, if we hit
             // this object again while recursing we won't try to generate this property.
             environment.set(keyEntry, <any>undefined);
-            const objPropValue = await getPropertyAsync(mirror, propName);
+            const objPropValue = await callAccessorOn(mirror, propName);
 
             const propertyInfo = await getPropertyInfoAsync(mirror, propName);
             if (!propertyInfo) {
@@ -1195,7 +1303,7 @@ async function getOrCreateEntryAsync(
         // into the Object-Entry for the SerializedOutput instance.
 
         // First, extract out the inner value this Output wraps.
-        const promiseMirror = await callFunctionOn(mirror, "promise");
+        const promiseMirror = await callAccessorOn(mirror, "promise");
         if (!isPromiseMirror(promiseMirror)) {
             throw new Error("output.promise() did not return a promise: " + JSON.stringify(promiseMirror));
         }
@@ -1233,7 +1341,7 @@ async function getOrCreateEntryAsync(
 }
 
 async function isOutputAsync(mirror: Mirror): Promise<boolean> {
-    const outputClassMirror = await getMirrorAsync(resource.Output);
+    const outputClassMirror = await getFunctionMirrorAsync(resource.Output);
     const isInstanceMirror = await callFunctionOn(outputClassMirror, "isInstance", [mirror]);
     if (!isBooleanMirror(isInstanceMirror)) {
         throw new Error("Calling isInstance did not return a boolean: " + JSON.stringify(isInstanceMirror));
@@ -1326,5 +1434,5 @@ async function hasTruthyMemberAsync(mirror: Mirror, memberName: string): Promise
         return false;
     }
 
-    return isTruthy(await getMirrorMemberAsync(mirror, memberName));
+    return isTruthy(await callAccessorOn(mirror, memberName));
 }

@@ -23,10 +23,6 @@ import * as semver from "semver";
 import * as v8 from "v8";
 v8.setFlagsFromString("--allow-natives-syntax");
 
-import { FunctionMirror, Mirror } from "./mirrors";
-import * as mirrors from "./mirrors";
-import * as utils from "./utils";
-
 // We depend on V8 intrinsics to inspect JavaScript functions and runtime values. These intrinsics
 // are unstable and change radically between versions. These two version checks are used by this module
 // to determine whether or not it is safe to use particular intrinsincs.
@@ -34,7 +30,7 @@ import * as utils from "./utils";
 // We were broken especially badly by Node 11, which removed most of the intrinsics that we used.
 // We will need to find replacements for them.
 const isNodeAtLeastV10 = semver.gte(process.version, "10.0.0");
-const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
+export const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
 
 function throwUnsupportedNodeVersion(): never {
     throw new Error(
@@ -168,19 +164,14 @@ function getScopeForFunction(func: Function, index: number): V8ScopeDetails {
  * @param throwOnFailure If true, throws if the free variable can't be found.
  * @returns The value of the free variable. If `throwOnFailure` is false, returns `undefined` if not found.
  */
-export async function lookupCapturedVariableAsync(
-        funcMirror: FunctionMirror, freeVariable: string, throwOnFailure: boolean): Promise<Mirror> {
-
-    const func = mirrors.getValueForMirror(funcMirror);
-
+export function lookupCapturedVariable(func: Function, freeVariable: string, throwOnFailure: boolean): any {
     // The implementation of this function is now very straightforward since the intrinsics do all of the
     // difficult work.
     const count = getFunctionScopeCount(func);
     for (let i = 0; i < count; i++) {
         const scope = getScopeForFunction(func, i);
         if (freeVariable in scope.scopeObject) {
-            const val = scope.scopeObject[freeVariable];
-            return await mirrors.getMirrorAsync(val);
+            return scope.scopeObject[freeVariable];
         }
     }
 
@@ -188,7 +179,7 @@ export async function lookupCapturedVariableAsync(
         throw new Error("Unexpected missing variable in closure environment: " + freeVariable);
     }
 
-    return await mirrors.getMirrorAsync(undefined);
+    return undefined;
 }
 
 // import * as inspector from "inspector";
@@ -232,115 +223,4 @@ function getLineColumn(func: Function, script: V8Script | undefined) {
     }
 
     return { line: 0, column: 0 };
-}
-
-let mirrorToEmitExprMapPromise: Promise<Map<Mirror, string>> | undefined;
-
-// In the future, will return the local well-known in-memory object for the given remote-id
-// async function getWellKnownObjectAsync(id: string): Promise<any> {
-//     ensureWellKnownObjectMaps();
-//     const [idToValueMap] = await wellKnownObjectMaps;
-//     return idToValueMap.get(id);
-// }
-
-export function getMirrorToEmitExprMap(): Promise<Map<Mirror, string>> {
-    if (!mirrorToEmitExprMapPromise) {
-        mirrorToEmitExprMapPromise = computeMirrorToEmitExprMapAsync();
-    }
-
-    return mirrorToEmitExprMapPromise;
-}
-
-async function computeMirrorToEmitExprMapAsync(): Promise<Map<Mirror, string>> {
-    // // currently not used.  will be used once we actually start using the remote inspector API.
-    // const remoteIdToValueMap = new Map<RemoteObjectId, Mirror>();
-
-    // Mapping from well known global value to the emit-expression we should generate for it.
-    const mirrorToEmitExprMap = new Map<Mirror, string>();
-
-    // Add well-known javascript global variables into our cache.  This way, if there
-    // is any code that references them, we can just emit that as simple expressions
-    // (like "new Array"), instead of trying to actually serialize out these core types.
-
-    // Front load these guys so we prefer emitting code that references them directly,
-    // instead of in unexpected ways.  i.e. we'd prefer to have Number.prototype vs
-    // Object.getPrototypeOf(Infinity) (even though they're the same thing.)
-
-    await addGlobalInfoAsync("Object");
-    await addGlobalInfoAsync("Function");
-    await addGlobalInfoAsync("Array");
-    await addGlobalInfoAsync("Number");
-    await addGlobalInfoAsync("String");
-
-    for (let current = global; current; current = Object.getPrototypeOf(current)) {
-        for (const key of Object.getOwnPropertyNames(current)) {
-            // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
-            // just skip them.
-            if (key !== "GLOBAL" && key !== "root") {
-                await addGlobalInfoAsync(key);
-            }
-        }
-    }
-
-    // Add information so that we can properly serialize over generators/iterators.
-    await addGeneratorEntriesAsync();
-    await addEntriesAsync(Symbol.iterator, "Symbol.iterator");
-
-    return mirrorToEmitExprMap;
-
-    async function addEntriesAsync(val: any, emitExpr: string) {
-        if (val === undefined || val === null) {
-            return;
-        }
-
-        const mirror = await mirrors.getMirrorAsync(val);
-
-        // No need to add values twice.  Ths can happen as we walk the global namespace and
-        // sometimes run into multiple names aliasing to the same value.
-        if (mirrorToEmitExprMap.has(mirror)) {
-            return;
-        }
-
-        mirrorToEmitExprMap.set(mirror, emitExpr);
-    }
-
-    async function addGlobalInfoAsync(key: string) {
-        const globalObj = (<any>global)[key];
-        const text = utils.isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
-
-        if (globalObj !== undefined && globalObj !== null) {
-            await addEntriesAsync(globalObj, text);
-            await addEntriesAsync(Object.getPrototypeOf(globalObj), `Object.getPrototypeOf(${text})`);
-            await addEntriesAsync(globalObj.prototype, `${text}.prototype`);
-        }
-    }
-
-    // A generator function ('f') has ends up creating two interesting objects in the js
-    // environment:
-    //
-    // 1. the generator function itself ('f').  This generator function has an __proto__ that is
-    //    shared will all other generator functions.
-    //
-    // 2. a property 'prototype' on 'f'.  This property's __proto__ will be shared will all other
-    //    'prototype' properties of other generator functions.
-    //
-    // So, to properly serialize a generator, we stash these special objects away so that we can
-    // refer to the well known instance on the other side when we desirialize. Otherwise, if we
-    // actually tried to deserialize the instances/prototypes we have we would end up failing when
-    // we hit native functions.
-    //
-    // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
-    // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
-    async function addGeneratorEntriesAsync() {
-        // tslint:disable-next-line:no-empty
-        const emptyGenerator = function* (): any { };
-
-        await addEntriesAsync(
-            Object.getPrototypeOf(emptyGenerator),
-            "Object.getPrototypeOf(function*(){})");
-
-        await addEntriesAsync(
-            Object.getPrototypeOf(emptyGenerator.prototype),
-            "Object.getPrototypeOf((function*(){}).prototype)");
-    }
 }
