@@ -1190,19 +1190,33 @@ async function isDerivedNoCaptureConstructorAsync(func: Function): Promise<boole
     return false;
 }
 
-// These modules are built-in to Node.js, and are available via `require(...)`
-// but are not stored in the `require.cache`.  They are guaranteed to be
-// available at the unqualified names listed below. _Note_: This list is derived
-// based on Node.js 6.x tree at: https://github.com/nodejs/node/tree/v6.x/lib
-const builtInModuleNames = [
-    "assert", "buffer", "child_process", "cluster", "console", "constants", "crypto",
-    "dgram", "dns", "domain", "events", "fs", "http", "https", "module", "net", "os",
-    "path", "process", "punycode", "querystring", "readline", "repl", "stream", "string_decoder",
-    /* "sys" deprecated ,*/ "timers", "tls", "tty", "url", "util", "v8", "vm", "zlib",
-];
-const builtInModules = new Map<any, string>();
-for (const name of builtInModuleNames) {
-    builtInModules.set(require(name), name);
+let builtInModules: Promise<Map<any, string>> | undefined;
+function getBuiltInModules(): Promise<Map<any, string>> {
+    if (!builtInModules) {
+        builtInModules = computeBuiltInModules();
+    }
+
+    return builtInModules;
+
+    async function computeBuiltInModules() {
+        // These modules are built-in to Node.js, and are available via `require(...)`
+        // but are not stored in the `require.cache`.  They are guaranteed to be
+        // available at the unqualified names listed below. _Note_: This list is derived
+        // based on Node.js 6.x tree at: https://github.com/nodejs/node/tree/v6.x/lib
+        const builtInModuleNames = [
+            "assert", "buffer", "child_process", "cluster", "console", "constants", "crypto",
+            "dgram", "dns", "domain", "events", "fs", "http", "https", "module", "net", "os",
+            "path", "process", "punycode", "querystring", "readline", "repl", "stream", "string_decoder",
+            /* "sys" deprecated ,*/ "timers", "tls", "tty", "url", "util", "v8", "vm", "zlib",
+        ];
+
+        const map = new Map<any, string>();
+        for (const name of builtInModuleNames) {
+            map.set(require(name), name);
+        }
+
+        return map;
+    }
 }
 
 // findNormalizedModuleName attempts to find a global name bound to the object, which can be used as
@@ -1215,7 +1229,8 @@ for (const name of builtInModuleNames) {
 // be '/').
 async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefined> {
     // First, check the built-in modules
-    const key = builtInModules.get(obj);
+    const modules = await getBuiltInModules();
+    const key = modules.get(obj);
     if (key) {
         return key;
     }
