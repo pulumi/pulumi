@@ -156,7 +156,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
                 __isMirror,
                 objectId,
                 type: "function",
-                className: "Function",
             };
 
             // functionIdToFunc.set(objectId, val);
@@ -193,7 +192,7 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
                     objectId,
                     type: "object",
                     subtype: "regexp",
-                    className: "RegExp",
+                    // className: "RegExp",
                 };
 
                 return regExpMirror;
@@ -205,7 +204,7 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
                     objectId,
                     type: "object",
                     subtype: "promise",
-                    className: "Promise",
+                    // className: "Promise",
                 };
 
                 return promiseMirror;
@@ -217,23 +216,23 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
                     objectId,
                     type: "object",
                     subtype: "array",
-                    className: "Array",
+                    // className: "Array",
                 };
 
                 return arrayMirror;
             }
 
-            let className = "unknown";
-            const anyVal = <any>val;
-            if (anyVal.constructor && anyVal.constructor.name) {
-                className = anyVal.constructor.name;
-            }
+            // let className = "unknown";
+            // const anyVal = <any>val;
+            // if (anyVal.constructor && anyVal.constructor.name) {
+            //     className = anyVal.constructor.name;
+            // }
 
             const objectMirror: ObjectMirror = {
                 __isMirror,
                 objectId,
                 type: "object",
-                className: className,
+                // className: className,
             };
 
             return objectMirror;

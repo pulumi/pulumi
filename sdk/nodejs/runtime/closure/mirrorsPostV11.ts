@@ -107,7 +107,34 @@ async function runtimeEvaluateAsync(expression: string): Promise<Mirror> {
 }
 
 function convertRemoteObject(remoteObj: inspector.Runtime.RemoteObject): Mirror {
-    throw new Error("NYI: unhandled crconvertRemoteObject case: " + JSON.stringify(remoteObj));
+    if (!remoteObj) {
+        throw new Error("Did not get passed an object to convertRemoteObject");
+    }
+
+    switch (remoteObj.type) {
+        case "function":
+            return convertFunction(remoteObj);
+        case "object":
+            return convertObject(remoteObj);
+        default:
+            throw new Error("NYI: unhandled convertRemoteObject case: " + JSON.stringify(remoteObj));
+    }
+}
+
+function convertFunction(remoteObj: inspector.Runtime.RemoteObject): FunctionMirror {
+    if (remoteObj.objectId === undefined) {
+        throw new Error("Remote function did not have an objectId: " + JSON.stringify(remoteObj));
+    }
+
+    return {
+        __isMirror: true,
+        type: "function",
+        objectId: remoteObj.objectId,
+    };
+}
+
+function convertObject(remoteObj: inspector.Runtime.RemoteObject): ObjectMirror {
+    
 }
 
 export async function getPrototypeOfMirrorAsync(mirror: Mirror): Promise<Mirror> {

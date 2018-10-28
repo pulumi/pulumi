@@ -26,7 +26,7 @@ export interface Mirror {
     /** Object subtype hint. Specified for `object` type values only. */
     subtype?: string;
     /** Object class (constructor) name. Specified for `object` type values only. */
-    className?: string;
+    // className?: string;
     /** Remote object value in case of primitive values or JSON values (if it was requested). */
     value?: any;
     /** Primitive value which can not be JSON-stringified does not have `value`, but gets this property. */
@@ -39,13 +39,13 @@ export interface Mirror {
 
 export interface FunctionMirror extends Mirror {
     type: "function";
-    className: "Function";
     // objectId: RemoteObjectId;
 
     /** contains the result of calling '.toString()' on the function instance. */
     // description: string;
 
     // properties that never appear
+    // className?: never;
     subtype?: never;
     value?: never;
     unserializableValue?: never;
@@ -57,7 +57,7 @@ export interface SymbolMirror extends Mirror {
 
     // properties that never appear
     subtype?: never;
-    className?: never;
+    // className?: never;
     unserializableValue?: never;
     // description?: never;
     value?: never;
@@ -69,7 +69,7 @@ export interface StringMirror extends Mirror {
 
     // properties that never appear
     subtype?: never;
-    className?: never;
+    // className?: never;
     unserializableValue?: never;
     // objectId?: never;
     // description?: never;
@@ -87,7 +87,7 @@ export interface NumberMirror extends Mirror {
 
     // properties that never appear
     subtype?: never;
-    className?: never;
+    // className?: never;
     // objectId?: never;
     // description?: never;
 }
@@ -98,7 +98,7 @@ export interface BooleanMirror extends Mirror {
 
     // properties that never appear
     subtype?: never;
-    className?: never;
+    // className?: never;
     unserializableValue?: never;
     // objectId?: never;
     // description?: never;
@@ -110,7 +110,7 @@ export interface UndefinedMirror extends Mirror {
     // properties that never appear
     value?: never;
     subtype?: never;
-    className?: never;
+    // className?: never;
     unserializableValue?: never;
     // objectId?: never;
     // description?: never;
@@ -130,7 +130,7 @@ export interface NullMirror extends ObjectMirror {
     value: null;
 
     // properties that never appear
-    className?: never;
+    // className?: never;
     unserializableValue?: never;
     // objectId?: never;
     // description?: never;
@@ -138,7 +138,7 @@ export interface NullMirror extends ObjectMirror {
 
 export interface RegExpMirror extends ObjectMirror {
     subtype: "regexp";
-    className: "RegExp";
+    // className: "RegExp";
     // objectId: string;
 
     // properties that never appear
@@ -149,7 +149,7 @@ export interface RegExpMirror extends ObjectMirror {
 
 export interface PromiseMirror extends ObjectMirror {
     subtype: "promise";
-    className: "Promise";
+    // className: "Promise";
     // objectId: string;
 
     // properties that never appear
@@ -160,7 +160,7 @@ export interface PromiseMirror extends ObjectMirror {
 
 export interface ArrayMirror extends ObjectMirror {
     subtype: "array";
-    className: "Array";
+    // className: "Array";
     // objectId: string;
 
     // properties that never appear
