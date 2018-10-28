@@ -208,12 +208,11 @@ const mirrorToVal = new Map<Mirror, any>();
 
 // Not for general use.  Only when transitioning over to the inspector API.
 export function getValueForMirror<TMirror extends Mirror>(mirror: TMirror): ValueType<TMirror> {
-    const val = mirrorToVal.get(mirror);
-    if (!val) {
+    if (!mirrorToVal.has(mirror)) {
         throw new Error("Didn't have value for mirror: " + JSON.stringify(mirror));
     }
 
-    return val;
+    return mirrorToVal.get(mirror);
 }
 
 // Negative-zero has to be handled specially.  It cannot be placed in valToMirror map as it will
@@ -225,6 +224,7 @@ const negativeZeroMirror: NumberMirror = {
     unserializableValue: "-0",
     objectId: "id" + currentMirrorId++,
 };
+mirrorToVal.set(negativeZeroMirror, -0);
 
 export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
     // We should never be passed a Mirror here.  It indicates that somehow during serialization we
