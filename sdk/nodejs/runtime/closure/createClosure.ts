@@ -1270,7 +1270,7 @@ async function getOrCreateEntryAsync(
         // into the Object-Entry for the SerializedOutput instance.
 
         // First, extract out the inner value this Output wraps.
-        const promiseMirror = await callAccessorOn(mirror, "promise");
+        const promiseMirror = await callFunctionOn(mirror, "promise", []);
         if (!isPromiseMirror(promiseMirror)) {
             throw new Error("output.promise() did not return a promise: " + JSON.stringify(promiseMirror));
         }
