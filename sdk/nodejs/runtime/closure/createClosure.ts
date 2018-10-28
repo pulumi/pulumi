@@ -207,6 +207,8 @@ class SerializedOutput<T> implements resource.Output<T> {
 export async function createFunctionInfoAsync(
     func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<FunctionInfo> {
 
+    // Initialize our Context object.  It is effectively used to keep track of the work we're doing
+    // as well as to keep track of the graph as we're walking it so we don't infinitely recurse.
     const context: Context = {
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),
@@ -220,32 +222,7 @@ export async function createFunctionInfoAsync(
     // Add well-known javascript global variables into our cache.  This way, if there
     // is any code that references them, we can just emit that as simple expressions
     // (like "new Array"), instead of trying to actually serialize out these core types.
-
-    // Front load these guys so we prefer emitting code that references them directly,
-    // instead of in unexpected ways.  i.e. we'd prefer to have Number.prototype vs
-    // Object.getPrototypeOf(Infinity) (even though they're the same thing.)
-
-    addGlobalInfo("Object");
-    addGlobalInfo("Function");
-    addGlobalInfo("Array");
-    addGlobalInfo("Number");
-    addGlobalInfo("String");
-
-    for (let current = global; current; current = Object.getPrototypeOf(current)) {
-        for (const key of Object.getOwnPropertyNames(current)) {
-            // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
-            // just skip them.
-            if (key !== "GLOBAL" && key !== "root") {
-                if ((<any>global)[key]) {
-                    addGlobalInfo(key);
-                }
-            }
-        }
-    }
-
-    // Add information so that we can properly serialize over generators/iterators.
-    addGeneratorEntries();
-    context.cache.set(Symbol.iterator, { expr: "Symbol.iterator" });
+    addEntriesForWellKnownGlobalObjects();
 
     // Make sure this func is in the cache itself as we may hit it again while recursing.
     const entry: Entry = {};
@@ -257,50 +234,80 @@ export async function createFunctionInfoAsync(
 
     return entry.function;
 
-    function addGlobalInfo(key: string) {
-        const globalObj = (<any>global)[key];
-        const text = isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
+    function addEntriesForWellKnownGlobalObjects() {
+        // Front load these guys so we prefer emitting code that references them directly,
+        // instead of in unexpected ways.  i.e. we'd prefer to have Number.prototype vs
+        // Object.getPrototypeOf(Infinity) (even though they're the same thing.)
 
-        if (!context.cache.has(globalObj)) {
-            context.cache.set(globalObj, { expr: text });
+        addGlobalInfo("Object");
+        addGlobalInfo("Function");
+        addGlobalInfo("Array");
+        addGlobalInfo("Number");
+        addGlobalInfo("String");
+
+        for (let current = global; current; current = Object.getPrototypeOf(current)) {
+            for (const key of Object.getOwnPropertyNames(current)) {
+                // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
+                // just skip them.
+                if (key !== "GLOBAL" && key !== "root") {
+                    if ((<any>global)[key]) {
+                        addGlobalInfo(key);
+                    }
+                }
+            }
         }
 
-        const proto1 = Object.getPrototypeOf(globalObj);
-        if (proto1 && !context.cache.has(proto1)) {
-            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})` });
+        // Add information so that we can properly serialize over generators/iterators.
+        addGeneratorEntries();
+        context.cache.set(Symbol.iterator, { expr: "Symbol.iterator" });
+
+        return;
+
+        function addGlobalInfo(key: string) {
+            const globalObj = (<any>global)[key];
+            const text = isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
+
+            if (!context.cache.has(globalObj)) {
+                context.cache.set(globalObj, { expr: text });
+            }
+
+            const proto1 = Object.getPrototypeOf(globalObj);
+            if (proto1 && !context.cache.has(proto1)) {
+                context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})` });
+            }
+
+            const proto2 = globalObj.prototype;
+            if (proto2 && !context.cache.has(proto2)) {
+                context.cache.set(proto2, { expr: `${text}.prototype` });
+            }
         }
 
-        const proto2 = globalObj.prototype;
-        if (proto2 && !context.cache.has(proto2)) {
-            context.cache.set(proto2, { expr: `${text}.prototype` });
+        // A generator function ('f') has ends up creating two interesting objects in the js
+        // environment:
+        //
+        // 1. the generator function itself ('f').  This generator function has an __proto__ that is
+        //    shared will all other generator functions.
+        //
+        // 2. a property 'prototype' on 'f'.  This property's __proto__ will be shared will all other
+        //    'prototype' properties of other generator functions.
+        //
+        // So, to properly serialize a generator, we stash these special objects away so that we can
+        // refer to the well known instance on the other side when we desirialize. Otherwise, if we
+        // actually tried to deserialize the instances/prototypes we have we would end up failing when
+        // we hit native functions.
+        //
+        // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
+        // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
+        function addGeneratorEntries() {
+            // tslint:disable-next-line:no-empty
+            const emptyGenerator = function* (): any { };
+
+            context.cache.set(Object.getPrototypeOf(emptyGenerator),
+                { expr: "Object.getPrototypeOf(function*(){})" });
+
+            context.cache.set(Object.getPrototypeOf(emptyGenerator.prototype),
+                { expr: "Object.getPrototypeOf((function*(){}).prototype)" });
         }
-    }
-
-    // A generator function ('f') has ends up creating two interesting objects in the js
-    // environment:
-    //
-    // 1. the generator function itself ('f').  This generator function has an __proto__ that is
-    //    shared will all other generator functions.
-    //
-    // 2. a property 'prototype' on 'f'.  This property's __proto__ will be shared will all other
-    //    'prototype' properties of other generator functions.
-    //
-    // So, to properly serialize a generator, we stash these special objects away so that we can
-    // refer to the well known instance on the other side when we desirialize. Otherwise, if we
-    // actually tried to deserialize the instances/prototypes we have we would end up failing when
-    // we hit native functions.
-    //
-    // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
-    // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
-    function addGeneratorEntries() {
-        // tslint:disable-next-line:no-empty
-        const emptyGenerator = function* (): any { };
-
-        context.cache.set(Object.getPrototypeOf(emptyGenerator),
-            { expr: "Object.getPrototypeOf(function*(){})" });
-
-        context.cache.set(Object.getPrototypeOf(emptyGenerator.prototype),
-            { expr: "Object.getPrototypeOf((function*(){}).prototype)" });
     }
 
     async function processAsyncWorkQueue() {
