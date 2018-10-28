@@ -1320,7 +1320,7 @@ async function findNormalizedModuleNameAsync(obj: Mirror): Promise<string | unde
 }
 
 async function hasTruthyMemberAsync(mirror: Mirror, memberName: string): Promise<boolean> {
-    if (!isUndefinedOrNullMirror(mirror)) {
+    if (isUndefinedOrNullMirror(mirror)) {
         return false;
     }
 
