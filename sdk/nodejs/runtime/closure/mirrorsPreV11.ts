@@ -17,6 +17,7 @@ import * as v8 from "./v8";
 import {
     ArrayMirror,
     BooleanMirror,
+    FunctionDetails,
     FunctionMirror,
     getNameOrSymbol,
     isMirror,
@@ -156,9 +157,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
                 objectId,
                 type: "function",
                 className: "Function",
-                description: val.toString(),
-                name: val.name,
-                location: await v8.getFunctionLocationAsync(val),
             };
 
             // functionIdToFunc.set(objectId, val);
@@ -410,4 +408,13 @@ export async function lookupCapturedVariableAsync(
     const func = getValueForMirror(funcMirror);
     const variable = await v8.lookupCapturedVariable(func, freeVariable, throwOnFailure);
     return getMirrorAsync(variable);
+}
+
+export async function getFunctionDetailsAsync(funcMirror: FunctionMirror): Promise<FunctionDetails> {
+    const func = getValueForMirror(funcMirror);
+    return {
+        name: func.name,
+        code: func.toString(),
+        location: await v8.getFunctionLocation(func),
+    };
 }

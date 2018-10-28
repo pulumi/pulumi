@@ -19,6 +19,7 @@ import * as inspector from "inspector";
 import {
     ArrayMirror,
     BooleanMirror,
+    FunctionDetails,
     FunctionMirror,
     getNameOrSymbol,
     isMirror,
@@ -36,30 +37,8 @@ import {
     UndefinedMirror,
 } from "./mirrors";
 
-const session = new inspector.Session();
-session.connect();
-
-async function getFunctionLocation(func: Function) {
-    const functionMirror = await getFunctionMirrorAsync(func);
-    const { properties, internalProperties } = await runtimeGetPropertiesAsync(
-        functionMirror.objectId, /*ownProperties:*/ false);
-    for (const prop of properties) {
-        console.log(JSON.stringify(prop));
-    }
-    for (const prop of internalProperties) {
-        console.log(JSON.stringify(prop));
-    }
-    const functionLocation = internalProperties.find(p => p.name === "[[FunctionLocation]]");
-    if (functionLocation && functionLocation.value && functionLocation.value.value) {
-        const value = functionLocation.value.value;
-        const scriptId = value.scriptId;
-        const line = value.lineNumber;
-        const column = value.columnNumber;
-        const file = /*scriptIdToUrlMap.get(scriptId) ||*/ "";
-        return { file, line, column };
-    }
-    return { file: "", line: 0, column: 0 };
-}
+const inspectorSession = new inspector.Session();
+inspectorSession.connect();
 
 let currentMirrorId = 0;
 
@@ -92,36 +71,43 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
         return <any>mirror;
     }
 
-    mirror = await createMirrorAsync();
+    mirror = await createMirrorAsync(val);
     valToMirror.set(val, mirror);
     // mirrorToVal.set(mirror, val);
     return <any>mirror;
+}
 
-    async function createMirrorAsync(): Promise<Mirror> {
-
-
-        if (typeof val === "function") {
-
-
-            const funcMirror: FunctionMirror = {
-                __isMirror,
-                objectId,
-                type: "function",
-                className: "Function",
-                description: val.toString(),
-                name: val.name,
-                location: await v8.getFunctionLocationAsync(val),
-            };
-
-            // functionIdToFunc.set(objectId, val);
-            return funcMirror;
-        }
-
-
-        console.log("NYI: unhandled createMirrorAsync case: " + typeof val);
-        console.log("NYI: unhandled createMirrorAsync case: " + JSON.stringify(val));
-        throw new Error("NYI: unhandled createMirrorAsync case: " + typeof val + " " + JSON.stringify(val));
+let currentValueId = 0;
+async function createMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
+    const currentValueName = "__valueToEvaluate" + currentValueId++;
+    (<any>global)[currentValueName] = val;
+    try {
+        return <any>await runtimeEvaluateAsync(`global.${currentValueName}`);
     }
+    finally {
+        delete (<any>global)[currentValueName];
+    }
+}
+
+async function runtimeEvaluateAsync(expression: string): Promise<Mirror> {
+    const retType = await new Promise<inspector.Runtime.EvaluateReturnType>((resolve, reject) => {
+        inspectorSession.post(
+            "Runtime.evaluate",
+            { expression },
+            (err, ret) => err ? reject(err) : resolve(ret));
+    });
+
+    if (retType.exceptionDetails) {
+        throw new Error(`Error calling "Runtime.evaluate(${expression})": ` + retType.exceptionDetails.text);
+    }
+
+    // console.log(JSON.stringify(retType.result));
+    const remoteObj = retType.result;
+    return convertRemoteObject(remoteObj);
+}
+
+function convertRemoteObject(remoteObj: inspector.Runtime.RemoteObject): Mirror {
+    throw new Error("NYI: unhandled crconvertRemoteObject case: " + JSON.stringify(remoteObj));
 }
 
 export async function getPrototypeOfMirrorAsync(mirror: Mirror): Promise<Mirror> {
@@ -153,3 +139,29 @@ export async function lookupCapturedVariableAsync(
 
     throw new Error("lookupCapturedVariableAsync NYI");
 }
+
+export async function getFunctionDetailsAsync(funcMirror: FunctionMirror): Promise<FunctionDetails> {
+    throw new Error("getFunctionDetailsAsync NYI");
+}
+
+// async function getFunctionLocation(func: Function) {
+//     const functionMirror = await getFunctionMirrorAsync(func);
+//     const { properties, internalProperties } = await runtimeGetPropertiesAsync(
+//         functionMirror.objectId, /*ownProperties:*/ false);
+//     for (const prop of properties) {
+//         console.log(JSON.stringify(prop));
+//     }
+//     for (const prop of internalProperties) {
+//         console.log(JSON.stringify(prop));
+//     }
+//     const functionLocation = internalProperties.find(p => p.name === "[[FunctionLocation]]");
+//     if (functionLocation && functionLocation.value && functionLocation.value.value) {
+//         const value = functionLocation.value.value;
+//         const scriptId = value.scriptId;
+//         const line = value.lineNumber;
+//         const column = value.columnNumber;
+//         const file = /*scriptIdToUrlMap.get(scriptId) ||*/ "";
+//         return { file, line, column };
+//     }
+//     return { file: "", line: 0, column: 0 };
+// }

@@ -24,7 +24,9 @@ import * as utils from "./utils";
 import {
     callAccessorOn,
     callFunctionOn,
+    FunctionDetails,
     FunctionMirror,
+    getFunctionDetailsAsync,
     getMirrorAsync,
     getNameOrSymbol,
     getOwnPropertyAsync,
@@ -188,6 +190,7 @@ interface Context {
 
 interface FunctionLocation {
     mirror: FunctionMirror;
+    details: FunctionDetails;
     isArrowFunction?: boolean;
 }
 
@@ -372,10 +375,8 @@ async function analyzeFunctionMirrorAsync(
         throw new Error("Was not passed a function mirror to analyzeFunctionMirrorAsync: " + JSON.stringify(funcMirror));
     }
 
-    // logInfo = logInfo || func.name === "addHandler";
-
-    // const { file, line, column } = await v8.getFunctionLocationAsync(funcMirror);
-    const frame = { functionLocation: { mirror: funcMirror, isArrowFunction: false } };
+    const funcDetails = await getFunctionDetailsAsync(funcMirror);
+    const frame = { functionLocation: { mirror: funcMirror, details: funcDetails, isArrowFunction: false } };
 
     context.frames.push(frame);
     const result = await serializeWorkerAsync();
@@ -417,9 +418,9 @@ async function analyzeFunctionMirrorAsync(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(funcMirror.description);
+        const [error, parsedFunction] = parseFunction(funcDetails.code);
         if (error) {
-            await throwSerializationErrorAsync(funcMirror, context, error);
+            await throwSerializationErrorAsync(funcDetails, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
@@ -452,7 +453,7 @@ async function analyzeFunctionMirrorAsync(
             const protoEntry = await getOrCreateEntryAsync(protoMirror, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
 
-            if (funcMirror.description.startsWith("class ")) {
+            if (funcDetails.code.startsWith("class ")) {
                 // console.log("Processing class: " + funcMirror.description);
 
                 // This was a class (which is effectively synonymous with a constructor-function).
@@ -539,7 +540,7 @@ async function analyzeFunctionMirrorAsync(
                     valueMirror = await lookupCapturedVariableAsync(funcMirror, name, throwOnFailure);
                 }
                 catch (err) {
-                    return await throwSerializationErrorAsync(funcMirror, context, err.message);
+                    return await throwSerializationErrorAsync(funcDetails, context, err.message);
                     // TODO(cyrusn): should be able to remove this.
                     // throw err;
                 }
@@ -649,7 +650,7 @@ async function computeIsAsyncFunction(funcMirror: Mirror): Promise<boolean> {
 }
 
 async function throwSerializationErrorAsync(
-    funcMirror: FunctionMirror, context: Context, info: string): Promise<never> {
+    funcDetails: FunctionDetails, context: Context, info: string): Promise<never> {
 
     let message = "";
 
@@ -705,7 +706,7 @@ async function throwSerializationErrorAsync(
     }
 
     message += "  ".repeat(i) + info + "\n\n";
-    message += getTrimmedFunctionCode(funcMirror);
+    message += getTrimmedFunctionCode(funcDetails);
 
     const moduleIndex = context.frames.findIndex(
             f => f.capturedModule !== undefined);
@@ -733,8 +734,8 @@ Consider using import('${moduleName}') or require('${moduleName}') inside ${loca
     throw new ResourceError(message, context.logResource, /*hideStack:*/true);
 }
 
-function getTrimmedFunctionCode(funcMirror: FunctionMirror): string {
-    const funcString = funcMirror.description;
+function getTrimmedFunctionCode(funcDetails: FunctionDetails): string {
+    const funcString = funcDetails.code;
 
     // include up to the first 5 lines of the function to help show what is wrong with it.
     let split = funcString.split(/\r?\n/);
@@ -752,7 +753,7 @@ function getTrimmedFunctionCode(funcMirror: FunctionMirror): string {
 }
 
 function getFunctionLocation(funcLoc: FunctionLocation): string {
-    const loc = funcLoc.mirror.location;
+    const loc = funcLoc.details.location;
     let name = "'" + getFunctionName(funcLoc) + "'";
     if (loc.file) {
         name += `: ${upath.basename(loc.file)}(${loc.line + 1},${loc.column})`;
@@ -764,7 +765,7 @@ function getFunctionLocation(funcLoc: FunctionLocation): string {
 
 function getFunctionName(loc: FunctionLocation): string {
     if (loc.isArrowFunction) {
-        let funcString = loc.mirror.description;
+        let funcString = loc.details.code;
 
         // If there's a semicolon in the text, only include up to that.  we don't want to pull in
         // the entire lambda if it's lots of statements.
@@ -785,8 +786,8 @@ function getFunctionName(loc: FunctionLocation): string {
         return funcString;
     }
 
-    if (loc.mirror.name) {
-        return loc.mirror.name;
+    if (loc.details.name) {
+        return loc.details.name;
     }
 
     return "<anonymous>";
@@ -864,8 +865,9 @@ async function getOrCreateEntryAsync(
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
-        const funcName = mirror.name || "anonymous";
-        const funcCode = getTrimmedFunctionCode(mirror);
+        const details = await getFunctionDetailsAsync(mirror);
+        const funcName = details.name || "anonymous";
+        const funcCode = getTrimmedFunctionCode(details);
 
         const message =
             `Function '${funcName}' cannot be called at runtime. ` +

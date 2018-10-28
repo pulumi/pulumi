@@ -190,8 +190,7 @@ export function lookupCapturedVariable(func: Function, freeVariable: string, thr
  * Given a function, returns the file, line and column number in the file where this function was
  * defined. Returns { "", 0, 0 } if the location cannot be found or if the given function has no Script.
  */
-export async function getFunctionLocationAsync(func: Function):
-        Promise<{ file: string, line: number, column: number }> {
+export function getFunctionLocation(func: Function): { file: string, line: number, column: number } {
 
     const script = getScript(func);
     const { line, column } = getLineColumn(func, script);

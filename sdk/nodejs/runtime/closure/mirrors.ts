@@ -43,16 +43,12 @@ export interface FunctionMirror extends Mirror {
     // objectId: RemoteObjectId;
 
     /** contains the result of calling '.toString()' on the function instance. */
-    description: string;
+    // description: string;
 
     // properties that never appear
     subtype?: never;
     value?: never;
     unserializableValue?: never;
-
-    // Temporary Deviation from v8 to make transition easier.
-    name: string;
-    location: { file: string, line: number, column: number };
 }
 
 export interface SymbolMirror extends Mirror {
@@ -63,7 +59,7 @@ export interface SymbolMirror extends Mirror {
     subtype?: never;
     className?: never;
     unserializableValue?: never;
-    description?: never;
+    // description?: never;
     value?: never;
 }
 
@@ -76,7 +72,7 @@ export interface StringMirror extends Mirror {
     className?: never;
     unserializableValue?: never;
     // objectId?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface NumberMirror extends Mirror {
@@ -93,7 +89,7 @@ export interface NumberMirror extends Mirror {
     subtype?: never;
     className?: never;
     // objectId?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface BooleanMirror extends Mirror {
@@ -105,7 +101,7 @@ export interface BooleanMirror extends Mirror {
     className?: never;
     unserializableValue?: never;
     // objectId?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface UndefinedMirror extends Mirror {
@@ -117,7 +113,7 @@ export interface UndefinedMirror extends Mirror {
     className?: never;
     unserializableValue?: never;
     // objectId?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface ObjectMirror extends Mirror {
@@ -137,7 +133,7 @@ export interface NullMirror extends ObjectMirror {
     className?: never;
     unserializableValue?: never;
     // objectId?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface RegExpMirror extends ObjectMirror {
@@ -148,7 +144,7 @@ export interface RegExpMirror extends ObjectMirror {
     // properties that never appear
     value?: never;
     unserializableValue?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface PromiseMirror extends ObjectMirror {
@@ -159,7 +155,7 @@ export interface PromiseMirror extends ObjectMirror {
     // properties that never appear
     value?: never;
     unserializableValue?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface ArrayMirror extends ObjectMirror {
@@ -170,7 +166,7 @@ export interface ArrayMirror extends ObjectMirror {
     // properties that never appear
     value?: never;
     unserializableValue?: never;
-    description?: never;
+    // description?: never;
 }
 
 export interface MirrorPropertyDescriptor {
@@ -202,6 +198,17 @@ export interface MirrorPropertyDescriptor {
      * object.
      */
     enumerable?: boolean;
+}
+
+export interface FunctionDetails {
+    /** Name of the function, if it has one. */
+    name: string;
+
+    /** Location of the function as best as can be determined. */
+    location: { file: string, line: number, column: number };
+
+    /** Code of the function.  Equivalent to calling .toString() on the original function instance. */
+    code: string;
 }
 
 export function isMirror(val: any): val is Mirror {
@@ -331,7 +338,9 @@ export const getOwnPropertyDescriptorsAsync = mirrorModule.getOwnPropertyDescrip
  */
 export const getOwnPropertyAsync = mirrorModule.getOwnPropertyAsync;
 
+export const lookupCapturedVariableAsync = mirrorModule.lookupCapturedVariableAsync;
+
 export const callFunctionOn = mirrorModule.callFunctionOn;
 export const callAccessorOn = mirrorModule.callAccessorOn;
 
-export const lookupCapturedVariableAsync = mirrorModule.lookupCapturedVariableAsync;
+export const getFunctionDetailsAsync = mirrorModule.getFunctionDetailsAsync;
