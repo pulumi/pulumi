@@ -23,6 +23,7 @@ import {
     FunctionMirror,
     getNameOrSymbol,
     isMirror,
+    isStringMirror,
     isUndefinedOrNullMirror,
     Mirror,
     MirrorPropertyDescriptor,
@@ -40,8 +41,6 @@ import {
 const inspectorSession = new inspector.Session();
 inspectorSession.connect();
 
-let currentMirrorId = 0;
-
 const valToMirror = new Map<any, Mirror>();
 
 const negativeZeroMirror: NumberMirror = {
@@ -49,7 +48,6 @@ const negativeZeroMirror: NumberMirror = {
     type: "number",
     value: undefined,
     unserializableValue: "-0",
-    objectId: "id" + currentMirrorId++,
 };
 // mirrorToVal.set(negativeZeroMirror, -0);
 
@@ -116,8 +114,33 @@ function convertRemoteObject(remoteObj: inspector.Runtime.RemoteObject): Mirror 
             return convertFunction(remoteObj);
         case "object":
             return convertObject(remoteObj);
+        case "number":
+            return convertNumber(remoteObj);
+        case "symbol":
+            return convertSymbol(remoteObj);
         default:
             throw new Error("NYI: unhandled convertRemoteObject case: " + JSON.stringify(remoteObj));
+    }
+}
+
+function convertObject(remoteObj: inspector.Runtime.RemoteObject): ObjectMirror {
+    if (remoteObj.objectId === undefined) {
+        throw new Error("Remote object did not have an objectId: " + JSON.stringify(remoteObj));
+    }
+
+    if (remoteObj.subtype === undefined) {
+        return {
+            __isMirror: true,
+            type: "object",
+            objectId: remoteObj.objectId,
+        };
+    }
+
+    switch (remoteObj.subtype) {
+        case "array":
+            return convertArray(remoteObj, remoteObj.objectId);
+        default:
+            throw new Error("Unknown object subtype: " + JSON.stringify(remoteObj));
     }
 }
 
@@ -133,8 +156,34 @@ function convertFunction(remoteObj: inspector.Runtime.RemoteObject): FunctionMir
     };
 }
 
-function convertObject(remoteObj: inspector.Runtime.RemoteObject): ObjectMirror {
-    
+function convertSymbol(remoteObj: inspector.Runtime.RemoteObject): SymbolMirror {
+    if (remoteObj.objectId === undefined) {
+        throw new Error("Remote function did not have an objectId: " + JSON.stringify(remoteObj));
+    }
+
+    return {
+        __isMirror: true,
+        type: "symbol",
+        objectId: remoteObj.objectId,
+    };
+}
+
+function convertArray(remoteObj: inspector.Runtime.RemoteObject, objectId: string): ArrayMirror {
+    return {
+        __isMirror: true,
+        type: "object",
+        subtype: "array",
+        objectId: objectId,
+    };
+}
+
+function convertNumber(remoteObj: inspector.Runtime.RemoteObject): NumberMirror {
+    return {
+        __isMirror: true,
+        type: "number",
+        value: remoteObj.value,
+        unserializableValue: remoteObj.value,
+    }
 }
 
 export async function getPrototypeOfMirrorAsync(mirror: Mirror): Promise<Mirror> {
@@ -168,27 +217,70 @@ export async function lookupCapturedVariableAsync(
 }
 
 export async function getFunctionDetailsAsync(funcMirror: FunctionMirror): Promise<FunctionDetails> {
-    throw new Error("getFunctionDetailsAsync NYI");
-}
+    const { properties, internalProperties } = await runtimeGetPropertiesAsync(
+        funcMirror, /*ownProperties:*/ false);
 
-// async function getFunctionLocation(func: Function) {
-//     const functionMirror = await getFunctionMirrorAsync(func);
-//     const { properties, internalProperties } = await runtimeGetPropertiesAsync(
-//         functionMirror.objectId, /*ownProperties:*/ false);
+    const nameMirror = await callAccessorOn(funcMirror, "name");
+    const codeMirror = await callFunctionOn(funcMirror, "toString");
+
+    if (!isStringMirror(codeMirror)) {
+        throw new Error("Did not get back a string for .toString on a function:" +
+        "\n\tfunc: " + JSON.stringify(funcMirror) +
+        "\n\tres:  " + JSON.stringify(codeMirror));
+    }
+
+    const name = isStringMirror(nameMirror) ? nameMirror.value || "" : "";
+    const code = codeMirror.value;
+    const location = getFunctionLocation(internalProperties);
+
+    return { name, location, code };
+
 //     for (const prop of properties) {
 //         console.log(JSON.stringify(prop));
 //     }
 //     for (const prop of internalProperties) {
 //         console.log(JSON.stringify(prop));
 //     }
-//     const functionLocation = internalProperties.find(p => p.name === "[[FunctionLocation]]");
-//     if (functionLocation && functionLocation.value && functionLocation.value.value) {
-//         const value = functionLocation.value.value;
-//         const scriptId = value.scriptId;
-//         const line = value.lineNumber;
-//         const column = value.columnNumber;
-//         const file = /*scriptIdToUrlMap.get(scriptId) ||*/ "";
-//         return { file, line, column };
-//     }
-//     return { file: "", line: 0, column: 0 };
-// }
+}
+
+function getFunctionLocation(properties: inspector.Runtime.InternalPropertyDescriptor[]) {
+    const functionLocation = properties.find(p => p.name === "[[FunctionLocation]]");
+    if (functionLocation && functionLocation.value && functionLocation.value.value) {
+        const value = functionLocation.value.value;
+        const scriptId = value.scriptId;
+        const line = value.lineNumber;
+        const column = value.columnNumber;
+        const file = /*scriptIdToUrlMap.get(scriptId) ||*/ "";
+        return { file, line, column };
+    }
+
+    return { file: "", line: 0, column: 0 };
+}
+
+async function runtimeGetPropertiesAsync(
+        mirror: Mirror,
+        ownProperties: boolean | undefined) {
+
+    if (!isMirror(mirror)) {
+        throw new Error("Asking for the properties of non-mirror: " + JSON.stringify(mirror));
+    }
+
+    const objectId = mirror.objectId;
+    if (objectId === undefined) {
+        throw new Error("Asking for the properties of mirror without objectId: " + JSON.stringify(mirror));
+    }
+
+    const retType = await new Promise<inspector.Runtime.GetPropertiesReturnType>((resolve, reject) => {
+        inspectorSession.post(
+            "Runtime.getProperties",
+            { objectId, ownProperties },
+            (err, ret) => err ? reject(err) : resolve(ret));
+    });
+
+    if (retType.exceptionDetails) {
+        throw new Error(`Error calling "Runtime.getProperties(${objectId}, ${ownProperties})": `
+            + retType.exceptionDetails.text);
+    }
+
+    return { internalProperties: retType.internalProperties || [], properties: retType.result };
+}

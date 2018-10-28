@@ -69,7 +69,6 @@ const negativeZeroMirror: NumberMirror = {
     type: "number",
     value: undefined,
     unserializableValue: "-0",
-    objectId: "id" + currentMirrorId++,
 };
 mirrorToVal.set(negativeZeroMirror, -0);
 
@@ -104,7 +103,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
         if (typeof val === "undefined") {
             const undefinedMirror: UndefinedMirror = {
                 __isMirror,
-                objectId,
                 type: "undefined",
             };
 
@@ -114,7 +112,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
         if (typeof val === "boolean") {
             const booleanMirror: BooleanMirror = {
                 __isMirror,
-                objectId,
                 type: "boolean",
                 value: val,
             };
@@ -125,7 +122,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
         if (typeof val === "string") {
             const stringMirror: StringMirror = {
                 __isMirror,
-                objectId,
                 type: "string",
                 value: val,
             };
@@ -142,7 +138,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
             const numberMirror: NumberMirror = {
                 __isMirror,
-                objectId,
                 type: "number",
                 value: unserializableValue ? undefined : val,
                 unserializableValue: unserializableValue,
@@ -177,7 +172,6 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
             if (val === null) {
                 const nullMirror: NullMirror = {
                     __isMirror,
-                    objectId,
                     type: "object",
                     subtype: "null",
                     value: null,
