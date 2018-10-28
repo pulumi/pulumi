@@ -465,7 +465,7 @@ func UpdateLocking(t *testing.T) {
 		// Take a benchmark from the first goroutine
 		// to complete minus an offset to allow for
 		// the initial goroutine startup cost.
-		base := times[0].Seconds() * 0.7
+		base := times[0].Seconds() * 0.6
 		// Create a range of acceptable times based
 		// on the base benchmark and make sure the
 		// second goroutine falls in it.

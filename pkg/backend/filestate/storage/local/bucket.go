@@ -112,7 +112,7 @@ func (b *bucket) Lock(ctx context.Context, stackName string) (storage.UnlockFn, 
 	// file lock?
 	locked, err := b.lock.flock.TryLockContext(ctx, time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("failed to take lock for stack %s", stackName)
+		return nil, fmt.Errorf("failed to take lock for stack %s: %+v", stackName, err)
 	}
 	if !locked {
 		// If we couldn't take the file lock but we didn't error

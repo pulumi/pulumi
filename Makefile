@@ -4,7 +4,7 @@ include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
 PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v /vendor/)
+EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... ./pkg/backend/filestate/... | grep -v /vendor/)
 VERSION         := $(shell scripts/get-version)
 
 GOMETALINTERBIN := gometalinter
@@ -41,7 +41,7 @@ test_fast::
 	go test -timeout $(TEST_FAST_TIMEOUT) -cover -short -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 test_all::
-	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
+	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover ${EXTRA_TEST_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:

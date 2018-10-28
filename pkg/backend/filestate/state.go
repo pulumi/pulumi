@@ -72,7 +72,7 @@ func (u *update) GetTarget() *deploy.Target {
 func (b *fileBackend) newUpdate(ctx context.Context, stackName tokens.QName, proj *workspace.Project, root string) (*update, error) { // nolint: lll
 	contract.Require(stackName != "", "stackName")
 
-	unlocker, err := b.bucket.Lock(ctx, stackName.Name().String())
+	unlocker, err := b.bucket.Lock(ctx, stackName.String())
 	if err != nil {
 		return nil, err
 	}
