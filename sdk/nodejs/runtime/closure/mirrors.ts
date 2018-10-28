@@ -14,6 +14,7 @@
 
 import * as v8 from "./v8";
 
+import * as mirrorsPostV11 from "./mirrorsPostV11";
 import * as mirrorsPreV11 from "./mirrorsPreV11";
 
 type RemoteObjectId = string;
@@ -307,43 +308,30 @@ export type MirrorType<T> =
     T extends Promise<infer B> ? PromiseMirror :
     T extends Function ? FunctionMirror : Mirror;
 
+const mirrorModule = v8.isNodeAtLeastV11 ? mirrorsPostV11 : mirrorsPreV11;
+
 /** Given a value, returns the Mirror for that value. */
-export let getMirrorAsync: <T>(val: T) => Promise<MirrorType<T>>;
+export const getMirrorAsync = mirrorModule.getMirrorAsync;
 
 /** Given a Mirror of some value V, returns the Mirror for Object.getPrototypeOf(V) */
-export let getPrototypeOfMirrorAsync: (mirror: Mirror) => Promise<Mirror>;
+export const getPrototypeOfMirrorAsync = mirrorModule.getPrototypeOfMirrorAsync;
 
 /** Given a Mirror for some Promise P, returns the Mirror for `await P` */
-export let getPromiseMirrorValueAsync: (mirror: PromiseMirror) => Promise<Mirror>;
+export const getPromiseMirrorValueAsync = mirrorModule.getPromiseMirrorValueAsync;
 
 /**
  * Given a Mirror for some value V, returns the Mirror property descriptors for
  * Object.getOwnPropertyDescriptors(V)
  */
-export let getOwnPropertyDescriptorsAsync: (mirror: Mirror) => Promise<MirrorPropertyDescriptor[]>;
+export const getOwnPropertyDescriptorsAsync = mirrorModule.getOwnPropertyDescriptorsAsync;
 
 /**
  * Given a Mirror for some value V and a property descriptor for some property P, returns the Mirror
  * for Object.getOwnProperty(V, P);
  */
-export let getOwnPropertyAsync: (mirror: Mirror, descriptor: MirrorPropertyDescriptor) => Promise<Mirror>;
+export const getOwnPropertyAsync = mirrorModule.getOwnPropertyAsync;
 
-export let callFunctionOn: (mirror: Mirror, funcName: string, args: Mirror[] | undefined) => Promise<Mirror>;
-export let callAccessorOn: (mirror: Mirror, accessorName: string) => Promise<Mirror>;
+export const callFunctionOn = mirrorModule.callFunctionOn;
+export const callAccessorOn = mirrorModule.callAccessorOn;
 
-export let lookupCapturedVariableAsync:
-    (funcMirror: FunctionMirror, freeVariable: string, throwOnFailure: boolean) => Promise<Mirror>;
-
-if (v8.isNodeAtLeastV11) {
-    throw new Error("Node v11 not supported yet");
-}
-else {
-    getMirrorAsync = mirrorsPreV11.getMirrorAsync;
-    getPrototypeOfMirrorAsync = mirrorsPreV11.getPrototypeOfMirrorAsync;
-    callFunctionOn = mirrorsPreV11.callFunctionOn;
-    callAccessorOn = mirrorsPreV11.callAccessorOn;
-    getPromiseMirrorValueAsync = mirrorsPreV11.getPromiseMirrorValueAsync;
-    getOwnPropertyDescriptorsAsync = mirrorsPreV11.getOwnPropertyDescriptorsAsync;
-    getOwnPropertyAsync = mirrorsPreV11.getOwnPropertyAsync;
-    lookupCapturedVariableAsync = mirrorsPreV11.lookupCapturedVariableAsync;
-}
+export const lookupCapturedVariableAsync = mirrorModule.lookupCapturedVariableAsync;
