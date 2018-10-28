@@ -293,8 +293,6 @@ async function computeMirrorToEmitExprMapAsync(): Promise<Map<Mirror, string>> {
             return;
         }
 
-        console.log("mirrors: '" + JSON.stringify(mirrors) + '"');
-        console.log("mirrors.getMirrorAsync: '" + mirrors.getMirrorAsync + '"');
         const mirror = await mirrors.getMirrorAsync(val);
 
         // No need to add values twice.  Ths can happen as we walk the global namespace and

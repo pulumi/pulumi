@@ -239,6 +239,25 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
     return <any>mirror;
 
     async function createMirrorAsync(): Promise<Mirror> {
+        if (typeof val === "undefined") {
+            const undefinedMirror: UndefinedMirror = {
+                __isMirror: true,
+                type: "undefined",
+            };
+
+            return undefinedMirror;
+        }
+
+        if (typeof val === "boolean") {
+            const booleanMirror: BooleanMirror = {
+                __isMirror: true,
+                type: "boolean",
+                value: val,
+            };
+
+            return booleanMirror;
+        }
+
         if (typeof val === "string") {
             const stringMirror: StringMirror = {
                 __isMirror: true,
@@ -279,6 +298,16 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
 
             functionIdToFunc.set(mirrorId, val);
             return funcMirror;
+        }
+
+        if (typeof val === "symbol") {
+            const symbolMirror: SymbolMirror =  {
+                __isMirror: true,
+                type: "symbol",
+                objectId: mirrorId,
+            };
+
+            return symbolMirror;
         }
 
         if (typeof val === "object") {
