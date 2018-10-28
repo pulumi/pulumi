@@ -1,9 +1,11 @@
 package filestate
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -15,17 +17,16 @@ import (
 	"testing"
 	"time"
 
+	pipe "github.com/b4b4r07/go-pipe"
 	copier "github.com/otiai10/copy"
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/workspace"
-
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/tokens"
-
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 var (
@@ -61,16 +62,15 @@ func (mockCancellationScopeSource) NewScope(events chan<- engine.Event, isPrevie
 
 var be Backend // Shared, do not run tests in parallel
 var stores map[string]string
+var isShort bool
 
 func TestMain(m *testing.M) {
+	flag.Parse()
+	isShort = testing.Short()
 
 	stores = make(map[string]string)
-	flag.Parse()
-	if !testing.Short() {
-		// If not -short then use remote backends
-		if azureURL := os.Getenv("AZURE_URL"); azureURL != "" {
-			stores["azure"] = azureURL
-		}
+	if azureURL := os.Getenv("AZURE_URL"); azureURL != "" {
+		stores["azure"] = azureURL
 	}
 	stores["local"] = localURL
 
@@ -293,6 +293,12 @@ func RemoveStack(t *testing.T) {
 }
 
 func Update(t *testing.T) {
+	if isShort {
+		// Skip as these test cases require the pulumi
+		// binaries to be in the $PATH
+		t.Skip("Skipping update test due to short flag")
+	}
+
 	tt := []struct {
 		stackName string
 	}{
@@ -330,7 +336,7 @@ func Update(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error getting testdata working directory: %+v", err)
 		}
-		installNPMPackages(testDir, t)
+		installPackages(testDir, t)
 
 		// Set the configuration values (w,x,y) for the test
 		// pulumi project to use.
@@ -367,6 +373,12 @@ func Update(t *testing.T) {
 }
 
 func UpdateLocking(t *testing.T) {
+	if isShort {
+		// Skip as these test cases require the pulumi
+		// binaries to be in the $PATH
+		t.Skip("Skipping update test due to short flag")
+	}
+
 	tt := []struct {
 		stackName string
 	}{
@@ -403,7 +415,7 @@ func UpdateLocking(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error getting testdata working directory: %+v", err)
 		}
-		installNPMPackages(testDir, t)
+		installPackages(testDir, t)
 
 		// Set the configuration values (w,x,y) for the test
 		// pulumi project to use.
@@ -534,7 +546,7 @@ func tearDownProject(stackName string) {
 
 func applyUpdate(ctx context.Context, root string, project *workspace.Project,
 	stackRef backend.StackReference, t *testing.T) (engine.ResourceChanges, func()) {
-	m := backend.UpdateMetadata{
+	m := &backend.UpdateMetadata{
 		Message:     "",
 		Environment: make(map[string]string),
 	}
@@ -570,11 +582,18 @@ func applyUpdate(ctx context.Context, root string, project *workspace.Project,
 	}
 }
 
-// installNPMPackages runs npm install in the desired directory.
+// installPackages runs `yarn || npm install` in the desired directory.
 // Expect this to take some time.
-func installNPMPackages(dir string, t *testing.T) {
-	if err := exec.Command("npm", "install", dir).Run(); err != nil {
-		t.Fatalf("failed to execute `npm install` in %s: %+v", dir, err)
+func installPackages(dir string, t *testing.T) {
+	var b bytes.Buffer
+	if err := pipe.Command(&b,
+		exec.Command("yarn"),
+		exec.Command("npm", "install"),
+	); err != nil {
+		t.Fatalf("failed to execute `yarn || npm install` in %s: %+v", dir, err)
+	}
+	if _, err := io.Copy(os.Stdout, &b); err != nil {
+		t.Fatalf("failed to copy command output buffer to stdout: %+v", err)
 	}
 }
 

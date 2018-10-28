@@ -449,8 +449,6 @@ func (b *fileBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack 
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
 	if opts.ShowLink {
-		update.unlockFn() // nolint: errcheck
-
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+

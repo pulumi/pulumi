@@ -23,3 +23,7 @@
 [[constraint]]
   name = "github.com/gofrs/flock"
   version = "0.7.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/b4b4r07/go-pipe"
