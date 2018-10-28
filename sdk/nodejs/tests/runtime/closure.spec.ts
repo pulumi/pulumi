@@ -5493,9 +5493,9 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        // if (test.title !== "Two level static inheritance") {
-        //     continue;
-        // }
+        if (test.title !== "Empty function closure") {
+            continue;
+        }
 
         it(test.title, asyncTest(async () => {
             // Run pre-actions.

@@ -14,6 +14,8 @@
 // Negative-zero has to be handled specially.  It cannot be placed in valToMirror map as it will
 // collide with 0.
 
+import * as inspector from "inspector";
+
 import {
     ArrayMirror,
     BooleanMirror,
@@ -33,6 +35,31 @@ import {
     SymbolMirror,
     UndefinedMirror,
 } from "./mirrors";
+
+const session = new inspector.Session();
+session.connect();
+
+async function getFunctionLocation(func: Function) {
+    const functionMirror = await getFunctionMirrorAsync(func);
+    const { properties, internalProperties } = await runtimeGetPropertiesAsync(
+        functionMirror.objectId, /*ownProperties:*/ false);
+    for (const prop of properties) {
+        console.log(JSON.stringify(prop));
+    }
+    for (const prop of internalProperties) {
+        console.log(JSON.stringify(prop));
+    }
+    const functionLocation = internalProperties.find(p => p.name === "[[FunctionLocation]]");
+    if (functionLocation && functionLocation.value && functionLocation.value.value) {
+        const value = functionLocation.value.value;
+        const scriptId = value.scriptId;
+        const line = value.lineNumber;
+        const column = value.columnNumber;
+        const file = /*scriptIdToUrlMap.get(scriptId) ||*/ "";
+        return { file, line, column };
+    }
+    return { file: "", line: 0, column: 0 };
+}
 
 let currentMirrorId = 0;
 
@@ -71,7 +98,29 @@ export async function getMirrorAsync<T>(val: T): Promise<MirrorType<T>> {
     return <any>mirror;
 
     async function createMirrorAsync(): Promise<Mirror> {
-        throw new Error("createMirrorAsync NYI");
+
+
+        if (typeof val === "function") {
+
+
+            const funcMirror: FunctionMirror = {
+                __isMirror,
+                objectId,
+                type: "function",
+                className: "Function",
+                description: val.toString(),
+                name: val.name,
+                location: await v8.getFunctionLocationAsync(val),
+            };
+
+            // functionIdToFunc.set(objectId, val);
+            return funcMirror;
+        }
+
+
+        console.log("NYI: unhandled createMirrorAsync case: " + typeof val);
+        console.log("NYI: unhandled createMirrorAsync case: " + JSON.stringify(val));
+        throw new Error("NYI: unhandled createMirrorAsync case: " + typeof val + " " + JSON.stringify(val));
     }
 }
 
