@@ -586,7 +586,7 @@ return () => { console.log("Just a global object reference"); };
 
 function __f0() {
   return (function() {
-    with({ a: -0, b: -0, c: Number.POSITIVE_INFINITY, d: Number.NEGATIVE_INFINITY, e: Number.NaN, f: 9007199254740991, g: 1.7976931348623157e+308, h: -9007199254740991, i: 5e-324 }) {
+    with({ a: -0, b: -0, c: Infinity, d: -Infinity, e: NaN, f: 9007199254740991, g: 1.7976931348623157e+308, h: -9007199254740991, i: 5e-324 }) {
 
 return () => { const x = [a, b, c, d, e, f, g, h, i]; };
 
