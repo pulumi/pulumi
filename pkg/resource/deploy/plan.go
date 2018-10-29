@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"math"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -50,7 +51,7 @@ func (o Options) DegreeOfParallelism() int {
 
 // InfiniteParallelism returns whether or not the requested level of parallelism is unbounded.
 func (o Options) InfiniteParallelism() bool {
-	return o.Parallel == 0
+	return o.Parallel == math.MaxInt32
 }
 
 // Events is an interface that can be used to hook interesting engine/planning events.
