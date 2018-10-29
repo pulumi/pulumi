@@ -26,10 +26,9 @@ import * as semver from "semver";
 // happening through a supported API.  Pre-11 we can just call into % intrinsics for the same data.
 export const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
 
-let session: Promise<import("inspector").Session>;
-if (isNodeAtLeastV11) {
-    session = createInspectorSessionAsync();
-}
+const session = isNodeAtLeastV11
+    ? createInspectorSessionAsync()
+    : Promise.resolve<import("inspector").Session>(<any>undefined);
 
 const scriptIdToUrlMap = new Map<string, string>();
 
@@ -58,11 +57,7 @@ async function createInspectorSessionAsync(): Promise<import("inspector").Sessio
  * Returns the inspector session that can be used to query the state of this running Node
  * instance.  Only available on Node11 and above.
  */
-export function getSessionAsync() {
-    if (!isNodeAtLeastV11) {
-        throw new Error("Should only be calling into this module on node11 or higher.");
-    }
-
+export async function getSessionAsync() {
     return session;
 }
 

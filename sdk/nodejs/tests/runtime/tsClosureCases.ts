@@ -5066,7 +5066,7 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
             expectText: `exports.handler = __f0;
 
 var __testConfig_proto = {};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
 var __options = {project: undefined};
 var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
 var __metadata_1 = {getProject: __getProject};
@@ -5157,7 +5157,7 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
             expectText: `exports.handler = __f0;
 
 var __options = {project: undefined};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
 var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
 var __metadata_1 = {getProject: __getProject};
 var __f1_prototype = {};

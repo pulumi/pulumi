@@ -18,17 +18,12 @@
 // for serialization errors.  We need to do this first, before we even get around to running tests.
 import * as v8Hooks from "../../runtime/closure/v8Hooks";
 
-if (v8Hooks.isNodeAtLeastV11) {
-    describe("after hooks", () => {
-        it("invoke", done => {
-            v8Hooks.getSessionAsync().then(_ => {
-                require("./tsClosureCases");
-                done();
-            });
+// only start running these tests once we've initialized the code in v8Hooks.
+describe("after hooks", () => {
+    it("invoke", done => {
+        v8Hooks.getSessionAsync().then(_ => {
+            require("./tsClosureCases");
+            done();
         });
-    })
-}
-else {
-    // prior to node11 we can just launch the test directly.
-    require("./tsClosureCases");
-}
+    });
+});
