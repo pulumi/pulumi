@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -29,6 +30,15 @@ type bucket struct {
 type localLock struct {
 	flock *flock.Flock
 	mu    sync.Mutex
+}
+
+func lockDirPath() string {
+	switch runtime.GOOS {
+	case "linux":
+		return "/var/lock/"
+	default:
+		return os.TempDir()
+	}
 }
 
 // NewBucket create a new Bucket instance
@@ -96,7 +106,9 @@ func (b *bucket) IsNotExist(err error) bool {
 // function that can then be used by the client.
 func (b *bucket) Lock(ctx context.Context, stackName string) (storage.UnlockFn, error) {
 	if b.lock.flock == nil {
-		b.lock.flock = flock.New(fmt.Sprintf("/var/lock/pulumi-%s.lock", stackName))
+		lockDir := lockDirPath()
+		lockPath := filepath.Join(lockDir, fmt.Sprintf("pulumi-%s.lock", stackName))
+		b.lock.flock = flock.New(lockPath)
 	}
 	// Get the mutex first because this ensures
 	// we can control data access within this
