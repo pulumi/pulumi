@@ -255,6 +255,10 @@ export function isRegExpMirror(mirror: Mirror | undefined): mirror is RegExpMirr
     return isObjectMirror(mirror) && mirror.subtype === "regexp";
 }
 
+export function isSymbolMirror(mirror: Mirror | undefined): mirror is SymbolMirror {
+    return isMirror(mirror) && mirror.type === "symbol";
+}
+
 export function isTruthy(mirror: Mirror) {
     if (isUndefinedMirror(mirror)) {
         return false;
@@ -272,6 +276,9 @@ export function isTruthy(mirror: Mirror) {
         return mirror.value ? true : false;
     }
     if (isFunctionMirror(mirror)) {
+        return true;
+    }
+    if (isSymbolMirror(mirror)) {
         return true;
     }
 
