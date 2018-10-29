@@ -19,15 +19,17 @@ from typing import Callable, Any, Dict
 
 from ..resource import ComponentResource
 from .settings import get_project, get_stack, get_root_resource, set_root_resource
+from .resource import _COUNTER
 
 
-def run_in_stack(func: Callable):
+async def run_in_stack(func: Callable):
     """
     Run the given function inside of a new stack resource.  This ensures that any stack export calls will end
     up as output properties on the resulting stack component in the checkpoint file.  This is meant for internal
     runtime use only and is used by the Python SDK entrypoint program.
     """
     Stack(func)
+    await _COUNTER.wait_for_outstanding_rpcs()
 
 
 class Stack(ComponentResource):

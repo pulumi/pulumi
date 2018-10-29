@@ -17,14 +17,16 @@ Utility functions for logging messages to the diagnostic stream of the Pulumi CL
 """
 
 import sys
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from .runtime import get_engine
+from .runtime.settings import get_engine
 from ..runtime.proto import engine_pb2
-from .resource import Resource
+
+if TYPE_CHECKING:
+    from .resource import Resource
 
 
-def debug(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int] = None) -> None:
+def debug(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None) -> None:
     """
     Logs a message to the Pulumi CLI's debug channel, associating it with a resource
     and stream_id if provided.
@@ -36,7 +38,7 @@ def debug(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int
         print("debug: " + msg, file=sys.stderr)
 
 
-def info(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int] = None) -> None:
+def info(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None) -> None:
     """
     Logs a message to the Pulumi CLI's info channel, associating it with a resource
     and stream_id if provided.
@@ -48,7 +50,7 @@ def info(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int]
         print("info: " + msg, file=sys.stderr)
 
 
-def warn(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int] = None) -> None:
+def warn(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None) -> None:
     """
     Logs a message to the Pulumi CLI's warning channel, associating it with a resource
     and stream_id if provided.
@@ -60,7 +62,7 @@ def warn(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int]
         print("warning: " + msg, file=sys.stderr)
 
 
-def error(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int] = None):
+def error(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None):
     """
     Logs a message to the Pulumi CLI's error channel, associating it with a resource
     and stream_id if provided.

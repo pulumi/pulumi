@@ -18,12 +18,14 @@ out of RPC calls.
 import asyncio
 import functools
 import inspect
-from typing import List, Any, Callable, Dict
+from typing import List, Any, Callable, Dict, TYPE_CHECKING
 
 from google.protobuf import struct_pb2
 from . import known_types, settings
-from ..output import Output, Inputs, Input
-from ..resource import Resource
+
+if TYPE_CHECKING:
+    from ..output import Inputs, Input
+    from ..resource import Resource
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -38,7 +40,7 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 """specialArchiveSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go."""
 
 
-async def serialize_properties(inputs: Inputs, deps: List[Resource]) -> struct_pb2.Struct:
+async def serialize_properties(inputs: 'Inputs', deps: List['Resource']) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
@@ -51,7 +53,7 @@ async def serialize_properties(inputs: Inputs, deps: List[Resource]) -> struct_p
     return struct
 
 
-async def serialize_property(value: Input[Any], deps: List[Resource]) -> Any:
+async def serialize_property(value: 'Input[Any]', deps: List['Resource']) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
     any futures required to do so.
@@ -106,7 +108,7 @@ async def serialize_property(value: Input[Any], deps: List[Resource]) -> Any:
     if inspect.isawaitable(value):
         return await serialize_property(await value, deps)
 
-    if isinstance(value, Output):
+    if known_types.is_output(value):
         deps.extend(value.resources())
 
         # When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
@@ -181,10 +183,10 @@ def deserialize_property(value: Any) -> Any:
     return value
 
 
-Resolver = Callable[[Any, bool]]
+Resolver = Callable[[Any, bool], None]
 
 
-def transfer_properties(res: Resource, props: Inputs) -> Dict[str, Resolver]:
+def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]:
     resolvers: Dict[str, Resolver] = {}
     for name in props.keys():
         if name in ["id", "urn"]:
@@ -200,12 +202,12 @@ def transfer_properties(res: Resource, props: Inputs) -> Dict[str, Resolver]:
             known_fut.set_result(is_known)
 
         resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
-        res.__setattr__(name, Output({res}, resolve_value, resolve_is_known))
+        res.__setattr__(name, known_types.new_output({res}, resolve_value, resolve_is_known))
 
     return resolvers
 
 
-async def resolve_outputs(props: Inputs, outputs: struct_pb2.Struct, resolvers: Dict[str, Resolver]):
+async def resolve_outputs(props: 'Inputs', outputs: struct_pb2.Struct, resolvers: Dict[str, Resolver]):
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}

@@ -59,6 +59,9 @@ _file_archive_resource_type: Optional[type] = None
 _remote_archive_resource_type: Optional[type] = None
 """The type of RemoteArchive. Filled-in as the Pulumi package is initializing."""
 
+_output_type: Optional[type] = None
+"""The type of Output. Filled-in as the Pulumi package is initializing."""
+
 
 def asset(class_obj: type) -> type:
     """
@@ -159,6 +162,13 @@ def custom_resource(class_obj: type) -> type:
     return class_obj
 
 
+def output(class_obj: type) -> type:
+    assert isinstance(class_obj, type), "class_obj is not a Class"
+    global _output_type
+    _output_type = class_obj
+    return class_obj
+
+
 def new_file_asset(*args: Any) -> Any:
     """
     Instantiates a new FileAsset, passing the given arguments to the constructor.
@@ -201,6 +211,13 @@ def new_remote_archive(*args: Any) -> Any:
     return _remote_archive_resource_type(*args)
 
 
+def new_output(*args: Any) -> Any:
+    """
+    Instantiates a new StringArchive, passing the given arguments to the constructor.
+    """
+    return _output_type(*args)
+
+
 def is_asset(obj: Any) -> bool:
     """
     Returns true if the given type is an Asset, false otherwise.
@@ -220,3 +237,10 @@ def is_custom_resource(obj: Any) -> bool:
     Returns true if the given type is a CustomResource, false otherwise.
     """
     return _custom_resource_type is not None and isinstance(obj, _custom_resource_type)
+
+
+def is_output(obj: Any) -> bool:
+    """
+    Returns true if the given type is an Output, false otherwise.
+    """
+    return _output_type is not None and isinstance(obj, _output_type)

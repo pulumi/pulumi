@@ -15,12 +15,14 @@
 """
 Runtime settings and configuration.
 """
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import grpc
 from ...runtime.proto import engine_pb2_grpc, resource_pb2_grpc
 from ..errors import RunError
-from ..resource import Resource
+
+if TYPE_CHECKING:
+    from ..resource import Resource
 
 
 class Settings:
@@ -110,10 +112,10 @@ def get_engine() -> Optional[engine_pb2_grpc.EngineStub]:
     return SETTINGS.engine
 
 
-ROOT: Optional[Resource] = None
+ROOT: Optional['Resource'] = None
 
 
-def get_root_resource() -> Optional[Resource]:
+def get_root_resource() -> Optional['Resource']:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
@@ -121,7 +123,7 @@ def get_root_resource() -> Optional[Resource]:
     return ROOT
 
 
-def set_root_resource(root: Resource):
+def set_root_resource(root: 'Resource'):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """

@@ -2,6 +2,7 @@
 # Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 import argparse
+import asyncio
 import os
 import sys
 import traceback
@@ -54,7 +55,8 @@ if __name__ == "__main__":
 
     successful = False
     try:
-        pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
+        coro = pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
+        asyncio.get_event_loop().run_until_complete(coro)
         successful = True
     except pulumi.RunError as e:
         pulumi.log.error(e.message)
