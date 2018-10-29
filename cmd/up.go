@@ -17,6 +17,7 @@ package cmd
 import (
 	"context"
 	"io/ioutil"
+	"math"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -36,7 +37,7 @@ import (
 )
 
 const (
-	defaultParallel = 0
+	defaultParallel = math.MaxInt32
 )
 
 // nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
@@ -328,7 +329,7 @@ func newUpCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism, 0 for unbounded parallelism)")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVarP(
 		&refresh, "refresh", "r", false,
 		"Refresh the state of the stack's resources before this update")

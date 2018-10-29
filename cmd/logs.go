@@ -39,6 +39,7 @@ func newLogsCmd() *cobra.Command {
 	var follow bool
 	var since string
 	var resource string
+	var jsonOut bool
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
@@ -64,11 +65,13 @@ func newLogsCmd() *cobra.Command {
 				resourceFilter = &rf
 			}
 
-			fmt.Printf(
-				opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
-				s.Ref().String(),
-				startTime.Format(timeFormat),
-			)
+			if !jsonOut {
+				fmt.Printf(
+					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
+					s.Ref().String(),
+					startTime.Format(timeFormat),
+				)
+			}
 
 			// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
 			// approach here to ensure we don't grow memory unboundedly while following logs.
@@ -86,10 +89,45 @@ func newLogsCmd() *cobra.Command {
 					return errors.Wrapf(err, "failed to get logs")
 				}
 
+				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.
+				if !follow && jsonOut {
+					entries := make([]logEntryJSON, 0, len(logs))
+
+					for _, logEntry := range logs {
+						if _, shownAlready := shown[logEntry]; !shownAlready {
+							eventTime := time.Unix(0, logEntry.Timestamp*1000000)
+
+							entries = append(entries, logEntryJSON{
+								ID:        logEntry.ID,
+								Timestamp: eventTime.UTC().Format(timeFormat),
+								Message:   logEntry.Message,
+							})
+
+							shown[logEntry] = true
+						}
+					}
+
+					return printJSON(entries)
+				}
+
 				for _, logEntry := range logs {
 					if _, shownAlready := shown[logEntry]; !shownAlready {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat), logEntry.ID, logEntry.Message)
+
+						if !jsonOut {
+							fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat),
+								logEntry.ID, logEntry.Message)
+						} else {
+							err = printJSON(logEntryJSON{
+								ID:        logEntry.ID,
+								Timestamp: eventTime.UTC().Format(timeFormat),
+								Message:   logEntry.Message,
+							})
+							if err != nil {
+								return err
+							}
+						}
+
 						shown[logEntry] = true
 					}
 				}
@@ -106,6 +144,8 @@ func newLogsCmd() *cobra.Command {
 	logsCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	logsCmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit outputs as JSON")
 	logsCmd.PersistentFlags().BoolVarP(
 		&follow, "follow", "f", false,
 		"Follow the log stream in real time (like tail -f)")
@@ -134,4 +174,13 @@ func parseSince(since string, reference time.Time) (*time.Time, error) {
 	}
 	startTime := time.Unix(startTimeSec, startTimeNs)
 	return &startTime, nil
+}
+
+// logEntryJSON is the shape of the --json output of this command. When --json is passed, if we are not following the
+// log stream, we print an array of logEntry objects. If we are following the log stream, we instead print each object
+// at top level.
+type logEntryJSON struct {
+	ID        string
+	Timestamp string
+	Message   string
 }
