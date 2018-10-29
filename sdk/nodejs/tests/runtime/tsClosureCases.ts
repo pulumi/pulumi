@@ -5042,9 +5042,9 @@ return function () { typescript.parseCommandLine([""]); };
 
 function 'func': tsClosureCases.js(0,0): captured
   module './bin/index.js' which indirectly referenced
-    function 'debug': index.js(0,0): which captured
+    function 'debug':(...)
       module './bin/runtime/settings.js' which indirectly referenced
-        function 'getEngine': settings.js(0,0): which captured
+        function 'getEngine':(...)
           module './bin/proto/engine_grpc_pb.js' which indirectly referenced
 (...)
 Function code:

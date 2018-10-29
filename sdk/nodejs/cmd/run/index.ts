@@ -17,7 +17,7 @@
 // fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
 // report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
 // by register to hear about scripts being parsed.
-import "../../runtime/closure/v8Hooks";
+import * as v8Hooks from "../../runtime/closure/v8Hooks";
 
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 import * as minimist from "minimist";
@@ -86,7 +86,10 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_MONITOR", argv["monitor"]);
     addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
 
-    require("./run").run(argv);
+    // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
+    v8Hooks.getSessionAsync().then(_ => {
+        require("./run").run(argv);
+    });
 }
 
 function addToEnvIfDefined(key: string, value: string | undefined) {
