@@ -15,11 +15,13 @@
 Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
+import asyncio
+import functools
 import inspect
-from typing import List, Any
+from typing import List, Any, Callable, Dict
 
 from google.protobuf import struct_pb2
-from . import known_types
+from . import known_types, settings
 from ..output import Output, Inputs, Input
 from ..resource import Resource
 
@@ -177,4 +179,74 @@ def deserialize_property(value: Any) -> Any:
 
     # Everything else is identity projected.
     return value
+
+
+Resolver = Callable[[Any, bool]]
+
+
+def transfer_properties(res: Resource, props: Inputs) -> Dict[str, Resolver]:
+    resolvers: Dict[str, Resolver] = {}
+    for name in props.keys():
+        if name in ["id", "urn"]:
+            # these properties are handled specially elsewhere.
+            continue
+
+        resolve_value = asyncio.Future()
+        resolve_is_known = asyncio.Future()
+
+        def do_resolve(value_fut, known_fut, tup):
+            (value, is_known) = tup
+            value_fut.set_result(value)
+            known_fut.set_result(is_known)
+
+        resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
+        res.__setattr__(name, Output({res}, resolve_value, resolve_is_known))
+
+    return resolvers
+
+
+async def resolve_outputs(props: Inputs, outputs: struct_pb2.Struct, resolvers: Dict[str, Resolver]):
+    # Produce a combined set of property states, starting with inputs and then applying
+    # outputs.  If the same property exists in the inputs and outputs states, the output wins.
+    all_properties = {}
+    for key, value in deserialize_properties(outputs).items():
+        all_properties[key] = value
+
+    for key, value in props.items():
+        if key not in all_properties:
+            # input prop the engine didn't give us a final value for.  Just use the value passed into the resource
+            # after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
+            # Output values are handled properly w.r.t. unknowns.
+            input_prop = await serialize_property(value, [])
+            if input_prop is None:
+                continue
+
+            all_properties[key] = deserialize_property(input_prop)
+
+    for key, value in all_properties.items():
+        # Skip "id" and "urn", since we handle those specially.
+        if key in ["id", "urn"]:
+            continue
+
+        # Otherwise, unmarshal the value, and store it on the resource object.
+        resolve = resolvers[key]
+        # TODO(sean) resolve is undefined?
+        # If either we are performing a real deployment, or this is a stable property value, we
+        # can propagate its final value.  Otherwise, it must be undefined, since we don't know
+        # if it's final.
+        if not settings.is_dry_run():
+            # normal 'pulumi update'.  resolve the output with the value we got back
+            # from the engine.  That output can always run its .apply calls.
+            resolve(value, True)
+        else:
+            # We're previewing. If the engine was able to give us a reasonable value back,
+            # then use it. Otherwise, inform the Output that the value isn't known.
+            resolve(value, value is not None)
+
+    # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
+    # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
+    # preview.
+    for key, resolve in resolvers.items():
+        if key not in all_properties:
+            resolve(None, not settings.is_dry_run())
 

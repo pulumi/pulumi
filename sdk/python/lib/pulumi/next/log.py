@@ -19,9 +19,9 @@ Utility functions for logging messages to the diagnostic stream of the Pulumi CL
 import sys
 from typing import Optional
 
-from ..runtime import get_engine
+from .runtime import get_engine
 from ..runtime.proto import engine_pb2
-from ..resource import Resource
+from .resource import Resource
 
 
 def debug(msg: str, resource: Optional[Resource] = None, stream_id: Optional[int] = None) -> None:

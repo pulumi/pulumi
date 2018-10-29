@@ -17,9 +17,9 @@ The config module contains all configuration management functionality.
 """
 from typing import Optional
 
-from .. import errors
-from ..runtime.config import get_config
-from ..metadata import get_project
+from . import errors
+from .runtime.config import get_config
+from .metadata import get_project
 
 
 class Config:

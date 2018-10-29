@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """The Resource module, containing all resource-related definitions."""
-from typing import Optional, List, Any
+from typing import Optional, List, Any, TYPE_CHECKING
 
-from ..runtime import known_types
-from ..runtime.resource import register_resource, register_resource_outputs
-from ..runtime.settings import get_root_resource
-from ..runtime.unknown import Unknown
+from .runtime import known_types
+from .runtime.resource import register_resource, register_resource_outputs
+from .runtime.settings import get_root_resource
+
+if TYPE_CHECKING:
+    from .output import Output, Inputs
 
 
 class ResourceOptions:
@@ -47,20 +49,16 @@ class Resource:
     """
     The stable, logical URN used to distinctly address a resource, both before and after deployments.
     """
-    urn: str
-
-    """
-    The provider-assigned unique ID for this managed resource.  It is set during deployments and may
-    be missing during planning phases.
-    """
-    id: str
+    urn: 'Output[str]'
 
     def __init__(self,
                  t: str,
                  name: str,
                  custom: bool,
-                 props: Optional[dict] = None,
+                 props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None) -> None:
+        if props is None:
+            props = {}
         if not t:
             raise TypeError('Missing resource type argument')
         if not isinstance(t, str):
@@ -70,41 +68,8 @@ class Resource:
         if not isinstance(name, str):
             raise TypeError('Expected resource name to be a string')
 
-        # Properties and options can be missing; simply, initialize to empty dictionaries.
-        if props:
-            if not isinstance(props, dict):
-                raise TypeError('Expected resource properties to be a dictionary')
-        elif not props:
-            props = dict()
-        if opts:
-            if not isinstance(opts, ResourceOptions):
-                raise TypeError('Expected resource options to be a ResourceOptions instance')
-        if not opts:
-            opts = ResourceOptions()
-
-        # Default the parent if there is none.
-        if opts.parent is None:
-            opts.parent = get_root_resource()
-
-        # Now register the resource.  If we are actually performing a deployment, this resource's properties
-        # will be resolved to real values.  If we are only doing a dry-run preview, on the other hand, they will
-        # resolve to special Preview sentinel values to indicate the value isn't yet available.
-        result = register_resource(t, name, custom, props, opts)
-
-        # Set the URN, ID, and output properties.
-        self.urn = result.urn
-        if result.id:
-            self.id = result.id
-        else:
-            self.id = Unknown()
-
-        if result.outputs:
-            self.set_outputs(result.outputs)
-
-    def set_outputs(self, outputs: dict):
-        """
-        Sets output properties after a registration has completed.
-        """
+        # TODO(sean) first class providers here
+        register_resource(self, t, name, custom, props, opts)
 
 
 @known_types.custom_resource
