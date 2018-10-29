@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -117,7 +116,7 @@ func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend
 		}
 
 		if summary.LastUpdate() != nil {
-			summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(time.RFC3339)
+			summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(timeFormat)
 		}
 
 		if httpBackend, ok := b.(httpstate.Backend); ok {
