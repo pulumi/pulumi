@@ -30,44 +30,44 @@ async def run_in_stack(func: Callable):
     up as output properties on the resulting stack component in the checkpoint file.  This is meant for internal
     runtime use only and is used by the Python SDK entrypoint program.
     """
-    Stack(func)
-    log.debug("Waiting for outstanding RPCs to complete")
+    try:
+        Stack(func)
 
-    # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
-    # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
-    #
-    # Note that "asyncio.sleep(0)" is the blessed way to do this:
-    # https://github.com/python/asyncio/issues/284#issuecomment-154180935
-    await asyncio.sleep(0)
+        # If an exception occurred when doing an RPC, this await will propegate the exception
+        # to the main thread.
+        await RPC_MANAGER.unhandled_exeception()
+    finally:
+        log.debug("Waiting for outstanding RPCs to complete")
 
-    # Set up a wait on two separate awaitables:
-    #  1. wait_for_outstanding_rpcs, which resolves when all outstanding RPCs have completed
-    #  2. unhandled_exception, which resolves abnormally when a RPC fails due to an exception.
-    #
-    # 2 can be resolved abnormally, which will translate into an unhandled exception on this task
-    # if an exception occurs. This is what we want, since this will cause user programs to fail if
-    # an RPC fails.
-    await asyncio.gather(RPC_MANAGER.wait_for_outstanding_rpcs(), RPC_MANAGER.unhandled_exeception())
+        # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
+        # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
+        #
+        # Note that "asyncio.sleep(0)" is the blessed way to do this:
+        # https://github.com/python/asyncio/issues/284#issuecomment-154180935
+        await asyncio.sleep(0)
 
-    # Asyncio event loops require that all outstanding tasks be completed by the time that the event
-    # loop closes. If we're at this point and there are no outstanding RPCs, we should just cancel
-    # all outstanding tasks.
-    #
-    # We will occasionally start tasks deliberately that we know will never complete. We must cancel
-    # them before shutting down the event loop.
-    log.debug("Canceling all outstanding tasks")
-    for task in asyncio.Task.all_tasks():
-        # Don't kill ourselves, that would be silly.
-        if task == asyncio.Task.current_task():
-            continue
-        task.cancel()
+        # Wait for all outstanding RPCs to retire.
+        await RPC_MANAGER.wait_for_outstanding_rpcs()
 
-    # Pump the event loop again. Task.cancel is delivered asynchronously to all running tasks
-    # and each task needs to get scheduled in order to acknowledge the cancel and exit.
-    await asyncio.sleep(0)
+        # Asyncio event loops require that all outstanding tasks be completed by the time that the event
+        # loop closes. If we're at this point and there are no outstanding RPCs, we should just cancel
+        # all outstanding tasks.
+        #
+        # We will occasionally start tasks deliberately that we know will never complete. We must cancel
+        # them before shutting down the event loop.
+        log.debug("Canceling all outstanding tasks")
+        for task in asyncio.Task.all_tasks():
+            # Don't kill ourselves, that would be silly.
+            if task == asyncio.Task.current_task():
+                continue
+            task.cancel()
 
-    # Once we get scheduled again, all tasks have exited and we're good to go.
-    log.debug("run_in_stack completed")
+        # Pump the event loop again. Task.cancel is delivered asynchronously to all running tasks
+        # and each task needs to get scheduled in order to acknowledge the cancel and exit.
+        await asyncio.sleep(0)
+
+        # Once we get scheduled again, all tasks have exited and we're good to go.
+        log.debug("run_in_stack completed")
 
 
 class Stack(ComponentResource):
