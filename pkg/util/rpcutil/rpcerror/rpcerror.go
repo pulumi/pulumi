@@ -139,7 +139,7 @@ func Wrap(code codes.Code, err error, message string) error {
 // It is a logic error to call this function on an error previously
 // returned by `rpcerrors.Wrap`.
 func Wrapf(code codes.Code, err error, messageFormat string, args ...interface{}) error {
-	status := status.Newf(code, messageFormat, args)
+	status := status.Newf(code, messageFormat, args...)
 	cause := serializeErrorCause(err)
 	status, newErr := status.WithDetails(cause)
 	contract.AssertNoError(newErr)

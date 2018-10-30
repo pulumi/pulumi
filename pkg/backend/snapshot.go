@@ -277,7 +277,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Info("SnapshotManager.doUpdate(%s)", step.URN())
+	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
 		return true
