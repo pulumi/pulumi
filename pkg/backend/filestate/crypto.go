@@ -50,7 +50,7 @@ func defaultCrypter(stackName tokens.QName, cfg config.Map) (config.Crypter, err
 
 // symmetricCrypter gets the right value encrypter/decrypter for this project.
 func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
-	contract.Assertf(stackName != "", "stackName", "!= \"\"")
+	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	info, err := workspace.DetectProjectStack(stackName)
 	if err != nil {
