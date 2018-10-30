@@ -233,7 +233,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options) {
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
@@ -247,6 +247,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 
 	display := &ProgressDisplay{
 		action:                 action,
+		isPreview:              isPreview,
 		opts:                   opts,
 		stack:                  stack,
 		proj:                   proj,
@@ -857,7 +858,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// once we start hearing about actual resource events.
 
 		payload := event.Payload.(engine.PreludeEventPayload)
-		display.isPreview = payload.IsPreview
 		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
 		return
 	case engine.SummaryEvent:
