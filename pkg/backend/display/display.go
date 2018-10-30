@@ -148,7 +148,7 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
-	return opts.Color.Colorize(payload.Message)
+	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
 func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
