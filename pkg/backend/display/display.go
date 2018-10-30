@@ -197,8 +197,13 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
-		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration: %s%s\n",
-			colors.SpecHeadline, colors.Reset, event.Duration)))
+		// Round up to the nearest second.  It's not useful to spit out time with 9 digits of
+		// precision.
+		roundedSeconds := int64(math.Ceil(event.Duration.Seconds()))
+		roundedDuration := time.Duration(roundedSeconds) * time.Second
+
+		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration:%s %s\n",
+			colors.SpecHeadline, colors.Reset, roundedDuration)))
 	}
 
 	return out.String()
