@@ -183,13 +183,14 @@ func (u *cloudUpdate) recordEvent(
 	return nil
 }
 
-func (u *cloudUpdate) RecordAndDisplayEvents(label string, action apitype.UpdateKind, stackRef backend.StackReference,
-	op backend.UpdateOperation, events <-chan engine.Event, done chan<- bool, opts display.Options) {
+func (u *cloudUpdate) RecordAndDisplayEvents(
+	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
+	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
 
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, done, opts)
+	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, done, opts, isPreview)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {

@@ -729,6 +729,7 @@ func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, error) {
+
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
 	if err != nil {
@@ -741,7 +742,8 @@ func (b *cloudBackend) runEngineAction(
 	displayDone := make(chan bool)
 
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, stackRef, op, displayEvents, displayDone, op.Opts.Display)
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
+		displayEvents, displayDone, op.Opts.Display, dryRun)
 
 	engineEvents := make(chan engine.Event)
 
