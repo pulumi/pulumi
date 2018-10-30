@@ -135,13 +135,6 @@ interface Context {
     classInstanceMemberToSuperEntry: Map<Function, Entry>;
     classStaticMemberToSuperEntry: Map<Function, Entry>;
 
-    // // The set of async jobs we have to complete after serializing the object graph. This happens
-    // // when we encounter Promises/Outputs while walking the graph.  We'll add that work here and
-    // // then process it at the end of the graph.  Note: as we hit those promises we may discover more
-    // // work to be done.  So we'll just keep processing this this queue until there is nothing left
-    // // in it.
-    // asyncWorkQueue: (() => Promise<void>)[];
-
     // A list of 'simple' functions.  Simple functions do not capture anything, do not have any
     // special properties on them, and do not have a custom prototype.  If we run into multiple
     // functions that are simple, and share the same code, then we can just emit the function once
@@ -248,8 +241,6 @@ export async function createFunctionInfoAsync(
     context.cache.set(func, entry);
 
     entry.function = await analyzeFunctionInfoAsync(func, context, serialize);
-
-    // await processAsyncWorkQueue();
 
     return entry.function;
 
