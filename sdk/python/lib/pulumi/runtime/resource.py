@@ -69,17 +69,60 @@ def do_rpc(func):
     return wrapper
 
 
-class ResourceResolverOperations(NamedTuple):
-    resolve_urn: Callable[[str], None]
-    resolve_id: Callable[[Any, str], None]
-    resolvers: Any
+class ResourceResolverOperations(NamedTuple): #TODO(sean) rename
     parent_urn: Optional[str]
     serialized_props: Dict[str, Any]
     dependencies: Set[str]
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
-async def prepare_resource(res: 'Resource', ty: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
+async def prepare_resource(ty: str, props: 'Inputs', opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
+    log.debug(f"resource {props} preparing to wait for dependencies")
+    # Before we can proceed, all our dependencies must be finished.
+    explicit_urn_dependencies = []
+    if opts is not None and opts.depends_on is not None:
+        dependent_urns = list(map(lambda r: r.urn.future(), opts.depends_on))
+        explicit_urn_dependencies = await asyncio.gather(*dependent_urns)
+
+    # Serialize out all our props to their final values.  In doing so, we'll also collect all
+    # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
+    implicit_dependencies: List[Resource] = []
+    serialized_props = await rpc.serialize_properties(props, implicit_dependencies)
+
+    # Wait for our parent to resolve
+    parent_urn = ""
+    if opts is not None and opts.parent is not None:
+        parent_urn = await opts.parent.urn.future()
+    elif ty != "pulumi:pulumi:Stack": # TODO(sean)
+        # If no parent was provided, parent to the root resource.
+        parent = settings.get_root_resource()
+        if parent is not None:
+            parent_urn = await parent.urn.future()
+
+    # TODO(swgillespie, first class providers) here
+    dependencies = set(explicit_urn_dependencies)
+    for implicit_dep in implicit_dependencies:
+        dependencies.add(await implicit_dep.urn.future())
+
+    log.debug(f"resource {props} prepared")
+    return ResourceResolverOperations(
+        parent_urn,
+        serialized_props,
+        dependencies
+    )
+
+
+def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
+    """
+    registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
+    URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
+    objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
+    """
+    log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
+    monitor = settings.get_monitor()
+
+    # Prepare the resource.
+
     # Simply initialize the URN property and get prepared to resolve it later on.
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
@@ -108,59 +151,9 @@ async def prepare_resource(res: 'Resource', ty: str, custom: bool, props: 'Input
     # passed to.  However, those futures won't actually resolve until the RPC returns
     resolvers = rpc.transfer_properties(res, props)
 
-    # IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized.
-
-    log.debug(f"resource {props} preparing to wait for dependencies")
-    # Before we can proceed, all our dependencies must be finished.
-    explicit_urn_dependencies = []
-    if opts is not None and opts.depends_on is not None:
-        dependent_urns = list(map(lambda r: r.urn.future(), opts.depends_on))
-        explicit_urn_dependencies = await asyncio.gather(*dependent_urns)
-
-    # Serialize out all our props to their final values.  In doing so, we'll also collect all
-    # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-    implicit_dependencies: List[Resource] = []
-    serialized_props = await rpc.serialize_properties(props, implicit_dependencies)
-
-    # Wait for our parent to resolve
-    parent_urn = ""
-    if opts is not None and opts.parent is not None:
-        parent_urn = await opts.parent.urn.future()
-    elif ty != "pulumi:pulumi:Stack": # TODO(sean)
-        # If no parent was provided, parent to the root resource.
-        parent = settings.get_root_resource()
-        if parent is not None:
-            parent_urn = await parent.urn.future()
-
-
-    # TODO(swgillespie, first class providers) here
-    dependencies = set(explicit_urn_dependencies)
-    for implicit_dep in implicit_dependencies:
-        dependencies.add(await implicit_dep.urn.promise())
-
-    log.debug(f"resource {props} prepared")
-    return ResourceResolverOperations(
-        resolve_urn,
-        resolve_id,
-        resolvers,
-        parent_urn,
-        serialized_props,
-        dependencies
-    )
-
-
-def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
-    """
-    registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
-    URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
-    objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
-    """
-    log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
-    monitor = settings.get_monitor()
-
     async def do_register():
         log.debug(f"preparing resource registration: ty={ty}, name={name}")
-        resolver = await prepare_resource(res, ty, custom, props, opts)
+        resolver = await prepare_resource(ty, props, opts)
         log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
         log.debug(f"ty: {ty}")
@@ -175,6 +168,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             custom=custom,
             object=resolver.serialized_props,
             protect=False,
+            dependencies=resolver.dependencies
         )
 
         def do_rpc_call():
@@ -193,12 +187,12 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
         resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
-        resolver.resolve_urn(resp.urn)
-        if resolver.resolve_id:
+        resolve_urn(resp.urn)
+        if resolve_id:
             is_known = resp.id is not None
-            resolver.resolve_id(resp.id, is_known)
+            resolve_id(resp.id, is_known)
 
-        await rpc.resolve_outputs(res, props, resp.object, resolver.resolvers)
+        await rpc.resolve_outputs(res, props, resp.object, resolvers)
 
     asyncio.ensure_future(do_rpc(do_register)())
 

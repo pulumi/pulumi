@@ -15,7 +15,7 @@
 """
 Utility functions for logging messages to the diagnostic stream of the Pulumi CLI.
 """
-
+import asyncio
 import sys
 from typing import Optional, TYPE_CHECKING
 
@@ -75,13 +75,21 @@ def error(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[i
 
 
 def _log(engine, severity, message, resource, stream_id):
-    if resource is not None:
-        urn = resource.urn
-    else:
-        urn = ""
-
     if stream_id is None:
         stream_id = 0
 
-    req = engine_pb2.LogRequest(severity=severity, message=message, urn=urn, streamId=stream_id)
-    engine.Log(req)
+    # If we can log synchronously, do so. The worst thing we can do with a log message is exit
+    # before we have the chance to send the message.
+    #
+    # We can log synchronously as long as we haven't been given a resource to attach to. If we have,
+    # we have to asynchronously resolve the URN first.
+    async def do_log():
+        resolved_urn = await resource.urn.future()
+        req = engine_pb2.LogRequest(severity=severity, message=message, urn=resolved_urn, streamId=stream_id)
+        engine.Log(req)
+
+    if resource is not None:
+        asyncio.ensure_future(do_log())
+    else:
+        req = engine_pb2.LogRequest(severity=severity, message=message, urn="", streamId=stream_id)
+        engine.Log(req)

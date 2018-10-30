@@ -151,7 +151,9 @@ class Output(Generic[T]):
                 if not inner_is_known.done():
                     inner_is_known.set_result(False)
 
-        return Output(self._resources, run(), is_known())
+        run_fut = asyncio.ensure_future(run())
+        is_known_fut = asyncio.ensure_future(is_known())
+        return Output(self._resources, run_fut, is_known_fut)
 
     def __getattr__(self, item: str) -> 'Output[Any]':
         """
