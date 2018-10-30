@@ -15,7 +15,6 @@ from os import path
 import unittest
 from ..util import LanghostTest
 
-from pulumi.runtime.rpc import Unknown
 
 class ResourceThensTest(LanghostTest):
     def test_resource_thens(self):
@@ -36,9 +35,7 @@ class ResourceThensTest(LanghostTest):
                 props["outprop"] = "output yeah"
         elif ty == "test:index:OtherResource":
             self.assertEqual(name, "second")
-            if dry_run:
-                self.assertIsInstance(resource["inprop"], Unknown)
-            else:
+            if not dry_run:
                 self.assertEqual(resource["inprop"], "output yeah")
 
             if not dry_run:

@@ -15,24 +15,41 @@
 """
 Support for automatic stack components.
 """
-from __future__ import absolute_import
+import asyncio
+from typing import Callable, Any, Dict
 
 from ..resource import ComponentResource
 from .settings import get_project, get_stack, get_root_resource, set_root_resource
+from .resource import _COUNTER
+from .. import log
 
-def run_in_stack(func):
+
+async def run_in_stack(func: Callable):
     """
     Run the given function inside of a new stack resource.  This ensures that any stack export calls will end
     up as output properties on the resulting stack component in the checkpoint file.  This is meant for internal
     runtime use only and is used by the Python SDK entrypoint program.
     """
     Stack(func)
+    log.debug("Waiting for outstanding RPCs to complete")
+
+    # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
+    # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
+    await asyncio.sleep(1)
+
+    # Wait for all outstanding RPCs.
+    await _COUNTER.wait_for_outstanding_rpcs()
+    log.debug("run_in_stack complete")
+
 
 class Stack(ComponentResource):
     """
     A synthetic stack component that automatically parents resources as the program runs.
     """
-    def __init__(self, func):
+
+    outputs: Dict[str, Any]
+
+    def __init__(self, func: Callable) -> None:
         # Ensure we don't already have a stack registered.
         if get_root_resource() is not None:
             raise Exception('Only one root Pulumi Stack may be active at once')
@@ -50,7 +67,7 @@ class Stack(ComponentResource):
             self.register_outputs(self.outputs)
             # Intentionally leave this resource installed in case subsequent async work uses it.
 
-    def output(self, name, value):
+    def output(self, name: str, value: Any):
         """
         Export a stack output with a given name and value.
         """

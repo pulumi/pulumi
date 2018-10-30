@@ -50,11 +50,13 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         self.langhost_test = langhost_test
 
     def Invoke(self, request, context):
+        print("invoke")
         args = rpc.deserialize_resource_props(request.args)
         failures, ret = self.langhost_test.invoke(context, request.tok, args)
         return proto.InvokeResponse(failures=failures, ret=ret)
 
     def ReadResource(self, request, context):
+        print("read")
         type_ = request.type
         name = request.name
         id_ = request.id
@@ -70,6 +72,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             urn=outs.get("urn"), properties=props_proto)
 
     def RegisterResource(self, request, context):
+        print("register")
         type_ = request.type
         name = request.name
         props = rpc.deserialize_resource_props(request.object)
@@ -95,6 +98,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             urn=outs.get("urn"), id=outs.get("id"), object=obj_proto)
 
     def RegisterResourceOutputs(self, request, context):
+        print("outputs")
         urn = request.urn
         outs = rpc.deserialize_resource_props(request.outputs)
         res = self.registrations.get(urn)
@@ -167,11 +171,13 @@ class LanghostTest(unittest.TestCase):
 
             # Tear down the language host process we just spun up.
             langhost.process.kill()
+
+
             stdout, stderr = langhost.process.communicate()
             if not expected_stderr_contains and (stdout or stderr):
                 print("PREVIEW:" if dryrun else "UPDATE:")
-                print("stdout:", stdout)
-                print("stderr:", stderr)
+                print("stdout:", stdout.decode('utf-8'))
+                print("stderr:", stderr.decode('utf-8'))
 
             # If we expected an error, assert that we saw it. Otherwise assert
             # that there wasn't an error.
@@ -252,7 +258,7 @@ class LanghostTest(unittest.TestCase):
     def _create_language_host(self):
         exec_path = path.join(path.dirname(__file__), "..", "..", "..", "cmd", "pulumi-language-python-exec")
         proc = subprocess.Popen(
-            ["pulumi-language-python", "--use-executor", exec_path],
+            ["pulumi-language-python", "--use-executor", exec_path, "-log_dir", "./logs" "-alsologtostderr"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         # The first line of output is the port that the language host gRPC server is listening on.

@@ -19,7 +19,7 @@ from typing import Any
 from ..output import Inputs
 from .. import log
 from .settings import get_monitor
-from ...runtime.proto import provider_pb2
+from ..runtime.proto import provider_pb2
 from . import rpc
 
 

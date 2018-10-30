@@ -14,10 +14,10 @@
 import asyncio
 import unittest
 
-from pulumi.next.resource import CustomResource
-from pulumi.next.runtime import rpc, known_types
-from pulumi.next.output import Output
-from pulumi.next.asset import (
+from pulumi.resource import CustomResource
+from pulumi.runtime import rpc, known_types
+from pulumi.output import Output
+from pulumi.asset import (
     FileAsset,
     RemoteAsset,
     StringAsset,

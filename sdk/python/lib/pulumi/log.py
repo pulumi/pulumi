@@ -11,17 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
 Utility functions for logging messages to the diagnostic stream of the Pulumi CLI.
 """
 
-from __future__ import print_function
-
 import sys
-from pulumi.runtime import get_engine
-from pulumi.runtime.proto import engine_pb2
+from typing import Optional, TYPE_CHECKING
 
-def debug(msg, resource=None, stream_id=None):
+from .runtime.settings import get_engine
+from .runtime.proto import engine_pb2
+
+if TYPE_CHECKING:
+    from .resource import Resource
+
+
+def debug(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None) -> None:
     """
     Logs a message to the Pulumi CLI's debug channel, associating it with a resource
     and stream_id if provided.
@@ -32,7 +37,8 @@ def debug(msg, resource=None, stream_id=None):
     else:
         print("debug: " + msg, file=sys.stderr)
 
-def info(msg, resource=None, stream_id=None):
+
+def info(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None) -> None:
     """
     Logs a message to the Pulumi CLI's info channel, associating it with a resource
     and stream_id if provided.
@@ -43,7 +49,8 @@ def info(msg, resource=None, stream_id=None):
     else:
         print("info: " + msg, file=sys.stderr)
 
-def warn(msg, resource=None, stream_id=None):
+
+def warn(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None) -> None:
     """
     Logs a message to the Pulumi CLI's warning channel, associating it with a resource
     and stream_id if provided.
@@ -54,7 +61,8 @@ def warn(msg, resource=None, stream_id=None):
     else:
         print("warning: " + msg, file=sys.stderr)
 
-def error(msg, resource=None, stream_id=None):
+
+def error(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None):
     """
     Logs a message to the Pulumi CLI's error channel, associating it with a resource
     and stream_id if provided.
@@ -64,6 +72,7 @@ def error(msg, resource=None, stream_id=None):
         _log(engine, engine_pb2.ERROR, msg, resource, stream_id)
     else:
         print("error: " + msg, file=sys.stderr)
+
 
 def _log(engine, severity, message, resource, stream_id):
     if resource is not None:

@@ -11,152 +11,196 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""
-Resource-related runtime functions.  These are not designed for external use.
-"""
-from __future__ import absolute_import
-
-from ..errors import RunError
-from google.protobuf import struct_pb2
-from .proto import provider_pb2, resource_pb2
-from .settings import get_monitor
-from . import rpc
-import six
-import sys
+import asyncio
 import grpc
+import sys
+import traceback
+from typing import Optional, Awaitable, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING
 
-def invoke(tok, args):
-    """
-    Dynamically invokes the function identified by tok, which is implemented by a provider plugin.  The input args
-    is a dictionary of arbitrary values, and the return value contains a similar dictionary returned by the function.
-    """
+from . import rpc, settings, known_types
+from .. import log
+from ..runtime.proto import resource_pb2
 
-    # Ensure we have flushed all stdout/stderr, in case the RPC fails.
-    sys.stdout.flush()
-    sys.stderr.flush()
-
-    # Now perform the invocation.  This is synchronous and will return only after the operation completes.
-    # TODO[pulumi/pulumi#1063]: asynchronous registration to support parallelism.
-    monitor = get_monitor()
-    try:
-        resp = monitor.Invoke(provider_pb2.InvokeRequest(
-            tok=tok,
-            args=rpc.serialize_resource_props(args)))
-    except grpc.RpcError as exn:
-        # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
-        # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
-        # the .code() member. Pylint doesn't know this because it's not known statically.
-        #
-        # Neither pylint nor I are the only ones who find this confusing:
-        # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-        # pylint: disable=no-member
-        if exn.code() == grpc.StatusCode.UNAVAILABLE:
-            sys.exit(0)
-
-        # If the RPC otherwise failed, re-throw an exception with the message details - the contents
-        # are suitable for user presentation.
-        raise Exception(exn.details())
+if TYPE_CHECKING:
+    from .. import Resource, ResourceOptions
+    from ..output import Output, Inputs
 
 
-    # If the invoke failed, raise an error.
-    if resp.failures:
-        raise Exception('invoke of %s failed: %s (%s)' % (tok, resp.failures[0].reason, resp.failures[0].property))
+class RPCCounter:
+    mutex: asyncio.Lock
+    zero_cond: asyncio.Condition
+    count: int
 
-    # Otherwise, return the output properties.
-    retobj = getattr(resp, 'return')
-    if retobj:
-        return rpc.deserialize_resource_props(retobj)
+    def __init__(self):
+        self.zero_cond = asyncio.Condition()
+        self.count = 0
+        self.errored = False
 
-    return {}
+    async def wait_for_outstanding_rpcs(self):
+        async with self.zero_cond:
+            while self.count != 0:
+                await self.zero_cond.wait()
 
-class RegisterResourceResult(object):
-    """
-    RegisterResourceResult contains the assigned URN, the ID -- if applicable -- and the resulting resource
-    output properties, representing a resource's state after registration has completed.
-    """
-    def __init__(self, urn, id, outputs):
-        self.urn = urn
-        self.id = id
-        self.outputs = outputs
+    async def __aenter__(self):
+        async with self.zero_cond:
+            log.debug(f"recorded new RPC, {self.count} RPCs outstanding")
+            self.count += 1
 
-def register_resource(typ, name, custom, props, opts):
-    """
-    Registers a new resource object with a given type and name.  This call is synchronous while the resource is
-    created and All properties will be initialized to real property values once it completes.
-    """
-
-    # Serialize all properties.  This just translates known types into the gRPC marshalable equivalents.
-    objprops = rpc.serialize_resource_props(props)
-
-    # Ensure we have flushed all stdout/stderr, in case the RPC fails.
-    sys.stdout.flush()
-    sys.stderr.flush()
-
-    # Now perform the resource registration.  This is synchronous and will return only after the operation completes.
-    # TODO[pulumi/pulumi#1063]: asynchronous registration to support parallelism.
-    monitor = get_monitor()
-    try:
-        resp = monitor.RegisterResource(resource_pb2.RegisterResourceRequest(
-            type=typ,
-            name=name,
-            parent=opts.parent.urn if opts and opts.parent else None,
-            custom=custom,
-            object=objprops,
-            protect=opts.protect if opts else None))
-    except grpc.RpcError as exn:
-        # See the above comment on invoke for the justification for disabling
-        # this warning
-        # pylint: disable=no-member
-        if exn.code() == grpc.StatusCode.UNAVAILABLE:
-            sys.exit(0)
-
-        # If the RPC otherwise failed, re-throw an exception with the message details - the contents
-        # are suitable for user presentation.
-        raise Exception(exn.details())
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        async with self.zero_cond:
+            self.count -= 1
+            if self.count == 0:
+                self.zero_cond.notify_all()
 
 
-    # Return the URN, ID, and output properties.
-    urn = resp.urn
+_COUNTER: RPCCounter = RPCCounter()
+
+
+def do_rpc(func):
+    async def wrapper(*args, **kwargs):
+        log.debug("beginning RPC")
+        async with _COUNTER:
+            try:
+                return await func(*args, **kwargs)
+            except Exception as exn:
+                log.error("RPC failed with an unhandled exception:")
+                log.error(traceback.format_exc())
+
+    return wrapper
+
+
+class ResourceResolverOperations(NamedTuple):
+    resolve_urn: Callable[[str], None]
+    resolve_id: Callable[[Any, str], None]
+    resolvers: Any
+    parent_urn: Optional[str]
+    serialized_props: Dict[str, Any]
+    dependencies: Set[str]
+
+
+# Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
+async def prepare_resource(res: 'Resource', ty: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
+    # Simply initialize the URN property and get prepared to resolve it later on.
+    # Note: a resource urn will always get a value, and thus the output property
+    # for it can always run .apply calls.
+    log.debug(f"preparing resource for RPC")
+    urn_future = asyncio.Future()
+    urn_known = asyncio.Future()
+    urn_known.set_result(True)
+    resolve_urn: Callable[[str], None] = urn_future.set_result
+    res.urn = known_types.new_output({res}, urn_future, urn_known)
+
+    # If a custom resource, make room for the ID property.
+    resolve_id: Optional[Callable[[Any, str], None]] = None
     if custom:
-        if resp.id:
-            id = resp.id
-        else:
-            id = None
-    else:
-        id = None
-    outputs = dict()
-    if resp.object:
-        outputs = rpc.deserialize_resource_props(resp.object)
+        resolve_value = asyncio.Future()
+        resolve_perform_apply = asyncio.Future()
+        res.id = known_types.new_output({res}, resolve_value, resolve_perform_apply)
 
-    return RegisterResourceResult(urn, id, outputs)
+        def do_resolve(value: Any, perform_apply: bool):
+            resolve_value.set_result(value)
+            resolve_perform_apply.set_result(perform_apply)
 
-def register_resource_outputs(res, outputs):
+        resolve_id = do_resolve
+
+    # Now "transfer" all input properties into unresolved futures on res.  This way,
+    # this resource will look like it has all its output properties to anyone it is
+    # passed to.  However, those futures won't actually resolve until the RPC returns
+    resolvers = rpc.transfer_properties(res, props)
+
+    # IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized.
+
+    log.debug(f"resource {props} preparing to wait for dependencies")
+    # Before we can proceed, all our dependencies must be finished.
+    explicit_urn_dependencies = []
+    if opts is not None and opts.depends_on is not None:
+        dependent_urns = list(map(lambda r: r.urn.future(), opts.depends_on))
+        explicit_urn_dependencies = await asyncio.gather(*dependent_urns)
+
+    # Serialize out all our props to their final values.  In doing so, we'll also collect all
+    # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
+    implicit_dependencies: List[Resource] = []
+    serialized_props = await rpc.serialize_properties(props, implicit_dependencies)
+
+    # Wait for our parent to resolve
+    parent_urn = ""
+    if opts is not None and opts.parent is not None:
+        parent_urn = await opts.parent.urn.future()
+    elif ty != "pulumi:pulumi:Stack": # TODO(sean)
+        # If no parent was provided, parent to the root resource.
+        parent = settings.get_root_resource()
+        if parent is not None:
+            parent_urn = await parent.urn.future()
+
+
+    # TODO(swgillespie, first class providers) here
+    dependencies = set(explicit_urn_dependencies)
+    for implicit_dep in implicit_dependencies:
+        dependencies.add(await implicit_dep.urn.promise())
+
+    log.debug(f"resource {props} prepared")
+    return ResourceResolverOperations(
+        resolve_urn,
+        resolve_id,
+        resolvers,
+        parent_urn,
+        serialized_props,
+        dependencies
+    )
+
+
+def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
     """
-    Registers custom resource output properties.  This call is serial and blocks until the registration completes.
+    registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
+    URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
+    objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
     """
+    log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
+    monitor = settings.get_monitor()
 
-    # Serialize all properties.  This just translates known types into the gRPC marshalable equivalents.
-    objouts = rpc.serialize_resource_props(outputs)
+    async def do_register():
+        log.debug(f"preparing resource registration: ty={ty}, name={name}")
+        resolver = await prepare_resource(res, ty, custom, props, opts)
+        log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
-    # Ensure we have flushed all stdout/stderr, in case the RPC fails.
-    sys.stdout.flush()
-    sys.stderr.flush()
+        log.debug(f"ty: {ty}")
+        log.debug(f"name: {name}")
+        log.debug(f"parent: {resolver.parent_urn}")
+        log.debug(f"custom: {custom}")
+        log.debug(f"props: {resolver.serialized_props}")
+        req = resource_pb2.RegisterResourceRequest(
+            type=ty,
+            name=name,
+            parent=resolver.parent_urn,
+            custom=custom,
+            object=resolver.serialized_props,
+            protect=False,
+        )
 
-    # Now perform the output registration.  This is synchronous and will return only after the operation completes.
-    # TODO[pulumi/pulumi#1063]: asynchronous registration to support parallelism.
-    monitor = get_monitor()
-    try:
-        monitor.RegisterResourceOutputs(resource_pb2.RegisterResourceOutputsRequest(
-            urn=res.urn,
-            outputs=objouts))
-    except grpc.RpcError as exn:
-        # See the above comment on invoke for the justification for disabling
-        # this warning
-        # pylint: disable=no-member
-        if exn.code() == grpc.StatusCode.UNAVAILABLE:
-            sys.exit(0)
-            
-        # If the RPC otherwise failed, re-throw an exception with the message details - the contents
-        # are suitable for user presentation.
-        raise Exception(exn.details())
+        def do_rpc_call():
+            try:
+                return monitor.RegisterResource(req)
+            except grpc.RpcError as exn:
+                # See the comment on invoke for the justification for disabling
+                # this warning
+                # pylint: disable=no-member
+                if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                    sys.exit(0)
+
+                # If the RPC otherwise failed, re-throw an exception with the message details - the contents
+                # are suitable for user presentation.
+                raise Exception(exn.details())
+
+        resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
+        resolver.resolve_urn(resp.urn)
+        if resolver.resolve_id:
+            is_known = resp.id is not None
+            resolver.resolve_id(resp.id, is_known)
+
+        await rpc.resolve_outputs(res, props, resp.object, resolver.resolvers)
+
+    asyncio.ensure_future(do_rpc(do_register)())
+
+def register_resource_outputs(res: 'Resource', inputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
+    pass
