@@ -149,7 +149,12 @@ class Output(Generic[T]):
             finally:
                 # Always resolve the future if it hasn't been done already.
                 if not inner_is_known.done():
-                    inner_is_known.set_result(False)
+                    # Try and set the result. This might fail if we're shutting down,
+                    # so swallow that error if that occurs.
+                    try:
+                        inner_is_known.set_result(False)
+                    except RuntimeError:
+                        pass
 
         run_fut = asyncio.ensure_future(run())
         is_known_fut = asyncio.ensure_future(is_known())

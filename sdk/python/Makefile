@@ -64,7 +64,7 @@ install:: install_package install_plugin
 
 test_fast::
 	pipenv run pip install ./env/src
-	pipenv run python -m unittest discover -s lib/test
+	pipenv run python -m unittest discover -s lib/test -v
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}

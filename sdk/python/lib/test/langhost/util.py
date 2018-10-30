@@ -15,8 +15,7 @@
 Utility functions and classes for testing the Python language host.
 """
 
-from __future__ import print_function
-
+import asyncio
 import unittest
 from collections import namedtuple
 from concurrent import futures
@@ -25,7 +24,8 @@ import subprocess
 from os import path
 import grpc
 from pulumi.runtime import proto, rpc
-from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc
+from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc, engine_pb2_grpc, engine_pb2
+from google.protobuf import empty_pb2
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful
@@ -50,32 +50,31 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         self.langhost_test = langhost_test
 
     def Invoke(self, request, context):
-        print("invoke")
-        args = rpc.deserialize_resource_props(request.args)
+        args = rpc.deserialize_properties(request.args)
         failures, ret = self.langhost_test.invoke(context, request.tok, args)
         return proto.InvokeResponse(failures=failures, ret=ret)
 
     def ReadResource(self, request, context):
-        print("read")
         type_ = request.type
         name = request.name
         id_ = request.id
         parent = request.parent
-        state = rpc.deserialize_resource_props(request.properties)
+        state = rpc.deserialize_properties(request.properties)
         outs = self.langhost_test.read_resource(context, type_, name, id_,
                                                 parent, state)
         if "properties" in outs:
-            props_proto = rpc.serialize_resource_props(outs["properties"])
+            loop = asyncio.new_event_loop()
+            props_proto = loop.run_until_complete(rpc.serialize_properties(outs["properties"], []))
+            loop.close()
         else:
             props_proto = None
         return proto.ReadResourceResponse(
             urn=outs.get("urn"), properties=props_proto)
 
     def RegisterResource(self, request, context):
-        print("register")
         type_ = request.type
         name = request.name
-        props = rpc.deserialize_resource_props(request.object)
+        props = rpc.deserialize_properties(request.object)
         deps = request.dependencies
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
@@ -91,20 +90,34 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
             self.reg_count += 1
         if "object" in outs:
-            obj_proto = rpc.serialize_resource_props(outs["object"])
+            loop = asyncio.new_event_loop()
+            obj_proto = loop.run_until_complete(rpc.serialize_properties(outs["object"], []))
+            loop.close()
         else:
             obj_proto = None
         return proto.RegisterResourceResponse(
             urn=outs.get("urn"), id=outs.get("id"), object=obj_proto)
 
     def RegisterResourceOutputs(self, request, context):
-        print("outputs")
         urn = request.urn
-        outs = rpc.deserialize_resource_props(request.outputs)
+        outs = rpc.deserialize_properties(request.outputs)
         res = self.registrations.get(urn)
         if res:
             self.langhost_test.register_resource_outputs(
                 context, self.dryrun, urn, res.t, res.name, res.props, outs)
+        return empty_pb2.Empty()
+
+
+class MockEngine(proto.EngineServicer):
+    """
+    Implementation of the proto.EngineServicer protocol for use in tests. Like the
+    above class, we encapsulate all gRPC details here so that test writers only have
+    to override methods on LanghostTest.
+    """
+    def Log(self, request, context):
+        if request.severity == engine_pb2.ERROR:
+            print(f"error: {request.message}")
+        return empty_pb2.Empty()
 
 
 ResourceMonitorEndpoint = namedtuple('ResourceMonitorEndpoint',
@@ -161,7 +174,7 @@ class LanghostTest(unittest.TestCase):
 
             # Now we'll launch the language host, which will in turn launch code that drives
             # the test.
-            langhost = self._create_language_host()
+            langhost = self._create_language_host(monitor.addr)
 
             # Run the program with the langhost we just launched.
             with grpc.insecure_channel(langhost.addr) as channel:
@@ -171,8 +184,6 @@ class LanghostTest(unittest.TestCase):
 
             # Tear down the language host process we just spun up.
             langhost.process.kill()
-
-
             stdout, stderr = langhost.process.communicate()
             if not expected_stderr_contains and (stdout or stderr):
                 print("PREVIEW:" if dryrun else "UPDATE:")
@@ -248,17 +259,19 @@ class LanghostTest(unittest.TestCase):
 
     def _create_mock_resource_monitor(self, dryrun):
         monitor = LanghostMockResourceMonitor(self, dryrun)
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+        engine = MockEngine()
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
         resource_pb2_grpc.add_ResourceMonitorServicer_to_server(
             monitor, server)
+        engine_pb2_grpc.add_EngineServicer_to_server(engine, server)
         port = server.add_insecure_port(address="0.0.0.0:0")
         server.start()
         return ResourceMonitorEndpoint(monitor, server, "0.0.0.0:%d" % port)
 
-    def _create_language_host(self):
+    def _create_language_host(self, engine_addr):
         exec_path = path.join(path.dirname(__file__), "..", "..", "..", "cmd", "pulumi-language-python-exec")
         proc = subprocess.Popen(
-            ["pulumi-language-python", "--use-executor", exec_path, "-log_dir", "./logs" "-alsologtostderr"],
+            ["pulumi-language-python", "--use-executor", exec_path, engine_addr],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         # The first line of output is the port that the language host gRPC server is listening on.

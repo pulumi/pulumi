@@ -54,9 +54,10 @@ if __name__ == "__main__":
         os.chdir(args.pwd)
 
     successful = False
+    loop = asyncio.get_event_loop()
     try:
         coro = pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
-        asyncio.get_event_loop().run_until_complete(coro)
+        loop.run_until_complete(coro)
         successful = True
     except pulumi.RunError as e:
         pulumi.log.error(e.message)
@@ -64,8 +65,10 @@ if __name__ == "__main__":
         pulumi.log.error("Program failed with an unhandled exception:")
         pulumi.log.error(traceback.format_exc())
     finally:
+        loop.close()
         sys.stdout.flush()
         sys.stderr.flush()
 
     exit_code = 0 if successful else 1
     sys.exit(exit_code)
+

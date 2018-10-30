@@ -20,53 +20,11 @@ from typing import Optional, Awaitable, Any, Callable, List, NamedTuple, Dict, S
 from . import rpc, settings, known_types
 from .. import log
 from ..runtime.proto import resource_pb2
+from .rpc_manager import RPC_MANAGER
 
 if TYPE_CHECKING:
     from .. import Resource, ResourceOptions
     from ..output import Output, Inputs
-
-
-class RPCCounter:
-    mutex: asyncio.Lock
-    zero_cond: asyncio.Condition
-    count: int
-
-    def __init__(self):
-        self.zero_cond = asyncio.Condition()
-        self.count = 0
-        self.errored = False
-
-    async def wait_for_outstanding_rpcs(self):
-        async with self.zero_cond:
-            while self.count != 0:
-                await self.zero_cond.wait()
-
-    async def __aenter__(self):
-        async with self.zero_cond:
-            log.debug(f"recorded new RPC, {self.count} RPCs outstanding")
-            self.count += 1
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        async with self.zero_cond:
-            self.count -= 1
-            if self.count == 0:
-                self.zero_cond.notify_all()
-
-
-_COUNTER: RPCCounter = RPCCounter()
-
-
-def do_rpc(func):
-    async def wrapper(*args, **kwargs):
-        log.debug("beginning RPC")
-        async with _COUNTER:
-            try:
-                return await func(*args, **kwargs)
-            except Exception as exn:
-                log.error("RPC failed with an unhandled exception:")
-                log.error(traceback.format_exc())
-
-    return wrapper
 
 
 class ResourceResolverOperations(NamedTuple): #TODO(sean) rename
@@ -155,12 +113,6 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
         log.debug(f"preparing resource registration: ty={ty}, name={name}")
         resolver = await prepare_resource(ty, props, opts)
         log.debug(f"resource registration prepared: ty={ty}, name={name}")
-
-        log.debug(f"ty: {ty}")
-        log.debug(f"name: {name}")
-        log.debug(f"parent: {resolver.parent_urn}")
-        log.debug(f"custom: {custom}")
-        log.debug(f"props: {resolver.serialized_props}")
         req = resource_pb2.RegisterResourceRequest(
             type=ty,
             name=name,
@@ -181,9 +133,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 if exn.code() == grpc.StatusCode.UNAVAILABLE:
                     sys.exit(0)
 
-                # If the RPC otherwise failed, re-throw an exception with the message details - the contents
-                # are suitable for user presentation.
-                raise Exception(exn.details())
+                details = exn.details()
+            raise Exception(details)
 
         resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
@@ -194,7 +145,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
         await rpc.resolve_outputs(res, props, resp.object, resolvers)
 
-    asyncio.ensure_future(do_rpc(do_register)())
+    asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource", do_register)())
 
 def register_resource_outputs(res: 'Resource', inputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
     pass
