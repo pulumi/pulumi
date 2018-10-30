@@ -257,7 +257,8 @@ const (
 
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
-	OrgName string `json:"orgName"`
+	CloudName string `json:"cloudName"`
+	OrgName   string `json:"orgName"`
 
 	RepoName    string       `json:"repoName"`
 	ProjectName string       `json:"projName"`
