@@ -18,7 +18,7 @@ out of RPC calls.
 import asyncio
 import functools
 import inspect
-from typing import List, Any, Callable, Dict, TYPE_CHECKING
+from typing import List, Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from google.protobuf import struct_pb2
 from . import known_types, settings
@@ -41,7 +41,9 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 """specialArchiveSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go."""
 
 
-async def serialize_properties(inputs: 'Inputs', deps: List['Resource']) -> struct_pb2.Struct:
+async def serialize_properties(inputs: 'Inputs',
+                               deps: List['Resource'],
+                               transform: Optional[Callable[[str], str]]=None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
@@ -49,12 +51,14 @@ async def serialize_properties(inputs: 'Inputs', deps: List['Resource']) -> stru
     """
     struct = struct_pb2.Struct()
     for k, v in inputs.items():
-        struct[k] = await serialize_property(v, deps)
+        struct[k] = await serialize_property(v, deps, transform)
 
     return struct
 
 
-async def serialize_property(value: 'Input[Any]', deps: List['Resource']) -> Any:
+async def serialize_property(value: 'Input[Any]',
+                             deps: List['Resource'],
+                             transform: Optional[Callable[[str], str]]=None) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
     any futures required to do so.
@@ -122,7 +126,11 @@ async def serialize_property(value: 'Input[Any]', deps: List['Resource']) -> Any
     if isinstance(value, dict):
         obj = {}
         for k, v in value.items():
-            obj[k] = await serialize_property(v, deps)
+            transformed_key = k
+            if transform is not None:
+                transformed_key = transform(k)
+                log.debug(f"transforming input property: {k} -> {transformed_key}")
+            obj[transformed_key] = await serialize_property(v, deps)
 
         return obj
 
@@ -202,7 +210,7 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
             known_fut.set_result(is_known)
 
         log.debug(f"adding resolver {name}")
-        translated_name = res.translate_property(name)
+        translated_name = res.translate_output_property(name)
         log.debug(f"property translated: {name} -> {translated_name}")
         resolvers[translated_name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
         res.__setattr__(translated_name, known_types.new_output({res}, resolve_value, resolve_is_known))
@@ -213,9 +221,9 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
 def translate_output_properties(res: 'Resource', output: Any) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
-    convention specified by the resource's implementation of `translate_property`.
+    convention specified by the resource's implementation of `translate_output_property`.
 
-    If output is a `dict`, every key is translated using `translate_property` while every value is transformed
+    If output is a `dict`, every key is translated using `translate_output_property` while every value is transformed
     by recursing.
 
     If output is a `list`, every value is recursively transformed.
@@ -223,7 +231,7 @@ def translate_output_properties(res: 'Resource', output: Any) -> Any:
     If output is a primitive (i.e. not a dict or list), the value is returned without modification.
     """
     if isinstance(output, dict):
-        return {res.translate_property(k): translate_output_properties(res, v) for k, v in output.items()}
+        return {res.translate_output_property(k): translate_output_properties(res, v) for k, v in output.items()}
 
     if isinstance(output, list):
         return [translate_output_properties(res, v) for v in output]
@@ -237,11 +245,11 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
     all_properties = {}
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
-        translated_key = res.translate_property(key)
+        translated_key = res.translate_output_property(key)
         translated_value = translate_output_properties(res, value)
         log.debug(f"incoming output property translated: {key} -> {translated_key}")
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
-        all_properties[translated_key] = translate_output_properties(res, value)
+        all_properties[translated_key] = translated_value
 
     for key, value in props.items():
         if key not in all_properties:
