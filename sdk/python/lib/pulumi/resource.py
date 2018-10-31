@@ -73,7 +73,7 @@ class Resource:
 
     def translate_property(self, prop: str) -> str:
         """
-        Provides subclasses of CustomResource an opportunity to translate names of properties
+        Provides subclasses of Resource an opportunity to translate names of properties
         into a format of their choosing before writing those properties to the resource object.
         """
         return prop

@@ -270,10 +270,13 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
             resolve_value = asyncio.Future()
             resolve_known = asyncio.Future()
 
-            def do_resolve(resolve_fut, resolve_known, value, known):
+            def do_resolve(resolve_fut, known_fut, value, known):
                 resolve_fut.set_result(value)
-                resolve_known.set_result(known)
+                known_fut.set_result(known)
 
+            # Note: the functools.partial is REQUIRED here. It's not safe to capture variables
+            # by reference in a loop. We use functools.partial here to capture the value of
+            # resolve_value and resolve_known at the point of invocation and not by reference.
             resolve = functools.partial(do_resolve, resolve_value, resolve_known)
             res.__setattr__(key, known_types.new_output({res}, resolve_value, resolve_known))
 
