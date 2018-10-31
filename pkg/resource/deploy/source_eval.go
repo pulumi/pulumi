@@ -169,7 +169,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 	go func() {
 		// Next, launch the language plugin.
 		run := func() error {
-			rt := iter.src.runinfo.Proj.RuntimeInfo.Name()
+			rt := iter.src.runinfo.Proj.Runtime.Name()
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
 			if err != nil {
 				return errors.Wrapf(err, "failed to launch language host %s", rt)
