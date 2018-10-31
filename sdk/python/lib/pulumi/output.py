@@ -27,6 +27,8 @@ from typing import (
 )
 
 from . import runtime
+from .runtime import known_types
+
 if TYPE_CHECKING:
     from .resource import Resource
 
@@ -37,6 +39,7 @@ Input = Union[T, Awaitable[T], 'Output[T]']
 Inputs = Mapping[str, Input[Any]]
 
 
+@known_types.output
 class Output(Generic[T]):
     """
     Output helps encode the relationship between Resources in a Pulumi application. Specifically an
@@ -60,17 +63,17 @@ class Output(Generic[T]):
     Future that actually produces the concrete value of this output.
     """
 
-    _resources: Set[Resource]
+    _resources: Set['Resource']
     """
     The list of resources that this output value depends on.
     """
 
-    def __init__(self, resources: Set[Resource], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
+    def __init__(self, resources: Set['Resource'], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
         self._resources = resources
         self._future = future
         self._is_known = is_known
 
-    def resources(self) -> Set[Resource]:
+    def resources(self) -> Set['Resource']:
         return self._resources
 
     def future(self) -> Awaitable[T]:
@@ -146,11 +149,18 @@ class Output(Generic[T]):
             finally:
                 # Always resolve the future if it hasn't been done already.
                 if not inner_is_known.done():
-                    inner_is_known.set_result(False)
+                    # Try and set the result. This might fail if we're shutting down,
+                    # so swallow that error if that occurs.
+                    try:
+                        inner_is_known.set_result(False)
+                    except RuntimeError:
+                        pass
 
-        return Output(self._resources, run(), is_known())
+        run_fut = asyncio.ensure_future(run())
+        is_known_fut = asyncio.ensure_future(is_known())
+        return Output(self._resources, run_fut, is_known_fut)
 
-    def __getattribute__(self, item: str) -> 'Output[Any]':
+    def __getattr__(self, item: str) -> 'Output[Any]':
         """
         Syntax sugar for retrieving attributes off of outputs.
         """

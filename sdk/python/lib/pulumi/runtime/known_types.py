@@ -30,178 +30,217 @@ is stashed away in a global variable. Whenever the runtime wants to do a type
 test using that type (or instantiate an instance of this type), it uses the
 functions defined in this module to do so.
 """
-import six
+from typing import Any, Optional
 
-_custom_resource_type = None
+_custom_resource_type: Optional[type] = None
 """The type of CustomResource. Filled-in as the Pulumi package is initializing."""
 
-_asset_resource_type = None
+_asset_resource_type: Optional[type] = None
 """The type of Asset. Filled-in as the Pulumi package is initializing."""
 
-_file_asset_resource_type = None
+_file_asset_resource_type: Optional[type] = None
 """The type of FileAsset. Filled-in as the Pulumi package is initializing."""
 
-_string_asset_resource_type = None
+_string_asset_resource_type: Optional[type] = None
 """The type of StringAsset. Filled-in as the Pulumi package is initializing."""
 
-_remote_asset_resource_type = None
+_remote_asset_resource_type: Optional[type] = None
 """The type of RemoteAsset. Filled-in as the Pulumi package is initializing."""
 
-_archive_resource_type = None
+_archive_resource_type: Optional[type] = None
 """The type of Archive. Filled-in as the Pulumi package is initializing."""
 
-_asset_archive_resource_type = None
+_asset_archive_resource_type: Optional[type] = None
 """The type of AssetArchive. Filled-in as the Pulumi package is initializing."""
 
-_file_archive_resource_type = None
+_file_archive_resource_type: Optional[type] = None
 """The type of FileArchive. Filled-in as the Pulumi package is initializing."""
 
-_remote_archive_resource_type = None
+_remote_archive_resource_type: Optional[type] = None
 """The type of RemoteArchive. Filled-in as the Pulumi package is initializing."""
 
-_custom_resource_type = None
-"""The type of CustomResource. Filled-in as the Pulumi package is initializing."""
+_output_type: Optional[type] = None
+"""The type of Output. Filled-in as the Pulumi package is initializing."""
 
-def asset(class_obj):
+
+def asset(class_obj: type) -> type:
     """
     Decorator to annotate the Asset class. Registers the decorated class
     as the Asset known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _asset_resource_type
     _asset_resource_type = class_obj
     return class_obj
 
-def file_asset(class_obj):
+
+def file_asset(class_obj: type) -> type:
     """
     Decorator to annotate the FileAsset class. Registers the decorated class
     as the FileAsset known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _file_asset_resource_type
     _file_asset_resource_type = class_obj
     return class_obj
 
-def string_asset(class_obj):
+
+def string_asset(class_obj: type) -> type:
     """
     Decorator to annotate the StringAsset class. Registers the decorated class
     as the StringAsset known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _string_asset_resource_type
     _string_asset_resource_type = class_obj
     return class_obj
 
-def remote_asset(class_obj):
+
+def remote_asset(class_obj: type) -> type:
     """
     Decorator to annotate the RemoteAsset class. Registers the decorated class
     as the RemoteAsset known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _remote_asset_resource_type
     _remote_asset_resource_type = class_obj
     return class_obj
 
-def archive(class_obj):
+
+def archive(class_obj: type) -> type:
     """
     Decorator to annotate the Archive class. Registers the decorated class
     as the Archive known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _archive_resource_type
     _archive_resource_type = class_obj
     return class_obj
 
-def asset_archive(class_obj):
+
+def asset_archive(class_obj: type) -> type:
     """
     Decorator to annotate the AssetArchive class. Registers the decorated class
     as the AssetArchive known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _asset_archive_resource_type
     _asset_archive_resource_type = class_obj
     return class_obj
 
-def file_archive(class_obj):
+
+def file_archive(class_obj: type) -> type:
     """
     Decorator to annotate the FileArchive class. Registers the decorated class
     as the FileArchive known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _file_archive_resource_type
     _file_archive_resource_type = class_obj
     return class_obj
 
-def remote_archive(class_obj):
+
+def remote_archive(class_obj: type) -> type:
     """
     Decorator to annotate the RemoteArchive class. Registers the decorated class
     as the RemoteArchive known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _remote_archive_resource_type
     _remote_archive_resource_type = class_obj
     return class_obj
 
-def custom_resource(class_obj):
+
+def custom_resource(class_obj: type) -> type:
     """
     Decorator to annotate the CustomResource class. Registers the decorated class
     as the CustomResource known type.
     """
-    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    assert isinstance(class_obj, type), "class_obj is not a Class"
     global _custom_resource_type
     _custom_resource_type = class_obj
     return class_obj
 
-def new_file_asset(*args):
+
+def output(class_obj: type) -> type:
+    assert isinstance(class_obj, type), "class_obj is not a Class"
+    global _output_type
+    _output_type = class_obj
+    return class_obj
+
+
+def new_file_asset(*args: Any) -> Any:
     """
     Instantiates a new FileAsset, passing the given arguments to the constructor.
     """
     return _file_asset_resource_type(*args)
 
-def new_string_asset(*args):
+
+def new_string_asset(*args: Any) -> Any:
     """
     Instantiates a new StringAsset, passing the given arguments to the constructor.
     """
     return _string_asset_resource_type(*args)
 
-def new_remote_asset(*args):
+
+def new_remote_asset(*args: Any) -> Any:
     """
     Instantiates a new StringAsset, passing the given arguments to the constructor.
     """
     return _remote_asset_resource_type(*args)
 
-def new_asset_archive(*args):
+
+def new_asset_archive(*args: Any) -> Any:
     """
     Instantiates a new AssetArchive, passing the given arguments to the constructor.
     """
     return _asset_archive_resource_type(*args)
 
-def new_file_archive(*args):
+
+def new_file_archive(*args: Any) -> Any:
     """
     Instantiates a new FileArchive, passing the given arguments to the constructor.
     """
     return _file_archive_resource_type(*args)
 
-def new_remote_archive(*args):
+
+def new_remote_archive(*args: Any) -> Any:
     """
     Instantiates a new StringArchive, passing the given arguments to the constructor.
     """
     return _remote_archive_resource_type(*args)
 
-def is_asset(obj):
+
+def new_output(*args: Any) -> Any:
+    """
+    Instantiates a new StringArchive, passing the given arguments to the constructor.
+    """
+    return _output_type(*args)
+
+
+def is_asset(obj: Any) -> bool:
     """
     Returns true if the given type is an Asset, false otherwise.
     """
     return _asset_resource_type is not None and isinstance(obj, _asset_resource_type)
 
-def is_archive(obj):
+
+def is_archive(obj: Any) -> bool:
     """
     Returns true if the given type is an Archive, false otherwise.
     """
     return _archive_resource_type is not None and isinstance(obj, _archive_resource_type)
 
-def is_custom_resource(obj):
+
+def is_custom_resource(obj: Any) -> bool:
     """
     Returns true if the given type is a CustomResource, false otherwise.
     """
     return _custom_resource_type is not None and isinstance(obj, _custom_resource_type)
+
+
+def is_output(obj: Any) -> bool:
+    """
+    Returns true if the given type is an Output, false otherwise.
+    """
+    return _output_type is not None and isinstance(obj, _output_type)

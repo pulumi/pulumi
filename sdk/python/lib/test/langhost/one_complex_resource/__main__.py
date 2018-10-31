@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import functools
 from pulumi import CustomResource
 
 
@@ -23,14 +24,15 @@ class MyResource(CustomResource):
             "listprop": [1, 2, "string", False],
             "mapprop": {
                 "foo": ["bar", "baz"]
-            }
+            },
+            "outprop": None,
+            "outintprop": None,
         })
 
-    def set_outputs(self, outputs):
-        self.outprop = outputs["outprop"]
-        self.outintprop = outputs["outintprop"]
+def assert_eq(lhs, rhs):
+    assert lhs == rhs
 
 
 res = MyResource("testres")
-assert res.outprop == "output properties ftw"
-assert res.outintprop == 99
+res.outprop.apply(functools.partial(assert_eq, "output properties ftw"))
+res.outintprop.apply(functools.partial(assert_eq, 99))
