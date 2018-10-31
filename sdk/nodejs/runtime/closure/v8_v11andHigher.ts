@@ -92,27 +92,30 @@ export async function lookupCapturedVariableValueAsync(
     return undefined;
 }
 
-// In order to get information about an object, we need to put it in a well known location so that
-// we can call Runtime.evaluate and find it.  To do this, we just make a special map on the 'global'
-// object, and map from a unique-id to that object.  We then call Runtime.evaluate with an
-// expression that then points to that unique-id in that global object.  The runtime will then find
-// the object and give us back an internal id for it.  We can then query for information about the
-// object through that internal id.
-//
-// Note: the reason for the mapping object and the unique-id we create is so that we don't run into
-// any issues when being called asynchronously.  We don't want to place the object in a location
-// that might be overwritten by another call while we're asynchronously waiting for our original
-// call to complete.
-
-let currentFunctionId = 0;
-// tslint:disable-next-line:variable-name
-const __inflightFunctions: any = {};
-(<any>global).__inflightFunctions = __inflightFunctions;
-
 async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.Runtime.RemoteObjectId> {
+    // In order to get information about an object, we need to put it in a well known location so
+    // that we can call Runtime.evaluate and find it.  To do this, we just make a special map on the
+    // 'global' object, and map from a unique-id to that object.  We then call Runtime.evaluate with
+    // an expression that then points to that unique-id in that global object.  The runtime will
+    // then find the object and give us back an internal id for it.  We can then query for
+    // information about the object through that internal id.
+    //
+    // Note: the reason for the mapping object and the unique-id we create is so that we don't run
+    // into any issues when being called asynchronously.  We don't want to place the object in a
+    // location that might be overwritten by another call while we're asynchronously waiting for our
+    // original call to complete.
+    //
+    // We also lazily initialize this in case pulumi has been loaded through another module and has
+    // already initialize this global state.
+    const globalAny = <any>global;
+    if (!globalAny.__inflightFunctions) {
+        globalAny.__inflightFunctions = {};
+        globalAny.__currentFunctionId = 0;
+    }
+
     // Place the function in a unique location off of the global object.
-    const currentFunctionName = "id" + currentFunctionId++;
-    __inflightFunctions[currentFunctionName] = func;
+    const currentFunctionName = "id" + globalAny.__currentFunctionId++;
+    globalAny.__inflightFunctions[currentFunctionName] = func;
 
     try {
         const session = await v8Hooks.getSessionAsync();
@@ -141,7 +144,7 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
         return remoteObject.objectId;
     }
     finally {
-        delete __inflightFunctions[currentFunctionName];
+        delete globalAny.__inflightFunctions[currentFunctionName];
     }
 }
 
@@ -165,23 +168,26 @@ async function runtimeGetPropertiesAsync(
     return { internalProperties: retType.internalProperties || [], properties: retType.result };
 }
 
-// In order to get the raw JS value for the *remote wrapper* of the [[Scopes]] array, we use
-// Runtime.callFunctionOn on it passing in a fresh function-declaration.  The Node runtime will then
-// compile that function, invoking it with the 'real' underlying scopes-array value in memory as the
-// bound 'this' value.  Inside that function declaration, we can then access 'this' and assign it to
-// a unique-id in a well known mapping table we have set up.  As above, the unique-id is to prevent
-// any issues with multiple in-flight asynchronous calls.
-
-let currentCallId = 0;
-// tslint:disable-next-line:variable-name
-const __inflightCalls: any = {};
-(<any>global).__inflightCalls = __inflightCalls;
-
 async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): Promise<any> {
+    // In order to get the raw JS value for the *remote wrapper* of the [[Scopes]] array, we use
+    // Runtime.callFunctionOn on it passing in a fresh function-declaration.  The Node runtime will
+    // then compile that function, invoking it with the 'real' underlying scopes-array value in
+    // memory as the bound 'this' value.  Inside that function declaration, we can then access
+    // 'this' and assign it to a unique-id in a well known mapping table we have set up.  As above,
+    // the unique-id is to prevent any issues with multiple in-flight asynchronous calls.
+    //
+    // We also lazily initialize this in case pulumi has been loaded through another module and has
+    // already initialize this global state.
+    const globalAny = <any>global;
+    if (!globalAny.__inflightCalls) {
+        globalAny.__inflightCalls = {};
+        globalAny.__currentCallId = 0;
+    }
+
     const session = await v8Hooks.getSessionAsync();
 
     // Get an id for an unused location in the global table.
-    const tableId = "id" + currentCallId++;
+    const tableId = "id" + globalAny.__currentCallId++;
 
     // Now, ask the runtime to call a fictitious method on the scopes-array object.  When it
     // does, it will get the actual underlying value for the scopes array and bind it to the
@@ -202,13 +208,13 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
             + retType.exceptionDetails.text);
     }
 
-    if (!__inflightCalls.hasOwnProperty(tableId)) {
+    if (!globalAny.__inflightCalls.hasOwnProperty(tableId)) {
         throw new Error(`Value was not stored into table after calling "Runtime.callFunctionOn(${objectId})"`);
     }
 
     // Extract value and clear our table entry.
-    const val = __inflightCalls[tableId];
-    delete __inflightCalls[tableId];
+    const val = globalAny.__inflightCalls[tableId];
+    delete globalAny.__inflightCalls[tableId];
 
     return val;
 }
