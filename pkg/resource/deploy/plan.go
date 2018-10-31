@@ -203,7 +203,9 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 			}
 
 			urn := oldres.URN
-			contract.Assert(olds[urn] == nil)
+			if olds[urn] != nil {
+				return nil, errors.Errorf("unexpected duplicate resource '%s'", urn)
+			}
 			olds[urn] = oldres
 		}
 
