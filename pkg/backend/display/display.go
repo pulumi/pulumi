@@ -158,24 +158,17 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
 	changes := event.ResourceChanges
 
-	changeCount := 0
-	for op, c := range changes {
-		if op != deploy.OpSame {
-			changeCount += c
-		}
-	}
-
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
-	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("    %s%d %s%s\n",
-			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset)))
 
 	var planTo string
 	if event.IsPreview {
 		planTo = "to "
 	}
+
+	var changeCount = 0
+	var sameCount = changes[deploy.OpSame]
 
 	// Now summarize all of the changes; we print sames a little differently.
 	for _, op := range deploy.StepOps {
@@ -185,14 +178,38 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 				if !event.IsPreview {
 					opDescription = op.PastTense()
 				}
-				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %s%d %s%s%s\n",
-					op.Prefix(), c, planTo, opDescription, colors.Reset)))
+
+				changeCount++
+				fprintIgnoreError(out, opts.Color.Colorize(
+					fmt.Sprintf("    %s%d %s%s%s\n", op.Prefix(), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}
 
-	if c := changes[deploy.OpSame]; c > 0 {
-		fprintfIgnoreError(out, "    %d unchanged\n", c)
+	summaryPieces := []string{}
+	if changeCount >= 2 {
+		// Only if we made multiple types of changes do we need to print out the total number of
+		// changes.  i.e. we don't need "10 changes" and "+ 10 to create".  We can just say "+ 10 to create"
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%s%d %s%s",
+			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset))
+	}
+
+	if sameCount != 0 {
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%d unchanged", sameCount))
+	}
+
+	if len(summaryPieces) > 0 {
+		fprintfIgnoreError(out, "    ")
+
+		for i, piece := range summaryPieces {
+			if i > 0 {
+				fprintfIgnoreError(out, ". ")
+			}
+
+			out.WriteString(opts.Color.Colorize(piece))
+		}
+
+		fprintfIgnoreError(out, "\n")
 	}
 
 	// For actual deploys, we print some additional summary information
