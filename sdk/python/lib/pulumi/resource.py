@@ -71,6 +71,14 @@ class Resource:
         # TODO(sean) first class providers here (pulumi/pulumi#1713)
         register_resource(self, t, name, custom, props, opts)
 
+    def translate_property(self, prop: str) -> str:
+        """
+        Provides subclasses of CustomResource an opportunity to translate names of properties
+        into a format of their choosing before writing those properties to the resource object.
+        """
+        return prop
+
+
 
 @known_types.custom_resource
 class CustomResource(Resource):

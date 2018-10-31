@@ -202,10 +202,33 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
             known_fut.set_result(is_known)
 
         log.debug(f"adding resolver {name}")
-        resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
-        res.__setattr__(name, known_types.new_output({res}, resolve_value, resolve_is_known))
+        translated_name = res.translate_property(name)
+        log.debug(f"property translated: {name} -> {translated_name}")
+        resolvers[translated_name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
+        res.__setattr__(translated_name, known_types.new_output({res}, resolve_value, resolve_is_known))
 
     return resolvers
+
+
+def translate_output_properties(res: 'Resource', output: Any) -> Any:
+    """
+    Recursively rewrite keys of objects returned by the engine to conform with a naming
+    convention specified by the resource's implementation of `translate_property`.
+
+    If output is a `dict`, every key is translated using `translate_property` while every value is transformed
+    by recursing.
+
+    If output is a `list`, every value is recursively transformed.
+
+    If output is a primitive (i.e. not a dict or list), the value is returned without modification.
+    """
+    if isinstance(output, dict):
+        return {res.translate_property(k): translate_output_properties(res, v) for k, v in output.items()}
+
+    if isinstance(output, list):
+        return [translate_output_properties(res, v) for v in output]
+
+    return output
 
 
 async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.Struct, resolvers: Dict[str, Resolver]):
@@ -213,7 +236,12 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}
     for key, value in deserialize_properties(outputs).items():
-        all_properties[key] = value
+        # Outputs coming from the provider are NOT translated. Do so here.
+        translated_key = res.translate_property(key)
+        translated_value = translate_output_properties(res, value)
+        log.debug(f"incoming output property translated: {key} -> {translated_key}")
+        log.debug(f"incoming output value translated: {value} -> {translated_value}")
+        all_properties[translated_key] = translate_output_properties(res, value)
 
     for key, value in props.items():
         if key not in all_properties:
@@ -232,6 +260,7 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
             continue
 
         # Otherwise, unmarshal the value, and store it on the resource object.
+        log.debug(f"looking for resolver using translated name {key}")
         resolve = resolvers.get(key)
         if resolve is None:
             # If there is no property yet, zero initialize it.  This ensures unexpected properties
@@ -241,11 +270,11 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
             resolve_value = asyncio.Future()
             resolve_known = asyncio.Future()
 
-            def do_resolve(value, known):
-                resolve_value.set_result(value)
+            def do_resolve(resolve_fut, resolve_known, value, known):
+                resolve_fut.set_result(value)
                 resolve_known.set_result(known)
 
-            resolve = do_resolve
+            resolve = functools.partial(do_resolve, resolve_value, resolve_known)
             res.__setattr__(key, known_types.new_output({res}, resolve_value, resolve_known))
 
         # If either we are performing a real deployment, or this is a stable property value, we
