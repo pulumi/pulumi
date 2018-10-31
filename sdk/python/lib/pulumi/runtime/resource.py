@@ -51,13 +51,13 @@ async def prepare_resource(ty: str, props: 'Inputs', opts: Optional['ResourceOpt
     parent_urn = ""
     if opts is not None and opts.parent is not None:
         parent_urn = await opts.parent.urn.future()
-    elif ty != "pulumi:pulumi:Stack": # TODO(sean)
+    elif ty != "pulumi:pulumi:Stack": # TODO(sean) is it necessary to check the type here?
         # If no parent was provided, parent to the root resource.
         parent = settings.get_root_resource()
         if parent is not None:
             parent_urn = await parent.urn.future()
 
-    # TODO(swgillespie, first class providers) here
+    # TODO(swgillespie, first class providers) here (pulumi/pulumi#1713)
     dependencies = set(explicit_urn_dependencies)
     for implicit_dep in implicit_dependencies:
         dependencies.add(await implicit_dep.urn.future())
@@ -148,4 +148,5 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource", do_register)())
 
 def register_resource_outputs(res: 'Resource', inputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
+    # TODO(swgillespie) needed for stack outputs and component resources.
     pass

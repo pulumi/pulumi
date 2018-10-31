@@ -68,7 +68,7 @@ class Resource:
         if not isinstance(name, str):
             raise TypeError('Expected resource name to be a string')
 
-        # TODO(sean) first class providers here
+        # TODO(sean) first class providers here (pulumi/pulumi#1713)
         register_resource(self, t, name, custom, props, opts)
 
 
