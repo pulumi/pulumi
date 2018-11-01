@@ -87,7 +87,7 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
-    v8Hooks.getSessionAsync().then(_ => {
+    v8Hooks.isInitializedAsync().then(() => {
         require("./run").run(argv);
     });
 }

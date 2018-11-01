@@ -54,11 +54,23 @@ async function createInspectorSessionAsync(): Promise<import("inspector").Sessio
 }
 
 /**
- * Returns the inspector session that can be used to query the state of this running Node
- * instance.  Only available on Node11 and above.
+ * Returns the inspector session that can be used to query the state of this running Node instance.
+ * Must only be called on Node11 and above. On Node10 and below, this will throw.
  */
 export async function getSessionAsync() {
+    if (!isNodeAtLeastV11) {
+        throw new Error("Should not call getSessionAsync unless on Node11 or above.");
+    }
+
     return session;
+}
+
+/**
+ * Returns a promise that can be used to determine when the v8hooks have been injected properly and
+ * code that depends on them can continue executing.
+ */
+export async function isInitializedAsync() {
+    await session;
 }
 
 /**
