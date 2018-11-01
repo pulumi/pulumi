@@ -224,7 +224,6 @@ export async function createFunctionInfoAsync(
         classInstanceMemberToSuperEntry: new Map(),
         classStaticMemberToSuperEntry: new Map(),
         frames: [],
-        // asyncWorkQueue: [],
         simpleFunctions: [],
         logResource,
     };
