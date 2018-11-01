@@ -16,7 +16,7 @@ else
 	PIPENV_PYTHON_VERSION := --three
 endif
 
-PIPENV_VERSION := 2018.05.18
+PIPENV_VERSION := 2018.7.1
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
@@ -47,8 +47,7 @@ build_plugin::
 build:: build_package build_plugin
 
 lint::
-    # Temporarily disabled, we've got some Python version-specific code in this package that trips up pylint.
-	# pipenv run pylint -E ./lib/pulumi --ignore-patterns '.*_pb2_.*.py'
+	pipenv run pylint -E ./lib/pulumi --ignore-patterns '.*_pb2_.*.py'
 	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
 	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
 

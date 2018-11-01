@@ -1,3 +1,6 @@
+[MASTER]
+ignore=pulumi.runtime.proto
+
 [DESIGN]
 max-args=10
 min-public-methods=0

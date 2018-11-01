@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 protobuf = ">=3.6.0"
 grpcio = ">=1.9.1"
-six = ">=1.11.0"
 
 [dev-packages]
-pylint = ">=1.8.2"
+pylint = ">=1.9"
