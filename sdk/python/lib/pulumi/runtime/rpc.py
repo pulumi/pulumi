@@ -52,7 +52,7 @@ async def serialize_properties(inputs: 'Inputs',
     struct = struct_pb2.Struct()
     for k, v in inputs.items():
         # pylint: disable=unsupported-assignment-operation
-        struct[k] = await serialize_property(v, deps)
+        struct[k] = await serialize_property(v, deps, transform)
 
     return struct
 
