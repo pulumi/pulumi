@@ -15,6 +15,7 @@
 // tslint:disable:max-line-length
 
 import * as inspector from "inspector";
+import * as util from "util";
 import * as v8Hooks from "./v8Hooks";
 
 export async function getFunctionLocationAsync(func: Function) {
@@ -92,6 +93,17 @@ export async function lookupCapturedVariableValueAsync(
     return undefined;
 }
 
+// We want to call util.promisify on inspector.Session.post. However, due to all the overloads of
+// that method, promisify gets confused.  To prevent this, we cast our session object down to an
+// interface containing only the single overload we care about.
+type PostSession<TMethod, TParams, TReturn> = {
+    post(method: TMethod, params?: TParams, callback?: (err: Error | null, params: TReturn) => void): void;
+};
+
+type EvaluationSession = PostSession<"Runtime.evaluate", inspector.Runtime.EvaluateParameterType, inspector.Runtime.EvaluateReturnType>;
+type GetPropertiesSession = PostSession<"Runtime.getProperties", inspector.Runtime.GetPropertiesParameterType, inspector.Runtime.GetPropertiesReturnType>;
+type CallFunctionSession = PostSession<"Runtime.callFunctionOn", inspector.Runtime.CallFunctionOnParameterType, inspector.Runtime.CallFunctionOnReturnType>;
+
 async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.Runtime.RemoteObjectId> {
     // In order to get information about an object, we need to put it in a well known location so
     // that we can call Runtime.evaluate and find it.  To do this, we just make a special map on the
@@ -118,15 +130,15 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
     globalAny.__inflightFunctions[currentFunctionName] = func;
 
     try {
-        const session = await v8Hooks.getSessionAsync();
+        const session = <EvaluationSession>await v8Hooks.getSessionAsync();
+        const post = util.promisify(session.post);
 
         const expression = `global.__inflightFunctions.${currentFunctionName}`;
-        const retType = await new Promise<inspector.Runtime.EvaluateReturnType>((resolve, reject) => {
-            session.post(
-                "Runtime.evaluate",
-                { expression },
-                (err, ret) => err ? reject(err) : resolve(ret));
-        });
+
+        // This cast will become unnecessary when we move to TS 3.1.6 or above.  In that version they
+        // support typesafe '.call' calls.
+        const retType = <inspector.Runtime.EvaluateReturnType>await post.call(
+            session, "Runtime.evaluate", { expression });
 
         if (retType.exceptionDetails) {
             throw new Error(`Error calling "Runtime.evaluate(${expression})": ` + retType.exceptionDetails.text);
@@ -151,14 +163,13 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
 async function runtimeGetPropertiesAsync(
         objectId: inspector.Runtime.RemoteObjectId,
         ownProperties: boolean | undefined) {
-    const session = await v8Hooks.getSessionAsync();
+    const session = <GetPropertiesSession>await v8Hooks.getSessionAsync();
+    const post = util.promisify(session.post);
 
-    const retType = await new Promise<inspector.Runtime.GetPropertiesReturnType>((resolve, reject) => {
-        session.post(
-            "Runtime.getProperties",
-            { objectId, ownProperties },
-            (err, ret) => err ? reject(err) : resolve(ret));
-    });
+    // This cast will become unnecessary when we move to TS 3.1.6 or above.  In that version they
+    // support typesafe '.call' calls.
+    const retType = <inspector.Runtime.GetPropertiesReturnType>await post.call(
+        session, "Runtime.getProperties", { objectId, ownProperties });
 
     if (retType.exceptionDetails) {
         throw new Error(`Error calling "Runtime.getProperties(${objectId}, ${ownProperties})": `
@@ -184,7 +195,8 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
         globalAny.__currentCallId = 0;
     }
 
-    const session = await v8Hooks.getSessionAsync();
+    const session = <CallFunctionSession>await v8Hooks.getSessionAsync();
+    const post = util.promisify(session.post);
 
     // Get an id for an unused location in the global table.
     const tableId = "id" + globalAny.__currentCallId++;
@@ -193,15 +205,16 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
     // does, it will get the actual underlying value for the scopes array and bind it to the
     // 'this' value inside the function.  Inside the function we then just grab 'this' and
     // stash it in our global table.  After this completes, we'll then have access to it.
-    const retType = await new Promise<inspector.Runtime.CallFunctionOnReturnType>((resolve, reject) => {
-        session.post("Runtime.callFunctionOn", {
+
+    // This cast will become unnecessary when we move to TS 3.1.6 or above.  In that version they
+    // support typesafe '.call' calls.
+    const retType = <inspector.Runtime.CallFunctionOnReturnType>await post.call(
+        session, "Runtime.callFunctionOn", {
             objectId,
             functionDeclaration: `function () {
                 global.__inflightCalls["${tableId}"] = this;
             }`,
-        },
-        (err, ret) => err ? reject(err) : resolve(ret));
-    });
+        });
 
     if (retType.exceptionDetails) {
         throw new Error(`Error calling "Runtime.callFunction(${objectId})": `
