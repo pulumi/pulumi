@@ -1,9 +1,0 @@
-[MASTER]
-ignore=pulumi.runtime.proto
-
-[DESIGN]
-max-args=10
-min-public-methods=0
-
-[FORMAT]
-max-line-length=120

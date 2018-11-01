@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import grpc
 import sys
-import traceback
-from typing import Optional, Awaitable, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, TYPE_CHECKING
+import grpc
 
 from . import rpc, settings, known_types
 from .. import log

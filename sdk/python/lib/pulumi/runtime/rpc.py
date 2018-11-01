@@ -43,7 +43,7 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 
 async def serialize_properties(inputs: 'Inputs',
                                deps: List['Resource'],
-                               transform: Optional[Callable[[str], str]]=None) -> struct_pb2.Struct:
+                               transform: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
