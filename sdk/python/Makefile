@@ -47,8 +47,7 @@ build_plugin::
 build:: build_package build_plugin
 
 lint::
-    # Temporarily disabled, we've got some Python version-specific code in this package that trips up pylint.
-	# pipenv run pylint -E ./lib/pulumi --ignore-patterns '.*_pb2_.*.py'
+	pipenv run pylint -E ./lib/pulumi --ignore-patterns '.*_pb2_.*.py'
 	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
 	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
 
