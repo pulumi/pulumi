@@ -140,6 +140,7 @@ disable=print-statement,
         deprecated-sys-function,
         exception-escape,
         comprehension-escape,
+
         # Pulumi-specific exclusions begin here
         too-few-public-methods,
         wildcard-import,
@@ -149,7 +150,9 @@ disable=print-statement,
         too-many-arguments,
         missing-docstring,
         fixme,
-        broad-except
+        broad-except,
+        no-self-use,
+        unused-import
 
 
 # Enable the message, report, category or checker with the given id(s). You can

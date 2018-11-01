@@ -44,7 +44,7 @@ async def prepare_resource(res: 'Resource', ty: str, props: 'Inputs', opts: Opti
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
     implicit_dependencies: List[Resource] = []
-    serialized_props = await rpc.serialize_properties(props, implicit_dependencies, lambda p: res.translate_input_property(p))
+    serialized_props = await rpc.serialize_properties(props, implicit_dependencies, res.translate_input_property)
 
     # Wait for our parent to resolve
     parent_urn = ""
@@ -69,6 +69,7 @@ async def prepare_resource(res: 'Resource', ty: str, props: 'Inputs', opts: Opti
     )
 
 
+# pylint: disable=too-many-locals
 def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
     """
     registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
@@ -146,6 +147,6 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource", do_register)())
 
-def register_resource_outputs(res: 'Resource', inputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
+def register_resource_outputs(_res: 'Resource', _inputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
     # TODO(swgillespie) needed for stack outputs and component resources.
     pass

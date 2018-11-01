@@ -103,16 +103,16 @@ class CustomResource(Resource):
     """
 
 
-    """
-    CustomResource is a resource whose CRUD operations are managed by performing external operations on some
-    physical entity.  Pulumi understands how to diff and perform partial updates ot them, and these CRUD operations
-    are implemented in a dynamically loaded plugin for the defining package.
-    """
     def __init__(self,
                  t: str,
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None) -> None:
+        """
+        CustomResource is a resource whose CRUD operations are managed by performing external operations on some
+        physical entity.  Pulumi understands how to diff and perform partial updates ot them, and these CRUD operations
+        are implemented in a dynamically loaded plugin for the defining package.
+        """
         Resource.__init__(self, t, name, True, props, opts)
 
 

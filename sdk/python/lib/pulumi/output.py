@@ -166,7 +166,7 @@ class Output(Generic[T]):
         """
         return self.apply(lambda v: getattr(v, item))
 
-    
+
     def __getitem__(self, key: Any) -> 'Output[Any]':
         """
         Syntax sugar for looking up attributes dynamically off of outputs.

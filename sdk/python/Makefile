@@ -47,7 +47,7 @@ build_plugin::
 build:: build_package build_plugin
 
 lint::
-	pipenv run pylint ./lib/pulumi --rcfile=./lib/.pylintrc
+	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
 	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
 	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
 
