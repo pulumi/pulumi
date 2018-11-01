@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is the entrypoint for running a Node.js program with minimal scaffolding.
-
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
-import * as util from "util";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";

@@ -145,9 +145,9 @@ return () => { };
         func: () => { console.log(this); },
         expectText: undefined,
         error:
-`Error serializing function 'func': closure.spec.js(0,0)
+`Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): which could not be serialized because
+function 'func': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -196,9 +196,9 @@ return () => __awaiter(this, void 0, void 0, function* () { });
         title: "Async lambda that does capture this",
         func: async () => { console.log(this); },
         expectText: undefined,
-        error: `Error serializing function 'func': closure.spec.js(0,0)
+        error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): which could not be serialized because
+function 'func': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -248,9 +248,9 @@ return function () {
         title: "Arrow closure with this and arguments capture",
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expectText: undefined,
-        error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
+        error: `Error serializing function '<anonymous>': tsClosureCases.js(0,0)
 
-function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+function '<anonymous>': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -504,11 +504,11 @@ return function () {
             title: "Invocation of async lambda that capture this #1",
             func: async function() { await task.run(); },
             expectText: undefined,
-            error: `Error serializing function 'func': closure.spec.js(0,0)
+            error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+function 'func': tsClosureCases.js(0,0): captured
   variable 'task' which indirectly referenced
-    function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+    function '<anonymous>': tsClosureCases.js(0,0): which could not be serialized because
       arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -1121,9 +1121,9 @@ return () => {
             title: "Serializes `this` capturing arrow functions",
             func: cap.f,
             expectText: undefined,
-            error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
+            error: `Error serializing function '<anonymous>': tsClosureCases.js(0,0)
 
-function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+function '<anonymous>': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -5038,13 +5038,13 @@ return function () { typescript.parseCommandLine([""]); };
         cases.push({
             title: "Fail to capture non-deployment module due to native code",
             func: function () { console.log(pulumi); },
-            error: `Error serializing function 'func': closure.spec.js(0,0)
+            error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+function 'func': tsClosureCases.js(0,0): captured
   module './bin/index.js' which indirectly referenced
-    function 'debug': index.js(0,0): which captured
+    function 'debug':(...)
       module './bin/runtime/settings.js' which indirectly referenced
-        function 'getEngine': settings.js(0,0): which captured
+        function 'getEngine':(...)
           module './bin/proto/engine_grpc_pb.js' which indirectly referenced
 (...)
 Function code:
@@ -5066,7 +5066,7 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
             expectText: `exports.handler = __f0;
 
 var __testConfig_proto = {};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
 var __options = {project: undefined};
 var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
 var __metadata_1 = {getProject: __getProject};
@@ -5157,7 +5157,7 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
             expectText: `exports.handler = __f0;
 
 var __options = {project: undefined};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
 var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
 var __metadata_1 = {getProject: __getProject};
 var __f1_prototype = {};
@@ -5493,7 +5493,7 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        // if (test.title !== "Two level static inheritance") {
+        // if (test.title !== "Output capture") {
         //     continue;
         // }
 

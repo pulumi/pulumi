@@ -14,6 +14,7 @@
 
 import * as ts from "typescript";
 import * as closure from "./createClosure";
+import * as utils from "./utils";
 
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
     const sourceFile = ts.createSourceFile(
@@ -46,7 +47,7 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                 firstFunctionDeclaration = false;
                 const funcDecl = ts.visitEachChild(node, visitor, transformationContext);
 
-                const text = closure.isLegalMemberName(funcDecl.name!.text)
+                const text = utils.isLegalMemberName(funcDecl.name!.text)
                     ? "/*" + funcDecl.name!.text + "*/" : "";
                 return ts.updateFunctionDeclaration(
                     funcDecl,
