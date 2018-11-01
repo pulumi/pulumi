@@ -56,12 +56,11 @@ class Config:
         v = self.get(key)
         if v is None:
             return None
-        elif v in ['true', 'True']:
+        if v in ['true', 'True']:
             return True
-        elif v in ['false', 'False']:
+        if v in ['false', 'False']:
             return False
-        else:
-            raise ConfigTypeError(self.full_key(key), v, 'bool')
+        raise ConfigTypeError(self.full_key(key), v, 'bool')
 
     def get_int(self, key: str) -> Optional[int]:
         """

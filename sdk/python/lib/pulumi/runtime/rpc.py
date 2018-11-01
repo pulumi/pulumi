@@ -43,7 +43,7 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 
 async def serialize_properties(inputs: 'Inputs',
                                deps: List['Resource'],
-                               transform: Optional[Callable[[str], str]]=None) -> struct_pb2.Struct:
+                               transform: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
@@ -57,6 +57,7 @@ async def serialize_properties(inputs: 'Inputs',
     return struct
 
 
+# pylint: disable=too-many-return-statements, too-many-branches
 async def serialize_property(value: 'Input[Any]',
                              deps: List['Resource'],
                              transform: Optional[Callable[[str], str]] = None) -> Any:
@@ -137,7 +138,7 @@ async def serialize_property(value: 'Input[Any]',
 
     return value
 
-
+# pylint: disable=too-many-return-statements
 def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
@@ -307,4 +308,3 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
     for key, resolve in resolvers.items():
         if key not in all_properties:
             resolve(None, not settings.is_dry_run())
-

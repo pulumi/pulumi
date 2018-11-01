@@ -46,10 +46,10 @@ class Resource:
     Resource represents a class whose CRUD operations are implemented by a provider plugin.
     """
 
+    urn: 'Output[str]'
     """
     The stable, logical URN used to distinctly address a resource, both before and after deployments.
     """
-    urn: 'Output[str]'
 
     def __init__(self,
                  t: str,
@@ -96,22 +96,23 @@ class CustomResource(Resource):
     loaded plugin for the defining package.
     """
 
+    id: 'Output[str]'
     """
     id is the provider-assigned unique ID for this managed resource.  It is set during
     deployments and may be missing (undefined) during planning phases.
     """
-    id: str
 
-    """
-    CustomResource is a resource whose CRUD operations are managed by performing external operations on some
-    physical entity.  Pulumi understands how to diff and perform partial updates ot them, and these CRUD operations
-    are implemented in a dynamically loaded plugin for the defining package.
-    """
+
     def __init__(self,
                  t: str,
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None) -> None:
+        """
+        CustomResource is a resource whose CRUD operations are managed by performing external operations on some
+        physical entity.  Pulumi understands how to diff and perform partial updates ot them, and these CRUD operations
+        are implemented in a dynamically loaded plugin for the defining package.
+        """
         Resource.__init__(self, t, name, True, props, opts)
 
 
