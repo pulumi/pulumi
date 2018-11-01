@@ -34,7 +34,7 @@ class ResourceResolverOperations(NamedTuple): #TODO(sean) rename
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
-async def prepare_resource(ty: str, props: 'Inputs', opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
+async def prepare_resource(res: 'Resource', ty: str, props: 'Inputs', opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
     log.debug(f"resource {props} preparing to wait for dependencies")
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
@@ -45,7 +45,7 @@ async def prepare_resource(ty: str, props: 'Inputs', opts: Optional['ResourceOpt
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
     implicit_dependencies: List[Resource] = []
-    serialized_props = await rpc.serialize_properties(props, implicit_dependencies)
+    serialized_props = await rpc.serialize_properties(props, implicit_dependencies, lambda p: res.translate_input_property(p))
 
     # Wait for our parent to resolve
     parent_urn = ""
@@ -111,7 +111,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
     async def do_register():
         log.debug(f"preparing resource registration: ty={ty}, name={name}")
-        resolver = await prepare_resource(ty, props, opts)
+        resolver = await prepare_resource(res, ty, props, opts)
         log.debug(f"resource registration prepared: ty={ty}, name={name}")
         req = resource_pb2.RegisterResourceRequest(
             type=ty,
