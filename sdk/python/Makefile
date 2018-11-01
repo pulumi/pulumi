@@ -16,7 +16,7 @@ else
 	PIPENV_PYTHON_VERSION := --three
 endif
 
-PIPENV_VERSION := 2018.7.1
+PIPENV_VERSION := 2018.05.18
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
