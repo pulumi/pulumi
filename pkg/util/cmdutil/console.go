@@ -50,6 +50,11 @@ func Interactive() bool {
 
 // InteractiveTerminal returns true if the current terminal session is interactive.
 func InteractiveTerminal() bool {
+	// If there's a 'TERM' variable and the terminal is 'dumb', then disable interactive mode.
+	if v := strings.ToLower(os.Getenv("TERM")); v == "dumb" {
+		return false
+	}
+
 	// if we're piping in stdin, we're clearly not interactive, as there's no way for a user to
 	// provide input.  If we're piping stdout, we also can't be interactive as there's no way for
 	// users to see prompts to interact with them.

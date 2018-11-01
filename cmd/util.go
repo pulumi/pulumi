@@ -484,41 +484,36 @@ func gitCommitTitle(s string) string {
 
 // addCIMetadataToEnvironment populates the environment metadata bag with CI/CD-related values.
 func addCIMetadataToEnvironment(env map[string]string) {
+	// Add the key/value pair to env, if there actually is a value.
+	addIfSet := func(key, val string) {
+		if val != "" {
+			env[key] = val
+		}
+	}
+
 	// If CI variables have been set specifically for Pulumi in the environment,
 	// use that in preference to attempting to automatically detect the CI system.
 	// This allows Pulumi to work with any CI system with appropriate configuration,
 	// rather than requiring explicit support for each one.
 	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
 		env[backend.CISystem] = os.Getenv("PULUMI_CI_SYSTEM")
+		addIfSet(backend.CIBuildID, os.Getenv("PULUMI_CI_BUILD_ID"))
+		addIfSet(backend.CIBuildType, os.Getenv("PULUMI_CI_BUILD_TYPE"))
+		addIfSet(backend.CIBuildURL, os.Getenv("PULUMI_CI_BUILD_URL"))
+		addIfSet(backend.CIPRHeadSHA, os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"))
 
-		// Set whatever variables we have available in the environment
-		if buildID := os.Getenv("PULUMI_CI_BUILD_ID"); buildID != "" {
-			env[backend.CIBuildID] = buildID
-		}
-		if buildType := os.Getenv("PULUMI_CI_BUILD_TYPE"); buildType != "" {
-			env[backend.CIBuildType] = buildType
-		}
-		if buildURL := os.Getenv("PULUMI_CI_BUILD_URL"); buildURL != "" {
-			env[backend.CIBuildURL] = buildURL
-		}
-
-		// Pass pull request-specific vales as appropriate.
-		if sha := os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"); sha != "" {
-			env[backend.CIPRHeadSHA] = sha
-		}
-
-		// Don't proceed with automatic CI detection
+		// Don't proceed with automatic CI detection since we are using the PULUMI_* values.
 		return
 	}
 
-	// If CI variables were not set in the environment, try to detect which
-	// CI system we are inside and set variables
+	// Use our built-in CI/CD detection logic.
 	vars := ciutil.DetectVars()
 	if vars.Name != "" {
 		env[backend.CISystem] = string(vars.Name)
-		env[backend.CIBuildID] = vars.BuildID
-		env[backend.CIBuildType] = vars.BuildType
-		env[backend.CIPRHeadSHA] = vars.SHA
+		addIfSet(backend.CIBuildID, vars.BuildID)
+		addIfSet(backend.CIBuildType, vars.BuildType)
+		addIfSet(backend.CIBuildURL, vars.BuildURL)
+		addIfSet(backend.CIPRHeadSHA, vars.SHA)
 	}
 }
 

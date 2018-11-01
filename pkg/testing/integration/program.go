@@ -1002,7 +1002,7 @@ func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
 	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
 	var tmpdir, projdir string
-	if projinfo.Proj.RuntimeInfo.Name() == "go" {
+	if projinfo.Proj.Runtime.Name() == "go" {
 		projdir = projinfo.Root
 	} else {
 		stackName := string(pt.opts.GetStackName())
@@ -1044,7 +1044,7 @@ func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
 func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
-	switch rt := projinfo.Proj.RuntimeInfo.Name(); rt {
+	switch rt := projinfo.Proj.Runtime.Name(); rt {
 	case "nodejs":
 		return pt.prepareNodeJSProject(projinfo)
 	case "python":

@@ -39,12 +39,14 @@ import (
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
-func ShowEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowEvents(
+	op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+
 	if opts.DiffDisplay {
 		ShowDiffEvents(op, action, events, done, opts)
 	} else {
-		ShowProgressEvents(op, action, stack, proj, events, done, opts)
+		ShowProgressEvents(op, action, stack, proj, events, done, opts, isPreview)
 	}
 }
 
@@ -146,7 +148,7 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
-	return opts.Color.Colorize(payload.Message)
+	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
 func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
@@ -156,24 +158,17 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
 	changes := event.ResourceChanges
 
-	changeCount := 0
-	for op, c := range changes {
-		if op != deploy.OpSame {
-			changeCount += c
-		}
-	}
-
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
-	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("    %s%d %s%s\n",
-			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset)))
 
 	var planTo string
 	if event.IsPreview {
 		planTo = "to "
 	}
+
+	var changeCount = 0
+	var sameCount = changes[deploy.OpSame]
 
 	// Now summarize all of the changes; we print sames a little differently.
 	for _, op := range deploy.StepOps {
@@ -183,20 +178,49 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 				if !event.IsPreview {
 					opDescription = op.PastTense()
 				}
-				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %s%d %s%s%s\n",
-					op.Prefix(), c, planTo, opDescription, colors.Reset)))
+
+				changeCount++
+				fprintIgnoreError(out, opts.Color.Colorize(
+					fmt.Sprintf("    %s%d %s%s%s\n", op.Prefix(), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}
 
-	if c := changes[deploy.OpSame]; c > 0 {
-		fprintfIgnoreError(out, "    %d unchanged\n", c)
+	summaryPieces := []string{}
+	if changeCount >= 2 {
+		// Only if we made multiple types of changes do we need to print out the total number of
+		// changes.  i.e. we don't need "10 changes" and "+ 10 to create".  We can just say "+ 10 to create"
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%s%d %s%s",
+			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset))
+	}
+
+	if sameCount != 0 {
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%d unchanged", sameCount))
+	}
+
+	if len(summaryPieces) > 0 {
+		fprintfIgnoreError(out, "    ")
+
+		for i, piece := range summaryPieces {
+			if i > 0 {
+				fprintfIgnoreError(out, ". ")
+			}
+
+			out.WriteString(opts.Color.Colorize(piece))
+		}
+
+		fprintfIgnoreError(out, "\n")
 	}
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
-		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration: %s%s\n",
-			colors.SpecHeadline, colors.Reset, event.Duration)))
+		// Round up to the nearest second.  It's not useful to spit out time with 9 digits of
+		// precision.
+		roundedSeconds := int64(math.Ceil(event.Duration.Seconds()))
+		roundedDuration := time.Duration(roundedSeconds) * time.Second
+
+		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration:%s %s\n",
+			colors.SpecHeadline, colors.Reset, roundedDuration)))
 	}
 
 	return out.String()

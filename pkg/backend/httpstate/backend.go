@@ -653,10 +653,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	_, main, err := getContextAndMain(op.Proj, op.Root)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", err
-	}
 	workspaceStack, err := workspace.DetectProjectStack(stackRef.Name())
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
@@ -666,7 +662,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		Environment: op.M.Environment,
 	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stack, op.Proj, workspaceStack.Config, main, metadata, op.Opts.Engine, dryRun)
+		ctx, action, stack, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -729,6 +725,7 @@ func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, error) {
+
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
 	if err != nil {
@@ -741,7 +738,8 @@ func (b *cloudBackend) runEngineAction(
 	displayDone := make(chan bool)
 
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, stackRef, op, displayEvents, displayDone, op.Opts.Display)
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
+		displayEvents, displayDone, op.Opts.Display, dryRun)
 
 	engineEvents := make(chan engine.Event)
 
