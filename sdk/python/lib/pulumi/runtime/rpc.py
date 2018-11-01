@@ -58,7 +58,7 @@ async def serialize_properties(inputs: 'Inputs',
 
 async def serialize_property(value: 'Input[Any]',
                              deps: List['Resource'],
-                             transform: Optional[Callable[[str], str]]=None) -> Any:
+                             transform: Optional[Callable[[str], str]] = None) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
     any futures required to do so.
@@ -66,13 +66,13 @@ async def serialize_property(value: 'Input[Any]',
     if isinstance(value, list):
         props = []
         for elem in value:
-            props.append(await serialize_property(elem, deps))
+            props.append(await serialize_property(elem, deps, transform))
 
         return props
 
     if known_types.is_custom_resource(value):
         deps.append(value)
-        return await serialize_property(value.id, deps)
+        return await serialize_property(value.id, deps, transform)
 
     if known_types.is_asset(value):
         # Serializing an asset requires the use of a magical signature key, since otherwise it would look
@@ -82,11 +82,11 @@ async def serialize_property(value: 'Input[Any]',
         }
 
         if hasattr(value, "path"):
-            obj["path"] = await serialize_property(value.path, deps)
+            obj["path"] = await serialize_property(value.path, deps, transform)
         elif hasattr(value, "text"):
-            obj["text"] = await serialize_property(value.text, deps)
+            obj["text"] = await serialize_property(value.text, deps, transform)
         elif hasattr(value, "uri"):
-            obj["uri"] = await serialize_property(value.uri, deps)
+            obj["uri"] = await serialize_property(value.uri, deps, transform)
         else:
             raise AssertionError(f"unknown asset type: {value}")
 
@@ -100,18 +100,18 @@ async def serialize_property(value: 'Input[Any]',
         }
 
         if hasattr(value, "assets"):
-            obj["assets"] = await serialize_property(value.assets, deps)
+            obj["assets"] = await serialize_property(value.assets, deps, transform)
         elif hasattr(value, "path"):
-            obj["path"] = await serialize_property(value.path, deps)
+            obj["path"] = await serialize_property(value.path, deps, transform)
         elif hasattr(value, "uri"):
-            obj["uri"] = await serialize_property(value.uri, deps)
+            obj["uri"] = await serialize_property(value.uri, deps, transform)
         else:
             raise AssertionError(f"unknown archive type: {value}")
 
         return obj
 
     if inspect.isawaitable(value):
-        return await serialize_property(await value, deps)
+        return await serialize_property(await value, deps, transform)
 
     if known_types.is_output(value):
         deps.extend(value.resources())
@@ -120,7 +120,7 @@ async def serialize_property(value: 'Input[Any]',
         # sentinel. We will do the former for all outputs created directly by user code (such outputs always
         # resolve isKnown to true) and for any resource outputs that were resolved with known values.
         is_known = await value._is_known
-        value = await serialize_property(value.future(), deps)
+        value = await serialize_property(value.future(), deps, transform)
         return value if is_known else UNKNOWN
 
     if isinstance(value, dict):
@@ -130,7 +130,7 @@ async def serialize_property(value: 'Input[Any]',
             if transform is not None:
                 transformed_key = transform(k)
                 log.debug(f"transforming input property: {k} -> {transformed_key}")
-            obj[transformed_key] = await serialize_property(v, deps)
+            obj[transformed_key] = await serialize_property(v, deps, transform)
 
         return obj
 

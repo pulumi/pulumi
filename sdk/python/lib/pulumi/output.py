@@ -165,3 +165,10 @@ class Output(Generic[T]):
         Syntax sugar for retrieving attributes off of outputs.
         """
         return self.apply(lambda v: getattr(v, item))
+
+    
+    def __getitem__(self, key: Any) -> 'Output[Any]':
+        """
+        Syntax sugar for looking up attributes dynamically off of outputs.
+        """
+        return self.apply(lambda v: v[key])
