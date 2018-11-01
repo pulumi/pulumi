@@ -15,6 +15,7 @@
 import * as ts from "typescript";
 import * as log from "../../log";
 import * as closure from "./createClosure";
+import * as utils from "./utils";
 
 export interface ParsedFunctionCode {
     // The serialized code for the function, usable as an expression. Valid for all functions forms
@@ -263,10 +264,10 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         }
 
         const nameChunk = v.substr(0, openParenIndex);
-        const funcName = closure.isLegalMemberName(nameChunk)
-            ? closure.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
+        const funcName = utils.isLegalMemberName(nameChunk)
+            ? utils.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
             : "";
-        const commentedName = closure.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
+        const commentedName = utils.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
         v = v.substr(openParenIndex).trimLeft();
 
         return ["", {

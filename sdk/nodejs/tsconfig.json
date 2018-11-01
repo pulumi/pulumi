@@ -57,7 +57,8 @@
         "tests/output.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
-        "tests/runtime/closure.spec.ts",
+        "tests/runtime/closureLoader.spec.ts",
+        "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/langhost/run.spec.ts"
     ]
