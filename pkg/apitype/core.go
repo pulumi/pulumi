@@ -190,10 +190,10 @@ type ResourceV2 struct {
 	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
 	External bool `json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
-	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
+	Dependencies []resource.URN `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
-	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
+	InitErrors []string `json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
 	// Provider is a reference to the provider that is associated with this resource.
 	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
 }

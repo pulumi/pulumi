@@ -23,14 +23,12 @@ import (
 	"path"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/diag"
-
 	"github.com/blang/semver"
-
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -329,8 +327,8 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
-	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
-	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool) (UpdateIdentifier, error) {
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project, cfg config.Map,
+	m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool) (UpdateIdentifier, error) {
 
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -345,14 +343,14 @@ func (pc *Client) CreateUpdate(
 	}
 
 	description := ""
-	if pkg.Description != nil {
-		description = *pkg.Description
+	if proj.Description != nil {
+		description = *proj.Description
 	}
 
 	updateRequest := apitype.UpdateProgramRequest{
-		Name:        string(pkg.Name),
-		Runtime:     pkg.RuntimeInfo.Name(),
-		Main:        main,
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime.Name(),
+		Main:        proj.Main,
 		Description: description,
 		Config:      wireConfig,
 		Options: apitype.UpdateOptions{

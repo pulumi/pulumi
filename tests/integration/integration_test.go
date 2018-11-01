@@ -340,8 +340,8 @@ func TestConfigSave(t *testing.T) {
 	// Initialize an empty stack.
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
 	err := (&workspace.Project{
-		Name:        "testing-config",
-		RuntimeInfo: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Name:    "testing-config",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())

@@ -653,10 +653,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	_, main, err := getContextAndMain(op.Proj, op.Root)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", err
-	}
 	workspaceStack, err := workspace.DetectProjectStack(stackRef.Name())
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
@@ -666,7 +662,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		Environment: op.M.Environment,
 	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stack, op.Proj, workspaceStack.Config, main, metadata, op.Opts.Engine, dryRun)
+		ctx, action, stack, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}

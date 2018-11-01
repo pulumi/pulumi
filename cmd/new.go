@@ -466,10 +466,10 @@ func installDependencies(message string) error {
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
 	var command string
 	var c *exec.Cmd
-	if strings.EqualFold(proj.RuntimeInfo.Name(), "nodejs") {
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		command = "npm install"
 		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
-	} else if strings.EqualFold(proj.RuntimeInfo.Name(), "python") {
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		command = "pip install -r requirements.txt"
 		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
 	} else {
@@ -500,7 +500,7 @@ func runUpOrPrintNextSteps(
 
 	// Currently go projects require a build/install step before deployment, so we won't automatically run `up` for
 	// such projects. Once we switch over to using `go run` for go, we can remove this and always run `up`.
-	runUp := !strings.EqualFold(proj.RuntimeInfo.Name(), "go")
+	runUp := !strings.EqualFold(proj.Runtime.Name(), "go")
 
 	if runUp {
 		m, err := getUpdateMetadata("", root)

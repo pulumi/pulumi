@@ -123,7 +123,7 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 			return nil, errors.Wrapf(err, "error loading project %q", projPath)
 		}
 		tags[apitype.ProjectNameTag] = proj.Name.String()
-		tags[apitype.ProjectRuntimeTag] = proj.RuntimeInfo.Name()
+		tags[apitype.ProjectRuntimeTag] = proj.Runtime.Name()
 		if proj.Description != nil {
 			tags[apitype.ProjectDescriptionTag] = *proj.Description
 		}
