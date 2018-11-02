@@ -75,7 +75,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         type_ = request.type
         name = request.name
         props = rpc.deserialize_properties(request.object)
-        deps = request.dependencies
+        deps = list(request.dependencies)
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
             outs = self.langhost_test.register_resource(

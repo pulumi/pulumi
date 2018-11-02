@@ -51,8 +51,11 @@ async def serialize_properties(inputs: 'Inputs',
     """
     struct = struct_pb2.Struct()
     for k, v in inputs.items():
-        # pylint: disable=unsupported-assignment-operation
-        struct[k] = await serialize_property(v, deps, transform)
+        result = await serialize_property(v, deps, transform)
+        # We treat properties that serialize to None as if they don't exist.
+        if result is not None:
+            # pylint: disable=unsupported-assignment-operation
+            struct[k] = result
 
     return struct
 
@@ -113,7 +116,14 @@ async def serialize_property(value: 'Input[Any]',
         return obj
 
     if inspect.isawaitable(value):
-        return await serialize_property(await value, deps, transform)
+        # Coroutines and Futures are both awaitable. Coroutines need to be scheduled.
+        # asyncio.ensure_future returns futures verbatim while converting coroutines into
+        # futures by arranging for the execution on the event loop.
+        #
+        # The returned future can then be awaited to yield a value, which we'll continue
+        # serializing.
+        future_return = await asyncio.ensure_future(value)
+        return await serialize_property(future_return, deps, transform)
 
     if known_types.is_output(value):
         deps.extend(value.resources())
@@ -171,7 +181,14 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
         raise AssertionError("Unrecognized signature when unmarshaling resource property")
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways.
-    return {k: deserialize_property(v) for (k, v) in list(props_struct.items())}
+    output = {}
+    for k, v in list(props_struct.items()):
+        value = deserialize_property(v)
+        # We treat values that deserialize to "None" as if they don't exist.
+        if value is not None:
+            output[k] = value
+
+    return output
 
 
 def deserialize_property(value: Any) -> Any:
