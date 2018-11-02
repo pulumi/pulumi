@@ -26,7 +26,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -180,4 +183,31 @@ func ContextWithTracingOptions(ctx context.Context, opts TracingOptions) context
 func TracingOptionsFromContext(ctx context.Context) TracingOptions {
 	opts, _ := ctx.Value(tracingOptionsKey).(TracingOptions)
 	return opts
+}
+
+// NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
+func NewBackendClient(backend Backend) deploy.BackendClient {
+	return &backendClient{backend: backend}
+}
+
+type backendClient struct {
+	backend Backend
+}
+
+// GetStackOutputs returns the outputs of the stack with the given name.
+func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+	ref, err := c.backend.ParseStackReference(name)
+	if err != nil {
+		return nil, err
+	}
+	s, err := c.backend.GetStack(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, _ := stack.GetRootStackResource(snap)
+	return res.Outputs, nil
 }

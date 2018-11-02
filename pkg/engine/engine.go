@@ -41,5 +41,6 @@ type Context struct {
 	Cancel          *cancel.Context
 	Events          chan<- Event
 	SnapshotManager SnapshotManager
+	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
 }
