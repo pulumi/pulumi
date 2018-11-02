@@ -732,24 +732,27 @@ func (b *cloudBackend) runEngineAction(
 		return nil, err
 	}
 
+	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
+	// the Snapshot (checkpoint file) in the HTTP backend.
 	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	manager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+
+	// The engineEvents channel receives all events from the engine, which we then forward onto other
+	// channels for actual processing.
+	engineEvents := make(chan engine.Event)
+	eventsDone := make(chan bool)
+
+	// displayEvents renders the event to the console and Pulumi service.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-
 	go u.RecordAndDisplayEvents(
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
-	engineEvents := make(chan engine.Event)
-
-	scope := op.Scopes.NewScope(engineEvents, dryRun)
-	eventsDone := make(chan bool)
+	// Main engineEvents loop.
 	go func() {
-		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
 			displayEvents <- e
-
 			if callerEventsOpt != nil {
 				callerEventsOpt <- e
 			}
@@ -760,7 +763,12 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
+	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
+	engineCtx := &engine.Context{
+		Cancel:          cancellationScope.Context(),
+		Events:          engineEvents,
+		SnapshotManager: snapshotManager,
+	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
@@ -779,23 +787,23 @@ func (b *cloudBackend) runEngineAction(
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
 
-	// Wait for the display to finish showing all the events.
+	// Wait for dependent channels to finish processing engineEvents before closing.
 	<-displayDone
-	scope.Close() // Don't take any cancellations anymore, we're shutting down.
+	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
 	close(displayDone)
-	contract.IgnoreClose(manager)
+	contract.IgnoreClose(snapshotManager)
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
 	close(displayEvents)
 
+	// Mark the update as complete.
 	status := apitype.UpdateStatusSucceeded
 	if err != nil {
 		status = apitype.UpdateStatusFailed
 	}
-
 	completeErr := u.Complete(status)
 	if completeErr != nil {
 		err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))

@@ -74,6 +74,7 @@ type PreludeEventPayload struct {
 	Config    map[string]string // the keys and values for config. For encrypted config, the values may be blinded
 }
 
+// SummaryEventPayload is the payload for events with the SummaryEvent type.
 type SummaryEventPayload struct {
 	IsPreview       bool            // true if this summary is for a plan operation
 	MaybeCorrupt    bool            // true if one or more resources may be corrupt
