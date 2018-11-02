@@ -335,8 +335,8 @@ func (p *TestPlan) GetProject() workspace.Project {
 	_, projectName, runtime := p.getNames()
 
 	return workspace.Project{
-		Name:        projectName,
-		RuntimeInfo: workspace.NewProjectRuntimeInfo(runtime, nil),
+		Name:    projectName,
+		Runtime: workspace.NewProjectRuntimeInfo(runtime, nil),
 	}
 }
 

@@ -44,20 +44,26 @@ func DetectVars() Vars {
 	// we'll just have reduced functionality for our various CI integrations.
 	switch v.Name {
 	case GitLab:
-		// We are running in GitLab CI. See https://docs.gitlab.com/ee/ci/variables/.
+		// See https://docs.gitlab.com/ee/ci/variables/.
 		v.BuildID = os.Getenv("CI_JOB_ID")
 		v.BuildURL = os.Getenv("CI_JOB_URL")
 		v.SHA = os.Getenv("CI_COMMIT_SHA")
 		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
 		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
 	case Travis:
-		// We are running in Travis. See https://docs.travis-ci.com/user/environment-variables/. Travis doesn't
-		// set a build URL in its environment -- see  https://github.com/travis-ci/travis-ci/issues/8935.
+		// See https://docs.travis-ci.com/user/environment-variables/.
+		// NOTE: Travis doesn't set a build URL in its environment, https://github.com/travis-ci/travis-ci/issues/8935.
 		v.BuildID = os.Getenv("TRAVIS_JOB_ID")
 		v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
 		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
 		v.BranchName = os.Getenv("TRAVIS_BRANCH")
 		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
+	case CircleCI:
+		// See: https://circleci.com/docs/2.0/env-vars/
+		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
+		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
+		v.SHA = os.Getenv("CIRCLE_SHA1")
+		v.BranchName = os.Getenv("CIRCLE_BRANCH")
 	}
 	return v
 }

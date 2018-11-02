@@ -15,17 +15,34 @@
 """
 Runtime settings and configuration.
 """
-from __future__ import absolute_import
+from typing import Optional, TYPE_CHECKING
 
 import grpc
-from .proto import engine_pb2_grpc, resource_pb2_grpc
+from ..runtime.proto import engine_pb2_grpc, resource_pb2_grpc
 from ..errors import RunError
 
-class Settings(object):
+if TYPE_CHECKING:
+    from ..resource import Resource
+
+
+class Settings:
+    monitor: Optional[resource_pb2_grpc.ResourceMonitorStub]
+    engine: Optional[engine_pb2_grpc.EngineStub]
+    project: Optional[str]
+    stack: Optional[str]
+    parallel: Optional[str]
+    dry_run: Optional[bool]
+
     """
     A bag of properties for configuring the Pulumi Python language runtime.
     """
-    def __init__(self, monitor=None, engine=None, project=None, stack=None, parallel=None, dry_run=None):
+    def __init__(self,
+                 monitor: Optional[str] = None,
+                 engine: Optional[str] = None,
+                 project: Optional[str] = None,
+                 stack: Optional[str] = None,
+                 parallel: Optional[str] = None,
+                 dry_run: Optional[bool] = None):
         # Save the metadata information.
         self.project = project
         self.stack = stack
@@ -42,31 +59,43 @@ class Settings(object):
         else:
             self.engine = None
 
+
 # default to "empty" settings.
 SETTINGS = Settings()
 
-def configure(settings):
+
+def configure(settings: Settings):
     """
     Configure sets the current ambient settings bag to the one given.
     """
     if not settings or not isinstance(settings, Settings):
         raise TypeError('Settings is expected to be non-None and of type Settings')
-    global SETTINGS # pylint: disable=global-statement
+    global SETTINGS  # pylint: disable=global-statement
     SETTINGS = settings
 
-def get_project():
+
+def is_dry_run() -> bool:
+    """
+    Returns whether or not we are currently doing a preview.
+    """
+    return True if SETTINGS.dry_run else False
+
+
+def get_project() -> Optional[str]:
     """
     Returns the current project name.
     """
     return SETTINGS.project
 
-def get_stack():
+
+def get_stack() -> Optional[str]:
     """
     Returns the current stack name.
     """
     return SETTINGS.stack
 
-def get_monitor():
+
+def get_monitor() -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
     """
     Returns the current resource monitoring service client for RPC communications.
     """
@@ -75,22 +104,26 @@ def get_monitor():
         raise RunError('Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?')
     return monitor
 
-def get_engine():
+
+def get_engine() -> Optional[engine_pb2_grpc.EngineStub]:
     """
     Returns the current engine service client for RPC communications.
     """
     return SETTINGS.engine
 
-ROOT = None
 
-def get_root_resource():
+ROOT: Optional['Resource'] = None
+
+
+def get_root_resource() -> Optional['Resource']:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
     global ROOT
     return ROOT
 
-def set_root_resource(root):
+
+def set_root_resource(root: 'Resource'):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """

@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
 from . import runtime
 
-def get_project():
+
+def get_project() -> str:
     """
     Returns the current project name.
     """
     return runtime.get_project()
 
-def get_stack():
+
+def get_stack() -> str:
     """
     Returns the current stack name.
     """

@@ -14,6 +14,7 @@
 
 import { Resource } from "../../resource";
 import * as closure from "./createClosure";
+import * as utils from "./utils";
 
 /**
  * SerializeFunctionArgs are arguments used to serialize a JavaScript function
@@ -337,7 +338,7 @@ function serializeJavaScriptText(
                 const propName = envEntryToString(keyEntry, keyName);
                 const propVal = simpleEnvEntryToString(valEntry, keyName);
 
-                if (typeof keyEntry.json === "string" && closure.isLegalMemberName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && utils.isLegalMemberName(keyEntry.json)) {
                     props.push(`${keyEntry.json}: ${propVal}`);
                 }
                 else {
@@ -390,7 +391,7 @@ function serializeJavaScriptText(
 
             if (isSimplePropertyInfo(info)) {
                 // normal property.  Just emit simply as a direct assignment.
-                if (typeof keyEntry.json === "string" && closure.isLegalMemberName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && utils.isLegalMemberName(keyEntry.json)) {
                     environmentText += `${envVar}.${keyEntry.json} = ${valString};\n`;
                 }
                 else {

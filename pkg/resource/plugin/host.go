@@ -347,12 +347,12 @@ func (host *defaultHost) GetRequiredPlugins(info ProgInfo, kinds Flags) ([]works
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(info.Proj.RuntimeInfo.Name())
+		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name())
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.RuntimeInfo.Name())
+			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
 		}
 		plugins = append(plugins, workspace.PluginInfo{
-			Name: info.Proj.RuntimeInfo.Name(),
+			Name: info.Proj.Runtime.Name(),
 			Kind: workspace.LanguagePlugin,
 		})
 

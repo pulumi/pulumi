@@ -32,6 +32,7 @@ func TestEmptyNodeJS(t *testing.T) {
 
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
+	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("empty", "python"),
 		Quick: true,
@@ -69,7 +70,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
 		assert.Equal(t, "Updating (main-abs):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -85,7 +86,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
 		assert.Equal(t, "Updating (main-parent):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -186,11 +187,11 @@ func TestStackOutputsJSON(t *testing.T) {
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
-	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 	stdout, stderr := e.RunCommand("pulumi", "stack", "output", "--json")
 	assert.Equal(t, `{
-    "foo": 42,
-    "xyz": "ABC"
+  "foo": 42,
+  "xyz": "ABC"
 }
 `, stdout)
 	assert.Equal(t, "", stderr)
@@ -209,8 +210,8 @@ func TestStackOutputsDisplayed(t *testing.T) {
 			output := stdout.String()
 
 			// ensure we get the outputs info both for the normal update, and for the no-change update.
-			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    1 change")
-			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    0 changes")
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    + 1 created")
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    1 unchanged")
 		},
 	})
 }
@@ -339,8 +340,8 @@ func TestConfigSave(t *testing.T) {
 	// Initialize an empty stack.
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
 	err := (&workspace.Project{
-		Name:        "testing-config",
-		RuntimeInfo: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Name:    "testing-config",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -438,6 +439,7 @@ func TestInvalidVersionInPackageJson(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
+	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("config_basic", "python"),
 		Quick: true,

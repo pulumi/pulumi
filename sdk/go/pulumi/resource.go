@@ -24,7 +24,7 @@ type (
 // Resource represents a cloud resource managed by Pulumi.
 type Resource interface {
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
-	URN() URN
+	URN() *URNOutput
 }
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
@@ -34,13 +34,20 @@ type CustomResource interface {
 	Resource
 	// ID is the provider-assigned unique identifier for this managed resource.  It is set during deployments,
 	// but might be missing ("") during planning phases.
-	ID() ID
+	ID() *IDOutput
 }
 
 // ComponentResource is a resource that aggregates one or more other child resources into a higher level abstraction.
 // The component resource itself is a resource, but does not require custom CRUD operations for provisioning.
 type ComponentResource interface {
 	Resource
+}
+
+// ProviderResource is a resource that represents a configured instance of a particular package's provider plugin.
+// These resources are supply the implementations of their package's CRUD operations. A specific provider instance can
+// be used for a given resource by passing it in ResourceOpt.Provider.
+type ProviderResource interface {
+	CustomResource
 }
 
 // ResourceOpt contains optional settings that control a resource's behavior.
@@ -51,4 +58,12 @@ type ResourceOpt struct {
 	DependsOn []Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
+	// Provider is an optional provider resource to use for this resource's CRUD operations.
+	Provider ProviderResource
+}
+
+// InvokeOpt contains optional settings that control an invoke's behavior.
+type InvokeOpt struct {
+	// Provider is an optional provider resource to use for this invoke.
+	Provider ProviderResource
 }

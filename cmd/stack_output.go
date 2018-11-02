@@ -52,9 +52,9 @@ func newStackOutputCmd() *cobra.Command {
 				return err
 			}
 
-			res, outputs := stack.GetRootStackResource(snap)
-			if res == nil || outputs == nil {
-				return errors.New("current stack has no output properties")
+			_, outputs := stack.GetRootStackResource(snap)
+			if outputs == nil {
+				outputs = make(map[string]interface{})
 			}
 
 			// If there is an argument, just print that property.  Else, print them all (similar to `pulumi stack`).

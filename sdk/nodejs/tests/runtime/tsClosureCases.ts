@@ -145,9 +145,9 @@ return () => { };
         func: () => { console.log(this); },
         expectText: undefined,
         error:
-`Error serializing function 'func': closure.spec.js(0,0)
+`Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): which could not be serialized because
+function 'func': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -196,9 +196,9 @@ return () => __awaiter(this, void 0, void 0, function* () { });
         title: "Async lambda that does capture this",
         func: async () => { console.log(this); },
         expectText: undefined,
-        error: `Error serializing function 'func': closure.spec.js(0,0)
+        error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): which could not be serialized because
+function 'func': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -248,9 +248,9 @@ return function () {
         title: "Arrow closure with this and arguments capture",
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expectText: undefined,
-        error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
+        error: `Error serializing function '<anonymous>': tsClosureCases.js(0,0)
 
-function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+function '<anonymous>': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -504,11 +504,11 @@ return function () {
             title: "Invocation of async lambda that capture this #1",
             func: async function() { await task.run(); },
             expectText: undefined,
-            error: `Error serializing function 'func': closure.spec.js(0,0)
+            error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+function 'func': tsClosureCases.js(0,0): captured
   variable 'task' which indirectly referenced
-    function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+    function '<anonymous>': tsClosureCases.js(0,0): which could not be serialized because
       arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -568,6 +568,34 @@ return () => { console.log("Just a global object reference"); };
 }
 `,
     });
+    {
+        const a = -0;
+        const b = -0.0;
+        const c = Infinity;
+        const d = -Infinity;
+        const e = NaN;
+        const f = Number.MAX_SAFE_INTEGER;
+        const g = Number.MAX_VALUE;
+        const h = Number.MIN_SAFE_INTEGER;
+        const i = Number.MIN_VALUE;
+
+        cases.push({
+            title: "Handle edge-case literals",
+            func: () => { const x = [a, b, c, d, e, f, g, h, i]; },
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ a: -0, b: -0, c: Infinity, d: -Infinity, e: NaN, f: 9007199254740991, g: 1.7976931348623157e+308, h: -9007199254740991, i: 5e-324 }) {
+
+return () => { const x = [a, b, c, d, e, f, g, h, i]; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
     {
         const wcap = "foo";
         const xcap = 97;
@@ -1093,9 +1121,9 @@ return () => {
             title: "Serializes `this` capturing arrow functions",
             func: cap.f,
             expectText: undefined,
-            error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
+            error: `Error serializing function '<anonymous>': tsClosureCases.js(0,0)
 
-function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+function '<anonymous>': tsClosureCases.js(0,0): which could not be serialized because
   arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
@@ -1338,6 +1366,224 @@ var __v_d2_value_b = {d1: 4, d2: undefined};
 __v_d2_value.b = __v_d2_value_b;
 __v_d2.value = __v_d2_value;
 __v.d2 = __v_d2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ v: __v }) {
+
+return function () { console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const x = { a: 1, b: true };
+
+        const o1 = output(x);
+        const o2 = output(x);
+
+        const y = { o1, o2 };
+        const o3 = output(y);
+        const o4 = output(y);
+
+        const o5: any = { o3, o4 };
+
+        o5.a = output(y);
+        o5.b = y;
+        o5.c = [output(y)];
+        o5.d = [y];
+
+        o5.a_1 = o5.a;
+        o5.b_1 = o5.b;
+        o5.c_1 = o5.c;
+        o5.d_1 = o5.d;
+
+        const o6 = output(o5);
+
+        const v = { x, o1, o2, y, o3, o4, o5, o6 };
+        cases.push({
+            title: "Capturing same value through outputs multiple times",
+            func: function () { console.log(v); },
+            expectText: `exports.handler = __f0;
+
+var __v = {};
+var __v_x = {a: 1, b: true};
+__v.x = __v_x;
+var __v_o1_proto = {};
+__f1.prototype = __v_o1_proto;
+Object.defineProperty(__v_o1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__v_o1_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__v_o1_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __v_o1 = Object.create(__v_o1_proto);
+var __v_o1_value = {a: 1, b: true};
+__v_o1.value = __v_o1_value;
+__v.o1 = __v_o1;
+var __v_o2 = Object.create(__v_o1_proto);
+var __v_o2_value = {a: 1, b: true};
+__v_o2.value = __v_o2_value;
+__v.o2 = __v_o2;
+var __v_y = {};
+__v_y.o1 = __v_o1;
+__v_y.o2 = __v_o2;
+__v.y = __v_y;
+var __v_o3 = Object.create(__v_o1_proto);
+var __v_o3_value = {};
+var __v_o3_value_o1 = {a: 1, b: true};
+__v_o3_value.o1 = __v_o3_value_o1;
+var __v_o3_value_o2 = {a: 1, b: true};
+__v_o3_value.o2 = __v_o3_value_o2;
+__v_o3.value = __v_o3_value;
+__v.o3 = __v_o3;
+var __v_o4 = Object.create(__v_o1_proto);
+var __v_o4_value = {};
+var __v_o4_value_o1 = {a: 1, b: true};
+__v_o4_value.o1 = __v_o4_value_o1;
+var __v_o4_value_o2 = {a: 1, b: true};
+__v_o4_value.o2 = __v_o4_value_o2;
+__v_o4.value = __v_o4_value;
+__v.o4 = __v_o4;
+var __v_o5 = {};
+__v_o5.o3 = __v_o3;
+__v_o5.o4 = __v_o4;
+var __v_o5_a = Object.create(__v_o1_proto);
+var __v_o5_a_value = {};
+var __v_o5_a_value_o1 = {a: 1, b: true};
+__v_o5_a_value.o1 = __v_o5_a_value_o1;
+var __v_o5_a_value_o2 = {a: 1, b: true};
+__v_o5_a_value.o2 = __v_o5_a_value_o2;
+__v_o5_a.value = __v_o5_a_value;
+__v_o5.a = __v_o5_a;
+__v_o5.b = __v_y;
+var __v_o5_c = [];
+var __v_o5_c_0 = Object.create(__v_o1_proto);
+var __v_o5_c_0_value = {};
+var __v_o5_c_0_value_o1 = {a: 1, b: true};
+__v_o5_c_0_value.o1 = __v_o5_c_0_value_o1;
+var __v_o5_c_0_value_o2 = {a: 1, b: true};
+__v_o5_c_0_value.o2 = __v_o5_c_0_value_o2;
+__v_o5_c_0.value = __v_o5_c_0_value;
+__v_o5_c[0] = __v_o5_c_0;
+__v_o5.c = __v_o5_c;
+var __v_o5_d = [];
+__v_o5_d[0] = __v_y;
+__v_o5.d = __v_o5_d;
+__v_o5.a_1 = __v_o5_a;
+__v_o5.b_1 = __v_y;
+__v_o5.c_1 = __v_o5_c;
+__v_o5.d_1 = __v_o5_d;
+__v.o5 = __v_o5;
+var __v_o6 = Object.create(__v_o1_proto);
+var __v_o6_value = {};
+var __v_o6_value_o3 = {};
+var __v_o6_value_o3_o1 = {a: 1, b: true};
+__v_o6_value_o3.o1 = __v_o6_value_o3_o1;
+var __v_o6_value_o3_o2 = {a: 1, b: true};
+__v_o6_value_o3.o2 = __v_o6_value_o3_o2;
+__v_o6_value.o3 = __v_o6_value_o3;
+var __v_o6_value_o4 = {};
+var __v_o6_value_o4_o1 = {a: 1, b: true};
+__v_o6_value_o4.o1 = __v_o6_value_o4_o1;
+var __v_o6_value_o4_o2 = {a: 1, b: true};
+__v_o6_value_o4.o2 = __v_o6_value_o4_o2;
+__v_o6_value.o4 = __v_o6_value_o4;
+var __v_o6_value_a = {};
+var __v_o6_value_a_o1 = {a: 1, b: true};
+__v_o6_value_a.o1 = __v_o6_value_a_o1;
+var __v_o6_value_a_o2 = {a: 1, b: true};
+__v_o6_value_a.o2 = __v_o6_value_a_o2;
+__v_o6_value.a = __v_o6_value_a;
+var __v_o6_value_b = {};
+var __v_o6_value_b_o1 = {a: 1, b: true};
+__v_o6_value_b.o1 = __v_o6_value_b_o1;
+var __v_o6_value_b_o2 = {a: 1, b: true};
+__v_o6_value_b.o2 = __v_o6_value_b_o2;
+__v_o6_value.b = __v_o6_value_b;
+var __v_o6_value_c = [];
+var __v_o6_value_c_0 = {};
+var __v_o6_value_c_0_o1 = {a: 1, b: true};
+__v_o6_value_c_0.o1 = __v_o6_value_c_0_o1;
+var __v_o6_value_c_0_o2 = {a: 1, b: true};
+__v_o6_value_c_0.o2 = __v_o6_value_c_0_o2;
+__v_o6_value_c[0] = __v_o6_value_c_0;
+__v_o6_value.c = __v_o6_value_c;
+var __v_o6_value_d = [];
+var __v_o6_value_d_0 = {};
+var __v_o6_value_d_0_o1 = {a: 1, b: true};
+__v_o6_value_d_0.o1 = __v_o6_value_d_0_o1;
+var __v_o6_value_d_0_o2 = {a: 1, b: true};
+__v_o6_value_d_0.o2 = __v_o6_value_d_0_o2;
+__v_o6_value_d[0] = __v_o6_value_d_0;
+__v_o6_value.d = __v_o6_value_d;
+var __v_o6_value_a_1 = {};
+var __v_o6_value_a_1_o1 = {a: 1, b: true};
+__v_o6_value_a_1.o1 = __v_o6_value_a_1_o1;
+var __v_o6_value_a_1_o2 = {a: 1, b: true};
+__v_o6_value_a_1.o2 = __v_o6_value_a_1_o2;
+__v_o6_value.a_1 = __v_o6_value_a_1;
+var __v_o6_value_b_1 = {};
+var __v_o6_value_b_1_o1 = {a: 1, b: true};
+__v_o6_value_b_1.o1 = __v_o6_value_b_1_o1;
+var __v_o6_value_b_1_o2 = {a: 1, b: true};
+__v_o6_value_b_1.o2 = __v_o6_value_b_1_o2;
+__v_o6_value.b_1 = __v_o6_value_b_1;
+var __v_o6_value_c_1 = [];
+var __v_o6_value_c_1_0 = {};
+var __v_o6_value_c_1_0_o1 = {a: 1, b: true};
+__v_o6_value_c_1_0.o1 = __v_o6_value_c_1_0_o1;
+var __v_o6_value_c_1_0_o2 = {a: 1, b: true};
+__v_o6_value_c_1_0.o2 = __v_o6_value_c_1_0_o2;
+__v_o6_value_c_1[0] = __v_o6_value_c_1_0;
+__v_o6_value.c_1 = __v_o6_value_c_1;
+var __v_o6_value_d_1 = [];
+var __v_o6_value_d_1_0 = {};
+var __v_o6_value_d_1_0_o1 = {a: 1, b: true};
+__v_o6_value_d_1_0.o1 = __v_o6_value_d_1_0_o1;
+var __v_o6_value_d_1_0_o2 = {a: 1, b: true};
+__v_o6_value_d_1_0.o2 = __v_o6_value_d_1_0_o2;
+__v_o6_value_d_1[0] = __v_o6_value_d_1_0;
+__v_o6_value.d_1 = __v_o6_value_d_1;
+__v_o6.value = __v_o6_value;
+__v.o6 = __v_o6;
 
 function __f1() {
   return (function() {
@@ -4792,13 +5038,13 @@ return function () { typescript.parseCommandLine([""]); };
         cases.push({
             title: "Fail to capture non-deployment module due to native code",
             func: function () { console.log(pulumi); },
-            error: `Error serializing function 'func': closure.spec.js(0,0)
+            error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+function 'func': tsClosureCases.js(0,0): captured
   module './bin/index.js' which indirectly referenced
-    function 'debug': index.js(0,0): which captured
+    function 'debug':(...)
       module './bin/runtime/settings.js' which indirectly referenced
-        function 'getEngine': settings.js(0,0): which captured
+        function 'getEngine':(...)
           module './bin/proto/engine_grpc_pb.js' which indirectly referenced
 (...)
 Function code:
@@ -4820,7 +5066,7 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
             expectText: `exports.handler = __f0;
 
 var __testConfig_proto = {};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
 var __options = {project: undefined};
 var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
 var __metadata_1 = {getProject: __getProject};
@@ -4911,7 +5157,7 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
             expectText: `exports.handler = __f0;
 
 var __options = {project: undefined};
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8"};
+var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
 var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
 var __metadata_1 = {getProject: __getProject};
 var __f1_prototype = {};
@@ -5189,6 +5435,46 @@ return function () { console.log(regex); foo(); };
         });
     }
 
+    {
+        const regex = /(abc)/;
+
+        function foo() {
+            console.log(regex);
+        }
+
+        cases.push({
+            title: "Regex #3 (no flags)",
+            // @ts-ignore
+            func: function() { console.log(regex); foo(); },
+            expectText: `exports.handler = __f0;
+
+var __regex = new RegExp("(abc)", "");
+
+function __foo() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function /*foo*/() {
+            console.log(regex);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex, foo: __foo }) {
+
+return function () { console.log(regex); foo(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
@@ -5207,7 +5493,7 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        // if (test.title !== "Two level static inheritance") {
+        // if (test.title !== "Output capture") {
         //     continue;
         // }
 

@@ -33,72 +33,74 @@ import (
 type Analyzers []tokens.QName
 
 // ProjectTemplate is a Pulumi project template manifest.
-// nolint: lll
 type ProjectTemplate struct {
-	Description string                                `json:"description,omitempty" yaml:"description,omitempty"` // an optional description of the template.
-	Quickstart  string                                `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`   // optional text to be displayed after template creation.
-	Config      map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`           // optional template config.
+	// Description is an optional description of the template.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Quickstart contains optional text to be displayed after template creation.
+	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
+	// Config is an optional template config.
+	Config map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`
 }
 
 // ProjectTemplateConfigValue is a config value included in the project template manifest.
-// nolint: lll
 type ProjectTemplateConfigValue struct {
-	Description string `json:"description,omitempty" yaml:"description,omitempty"` // an optional description for the config value.
-	Default     string `json:"default,omitempty" yaml:"default,omitempty"`         // an optional default value for the config value.
-	Secret      bool   `json:"secret,omitempty" yaml:"secret,omitempty"`           // an optional value indicating whether the config value should be encrypted.
+	// Description is an optional description for the config value.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Default is an optional default value for the config value.
+	Default string `json:"default,omitempty" yaml:"default,omitempty"`
+	// Secret may be set to true to indicate that the config value should be encrypted.
+	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
-// Project is a Pulumi project manifest..
+// Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
 // in terms of the JSON tags) so we can directly marshall and unmarshall this struct using go-yaml an have the fields
 // in the serialized object match the order they are defined in this struct.
 //
 // TODO[pulumi/pulumi#423]: use DOM based marshalling so we can roundtrip the seralized structure perfectly.
-// nolint: lll
 type Project struct {
-	Name        tokens.PackageName `json:"name" yaml:"name"`                     // a required fully qualified name.
-	RuntimeInfo ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`               // a required runtime that executes code.
-	Main        string             `json:"main,omitempty" yaml:"main,omitempty"` // an optional override for the main program location.
+	// Name is a required fully qualified name.
+	Name tokens.PackageName `json:"name" yaml:"name"`
+	// Runtime is a required runtime that executes code.
+	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Main is an optional override for the program's main entry-point location.
+	Main string `json:"main,omitempty" yaml:"main,omitempty"`
 
-	Description *string `json:"description,omitempty" yaml:"description,omitempty"` // an optional informational description.
-	Author      *string `json:"author,omitempty" yaml:"author,omitempty"`           // an optional author.
-	Website     *string `json:"website,omitempty" yaml:"website,omitempty"`         // an optional website for additional info.
-	License     *string `json:"license,omitempty" yaml:"license,omitempty"`         // an optional license governing this project's usage.
+	// Description is an optional informational description.
+	Description *string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Author is an optional author that created this project.
+	Author *string `json:"author,omitempty" yaml:"author,omitempty"`
+	// Website is an optional website for additional info about this project.
+	Website *string `json:"website,omitempty" yaml:"website,omitempty"`
+	// License is the optional license governing this project's usage.
+	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
-	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"` // any analyzers enabled for this project.
+	// Analyzers is an optional list of analyzers that are enabled for this project.
+	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
 
-	Context          string `json:"context,omitempty" yaml:"context,omitempty"`                   // an optional path (combined with the on disk location of Pulumi.yaml) to control the data uploaded to the service.
-	NoDefaultIgnores *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
+	// Config indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder Pulumi.yaml is in.
+	Config string `json:"config,omitempty" yaml:"config,omitempty"`
 
-	Config string `json:"config,omitempty" yaml:"config,omitempty"` // where to store Pulumi.<stack-name>.yaml files, this is combined with the folder Pulumi.yaml is in.
-
-	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"` // optional template manifest.
+	// Template is an optional template manifest, if this project is a template.
+	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`
 }
 
 func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
 	}
-	if proj.RuntimeInfo.Name() == "" {
+	if proj.Runtime.Name() == "" {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
 
 	return nil
 }
 
-func (proj *Project) UseDefaultIgnores() bool {
-	if proj.NoDefaultIgnores == nil {
-		return true
-	}
-
-	return !(*proj.NoDefaultIgnores)
-}
-
 // TrustResourceDependencies returns whether or not this project's runtime can be trusted to accurately report
 // dependencies. Not all languages supported by Pulumi do this correctly.
 func (proj *Project) TrustResourceDependencies() bool {
-	return proj.RuntimeInfo.Name() != "python"
+	return proj.Runtime.Name() != "python"
 }
 
 // Save writes a project definition to a file.
@@ -121,10 +123,11 @@ func (proj *Project) Save(path string) error {
 }
 
 // ProjectStack holds stack specific information about a project.
-// nolint: lll
 type ProjectStack struct {
-	EncryptionSalt string     `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"` // base64 encoded encryption salt.
-	Config         config.Map `json:"config,omitempty" yaml:"config,omitempty"`                 // optional config.
+	// EncryptionSalt is this stack's base64 encoded encryption salt.
+	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
+	// Config is an optional config bag.
+	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 }
 
 // Save writes a project definition to a file.

@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
@@ -33,6 +34,7 @@ import (
 
 func newStackLsCmd() *cobra.Command {
 	var allStacks bool
+	var jsonOut bool
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List all known stacks",
@@ -78,69 +80,115 @@ func newStackLsCmd() *cobra.Command {
 				return stackSummaries[i].Name().String() < stackSummaries[j].Name().String()
 			})
 
-			_, showURLColumn := b.(httpstate.Backend)
-
-			// Devote 48 characters to the name width, unless there is a longer name.
-			maxName := 47
-			for _, summary := range stackSummaries {
-				name := summary.Name().String()
-				if len(name) > maxName {
-					maxName = len(name)
-				}
-			}
-			maxName++ // Account for adding the '*' to the currently selected stack.
-
-			// Header string and formatting options to align columns.
-			formatDirective := "%-" + strconv.Itoa(maxName) + "s %-24s %-18s"
-			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
-			if showURLColumn {
-				formatDirective += " %s"
-				headers = append(headers, "URL")
-			}
-			formatDirective = formatDirective + "\n"
-
-			fmt.Printf(formatDirective, headers...)
-			for _, summary := range stackSummaries {
-				const none = "n/a"
-
-				// Name column
-				name := summary.Name().String()
-				if name == current {
-					name += "*"
-				}
-
-				// Last update column
-				lastUpdate := none
-				if stackLastUpdate := summary.LastUpdate(); stackLastUpdate != nil {
-					lastUpdate = humanize.Time(*stackLastUpdate)
-				}
-
-				// ResourceCount column
-				resourceCount := none
-				if stackResourceCount := summary.ResourceCount(); stackResourceCount != nil {
-					resourceCount = strconv.Itoa(*stackResourceCount)
-				}
-
-				// Render the columns.
-				values := []interface{}{name, lastUpdate, resourceCount}
-				if showURLColumn {
-					url := none
-					if httpBackend, ok := b.(httpstate.Backend); ok {
-						if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
-							url = consoleURL
-						}
-					}
-					values = append(values, url)
-				}
-
-				fmt.Printf(formatDirective, values...)
+			if jsonOut {
+				return formatJSON(b, current, stackSummaries)
 			}
 
-			return nil
+			return formatConsole(b, current, stackSummaries)
 		}),
 	}
+	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit outputs as JSON")
 	cmd.PersistentFlags().BoolVarP(
 		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
 	return cmd
+}
+
+// stackSummaryJSON is the shape of the --json output of this command. When --json is passed, we print an array
+// of stackSummaryJSON objects.  While we can add fields to this structure in the future, we should not change
+// existing fields.
+type stackSummaryJSON struct {
+	Name          string `json:"name"`
+	Current       bool   `json:"current"`
+	LastUpdate    string `json:"lastUpdate,omitEmpty"`
+	ResourceCount *int   `json:"resourceCount,omitEmpty"`
+	URL           string `json:"url,omitEmpty"`
+}
+
+func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
+	output := make([]stackSummaryJSON, len(stackSummaries))
+	for idx, summary := range stackSummaries {
+		summaryJSON := stackSummaryJSON{
+			Name:          summary.Name().String(),
+			ResourceCount: summary.ResourceCount(),
+			Current:       summary.Name().String() == currentStack,
+		}
+
+		if summary.LastUpdate() != nil {
+			summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(timeFormat)
+		}
+
+		if httpBackend, ok := b.(httpstate.Backend); ok {
+			if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
+				summaryJSON.URL = consoleURL
+			}
+		}
+
+		output[idx] = summaryJSON
+	}
+
+	return printJSON(output)
+}
+
+func formatConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
+	_, showURLColumn := b.(httpstate.Backend)
+
+	// Devote 48 characters to the name width, unless there is a longer name.
+	maxName := 47
+	for _, summary := range stackSummaries {
+		name := summary.Name().String()
+		if len(name) > maxName {
+			maxName = len(name)
+		}
+	}
+	maxName++ // Account for adding the '*' to the currently selected stack.
+
+	// Header string and formatting options to align columns.
+	formatDirective := "%-" + strconv.Itoa(maxName) + "s %-24s %-18s"
+	headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
+	if showURLColumn {
+		formatDirective += " %s"
+		headers = append(headers, "URL")
+	}
+	formatDirective = formatDirective + "\n"
+
+	fmt.Printf(formatDirective, headers...)
+	for _, summary := range stackSummaries {
+		const none = "n/a"
+
+		// Name column
+		name := summary.Name().String()
+		if name == currentStack {
+			name += "*"
+		}
+
+		// Last update column
+		lastUpdate := none
+		if stackLastUpdate := summary.LastUpdate(); stackLastUpdate != nil {
+			lastUpdate = humanize.Time(*stackLastUpdate)
+		}
+
+		// ResourceCount column
+		resourceCount := none
+		if stackResourceCount := summary.ResourceCount(); stackResourceCount != nil {
+			resourceCount = strconv.Itoa(*stackResourceCount)
+		}
+
+		// Render the columns.
+		values := []interface{}{name, lastUpdate, resourceCount}
+		if showURLColumn {
+			url := none
+			if httpBackend, ok := b.(httpstate.Backend); ok {
+				if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
+					url = consoleURL
+				}
+			}
+			values = append(values, url)
+		}
+
+		fmt.Printf(formatDirective, values...)
+	}
+
+	return nil
 }

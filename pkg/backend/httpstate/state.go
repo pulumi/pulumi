@@ -159,27 +159,38 @@ func (u *cloudUpdate) recordEvent(
 	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
 	msg := display.RenderDiffEvent(action, event, seen, opts)
-	if msg == "" {
-		return nil
-	}
 
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
+	// If we have a message, upload it as <= 1MB chunks.
+	for msg != "" {
+		chunk := msg
+		const maxLen = 1 << 20 // 1 MB
+		if len(chunk) > maxLen {
+			chunk = colors.TrimPartialCommand(msg)
+		}
+		msg = msg[len(chunk):]
 
-	fields["text"] = msg
-	fields["colorize"] = colors.Always
-	return u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token)
+		token, err := u.tokenSource.GetToken()
+		if err != nil {
+			return err
+		}
+
+		fields["text"] = chunk
+		fields["colorize"] = colors.Always
+		if err = u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (u *cloudUpdate) RecordAndDisplayEvents(label string, action apitype.UpdateKind, stackRef backend.StackReference,
-	op backend.UpdateOperation, events <-chan engine.Event, done chan<- bool, opts display.Options) {
+func (u *cloudUpdate) RecordAndDisplayEvents(
+	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
+	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
 
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, done, opts)
+	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, done, opts, isPreview)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {
