@@ -354,6 +354,8 @@ func convertEngineEvent(e engine.Event) (*apitype.UpdateEngineEvent, error) {
 		m := p.Metadata
 		if m.Old != nil && m.New != nil && m.Old.Outputs != nil && m.New.Outputs != nil {
 			changes = m.Old.Outputs.Diff(m.New.Outputs)
+			// Don't send data to the service we won't endup rendering.
+			changes.RemoveSames()
 		}
 
 		updateEvent.ResourceOpFinished = &apitype.ResourceOpFinishedEvent{

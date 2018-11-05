@@ -74,6 +74,29 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 	return ks
 }
 
+// RemoveSames removes all references to "same" property values.
+func (diff *ObjectDiff) RemoveSames() {
+	removeSamesFromValueDiff := func(vd *ValueDiff) {
+		if arrayDiff := vd.Array; arrayDiff != nil {
+			arrayDiff.Sames = nil
+			for k, v := range arrayDiff.Updates {
+				removeSamesFromValueDiff(&v)
+			}
+		}
+		if objDiff := vd.Object; objDiff != nil {
+			objDiff.Sames = nil
+			for k, v := range objDiff.Updates {
+				removeSamesFromValueDiff(&v)
+			}
+		}
+	}
+
+	diff.Sames = nil
+	for k, v := range diff.Updates {
+		removeSamesFromValueDiff(&v)
+	}
+}
+
 // ValueDiff holds the results of diffing two property values.
 type ValueDiff struct {
 	Old    PropertyValue // the old value.
