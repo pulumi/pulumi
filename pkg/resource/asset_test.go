@@ -33,6 +33,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+const (
+	go19Version = "go1.9"
+)
+
 func TestAssetSerialize(t *testing.T) {
 	// Ensure that asset and archive serialization round trips.
 	{
@@ -80,7 +84,7 @@ func TestAssetSerialize(t *testing.T) {
 		arch, err := NewAssetArchive(map[string]interface{}{"foo": asset})
 		assert.Nil(t, err)
 		switch runtime.Version() {
-		case "go1.9":
+		case go19Version:
 			assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
@@ -95,7 +99,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, archDes.Assets["foo"].(*Asset).IsText())
 		assert.Equal(t, text, archDes.Assets["foo"].(*Asset).Text)
 		switch runtime.Version() {
-		case "go1.9":
+		case go19Version:
 			assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
@@ -118,7 +122,7 @@ func TestAssetSerialize(t *testing.T) {
 		arch, err := NewAssetArchive(map[string]interface{}{"foo": asset})
 		assert.Nil(t, err)
 		switch runtime.Version() {
-		case "go1.9":
+		case go19Version:
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
@@ -133,7 +137,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, archDes.Assets["foo"].(*Asset).IsPath())
 		assert.Equal(t, file, archDes.Assets["foo"].(*Asset).Path)
 		switch runtime.Version() {
-		case "go1.9":
+		case go19Version:
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
@@ -156,7 +160,7 @@ func TestAssetSerialize(t *testing.T) {
 		arch, err := NewAssetArchive(map[string]interface{}{"foo": asset})
 		assert.Nil(t, err)
 		switch runtime.Version() {
-		case "go1.9":
+		case go19Version:
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
@@ -171,7 +175,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, archDes.Assets["foo"].(*Asset).IsURI())
 		assert.Equal(t, url, archDes.Assets["foo"].(*Asset).URI)
 		switch runtime.Version() {
-		case "go1.9":
+		case go19Version:
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
@@ -302,7 +306,7 @@ func TestArchiveDir(t *testing.T) {
 	arch, err := NewPathArchive("./testdata/test_dir")
 	assert.Nil(t, err)
 	switch runtime.Version() {
-	case "go1.9":
+	case go19Version:
 		assert.Equal(t, "35ddf9c48ce6ac5ba657573d388db6ce41f3ed6965346a3086fb70a550fe0864", arch.Hash)
 	default:
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers

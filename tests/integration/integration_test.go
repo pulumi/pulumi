@@ -51,8 +51,7 @@ func TestEmptyGo(t *testing.T) {
 
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
-	var test integration.ProgramTestOptions
-	test = integration.ProgramTestOptions{
+	test := integration.ProgramTestOptions{
 		Dir:          "project_main",
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {

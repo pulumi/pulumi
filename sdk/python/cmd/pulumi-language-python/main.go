@@ -164,7 +164,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		pythonCmd = "python"
 	}
 
-	cmd := exec.Command(pythonCmd, args...) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(pythonCmd, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if config != "" {

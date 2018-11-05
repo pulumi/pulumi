@@ -468,10 +468,10 @@ func installDependencies(message string) error {
 	var c *exec.Cmd
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		command = "npm install"
-		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
+		c = exec.Command("npm", "install")
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		command = "pip install -r requirements.txt"
-		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
+		c = exec.Command("pip", "install", "-r", "requirements.txt")
 	} else {
 		return nil
 	}

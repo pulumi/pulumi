@@ -52,9 +52,9 @@ func TestIsAsName(t *testing.T) {
 		"0_s1MPl3",                         // cannot start with a number.
 		"namespace/0complex",               // ditto.
 		"namespace/morenamespace/0complex", // ditto.
-		"s!mple",                          // bad characters.
-		"namesp@ce/complex",               // ditto.
-		"namespace/morenamespace/compl#x", // ditto.
+		"s!mple",                           // bad characters.
+		"namesp@ce/complex",                // ditto.
+		"namespace/morenamespace/compl#x",  // ditto.
 	}
 	for _, nm := range badNames {
 		assert.False(t, IsName(nm), "IsName expected to be false: %v", nm)

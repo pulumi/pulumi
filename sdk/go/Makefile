@@ -3,9 +3,6 @@ LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/go/pulumi-language-go
 VERSION          := $(shell ../../scripts/get-version)
 PROJECT_PKGS     := $(shell go list ./pulumi/... ./pulumi-language-go/... | grep -v /vendor/)
 
-GOMETALINTERBIN := gometalinter
-GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
-
 TESTPARALLELISM := 10
 
 include ../../build/common.mk
@@ -19,8 +16,7 @@ install_plugin::
 install:: install_plugin
 
 lint::
-	$(GOMETALINTER) ./pulumi/... | sort
-	$(GOMETALINTER) ./pulumi-language-go/... | sort
+	golangci-lint run
 
 test_fast::
 	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
