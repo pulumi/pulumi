@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"go/build"
 	"io"
 	"io/ioutil"
 	"os"
@@ -452,13 +451,12 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 
 // programTester contains state associated with running a single test pass.
 type programTester struct {
-	t             *testing.T          // the Go tester for this run.
-	opts          *ProgramTestOptions // options that control this test run.
-	bin           string              // the `pulumi` binary we are using.
-	yarnBin       string              // the `yarn` binary we are using.
-	goBin         string              // the `go` binary we are using.
-	pipenvBin     string              // The `pipenv` binary we are using.
-	pythonVersion string              // The version of Python we are using.
+	t         *testing.T          // the Go tester for this run.
+	opts      *ProgramTestOptions // options that control this test run.
+	bin       string              // the `pulumi` binary we are using.
+	yarnBin   string              // the `yarn` binary we are using.
+	goBin     string              // the `go` binary we are using.
+	pipenvBin string              // The `pipenv` binary we are using.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
@@ -490,19 +488,6 @@ func (pt *programTester) getPythonVersion() string {
 	}
 
 	return "3.6"
-}
-
-// getPythonSDKPath returns an absolute path to the Python SDK that we intend to test.
-func (pt *programTester) getPythonSDKPath() (string, error) {
-	goPath := os.Getenv("GOPATH")
-	if goPath == "" {
-		goPath = build.Default.GOPATH
-	}
-
-	// This code relies on the fact that Pulumi must be checked out into GOPATH. If this ever stops being the case, we
-	// will need to update this code to locate the Python SDK by probing the repository or by explicitly passing its
-	// location through an environment variable or something.
-	return path.Join(goPath, "src", "github.com", "pulumi", "pulumi", "sdk", "python", "env", "src"), nil
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -1199,13 +1184,32 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// Install the Python SDK that we are testing into the virtualenv. This is the SDK that we just built.
-	sdkPath, err := pt.getPythonSDKPath()
-	if err != nil {
-		return err
+	// Install each package's dependencies, as requested. Dependencies can be either file paths or package names.
+	// Package names are installed from pypi while file paths are installed directly from the file system.
+	for _, dep := range pt.opts.Dependencies {
+		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
+		// operating inside of a random folder in /tmp.
+		if !path.IsAbs(dep) {
+			dep, err = filepath.Abs(dep)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !strings.ContainsRune(dep, os.PathSeparator) {
+			// This is a package. Install it from pypi.
+			if err := pt.runPipenvCommand("pipenv-install-package", []string{"install", dep}, cwd); err != nil {
+				return err
+			}
+		} else {
+			// This is a filepath. Install it from the filesystem.
+			if err := pt.runPipenvCommand("pipenv-install-package", []string{"install", "-e", dep}, cwd); err != nil {
+				return err
+			}
+		}
 	}
 
-	return pt.runPipenvCommand("pipenv-install-packages", []string{"install", "-e", sdkPath}, cwd)
+	return nil
 }
 
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
