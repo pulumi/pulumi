@@ -104,7 +104,7 @@ func findProgram(program string) (string, error) {
 
 	cwdProgram := filepath.Join(cwd, program)
 	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-		logging.V(5).Infoln("program %s found in CWD", program)
+		logging.V(5).Infof("program %s found in CWD", program)
 		return cwdProgram, nil
 	}
 
@@ -112,14 +112,14 @@ func findProgram(program string) (string, error) {
 	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
 		goPathProgram := filepath.Join(goPath, "bin", program)
 		if fileInfo, err := os.Stat(goPathProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-			logging.V(5).Infoln("program %s found in $GOPATH/bin", program)
+			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
 			return goPathProgram, nil
 		}
 	}
 
 	// look in the $PATH somewhere
 	if fullPath, err := exec.LookPath(program); err == nil {
-		logging.V(5).Infoln("program %s found in $PATH", program)
+		logging.V(5).Infof("program %s found in $PATH", program)
 		return fullPath, nil
 	}
 
@@ -142,7 +142,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
 	}
 
-	logging.V(5).Infoln("language host launching process: %s", program)
+	logging.V(5).Infof("language host launching process: %s", program)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
