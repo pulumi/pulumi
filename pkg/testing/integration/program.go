@@ -1196,16 +1196,8 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			}
 		}
 
-		if !strings.ContainsRune(dep, os.PathSeparator) {
-			// This is a package. Install it from pypi.
-			if err := pt.runPipenvCommand("pipenv-install-package", []string{"install", dep}, cwd); err != nil {
-				return err
-			}
-		} else {
-			// This is a filepath. Install it from the filesystem.
-			if err := pt.runPipenvCommand("pipenv-install-package", []string{"install", "-e", dep}, cwd); err != nil {
-				return err
-			}
+		if err := pt.runPipenvCommand("pipenv-install-package", []string{"install", "-e", dep}, cwd); err != nil {
+			return err
 		}
 	}
 
