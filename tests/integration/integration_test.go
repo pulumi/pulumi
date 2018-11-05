@@ -32,7 +32,6 @@ func TestEmptyNodeJS(t *testing.T) {
 
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
-	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("empty", "python"),
 		Quick: true,

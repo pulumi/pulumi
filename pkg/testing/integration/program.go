@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/build"
 	"io"
 	"io/ioutil"
 	"os"
@@ -186,6 +187,10 @@ type ProgramTestOptions struct {
 	YarnBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
+	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
+	PipenvBin string
+	// PythonVersion is the version of Python to use when executing Pulumi programs. Defaults to 3.6 if missing.
+	PythonVersion string
 
 	// Additional environment variaibles to pass for each command we run.
 	Env []string
@@ -447,11 +452,13 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 
 // programTester contains state associated with running a single test pass.
 type programTester struct {
-	t       *testing.T          // the Go tester for this run.
-	opts    *ProgramTestOptions // options that control this test run.
-	bin     string              // the `pulumi` binary we are using.
-	yarnBin string              // the `yarn` binary we are using.
-	goBin   string              // the `go` binary we are using.
+	t             *testing.T          // the Go tester for this run.
+	opts          *ProgramTestOptions // options that control this test run.
+	bin           string              // the `pulumi` binary we are using.
+	yarnBin       string              // the `yarn` binary we are using.
+	goBin         string              // the `go` binary we are using.
+	pipenvBin     string              // The `pipenv` binary we are using.
+	pythonVersion string              // The version of Python we are using.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
@@ -468,6 +475,34 @@ func (pt *programTester) getYarnBin() (string, error) {
 
 func (pt *programTester) getGoBin() (string, error) {
 	return getCmdBin(&pt.goBin, "go", pt.opts.GoBin)
+}
+
+// getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
+func (pt *programTester) getPipenvBin() (string, error) {
+	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
+}
+
+// getPythonVersion returns the requested Python version to use when running this test.
+// Defaults to 3.6 if not specified.
+func (pt *programTester) getPythonVersion() string {
+	if pt.opts.PythonVersion != "" {
+		return pt.opts.PythonVersion
+	}
+
+	return "3.6"
+}
+
+// getPythonSDKPath returns an absolute path to the Python SDK that we intend to test.
+func (pt *programTester) getPythonSDKPath() (string, error) {
+	goPath := os.Getenv("GOPATH")
+	if goPath == "" {
+		goPath = build.Default.GOPATH
+	}
+
+	// This code relies on the fact that Pulumi must be checked out into GOPATH. If this ever stops being the case, we
+	// will need to update this code to locate the Python SDK by probing the repository or by explicitly passing its
+	// location through an environment variable or something.
+	return path.Join(goPath, "src", "github.com", "pulumi", "pulumi", "sdk", "python", "env", "src"), nil
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -496,6 +531,16 @@ func (pt *programTester) yarnCmd(args []string) ([]string, error) {
 	return withOptionalYarnFlags(result), nil
 }
 
+func (pt *programTester) pipenvCmd(args []string) ([]string, error) {
+	bin, err := pt.getPipenvBin()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := []string{bin}
+	return append(cmd, args...), nil
+}
+
 func (pt *programTester) runCommand(name string, args []string, wd string) error {
 	return RunCommand(pt.t, name, args, wd, pt.opts)
 }
@@ -511,6 +556,26 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		postFn, err = pt.opts.PrePulumiCommand(args[0])
 		if err != nil {
 			return err
+		}
+	}
+
+	// If we're doing a preview or an update and this project is a Python project, we need to run the command in the
+	// context of the virtual environment that Pipenv created in order to pick up the correct version of Python.
+	if args[0] == "preview" || args[0] == "up" {
+		projinfo, err := pt.getProjinfo(wd)
+		if err != nil {
+			return nil
+		}
+
+		if projinfo.Proj.Runtime.Name() == "python" {
+			pipenvBin, err := pt.getPipenvBin()
+			if err != nil {
+				return err
+			}
+
+			// "pipenv run" activates the current virtual environment and runs the remainder of the arguments as if it
+			// were a command.
+			cmd = append([]string{pipenvBin, "run"}, cmd...)
 		}
 	}
 
@@ -548,6 +613,15 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 		},
 	})
 	return err
+}
+
+func (pt *programTester) runPipenvCommand(name string, args []string, wd string) error {
+	cmd, err := pt.pipenvCmd(args)
+	if err != nil {
+		return err
+	}
+
+	return pt.runCommand(name, cmd, wd)
 }
 
 func (pt *programTester) testLifeCycleInitAndDestroy() error {
@@ -1107,7 +1181,31 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
 func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
-	return nil
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
+	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
+	// of Python that you are requesting on the host machine before building a virtualenv for it.
+	pythonVersion := pt.getPythonVersion()
+	if err = pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
+		return err
+	}
+
+	// Install the package's dependencies, which Pipenv infers from a requirements.txt file in the root of the project.
+	if err = pt.runPipenvCommand("pipenv-install", []string{"install"}, cwd); err != nil {
+		return err
+	}
+
+	// Install the Python SDK that we are testing into the virtualenv. This is the SDK that we just built.
+	sdkPath, err := pt.getPythonSDKPath()
+	if err != nil {
+		return err
+	}
+
+	return pt.runPipenvCommand("pipenv-install-packages", []string{"install", "-e", sdkPath}, cwd)
 }
 
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
