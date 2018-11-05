@@ -327,7 +327,7 @@ func (data *resourceRowData) getInfoColumn() string {
 		diagMsg += msg
 	}
 
-	changes := data.getDiffInfo()
+	changes := data.getDiffInfo(step)
 	if colors.Never.Colorize(changes) != "" {
 		appendDiagMessage("[" + changes + "]")
 	}
@@ -383,8 +383,7 @@ func (data *resourceRowData) getInfoColumn() string {
 	return diagMsg
 }
 
-func (data *resourceRowData) getDiffInfo() string {
-	step := data.step
+func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
