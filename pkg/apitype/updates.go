@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/resource"
 )
 
 // CreateUpdateConfig describes the configuration data for an request to `POST /updates`.
@@ -208,4 +209,61 @@ type PatchUpdateCheckpointRequest struct {
 type AppendUpdateLogEntryRequest struct {
 	Kind   string                 `json:"kind"`
 	Fields map[string]interface{} `json:"fields"`
+}
+
+// UpdateEngineEvent describes any meaningful event during an update. It is a discriminated union
+// with exactly one field being non-nil. These generally map to individual engine.Event structs.
+type UpdateEngineEvent struct {
+	ResourceOpStarted  *ResourceOpStartedEvent  `json:"resourceOpStarted,omitempty"`
+	ResourceOpFinished *ResourceOpFinishedEvent `json:"resourceOpFinished,omitempty"`
+	ResourceOpFailed   *ResourceOpFailedEvent   `json:"resourceOpFailed,omitempty"`
+
+	Summary *UpdateSummaryEvent `json:"summary,omitempty"`
+}
+
+// ResourceOpStartedEvent is fired just before a resource-based operation is about to start.
+type ResourceOpStartedEvent struct {
+	URN  string `json:"urn"`
+	Type string `json:"type"`
+
+	Operation string `json:"operation"`
+}
+
+// ResourcePropertyChange describes a resource property changed as the result of an update.
+// A nil old or new means the resource property was created or deleted.
+type ResourcePropertyChange struct {
+	Property string  `json:"property"`
+	OldValue *string `json:"oldValue,omitempty"`
+	NewValue *string `json:"newValue,omitempty"`
+}
+
+// ResourceOpFinishedEvent is fired when a resource-based operation successfully completes.
+type ResourceOpFinishedEvent struct {
+	URN  string `json:"urn"`
+	Type string `json:"type"`
+
+	Operation string `json:"operation"`
+
+	// Changes that occurred as part of the operation, nil for creates/deletes.
+	// TODO: Replace this with a stable type, since as-is changes to the resource
+	// package would break API compatibility with the service. (It may not understand
+	// newer/older representations of the ObjectDiff.)
+	Changes *resource.ObjectDiff `json:"changes,omitempty"`
+}
+
+// ResourceOpFailedEvent is fired when a resource-based operation
+type ResourceOpFailedEvent struct {
+	URN  string `json:"urn"`
+	Type string `json:"type"`
+
+	Operation string `json:"operation"`
+}
+
+// UpdateSummaryEvent is emitted at the end of an update.
+type UpdateSummaryEvent struct {
+	// Duration is the number of seconds the update was executing.
+	Duration int `json:"duration"`
+	// ResourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
+	// which is intentionally not exported with this API.
+	ResourceChanges map[string]int `json:"resourceChanges"`
 }
