@@ -188,8 +188,6 @@ type ProgramTestOptions struct {
 	GoBin string
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
 	PipenvBin string
-	// PythonVersion is the version of Python to use when executing Pulumi programs. Defaults to 3.6 if missing.
-	PythonVersion string
 
 	// Additional environment variaibles to pass for each command we run.
 	Env []string
