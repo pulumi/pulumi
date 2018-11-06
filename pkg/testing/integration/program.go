@@ -188,8 +188,6 @@ type ProgramTestOptions struct {
 	GoBin string
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
 	PipenvBin string
-	// PythonVersion is the version of Python to use when executing Pulumi programs. Defaults to 3.6 if missing.
-	PythonVersion string
 
 	// Additional environment variaibles to pass for each command we run.
 	Env []string
@@ -478,16 +476,6 @@ func (pt *programTester) getGoBin() (string, error) {
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
 func (pt *programTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
-}
-
-// getPythonVersion returns the requested Python version to use when running this test.
-// Defaults to 3.6 if not specified.
-func (pt *programTester) getPythonVersion() string {
-	if pt.opts.PythonVersion != "" {
-		return pt.opts.PythonVersion
-	}
-
-	return "3.6"
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -1174,8 +1162,7 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
 	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
 	// of Python that you are requesting on the host machine before building a virtualenv for it.
-	pythonVersion := pt.getPythonVersion()
-	if err = pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
+	if err = pt.runPipenvCommand("pipenv-new", []string{"--python", "3"}, cwd); err != nil {
 		return err
 	}
 
