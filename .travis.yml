@@ -16,15 +16,16 @@ sudo: true # give us 7.5GB and >2 bursted cores.
 git:
   depth: false
 before_install:
-    - source ./build/travis/prepare-environment.sh
-    - if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then source "${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh"; fi
+    - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
+    - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
+    - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
-    - source ./build/travis/install-common-toolchain.sh
+    - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
 before_script:
-    - ./build/travis/ensure-dependencies
+    - ${PULUMI_SCRIPTS}/ci/ensure-dependencies
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
 after_failure:
-    - if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then "${PULUMI_SCRIPTS}/ci/upload-failed-tests"; fi
+    - ${PULUMI_SCRIPTS}/ci/upload-failed-tests
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
