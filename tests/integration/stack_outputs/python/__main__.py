@@ -13,5 +13,5 @@
 # limitations under the License.
 import pulumi
 
-pulumi.stack_output("xyz", "ABC")
-pulumi.stack_output("foo", 42)
+pulumi.export("xyz", "ABC")
+pulumi.export("foo", 42)

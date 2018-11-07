@@ -13,4 +13,4 @@
 # limitations under the License.
 import pulumi
 
-pulumi.stack_output("the-coolest", "pulumi")
+pulumi.export("the-coolest", "pulumi")

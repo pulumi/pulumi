@@ -157,7 +157,7 @@ func TestStackTagValidation(t *testing.T) {
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
 func TestStackOutputsNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "stack_outputs/nodejs",
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -179,7 +179,7 @@ func TestStackOutputsNodeJS(t *testing.T) {
 
 func TestStackOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: "stack_outputs/python",
+		Dir: filepath.Join("stack_outputs", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -210,7 +210,7 @@ func TestStackOutputsJSON(t *testing.T) {
 			e.DeleteEnvironment()
 		}
 	}()
-	e.ImportDirectory("stack_outputs")
+	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
@@ -228,7 +228,7 @@ func TestStackOutputsJSON(t *testing.T) {
 func TestStackOutputsDisplayed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "stack_outputs",
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        false,
 		Verbose:      true,
@@ -247,7 +247,7 @@ func TestStackOutputsDisplayed(t *testing.T) {
 func TestStackOutputsSuppressed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:                    "stack_outputs",
+		Dir:                    filepath.Join("stack_outputs", "nodejs"),
 		Dependencies:           []string{"@pulumi/pulumi"},
 		Quick:                  false,
 		Verbose:                true,
