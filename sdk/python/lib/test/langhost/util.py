@@ -24,8 +24,8 @@ import subprocess
 from os import path
 import grpc
 from pulumi.runtime import proto, rpc
-from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc, engine_pb2_grpc, engine_pb2
-from google.protobuf import empty_pb2
+from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc, engine_pb2_grpc, engine_pb2, provider_pb2
+from google.protobuf import empty_pb2, struct_pb2
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful
@@ -52,7 +52,14 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
     def Invoke(self, request, context):
         args = rpc.deserialize_properties(request.args)
         failures, ret = self.langhost_test.invoke(context, request.tok, args)
-        return proto.InvokeResponse(failures=failures, ret=ret)
+        failures_rpc = list(map(
+            lambda fail: provider_pb2.CheckFailure(property=fail["property"], reason=fail["reason"]), failures))
+
+        loop = asyncio.new_event_loop()
+        ret_proto = loop.run_until_complete(rpc.serialize_properties(ret, []))
+        loop.close()
+        fields = {"failures": failures_rpc, "return": ret_proto}
+        return proto.InvokeResponse(**fields)
 
     def ReadResource(self, request, context):
         type_ = request.type

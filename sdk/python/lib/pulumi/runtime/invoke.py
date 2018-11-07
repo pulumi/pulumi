@@ -13,7 +13,7 @@
 # limitations under the License.
 import asyncio
 import sys
-from typing import Any
+from typing import Any, Awaitable
 import grpc
 
 from ..output import Inputs
@@ -21,9 +21,10 @@ from .. import log
 from .settings import get_monitor
 from ..runtime.proto import provider_pb2
 from . import rpc
+from .rpc_manager import RPC_MANAGER
 
 
-async def invoke(tok: str, props: Inputs) -> Any:
+def invoke(tok: str, props: Inputs) -> Awaitable[Any]:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
@@ -31,46 +32,40 @@ async def invoke(tok: str, props: Inputs) -> Any:
     """
     log.debug(f"Invoking function: tok={tok}")
 
-    # TODO(swgillespie, first class providers) here
-    monitor = get_monitor()
-    inputs = await rpc.serialize_properties(props, [])
-    log.debug(f"Invoking function prepared: tok={tok}")
-    req = provider_pb2.InvokeRequest(tok=tok, args=inputs)
-    future: asyncio.Future = asyncio.Future()
+    async def do_invoke():
+        # TODO(swgillespie, first class providers) here
+        monitor = get_monitor()
+        inputs = await rpc.serialize_properties(props, [])
+        log.debug(f"Invoking function prepared: tok={tok}")
+        req = provider_pb2.InvokeRequest(tok=tok, args=inputs)
 
-    def do_invoke():
-        log.debug(f"Invoking function beginning: tok={tok}")
-        try:
-            resp = monitor.Invoke(req)
-        except grpc.RpcError as exn:
-            # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
-            # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
-            # the .code() member. Pylint doesn't know this because it's not known statically.
-            #
-            # Neither pylint nor I are the only ones who find this confusing:
-            # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-            # pylint: disable=no-member
-            if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                sys.exit(0)
+        def do_invoke():
+            try:
+                return monitor.Invoke(req)
+            except grpc.RpcError as exn:
+                # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
+                # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
+                # the .code() member. Pylint doesn't know this because it's not known statically.
+                #
+                # Neither pylint nor I are the only ones who find this confusing:
+                # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+                # pylint: disable=no-member
+                if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                    sys.exit(0)
 
-            future.set_exception(Exception(exn.details()))
-            return
+                details = exn.details()
+            raise Exception(details)
 
-        log.debug(f"Invoking function completed: tok={tok}")
+        resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+        log.debug(f"Invoking function completed successfully: tok={tok}")
         # If the invoke failed, raise an error.
         if resp.failures:
-            exn = Exception(f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})")
-            future.set_exception(exn)
-            return
+            raise Exception(f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})")
 
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, 'return')
         if ret_obj:
-            result = rpc.deserialize_properties(ret_obj)
-            future.set_result(result)
-            return
+            return rpc.deserialize_properties(ret_obj)
+        return {}
 
-        future.set_result({})
-
-    asyncio.get_event_loop().call_soon(do_invoke)
-    return future
+    return asyncio.ensure_future(RPC_MANAGER.do_rpc("invoke", do_invoke)())

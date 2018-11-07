@@ -65,11 +65,13 @@ class RPCManager:
                 log.debug(f"recorded new RPC, {self.count} RPCs outstanding")
 
             try:
-                await rpc_function(*args, **kwargs)
+                result = await rpc_function(*args, **kwargs)
             except Exception as exn:
                 log.debug(f"RPC failed with exception:")
                 log.debug(traceback.format_exc())
-                self.exception_future.set_exception(exn)
+                if not self.exception_future.done():
+                    self.exception_future.set_exception(exn)
+                result = None
 
             async with self.zero_cond:
                 self.count -= 1
@@ -79,6 +81,8 @@ class RPCManager:
                         self.exception_future.set_result(None)
                     self.zero_cond.notify_all()
                 log.debug(f"recorded RPC completion, {self.count} RPCs outstanding")
+
+            return result
 
         return rpc_wrapper
 
