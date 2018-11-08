@@ -147,6 +147,28 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource", do_register)())
 
-def register_resource_outputs(_res: 'Resource', _inputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
-    # TODO(swgillespie) needed for stack outputs and component resources.
-    pass
+def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
+    async def do_register_resource_outputs():
+        urn = await res.urn.future()
+        serialized_props = await rpc.serialize_properties(outputs, [])
+        log.debug(f"register resource outputs prepared: urn={urn}, props={serialized_props}")
+        monitor = settings.get_monitor()
+        req = resource_pb2.RegisterResourceOutputsRequest(urn=urn, outputs=serialized_props)
+
+        def do_rpc_call():
+            try:
+                return monitor.RegisterResourceOutputs(req)
+            except grpc.RpcError as exn:
+                # See the comment on invoke for the justification for disabling
+                # this warning
+                # pylint: disable=no-member
+                if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                    sys.exit(0)
+
+                details = exn.details()
+            raise Exception(details)
+
+        await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        log.debug(f"resource registration successful: urn={urn}, props={serialized_props}")
+
+    asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource outputs", do_register_resource_outputs)())

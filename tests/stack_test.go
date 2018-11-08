@@ -264,7 +264,7 @@ func TestStackBackups(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/stack_outputs")
+		e.ImportDirectory("integration/stack_outputs/nodejs")
 
 		// We're testing that backups are created so ensure backups aren't disabled.
 		if env := os.Getenv(filestate.DisableCheckpointBackupsEnvVar); env != "" {

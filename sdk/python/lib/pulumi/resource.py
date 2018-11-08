@@ -138,7 +138,7 @@ class ComponentResource(Resource):
             register_resource_outputs(self, outputs)
 
 
-def output(name: str, value: Any):
+def export(name: str, value: Any):
     """
     Exports a named stack output.
     """

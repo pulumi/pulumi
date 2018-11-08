@@ -155,9 +155,9 @@ func TestStackTagValidation(t *testing.T) {
 }
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
-func TestStackOutputs(t *testing.T) {
+func TestStackOutputsNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "stack_outputs",
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -177,6 +177,31 @@ func TestStackOutputs(t *testing.T) {
 	})
 }
 
+func TestStackOutputsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_outputs", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
+			}
+		},
+	})
+
+}
+
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
 func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
@@ -185,7 +210,7 @@ func TestStackOutputsJSON(t *testing.T) {
 			e.DeleteEnvironment()
 		}
 	}()
-	e.ImportDirectory("stack_outputs")
+	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
@@ -203,7 +228,7 @@ func TestStackOutputsJSON(t *testing.T) {
 func TestStackOutputsDisplayed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "stack_outputs",
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        false,
 		Verbose:      true,
@@ -222,7 +247,7 @@ func TestStackOutputsDisplayed(t *testing.T) {
 func TestStackOutputsSuppressed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:                    "stack_outputs",
+		Dir:                    filepath.Join("stack_outputs", "nodejs"),
 		Dependencies:           []string{"@pulumi/pulumi"},
 		Quick:                  false,
 		Verbose:                true,
