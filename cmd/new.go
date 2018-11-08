@@ -800,7 +800,8 @@ func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
 		// Create the option string that combines the name, padding, and description.
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, template.Description)
+		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
 		// Add it to the array and map.
 		options = append(options, option)
