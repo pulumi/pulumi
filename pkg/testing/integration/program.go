@@ -1167,7 +1167,7 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	}
 
 	// Install the package's dependencies, which Pipenv infers from a requirements.txt file in the root of the project.
-	if err = pt.runPipenvCommand("pipenv-install", []string{"install"}, cwd); err != nil {
+	if err = pt.runPipenvCommand("pipenv-install", []string{"install", "--skip-lock"}, cwd); err != nil {
 		return err
 	}
 
@@ -1183,7 +1183,8 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			}
 		}
 
-		if err := pt.runPipenvCommand("pipenv-install-package", []string{"install", "-e", dep}, cwd); err != nil {
+		err = pt.runPipenvCommand("pipenv-install-package", []string{"install", "--skip-lock", "-e", dep}, cwd)
+		if err != nil {
 			return err
 		}
 	}
