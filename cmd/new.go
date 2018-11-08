@@ -60,7 +60,7 @@ func newNewCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:        "new [template]",
+		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
