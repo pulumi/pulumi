@@ -20,6 +20,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -153,7 +154,7 @@ func (u *cloudUpdate) recordEvent(
 	// Send the event to the Pulumi Service to power things like the update summary page.
 	// Currently opt-in via flag to allow for gathering per data before the service-side changes
 	// are available in production.
-	if os.Getenv("PULUMI_RECORD_ENGINE_EVENTS") != "" {
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_RECORD_ENGINE_EVENTS")) {
 		apiEvent, convErr := convertEngineEvent(event)
 		if convErr != nil {
 			return errors.Wrap(convErr, "converting engine event")
