@@ -290,22 +290,21 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
         log.debug(f"looking for resolver using translated name {key}")
         resolve = resolvers.get(key)
         if resolve is None:
-            # If there is no property yet, zero initialize it.  This ensures unexpected properties
-            # are still made available on the object.  This isn't ideal, because any code running
-            # prior to the actual resource CRUD operation can't hang computations off of it, but
-            # it's better than tossing it.
-            resolve_value = asyncio.Future()
-            resolve_known = asyncio.Future()
-
-            def do_resolve(resolve_fut, known_fut, value, known):
-                resolve_fut.set_result(value)
-                known_fut.set_result(known)
-
-            # Note: the functools.partial is REQUIRED here. It's not safe to capture variables
-            # by reference in a loop. We use functools.partial here to capture the value of
-            # resolve_value and resolve_known at the point of invocation and not by reference.
-            resolve = functools.partial(do_resolve, resolve_value, resolve_known)
-            res.__setattr__(key, known_types.new_output({res}, resolve_value, resolve_known))
+            # engine returned a property that was not in our initial property-map.  This can happen
+            # for outputs that were registered through direct calls to 'registerOutputs'. We do
+            # *not* want to do anything with these returned properties.  First, the component
+            # resources that were calling 'registerOutputs' will have already assigned these fields
+            # directly on them themselves.  Second, if we were to try to assign here we would have
+            # an incredibly bad race condition for two reasons:
+            #
+            #  1. This call to 'resolveProperties' happens asynchronously at some point far after
+            #     the resource was constructed.  So the user will have been able to observe the
+            #     initial value up until we get to this point.
+            #
+            #  2. The component resource will have often assigned a value of some arbitrary type
+            #     (say, a 'string').  If we overwrite this with an `Output<string>` we'll be changing
+            #     the type at some non-deterministic point in the future.
+            continue
 
         # If either we are performing a real deployment, or this is a stable property value, we
         # can propagate its final value.  Otherwise, it must be undefined, since we don't know
