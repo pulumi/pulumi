@@ -519,3 +519,12 @@ func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentif
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "log"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }
+
+// RecordEngineEvent posts an engine event to the Pulumi service.
+func (pc *Client) RecordEngineEvent(
+	ctx context.Context, update UpdateIdentifier, event apitype.EngineEvent, token string) error {
+	return pc.updateRESTCall(
+		ctx, "POST", getUpdatePath(update, "events"),
+		nil, event, nil,
+		updateAccessToken(token), httpCallOptions{GzipCompress: true})
+}

@@ -17,7 +17,10 @@ package httpstate
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -136,15 +139,33 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
 }
 
+// recordEvent will record the event with the Pulumi service, enabling things like viewing
+// the rendered update logs or drilling into the timeline of an update.
 func (u *cloudUpdate) recordEvent(
 	action apitype.UpdateKind, event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
 	opts display.Options) error {
-
-	// If we don't have a token source, we can't perform any mutations.
-	if u.tokenSource == nil {
-		return nil
+	contract.Assert(u.tokenSource != nil)
+	token, err := u.tokenSource.GetToken()
+	if err != nil {
+		return err
 	}
 
+	// Send the event to the Pulumi Service to power things like the update summary page.
+	// Currently opt-in via flag to allow for gathering per data before the service-side changes
+	// are available in production.
+	if os.Getenv("PULUMI_RECORD_ENGINE_EVENTS") != "" {
+		apiEvent, convErr := convertEngineEvent(event)
+		if convErr != nil {
+			return errors.Wrap(convErr, "converting engine event")
+		}
+		if err = u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token); err != nil {
+			return err
+		}
+	}
+
+	// We also pre-render the event using the DiffView and post as applicable. Ideally this data
+	// is redundant because we could produce the same log from the raw engine event stream, which
+	// is stored above.
 	fields := make(map[string]interface{})
 	kind := string(apitype.StdoutEvent)
 	if event.Type == engine.DiagEvent {
@@ -169,11 +190,6 @@ func (u *cloudUpdate) recordEvent(
 		}
 		msg = msg[len(chunk):]
 
-		token, err := u.tokenSource.GetToken()
-		if err != nil {
-			return err
-		}
-
 		fields["text"] = chunk
 		fields["colorize"] = colors.Always
 		if err = u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token); err != nil {
@@ -183,6 +199,8 @@ func (u *cloudUpdate) recordEvent(
 	return nil
 }
 
+// RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
+// posting them to the Pulumi service. Any failures will post DiaogEvents to be displayed in the CLI.
 func (u *cloudUpdate) RecordAndDisplayEvents(
 	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
 	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
@@ -291,4 +309,158 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 		Decrypter: decrypter,
 		Snapshot:  snapshot,
 	}, nil
+}
+
+func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMetadata {
+	keys := make([]string, 0, len(md.Keys))
+	for i, v := range md.Keys {
+		keys[i] = string(v)
+	}
+
+	return apitype.StepEventMetadata{
+		Op:   string(md.Op),
+		URN:  string(md.URN),
+		Type: string(md.Type),
+
+		Old: convertStepEventStateMetadata(md.Old),
+		New: convertStepEventStateMetadata(md.New),
+		Res: convertStepEventStateMetadata(md.Res),
+
+		Keys:     keys,
+		Logical:  md.Logical,
+		Provider: md.Provider,
+	}
+}
+
+func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.StepEventStateMetadata {
+	if md == nil {
+		return nil
+	}
+
+	inputs := make(map[string]interface{})
+	for k, v := range md.Inputs {
+		inputs[string(k)] = v
+	}
+	outputs := make(map[string]interface{})
+	for k, v := range md.Outputs {
+		outputs[string(k)] = v
+	}
+
+	return &apitype.StepEventStateMetadata{
+		Type: string(md.Type),
+		URN:  string(md.URN),
+
+		Custom:     md.Custom,
+		Delete:     md.Delete,
+		ID:         string(md.ID),
+		Parent:     string(md.Parent),
+		Protect:    md.Protect,
+		Inputs:     inputs,
+		Outputs:    outputs,
+		InitErrors: md.InitErrors,
+	}
+}
+
+// convertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
+// REST API. Returns an error if the engine event is unknown or not in an expected format.
+func convertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
+	var apiEvent apitype.EngineEvent
+
+	// Error to return if the payload doesn't match expected.
+	eventTypePayloadMismatch := errors.Errorf("unexpected payload for event type %v", e.Type)
+
+	switch e.Type {
+	case engine.CancelEvent:
+		apiEvent.CancelEvent = &apitype.CancelEvent{}
+
+	case engine.StdoutColorEvent:
+		p, ok := e.Payload.(engine.StdoutEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.StdoutEvent = &apitype.StdoutEngineEvent{
+			Message: p.Message,
+			Color:   string(p.Color),
+		}
+
+	case engine.DiagEvent:
+		p, ok := e.Payload.(engine.DiagEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{
+			URN:       string(p.URN),
+			Prefix:    p.Prefix,
+			Message:   p.Message,
+			Color:     string(p.Color),
+			Severity:  string(p.Severity),
+			Ephemeral: p.Ephemeral,
+		}
+
+	case engine.PreludeEvent:
+		p, ok := e.Payload.(engine.PreludeEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		// Convert the config bag.
+		cfg := make(map[string]string)
+		for k, v := range p.Config {
+			cfg[k] = v
+		}
+		apiEvent.PreludeEvent = &apitype.PreludeEvent{
+			Config: cfg,
+		}
+
+	case engine.SummaryEvent:
+		p, ok := e.Payload.(engine.SummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		// Convert the resource changes.
+		changes := make(map[string]int)
+		for op, count := range p.ResourceChanges {
+			changes[string(op)] = count
+		}
+		apiEvent.SummaryEvent = &apitype.SummaryEvent{
+			MaybeCorrupt:    p.MaybeCorrupt,
+			DurationSeconds: int(p.Duration.Seconds()),
+			ResourceChanges: changes,
+		}
+
+	case engine.ResourcePreEvent:
+		p, ok := e.Payload.(engine.ResourcePreEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ResourcePreEvent = &apitype.ResourcePreEvent{
+			Metadata: convertStepEventMetadata(p.Metadata),
+			Planning: p.Planning,
+		}
+
+	case engine.ResourceOutputsEvent:
+		p, ok := e.Payload.(engine.ResourceOutputsEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ResOutputsEvent = &apitype.ResOutputsEvent{
+			Metadata: convertStepEventMetadata(p.Metadata),
+			Planning: p.Planning,
+		}
+
+	case engine.ResourceOperationFailed:
+		p, ok := e.Payload.(engine.ResourceOperationFailedPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ResOpFailedEvent = &apitype.ResOpFailedEvent{
+			Metadata: convertStepEventMetadata(p.Metadata),
+			Status:   int(p.Status),
+			Steps:    p.Steps,
+		}
+
+	default:
+		return apiEvent, errors.Errorf("unknown event type %q", e.Type)
+	}
+
+	return apiEvent, nil
 }
