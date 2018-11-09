@@ -33,6 +33,7 @@ func newStackRmCmd() *cobra.Command {
 	var stack string
 	var yes bool
 	var force bool
+	var preserveConfig bool
 	var cmd = &cobra.Command{
 		Use:   "rm [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -76,10 +77,12 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
-			// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-			if path, err := workspace.DetectProjectStackPath(s.Ref().Name()); err == nil {
-				if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
-					return err
+			if !preserveConfig {
+				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
+				if path, err := workspace.DetectProjectStackPath(s.Ref().Name()); err == nil {
+					if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
+						return err
+					}
 				}
 			}
 
@@ -100,6 +103,9 @@ func newStackRmCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().BoolVar(
+		&preserveConfig, "preserve-config", false,
+		"Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack")
 
 	return cmd
 }
