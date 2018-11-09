@@ -152,7 +152,8 @@ disable=print-statement,
         fixme,
         broad-except,
         no-self-use,
-        unused-import
+        unused-import,
+        unsubscriptable-object
 
 
 # Enable the message, report, category or checker with the given id(s). You can
