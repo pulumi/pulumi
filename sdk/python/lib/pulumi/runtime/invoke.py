@@ -33,7 +33,7 @@ def invoke(tok: str, props: Inputs) -> Awaitable[Any]:
     log.debug(f"Invoking function: tok={tok}")
 
     async def do_invoke():
-        # TODO(swgillespie, first class providers) here
+        # TODO(swgillespie, first class providers pulumi/pulumi#1713) here
         monitor = get_monitor()
         inputs = await rpc.serialize_properties(props, [])
         log.debug(f"Invoking function prepared: tok={tok}")
