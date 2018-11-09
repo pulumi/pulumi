@@ -41,6 +41,7 @@ type DiagnosticEvent struct {
 	Color   string `json:"color"`
 	// Severity is one of "info", "info#err", "warning", or "error".
 	Severity  string `json:"severity"`
+	StreamID  int    `json:"streamID"`
 	Ephemeral bool   `json:"ephemeral"`
 }
 
@@ -56,7 +57,7 @@ type SummaryEvent struct {
 	// MaybeCorrupt is set if one or more of the resources is in an invalid state.
 	MaybeCorrupt bool `json:"maybeCorrupt"`
 	// Duration is the number of seconds the update was executing.
-	DurationSeconds int
+	DurationSeconds int `json:"durationSeconds"`
 	// ResourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
 	// which is not exported in this package.
 	ResourceChanges map[string]int `json:"resourceChanges"`
