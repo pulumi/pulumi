@@ -319,7 +319,12 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Create the management machinery.
 	persister := b.newSnapshotPersister(stackName)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager, BackendClient: backend.NewBackendClient(b)}
+	engineCtx := &engine.Context{
+		Cancel:          scope.Context(),
+		Events:          engineEvents,
+		SnapshotManager: manager,
+		BackendClient:   backend.NewBackendClient(b),
+	}
 
 	// Perform the update
 	start := time.Now().Unix()

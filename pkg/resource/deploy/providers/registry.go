@@ -83,7 +83,9 @@ func loadProvider(pkg tokens.Package, version *semver.Version, host plugin.Host,
 // NewRegistry creates a new provider registry using the given host and old resources. Each provider present in the old
 // resources will be loaded, configured, and added to the returned registry under its reference. If any provider is not
 // loadable/configurable or has an invalid ID, this function returns an error.
-func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool, builtins plugin.Provider) (*Registry, error) {
+func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
+	builtins plugin.Provider) (*Registry, error) {
+
 	r := &Registry{
 		host:      host,
 		isPreview: isPreview,

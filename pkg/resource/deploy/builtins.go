@@ -132,7 +132,9 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state,
 	return state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Delete(urn resource.URN, id resource.ID, state resource.PropertyMap) (resource.Status, error) {
+func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
+	state resource.PropertyMap) (resource.Status, error) {
+
 	contract.Assert(urn.Type() == stackReferenceType)
 
 	return resource.StatusOK, nil
