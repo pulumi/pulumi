@@ -28,6 +28,12 @@ service ResourceMonitor {
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 }
 
+// There is a clear distinction here between the "properties" bag sent across the wire as part of these RPCs and
+// properties that exist on Pulumi resources as projected into the target language. It is important to call out that the
+// properties here are in the format that a provider will expect. This is to say that they are usually in camel case.
+// If a language wants to project properties in a format *other* than camel-case, it is the job of the language to
+// ensure that the properties are translated into camel case before invoking an RPC.
+
 // ReadResourceRequest contains enough information to uniquely qualify and read a resource's state.
 message ReadResourceRequest {
     string id = 1;                         // the ID of the resource to read.
