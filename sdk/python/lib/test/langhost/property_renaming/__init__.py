@@ -11,21 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os import path
-from ..util import LanghostTest
-
-
-class StackOutputTest(LanghostTest):
-    """
-    Test that tests Pulumi's ability to register resource outputs.
-    """
-    def test_stack_outputs(self):
-        self.run_test(
-            program=path.join(self.base_path(), "stack_output"),
-            expected_resource_count=0)
-
-    def register_resource_outputs(self, _ctx, _dry_run, _urn, ty, _name, _resource, outputs):
-        self.assertEqual(ty, "pulumi:pulumi:Stack")
-        self.assertDictEqual({
-            "the-coolest": "pulumi"
-        }, outputs)

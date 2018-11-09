@@ -54,8 +54,14 @@ async def serialize_properties(inputs: 'Inputs',
         result = await serialize_property(v, deps, transform)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
+            # While serializing to a pb struct, we must "translate" all key names to be what the engine is going to
+            # expect. Resources provide the "transform" function for doing this.
+            translated_name = k
+            if transform is not None:
+                translated_name = transform(k)
+                log.debug(f"top-level input property translated: {k} -> {translated_name}")
             # pylint: disable=unsupported-assignment-operation
-            struct[k] = result
+            struct[translated_name] = result
 
     return struct
 
@@ -228,11 +234,12 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
             value_fut.set_result(value)
             known_fut.set_result(is_known)
 
+        # Important to note here is that the resolver's future is assigned to the resource object using the
+        # pre-translated name. When properties are returned from the engine, we must first translate the name
+        # using res.translate_output_property and then use *that* name to index into the resolvers table.
         log.debug(f"adding resolver {name}")
-        translated_name = res.translate_output_property(name)
-        log.debug(f"property translated: {name} -> {translated_name}")
-        resolvers[translated_name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
-        res.__setattr__(translated_name, known_types.new_output({res}, resolve_value, resolve_is_known))
+        resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
+        res.__setattr__(name, known_types.new_output({res}, resolve_value, resolve_is_known))
 
     return resolvers
 
