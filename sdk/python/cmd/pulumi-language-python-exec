@@ -60,7 +60,7 @@ if __name__ == "__main__":
         loop.run_until_complete(coro)
         successful = True
     except pulumi.RunError as e:
-        pulumi.log.error(e.message)
+        pulumi.log.error(str(e))
     except Exception as e:
         pulumi.log.error("Program failed with an unhandled exception:")
         pulumi.log.error(traceback.format_exc())
