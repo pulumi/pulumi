@@ -204,6 +204,9 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	if err != nil {
 		return nil, err
 	}
+	if s == nil {
+		return nil, errors.Errorf("unknown stack \"%s\"", name)
+	}
 	snap, err := s.Snapshot(ctx)
 	if err != nil {
 		return nil, err

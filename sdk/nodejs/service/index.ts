@@ -12,8 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as runtime from "../runtime";
-
-export function getStack(name: string): Promise<any> {
-    return runtime.invoke("pulumi:pulumi:getStack", {"name": name});
-}
+export * from "./stackReference";

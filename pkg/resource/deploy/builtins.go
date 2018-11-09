@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
+
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -39,7 +41,9 @@ func (p *builtinProvider) label() string {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *builtinProvider) CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (p *builtinProvider) CheckConfig(olds,
+	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+
 	return nil, nil, nil
 }
 
@@ -53,68 +57,96 @@ func (p *builtinProvider) Configure(props resource.PropertyMap) error {
 	return nil
 }
 
-func (p *builtinProvider) Check(urn resource.URN, olds, news resource.PropertyMap,
+const stackReferenceType = "pulumi:service:StackReference"
+
+func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
 	allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	return nil, nil, errors.Errorf("unrecognized resource type '%v'", urn.Type())
+	typ := urn.Type()
+	if typ != stackReferenceType {
+		return nil, nil, errors.Errorf("unrecognized resource type '%v'", urn.Type())
+	}
+
+	name, ok := inputs["name"]
+	if !ok {
+		return nil, []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}}, nil
+	}
+	if !name.IsString() && !name.IsComputed() {
+		return nil, []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}}, nil
+	}
+	return inputs, nil, nil
 }
 
-func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
 	allowUnknowns bool) (plugin.DiffResult, error) {
 
-	contract.Fail()
-	return plugin.DiffResult{}, errors.Errorf("the builtin provider has no resources")
+	contract.Assert(urn.Type() == stackReferenceType)
+
+	if !inputs["name"].DeepEquals(state["name"]) {
+		// We delete stack references before replacing them because the reference to the old stack is promptly stale.
+		return plugin.DiffResult{
+			Changes:             plugin.DiffSome,
+			ReplaceKeys:         []resource.PropertyKey{"name"},
+			DeleteBeforeReplace: true,
+		}, nil
+	}
+
+	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
 func (p *builtinProvider) Create(urn resource.URN,
-	news resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	inputs resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
-	contract.Fail()
-	return "", nil, resource.StatusUnknown, errors.Errorf("the builtin provider has no resources")
+	contract.Assert(urn.Type() == stackReferenceType)
+
+	if p.backendClient == nil {
+		return "", nil, resource.StatusUnknown, errors.New("no backend client is available")
+	}
+
+	name, ok := inputs["name"]
+	contract.Assert(ok)
+	contract.Assert(name.IsString())
+
+	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	if err != nil {
+		return "", nil, resource.StatusUnknown, err
+	}
+
+	id := resource.ID(uuid.NewV4().String())
+	state := resource.PropertyMap{
+		"name":    name,
+		"outputs": resource.NewObjectProperty(outputs),
+	}
+
+	return id, state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Update(urn resource.URN, id resource.ID, olds,
-	news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state,
+	inputs resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 
-	contract.Fail()
-	return nil, resource.StatusUnknown, errors.Errorf("the builtin provider has no resources")
+	contract.Assert(urn.Type() == stackReferenceType)
+
+	// If "name" changed, this should have been a replace.
+	contract.Assert(inputs["name"].DeepEquals(state["name"]))
+
+	return state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
-	contract.Fail()
-	return resource.StatusUnknown, errors.Errorf("the builtin provider has no resources")
+func (p *builtinProvider) Delete(urn resource.URN, id resource.ID, state resource.PropertyMap) (resource.Status, error) {
+	contract.Assert(urn.Type() == stackReferenceType)
+
+	return resource.StatusOK, nil
 }
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	props resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
-	return nil, resource.StatusUnknown, errors.Errorf("the builtin provider has no resources")
+	return nil, resource.StatusUnknown, errors.Errorf("the builtin provider has no resources that can be read")
 }
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	switch tok.Name() {
-	case "getStack":
-		if p.backendClient == nil {
-			return nil, nil, errors.New("no backend client is available")
-		}
-
-		name, ok := args["name"]
-		if !ok {
-			return nil, []plugin.CheckFailure{{Property: "name", Reason: "missing required property 'name'"}}, nil
-		}
-		if !name.IsString() {
-			return nil, []plugin.CheckFailure{{Property: "name", Reason: "'name' must be a string"}}, nil
-		}
-
-		result, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, nil, nil
-	default:
-		return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
-	}
+	return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
 }
 
 func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
