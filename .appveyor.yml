@@ -21,9 +21,9 @@ install:
 - cmd: >-
     set GOPATH=%USERPROFILE%\go
 
-    set GOROOT=C:\go19
+    set GOROOT=C:\go111
 
-    set PATH=C:\go19\bin;%PATH%;%GOPATH%\bin
+    set PATH=C:\go111\bin;%PATH%;%GOPATH%\bin
 
     set PulumiRoot=C:\Pulumi
 

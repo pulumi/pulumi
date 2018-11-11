@@ -200,7 +200,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 	}
 	return newLoader(t, pkg, version, func(pkg tokens.Package, ver semver.Version) (plugin.Provider, error) {
 		return &testProvider{
-			pkg:     tokens.Package(pkg),
+			pkg:     pkg,
 			version: ver,
 			checkConfig: func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				return news, nil, nil
@@ -510,7 +510,7 @@ func TestCRUDPreview(t *testing.T) {
 		newSimpleLoader(t, "pkgC", "", nil),
 		newLoader(t, "pkgD", "", func(pkg tokens.Package, ver semver.Version) (plugin.Provider, error) {
 			return &testProvider{
-				pkg:     tokens.Package(pkg),
+				pkg:     pkg,
 				version: ver,
 				checkConfig: func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return news, nil, nil

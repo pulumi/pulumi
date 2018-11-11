@@ -476,6 +476,6 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	}
 
 	assert.Equal(t, len(providerSource.providers), registers)
-	assert.Equal(t, expectedReads, int(reads))
+	assert.Equal(t, expectedReads, reads)
 	assert.Equal(t, expectedInvokes, int(invokes))
 }

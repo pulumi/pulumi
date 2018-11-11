@@ -314,7 +314,6 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 		return false, err
 	}
 
-	// nolint: gas
 	gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
 	var anyOutput anyWriter
 	var stderr bytes.Buffer

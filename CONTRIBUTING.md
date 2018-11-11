@@ -13,7 +13,7 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 - Python 3.6 or later
 - [pipenv](https://github.com/pypa/pipenv)
 - [dep](https://github.com/golang/dep)
-- [Gometalinter](https://github.com/alecthomas/gometalinter)
+- [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
 
 ## Getting dependencies on macOS

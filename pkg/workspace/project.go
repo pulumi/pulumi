@@ -145,7 +145,6 @@ func (ps *ProjectStack) Save(path string) error {
 		return err
 	}
 
-	// nolint: gas, gas prefers 0700 for a directory, but 0755 (so group and world can read it) is what we prefer
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}

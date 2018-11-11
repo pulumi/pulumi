@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	// nolint: gosec
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -174,6 +175,7 @@ func (pw *projectWorkspace) settingsPath() string {
 
 // sha1HexString returns a hex string of the sha1 hash of value.
 func sha1HexString(value string) string {
+	// nolint: gosec
 	h := sha1.New()
 	_, err := h.Write([]byte(value))
 	contract.AssertNoError(err)

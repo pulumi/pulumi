@@ -13,9 +13,6 @@ endif
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
-GOMETALINTERBIN := gometalinter
-GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
-
 include ../../build/common.mk
 
 ensure::
@@ -40,8 +37,7 @@ build:: build_package build_plugin
 
 lint::
 	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
-	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
-	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
+	golangci-lint run
 
 install_package::
 	cd $(PYENVSRC) && $(PIP) install --user -e .

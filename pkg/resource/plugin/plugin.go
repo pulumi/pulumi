@@ -247,7 +247,6 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	}
 	args = append(args, pluginArgs...)
 
-	// nolint: gas
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
