@@ -227,13 +227,13 @@ type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, er
 type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal, events []Event, err error) error
 
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	dryRun bool, validate ValidateFunc) (*deploy.Snapshot, error) {
+	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, error) {
 
-	return op.RunWithContext(context.Background(), project, target, opts, dryRun, validate)
+	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
 
 func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Project, target deploy.Target,
-	opts UpdateOptions, dryRun bool, validate ValidateFunc) (*deploy.Snapshot, error) {
+	opts UpdateOptions, dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, error) {
 
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
@@ -256,6 +256,7 @@ func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Pro
 		Cancel:          cancelCtx,
 		Events:          events,
 		SnapshotManager: journal,
+		BackendClient:   backendClient,
 	}
 
 	// Begin draining events.
@@ -293,13 +294,14 @@ type TestStep struct {
 }
 
 type TestPlan struct {
-	Project   string
-	Stack     string
-	Runtime   string
-	Config    config.Map
-	Decrypter config.Decrypter
-	Options   UpdateOptions
-	Steps     []TestStep
+	Project       string
+	Stack         string
+	Runtime       string
+	Config        config.Map
+	Decrypter     config.Decrypter
+	BackendClient deploy.BackendClient
+	Options       UpdateOptions
+	Steps         []TestStep
 }
 
 //nolint: goconst
@@ -367,7 +369,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		if !step.SkipPreview {
 			previewSnap := CloneSnapshot(t, snap)
 			previewTarget := p.GetTarget(previewSnap)
-			_, err := step.Op.Run(project, previewTarget, p.Options, true, step.Validate)
+			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -378,7 +380,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 
 		var err error
 		target := p.GetTarget(snap)
-		snap, err = step.Op.Run(project, target, p.Options, false, step.Validate)
+		snap, err = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
 			assert.Error(t, err)
 			continue
@@ -1739,7 +1741,7 @@ func TestCanceledRefresh(t *testing.T) {
 		return err
 	}
 
-	snap, err := op.RunWithContext(ctx, project, target, options, false, validate)
+	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
 	assert.Error(t, err)
 
 	t.Logf("%v/%v resources refreshed", len(refreshed), len(oldResources))
@@ -1978,7 +1980,7 @@ func TestProviderCancellation(t *testing.T) {
 	}
 	project, target := p.GetProject(), p.GetTarget(nil)
 
-	_, err := op.RunWithContext(ctx, project, target, options, false, nil)
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 	assert.Error(t, err)
 
 	// Wait for the program to finish.
@@ -2033,11 +2035,11 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(old)
 
 	// A preview should succeed despite the pending operations.
-	_, err := op.Run(project, target, options, true, nil)
+	_, err := op.Run(project, target, options, true, nil, nil)
 	assert.NoError(t, err)
 
 	// But an update should fail.
-	_, err = op.Run(project, target, options, false, nil)
+	_, err = op.Run(project, target, options, false, nil, nil)
 	assert.EqualError(t, err, deploy.PlanPendingOperationsError{}.Error())
 }
 
@@ -2127,4 +2129,55 @@ func TestUpdatePartialFailure(t *testing.T) {
 	}
 
 	p.Run(t, old)
+}
+
+// Tests that the StackReference resource works as intended,
+func TestStackReference(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, state, err := mon.RegisterResource("pulumi:service:StackReference", "other", true, "", false, nil, "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "other",
+			}))
+		assert.NoError(t, err)
+		if !info.DryRun {
+			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
+		}
+		return nil
+	})
+
+	p := &TestPlan{
+		BackendClient: &deploytest.BackendClient{
+			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+				switch name {
+				case "other":
+					return resource.NewPropertyMapFromMap(map[string]interface{}{
+						"foo": "bar",
+					}), nil
+				default:
+					return nil, errors.Errorf("unknown stack \"%s\"", name)
+				}
+			},
+		},
+		Options: UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)},
+		Steps:   MakeBasicLifecycleSteps(t, 2),
+	}
+	p.Run(t, nil)
+
+	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, _, err := mon.RegisterResource("pulumi:service:StackReference", "other", true, "", false, nil, "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "rehto",
+			}))
+		assert.Error(t, err)
+		return err
+	})
+	p.Options = UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: true,
+		SkipPreview:   true,
+	}}
+	p.Run(t, nil)
 }

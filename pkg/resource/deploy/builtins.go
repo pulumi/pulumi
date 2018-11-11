@@ -142,7 +142,10 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	props resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
-	return nil, resource.StatusUnknown, errors.Errorf("the builtin provider has no resources that can be read")
+
+	contract.Assert(urn.Type() == stackReferenceType)
+
+	return props, resource.StatusOK, nil
 }
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
