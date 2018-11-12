@@ -96,6 +96,17 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
                 }
 
             self.reg_count += 1
+        else:
+            # Record the Stack's registration so that it can be the target of register_resource_outputs
+            # later on.
+            urn = self.langhost_test.make_urn(type_, "teststack")
+            self.registrations[urn] = {
+                "type": type_,
+                "name": "somestack",
+                "props": {}
+            }
+
+            return proto.RegisterResourceResponse(urn=urn, id="teststack", object=None)
         if "object" in outs:
             loop = asyncio.new_event_loop()
             obj_proto = loop.run_until_complete(rpc.serialize_properties(outs["object"], []))
@@ -111,7 +122,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         res = self.registrations.get(urn)
         if res:
             self.langhost_test.register_resource_outputs(
-                context, self.dryrun, urn, res.t, res.name, res.props, outs)
+                context, self.dryrun, urn, res["type"], res["name"], res["props"], outs)
         return empty_pb2.Empty()
 
 

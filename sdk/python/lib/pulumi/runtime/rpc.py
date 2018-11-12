@@ -43,7 +43,7 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 
 async def serialize_properties(inputs: 'Inputs',
                                deps: List['Resource'],
-                               transform: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
+                               input_transformer: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
@@ -51,11 +51,17 @@ async def serialize_properties(inputs: 'Inputs',
     """
     struct = struct_pb2.Struct()
     for k, v in inputs.items():
-        result = await serialize_property(v, deps, transform)
+        result = await serialize_property(v, deps, input_transformer)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
+            # While serializing to a pb struct, we must "translate" all key names to be what the engine is going to
+            # expect. Resources provide the "transform" function for doing this.
+            translated_name = k
+            if input_transformer is not None:
+                translated_name = input_transformer(k)
+                log.debug(f"top-level input property translated: {k} -> {translated_name}")
             # pylint: disable=unsupported-assignment-operation
-            struct[k] = result
+            struct[translated_name] = result
 
     return struct
 
@@ -63,7 +69,7 @@ async def serialize_properties(inputs: 'Inputs',
 # pylint: disable=too-many-return-statements, too-many-branches
 async def serialize_property(value: 'Input[Any]',
                              deps: List['Resource'],
-                             transform: Optional[Callable[[str], str]] = None) -> Any:
+                             input_transformer: Optional[Callable[[str], str]] = None) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
     any futures required to do so.
@@ -71,13 +77,13 @@ async def serialize_property(value: 'Input[Any]',
     if isinstance(value, list):
         props = []
         for elem in value:
-            props.append(await serialize_property(elem, deps, transform))
+            props.append(await serialize_property(elem, deps, input_transformer))
 
         return props
 
     if known_types.is_custom_resource(value):
         deps.append(value)
-        return await serialize_property(value.id, deps, transform)
+        return await serialize_property(value.id, deps, input_transformer)
 
     if known_types.is_asset(value):
         # Serializing an asset requires the use of a magical signature key, since otherwise it would look
@@ -87,11 +93,11 @@ async def serialize_property(value: 'Input[Any]',
         }
 
         if hasattr(value, "path"):
-            obj["path"] = await serialize_property(value.path, deps, transform)
+            obj["path"] = await serialize_property(value.path, deps, input_transformer)
         elif hasattr(value, "text"):
-            obj["text"] = await serialize_property(value.text, deps, transform)
+            obj["text"] = await serialize_property(value.text, deps, input_transformer)
         elif hasattr(value, "uri"):
-            obj["uri"] = await serialize_property(value.uri, deps, transform)
+            obj["uri"] = await serialize_property(value.uri, deps, input_transformer)
         else:
             raise AssertionError(f"unknown asset type: {value}")
 
@@ -105,11 +111,11 @@ async def serialize_property(value: 'Input[Any]',
         }
 
         if hasattr(value, "assets"):
-            obj["assets"] = await serialize_property(value.assets, deps, transform)
+            obj["assets"] = await serialize_property(value.assets, deps, input_transformer)
         elif hasattr(value, "path"):
-            obj["path"] = await serialize_property(value.path, deps, transform)
+            obj["path"] = await serialize_property(value.path, deps, input_transformer)
         elif hasattr(value, "uri"):
-            obj["uri"] = await serialize_property(value.uri, deps, transform)
+            obj["uri"] = await serialize_property(value.uri, deps, input_transformer)
         else:
             raise AssertionError(f"unknown archive type: {value}")
 
@@ -123,7 +129,7 @@ async def serialize_property(value: 'Input[Any]',
         # The returned future can then be awaited to yield a value, which we'll continue
         # serializing.
         future_return = await asyncio.ensure_future(value)
-        return await serialize_property(future_return, deps, transform)
+        return await serialize_property(future_return, deps, input_transformer)
 
     if known_types.is_output(value):
         deps.extend(value.resources())
@@ -132,17 +138,17 @@ async def serialize_property(value: 'Input[Any]',
         # sentinel. We will do the former for all outputs created directly by user code (such outputs always
         # resolve isKnown to true) and for any resource outputs that were resolved with known values.
         is_known = await value._is_known
-        value = await serialize_property(value.future(), deps, transform)
+        value = await serialize_property(value.future(), deps, input_transformer)
         return value if is_known else UNKNOWN
 
     if isinstance(value, dict):
         obj = {}
         for k, v in value.items():
             transformed_key = k
-            if transform is not None:
-                transformed_key = transform(k)
+            if input_transformer is not None:
+                transformed_key = input_transformer(k)
                 log.debug(f"transforming input property: {k} -> {transformed_key}")
-            obj[transformed_key] = await serialize_property(v, deps, transform)
+            obj[transformed_key] = await serialize_property(v, deps, input_transformer)
 
         return obj
 
@@ -228,11 +234,12 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
             value_fut.set_result(value)
             known_fut.set_result(is_known)
 
+        # Important to note here is that the resolver's future is assigned to the resource object using the
+        # name before translation. When properties are returned from the engine, we must first translate the name
+        # using res.translate_output_property and then use *that* name to index into the resolvers table.
         log.debug(f"adding resolver {name}")
-        translated_name = res.translate_output_property(name)
-        log.debug(f"property translated: {name} -> {translated_name}")
-        resolvers[translated_name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
-        res.__setattr__(translated_name, known_types.new_output({res}, resolve_value, resolve_is_known))
+        resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
+        res.__setattr__(name, known_types.new_output({res}, resolve_value, resolve_is_known))
 
     return resolvers
 
