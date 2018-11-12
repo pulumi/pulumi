@@ -36,10 +36,6 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
-func (p *builtinProvider) label() string {
-	return "Builtins"
-}
-
 // CheckConfig validates the configuration for this resource provider.
 func (p *builtinProvider) CheckConfig(olds,
 	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
