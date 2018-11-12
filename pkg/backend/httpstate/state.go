@@ -313,7 +313,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 }
 
 func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMetadata {
-	keys := make([]string, 0, len(md.Keys))
+	keys := make([]string, len(md.Keys))
 	for i, v := range md.Keys {
 		keys[i] = string(v)
 	}
