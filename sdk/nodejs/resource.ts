@@ -144,7 +144,7 @@ export interface ResourceOptions {
     /**
      * An optional additional explicit dependencies on other resources.
      */
-    dependsOn?: Resource[] | Resource;
+    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
