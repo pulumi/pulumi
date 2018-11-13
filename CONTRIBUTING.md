@@ -39,8 +39,21 @@ We make heavy use of integration level testing where we invoke `pulumi` to creat
 
 This repository does not actually create any real cloud resources as part of testing, but still uses Pulumi.com to store information abot some synthetic resources it creates during testing. Other repositories may require additional setup before running tests (most often this is just setting a few environment variables that tell the tests some information about how to use the cloud provider we are testing). Please see the `CONTRIBUTING.md` file in the repository, which will explain what additional configuration needs to be done before running tests.
 
-Pulumi integration tests make use of the Go test runner. When using Go 1.10 or above, we recommend setting the `GOCACHE` environment variable to `off` to avoid
-erroneously caching test results.
+## Debugging
+
+The Pulumi tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and adding new logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
+
+All logging is done using Google's [Glog library](https://github.com/golang/glog).  It is relatively bare-bones, and adds basic leveled logging, stack dumping, and other capabilities beyond what Go's built-in logging routines offer.
+
+The `pulumi` command line has two flags that control this logging and that can come in handy when debugging problems. The `--logtostderr` flag spews directly to stderr, rather than the default of logging to files in your temp directory. And the `--verbose=n` flag (`-v=n` for short) sets the logging level to `n`.  Anything greater than 3 is reserved for debug-level logging, greater than 5 is going to be quite verbose, and anything beyond 7 is extremely noisy.
+
+For example, the command
+
+```sh
+$ pulumi preview --logtostderr -v=5
+```
+
+is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
 ## Submitting a Pull Request
 
