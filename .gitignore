@@ -15,3 +15,6 @@ coverage.cov
 # Go tests run "in tree" and this folder will linger if they fail (the integration test framework cleans
 # it up when they pass.)
 **/command-output/
+
+# By default, we don't check in yarn.lock files
+**/yarn.lock
