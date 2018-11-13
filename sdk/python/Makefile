@@ -10,24 +10,13 @@ ifeq ($(PIP),)
 	PIP := pip
 endif
 
-ifneq ($(PYTHON_3),)
-	PIPENV_PYTHON_VERSION := --three
-else
-	PIPENV_PYTHON_VERSION := --two
-endif
-
-PIPENV_VERSION := 2018.05.18
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
-
-GOMETALINTERBIN := gometalinter
-GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
 
 include ../../build/common.mk
 
 ensure::
-	$(PIP) install pipenv==$(PIPENV_VERSION) --user
-	pipenv $(PIPENV_PYTHON_VERSION) install --dev
+	pipenv --python 3 install --dev
 	mkdir -p $(PYENVSRC)
 
 build_package::
@@ -47,9 +36,8 @@ build_plugin::
 build:: build_package build_plugin
 
 lint::
-	pipenv run pylint -E ./lib/pulumi --ignore-patterns '.*_pb2_.*.py'
-	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
-	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
+	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
+	golangci-lint run
 
 install_package::
 	cd $(PYENVSRC) && $(PIP) install --user -e .
@@ -63,7 +51,7 @@ install:: install_package install_plugin
 
 test_fast::
 	pipenv run pip install ./env/src
-	pipenv run python -m unittest discover -s lib/test
+	pipenv run python -m unittest discover -s lib/test -v
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}

@@ -85,13 +85,13 @@ if ! tar -zcf "${SDK_PACKAGE_PATH}" pulumi; then
 fi
 
 echo "${SDK_PACKAGE_PATH}"
-# rel.pulumi.com is in our production account, so assume that role first
+# rel.pulumi.com is in our production account, so assume that role first.
 readonly CREDS_JSON=$(aws sts assume-role \
                  --role-arn "arn:aws:iam::058607598222:role/UploadPulumiReleases" \
                  --role-session-name "upload-sdk" \
                  --external-id "upload-pulumi-release")
 
-# Use these new credentials to create the PPC user account.
+# Extract the assumed role's credentials into specific env vars.
 AWS_ACCESS_KEY_ID=$(echo "${CREDS_JSON}"     | jq ".Credentials.AccessKeyId" --raw-output)
 export AWS_ACCESS_KEY_ID
 

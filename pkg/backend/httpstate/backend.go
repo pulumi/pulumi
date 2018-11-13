@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -50,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -501,24 +499,9 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
-// CreateStackOptions is an optional bag of options specific to creating cloud stacks.
-type CreateStackOptions struct {
-	// CloudName is the optional PPC name to create the stack in.  If omitted, the organization's default PPC is used.
-	CloudName string
-}
-
-func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	opts interface{}) (backend.Stack, error) {
-
-	if opts == nil {
-		opts = CreateStackOptions{}
-	}
-
-	cloudOpts, ok := opts.(CreateStackOptions)
-	if !ok {
-		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
-	}
-
+func (b *cloudBackend) CreateStack(
+	ctx context.Context, stackRef backend.StackReference, _ interface{} /* No custom options for httpstate backend. */) (
+	backend.Stack, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -529,7 +512,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, cloudOpts.CloudName, tags)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags)
 	if err != nil {
 		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -670,10 +653,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	programContext, main, err := getContextAndMain(op.Proj, op.Root)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", err
-	}
 	workspaceStack, err := workspace.DetectProjectStack(stackRef.Name())
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
@@ -682,12 +661,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-	getContents := func() (io.ReadCloser, int64, error) {
-		const showProgress = true
-		return getUpdateContents(programContext, op.Proj.UseDefaultIgnores(), showProgress, op.Opts.Display)
-	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stack, op.Proj, workspaceStack.Config, main, metadata, op.Opts.Engine, dryRun, getContents)
+		ctx, action, stack, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -746,61 +721,32 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
 }
 
-// uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
-// meaning whatever Pulumi program is found in the CWD or parent directory.
-// If set, printSize will print the size of the data being uploaded.
-func getUpdateContents(
-	context string, useDefaultIgnores bool,
-	progress bool, opts display.Options) (io.ReadCloser, int64, error) {
-
-	archiveContents, err := archive.Process(context, useDefaultIgnores)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "creating archive")
-	}
-
-	archiveReader := ioutil.NopCloser(archiveContents)
-
-	// If progress is requested, show a little animated ASCII progress bar.
-	if progress {
-		bar := pb.New(archiveContents.Len())
-		archiveReader = newBarProxyReadCloser(bar, archiveReader)
-		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Uploading program: "))
-		bar.Postfix(opts.Color.Colorize(colors.Reset))
-		bar.SetMaxWidth(80)
-		bar.SetUnits(pb.U_BYTES)
-		bar.Start()
-	}
-
-	return archiveReader, int64(archiveContents.Len()), nil
-}
-
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, error) {
+
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
 	if err != nil {
 		return nil, err
 	}
 
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	manager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+	// displayEvents renders the event to the console and Pulumi service. The processor for the
+	// will signal all events have been proceed when a value is written to the displayDone channel.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, stackRef, op, displayEvents, displayDone, op.Opts.Display)
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
+		displayEvents, displayDone, op.Opts.Display, dryRun)
 
+	// The engineEvents channel receives all events from the engine, which we then forward onto other
+	// channels for actual processing. (displayEvents and callerEventsOpt.)
 	engineEvents := make(chan engine.Event)
-
-	scope := op.Scopes.NewScope(engineEvents, dryRun)
 	eventsDone := make(chan bool)
 	go func() {
-		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
 			displayEvents <- e
-
 			if callerEventsOpt != nil {
 				callerEventsOpt <- e
 			}
@@ -809,9 +755,19 @@ func (b *cloudBackend) runEngineAction(
 		close(eventsDone)
 	}()
 
+	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
+	// the Snapshot (checkpoint file) in the HTTP backend.
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
+	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
+	engineCtx := &engine.Context{
+		Cancel:          cancellationScope.Context(),
+		Events:          engineEvents,
+		SnapshotManager: snapshotManager,
+	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
@@ -830,23 +786,23 @@ func (b *cloudBackend) runEngineAction(
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
 
-	// Wait for the display to finish showing all the events.
+	// Wait for dependent channels to finish processing engineEvents before closing.
 	<-displayDone
-	scope.Close() // Don't take any cancellations anymore, we're shutting down.
+	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
 	close(displayDone)
-	contract.IgnoreClose(manager)
+	contract.IgnoreClose(snapshotManager)
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
 	close(displayEvents)
 
+	// Mark the update as complete.
 	status := apitype.UpdateStatusSucceeded
 	if err != nil {
 		status = apitype.UpdateStatusFailed
 	}
-
 	completeErr := u.Complete(status)
 	if completeErr != nil {
 		err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
@@ -1144,7 +1100,6 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it and keep
 			// continuing.  The sole exception is if we've done this 10 times.  At that point, we will have
 			// been waiting for many seconds, and want to let the user know something might be wrong.
-			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
 			if try < 10 {
 				warn = false
 			}

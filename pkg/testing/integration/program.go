@@ -101,8 +101,6 @@ type TestCommandStats struct {
 	IsError bool `json:"isError"`
 	// The Cloud that the test was run against, or empty for local deployments
 	CloudURL string `json:"cloudURL"`
-	// The PPC that the test was run against, or empty for local deployments or for the default PPC
-	CloudPPC string `json:"cloudPPC"`
 }
 
 // TestStatsReporter reports results and metadata from a test run.
@@ -152,9 +150,6 @@ type ProgramTestOptions struct {
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
 	CloudURL string
-	// PPCName is the name of the PPC to use when running a test against the hosted service. If
-	// not set, the --ppc flag will not be set on `pulumi stack init`.
-	PPCName string
 
 	// StackName allows the stack name to be explicitly provided instead of computed from the
 	// environment during tests.
@@ -191,6 +186,8 @@ type ProgramTestOptions struct {
 	YarnBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
+	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
+	PipenvBin string
 
 	// Additional environment variaibles to pass for each command we run.
 	Env []string
@@ -284,9 +281,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
-	}
-	if overrides.PPCName != "" {
-		opts.PPCName = overrides.PPCName
 	}
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
@@ -455,11 +449,12 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 
 // programTester contains state associated with running a single test pass.
 type programTester struct {
-	t       *testing.T          // the Go tester for this run.
-	opts    *ProgramTestOptions // options that control this test run.
-	bin     string              // the `pulumi` binary we are using.
-	yarnBin string              // the `yarn` binary we are using.
-	goBin   string              // the `go` binary we are using.
+	t         *testing.T          // the Go tester for this run.
+	opts      *ProgramTestOptions // options that control this test run.
+	bin       string              // the `pulumi` binary we are using.
+	yarnBin   string              // the `yarn` binary we are using.
+	goBin     string              // the `go` binary we are using.
+	pipenvBin string              // The `pipenv` binary we are using.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
@@ -476,6 +471,11 @@ func (pt *programTester) getYarnBin() (string, error) {
 
 func (pt *programTester) getGoBin() (string, error) {
 	return getCmdBin(&pt.goBin, "go", pt.opts.GoBin)
+}
+
+// getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
+func (pt *programTester) getPipenvBin() (string, error) {
+	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -504,6 +504,16 @@ func (pt *programTester) yarnCmd(args []string) ([]string, error) {
 	return withOptionalYarnFlags(result), nil
 }
 
+func (pt *programTester) pipenvCmd(args []string) ([]string, error) {
+	bin, err := pt.getPipenvBin()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := []string{bin}
+	return append(cmd, args...), nil
+}
+
 func (pt *programTester) runCommand(name string, args []string, wd string) error {
 	return RunCommand(pt.t, name, args, wd, pt.opts)
 }
@@ -519,6 +529,26 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		postFn, err = pt.opts.PrePulumiCommand(args[0])
 		if err != nil {
 			return err
+		}
+	}
+
+	// If we're doing a preview or an update and this project is a Python project, we need to run the command in the
+	// context of the virtual environment that Pipenv created in order to pick up the correct version of Python.
+	if args[0] == "preview" || args[0] == "up" {
+		projinfo, err := pt.getProjinfo(wd)
+		if err != nil {
+			return nil
+		}
+
+		if projinfo.Proj.Runtime.Name() == "python" {
+			pipenvBin, err := pt.getPipenvBin()
+			if err != nil {
+				return err
+			}
+
+			// "pipenv run" activates the current virtual environment and runs the remainder of the arguments as if it
+			// were a command.
+			cmd = append([]string{pipenvBin, "run"}, cmd...)
 		}
 	}
 
@@ -556,6 +586,15 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 		},
 	})
 	return err
+}
+
+func (pt *programTester) runPipenvCommand(name string, args []string, wd string) error {
+	cmd, err := pt.pipenvCmd(args)
+	if err != nil {
+		return err
+	}
+
+	return pt.runCommand(name, cmd, wd)
 }
 
 func (pt *programTester) testLifeCycleInitAndDestroy() error {
@@ -624,14 +663,6 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
-	// Set the target PPC from an environment variable if not overridden in options.
-	if pt.opts.PPCName == "" {
-		ppcName := os.Getenv("PULUMI_API_PPC_NAME")
-		if ppcName != "" {
-			pt.opts.PPCName = ppcName
-		}
-	}
-
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
@@ -653,8 +684,6 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 
 	// Stack init
 	stackInitArgs := []string{"stack", "init", string(pt.opts.GetStackNameWithOwner())}
-	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
-
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
@@ -1020,7 +1049,7 @@ func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
 	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
 	var tmpdir, projdir string
-	if projinfo.Proj.RuntimeInfo.Name() == "go" {
+	if projinfo.Proj.Runtime.Name() == "go" {
 		projdir = projinfo.Root
 	} else {
 		stackName := string(pt.opts.GetStackName())
@@ -1062,7 +1091,7 @@ func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
 func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
-	switch rt := projinfo.Proj.RuntimeInfo.Name(); rt {
+	switch rt := projinfo.Proj.Runtime.Name(); rt {
 	case "nodejs":
 		return pt.prepareNodeJSProject(projinfo)
 	case "python":
@@ -1125,6 +1154,41 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
 func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
+	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
+	// of Python that you are requesting on the host machine before building a virtualenv for it.
+	if err = pt.runPipenvCommand("pipenv-new", []string{"--python", "3"}, cwd); err != nil {
+		return err
+	}
+
+	// Install the package's dependencies, which Pipenv infers from a requirements.txt file in the root of the project.
+	if err = pt.runPipenvCommand("pipenv-install", []string{"install", "--skip-lock"}, cwd); err != nil {
+		return err
+	}
+
+	// Install each package's dependencies, as requested. Dependencies can be either file paths or package names.
+	// Package names are installed from pypi while file paths are installed directly from the file system.
+	for _, dep := range pt.opts.Dependencies {
+		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
+		// operating inside of a random folder in /tmp.
+		if !path.IsAbs(dep) {
+			dep, err = filepath.Abs(dep)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = pt.runPipenvCommand("pipenv-install-package", []string{"install", "--skip-lock", "-e", dep}, cwd)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

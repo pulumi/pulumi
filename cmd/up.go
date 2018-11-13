@@ -115,14 +115,10 @@ func newUpCmd() *cobra.Command {
 		}
 	}
 
-	// up implementation used when the source of the Pulumi program is a URL.
-	upURL := func(url string, opts backend.UpdateOptions) error {
-		if !workspace.IsTemplateURL(url) {
-			return errors.Errorf("%s is not a valid URL", url)
-		}
-
+	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
+	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) error {
 		// Retrieve the template repo.
-		repo, err := workspace.RetrieveTemplates(url, false)
+		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false)
 		if err != nil {
 			return err
 		}
@@ -136,12 +132,16 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		// Make sure only a single template is found.
-		// Alternatively, we could consider prompting to choose one instead of failing.
-		if len(templates) != 1 {
-			return errors.Errorf("more than one application found at %s", url)
+		var template workspace.Template
+		if len(templates) == 0 {
+			return errors.New("no template found")
+		} else if len(templates) == 1 {
+			template = templates[0]
+		} else {
+			if template, err = chooseTemplate(templates, opts.Display); err != nil {
+				return err
+			}
 		}
-		template := templates[0]
 
 		// Create temp directory for the "virtual workspace".
 		temp, err := ioutil.TempDir("", "pulumi-up-")
@@ -211,7 +211,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(s, url, template, configArray, yes, opts.Display); err != nil {
+		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts.Display); err != nil {
 			return err
 		}
 
@@ -257,7 +257,7 @@ func newUpCmd() *cobra.Command {
 	}
 
 	var cmd = &cobra.Command{
-		Use:        "up [url]",
+		Use:        "up [template|url]",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
 		Short:      "Create or update the resources in a stack",
@@ -296,7 +296,7 @@ func newUpCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				return upURL(args[0], opts)
+				return upTemplateNameOrURL(args[0], opts)
 			}
 
 			return upWorkingDirectory(opts)

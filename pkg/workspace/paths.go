@@ -28,23 +28,34 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
-//nolint: lll
 const (
-	BackupDir      = "backups"    // the name of the folder where backup stack information is stored.
-	BookkeepingDir = ".pulumi"    // the name of our bookeeping folder, we store state here (like .git for git).
-	ConfigDir      = "config"     // the name of the folder that holds local configuration information.
-	GitDir         = ".git"       // the name of the folder git uses to store information.
-	HistoryDir     = "history"    // the name of the directory that holds historical information for projects.
-	PluginDir      = "plugins"    // the name of the directory containing plugins.
-	StackDir       = "stacks"     // the name of the directory that holds stack information for projects.
-	TemplateDir    = "templates"  // the name of the directory containing templates.
-	WorkspaceDir   = "workspaces" // the name of the directory that holds workspace information for projects.
+	// BackupDir is the name of the folder where backup stack information is stored.
+	BackupDir = "backups"
+	// BookkeepingDir is the name of our bookeeping folder, we store state here (like .git for git).
+	BookkeepingDir = ".pulumi"
+	// ConfigDir is the name of the folder that holds local configuration information.
+	ConfigDir = "config"
+	// GitDir is the name of the folder git uses to store information.
+	GitDir = ".git"
+	// HistoryDir is the name of the directory that holds historical information for projects.
+	HistoryDir = "history"
+	// PluginDir is the name of the directory containing plugins.
+	PluginDir = "plugins"
+	// StackDir is the name of the directory that holds stack information for projects.
+	StackDir = "stacks"
+	// TemplateDir is the name of the directory containing templates.
+	TemplateDir = "templates"
+	// WorkspaceDir is the name of the directory that holds workspace information for projects.
+	WorkspaceDir = "workspaces"
 
-	IgnoreFile        = ".pulumiignore"      // the name of the file that we use to control what to upload to the service.
-	ProjectFile       = "Pulumi"             // the base name of a project file.
-	RepoFile          = "settings.json"      // the name of the file that holds information specific to the entire repository.
-	WorkspaceFile     = "workspace.json"     // the name of the file that holds workspace information.
-	CachedVersionFile = ".cachedVersionInfo" // the name of the file we use to store when we last checked if the CLI was out of date
+	// ProjectFile is the base name of a project file.
+	ProjectFile = "Pulumi"
+	// RepoFile is the name of the file that holds information specific to the entire repository.
+	RepoFile = "settings.json"
+	// WorkspaceFile is the name of the file that holds workspace information.
+	WorkspaceFile = "workspace.json"
+	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
+	CachedVersionFile = ".cachedVersionInfo"
 )
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.

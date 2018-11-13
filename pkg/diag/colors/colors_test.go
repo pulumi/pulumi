@@ -12,29 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package archive
+package colors
 
-type ignorer interface {
-	IsIgnored(f string) bool
-}
+import (
+	"testing"
 
-type ignoreState struct {
-	ignorer ignorer
-	next    *ignoreState
-}
+	"github.com/stretchr/testify/assert"
+)
 
-func (s *ignoreState) Append(ignorer ignorer) *ignoreState {
-	return &ignoreState{ignorer: ignorer, next: s}
-}
+func TestTrimPartialCommand(t *testing.T) {
+	noPartial := Red + "foo" + Green + "bar" + Reset
+	assert.Equal(t, noPartial, TrimPartialCommand(noPartial))
 
-func (s *ignoreState) IsIgnored(path string) bool {
-	if s == nil {
-		return false
+	expected := Red + "foo" + Green + "bar"
+	for partial := noPartial[:len(noPartial)-1]; partial[len(partial)-3:] != "bar"; partial = partial[:len(partial)-1] {
+		assert.Equal(t, expected, TrimPartialCommand(partial))
 	}
-
-	if s.ignorer.IsIgnored(path) {
-		return true
-	}
-
-	return s.next.IsIgnored(path)
 }

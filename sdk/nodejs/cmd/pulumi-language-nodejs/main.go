@@ -54,7 +54,7 @@ import (
 )
 
 const (
-	// The path to the "run" program which will spawn the rest of the language host. This may be overriden with
+	// The path to the "run" program which will spawn the rest of the language host. This may be overridden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
 	defaultRunPath = "@pulumi/pulumi/cmd/run"
 
@@ -124,7 +124,7 @@ func main() {
 // locateModule resolves a node module name to a file path that can be loaded
 func locateModule(mod string, nodePath string) (string, error) {
 	program := fmt.Sprintf("console.log(require.resolve('%s'));", mod)
-	cmd := exec.Command(nodePath, "-e", program) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(nodePath, "-e", program)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -142,7 +142,8 @@ type nodeLanguageHost struct {
 	typescript    bool
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress, tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(nodePath, runPath, engineAddress,
+	tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
@@ -289,7 +290,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 
 	env := os.Environ()
-	env = append(env, pulumiConfigVar+"="+string(config))
+	env = append(env, pulumiConfigVar+"="+config)
 
 	if host.typescript {
 		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
@@ -302,7 +303,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.nodeBin, args...) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(host.nodeBin, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = env

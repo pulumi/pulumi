@@ -36,15 +36,59 @@ func Command(s string) string {
 	return colorLeft + s + colorRight
 }
 
+// TrimPartialCommand returns the input string with any partial colorization command trimmed off of the right end of
+// the string.
+func TrimPartialCommand(s string) string {
+	// First check for a partial left delimiter at the end of the string.
+	partialDelimLeft := colorLeft
+	if len(partialDelimLeft) > len(s) {
+		partialDelimLeft = partialDelimLeft[:len(s)]
+	}
+	for len(partialDelimLeft) > 0 {
+		trailer := s[len(s)-len(partialDelimLeft):]
+		if trailer == partialDelimLeft {
+			return s[:len(s)-len(partialDelimLeft)]
+		}
+		partialDelimLeft = partialDelimLeft[:len(partialDelimLeft)-1]
+	}
+
+	// Next check for a complete left delimiter. If there no complete left delimiter, just return the string as-is.
+	lastDelimLeft := strings.LastIndex(s, colorLeft)
+	if lastDelimLeft == -1 {
+		return s
+	}
+
+	// If there is a complete left delimiter, look for a matching complete right delimiter. If there is a match, return
+	// the string as-is.
+	if strings.Contains(s[lastDelimLeft:], colorRight) {
+		return s
+	}
+
+	// Otherwise, return the string up to but not including the incomplete left delimiter.
+	return s[:lastDelimLeft]
+}
+
 func Colorize(s fmt.Stringer) string {
 	txt := s.String()
 	return colorizeText(txt)
 }
 
 func colorizeText(s string) string {
-	c, err := loreley.CompileAndExecuteToString(s, nil, nil)
+	style, err := loreley.Compile(s, nil /*extensions*/)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
-	return c
+
+	// Note: we only get into this codepath if we determined colors should be on.  This was either
+	// because we were in color=auto mode and our env detection determined colors were reasonable to
+	// have, or because we're in color=always mode.
+	//
+	// However, Loreley does its own tty detection and disables colors if there is no tty.  We don't
+	// want that behavior if we've determined colors should be on.  So we explicitly override their
+	// automatic detection.
+	style.NoColors = false
+	result, err := style.ExecuteToString(nil /*data*/)
+	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
+
+	return result
 }
 
 // Highlight takes an input string, a sequence of commands, and replaces all occurrences of that string with

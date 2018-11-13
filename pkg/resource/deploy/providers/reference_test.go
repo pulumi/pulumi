@@ -31,7 +31,7 @@ func TestRoundTripProviderType(t *testing.T) {
 
 func TestParseReferenceInvalidURN(t *testing.T) {
 	str := "not::a:valid:urn::id"
-	assert.Panics(t, func() { ParseReference(str) })
+	assert.Panics(t, func() { _, _ = ParseReference(str) })
 }
 
 func TestParseReferenceInvalidModule(t *testing.T) {

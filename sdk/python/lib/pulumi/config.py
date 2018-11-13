@@ -15,14 +15,14 @@
 """
 The config module contains all configuration management functionality.
 """
-from __future__ import absolute_import
-import six
+from typing import Optional
 
 from . import errors
 from .runtime.config import get_config
 from .metadata import get_project
 
-class Config(object):
+
+class Config:
     """
     Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by
     simple keys, and each has a name that uniquely identifies it; two bags with different names do not share values for
@@ -30,22 +30,25 @@ class Config(object):
     and `c`, is entirely separate from a bag whose name is `pulumi:bar` with the same simple key names.  Each key has a
     fully qualified names, such as `pulumi:foo:a`, ..., and `pulumi:bar:a`, respectively.
     """
-    def __init__(self, name):
+
+    name: str
+
+    def __init__(self, name: str) -> None:
         if not name:
             name = get_project()
-        if not isinstance(name, six.string_types):
+        if not isinstance(name, str):
             raise TypeError('Expected name to be a string')
         self.name = name
         """The configuration bag's logical name that uniquely identifies it.  The default is the name of the current
         project."""
 
-    def get(self, key):
+    def get(self, key: str) -> Optional[str]:
         """
         Returns an optional configuration value by its key, or None if it doesn't exist.
         """
         return get_config(self.full_key(key))
 
-    def get_bool(self, key):
+    def get_bool(self, key: str) -> Optional[bool]:
         """
         Returns an optional configuration value, as a bool, by its key, or None if it doesn't exist.
         If the configuration value isn't a legal boolean, this function will throw an error.
@@ -53,14 +56,13 @@ class Config(object):
         v = self.get(key)
         if v is None:
             return None
-        elif v in ['true', 'True']:
+        if v in ['true', 'True']:
             return True
-        elif v in ['false', 'False']:
+        if v in ['false', 'False']:
             return False
-        else:
-            raise ConfigTypeError(self.full_key(key), v, 'bool')
+        raise ConfigTypeError(self.full_key(key), v, 'bool')
 
-    def get_int(self, key):
+    def get_int(self, key: str) -> Optional[int]:
         """
         Returns an optional configuration value, as an int, by its key, or None if it doesn't exist.
         If the configuration value isn't a legal int, this function will throw an error.
@@ -73,7 +75,7 @@ class Config(object):
         except:
             raise ConfigTypeError(self.full_key(key), v, 'int')
 
-    def get_float(self, key):
+    def get_float(self, key: str) -> Optional[float]:
         """
         Returns an optional configuration value, as a float, by its key, or None if it doesn't exist.
         If the configuration value isn't a legal float, this function will throw an error.
@@ -86,7 +88,7 @@ class Config(object):
         except:
             raise ConfigTypeError(self.full_key(key), v, 'float')
 
-    def require(self, key):
+    def require(self, key: str) -> str:
         """
         Returns a configuration value by its given key.  If it doesn't exist, an error is thrown.
         """
@@ -95,7 +97,7 @@ class Config(object):
             raise ConfigMissingError(self.full_key(key))
         return v
 
-    def require_bool(self, key):
+    def require_bool(self, key: str) -> bool:
         """
         Returns a configuration value, as a bool, by its given key.  If it doesn't exist, or the
         configuration value is not a legal bool, an error is thrown.
@@ -105,7 +107,7 @@ class Config(object):
             raise ConfigMissingError(self.full_key(key))
         return v
 
-    def require_int(self, key):
+    def require_int(self, key: str) -> int:
         """
         Returns a configuration value, as an int, by its given key.  If it doesn't exist, or the
         configuration value is not a legal int, an error is thrown.
@@ -115,7 +117,7 @@ class Config(object):
             raise ConfigMissingError(self.full_key(key))
         return v
 
-    def require_float(self, key):
+    def require_float(self, key: str) -> float:
         """
         Returns a configuration value, as a float, by its given key.  If it doesn't exist, or the
         configuration value is not a legal number, an error is thrown.
@@ -125,28 +127,38 @@ class Config(object):
             raise ConfigMissingError(self.full_key(key))
         return v
 
-    def full_key(self, key):
+    def full_key(self, key: str) -> str:
         """
         Turns a simple configuration key into a fully resolved one, by prepending the bag's name.
         """
         return '%s:%s' % (self.name, key)
 
+
 class ConfigTypeError(errors.RunError):
     """
     Indicates a configuration value is of the wrong type.
     """
-    def __init__(self, key, value, expect_type):
+
+    key: str
+    value: str
+    expect_type: str
+
+    def __init__(self, key: str, value: str, expect_type: str) -> None:
         self.key = key
         self.value = value
         self.expect_type = expect_type
         super(ConfigTypeError, self).__init__(
             "Configuration '%s' value '%s' is not a valid '%s'" % (key, value, expect_type))
 
+
 class ConfigMissingError(errors.RunError):
     """
     Indicates a configuration value is missing.
     """
-    def __init__(self, key):
+
+    key: str
+
+    def __init__(self, key: str) -> None:
         self.key = key
         super(ConfigMissingError, self).__init__(
             "Missing required configuration variable '%s'\n" % key +

@@ -75,9 +75,6 @@ type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
 	// well as poll for its progress.
 	UpdateID string `json:"updateID"`
-
-	// UploadURL is a URL the client can use to upload their program's contents into. Ignored for destroys.
-	UploadURL string `json:"uploadURL"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
@@ -169,92 +166,6 @@ type UpdateProgram struct {
 	// Refresh is true if this is a refresh-style update, which simply takes state from the current cloud resources.
 	Refresh bool `json:"refresh"`
 }
-
-// CreateUpdateRequest describe the data provided as the body of a request to the `POST /updates` endpoint of
-// the PPC API.
-type CreateUpdateRequest struct {
-	// Stack is the unqique ID for the stack that this update targets.
-	Stack string `json:"stack"`
-
-	// Import indicates whether or not this update's resources are given by a checkpoint to import rather than
-	// an actual Pulumi program.  If this field is `true`, the client must upload the checkpoint file to the
-	// URL returned in the response. Config should be empty, as it will be copied from the base update. Program
-	// should also be empty, as it will not be used.
-	IsCheckpointImport bool `json:"import,omitempty"`
-
-	// StackAlias is the friendly name for the update's stack that will be exposed to the update's Pulumi
-	// program.
-	StackAlias string `json:"stackAlias,omitempty"`
-
-	// Config records the configuration values for an update. Must be nil if IsCheckpointImport is true.
-	Config *CreateUpdateConfig `json:"config,omitempty"`
-
-	// Program records the program metadata for an update. Must be nil if IsCheckpointImport is true.
-	Program *UpdateProgram `json:"program,omitempty"`
-}
-
-// CreateUpdateResponse describes the data returned by a request to the `POST /updates` endpoint of the PPC
-// API.
-type CreateUpdateResponse struct {
-	// ID is the unique identifier of the newly-created update.
-	ID string `json:"id"`
-
-	// Stack is the unique identifier of the stack targeted by the update.
-	Stack string `json:"stack"`
-
-	// BaseUpdate is the unique identifier of the update that was active in the stack indicated above at the
-	// time at which this update was created.
-	BaseUpdate string `json:"baseUpdate"`
-
-	// UploadURL is a URL that the client must use to upload the contents of the program associated with this
-	// update. The client should upload the program by sending a `PUT` request to this URL with the contents of
-	// the program as a ZIP file in the request body. The `PUT` request must also set the `Content-Length`
-	// header.
-	UploadURL string `json:"uploadURL"`
-}
-
-// UpdateApplyRequest describes the data provided as the body of a request to the `POST
-// /updates/{updateID}/apply` and `POST /updates/{updateID}/preview` endpoints of the PPC API.
-type UpdateApplyRequest struct {
-	// Should we tell the engine to emit information about the configuration during this update.
-	ShowConfig bool `json:"showConfig,omitempty"`
-
-	// Should we tell the engine to emit information about resources that have not changed during this update.
-	ShowSames bool `json:"showSames,omitempty"`
-
-	// Should we tell the engine to emit information about replacement steps during this update.
-	ShowReplacementSteps bool `json:"showReplacementSteps,omitempty"`
-
-	// Should we tell the engine to emit summary information during this update.
-	Summary bool `json:"summary,omitempty"`
-}
-
-// GetUpdateResponse describes the data retuerned by a request to the `GET /updates/{updateID}` endpoint of the
-// PPC API.
-type GetUpdateResponse struct {
-	CreateUpdateResponse
-
-	// State indicates which state the update is in.
-	State string `json:"state"`
-
-	// StackAlias is the friendly name for the update's stack that will be exposed to the update's Pulumi
-	// program.
-	StackAlias string `json:"stackAlias,omitempty"`
-
-	// Config records the configuration values for an update.
-	Config map[string]string `json:"config"`
-
-	// Program records the program metadata for an update.
-	Program UpdateProgram `json:"program"`
-}
-
-// GetApplyUpdateResultsResponse describes the data returned by the `GET /updates/{updateID}/apply` endpoint of
-// the PPC API.
-type GetApplyUpdateResultsResponse UpdateResults
-
-// GetPreviewUpdateResultsResponse describes the data returned by the `GET /updates/{updateID}/preview`
-// endpoint of the PPC API.
-type GetPreviewUpdateResultsResponse UpdateResults
 
 // RenewUpdateLeaseRequest defines the body of a request to the update lease renewal endpoint of the service API.
 type RenewUpdateLeaseRequest struct {

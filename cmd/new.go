@@ -60,7 +60,7 @@ func newNewCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:        "new [template]",
+		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
@@ -188,7 +188,7 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Show instructions, if we're going to show at least one prompt.
-			hasAtLeastOnePrompt := (name == "") || (description == "") || (stack == "")
+			hasAtLeastOnePrompt := (name == "") || (description == "") || (!generateOnly && stack == "")
 			if !yes && hasAtLeastOnePrompt {
 				fmt.Println("This command will walk you through creating a new Pulumi project.")
 				fmt.Println()
@@ -466,12 +466,12 @@ func installDependencies(message string) error {
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
 	var command string
 	var c *exec.Cmd
-	if strings.EqualFold(proj.RuntimeInfo.Name(), "nodejs") {
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		command = "npm install"
-		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
-	} else if strings.EqualFold(proj.RuntimeInfo.Name(), "python") {
+		c = exec.Command("npm", "install")
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		command = "pip install -r requirements.txt"
-		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
+		c = exec.Command("pip", "install", "-r", "requirements.txt")
 	} else {
 		return nil
 	}
@@ -500,7 +500,7 @@ func runUpOrPrintNextSteps(
 
 	// Currently go projects require a build/install step before deployment, so we won't automatically run `up` for
 	// such projects. Once we switch over to using `go run` for go, we can remove this and always run `up`.
-	runUp := !strings.EqualFold(proj.RuntimeInfo.Name(), "go")
+	runUp := !strings.EqualFold(proj.Runtime.Name(), "go")
 
 	if runUp {
 		m, err := getUpdateMetadata("", root)
@@ -800,7 +800,8 @@ func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
 		// Create the option string that combines the name, padding, and description.
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, template.Description)
+		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
 		// Add it to the array and map.
 		options = append(options, option)

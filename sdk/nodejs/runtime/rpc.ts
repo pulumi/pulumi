@@ -56,7 +56,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
             resolveIsKnown(isKnown);
         };
 
-        (<any>onto)[k] = Output.create(
+        (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolveValue = resolve),
@@ -144,25 +144,24 @@ export function resolveProperties(
         }
 
         // Otherwise, unmarshal the value, and store it on the resource object.
-        let resolve = resolvers[k];
+        const resolve = resolvers[k];
 
         if (resolve === undefined) {
-            let resolveValue: (v: any) => void;
-            let resolveIsKnown: (v: boolean) => void;
-
-            resolve = (v, isKnown) => {
-                resolveValue(v);
-                resolveIsKnown(isKnown);
-            };
-
-            // If there is no property yet, zero initialize it.  This ensures unexpected properties
-            // are still made available on the object.  This isn't ideal, because any code running
-            // prior to the actual resource CRUD operation can't hang computations off of it, but
-            // it's better than tossing it.
-            (res as any)[k] = Output.create(
-                res,
-                debuggablePromise(new Promise<any>(r => resolveValue = r)),
-                debuggablePromise(new Promise<boolean>(r => resolveIsKnown = r)));
+            // engine returned a property that was not in our initial property-map.  This can happen
+            // for outputs that were registered through direct calls to 'registerOutputs'. We do
+            // *not* want to do anything with these returned properties.  First, the component
+            // resources that were calling 'registerOutputs' will have already assigned these fields
+            // directly on them themselves.  Second, if we were to try to assign here we would have
+            // an incredibly bad race condition for two reasons:
+            //
+            //  1. This call to 'resolveProperties' happens asynchronously at some point far after
+            //     the resource was constructed.  So the user will have been able to observe the
+            //     initial value up until we get to this point.
+            //
+            //  2. The component resource will have often assigned a value of some arbitrary type
+            //     (say, a 'string').  If we overwrite this with an `Output<string>` we'll be changing
+            //     the type at some non-deterministic point in the future.
+            continue;
         }
 
         try {

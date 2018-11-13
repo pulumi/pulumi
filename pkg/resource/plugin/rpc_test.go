@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,13 @@ func TestAssetSerialize(t *testing.T) {
 
 	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
 	assert.Nil(t, err)
-	assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
+	switch runtime.Version() {
+	case "go1.9":
+		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
+	default:
+		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+		assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", arch.Hash)
+	}
 	archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
 	assert.Nil(t, err)
 	archValue, err := UnmarshalPropertyValue(archProps, MarshalOptions{})
@@ -54,7 +61,13 @@ func TestAssetSerialize(t *testing.T) {
 	assert.Equal(t, 1, len(archDes.Assets))
 	assert.True(t, archDes.Assets["foo"].(*resource.Asset).IsText())
 	assert.Equal(t, text, archDes.Assets["foo"].(*resource.Asset).Text)
-	assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
+	switch runtime.Version() {
+	case "go1.9":
+		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
+	default:
+		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+		assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", archDes.Hash)
+	}
 }
 
 func TestComputedSerialize(t *testing.T) {

@@ -31,7 +31,10 @@ import (
 )
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
-// nolint: structcheck, host is used in a different file
+//
+// This structre is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
+// linter.
+// nolint: structcheck
 type UpdateOptions struct {
 	// an optional set of analyzers to run as part of this deployment.
 	Analyzers []string

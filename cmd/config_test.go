@@ -26,8 +26,8 @@ import (
 
 func TestPrettyKeyForProject(t *testing.T) {
 	proj := &workspace.Project{
-		Name:        tokens.PackageName("test-package"),
-		RuntimeInfo: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Name:    tokens.PackageName("test-package"),
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}
 
 	assert.Equal(t, "foo", prettyKeyForProject(config.MustMakeKey("test-package", "foo"), proj))

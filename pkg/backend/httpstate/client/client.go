@@ -20,18 +20,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/diag"
-
 	"github.com/blang/semver"
-
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -214,32 +211,28 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
 func (pc *Client) CreateStack(
-	ctx context.Context, stackID StackIdentifier, cloudName string,
-	tags map[apitype.StackTagName]string) (apitype.Stack, error) {
+	ctx context.Context, stackID StackIdentifier, tags map[apitype.StackTagName]string) (apitype.Stack, error) {
 	// Validate names and tags.
 	if err := backend.ValidateStackProperties(stackID.Stack, tags); err != nil {
 		return apitype.Stack{}, errors.Wrap(err, "validating stack properties")
 	}
 
 	stack := apitype.Stack{
-		CloudName: cloudName,
 		StackName: tokens.QName(stackID.Stack),
 		OrgName:   stackID.Owner,
 		Tags:      tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
-		CloudName: cloudName,
 		StackName: stackID.Stack,
 		Tags:      tags,
 	}
 
-	var createStackResp apitype.CreateStackResponseByName
+	var createStackResp apitype.CreateStackResponse
 	if err := pc.restCall(
 		ctx, "POST", fmt.Sprintf("/api/stacks/%s", stackID.Owner), nil, &createStackReq, &createStackResp); err != nil {
 		return apitype.Stack{}, err
 	}
 
-	stack.CloudName = createStackResp.CloudName
 	return stack, nil
 }
 
@@ -334,9 +327,8 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
-	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
-	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool,
-	getContents func() (io.ReadCloser, int64, error)) (UpdateIdentifier, error) {
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project, cfg config.Map,
+	m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool) (UpdateIdentifier, error) {
 
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -351,14 +343,14 @@ func (pc *Client) CreateUpdate(
 	}
 
 	description := ""
-	if pkg.Description != nil {
-		description = *pkg.Description
+	if proj.Description != nil {
+		description = *proj.Description
 	}
 
 	updateRequest := apitype.UpdateProgramRequest{
-		Name:        string(pkg.Name),
-		Runtime:     pkg.RuntimeInfo.Name(),
-		Main:        main,
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime.Name(),
+		Main:        proj.Main,
 		Description: description,
 		Config:      wireConfig,
 		Options: apitype.UpdateOptions{
@@ -392,32 +384,6 @@ func (pc *Client) CreateUpdate(
 	var updateResponse apitype.UpdateProgramResponse
 	if err := pc.restCall(ctx, "POST", path, nil, &updateRequest, &updateResponse); err != nil {
 		return UpdateIdentifier{}, err
-	}
-
-	// Now upload the program if necessary.
-	if kind != apitype.DestroyUpdate && updateResponse.UploadURL != "" {
-		uploadURL, err := url.Parse(updateResponse.UploadURL)
-		if err != nil {
-			return UpdateIdentifier{}, errors.Wrap(err, "parsing upload URL")
-		}
-
-		contents, size, err := getContents()
-		if err != nil {
-			return UpdateIdentifier{}, err
-		}
-
-		resp, err := http.DefaultClient.Do(&http.Request{
-			Method:        "PUT",
-			URL:           uploadURL,
-			ContentLength: size,
-			Body:          contents,
-		})
-		if err != nil {
-			return UpdateIdentifier{}, err
-		}
-		if resp.StatusCode != http.StatusOK {
-			return UpdateIdentifier{}, errors.Errorf("upload failed: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-		}
 	}
 
 	return UpdateIdentifier{
@@ -514,7 +480,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
 }
 
 // CancelUpdate cancels the indicated update.
@@ -552,4 +518,13 @@ func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentif
 	// forcing retry of these operations, at the expense of duplicated log messages in some cases.
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "log"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+}
+
+// RecordEngineEvent posts an engine event to the Pulumi service.
+func (pc *Client) RecordEngineEvent(
+	ctx context.Context, update UpdateIdentifier, event apitype.EngineEvent, token string) error {
+	return pc.updateRESTCall(
+		ctx, "POST", getUpdatePath(update, "events"),
+		nil, event, nil,
+		updateAccessToken(token), httpCallOptions{GzipCompress: true})
 }

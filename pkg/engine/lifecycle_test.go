@@ -302,6 +302,7 @@ type TestPlan struct {
 	Steps     []TestStep
 }
 
+//nolint: goconst
 func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
@@ -335,8 +336,8 @@ func (p *TestPlan) GetProject() workspace.Project {
 	_, projectName, runtime := p.getNames()
 
 	return workspace.Project{
-		Name:        projectName,
-		RuntimeInfo: workspace.NewProjectRuntimeInfo(runtime, nil),
+		Name:    projectName,
+		Runtime: workspace.NewProjectRuntimeInfo(runtime, nil),
 	}
 }
 
@@ -952,7 +953,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, err error) error {
-			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resouce with
+			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
 			for _, entry := range j.Entries {
@@ -1024,7 +1025,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, err error) error {
-			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resouce with
+			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
 			for _, entry := range j.Entries {

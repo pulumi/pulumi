@@ -133,12 +133,23 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 // Install installs a plugin's tarball into the cache.  It validates that plugin names are in the expected format.
 func (info PluginInfo) Install(tarball io.ReadCloser) error {
 	// Fetch the directory into which we will expand this tarball, and create it.
-	pluginDir, err := info.DirPath()
+	finalDir, err := info.DirPath()
 	if err != nil {
 		return err
 	}
-	if err = os.MkdirAll(pluginDir, 0700); err != nil {
-		return errors.Wrapf(err, "creating plugin directory %s", pluginDir)
+
+	// We unpack the tarball into a temporary directory in the plugin cache and after that has completed rename it
+	// to prevent posioning the cache if the install is CTRL-C'd,
+	tempDir := finalDir + ".tmp"
+
+	// If the temporary folder already exists, try to remove it. Note that os.RemoveAll returns an nil error
+	// when the directory does not already exist.
+	if err := os.RemoveAll(tempDir); err != nil {
+		return errors.Wrapf(err, "deleting temporary directory %s", tempDir)
+	}
+
+	if err = os.MkdirAll(tempDir, 0700); err != nil {
+		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
 	}
 
 	// Unzip and untar the file as we go.
@@ -156,7 +167,7 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 			return errors.Wrapf(err, "untarring")
 		}
 
-		path := filepath.Join(pluginDir, header.Name)
+		path := filepath.Join(tempDir, header.Name)
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -180,7 +191,8 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 			return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 		}
 	}
-	return nil
+
+	return os.Rename(tempDir, finalDir)
 }
 
 func (info PluginInfo) String() string {
