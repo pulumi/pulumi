@@ -2135,6 +2135,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 func TestStackReference(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{}
 
+	// Test that the normal lifecycle works correctly.
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, state, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -2146,7 +2147,6 @@ func TestStackReference(t *testing.T) {
 		}
 		return nil
 	})
-
 	p := &TestPlan{
 		BackendClient: &deploytest.BackendClient{
 			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
@@ -2165,6 +2165,48 @@ func TestStackReference(t *testing.T) {
 	}
 	p.Run(t, nil)
 
+	// Test that changes to `name` cause replacement.
+	resURN := p.NewURN("pulumi:pulumi:StackReference", "other", "")
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   resURN.Type(),
+				URN:    resURN,
+				Custom: true,
+				ID:     "1",
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"name": "other2",
+				}),
+				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"name":    "other2",
+					"outputs": resource.PropertyMap{},
+				}),
+			},
+		},
+	}
+	p.Steps = []TestStep{{
+		Op:          Update,
+		SkipPreview: true,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+			assert.NoError(t, err)
+			for _, entry := range j.Entries {
+				switch urn := entry.Step.URN(); urn {
+				case resURN:
+					switch entry.Step.Op() {
+					case deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReplace:
+						// OK
+					default:
+						t.Fatalf("unexpected journal operation: %v", entry.Step.Op())
+					}
+				}
+			}
+
+			return err
+		},
+	}}
+	p.Run(t, old)
+
+	// Test that unknown stacks are handled appropriately.
 	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -2179,5 +2221,18 @@ func TestStackReference(t *testing.T) {
 		ExpectFailure: true,
 		SkipPreview:   true,
 	}}
+	p.Run(t, nil)
+
+	// Test that unknown properties cause errors.
+	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "other",
+				"foo":  "bar",
+			}))
+		assert.Error(t, err)
+		return err
+	})
+	p.Options = UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
 	p.Run(t, nil)
 }
