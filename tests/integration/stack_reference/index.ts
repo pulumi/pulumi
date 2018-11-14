@@ -2,4 +2,7 @@
 
 import * as pulumi from "@pulumi/pulumi";
 
-let a = new pulumi.StackReference(pulumi.getStack());
+let config = new pulumi.Config();
+let org = config.get("org");
+let slug = org ? `${org}/${pulumi.getStack()}` : pulumi.getStack();
+let a = new pulumi.StackReference(slug);
