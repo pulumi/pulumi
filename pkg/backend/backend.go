@@ -212,5 +212,8 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 		return nil, err
 	}
 	res, _ := stack.GetRootStackResource(snap)
+	if res == nil {
+		return resource.PropertyMap{}, nil
+	}
 	return res.Outputs, nil
 }
