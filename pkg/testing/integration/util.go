@@ -30,6 +30,26 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// DecodeMapString takes a string of the form key1=value1:key2=value2 and returns a go map.
+func DecodeMapString(val string) (map[string]string, error) {
+	newMap := make(map[string]string)
+
+	if val != "" {
+		for _, overrideClause := range strings.Split(val, ":") {
+			data := strings.Split(overrideClause, "=")
+			if len(data) != 2 {
+				return nil, errors.Errorf(
+					"could not decode %s as an override, should be of the form <package>=<version>", overrideClause)
+			}
+			packageName := data[0]
+			packageVersion := data[1]
+			newMap[packageName] = packageVersion
+		}
+	}
+
+	return newMap, nil
+}
+
 // ReplaceInFile does a find and replace for a given string within a file.
 func ReplaceInFile(old, new, path string) error {
 	rawContents, err := ioutil.ReadFile(path)

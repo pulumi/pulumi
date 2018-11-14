@@ -21,26 +21,23 @@ func TestExamples(t *testing.T) {
 		return
 	}
 
-	var minimal integration.ProgramTestOptions
-	minimal = integration.ProgramTestOptions{
-		Dir:          path.Join(cwd, "minimal"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Config: map[string]string{
-			"name": "Pulumi",
-		},
-		Secrets: map[string]string{
-			"secret": "this is my secret message",
-		},
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.NotNil(t, stackInfo.Deployment)
-		},
-		RunBuild: true,
-	}
-
 	var formattableStdout, formattableStderr bytes.Buffer
 	examples := []integration.ProgramTestOptions{
-		minimal,
+		{
+			Dir:          path.Join(cwd, "minimal"),
+			Dependencies: []string{"@pulumi/pulumi"},
+			Config: map[string]string{
+				"name": "Pulumi",
+			},
+			Secrets: map[string]string{
+				"secret": "this is my secret message",
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Simple runtime validation that just ensures the checkpoint was written and read.
+				assert.NotNil(t, stackInfo.Deployment)
+			},
+			RunBuild: true,
+		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/simple"),
 			Dependencies: []string{"@pulumi/pulumi"},
@@ -82,8 +79,7 @@ func TestExamples(t *testing.T) {
 			Dependencies: []string{"@pulumi/pulumi"},
 		},
 		{
-			Dir:          path.Join(cwd, "compat/v0.10.0/minimal"),
-			Dependencies: []string{"@pulumi/pulumi"},
+			Dir: path.Join(cwd, "compat/v0.10.0/minimal"),
 			Config: map[string]string{
 				"name": "Pulumi",
 			},
