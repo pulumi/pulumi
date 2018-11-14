@@ -64,19 +64,33 @@ type Registry struct {
 	host      plugin.Host
 	isPreview bool
 	providers map[Reference]plugin.Provider
+	builtins  plugin.Provider
 	m         sync.RWMutex
 }
 
 var _ plugin.Provider = (*Registry)(nil)
 
+func loadProvider(pkg tokens.Package, version *semver.Version, host plugin.Host,
+	builtins plugin.Provider) (plugin.Provider, error) {
+
+	if builtins != nil && pkg == builtins.Pkg() {
+		return builtins, nil
+	}
+
+	return host.Provider(pkg, version)
+}
+
 // NewRegistry creates a new provider registry using the given host and old resources. Each provider present in the old
 // resources will be loaded, configured, and added to the returned registry under its reference. If any provider is not
 // loadable/configurable or has an invalid ID, this function returns an error.
-func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool) (*Registry, error) {
+func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
+	builtins plugin.Provider) (*Registry, error) {
+
 	r := &Registry{
 		host:      host,
 		isPreview: isPreview,
 		providers: make(map[Reference]plugin.Provider),
+		builtins:  builtins,
 	}
 
 	for _, res := range prev {
@@ -104,7 +118,7 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool) (*Reg
 		if err != nil {
 			return nil, errors.Errorf("could not parse version for %v provider '%v': %v", providerPkg, urn, err)
 		}
-		provider, err := host.Provider(providerPkg, version)
+		provider, err := loadProvider(providerPkg, version, host, builtins)
 		if err != nil {
 			return nil, errors.Errorf("could not load plugin for %v provider '%v': %v", providerPkg, urn, err)
 		}
@@ -208,7 +222,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	if err != nil {
 		return nil, []plugin.CheckFailure{{Property: "version", Reason: err.Error()}}, nil
 	}
-	provider, err := r.host.Provider(getProviderPackage(urn.Type()), version)
+	provider, err := loadProvider(getProviderPackage(urn.Type()), version, r.host, r.builtins)
 	if err != nil {
 		return nil, nil, err
 	}

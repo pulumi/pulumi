@@ -328,8 +328,6 @@ func (d *defaultProviders) serve() {
 
 // getDefaultProviderRef fetches the provider reference for the default provider for a particular package.
 func (d *defaultProviders) getDefaultProviderRef(pkg tokens.Package) (providers.Reference, error) {
-	contract.Assert(pkg != "pulumi")
-
 	response := make(chan defaultProviderResponse)
 	select {
 	case d.requests <- defaultProviderRequest{pkg: pkg, response: response}:
@@ -416,10 +414,6 @@ func (rm *resmon) Cancel() error {
 // given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
 // to the default provider for the indicated package.
 func (rm *resmon) getProviderReference(pkg tokens.Package, rawProviderRef string) (providers.Reference, error) {
-	if pkg == "pulumi" {
-		return providers.Reference{}, errors.Errorf("cannot reference internal providers")
-	}
-
 	if rawProviderRef != "" {
 		ref, err := providers.ParseReference(rawProviderRef)
 		if err != nil {

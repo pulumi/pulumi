@@ -5,6 +5,7 @@ package ints
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -553,4 +554,19 @@ func TestGetCreated(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 	})
+}
+
+// Tests that stack references work.
+func TestStackReference(t *testing.T) {
+	opts := &integration.ProgramTestOptions{
+		Dir:          "stack_reference",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	}
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		opts.Config = map[string]string{
+			"org": owner,
+		}
+	}
+	integration.ProgramTest(t, opts)
 }
