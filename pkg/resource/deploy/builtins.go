@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -53,7 +54,7 @@ func (p *builtinProvider) Configure(props resource.PropertyMap) error {
 	return nil
 }
 
-const stackReferenceType = "pulumi:service:StackReference"
+const stackReferenceType = "pulumi:pulumi:StackReference"
 
 func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
 	allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -61,6 +62,13 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 	typ := urn.Type()
 	if typ != stackReferenceType {
 		return nil, nil, errors.Errorf("unrecognized resource type '%v'", urn.Type())
+	}
+
+	var name resource.PropertyValue
+	for k := range inputs {
+		if k != "name" {
+			return nil, []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}}, nil
+		}
 	}
 
 	name, ok := inputs["name"]
@@ -79,11 +87,9 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs r
 	contract.Assert(urn.Type() == stackReferenceType)
 
 	if !inputs["name"].DeepEquals(state["name"]) {
-		// We delete stack references before replacing them because the reference to the old stack is promptly stale.
 		return plugin.DiffResult{
-			Changes:             plugin.DiffSome,
-			ReplaceKeys:         []resource.PropertyKey{"name"},
-			DeleteBeforeReplace: true,
+			Changes:     plugin.DiffSome,
+			ReplaceKeys: []resource.PropertyKey{"name"},
 		}, nil
 	}
 
@@ -95,37 +101,21 @@ func (p *builtinProvider) Create(urn resource.URN,
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
-	if p.backendClient == nil {
-		return "", nil, resource.StatusUnknown, errors.New("no backend client is available")
-	}
-
-	name, ok := inputs["name"]
-	contract.Assert(ok)
-	contract.Assert(name.IsString())
-
-	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	state, err := p.readStackReference(inputs)
 	if err != nil {
 		return "", nil, resource.StatusUnknown, err
 	}
-
 	id := resource.ID(uuid.NewV4().String())
-	state := resource.PropertyMap{
-		"name":    name,
-		"outputs": resource.NewObjectProperty(outputs),
-	}
-
 	return id, state, resource.StatusOK, nil
 }
 
 func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state,
 	inputs resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 
+	contract.Failf("unexpected update for builtin resource %v", urn)
 	contract.Assert(urn.Type() == stackReferenceType)
 
-	// If "name" changed, this should have been a replace.
-	contract.Assert(inputs["name"].DeepEquals(state["name"]))
-
-	return state, resource.StatusOK, nil
+	return state, resource.StatusOK, errors.New("unexpected update for builtin resource")
 }
 
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
@@ -137,11 +127,16 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 }
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
-	props resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
-	return props, resource.StatusOK, nil
+	state, err := p.readStackReference(state)
+	if err != nil {
+		return nil, resource.StatusUnknown, err
+	}
+
+	return state, resource.StatusOK, nil
 }
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
@@ -158,4 +153,24 @@ func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 func (p *builtinProvider) SignalCancellation() error {
 	p.cancel()
 	return nil
+}
+
+func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	name, ok := inputs["name"]
+	contract.Assert(ok)
+	contract.Assert(name.IsString())
+
+	if p.backendClient == nil {
+		return nil, errors.New("no backend client is available")
+	}
+
+	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	if err != nil {
+		return nil, err
+	}
+
+	return resource.PropertyMap{
+		"name":    name,
+		"outputs": resource.NewObjectProperty(outputs),
+	}, nil
 }

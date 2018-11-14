@@ -2136,7 +2136,7 @@ func TestStackReference(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{}
 
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
-		_, _, state, err := mon.RegisterResource("pulumi:service:StackReference", "other", true, "", false, nil, "",
+		_, _, state, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
 			}))
@@ -2166,7 +2166,7 @@ func TestStackReference(t *testing.T) {
 	p.Run(t, nil)
 
 	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
-		_, _, _, err := mon.RegisterResource("pulumi:service:StackReference", "other", true, "", false, nil, "",
+		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "rehto",
 			}))

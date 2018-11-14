@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { all, CustomResource, CustomResourceOptions, Input, Output, output } from "../resource";
+import { all, CustomResource, CustomResourceOptions, Input, Output, output } from "./resource";
 
 /**
  * Manages a reference to a Pulumi stack. The referenced stack's outputs are available via the
@@ -41,7 +41,7 @@ export class StackReference extends CustomResource {
     constructor(name: string, args?: StackReferenceArgs, opts?: CustomResourceOptions) {
         args = args || {};
 
-        super("pulumi:service:StackReference", name, {
+        super("pulumi:pulumi:StackReference", name, {
             name: args.name || name,
             outputs: undefined,
         }, opts);
@@ -52,7 +52,7 @@ export class StackReference extends CustomResource {
      *
      * @param name The name of the stack output to fetch.
      */
-    public output(name: Input<string>): Output<any> {
+    public getOutput(name: Input<string>): Output<any> {
         return all([output(name), this.outputs]).apply(([n, os]) => os[n]);
     }
 }

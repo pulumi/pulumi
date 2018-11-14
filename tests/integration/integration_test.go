@@ -554,3 +554,12 @@ func TestGetCreated(t *testing.T) {
 		Quick:        true,
 	})
 }
+
+// Tests that stack references work.
+func TestStackReference(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "stack_reference",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
