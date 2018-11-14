@@ -115,9 +115,12 @@ type ProgramTestOptions struct {
 	Dir string
 	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
 	Dependencies []string
-	// Map of config keys and values to set (e.g. {"aws:config:region": "us-east-2"})
+	// Map of package names to versions. The test will use the specified versions of these packages instead of what
+	// is declared in `package.json`.
+	Overrides map[string]string
+	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"})
 	Config map[string]string
-	// Map of secure config keys and values to set on the stack (e.g. {"aws:config:region": "us-east-2"})
+	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
 	Secrets map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
@@ -269,6 +272,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Dependencies != nil {
 		opts.Dependencies = overrides.Dependencies
+	}
+	if overrides.Overrides != nil {
+		opts.Overrides = overrides.Overrides
 	}
 	for k, v := range overrides.Config {
 		if opts.Config == nil {
@@ -1130,10 +1136,46 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
+	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
+	// direct dependency of the project, we change the version constraint in the package.json. For transitive
+	// dependeices, we use yarn's "resolutions" feature to force them to a specific version.
+	if len(pt.opts.Overrides) > 0 {
+		packageJSON, err := readPackageJSON(cwd)
+		if err != nil {
+			return err
+		}
+
+		overrides := make(map[string]interface{})
+
+		for packageName, packageVersion := range pt.opts.Overrides {
+			for _, section := range []string{"dependencies", "devDependencies"} {
+				if _, has := packageJSON[section]; has {
+					entry := packageJSON[section].(map[string]interface{})
+
+					if _, has := entry[packageName]; has {
+						entry[packageName] = packageVersion
+					}
+
+				}
+			}
+
+			fprintf(pt.opts.Stdout, "adding resolution for %s to version %s\n", packageName, packageVersion)
+			overrides["**/"+packageName] = packageVersion
+		}
+
+		// Wack any existing overrides section with our newly computed one.
+		packageJSON["overrides"] = overrides
+
+		if err := writePackageJSON(cwd, packageJSON); err != nil {
+			return err
+		}
+	}
+
 	// Now ensure dependencies are present.
 	if err = pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); err != nil {
 		return err
 	}
+
 	for _, dependency := range pt.opts.Dependencies {
 		if err = pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
 			return err
@@ -1149,6 +1191,36 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 
 	return nil
 
+}
+
+// readPackageJSON unmarshals the package.json file located in pathToPackage.
+func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
+	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
+	if err != nil {
+		return nil, errors.Wrap(err, "opening package.json")
+	}
+	defer contract.IgnoreClose(f)
+
+	var ret map[string]interface{}
+	if err := json.NewDecoder(f).Decode(&ret); err != nil {
+		return nil, errors.Wrap(err, "decoding package.json")
+	}
+
+	return ret, nil
+}
+
+func writePackageJSON(pathToPackage string, metadata map[string]interface{}) error {
+	// os.Create truncates the already existing file.
+	f, err := os.Create(filepath.Join(pathToPackage, "package.json"))
+	if err != nil {
+		return errors.Wrap(err, "opening package.json")
+	}
+	defer contract.IgnoreClose(f)
+
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+
+	return errors.Wrap(encoder.Encode(metadata), "writing package.json")
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
