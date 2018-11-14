@@ -13,7 +13,7 @@ import (
 func TestResourceRecreateCheck(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../../sdk/nodejs/bin"},
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{

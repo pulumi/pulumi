@@ -24,7 +24,7 @@ import (
 func TestDuplicateURNs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",
-		Dependencies:  []string{"@pulumi/pulumi"},
+		Dependencies:  []string{"../../../sdk/nodejs/bin"},
 		Quick:         true,
 		ExpectFailure: true,
 		EditDirs: []integration.EditDir{

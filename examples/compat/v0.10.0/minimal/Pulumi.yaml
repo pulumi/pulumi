@@ -1,4 +1,0 @@
-name: minimal
-description: A minimal Pulumi program.
-runtime: nodejs
-

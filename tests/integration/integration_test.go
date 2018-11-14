@@ -26,7 +26,7 @@ import (
 func TestEmptyNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("empty", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 	})
 }
@@ -54,7 +54,7 @@ func TestEmptyGo(t *testing.T) {
 func TestProjectMain(t *testing.T) {
 	test := integration.ProgramTestOptions{
 		Dir:          "project_main",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
 			assert.NotNil(t, stackInfo.Deployment)
@@ -99,7 +99,7 @@ func TestProjectMain(t *testing.T) {
 func TestStackProjectName(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_project_name",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 	})
 }
@@ -158,7 +158,7 @@ func TestStackTagValidation(t *testing.T) {
 func TestStackOutputsNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
@@ -229,7 +229,7 @@ func TestStackOutputsDisplayed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        false,
 		Verbose:      true,
 		Stdout:       stdout,
@@ -248,7 +248,7 @@ func TestStackOutputsSuppressed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("stack_outputs", "nodejs"),
-		Dependencies:           []string{"@pulumi/pulumi"},
+		Dependencies:           []string{"../../sdk/nodejs/bin"},
 		Quick:                  false,
 		Verbose:                true,
 		Stdout:                 stdout,
@@ -265,7 +265,7 @@ func TestStackOutputsSuppressed(t *testing.T) {
 func TestStackParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_parenting",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains resources parented correctly.  This should look like this:
@@ -315,7 +315,7 @@ func TestStackParenting(t *testing.T) {
 func TestStackBadParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "stack_bad_parenting",
-		Dependencies:  []string{"@pulumi/pulumi"},
+		Dependencies:  []string{"../../sdk/nodejs/bin"},
 		Quick:         true,
 		ExpectFailure: true,
 	})
@@ -326,7 +326,7 @@ func TestStackBadParenting(t *testing.T) {
 func TestStackDependencyGraph(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_dependencies",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
@@ -433,7 +433,7 @@ func TestConfigSave(t *testing.T) {
 func TestConfigBasicNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_basic", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
@@ -447,7 +447,7 @@ func TestConfigBasicNodeJS(t *testing.T) {
 func TestConfigCaptureNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 		Config: map[string]string{
 			"value": "it works",
@@ -458,7 +458,7 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 func TestInvalidVersionInPackageJson(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("invalid_package_json"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 		Config:       map[string]string{},
 	})
@@ -497,7 +497,7 @@ func TestConfigBasicGo(t *testing.T) {
 func TestExplicitProvider(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "explicit_provider",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
@@ -551,7 +551,7 @@ func TestExplicitProvider(t *testing.T) {
 func TestGetCreated(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "get_created",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 	})
 }
@@ -560,7 +560,7 @@ func TestGetCreated(t *testing.T) {
 func TestStackReference(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir:          "stack_reference",
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"../../sdk/nodejs/bin"},
 		Quick:        true,
 	}
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
