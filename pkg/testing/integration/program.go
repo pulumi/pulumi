@@ -113,11 +113,15 @@ type TestStatsReporter interface {
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
-	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
+	// Local packages that should be installed. The entries in the array should be file-system paths, either absolute
+	// or relative to the root of the test binary.
 	Dependencies []string
-	// Map of config keys and values to set (e.g. {"aws:config:region": "us-east-2"})
+	// Map of package names to versions. The test will use the specified versions of these packages instead of what
+	// is declared in `package.json`. Local packages defined in the `dependencies` section override any values here.
+	Overrides map[string]string
+	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"})
 	Config map[string]string
-	// Map of secure config keys and values to set on the stack (e.g. {"aws:config:region": "us-east-2"})
+	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
 	Secrets map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
@@ -267,6 +271,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Dependencies != nil {
 		opts.Dependencies = overrides.Dependencies
+	}
+	if overrides.Overrides != nil {
+		opts.Overrides = overrides.Overrides
 	}
 	for k, v := range overrides.Config {
 		if opts.Config == nil {
@@ -1145,18 +1152,44 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	packageJSONBytes, err := ioutil.ReadFile(filepath.Join(cwd, "package.json"))
+	// Before starting, we may make some changes to the package.json file, depending on the options provided to the
+	// test.
+	packageJSON, err := readPackageJSON(cwd)
 	if err != nil {
-		return errors.Wrap(err, "reading package.json")
+		return err
 	}
-	var packageJSON map[string]interface{}
-	if err := json.Unmarshal(packageJSONBytes, &packageJSON); err != nil {
-		return errors.Wrap(err, "unmarshaling package.json")
+
+	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
+	// direct dependency of the project, we change the version constraint in the package.json. For transitive
+	// dependeices, we use yarn's "resolutions" feature to force them to a specific version.
+	if len(pt.opts.Overrides) > 0 {
+		overrides := make(map[string]interface{})
+
+		for packageName, packageVersion := range pt.opts.Overrides {
+			for _, section := range []string{"dependencies", "devDependencies", "peerDependencies"} {
+				entry := packageJSON[section].(map[string]interface{})
+
+				if _, has := entry[packageName]; has {
+					entry[packageName] = packageVersion
+				}
+			}
+			fprintf(pt.opts.Stdout, "adding resolution for %s to version %s\n", packageName, packageVersion)
+
+			overrides["**/"+packageName] = packageVersion
+		}
+
+		// Wack any existing overrides section with our newly computed one.
+		packageJSON["overrides"] = overrides
 	}
 
 	// Add any local dependencies to the package.json file
-	if err := addDependenciesToPackageJSON(cwd, pt.opts.Dependencies); err != nil {
+	if err := addDependenciesToPackageJSON(packageJSON, pt.opts.Dependencies); err != nil {
 		return errors.Wrap(err, "updating package.json with dependencies")
+	}
+
+	// Write out the package.json file
+	if err := writePackageJSON(cwd, packageJSON); err != nil {
+		return err
 	}
 
 	// Now ensure dependencies are present.
@@ -1175,24 +1208,54 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 
 }
 
+// readPackageJSON unmarshals the package.json file located in pathToPackage. It ensures the returned object
+// has "dependencies", "devDependencies", and "peerDependencies" sections.
+func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
+	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
+	if err != nil {
+		return nil, errors.Wrap(err, "opening package.json")
+	}
+	defer contract.IgnoreClose(f)
+
+	var ret map[string]interface{}
+	if err := json.NewDecoder(f).Decode(&ret); err != nil {
+		return nil, errors.Wrap(err, "decoding package.json")
+	}
+
+	for _, section := range []string{"dependencies", "devDependencies", "peerDependencies"} {
+		if _, has := ret[section]; !has {
+			ret[section] = make(map[string]interface{})
+		}
+	}
+
+	return ret, nil
+}
+
+func writePackageJSON(pathToPackage string, metadata map[string]interface{}) error {
+	// os.Create truncates the already existing file.
+	f, err := os.Create(filepath.Join(pathToPackage, "package.json"))
+	if err != nil {
+		return errors.Wrap(err, "opening package.json")
+	}
+	defer contract.IgnoreClose(f)
+
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+
+	return errors.Wrap(encoder.Encode(metadata), "writing package.json")
+}
+
 // addDependenciesToPackageJSON takes a path to a package and set of depenencies, which are assumed to be paths
 // on the file system where other pacakges are. It adds entries for each of these packages to the "dependencies"
 // section of the package.json file in the provided path.
-func addDependenciesToPackageJSON(cwd string, dependencies []string) error {
+func addDependenciesToPackageJSON(metadata map[string]interface{}, dependencies []string) error {
 	if len(dependencies) == 0 {
 		return nil
 	}
 
-	packageJSONBytes, err := ioutil.ReadFile(filepath.Join(cwd, "package.json"))
-	if err != nil {
-		return errors.Wrap(err, "reading package.json")
-	}
-	var packageJSON map[string]interface{}
-	if err := json.Unmarshal(packageJSONBytes, &packageJSON); err != nil {
-		return errors.Wrap(err, "unmarshaling package.json")
-	}
-
 	for _, dep := range dependencies {
+		var err error
+
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to yarn and yarn is
 		// operating inside of a random folder in /tmp.
 		if !path.IsAbs(dep) {
@@ -1202,36 +1265,21 @@ func addDependenciesToPackageJSON(cwd string, dependencies []string) error {
 			}
 		}
 
-		depPackageJSONBytes, err := ioutil.ReadFile(filepath.Join(dep, "package.json"))
+		depPackageJSON, err := readPackageJSON(dep)
 		if err != nil {
 			return errors.Wrap(err, "reading package.json")
 		}
 
-		var depPackageJSON map[string]interface{}
-		err = json.Unmarshal(depPackageJSONBytes, &depPackageJSON)
-		if err != nil {
-			return errors.Wrap(err, "unmarshaling package.json")
+		if _, has := metadata["dependencies"]; !has {
+			metadata["dependencies"] = make(map[string]interface{})
 		}
 
-		if _, has := packageJSON["dependencies"]; !has {
-			packageJSON["dependencies"] = make(map[string]interface{})
-		}
-
-		deps, ok := packageJSON["dependencies"].(map[string]interface{})
+		deps, ok := metadata["dependencies"].(map[string]interface{})
 		if !ok {
 			return errors.New("dependencies section is not an object")
 		}
 
 		deps[depPackageJSON["name"].(string)] = fmt.Sprintf("file:%s", dep)
-	}
-
-	packageJSONBytes, err = json.Marshal(packageJSON)
-	if err != nil {
-		return errors.Wrapf(err, "marshaling package.json")
-	}
-
-	if err := ioutil.WriteFile(filepath.Join(cwd, "package.json"), packageJSONBytes, 0644); err != nil {
-		return errors.Wrap(err, "writing package.json")
 	}
 
 	return nil
