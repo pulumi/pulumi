@@ -138,19 +138,15 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		return err
 	}
 
-	// We unpack the tarball into a temporary directory in the plugin cache and after that has completed rename it
-	// to prevent posioning the cache if the install is CTRL-C'd,
-	tempDir := finalDir + ".tmp"
-
-	// If the temporary folder already exists, try to remove it. Note that os.RemoveAll returns an nil error
-	// when the directory does not already exist.
-	if err := os.RemoveAll(tempDir); err != nil {
-		return errors.Wrapf(err, "deleting temporary directory %s", tempDir)
-	}
-
-	if err = os.MkdirAll(tempDir, 0700); err != nil {
+	tempDir, err := ioutil.TempDir(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
+	if err != nil {
 		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
 	}
+
+	// If we early out of this function, try to remove the temp folder we created.
+	defer func() {
+		contract.IgnoreError(os.RemoveAll(tempDir))
+	}()
 
 	// Unzip and untar the file as we go.
 	defer contract.IgnoreClose(tarball)

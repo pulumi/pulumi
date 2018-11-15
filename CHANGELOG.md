@@ -1,6 +1,10 @@
 
 ## 0.16.5 (unreleased)
 
+### Improvements
+
+- Fix an issue where running two copies of `pulumi plugin install` in parallel for the same plugin version could cause one to fail with an error about renaming a directory.
+
 ## 0.16.4 (Released Novemeber 12th, 2018)
 
 ### Major Changes
