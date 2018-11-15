@@ -21,6 +21,8 @@
         "errors.ts",
         "metadata.ts",
         "resource.ts",
+        "stackReference.ts",
+        "string.ts",
         "version.ts",
 
         "asset/index.ts",
@@ -55,6 +57,7 @@
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
         "tests/output.spec.ts",
+        "tests/string.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/closureLoader.spec.ts",
