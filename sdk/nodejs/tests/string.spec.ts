@@ -20,38 +20,44 @@ import * as runtime from "../runtime";
 import { string as ps } from "../string";
 import { asyncTest } from "./util";
 
+async function runCases(outer: any, inner: any): Promise<void> {
+    const output1 = resource.output(Promise.resolve(outer));
+    const output2 = output1.apply(_ => resource.output(Promise.resolve(inner)));
+
+    const cases = [
+        {
+            expected: `${outer}`,
+            output: ps`${output1}`,
+        },
+        {
+            expected: `${inner}`,
+            output: ps`${output2}`,
+        },
+        {
+            expected: `${outer} ${inner}`,
+            output: ps`${output1} ${output2}`,
+        },
+        {
+            expected: `my ${outer} value and my ${inner} value`,
+            output: ps`my ${output1} value and my ${output2} value`,
+        },
+        {
+            expected: `my ${outer}`,
+            output: ps`my ${output1}`,
+        },
+        {
+            expected: `${outer} value`,
+            output: ps`${output1} value`,
+        },
+    ];
+
+    for (const c of cases) {
+        assert.equal(await c.output.promise(), c.expected);
+    }
+}
+
 describe("string", () => {
-    it("awaits outputs correctly", asyncTest(async () => {
-        const outer = "outer";
-        const inner = "inner";
-
-        const output1 = resource.output(Promise.resolve(outer));
-        const output2 = output1.apply(_ => resource.output(Promise.resolve(inner)));
-        const output3 = ps`${output1} ${output2}`;
-
-        const value = await output3.promise();
-        assert.equal(value, `${outer} ${inner}`);
-    }));
-    it("handles undefined and null correctly", asyncTest(async () => {
-        const outer = undefined;
-        const inner = null;
-
-        const output1 = resource.output(Promise.resolve(outer));
-        const output2 = output1.apply(_ => resource.output(Promise.resolve(inner)));
-        const output3 = ps`${output1} ${output2}`;
-
-        const value = await output3.promise();
-        assert.equal(value, `${outer} ${inner}`);
-    }));
-    it("handles complex objects correctly", asyncTest(async () => {
-        const outer = [ "foo" ];
-        const inner = { "foo": "bar" };
-
-        const output1 = resource.output(Promise.resolve(outer));
-        const output2 = output1.apply(_ => resource.output(Promise.resolve(inner)));
-        const output3 = ps`${output1} ${output2}`;
-
-        const value = await output3.promise();
-        assert.equal(value, `${outer} ${inner}`);
-    }));
+    it("awaits outputs correctly", asyncTest(() => runCases("outer", "inner")));
+    it("handles undefined and null correctly", asyncTest(() => runCases(undefined, null)));
+    it("handles complex objects correctly", asyncTest(() => runCases([ "foo" ], { "foo": "bar" })));
 });
