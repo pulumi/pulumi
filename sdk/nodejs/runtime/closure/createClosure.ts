@@ -188,7 +188,7 @@ interface ClosurePropertyDescriptor {
  * IMPORTANT: Do not change the structure of this type.  Closure serialization code takes a
  * dependency on the actual shape (including the names of properties like 'value').
  */
-class SerializedOutput<T> implements resource.Output<T> {
+class SerializedOutput<T> implements resource.OutputImpl<T> {
     /* @internal */ public isKnown: Promise<boolean>;
     /* @internal */ public readonly promise: () => Promise<T>;
     /* @internal */ public readonly resources: () => Set<resource.Resource>;

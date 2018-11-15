@@ -292,7 +292,7 @@ export const testingOptions = {
  * value as well as the Resource the value came from.  This allows for a precise 'Resource
  * dependency graph' to be created, which properly tracks the relationship between resources.
  */
-export class Output<T> {
+export class OutputImpl<T>  {
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
@@ -385,7 +385,7 @@ export class Output<T> {
     }
 
     /* @internal */ public constructor(
-            resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
+        resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
         this.isKnown = isKnown;
 
         // Always create a copy so that no one accidentally modifies our Resource list.
@@ -458,8 +458,45 @@ export class Output<T> {
             throw new Error(`Cannot call '.get' during update or preview.
 To manipulate the value of this Output, use '.apply' instead.`);
         };
+
+        return new Proxy(this, {
+            get: (obj, prop) => {
+                let o = obj;
+                // Recreate the prototype walk to ensure we find any actual things on `Output<T>`
+                while (o) {
+                    if (o.hasOwnProperty(prop)) {
+                        return (<any>o)[prop];
+                    }
+                    o = Object.getPrototypeOf(o);
+                }
+                // Skip internal properties like __resource, markers like doNotCapture
+                if ((typeof prop === "string" && prop[0] === "_") || prop === "then" || prop === "doNotCapture") {
+                    return undefined;
+                }
+                // Else for *any other* property lookup, succeed the lookup and return a lifted `apply` on the
+                // underlying `Output`.
+                return obj.apply(ob => (<any>ob)[prop]);
+            },
+        });
     }
 }
+
+// This is wrong - the type does not have the `T` shape, it has something closer to the
+// `{ [P in keyof T]: Output<T[P]> }` shape.
+export type Output<T> = OutputImpl<T> & T;
+
+// tslint:disable-next-line
+export const Output:
+    {
+        new <T>(
+            resources: Set<Resource> | Resource[] | Resource,
+            promise: Promise<T>, isKnown: Promise<boolean>,
+        ): Output<T>,
+        isInstance<T>(obj: any): obj is Output<T>,
+        create<T>(val: Input<T>): Output<Unwrap<T>>,
+        create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>,
+    }
+    = OutputImpl as any;
 
 /**
  * [output] takes any Input value and converts it into an Output, deeply unwrapping nested Input
@@ -564,7 +601,7 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
 }
 
 async function getPromisedObject<T>(
-        keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
+    keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
     const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await kvp.value.promise();
