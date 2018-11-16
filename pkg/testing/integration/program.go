@@ -29,7 +29,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -1122,28 +1121,15 @@ func (pt *programTester) prepareProjectDir(projectDir string) error {
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
 func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
-	// Instead of using the global cache folder, we set up a per test cache folder. We do this for a few reasons:
-	//
-	// 1. Yarn caches filesystem local packages when they are installel (see: yarnpkg/yarn#6037) which means each test
-	//    would cause a new copy to be added to the global cache. This is not great behavior when run locally
-	// 2. Using the global cache would that we pass `--mutex network` to yarn to prevent multiple yarn invocations
-	//    from happening at the same time, as yarn is not harded against multiple running writers to the cache
-	//    (see: yarnpkg/yarn#683, while it is closed, it is not yet fixed).
-	cacheFolder := filepath.Join(projinfo.Root, ".yarn-cache")
-
-	if runtime.GOOS == "windows" {
-		// On windows, we have to escape the backslashes in the cache file path in .yarnrc
-		cacheFolder = strings.Replace(cacheFolder, `\`, `\\`, -1)
-	}
-
+	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
+	// may run concurrently and yarn may fail if invoked concurrently
+	// https://github.com/yarnpkg/yarn/issues/683
+	// Also add --network-concurrency 1 since we've been seeing
+	// https://github.com/yarnpkg/yarn/issues/4563 as well
 	if err := ioutil.WriteFile(
 		filepath.Join(projinfo.Root, ".yarnrc"),
-		[]byte(fmt.Sprintf(`--cache-folder "%s"`, cacheFolder)), 0644); err != nil {
+		[]byte("--mutex network\n--network-concurrency 1\n"), 0644); err != nil {
 		return err
-	}
-
-	if err := os.MkdirAll(filepath.Join(projinfo.Root, ".yarn-cache"), 0755); err != nil && !os.IsExist(err) {
-		return errors.Wrap(err, "creating yarn cache")
 	}
 
 	// Get the correct pwd to run Yarn in.
@@ -1183,8 +1169,13 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	}
 
 	// Add any local dependencies to the package.json file
-	if err := addDependenciesToPackageJSON(packageJSON, pt.opts.Dependencies); err != nil {
-		return errors.Wrap(err, "updating package.json with dependencies")
+	localDependencies, err := collectDependencyInfo(pt.opts.Dependencies)
+	if err != nil {
+		return errors.Wrap(err, "collecting local dependencies")
+	}
+
+	for pack, version := range localDependencies {
+		(packageJSON["dependencies"].(map[string]interface{}))[pack] = version
 	}
 
 	// Write out the package.json file
@@ -1195,6 +1186,21 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	// Now ensure dependencies are present.
 	if err = pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); err != nil {
 		return err
+	}
+
+	// Per https://github.com/yarnpkg/yarn/issues/6037, yarn will cache file dependencies and this cache will grow
+	// without bound. If we had any local dependencies, let's delete them. This ends up removing more than
+	// we'd like (since it will remove all versions of the given package, and not just the local ones) but it's the
+	// best we can do for now.  However, we won't do this in CI, since the cache is ephmerial anyway.
+	if !ciutil.IsCI() && len(localDependencies) > 0 {
+		args := []string{"cache", "clean"}
+		for pack := range localDependencies {
+			args = append(args, pack)
+		}
+
+		if err = pt.runYarnCommand("yarn-cache-clean", args, cwd); err != nil {
+			return err
+		}
 	}
 
 	if pt.opts.RunBuild {
@@ -1245,13 +1251,14 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 	return errors.Wrap(encoder.Encode(metadata), "writing package.json")
 }
 
-// addDependenciesToPackageJSON takes a path to a package and set of depenencies, which are assumed to be paths
-// on the file system where other pacakges are. It adds entries for each of these packages to the "dependencies"
-// section of the package.json file in the provided path.
-func addDependenciesToPackageJSON(metadata map[string]interface{}, dependencies []string) error {
+// collectDependencyInfo takes a set of file system paths to local dependencies and returns a map of NPM package
+// names to full paths, to be included in the package.json
+func collectDependencyInfo(dependencies []string) (map[string]string, error) {
 	if len(dependencies) == 0 {
-		return nil
+		return nil, nil
 	}
+
+	ret := make(map[string]string, len(dependencies))
 
 	for _, dep := range dependencies {
 		var err error
@@ -1261,28 +1268,19 @@ func addDependenciesToPackageJSON(metadata map[string]interface{}, dependencies 
 		if !path.IsAbs(dep) {
 			dep, err = filepath.Abs(dep)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		depPackageJSON, err := readPackageJSON(dep)
 		if err != nil {
-			return errors.Wrap(err, "reading package.json")
+			return nil, errors.Wrap(err, "reading package.json")
 		}
 
-		if _, has := metadata["dependencies"]; !has {
-			metadata["dependencies"] = make(map[string]interface{})
-		}
-
-		deps, ok := metadata["dependencies"].(map[string]interface{})
-		if !ok {
-			return errors.New("dependencies section is not an object")
-		}
-
-		deps[depPackageJSON["name"].(string)] = fmt.Sprintf("file:%s", dep)
+		ret[depPackageJSON["name"].(string)] = fmt.Sprintf("file:%s", dep)
 	}
 
-	return nil
+	return ret, nil
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
