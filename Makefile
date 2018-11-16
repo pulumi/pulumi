@@ -3,11 +3,7 @@ SUB_PROJECTS := sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
-PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v /vendor/)
 VERSION         := $(shell scripts/get-version)
-
-TESTPARALLELISM := 10
 
 # Our travis workers are a little show and sometime the fast tests take a little longer
 ifeq ($(TRAVIS),true)
@@ -32,10 +28,10 @@ lint::
 	golangci-lint run
 
 test_fast::
-	go test -timeout $(TEST_FAST_TIMEOUT) -count=1 -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -timeout $(TEST_FAST_TIMEOUT) -count=1 ./cmd/... ./pkg/...
 
 test_all::
-	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -v -count=1 -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
+	go list ./examples/... ./tests/... | PATH=$(PULUMI_ROOT)/bin:$(PATH) xargs -L1 go test -v -count=1 -timeout 2h
 
 .PHONY: publish_tgz
 publish_tgz:
