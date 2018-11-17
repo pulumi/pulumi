@@ -215,13 +215,12 @@ func TestStackOutputsJSON(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
-	stdout, stderr := e.RunCommand("pulumi", "stack", "output", "--json")
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
 	assert.Equal(t, `{
   "foo": 42,
   "xyz": "ABC"
 }
 `, stdout)
-	assert.Equal(t, "", stderr)
 }
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
