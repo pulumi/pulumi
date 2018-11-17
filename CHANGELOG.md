@@ -1,5 +1,9 @@
 
-## 0.16.5 (unreleased)
+## 0.16.6 (Unreleased)
+
+## 0.16.5 (Released Novemeber 16th, 2018)
+
+- Fix an issue where `pulumi plugin install` would fail on Windows with an access deined message.
 
 ## 0.16.4 (Released Novemeber 12th, 2018)
 
