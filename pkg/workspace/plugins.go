@@ -138,6 +138,12 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		return err
 	}
 
+	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure the path we're going
+	// to create the temporary folder in actually exists.
+	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
+		return errors.Wrap(err, "creating plugin root")
+	}
+
 	tempDir, err := ioutil.TempDir(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
 	if err != nil {
 		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
