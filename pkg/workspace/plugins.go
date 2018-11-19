@@ -36,6 +36,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
+const (
+	windowsGOOS = "windows"
+)
+
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
@@ -70,7 +74,7 @@ func (info PluginInfo) FilePrefix() string {
 
 // FileSuffix returns the suffix for the plugin (if any).
 func (info PluginInfo) FileSuffix() string {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsGOOS {
 		return ".exe"
 	}
 	return ""
@@ -330,6 +334,33 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return "", path, nil
 	}
 
+	// At some point in the future, language plugins will be located in the plugin cache, just like regular plugins
+	// (see pulumi/pulumi#956 for some of the reasons why this isn't the case today). For now, they ship next to the
+	// `pulumi` binary. While we encourage this folder to be on the $PATH (and so the check above would have found
+	// the language plugin) it's possible someone is running `pulumi` with an explicit path on the command line or
+	// has done symlink magic such that `pulumi` is on the path, but the language plugins are not. So, if possible,
+	// look next to the instance of `pulumi` that is running to find this language plugin.
+	if kind == LanguagePlugin {
+		exePath, exeErr := os.Executable()
+		if exeErr == nil {
+			fullPath, fullErr := filepath.EvalSymlinks(exePath)
+			if fullErr == nil {
+				for _, ext := range getCandidateExtensions() {
+					candidate := filepath.Join(filepath.Dir(fullPath), filename+ext)
+					// Let's see if the file is executable. On Windows, os.Stat() returns a mode of "-rw-rw-rw" so on
+					// on windows we just trust the fact that the .exe can actually be launched.
+					if stat, err := os.Stat(candidate); err == nil &&
+						(stat.Mode()&0100 != 0 || runtime.GOOS == windowsGOOS) {
+						logging.V(6).Infof("GetPluginPath(%s, %s, %v): found next to current executable %s",
+							kind, name, version, candidate)
+
+						return "", candidate, nil
+					}
+				}
+			}
+		}
+	}
+
 	// Otherwise, check the plugin cache.
 	plugins, err := GetPlugins()
 	if err != nil {
@@ -376,6 +407,16 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	}
 
 	return "", "", nil
+}
+
+// getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
+// probing for an executable file.
+func getCandidateExtensions() []string {
+	if runtime.GOOS == windowsGOOS {
+		return []string{".exe", ".cmd"}
+	}
+
+	return []string{""}
 }
 
 // pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].
