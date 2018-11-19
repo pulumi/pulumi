@@ -525,14 +525,14 @@ func runUpOrPrintNextSteps(
 		}
 	} else {
 		// If we're not running up, print out the steps necessary to get the environment to state where we *can* run up.
-		printNextSteps(opts, originalCwd, cwd, isGo, isPython)
+		printNextSteps(opts, originalCwd, cwd, isPython)
 	}
 
 	return nil
 }
 
 // printNextSteps prints out a series of commands that the user needs to run before their stack is able to be updated.
-func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isGo, isPython bool) {
+func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPython bool) {
 	var commands []string
 
 	// If the target working directory is not the same as our current WD, tell the user to
@@ -581,7 +581,7 @@ func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isGo, i
 		return
 	}
 
-	// One or more addditional commands needs to be run.
+	// One or more additional commands needs to be run.
 	fmt.Println("To deploy it, run the following commands:")
 	for i, cmd := range commands {
 		cmdColors := colors.BrightGreen + colors.Bold + cmd + colors.Reset
