@@ -176,7 +176,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	go runtrace(plug.Stdout, false, stdoutDone)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(":"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+	conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
 		rpcutil.OpenTracingClientInterceptor(),
 	))
 	if err != nil {
