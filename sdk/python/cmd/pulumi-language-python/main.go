@@ -161,10 +161,19 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	var errResult string
 	pythonCmd := os.Getenv("PULUMI_PYTHON_CMD")
 	if pythonCmd == "" {
-		pythonCmd = "python"
+		// Look for "python3" by default. "python" usually refers to Python 2.7 on most distros.
+		pythonCmd = "python3"
 	}
 
-	cmd := exec.Command(pythonCmd, args...)
+	// Look for the Python we intend to launch and emit an error if we can't find it. This is intended
+	// to catch people that don't have Python 3 installed.
+	pythonPath, err := exec.LookPath(pythonCmd)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"Failed to locate '%s' on your PATH. Have you installed Python 3.6 or greater?", pythonCmd)
+	}
+
+	cmd := exec.Command(pythonPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if config != "" {
