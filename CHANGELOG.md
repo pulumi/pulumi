@@ -1,9 +1,15 @@
 
-## 0.16.5 (unreleased)
+## 0.16.6 (Unreleased)
 
 ### Improvements
 
 - Fix an issue where running two copies of `pulumi plugin install` in parallel for the same plugin version could cause one to fail with an error about renaming a directory.
+
+## 0.16.5 (Released Novemeber 16th, 2018)
+
+### Improvements
+
+- Fix an issue where `pulumi plugin install` would fail on Windows with an access deined message.
 
 ## 0.16.4 (Released Novemeber 12th, 2018)
 
