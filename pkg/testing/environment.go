@@ -45,10 +45,24 @@ type Environment struct {
 	CWD string
 }
 
+// WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
+// to work around some test issues we see in Travis.
+func WriteYarnRCForTest(root string) error {
+	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
+	// may run concurrently and yarn may fail if invoked concurrently
+	// https://github.com/yarnpkg/yarn/issues/683
+	// Also add --network-concurrency 1 since we've been seeing
+	// https://github.com/yarnpkg/yarn/issues/4563 as well
+	return ioutil.WriteFile(
+		filepath.Join(root, ".yarnrc"),
+		[]byte("--mutex network\n--network-concurrency 1\n"), 0644)
+}
+
 // NewEnvironment returns a new Environment object, located in a temp directory.
 func NewEnvironment(t *testing.T) *Environment {
 	root, err := ioutil.TempDir("", "test-env")
 	assert.NoError(t, err, "creating temp directory")
+	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{
