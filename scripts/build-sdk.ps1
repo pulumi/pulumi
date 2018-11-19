@@ -38,7 +38,7 @@ function Download-Release ($repoName, $repoCommit, [ValidateSet("zip", "tgz")]$e
 if (!$VersionTag) { $VersionTag=Get-Date -UFormat '%Y%m%d_%H%M%S' }
 if (!$PulumiRef) { $PulumiRef="master" }
 
-$SdkFileName="pulumi-$VersionTag-windows-x64.zip"
+$SdkFileName="pulumi-$($VersionTag -replace '\+.', '')-windows-x64.zip"
 
 $PulumiFolder=(Join-Path (New-TemporaryDirectory) "Pulumi")
 
