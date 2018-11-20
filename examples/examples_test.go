@@ -5,9 +5,13 @@ package examples
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 	"testing"
+
+	"github.com/blang/semver"
+	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 
@@ -78,7 +82,12 @@ func TestExamples(t *testing.T) {
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns-2"),
 			Dependencies: []string{"@pulumi/pulumi"},
 		},
-		{
+	}
+
+	// The compat test only works on Node 6.10.X because its uses the old 0.10.0 pulumi package, which only supported
+	// a single node version, since it had the native runtime component.
+	if nodeVer, err := getNodeVersion(); err != nil && nodeVer.Major == 6 && nodeVer.Minor == 10 {
+		examples = append(examples, integration.ProgramTestOptions{
 			Dir: path.Join(cwd, "compat/v0.10.0/minimal"),
 			Config: map[string]string{
 				"name": "Pulumi",
@@ -87,7 +96,9 @@ func TestExamples(t *testing.T) {
 				"secret": "this is my secret message",
 			},
 			RunBuild: true,
-		},
+		})
+	} else {
+		t.Log("Skipping 0.10.0 compat tests, because current node version is not 6.10.X")
 	}
 
 	for _, example := range examples {
@@ -96,4 +107,16 @@ func TestExamples(t *testing.T) {
 			integration.ProgramTest(t, &ex)
 		})
 	}
+}
+
+func getNodeVersion() (semver.Version, error) {
+	var buf bytes.Buffer
+
+	nodeVersionCmd := exec.Command("node", "--version")
+	nodeVersionCmd.Stdout = &buf
+	if err := nodeVersionCmd.Run(); err != nil {
+		return semver.Version{}, errors.Wrap(err, "running node --version")
+	}
+
+	return semver.ParseTolerant(buf.String())
 }
