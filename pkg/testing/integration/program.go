@@ -143,6 +143,8 @@ type ProgramTestOptions struct {
 	SkipRefresh bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
+	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
+	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
@@ -808,6 +810,9 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	}
 	if expectNopUpdate {
 		update = append(update, "--expect-no-changes")
+	}
+	if pt.opts.PreviewCommandlineFlags != nil {
+		preview = append(preview, pt.opts.PreviewCommandlineFlags...)
 	}
 	if pt.opts.UpdateCommandlineFlags != nil {
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
