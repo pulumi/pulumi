@@ -275,7 +275,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 			// Determine whether the change resulted in a diff.
 			d, diffErr := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
 			if diffErr != nil {
-				return nil, result.FromError(diffErr)
+				// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
+				// report the message contained in the error.
+				if d.Changes == plugin.DiffUnavailable {
+					d.Changes = plugin.DiffSome
+					sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, diffErr.Error()))
+				} else {
+					return nil, result.FromError(diffErr)
+				}
 			}
 			diff = d
 		}
@@ -585,7 +592,7 @@ func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOu
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
 	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return diff, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
 		diff.Changes = plugin.DiffSome

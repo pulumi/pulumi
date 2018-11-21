@@ -93,6 +93,9 @@ const (
 	DiffNone DiffChanges = 1
 	// DiffSome indicates the provider performed a diff and concluded that an update or replacement is needed.
 	DiffSome DiffChanges = 2
+	// DiffUnavailable indicates that the provider is unable to diff a resource, usually because the provider has
+	// some unknown configuration values.
+	DiffUnavailable DiffChanges = 3
 )
 
 // DiffResult indicates whether an operation should replace or update an existing resource.

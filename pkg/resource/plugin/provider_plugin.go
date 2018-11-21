@@ -257,10 +257,14 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, err
 	}
 
-	// If this function is called, we must have complete configuration for the underlying provider. Per DiffConfig,
-	// any unknown input will cause the provider to be replaced, which will cause all of its resources to be replaced,
-	// and we do not call `Diff` for resources that are being replaced due to a change to their provider reference.
-	contract.Assert(p.cfgknown)
+	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
+	// property was sourced from another resource's output properties--don't call into the underlying provider.
+	// Instead, indicate that the diff is unavailable and write a message
+	if !p.cfgknown {
+		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
+		err := errors.New("cannot diff: this resource's provider has unknown configuration values")
+		return DiffResult{Changes: DiffUnavailable}, err
+	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
