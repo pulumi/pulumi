@@ -143,7 +143,7 @@ type EngineEvent struct {
 	// the sequence number is to ensure events can be placed into a total ordering.
 	//
 	// - No two events can have the same sequence number
-	// - Events with a lower sequence number must have been emitted before those with a higer
+	// - Events with a lower sequence number must have been emitted before those with a higher
 	//   sequence number.
 	Sequence int `json:"sequence"`
 
