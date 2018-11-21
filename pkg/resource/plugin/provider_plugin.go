@@ -262,8 +262,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	// Instead, indicate that the diff is unavailable and write a message
 	if !p.cfgknown {
 		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
-		err := errors.New("cannot diff: this resource's provider has unknown configuration values")
-		return DiffResult{Changes: DiffUnavailable}, err
+		const message = "The provider for this resource has inputs that are not known during preview." +
+			"This preview may not correctly represent the changes that will be applied during an update."
+		return DiffResult{}, DiffUnavailable(message)
 	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
