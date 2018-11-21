@@ -262,7 +262,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	// Instead, indicate that the diff is unavailable and write a message
 	if !p.cfgknown {
 		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
-		const message = "The provider for this resource has inputs that are not known during preview." +
+		const message = "The provider for this resource has inputs that are not known during preview.\n" +
 			"This preview may not correctly represent the changes that will be applied during an update."
 		return DiffResult{}, DiffUnavailable(message)
 	}
