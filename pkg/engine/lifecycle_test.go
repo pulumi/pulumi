@@ -911,6 +911,42 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	p.Run(t, snap)
 }
 
+func TestSingleResourceDiffUnavailable(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+
+					return plugin.DiffResult{Changes: plugin.DiffUnavailable}, errors.New("diff unavailable")
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", inputs)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// Now change the inputs to our resource and run a preview.
+	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	_, err = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient, nil)
+	assert.NoError(t, err)
+}
+
 func TestDestroyWithPendingDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
