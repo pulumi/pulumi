@@ -423,7 +423,7 @@ func getCandidateExtensions() []string {
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
 		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
-		"v(?P<Version>[0-9]+.[0-9]+.[0-9]+(-[a-zA-Z0-9-_.]+)?)$") // VERSION
+		"v(?P<Version>.*)$") // VERSION
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
 func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
