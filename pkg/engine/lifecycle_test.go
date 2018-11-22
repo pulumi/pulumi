@@ -911,6 +911,57 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	p.Run(t, snap)
 }
 
+func TestSingleResourceDiffUnavailable(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+
+					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", inputs)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// Now change the inputs to our resource and run a preview.
+	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	_, err = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ *Journal, events []Event, err error) error {
+			found := false
+			for _, e := range events {
+				if e.Type == DiagEvent {
+					p := e.Payload.(DiagEventPayload)
+					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "diff unavailable" {
+						found = true
+						break
+					}
+				}
+			}
+			assert.True(t, found)
+			return err
+		})
+	assert.NoError(t, err)
+}
+
 func TestDestroyWithPendingDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {

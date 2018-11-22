@@ -107,3 +107,18 @@ type DiffResult struct {
 func (r DiffResult) Replace() bool {
 	return len(r.ReplaceKeys) > 0
 }
+
+// DiffUnavailableError may be returned by a provider if the provider is unable to diff a resource.
+type DiffUnavailableError struct {
+	reason string
+}
+
+// DiffUnavailable creates a new DiffUnavailableError with the given message.
+func DiffUnavailable(reason string) DiffUnavailableError {
+	return DiffUnavailableError{reason: reason}
+}
+
+// Error returns the error message for this DiffUnavailableError.
+func (e DiffUnavailableError) Error() string {
+	return e.reason
+}
