@@ -147,6 +147,9 @@ type EngineEvent struct {
 	//   sequence number.
 	Sequence int `json:"sequence"`
 
+	// Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+	Timestamp int `json:"timestamp"`
+
 	CancelEvent      *CancelEvent       `json:"cancelEvent,omitempty"`
 	StdoutEvent      *StdoutEngineEvent `json:"stdoutEvent,omitempty"`
 	DiagnosticEvent  *DiagnosticEvent   `json:"diagnosticEvent,omitempty"`

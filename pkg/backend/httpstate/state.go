@@ -160,6 +160,7 @@ func (u *cloudUpdate) recordEvent(
 			return errors.Wrap(convErr, "converting engine event")
 		}
 		apiEvent.Sequence = sequenceNumber
+		apiEvent.Timestamp = int(time.Now().Unix())
 		if err = u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token); err != nil {
 			return err
 		}
@@ -372,6 +373,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.S
 
 // convertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
+// EngineEvent.{ Sequence, Timestamp } are expected to be set by the caller.
 func convertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 
