@@ -101,7 +101,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
             resop.resolveID!(resolvedID, resolvedID !== undefined);
             await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
         });
-    }));
+    }), label);
 }
 
 /**
@@ -171,7 +171,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             // Now resolve the output properties.
             await resolveOutputs(res, t, name, props, resp.getObject(), resop.resolvers);
         });
-    }));
+    }), label);
 }
 
 /**
@@ -316,6 +316,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         req.setUrn(urn);
         req.setOutputs(outputsObj);
 
+        const label = `monitor.registerResourceOutputs(${urn}, ...)`;
         await debuggablePromise(new Promise((resolve, reject) =>
             monitor.registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
                 log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
@@ -334,7 +335,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                 else {
                     resolve();
                 }
-            })), opLabel);
+            })), label);
     }, false);
 }
 
@@ -359,11 +360,13 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is current`);
         }
         return callback();
-    }));
+    }), label + "-initial");
 
     // Ensure the process won't exit until this RPC call finishes and resolve it when appropriate.
     const done: () => void = rpcKeepAlive();
-    const finalOp: Promise<void> = debuggablePromise(resourceOp.then(() => { done(); }, () => { done(); }));
+    const finalOp: Promise<void> = debuggablePromise(
+        resourceOp.then(() => { done(); }, () => { done(); }),
+        label + "-final");
 
     // Set up another promise that propagates the error, if any, so that it triggers unhandled rejection logic.
     resourceOp.catch((err) => Promise.reject(err));
