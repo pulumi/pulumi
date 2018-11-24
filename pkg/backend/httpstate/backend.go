@@ -767,6 +767,7 @@ func (b *cloudBackend) runEngineAction(
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
+		BackendClient:   backend.NewBackendClient(b),
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()

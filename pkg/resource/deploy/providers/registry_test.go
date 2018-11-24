@@ -230,11 +230,11 @@ func newProviderState(pkg, name, id string, delete bool, inputs resource.Propert
 }
 
 func TestNewRegistryNoOldState(t *testing.T) {
-	r, err := NewRegistry(&testPluginHost{}, nil, false)
+	r, err := NewRegistry(&testPluginHost{}, nil, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
-	r, err = NewRegistry(&testPluginHost{}, nil, true)
+	r, err = NewRegistry(&testPluginHost{}, nil, true, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 }
@@ -263,7 +263,7 @@ func TestNewRegistryOldState(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
@@ -297,7 +297,7 @@ func TestNewRegistryOldStateNoProviders(t *testing.T) {
 	}
 	host := newPluginHost(t, []*providerLoader{})
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.Error(t, err)
 	assert.Nil(t, r)
 }
@@ -311,7 +311,7 @@ func TestNewRegistryOldStateWrongPackage(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.Error(t, err)
 	assert.Nil(t, r)
 }
@@ -327,7 +327,7 @@ func TestNewRegistryOldStateWrongVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.Error(t, err)
 	assert.Nil(t, r)
 }
@@ -341,7 +341,7 @@ func TestNewRegistryOldStateNoID(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.Error(t, err)
 	assert.Nil(t, r)
 }
@@ -355,7 +355,7 @@ func TestNewRegistryOldStateUnknownID(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.Error(t, err)
 	assert.Nil(t, r)
 }
@@ -370,7 +370,7 @@ func TestNewRegistryOldStateDuplicates(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.Error(t, err)
 	assert.Nil(t, r)
 }
@@ -388,7 +388,7 @@ func TestCRUD(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false)
+	r, err := NewRegistry(host, olds, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
@@ -527,7 +527,7 @@ func TestCRUDPreview(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, true)
+	r, err := NewRegistry(host, olds, true, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
@@ -632,7 +632,7 @@ func TestCRUDPreview(t *testing.T) {
 func TestCRUDNoProviders(t *testing.T) {
 	host := newPluginHost(t, []*providerLoader{})
 
-	r, err := NewRegistry(host, []*resource.State{}, false)
+	r, err := NewRegistry(host, []*resource.State{}, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
@@ -653,7 +653,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false)
+	r, err := NewRegistry(host, []*resource.State{}, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
@@ -674,7 +674,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false)
+	r, err := NewRegistry(host, []*resource.State{}, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
@@ -695,7 +695,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false)
+	r, err := NewRegistry(host, []*resource.State{}, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 
@@ -717,7 +717,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false)
+	r, err := NewRegistry(host, []*resource.State{}, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 

@@ -37,6 +37,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
@@ -161,16 +162,33 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	var errResult string
 	pythonCmd := os.Getenv("PULUMI_PYTHON_CMD")
 	if pythonCmd == "" {
-		pythonCmd = "python"
+		// Look for "python3" by default. "python" usually refers to Python 2.7 on most distros.
+		pythonCmd = "python3"
 	}
 
-	cmd := exec.Command(pythonCmd, args...)
+	// Look for the Python we intend to launch and emit an error if we can't find it. This is intended
+	// to catch people that don't have Python 3 installed.
+	pythonPath, err := exec.LookPath(pythonCmd)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"Failed to locate '%s' on your PATH. Have you installed Python 3.6 or greater?", pythonCmd)
+	}
+
+	cmd := exec.Command(pythonPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if config != "" {
 		cmd.Env = append(os.Environ(), pulumiConfigVar+"="+config)
 	}
 	if err := cmd.Run(); err != nil {
+		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we
+		// need to explicitly flush our output streams so that, when we exit, the engine picks up the child Python
+		// process's stdout and stderr writes.
+		//
+		// This is especially crucial for Python because it is possible for the child Python process to crash very fast
+		// if Pulumi is misconfigured, so we must be sure to present a high-quality error message to the user.
+		contract.IgnoreError(os.Stdout.Sync())
+		contract.IgnoreError(os.Stderr.Sync())
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.

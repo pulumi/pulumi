@@ -46,6 +46,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
@@ -308,6 +309,15 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	cmd.Stderr = os.Stderr
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
+		// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
+		// process writes using console.out and console.err synchronously, but it does not process writes using
+		// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
+		// writes on those file descriptors at the time that the Node process exits.
+		//
+		// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
+		// error messages in the engine.
+		contract.IgnoreError(os.Stdout.Sync())
+		contract.IgnoreError(os.Stderr.Sync())
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.

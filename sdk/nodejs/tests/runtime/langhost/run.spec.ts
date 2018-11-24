@@ -277,10 +277,10 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
-        // A program that allocates ten simple resources that use dependsOn to depend on one another.
+        // A program that allocates ten simple resources that use dependsOn to depend on one another, 10 different ways.
         "ten_depends_on_resources": {
             program: path.join(base, "008.ten_depends_on_resources"),
-            expectResourceCount: 10,
+            expectResourceCount: 100,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {

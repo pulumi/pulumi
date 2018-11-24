@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
+	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -142,6 +143,8 @@ type ProgramTestOptions struct {
 	SkipRefresh bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
+	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
+	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
@@ -808,6 +811,9 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	if expectNopUpdate {
 		update = append(update, "--expect-no-changes")
 	}
+	if pt.opts.PreviewCommandlineFlags != nil {
+		preview = append(preview, pt.opts.PreviewCommandlineFlags...)
+	}
 	if pt.opts.UpdateCommandlineFlags != nil {
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
 	}
@@ -1114,14 +1120,7 @@ func (pt *programTester) prepareProjectDir(projectDir string) error {
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
 func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
-	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
-	// may run concurrently and yarn may fail if invoked concurrently
-	// https://github.com/yarnpkg/yarn/issues/683
-	// Also add --network-concurrency 1 since we've been seeing
-	// https://github.com/yarnpkg/yarn/issues/4563 as well
-	if err := ioutil.WriteFile(
-		filepath.Join(projinfo.Root, ".yarnrc"),
-		[]byte("--mutex network\n--network-concurrency 1\n"), 0644); err != nil {
+	if err := pulumi_testing.WriteYarnRCForTest(projinfo.Root); err != nil {
 		return err
 	}
 

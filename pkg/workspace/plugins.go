@@ -36,6 +36,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
+const (
+	windowsGOOS = "windows"
+)
+
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
@@ -70,7 +74,7 @@ func (info PluginInfo) FilePrefix() string {
 
 // FileSuffix returns the suffix for the plugin (if any).
 func (info PluginInfo) FileSuffix() string {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsGOOS {
 		return ".exe"
 	}
 	return ""
@@ -138,61 +142,78 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		return err
 	}
 
-	// We unpack the tarball into a temporary directory in the plugin cache and after that has completed rename it
-	// to prevent posioning the cache if the install is CTRL-C'd,
-	tempDir := finalDir + ".tmp"
-
-	// If the temporary folder already exists, try to remove it. Note that os.RemoveAll returns an nil error
-	// when the directory does not already exist.
-	if err := os.RemoveAll(tempDir); err != nil {
-		return errors.Wrapf(err, "deleting temporary directory %s", tempDir)
+	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure the path we're going
+	// to create the temporary folder in actually exists.
+	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
+		return errors.Wrap(err, "creating plugin root")
 	}
 
-	if err = os.MkdirAll(tempDir, 0700); err != nil {
+	tempDir, err := ioutil.TempDir(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
+	if err != nil {
 		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
 	}
 
-	// Unzip and untar the file as we go.
-	defer contract.IgnoreClose(tarball)
-	gzr, err := gzip.NewReader(tarball)
-	if err != nil {
-		return errors.Wrapf(err, "unzipping")
-	}
-	r := tar.NewReader(gzr)
-	for {
-		header, err := r.Next()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return errors.Wrapf(err, "untarring")
+	// If we early out of this function, try to remove the temp folder we created.
+	defer func() {
+		contract.IgnoreError(os.RemoveAll(tempDir))
+	}()
+
+	// Unzip and untar the file as we go. We do this inside a function so that the `defer`'s to close files happen
+	// before we later try to rename the directory. Otherwise, the open file handles cause issues on Windows.
+	err = (func() error {
+		defer contract.IgnoreClose(tarball)
+		gzr, err := gzip.NewReader(tarball)
+		if err != nil {
+			return errors.Wrapf(err, "unzipping")
 		}
+		r := tar.NewReader(gzr)
+		for {
+			header, err := r.Next()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return errors.Wrapf(err, "untarring")
+			}
 
-		path := filepath.Join(tempDir, header.Name)
+			path := filepath.Join(tempDir, header.Name)
 
-		switch header.Typeflag {
-		case tar.TypeDir:
-			// Create any directories as needed.
-			if _, err := os.Stat(path); err != nil {
-				if err = os.MkdirAll(path, 0700); err != nil {
-					return errors.Wrapf(err, "untarring dir %s", path)
+			switch header.Typeflag {
+			case tar.TypeDir:
+				// Create any directories as needed.
+				if _, err := os.Stat(path); err != nil {
+					if err = os.MkdirAll(path, 0700); err != nil {
+						return errors.Wrapf(err, "untarring dir %s", path)
+					}
 				}
+			case tar.TypeReg:
+				// Expand files into the target directory.
+				dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+				if err != nil {
+					return errors.Wrapf(err, "opening file %s for untar", path)
+				}
+				defer contract.IgnoreClose(dst)
+				if _, err = io.Copy(dst, r); err != nil {
+					return errors.Wrapf(err, "untarring file %s", path)
+				}
+			default:
+				return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 			}
-		case tar.TypeReg:
-			// Expand files into the target directory.
-			dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return errors.Wrapf(err, "opening file %s for untar", path)
-			}
-			defer contract.IgnoreClose(dst)
-			if _, err = io.Copy(dst, r); err != nil {
-				return errors.Wrapf(err, "untarring file %s", path)
-			}
-		default:
-			return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 		}
+
+		return nil
+	})()
+	if err != nil {
+		return err
 	}
 
-	return os.Rename(tempDir, finalDir)
+	// If two calls to `plugin install` for the same plugin are racing, the second one will be unable to rename
+	// the directory. That's OK, just ignore the error. The temp directory created as part of the install will be
+	// cleaned up when we exit by the defer above.
+	if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
+		return errors.Wrap(err, "moving plugin")
+	}
+
+	return nil
 }
 
 func (info PluginInfo) String() string {
@@ -313,6 +334,33 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return "", path, nil
 	}
 
+	// At some point in the future, language plugins will be located in the plugin cache, just like regular plugins
+	// (see pulumi/pulumi#956 for some of the reasons why this isn't the case today). For now, they ship next to the
+	// `pulumi` binary. While we encourage this folder to be on the $PATH (and so the check above would have found
+	// the language plugin) it's possible someone is running `pulumi` with an explicit path on the command line or
+	// has done symlink magic such that `pulumi` is on the path, but the language plugins are not. So, if possible,
+	// look next to the instance of `pulumi` that is running to find this language plugin.
+	if kind == LanguagePlugin {
+		exePath, exeErr := os.Executable()
+		if exeErr == nil {
+			fullPath, fullErr := filepath.EvalSymlinks(exePath)
+			if fullErr == nil {
+				for _, ext := range getCandidateExtensions() {
+					candidate := filepath.Join(filepath.Dir(fullPath), filename+ext)
+					// Let's see if the file is executable. On Windows, os.Stat() returns a mode of "-rw-rw-rw" so on
+					// on windows we just trust the fact that the .exe can actually be launched.
+					if stat, err := os.Stat(candidate); err == nil &&
+						(stat.Mode()&0100 != 0 || runtime.GOOS == windowsGOOS) {
+						logging.V(6).Infof("GetPluginPath(%s, %s, %v): found next to current executable %s",
+							kind, name, version, candidate)
+
+						return "", candidate, nil
+					}
+				}
+			}
+		}
+	}
+
 	// Otherwise, check the plugin cache.
 	plugins, err := GetPlugins()
 	if err != nil {
@@ -361,11 +409,21 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	return "", "", nil
 }
 
+// getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
+// probing for an executable file.
+func getCandidateExtensions() []string {
+	if runtime.GOOS == windowsGOOS {
+		return []string{".exe", ".cmd"}
+	}
+
+	return []string{""}
+}
+
 // pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
 		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
-		"v(?P<Version>[0-9]+.[0-9]+.[0-9]+(-[a-zA-Z0-9-_.]+)?)$") // VERSION
+		"v(?P<Version>.*)$") // VERSION
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
 func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {

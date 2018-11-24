@@ -27,6 +27,8 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         "${ROOT}/sdk/python/env/src/dist"/*.whl
 fi
 
-"${ROOT}/scripts/build-sdk.sh" $("${ROOT}/scripts/get-version") $(git rev-parse HEAD)
+NPM_VERSION=$("${ROOT}/scripts/get-version")
+
+"${ROOT}/scripts/build-sdk.sh" $(echo ${NPM_VERSION} | sed -e 's/\+.*//g') $(git rev-parse HEAD)
 
 exit 0
