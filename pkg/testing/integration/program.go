@@ -41,7 +41,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/ciutil"
@@ -365,6 +368,44 @@ var listDirs bool
 func init() {
 	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
 	flag.BoolVar(&listDirs, "list-dirs", false, "list available integration tests without running them")
+}
+
+// GetLogs retrieves the logs for a given stack in a particular region making the query provided.
+//
+// [provider] should be one of "aws" or "azure"
+func GetLogs(
+	t *testing.T,
+	provider, region string,
+	stackInfo RuntimeValidationStackInfo,
+	query operations.LogQuery) *[]operations.LogEntry {
+
+	var states []*resource.State
+	for _, res := range stackInfo.Deployment.Resources {
+		state, err := stack.DeserializeResource(res)
+		if !assert.NoError(t, err) {
+			return nil
+		}
+
+		states = append(states, state)
+	}
+
+	tree := operations.NewResourceTree(states)
+	if !assert.NotNil(t, tree) {
+		return nil
+	}
+
+	cfg := map[config.Key]string{
+		config.MustMakeKey(provider, "region"): region,
+	}
+	ops := tree.OperationsProvider(cfg)
+
+	// Validate logs from example
+	logs, err := ops.GetLogs(query)
+	if !assert.NoError(t, err) {
+		return nil
+	}
+
+	return logs
 }
 
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
