@@ -27,13 +27,13 @@
 
 - Fix an issue where passing a key of the form `foo:config:bar:baz` to `pulumi config set` would succeed but cause errors later when trying to interact with the stack. Setting this value is now blocked eagerly (fixes [pulumi/pulumi#2171](https://github.com/pulumi/pulumi/issues/2171))
 
-## 0.16.5 (Released Novemeber 16th, 2018)
+## 0.16.5 (Released November 16th, 2018)
 
 ### Improvements
 
 - Fix an issue where `pulumi plugin install` would fail on Windows with an access deined message.
 
-## 0.16.4 (Released Novemeber 12th, 2018)
+## 0.16.4 (Released November 12th, 2018)
 
 ### Major Changes
 
