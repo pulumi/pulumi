@@ -822,6 +822,10 @@ func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 		return err
 	}
 
+	if stack.ActiveUpdate == "" {
+		return errors.Errorf("%v has never been updated", stackRef)
+	}
+
 	// Compute the update identifier and attempt to cancel the update.
 	//
 	// NOTE: the update kind is not relevant; the same endpoint will work for updates of all kinds.
