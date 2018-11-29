@@ -290,7 +290,15 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
-	stk, err := workspace.DetectProjectStack(stackRef.Name())
+	stackConfigFile := b.stackConfigFile
+	if stackConfigFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackRef.Name())
+		if err != nil {
+			return nil, err
+		}
+		stackConfigFile = f
+	}
+	stk, err := workspace.LoadProjectStack(stackConfigFile)
 	if err != nil {
 		return nil, err
 	}

@@ -443,8 +443,8 @@ func stackInit(b backend.Backend, stackName string, setCurrent bool) (backend.St
 }
 
 // saveConfig saves the config for the stack.
-func saveConfig(stackName tokens.QName, c config.Map) error {
-	ps, err := workspace.DetectProjectStack(stackName)
+func saveConfig(stack backend.Stack, c config.Map) error {
+	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
 	}
@@ -453,7 +453,7 @@ func saveConfig(stackName tokens.QName, c config.Map) error {
 		ps.Config[k] = v
 	}
 
-	return workspace.SaveProjectStack(stackName, ps)
+	return saveProjectStack(stack, ps)
 }
 
 // installDependencies will install dependencies for the project, e.g. by running

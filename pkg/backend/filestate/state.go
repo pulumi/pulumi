@@ -86,11 +86,20 @@ func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 }
 
 func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
-	stk, err := workspace.DetectProjectStack(stackName)
+	stackConfigFile := b.stackConfigFile
+	if stackConfigFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackName)
+		if err != nil {
+			return nil, err
+		}
+		stackConfigFile = f
+	}
+
+	stk, err := workspace.LoadProjectStack(stackConfigFile)
 	if err != nil {
 		return nil, err
 	}
-	decrypter, err := defaultCrypter(stackName, stk.Config)
+	decrypter, err := defaultCrypter(stackName, stk.Config, stackConfigFile)
 	if err != nil {
 		return nil, err
 	}

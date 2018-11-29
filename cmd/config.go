@@ -67,6 +67,9 @@ func newConfigCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
 
 	cmd.AddCommand(newConfigGetCmd(&stack))
 	cmd.AddCommand(newConfigRmCmd(&stack))
@@ -117,14 +120,13 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stackName := s.Ref().Name()
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			ps, err := workspace.DetectProjectStack(stackName)
+			ps, err := loadProjectStack(s)
 			if err != nil {
 				return err
 			}
@@ -133,7 +135,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				delete(ps.Config, key)
 			}
 
-			return workspace.SaveProjectStack(stackName, ps)
+			return saveProjectStack(s, ps)
 		}),
 	}
 
@@ -156,14 +158,13 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stackName := s.Ref().Name()
 
 			c, err := backend.GetLatestConfiguration(commandContext(), s)
 			if err != nil {
 				return err
 			}
 
-			configPath, err := workspace.DetectProjectStackPath(stackName)
+			configPath, err := getProjectStackPath(s)
 			if err != nil {
 				return err
 			}
@@ -201,7 +202,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 
 			err = ps.Save(configPath)
 			if err == nil {
-				fmt.Printf("refreshed configuration for stack '%s'\n", stackName)
+				fmt.Printf("refreshed configuration for stack '%s'\n", s.Ref().Name())
 			}
 			return err
 		}),
@@ -233,7 +234,6 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stackName := s.Ref().Name()
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
@@ -286,14 +286,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			ps, err := workspace.DetectProjectStack(stackName)
+			ps, err := loadProjectStack(s)
 			if err != nil {
 				return err
 			}
 
 			ps.Config[key] = v
 
-			return workspace.SaveProjectStack(stackName, ps)
+			return saveProjectStack(s, ps)
 		}),
 	}
 
@@ -305,6 +305,29 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 		"Encrypt the value instead of storing it in plaintext")
 
 	return setCmd
+}
+
+var stackConfigFile string
+
+func getProjectStackPath(stack backend.Stack) (string, error) {
+	if stackConfigFile == "" {
+		return workspace.DetectProjectStackPath(stack.Ref().Name())
+	}
+	return stackConfigFile, nil
+}
+
+func loadProjectStack(stack backend.Stack) (*workspace.ProjectStack, error) {
+	if stackConfigFile == "" {
+		return workspace.DetectProjectStack(stack.Ref().Name())
+	}
+	return workspace.LoadProjectStack(stackConfigFile)
+}
+
+func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
+	if stackConfigFile == "" {
+		return workspace.SaveProjectStack(stack.Ref().Name(), ps)
+	}
+	return ps.Save(stackConfigFile)
 }
 
 func parseConfigKey(key string) (config.Key, error) {
@@ -340,7 +363,7 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	ps, err := workspace.DetectProjectStack(stack.Ref().Name())
+	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
 	}
@@ -391,7 +414,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 }
 
 func getConfig(stack backend.Stack, key config.Key) error {
-	ps, err := workspace.DetectProjectStack(stack.Ref().Name())
+	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
 	}
