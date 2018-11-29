@@ -30,7 +30,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -184,50 +183,96 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 
 	// Now wait for the gRPC connection to the plugin to become ready.
-	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
-	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
-	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
-	for {
-		s := conn.GetState()
-		if s == connectivity.Ready {
-			// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
-			// method invocation to the server.  Until it responds successfully, we can't safely proceed.
-		outer:
-			for {
-				err = grpc.Invoke(timeout, "", nil, nil, conn)
-				if err == nil {
-					break // successful connect
-				} else {
-					// We have an error; see if it's a known status and, if so, react appropriately.
-					status, ok := status.FromError(err)
-					if ok {
-						switch status.Code() {
-						case codes.Unavailable:
-							// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
-							time.Sleep(time.Millisecond * 10)
-							continue // keep retrying
-						case codes.Unimplemented, codes.ResourceExhausted:
-							// Since we sent "" as the method above, this is the expected response.  Ready to go.
-							break outer
-						}
-					}
-
-					// Unexpected error; get outta dodge.
-					return nil, errors.Wrapf(err, "%v plugin [%v] did not come alive", prefix, bin)
-				}
-			}
-			break
-		}
-		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
-		if !conn.WaitForStateChange(timeout, s) {
-			return nil, errors.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
-		}
+	if err = waitUntilReady(prefix, bin, conn); err != nil {
+		return nil, err
 	}
 
 	// Done; store the connection and return the plugin info.
 	plug.Conn = conn
 	return plug, nil
+}
+
+// waitUntilReady waits for the gRPC connection to the plugin to become ready.
+//
+// Historically, we have had issues with gRPC's WaitForReady behavior. It is not clear in 2018 that these issues are
+// still present and, if so, the nature of those issues.
+func waitUntilReady(prefix, bin string, conn *grpc.ClientConn) error {
+	logging.V(9).Infof("Waiting for gRPC client %q to become active", prefix)
+
+	// The gRPC client can be in one of five readiness states:
+	//   1. READY, indicating that the server is ready to serve RPCs
+	//   2. CONNECTING, the channel is still under construction (e.g. the TCP/TLS handshake is still in progress) and we
+	//      have not yet successfully connected to the server
+	//   3. TRANSIENT_FAILURE, the connection failed to establish and gRPC is retrying it
+	//   4. IDLE, the connection failed to establish and gRPC is NOT retrying it.
+	//   5. SHUTDOWN, the connection is shutting down.
+	//
+	// We should only return successfully from this method once the client is known to be in the READY state, in which
+	// case it is ready to receive new RPCs.
+	//
+	// Since we'll be doing our own retrying, set up a 10 second timeout so we don't retry forever.
+	ctx, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	for attempt := 0; ; attempt++ {
+		logging.V(9).Infof("Querying gRPC client %q, attempt %d", prefix, attempt)
+
+		// Ping the server by sending it an RPC, with the FailFast option set to false. This instructs gRPC to make the
+		// following state transitions:
+		//
+		//   1. If the connection is READY, do the RPC and exit the state machine loop.
+		//   2. If the connection is CONNECTING, WAIT for the connection to transition to its next state
+		//   3. If the connection is TRANSIENT_FAILURE, WAIT for the connection to transition back to CONNECTING
+		//   4. If the connection is IDLE, transition immediately to CONNECTING,
+		//   5. If the connection is SHUTDOWN, fail the RPC immediately.
+		//
+		// When the RPC that we just issued returns, the connection will either be READY or in an error state. Either
+		// way, gRPC should return to us an error because it does not recognize the method that we are attempting to
+		// invoke here.
+		err := conn.Invoke(ctx, "", nil, nil, grpc.FailFast(false))
+		if err == nil {
+			// Previously, the code regarded this to be a success. This seems suspect, though, since I would expect the
+			// gRPC server to reject the invoke we just made since "" is not a valid method.
+			//
+			// EIther way, if gRPC thinks things are cool, then we're cool. Just log something so that we can understand
+			// what happened if something goes off the rails later.
+			logging.V(9).Infof("gRPC client %q returned suspect non-error", prefix)
+			return nil
+		}
+
+		// gRPC generally responds with errors that can be turned into *Statuses via status.FromError. If this is some
+		// other error, bail immediately.
+		rpcStatus, ok := status.FromError(err)
+		if !ok {
+			return errors.Wrapf(err, "%v plugin [%v] did not come alive", prefix, bin)
+		}
+
+		// If this is a Status, we'd expect it to respond with Unimplemented or ResourceExhausted.
+		switch rpcStatus.Code() {
+		case codes.Unavailable:
+			// This is apparently the crux of the issue referenced in [pulumi/pulumi#337]. It's unclear if this still
+			// happens. If it does, we should just retry.
+			logging.V(9).Infof("gRPC client %q claimed it was Unavailable despite returning, waiting to retry", prefix)
+			time.Sleep(10 * time.Millisecond)
+			logging.V(9).Infof("gRPC client %q retrying", prefix)
+			continue
+		case codes.Unimplemented, codes.ResourceExhausted:
+			// Why codes.ResourceExhausted? According to the gRPC spec, servers should only be sending this if they
+			// don't have enough resources to service the invoke that we just performed, which doesn't sound like
+			// readiness. The old code accepted codes.ResourceExhausted as evidence of readiness.
+			//
+			// Since it's not clear if this ever happens, we'll just log it and move on.
+			if rpcStatus.Code() == codes.ResourceExhausted {
+				logging.V(9).Infof("gRPC client %q responded with ResourceExhausted, proceeding", prefix)
+			}
+
+			logging.V(9).Infof("gRPC client %q confirmed online", prefix)
+			return nil
+		default:
+			// This is extremely unlikely, but in the insane event that gRPC does respond with some other error code, we
+			// might as well roll with it.
+			logging.V(9).Infof("gRPC client %q responded with strange code %d", prefix, rpcStatus.Code())
+			return nil
+		}
+	}
 }
 
 func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
