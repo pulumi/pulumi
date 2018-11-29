@@ -823,7 +823,7 @@ func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	}
 
 	if stack.ActiveUpdate == "" {
-		return errors.Errorf("%v has never been updated", stackRef)
+		return errors.Errorf("stack %v has never been updated", stackRef)
 	}
 
 	// Compute the update identifier and attempt to cancel the update.
