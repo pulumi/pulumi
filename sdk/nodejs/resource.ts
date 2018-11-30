@@ -99,6 +99,14 @@ export abstract class Resource {
                 const provider = (<CustomResourceOptions>opts).provider;
                 if (provider === undefined) {
                     (<CustomResourceOptions>opts).provider = opts.parent.getProvider(t);
+                } else {
+                    // If a provider was specified, add it to the providers map under this type's package so that
+                    // any children of this resource inherit its provider.
+                    const typeComponents = t.split(":");
+                    if (typeComponents.length === 3) {
+                        const pkg = typeComponents[0];
+                        this.__providers[pkg] = provider;
+                    }
                 }
             }
         }
