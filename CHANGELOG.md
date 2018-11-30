@@ -1,3 +1,9 @@
+## 0.16.7 (not yet released)
+
+### Improvements
+
+- Configuration and stack commands now take a `--config-file` options. This option allows the user to override the file used to fetch and store config information for a stack during the execution of a command.
+
 
 ## 0.16.6 (Released November 28th, 2018)
 

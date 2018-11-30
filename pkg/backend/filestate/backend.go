@@ -54,8 +54,9 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d   diag.Sink
-	url string
+	d               diag.Sink
+	url             string
+	stackConfigFile string
 }
 
 type localBackendReference struct {
@@ -74,18 +75,19 @@ func IsLocalBackendURL(url string) bool {
 	return strings.HasPrefix(url, localBackendURLPrefix)
 }
 
-func New(d diag.Sink, url string) (Backend, error) {
+func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
 	if !IsLocalBackendURL(url) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
 	}
 	return &localBackend{
-		d:   d,
-		url: url,
+		d:               d,
+		url:             url,
+		stackConfigFile: stackConfigFile,
 	}, nil
 }
 
-func Login(d diag.Sink, url string) (Backend, error) {
-	be, err := New(d, url)
+func Login(d diag.Sink, url, stackConfigFile string) (Backend, error) {
+	be, err := New(d, url, stackConfigFile)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +215,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 }
 
 func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	return symmetricCrypter(stackRef.Name())
+	return symmetricCrypter(stackRef.Name(), b.stackConfigFile)
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,

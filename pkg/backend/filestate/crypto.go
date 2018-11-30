@@ -38,21 +38,29 @@ func readPassphrase(prompt string) (string, error) {
 }
 
 // defaultCrypter gets the right value encrypter/decrypter given the project configuration.
-func defaultCrypter(stackName tokens.QName, cfg config.Map) (config.Crypter, error) {
+func defaultCrypter(stackName tokens.QName, cfg config.Map, configFile string) (config.Crypter, error) {
 	// If there is no config, we can use a standard panic crypter.
 	if !cfg.HasSecureValue() {
 		return config.NewPanicCrypter(), nil
 	}
 
 	// Otherwise, we will use an encrypted one.
-	return symmetricCrypter(stackName)
+	return symmetricCrypter(stackName, configFile)
 }
 
 // symmetricCrypter gets the right value encrypter/decrypter for this project.
-func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
+func symmetricCrypter(stackName tokens.QName, configFile string) (config.Crypter, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
-	info, err := workspace.DetectProjectStack(stackName)
+	if configFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackName)
+		if err != nil {
+			return nil, err
+		}
+		configFile = f
+	}
+
+	info, err := workspace.LoadProjectStack(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +106,7 @@ func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
 
 	// Now store the result and save it.
 	info.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
-	if err = workspace.SaveProjectStack(stackName, info); err != nil {
+	if err = info.Save(configFile); err != nil {
 		return nil, err
 	}
 

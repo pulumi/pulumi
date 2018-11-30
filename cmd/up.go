@@ -74,7 +74,7 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			if err = saveConfig(s.Ref().Name(), commandLineConfig); err != nil {
+			if err = saveConfig(s, commandLineConfig); err != nil {
 				return errors.Wrap(err, "saving config")
 			}
 		}
@@ -312,6 +312,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
@@ -402,7 +405,7 @@ func handleConfig(
 
 	// Save the config.
 	if c != nil {
-		if err = saveConfig(s.Ref().Name(), c); err != nil {
+		if err = saveConfig(s, c); err != nil {
 			return errors.Wrap(err, "saving config")
 		}
 	}

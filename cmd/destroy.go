@@ -120,6 +120,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
