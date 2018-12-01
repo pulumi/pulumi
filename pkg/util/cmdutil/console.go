@@ -115,8 +115,6 @@ func PrintTable(table Table) {
 	PrintTableWithGap(table, "  ")
 }
 
-const ellipses = "..."
-
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
 // by the max length of the items in each column.  A gap can be specified between the columns.
 func PrintTableWithGap(table Table, columnGap string) {
@@ -178,13 +176,6 @@ func PrintTableWithGap(table Table, columnGap string) {
 
 func max(a, b int) int {
 	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
 		return a
 	}
 	return b
