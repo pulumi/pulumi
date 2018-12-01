@@ -128,7 +128,10 @@ func PrintTableWithGap(table Table, columnGap string) {
 	// any item in that column.
 	preferredColumnWidths := make([]int, columnCount)
 
-	allRows := []TableRow{TableRow{Columns: table.Headers}}
+	allRows := []TableRow{{
+		Columns: table.Headers,
+	}}
+
 	allRows = append(allRows, table.Rows...)
 
 	for rowIndex, row := range allRows {
