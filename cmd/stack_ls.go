@@ -142,12 +142,8 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 	table := []cmdutil.TableRow{}
 
 	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
-
-	// No cap on the stack name (or the URL if added)
-	maxColumnWidths := []int{-1, 24, 18}
 	if showURLColumn {
 		headers = append(headers, "URL")
-		maxColumnWidths = append(maxColumnWidths, -1)
 	}
 
 	table = append(table, cmdutil.TableRow{Columns: headers})
@@ -193,7 +189,7 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 		table = append(table, cmdutil.TableRow{Columns: columns})
 	}
 
-	cmdutil.PrintTableEx(table, maxColumnWidths, "  ")
+	cmdutil.PrintTable(table)
 
 	return nil
 }

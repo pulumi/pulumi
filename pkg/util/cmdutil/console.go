@@ -102,42 +102,34 @@ type TableRow struct {
 	AdditionalInfo string
 }
 
-// PrintTable prints a grid of rows and columns.  Width of columns is automatically
-// determined by the max length of the items in each column.
+// PrintTable prints a grid of rows and columns.  Width of columns is automatically determined by
+// the max length of the items in each column.  A default gap of two spaces is printed between each
+// column.
 func PrintTable(table []TableRow) {
-	if len(table) == 0 {
-		return
-	}
-
-	maxColumnWidths := make([]int, len(table[0].Columns))
-	for i := range maxColumnWidths {
-		maxColumnWidths[i] = -1
-	}
-
-	PrintTableEx(table, maxColumnWidths, "  " /*columnGap*/)
+	PrintTableWithGap(table, "  ")
 }
 
 const ellipses = "..."
 
-// PrintTableEx prints a grid of rows and columns.  Width of columns is provided.  Column values
-// longer than this width will be automatically truncated.  Use -1 to indicate no max for a
-// particular column.  A gap can be specified between the columns.
-func PrintTableEx(table []TableRow, maxColumnWidths []int, columnGap string) {
+// PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
+// by the max length of the items in each column.  A gap can be specified between the columns.
+func PrintTableWithGap(table []TableRow, columnGap string) {
 	if len(table) == 0 {
 		return
 	}
 
+	firstRow := table[0]
+
 	// Figure out the preferred column width for each column.  It will be set to the max length of
-	// any item in that column.  However, it wil lbe clamped to the value in maxColumnWidths if it
-	// is not -1.
-	preferredColumnWidths := make([]int, len(maxColumnWidths))
+	// any item in that column.
+	preferredColumnWidths := make([]int, len(firstRow.Columns))
 
 	for rowIndex, row := range table {
 		columns := row.Columns
-		if len(columns) != len(maxColumnWidths) {
+		if len(columns) != len(preferredColumnWidths) {
 			panic(fmt.Sprintf(
-				"Error printing table.  Column count of row %v didn't match maxColumnWidths. %v != %v",
-				rowIndex, len(columns), len(maxColumnWidths)))
+				"Error printing table.  Column count of row %v didn't match first row count. %v != %v",
+				rowIndex, len(columns), len(preferredColumnWidths)))
 		}
 
 		for columnIndex, val := range columns {
@@ -145,16 +137,15 @@ func PrintTableEx(table []TableRow, maxColumnWidths []int, columnGap string) {
 		}
 	}
 
-	for columnIndex := range preferredColumnWidths {
-		maxWidth := maxColumnWidths[columnIndex]
-		if maxWidth != -1 {
-			preferredColumnWidths[columnIndex] = min(preferredColumnWidths[columnIndex], maxWidth)
-		}
-	}
-
 	format := ""
-	for _, maxWidth := range preferredColumnWidths {
-		format += "%-" + strconv.Itoa(maxWidth+len(columnGap)) + "s"
+	for i, maxWidth := range preferredColumnWidths {
+		if i < len(preferredColumnWidths)-1 {
+			format += "%-" + strconv.Itoa(maxWidth+len(columnGap)) + "s"
+		} else {
+			// do not want whitespace appended to the last column.  It would cause wrapping on lines
+			// that were not actually long if some other line was very long.
+			format += "%s"
+		}
 	}
 	format += "\n"
 
@@ -162,17 +153,6 @@ func PrintTableEx(table []TableRow, maxColumnWidths []int, columnGap string) {
 	columns := make([]interface{}, columnCount)
 	for _, row := range table {
 		for columnIndex, value := range row.Columns {
-			valueLen := len(value)
-			width := preferredColumnWidths[columnIndex]
-			if valueLen > width {
-				// First, try to trim down the value so we can include the ...
-				value = value[0:max(width-len(ellipses), 0)] + ellipses
-
-				// However, with a sufficiently small width, that might still be too long. So always
-				// trim to width as requested.
-				value = value[0:width]
-			}
-
 			// Now, ensure we have the requested gap between columns as well.
 			if columnIndex < columnCount-1 {
 				value += columnGap
