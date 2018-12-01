@@ -380,8 +380,8 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 		decrypter = config.NewBlindingDecrypter()
 	}
 
-	table := [][]string{}
-	table = append(table, []string{"KEY", "VALUE"})
+	table := []cmdutil.TableRow{}
+	table = append(table, cmdutil.TableRow{Columns: []string{"KEY", "VALUE"}})
 
 	var keys config.KeyArray
 	for key := range cfg {
@@ -397,7 +397,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 			return errors.Wrap(err, "could not decrypt configuration value")
 		}
 
-		table = append(table, []string{prettyKey(key), decrypted})
+		table = append(table, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
 	}
 
 	cmdutil.PrintTable(table)

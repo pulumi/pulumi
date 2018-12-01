@@ -149,7 +149,7 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 	maxName++ // Account for adding the '*' to the currently selected stack.
 
 	// Header string and formatting options to align columns.
-	table := [][]string{}
+	table := []cmdutil.TableRow{}
 
 	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
 
@@ -160,7 +160,7 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 		maxColumnWidths = append(maxColumnWidths, -1)
 	}
 
-	table = append(table, headers)
+	table = append(table, cmdutil.TableRow{Columns: headers})
 
 	for _, summary := range stackSummaries {
 		const none = "n/a"
@@ -188,7 +188,7 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 		}
 
 		// Render the columns.
-		row := []string{name, lastUpdate, resourceCount}
+		columns := []string{name, lastUpdate, resourceCount}
 		if showURLColumn {
 			url := none
 			if httpBackend, ok := b.(httpstate.Backend); ok {
@@ -197,10 +197,10 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 				}
 			}
 
-			row = append(row, url)
+			columns = append(columns, url)
 		}
 
-		table = append(table, row)
+		table = append(table, cmdutil.TableRow{Columns: columns})
 	}
 
 	cmdutil.PrintTableEx(table, maxColumnWidths, "  ")

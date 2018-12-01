@@ -111,19 +111,26 @@ func newStackCmd() *cobra.Command {
 			if rescnt == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
-				fmt.Printf("    %-48s %s\n", "TYPE", "NAME")
+				table := []cmdutil.TableRow{}
+				table = append(table, cmdutil.TableRow{Columns: []string{"TYPE", "NAME"}})
+
 				for _, res := range snap.Resources {
-					fmt.Printf("    %-48s %s\n", res.Type, res.URN.Name())
+					columns := []string{string(res.Type), string(res.URN.Name())}
+					additionalInfo := ""
 
 					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
 					// this on a single line, but this can get quite lengthy and so this formatting is better.
 					if showURNs {
-						fmt.Printf("        URN: %s\n", res.URN)
+						additionalInfo += fmt.Sprintf("        URN: %s\n", res.URN)
 					}
 					if showIDs && res.ID != "" {
-						fmt.Printf("        ID: %s\n", res.ID)
+						additionalInfo += fmt.Sprintf("        ID: %s\n", res.ID)
 					}
+
+					table = append(table, cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo})
 				}
+
+				cmdutil.PrintTable(table)
 
 				// Print out the output properties for the stack, if present.
 				if res, outputs := stack.GetRootStackResource(snap); res != nil {
