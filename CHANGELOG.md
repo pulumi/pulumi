@@ -4,6 +4,7 @@
 
 - Configuration and stack commands now take a `--config-file` options. This option allows the user to override the file used to fetch and store config information for a stack during the execution of a command.
 
+- Fix an error about a bad icotl when trying to read sensitive input from the console and standard in was not connected to a terminal.
 
 ## 0.16.6 (Released November 28th, 2018)
 
