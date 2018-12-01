@@ -20,7 +20,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	zxcvbn "github.com/nbutton23/zxcvbn-go"
@@ -381,19 +380,9 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 		decrypter = config.NewBlindingDecrypter()
 	}
 
-	fullKey := func(k config.Key) string {
-		return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
-	}
+	table := [][]string{}
+	table = append(table, []string{"KEY", "VALUE"})
 
-	// Devote 48 characters to the config key, unless there's a key longer, in which case use that.
-	maxkey := 48
-	for key := range cfg {
-		if len(fullKey(key)) > maxkey {
-			maxkey = len(fullKey(key))
-		}
-	}
-
-	fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", "KEY", "VALUE")
 	var keys config.KeyArray
 	for key := range cfg {
 		// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
@@ -401,15 +390,17 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 		keys = append(keys, key)
 	}
 	sort.Sort(keys)
+
 	for _, key := range keys {
 		decrypted, err := cfg[key].Value(decrypter)
 		if err != nil {
 			return errors.Wrap(err, "could not decrypt configuration value")
 		}
 
-		fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", prettyKey(key), decrypted)
+		table = append(table, []string{prettyKey(key), decrypted})
 	}
 
+	cmdutil.PrintTable(table)
 	return nil
 }
 
