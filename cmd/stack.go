@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -111,11 +110,12 @@ func newStackCmd() *cobra.Command {
 			if rescnt == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
+				prefix := "    "
 				table := []cmdutil.TableRow{}
-				table = append(table, cmdutil.TableRow{Columns: []string{"TYPE", "NAME"}})
+				table = append(table, cmdutil.TableRow{Columns: []string{prefix + "TYPE", "NAME"}})
 
 				for _, res := range snap.Resources {
-					columns := []string{string(res.Type), string(res.URN.Name())}
+					columns := []string{prefix + string(res.Type), string(res.URN.Name())}
 					additionalInfo := ""
 
 					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
@@ -177,19 +177,21 @@ func printStackOutputs(outputs map[string]interface{}) {
 	if len(outputs) == 0 {
 		fmt.Printf("    No output values currently in this stack\n")
 	} else {
-		maxkey := 48
 		var outkeys []string
 		for outkey := range outputs {
-			if len(outkey) > maxkey {
-				maxkey = len(outkey)
-			}
 			outkeys = append(outkeys, outkey)
 		}
 		sort.Strings(outkeys)
-		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
+
+		prefix := "    "
+		table := []cmdutil.TableRow{}
+		table = append(table, cmdutil.TableRow{Columns: []string{prefix + "OUTPUT", "VALUE"}})
+
 		for _, key := range outkeys {
-			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", key, stringifyOutput(outputs[key]))
+			table = append(table, cmdutil.TableRow{Columns: []string{prefix + key, stringifyOutput(outputs[key])}})
 		}
+
+		cmdutil.PrintTable(table)
 	}
 }
 
