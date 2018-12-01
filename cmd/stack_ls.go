@@ -138,16 +138,6 @@ func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend
 func formatConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
 	_, showURLColumn := b.(httpstate.Backend)
 
-	// Devote 48 characters to the name width, unless there is a longer name.
-	maxName := 47
-	for _, summary := range stackSummaries {
-		name := summary.Name().String()
-		if len(name) > maxName {
-			maxName = len(name)
-		}
-	}
-	maxName++ // Account for adding the '*' to the currently selected stack.
-
 	// Header string and formatting options to align columns.
 	table := []cmdutil.TableRow{}
 
