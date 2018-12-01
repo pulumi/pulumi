@@ -64,12 +64,6 @@
   version = "v1.12.26"
 
 [[projects]]
-  name = "github.com/bgentry/speakeasy"
-  packages = ["."]
-  revision = "4aabc24848ce5fd31929f7d1e4ea74d3709c14cd"
-  version = "v0.1.0"
-
-[[projects]]
   name = "github.com/blang/semver"
   packages = ["."]
   revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
@@ -593,6 +587,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "eaeb2282f35a265330a240be239886c91ab253b40dc2cf92469c7cbe29c78f9d"
+  inputs-digest = "6767608d8cb6e96b1a0e0dbb5a2ad5b7e3cd07d6d9a5bcfe32c68b10358db62c"
   solver-name = "gps-cdcl"
   solver-version = 1
