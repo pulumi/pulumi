@@ -95,17 +95,22 @@ func RemoveTralingNewline(s string) string {
 	return s
 }
 
+type Table struct {
+	Rows   []TableRow // Rows of the table.
+	Prefix string     // Optional prefix to print before each row
+}
+
 // TableRow is a row in a table we want to print.  It can be a series of a columns, followed
 // by an additional line of information.
 type TableRow struct {
-	Columns        []string
-	AdditionalInfo string
+	Columns        []string // Columns of the row
+	AdditionalInfo string   // an optional line of information to print after the row
 }
 
 // PrintTable prints a grid of rows and columns.  Width of columns is automatically determined by
 // the max length of the items in each column.  A default gap of two spaces is printed between each
 // column.
-func PrintTable(table []TableRow) {
+func PrintTable(table Table) {
 	PrintTableWithGap(table, "  ")
 }
 
@@ -113,18 +118,18 @@ const ellipses = "..."
 
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
 // by the max length of the items in each column.  A gap can be specified between the columns.
-func PrintTableWithGap(table []TableRow, columnGap string) {
-	if len(table) == 0 {
+func PrintTableWithGap(table Table, columnGap string) {
+	if len(table.Rows) == 0 {
 		return
 	}
 
-	firstRow := table[0]
+	firstRow := table.Rows[0]
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of
 	// any item in that column.
 	preferredColumnWidths := make([]int, len(firstRow.Columns))
 
-	for rowIndex, row := range table {
+	for rowIndex, row := range table.Rows {
 		columns := row.Columns
 		if len(columns) != len(preferredColumnWidths) {
 			panic(fmt.Sprintf(
@@ -149,9 +154,9 @@ func PrintTableWithGap(table []TableRow, columnGap string) {
 	}
 	format += "\n"
 
-	columnCount := len(table[0].Columns)
+	columnCount := len(firstRow.Columns)
 	columns := make([]interface{}, columnCount)
-	for _, row := range table {
+	for _, row := range table.Rows {
 		for columnIndex, value := range row.Columns {
 			// Now, ensure we have the requested gap between columns as well.
 			if columnIndex < columnCount-1 {
@@ -161,7 +166,7 @@ func PrintTableWithGap(table []TableRow, columnGap string) {
 			columns[columnIndex] = value
 		}
 
-		fmt.Printf(format, columns...)
+		fmt.Printf(table.Prefix+format, columns...)
 		if row.AdditionalInfo != "" {
 			fmt.Print(row.AdditionalInfo)
 		}

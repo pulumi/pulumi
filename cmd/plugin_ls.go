@@ -62,8 +62,8 @@ func newPluginLsCmd() *cobra.Command {
 			// And now pretty-print the list.
 			var totalSize uint64
 
-			table := []cmdutil.TableRow{}
-			table = append(table, cmdutil.TableRow{
+			table := cmdutil.Table{}
+			table.Rows = append(table.Rows, cmdutil.TableRow{
 				Columns: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
 			})
 
@@ -91,7 +91,7 @@ func newPluginLsCmd() *cobra.Command {
 					lastUsedTime = humanize.Time(plugin.LastUsedTime)
 				}
 
-				table = append(table, cmdutil.TableRow{
+				table.Rows = append(table.Rows, cmdutil.TableRow{
 					Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
 				})
 

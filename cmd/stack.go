@@ -110,12 +110,11 @@ func newStackCmd() *cobra.Command {
 			if rescnt == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
-				prefix := "    "
-				table := []cmdutil.TableRow{}
-				table = append(table, cmdutil.TableRow{Columns: []string{prefix + "TYPE", "NAME"}})
+				table := cmdutil.Table{Prefix: "    "}
+				table.Rows = append(table.Rows, cmdutil.TableRow{Columns: []string{"TYPE", "NAME"}})
 
 				for _, res := range snap.Resources {
-					columns := []string{prefix + string(res.Type), string(res.URN.Name())}
+					columns := []string{string(res.Type), string(res.URN.Name())}
 					additionalInfo := ""
 
 					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
@@ -127,7 +126,7 @@ func newStackCmd() *cobra.Command {
 						additionalInfo += fmt.Sprintf("        ID: %s\n", res.ID)
 					}
 
-					table = append(table, cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo})
+					table.Rows = append(table.Rows, cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo})
 				}
 
 				cmdutil.PrintTable(table)
@@ -183,12 +182,11 @@ func printStackOutputs(outputs map[string]interface{}) {
 		}
 		sort.Strings(outkeys)
 
-		prefix := "    "
-		table := []cmdutil.TableRow{}
-		table = append(table, cmdutil.TableRow{Columns: []string{prefix + "OUTPUT", "VALUE"}})
+		table := cmdutil.Table{Prefix: "    "}
+		table.Rows = append(table.Rows, cmdutil.TableRow{Columns: []string{"OUTPUT", "VALUE"}})
 
 		for _, key := range outkeys {
-			table = append(table, cmdutil.TableRow{Columns: []string{prefix + key, stringifyOutput(outputs[key])}})
+			table.Rows = append(table.Rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
 		}
 
 		cmdutil.PrintTable(table)
