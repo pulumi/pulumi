@@ -110,8 +110,7 @@ func newStackCmd() *cobra.Command {
 			if rescnt == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
-				table := cmdutil.Table{Prefix: "    "}
-				table.Rows = append(table.Rows, cmdutil.TableRow{Columns: []string{"TYPE", "NAME"}})
+				rows := []cmdutil.TableRow{}
 
 				for _, res := range snap.Resources {
 					columns := []string{string(res.Type), string(res.URN.Name())}
@@ -126,10 +125,14 @@ func newStackCmd() *cobra.Command {
 						additionalInfo += fmt.Sprintf("        ID: %s\n", res.ID)
 					}
 
-					table.Rows = append(table.Rows, cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo})
+					rows = append(rows, cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo})
 				}
 
-				cmdutil.PrintTable(table)
+				cmdutil.PrintTable(cmdutil.Table{
+					Headers: []string{"TYPE", "NAME"},
+					Rows:    rows,
+					Prefix:  "    ",
+				})
 
 				// Print out the output properties for the stack, if present.
 				if res, outputs := stack.GetRootStackResource(snap); res != nil {
@@ -182,14 +185,17 @@ func printStackOutputs(outputs map[string]interface{}) {
 		}
 		sort.Strings(outkeys)
 
-		table := cmdutil.Table{Prefix: "    "}
-		table.Rows = append(table.Rows, cmdutil.TableRow{Columns: []string{"OUTPUT", "VALUE"}})
+		rows := []cmdutil.TableRow{}
 
 		for _, key := range outkeys {
-			table.Rows = append(table.Rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
+			rows = append(rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
 		}
 
-		cmdutil.PrintTable(table)
+		cmdutil.PrintTable(cmdutil.Table{
+			Headers: []string{"OUTPUT", "VALUE"},
+			Rows:    rows,
+			Prefix:  "    ",
+		})
 	}
 }
 

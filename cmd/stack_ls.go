@@ -139,14 +139,12 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 	_, showURLColumn := b.(httpstate.Backend)
 
 	// Header string and formatting options to align columns.
-	table := cmdutil.Table{}
-
 	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
 	if showURLColumn {
 		headers = append(headers, "URL")
 	}
 
-	table.Rows = append(table.Rows, cmdutil.TableRow{Columns: headers})
+	rows := []cmdutil.TableRow{}
 
 	for _, summary := range stackSummaries {
 		const none = "n/a"
@@ -186,10 +184,13 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 			columns = append(columns, url)
 		}
 
-		table.Rows = append(table.Rows, cmdutil.TableRow{Columns: columns})
+		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 
-	cmdutil.PrintTable(table)
+	cmdutil.PrintTable(cmdutil.Table{
+		Headers: headers,
+		Rows:    rows,
+	})
 
 	return nil
 }

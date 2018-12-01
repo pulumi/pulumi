@@ -96,8 +96,9 @@ func RemoveTralingNewline(s string) string {
 }
 
 type Table struct {
-	Rows   []TableRow // Rows of the table.
-	Prefix string     // Optional prefix to print before each row
+	Headers []string
+	Rows    []TableRow // Rows of the table.
+	Prefix  string     // Optional prefix to print before each row
 }
 
 // TableRow is a row in a table we want to print.  It can be a series of a columns, followed
@@ -123,17 +124,20 @@ func PrintTableWithGap(table Table, columnGap string) {
 		return
 	}
 
-	firstRow := table.Rows[0]
+	columnCount := len(table.Headers)
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of
 	// any item in that column.
-	preferredColumnWidths := make([]int, len(firstRow.Columns))
+	preferredColumnWidths := make([]int, columnCount)
 
-	for rowIndex, row := range table.Rows {
+	allRows := []TableRow{TableRow{Columns: table.Headers}}
+	allRows = append(allRows, table.Rows...)
+
+	for rowIndex, row := range allRows {
 		columns := row.Columns
 		if len(columns) != len(preferredColumnWidths) {
 			panic(fmt.Sprintf(
-				"Error printing table.  Column count of row %v didn't match first row count. %v != %v",
+				"Error printing table.  Column count of row %v didn't match header column count. %v != %v",
 				rowIndex, len(columns), len(preferredColumnWidths)))
 		}
 
@@ -154,9 +158,8 @@ func PrintTableWithGap(table Table, columnGap string) {
 	}
 	format += "\n"
 
-	columnCount := len(firstRow.Columns)
 	columns := make([]interface{}, columnCount)
-	for _, row := range table.Rows {
+	for _, row := range allRows {
 		for columnIndex, value := range row.Columns {
 			// Now, ensure we have the requested gap between columns as well.
 			if columnIndex < columnCount-1 {

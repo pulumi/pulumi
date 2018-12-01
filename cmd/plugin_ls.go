@@ -62,10 +62,7 @@ func newPluginLsCmd() *cobra.Command {
 			// And now pretty-print the list.
 			var totalSize uint64
 
-			table := cmdutil.Table{}
-			table.Rows = append(table.Rows, cmdutil.TableRow{
-				Columns: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
-			})
+			rows := []cmdutil.TableRow{}
 
 			for _, plugin := range plugins {
 				var version string
@@ -91,14 +88,18 @@ func newPluginLsCmd() *cobra.Command {
 					lastUsedTime = humanize.Time(plugin.LastUsedTime)
 				}
 
-				table.Rows = append(table.Rows, cmdutil.TableRow{
+				rows = append(rows, cmdutil.TableRow{
 					Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
 				})
 
 				totalSize += uint64(plugin.Size)
 			}
 
-			cmdutil.PrintTable(table)
+			cmdutil.PrintTable(cmdutil.Table{
+				Headers: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
+				Rows:    rows,
+			})
+
 			fmt.Printf("\n")
 			fmt.Printf("TOTAL plugin cache size: %s\n", humanize.Bytes(totalSize))
 
