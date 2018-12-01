@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 
@@ -150,15 +149,19 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 	maxName++ // Account for adding the '*' to the currently selected stack.
 
 	// Header string and formatting options to align columns.
-	formatDirective := "%-" + strconv.Itoa(maxName) + "s %-24s %-18s"
-	headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
-	if showURLColumn {
-		formatDirective += " %s"
-		headers = append(headers, "URL")
-	}
-	formatDirective = formatDirective + "\n"
+	table := [][]string{}
 
-	fmt.Printf(formatDirective, headers...)
+	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
+
+	// No cap on the stack name (or the URL if added)
+	maxColumnWidths := []int{-1, 24, 18}
+	if showURLColumn {
+		headers = append(headers, "URL")
+		maxColumnWidths = append(maxColumnWidths, -1)
+	}
+
+	table = append(table, headers)
+
 	for _, summary := range stackSummaries {
 		const none = "n/a"
 
@@ -185,7 +188,7 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 		}
 
 		// Render the columns.
-		values := []interface{}{name, lastUpdate, resourceCount}
+		row := []string{name, lastUpdate, resourceCount}
 		if showURLColumn {
 			url := none
 			if httpBackend, ok := b.(httpstate.Backend); ok {
@@ -193,11 +196,14 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 					url = consoleURL
 				}
 			}
-			values = append(values, url)
+
+			row = append(row, url)
 		}
 
-		fmt.Printf(formatDirective, values...)
+		table = append(table, row)
 	}
+
+	cmdutil.PrintTableEx(table, maxColumnWidths, "  ")
 
 	return nil
 }
