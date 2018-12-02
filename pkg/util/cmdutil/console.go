@@ -118,10 +118,6 @@ func PrintTable(table Table) {
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
 // by the max length of the items in each column.  A gap can be specified between the columns.
 func PrintTableWithGap(table Table, columnGap string) {
-	if len(table.Rows) == 0 {
-		return
-	}
-
 	columnCount := len(table.Headers)
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of
