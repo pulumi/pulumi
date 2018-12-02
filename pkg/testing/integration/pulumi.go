@@ -51,7 +51,7 @@ func GetStacks(e *testing.Environment) ([]string, *string) {
 	// Confirm header row matches.
 	// TODO(pulumi/pulumi/issues/496): Provide structured output for pulumi commands. e.g., so we can avoid this
 	// err-prone scraping with just deserializings a JSON object.
-	assert.True(e, strings.HasPrefix(outLines[0], "NAME"))
+	assert.True(e, strings.HasPrefix(outLines[0], "NAME"), "First line was: %q", outLines[0])
 
 	var stackNames []string
 	var currentStack *string
