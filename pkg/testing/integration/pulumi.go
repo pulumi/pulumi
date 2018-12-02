@@ -41,7 +41,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 // GetStacks returns the list of stacks and current stack by scraping `pulumi stack ls`.
 // Assumes .pulumi is in the current working directory. Fails the test on IO errors.
 func GetStacks(e *testing.Environment) ([]string, *string) {
-	out, _ := e.RunCommand("pulumi", "stack", "ls")
+	out, err := e.RunCommand("pulumi", "stack", "ls")
 
 	outLines := strings.Split(out, "\n")
 	if len(outLines) == 0 {
@@ -51,7 +51,7 @@ func GetStacks(e *testing.Environment) ([]string, *string) {
 	// Confirm header row matches.
 	// TODO(pulumi/pulumi/issues/496): Provide structured output for pulumi commands. e.g., so we can avoid this
 	// err-prone scraping with just deserializings a JSON object.
-	assert.True(e, strings.HasPrefix(outLines[0], "NAME"), "First line was: %q", outLines[0])
+	assert.True(e, strings.HasPrefix(outLines[0], "NAME"), "First line was: %q\n--\n%q\n--\n%q\n", outLines[0], out, err)
 
 	var stackNames []string
 	var currentStack *string
