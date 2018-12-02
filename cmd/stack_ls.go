@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 
@@ -139,26 +138,14 @@ func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend
 func formatConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
 	_, showURLColumn := b.(httpstate.Backend)
 
-	// Devote 48 characters to the name width, unless there is a longer name.
-	maxName := 47
-	for _, summary := range stackSummaries {
-		name := summary.Name().String()
-		if len(name) > maxName {
-			maxName = len(name)
-		}
-	}
-	maxName++ // Account for adding the '*' to the currently selected stack.
-
 	// Header string and formatting options to align columns.
-	formatDirective := "%-" + strconv.Itoa(maxName) + "s %-24s %-18s"
-	headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
+	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
 	if showURLColumn {
-		formatDirective += " %s"
 		headers = append(headers, "URL")
 	}
-	formatDirective = formatDirective + "\n"
 
-	fmt.Printf(formatDirective, headers...)
+	rows := []cmdutil.TableRow{}
+
 	for _, summary := range stackSummaries {
 		const none = "n/a"
 
@@ -185,7 +172,7 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 		}
 
 		// Render the columns.
-		values := []interface{}{name, lastUpdate, resourceCount}
+		columns := []string{name, lastUpdate, resourceCount}
 		if showURLColumn {
 			url := none
 			if httpBackend, ok := b.(httpstate.Backend); ok {
@@ -193,11 +180,17 @@ func formatConsole(b backend.Backend, currentStack string, stackSummaries []back
 					url = consoleURL
 				}
 			}
-			values = append(values, url)
+
+			columns = append(columns, url)
 		}
 
-		fmt.Printf(formatDirective, values...)
+		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
+
+	cmdutil.PrintTable(cmdutil.Table{
+		Headers: headers,
+		Rows:    rows,
+	})
 
 	return nil
 }
