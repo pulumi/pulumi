@@ -80,6 +80,9 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 * **[Community Slack](https://slack.pulumi.io)**: join us over at our community Slack channel.  Any and all
   discussion or questions are welcome.
 
+* **[Roadmap](https://github.com/pulumi/pulumi/wiki/Roadmap)**: check out what's on the roadmap for the Pulumi 
+  project over the coming months.
+
 ## <a name="getting-started"></a>Getting Started
 
 Follow these steps to deploy your first Pulumi program, using AWS Serverless Lambdas, in minutes:
