@@ -17,10 +17,8 @@ package httpstate
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -154,21 +152,20 @@ func (u *cloudUpdate) recordEvent(
 	// Send the event to the Pulumi Service to power things like the update summary page.
 	// Currently opt-in via flag to allow for gathering per data before the service-side changes
 	// are available in production.
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_RECORD_ENGINE_EVENTS")) {
-		apiEvent, convErr := convertEngineEvent(event)
-		if convErr != nil {
-			return errors.Wrap(convErr, "converting engine event")
-		}
-		apiEvent.Sequence = sequenceNumber
-		apiEvent.Timestamp = int(time.Now().Unix())
-		if err = u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token); err != nil {
-			return err
-		}
+	apiEvent, convErr := convertEngineEvent(event)
+	if convErr != nil {
+		return errors.Wrap(convErr, "converting engine event")
+	}
+	apiEvent.Sequence = sequenceNumber
+	apiEvent.Timestamp = int(time.Now().Unix())
+	if err = u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token); err != nil {
+		return err
 	}
 
 	// We also pre-render the event using the DiffView and post as applicable. Ideally this data
 	// is redundant because we could produce the same log from the raw engine event stream, which
-	// is stored above.
+	// is stored above. As soon as the Pulumi Service can render update logs from raw engine events,
+	// this can safely be removed.
 	fields := make(map[string]interface{})
 	kind := string(apitype.StdoutEvent)
 	if event.Type == engine.DiagEvent {
