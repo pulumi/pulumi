@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
 import * as grpc from "grpc";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs } from "../output";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
-import { excessiveDebugOutput, getMonitor, rpcKeepAlive } from "./settings";
+import { excessiveDebugOutput, getMonitor, getSyncInvokes, rpcKeepAlive } from "./settings";
 
 import { ProviderRef, Resource } from "../resource";
 
@@ -101,4 +102,51 @@ export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {
     finally {
         done();
     }
+}
+
+/**
+ * invokeSync dynamically invokes the function, tok, which is offered by a provider plugin.
+ */
+export function invokeSync(tok: string, props: any): any {
+    const label = `Invoking function: tok=${tok}`;
+    log.debug(label +
+        excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
+
+    const obj = gstruct.Struct.fromJavaScript(props);
+    log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
+
+    // Fetch the sync monitor and make an RPC request.
+    const syncInvokes = getSyncInvokes();
+
+    const req = new providerproto.InvokeRequest();
+    req.setTok(tok);
+    req.setArgs(obj);
+
+    // Encode the request.
+    const reqBytes = Buffer.from(req.serializeBinary());
+
+    // Write the request length.
+    const reqLen = Buffer.alloc(4);
+    reqLen.writeUInt32BE(reqBytes.length, 0);
+    fs.writeSync(syncInvokes.requests, reqLen);
+    fs.writeSync(syncInvokes.requests, reqBytes);
+
+    // Read the response.
+    const respLenBytes = Buffer.alloc(4);
+    fs.readSync(syncInvokes.responses, respLenBytes, 0, 4, null);
+    const respLen = respLenBytes.readUInt32BE(0);
+    const respBytes = Buffer.alloc(respLen);
+    fs.readSync(syncInvokes.responses, respBytes, 0, respLen, null);
+
+    // Decode the response.
+    const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
+
+    // If there were failures, propagate them.
+    const failures: any = resp.getFailuresList();
+    if (failures && failures.length) {
+        throw new Error(`Invoke of '${tok}' failed: ${failures[0].reason} (${failures[0].property})`);
+    }
+
+    // Finally propagate any other properties that were given to us as outputs.
+    return deserializeProperties(resp.getReturn());
 }

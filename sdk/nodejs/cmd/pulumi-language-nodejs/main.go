@@ -42,6 +42,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	opentracing "github.com/opentracing/opentracing-go"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -364,7 +366,15 @@ func getPluginVersion(info packageJSON) (string, error) {
 
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	args := host.constructArguments(req)
+	// fire up a proxy resource monitor
+	tracingSpan := opentracing.SpanFromContext(ctx)
+
+	monitor, err := newMonitorProxy(req.GetMonitorAddress(), tracingSpan)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create monitor proxy")
+	}
+
+	args := host.constructArguments(req, monitor)
 	config, err := host.constructConfig(req)
 	if err != nil {
 		err = errors.Wrap(err, "failed to serialize configuration")
@@ -430,7 +440,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
-func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []string {
+func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, proxy *monitorProxy) []string {
 	args := []string{host.runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
@@ -438,8 +448,9 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []st
 		}
 	}
 
-	maybeAppendArg("monitor", req.GetMonitorAddress())
+	maybeAppendArg("monitor", proxy.addr)
 	maybeAppendArg("engine", host.engineAddress)
+	maybeAppendArg("sync", proxy.pipeDirectory)
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.GetPwd())
