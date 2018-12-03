@@ -105,7 +105,7 @@ export abstract class Resource {
                     const typeComponents = t.split(":");
                     if (typeComponents.length === 3) {
                         const pkg = typeComponents[0];
-                        this.__providers[pkg] = provider;
+                        this.__providers = { ...this.__providers, pkg: provider };
                     }
                 }
             }
