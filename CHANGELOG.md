@@ -4,7 +4,8 @@
 
 - Configuration and stack commands now take a `--config-file` options. This option allows the user to override the file used to fetch and store config information for a stack during the execution of a command.
 
-
+- Fix an issue where ANSI escape codes would appear in messages printed from the CLI when running on Windows.
+  
 ## 0.16.6 (Released November 28th, 2018)
 
 ### Major Changes
