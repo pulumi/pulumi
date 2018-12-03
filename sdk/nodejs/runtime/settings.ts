@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
 import * as grpc from "grpc";
+import * as path from "path";
 import { RunError } from "../errors";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
@@ -35,6 +37,7 @@ export interface Options {
     readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
     readonly engineAddr?: string; // a connection string to the engine's RPC, in case we need to reestablish.
     readonly monitorAddr?: string; // a connection string to the monitor's RPC, in case we need to reestablish.
+    readonly syncDir?: string;
 
     dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
 }
@@ -100,6 +103,23 @@ export function getMonitor(): Object {
     return monitor!;
 }
 
+export interface SyncInvokes {
+    requests: number;
+    responses: number;
+}
+
+let syncInvokes: SyncInvokes | undefined;
+
+export function getSyncInvokes(): SyncInvokes {
+    if (!syncInvokes) {
+        const dir = options.syncDir!;
+        const requests = fs.openSync(path.join(dir, "invoke_req"), fs.constants.O_WRONLY|fs.constants.O_SYNC);
+        const responses = fs.openSync(path.join(dir, "invoke_res"), fs.constants.O_RDONLY|fs.constants.O_SYNC);
+        syncInvokes = { requests, responses };
+    }
+    return syncInvokes!;
+}
+
 /**
  * engine is a live connection to the engine, used for logging, etc. (lazily initialized).
  */
@@ -152,6 +172,7 @@ function loadOptions(): Options {
         parallel: parallel,
         monitorAddr: process.env["PULUMI_NODEJS_MONITOR"],
         engineAddr: process.env["PULUMI_NODEJS_ENGINE"],
+        syncDir: process.env["PULUMI_NODEJS_SYNC"],
     };
 }
 
