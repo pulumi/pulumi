@@ -86,10 +86,11 @@ func printUpdateHistory(updates []backend.UpdateInfo, opts display.Options) {
 		fmt.Printf("  UpdateKind: %v \n  Status: %v  m: %v \n", update.Kind, update.Result, update.Message)
 		fmt.Print(
 			opts.Color.Colorize(
-				fmt.Sprintf("  %s%s+%v%s%s%s-%v%s%s%s~%v%s%s%s %v%s", colors.GreenBg, colors.Black, update.ResourceChanges["create"], colors.Reset,
-																		colors.RedBg, colors.Black, update.ResourceChanges["delete"], colors.Reset,
-																		colors.YellowBg, colors.Black, update.ResourceChanges["update"], colors.Reset,
-																		colors.BlueBg, colors.Black, update.ResourceChanges["same"], colors.Reset)))
+				fmt.Sprintf("  %s%s+%v%s%s%s-%v%s%s%s~%v%s%s%s %v%s",
+					colors.GreenBg, colors.Black, update.ResourceChanges["create"], colors.Reset,
+					colors.RedBg, colors.Black, update.ResourceChanges["delete"], colors.Reset,
+					colors.YellowBg, colors.Black, update.ResourceChanges["update"], colors.Reset,
+					colors.BlueBg, colors.Black, update.ResourceChanges["same"], colors.Reset)))
 
 		tStart := time.Unix(update.StartTime, 0)
 		tCreated := humanize.Time(tStart)
@@ -100,7 +101,8 @@ func printUpdateHistory(updates []backend.UpdateInfo, opts display.Options) {
 
 		if len(update.Environment) != 0 {
 			fmt.Printf("    Github-Login: %s\n", update.Environment["github.login"])
-			fmt.Printf("    Github-Committer: %s <%s>\n", update.Environment["git.committer"], update.Environment["git.committer.email"])
+			fmt.Printf("    Github-Committer: %s <%s>\n",
+				update.Environment["git.committer"], update.Environment["git.committer.email"])
 			fmt.Print(
 				opts.Color.Colorize(
 					fmt.Sprintf("%s    commit %s%s\n", colors.Yellow, update.Environment["git.head"], colors.Reset)))
