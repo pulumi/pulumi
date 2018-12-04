@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -14,7 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -44,17 +43,6 @@ func newHistoryCmd() *cobra.Command {
 
 			b := s.Backend()
 
-			var packageFilter *tokens.PackageName
-			stackSummaries, err := b.ListStacks(commandContext(), packageFilter)
-			if err != nil {
-				return err
-			}
-
-			// Sort by stack name.
-			sort.Slice(stackSummaries, func(i, j int) bool {
-				return stackSummaries[i].Name().String() < stackSummaries[j].Name().String()
-			})
-
 			updates, err := b.GetHistory(commandContext(), s.Ref())
 			if err != nil {
 				return errors.Wrap(err, "getting history")
@@ -67,7 +55,7 @@ func newHistoryCmd() *cobra.Command {
 				}
 				fmt.Println(string(b))
 			} else {
-				printUpdateHistory(updates, stackSummaries)
+				printUpdateHistory(updates, opts)
 			}
 			return nil
 		}),
@@ -82,24 +70,26 @@ func newHistoryCmd() *cobra.Command {
 	}
 	return cmd
 }
-func printUpdateHistory(updates []backend.UpdateInfo, stacks []backend.StackSummary) {
+func printUpdateHistory(updates []backend.UpdateInfo, opts display.Options) {
 
 	if len(updates) == 0 {
-		fmt.Println("\u001b[41mStack has never been updated\033[0m")
-		fmt.Println("Would you like to pick a different stack:")
-		for _, value := range stacks {
-			fmt.Printf("    %s", value.Name())
-		}
+		fmt.Println("Stack has never been updated")
 		return
 	}
 
 	for _, update := range updates {
 
-		fmt.Println("\033[32m-----------------------\033[0m")
+		fmt.Print(
+			opts.Color.Colorize(
+				fmt.Sprintf("%s%s%s\n", colors.Green, "-----------------------", colors.Reset)))
 
-		fmt.Printf("  \u001b[1mUpdateKind:\033[0m %v \u001b[1m\n  Status:\033[0m %v  m: %v \n", update.Kind, update.Result, update.Message)
-
-		fmt.Printf("  \u001b[42m\u001b[30m+%v\033[0m\u001b[41m\u001b[30m-%v\033[0m\u001b[43m\u001b[30m~%v\033[0m\u001b[47m\u001b[30m %v\033[0m", update.ResourceChanges["create"], update.ResourceChanges["delete"], update.ResourceChanges["update"], update.ResourceChanges["same"])
+		fmt.Printf("  UpdateKind: %v \n  Status: %v  m: %v \n", update.Kind, update.Result, update.Message)
+		fmt.Print(
+			opts.Color.Colorize(
+				fmt.Sprintf("  %s%s+%v%s%s%s-%v%s%s%s~%v%s%s%s %v%s", colors.GreenBg, colors.Black, update.ResourceChanges["create"], colors.Reset,
+																		colors.RedBg, colors.Black, update.ResourceChanges["delete"], colors.Reset,
+																		colors.YellowBg, colors.Black, update.ResourceChanges["update"], colors.Reset,
+																		colors.BlueBg, colors.Black, update.ResourceChanges["same"], colors.Reset)))
 
 		tStart := time.Unix(update.StartTime, 0)
 		tCreated := humanize.Time(tStart)
@@ -111,9 +101,13 @@ func printUpdateHistory(updates []backend.UpdateInfo, stacks []backend.StackSumm
 		if len(update.Environment) != 0 {
 			fmt.Printf("    Github-Login: %s\n", update.Environment["github.login"])
 			fmt.Printf("    Github-Committer: %s <%s>\n", update.Environment["git.committer"], update.Environment["git.committer.email"])
-			fmt.Printf("    \u001b[33mcommit %s\033[0m \n", update.Environment["git.head"])
+			fmt.Print(
+				opts.Color.Colorize(
+					fmt.Sprintf("%s    commit %s%s\n", colors.Yellow, update.Environment["git.head"], colors.Reset)))
 		}
 
-		fmt.Println("\033[244m-----------------------\033[0m")
+		fmt.Print(
+			opts.Color.Colorize(
+				fmt.Sprintf("%s%s%s\n", colors.Cyan, "-----------------------", colors.Reset)))
 	}
 }
