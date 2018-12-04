@@ -60,9 +60,9 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 		return nil, err
 	}
 	if filestate.IsLocalBackendURL(creds.Current) {
-		return filestate.New(cmdutil.Diag(), creds.Current)
+		return filestate.New(cmdutil.Diag(), creds.Current, stackConfigFile)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, stackConfigFile, opts)
 }
 
 // This is used to control the contents of the tracing header.

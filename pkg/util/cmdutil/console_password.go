@@ -11,24 +11,31 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// +build !windows
 
 package cmdutil
 
 import (
 	"fmt"
-	"syscall"
+	"os"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
 
 // ReadConsoleNoEcho reads from the console without echoing.  This is useful for reading passwords.
 func ReadConsoleNoEcho(prompt string) (string, error) {
+	// If standard input is not a terminal, we must not use ReadPassword as it will fail with an ioctl
+	// error when it tries to disable local echo.
+	//
+	// In this case, just read normally
+	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
+		return ReadConsole(prompt)
+	}
+
 	if prompt != "" {
 		fmt.Print(prompt + ": ")
 	}
 
-	b, err := terminal.ReadPassword(syscall.Stdin)
+	b, err := terminal.ReadPassword(int(os.Stdin.Fd()))
 
 	fmt.Println() // echo a newline, since the user's keypress did not generate one
 

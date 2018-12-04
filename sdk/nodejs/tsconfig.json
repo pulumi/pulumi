@@ -21,6 +21,7 @@
         "errors.ts",
         "metadata.ts",
         "resource.ts",
+        "stackReference.ts",
         "version.ts",
 
         "asset/index.ts",

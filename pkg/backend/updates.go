@@ -34,11 +34,11 @@ type UpdateResult string
 
 const (
 	// InProgressResult is for updates that have not yet completed.
-	InProgressResult = "in-progress"
+	InProgressResult UpdateResult = "in-progress"
 	// SucceededResult is for updates that completed successfully.
 	SucceededResult UpdateResult = "succeeded"
 	// FailedResult is for updates that have failed.
-	FailedResult = "failed"
+	FailedResult UpdateResult = "failed"
 )
 
 // Keys we use for values put into UpdateInfo.Environment.

@@ -11,25 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// +build windows
 
-package cmdutil
+// This module is use for testing to ensure that capturing a value from inside a deployment-time
+// module works properly.  We replicate the 'Config' type here as that's the principle case
+// of a value we want people to be able to capture from a project like pulumi.
 
-import (
-	"fmt"
+export * from "./config";
+export * from "./runtimeConfig";
 
-	"github.com/bgentry/speakeasy"
-)
-
-// ReadConsoleNoEcho reads from the console without echoing.  This is useful for reading passwords.
-func ReadConsoleNoEcho(prompt string) (string, error) {
-	if prompt != "" {
-		fmt.Print(prompt + ": ")
-	}
-
-	s, err := speakeasy.Ask("")
-
-	fmt.Println() // echo a newline, since the user's keypress did not generate one
-
-	return s, err
-}
+// simulate this being a deployment-time only module.
+export const deploymentOnlyModule = true;

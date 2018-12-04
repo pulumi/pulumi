@@ -41,7 +41,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
+	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -114,9 +118,12 @@ type ProgramTestOptions struct {
 	Dir string
 	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
 	Dependencies []string
-	// Map of config keys and values to set (e.g. {"aws:config:region": "us-east-2"})
+	// Map of package names to versions. The test will use the specified versions of these packages instead of what
+	// is declared in `package.json`.
+	Overrides map[string]string
+	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"})
 	Config map[string]string
-	// Map of secure config keys and values to set on the stack (e.g. {"aws:config:region": "us-east-2"})
+	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
 	Secrets map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
@@ -142,6 +149,8 @@ type ProgramTestOptions struct {
 	SkipRefresh bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
+	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
+	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
@@ -267,6 +276,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Dependencies != nil {
 		opts.Dependencies = overrides.Dependencies
 	}
+	if overrides.Overrides != nil {
+		opts.Overrides = overrides.Overrides
+	}
 	for k, v := range overrides.Config {
 		if opts.Config == nil {
 			opts.Config = make(map[string]string)
@@ -356,6 +368,44 @@ var listDirs bool
 func init() {
 	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
 	flag.BoolVar(&listDirs, "list-dirs", false, "list available integration tests without running them")
+}
+
+// GetLogs retrieves the logs for a given stack in a particular region making the query provided.
+//
+// [provider] should be one of "aws" or "azure"
+func GetLogs(
+	t *testing.T,
+	provider, region string,
+	stackInfo RuntimeValidationStackInfo,
+	query operations.LogQuery) *[]operations.LogEntry {
+
+	var states []*resource.State
+	for _, res := range stackInfo.Deployment.Resources {
+		state, err := stack.DeserializeResource(res)
+		if !assert.NoError(t, err) {
+			return nil
+		}
+
+		states = append(states, state)
+	}
+
+	tree := operations.NewResourceTree(states)
+	if !assert.NotNil(t, tree) {
+		return nil
+	}
+
+	cfg := map[config.Key]string{
+		config.MustMakeKey(provider, "region"): region,
+	}
+	ops := tree.OperationsProvider(cfg)
+
+	// Validate logs from example
+	logs, err := ops.GetLogs(query)
+	if !assert.NoError(t, err) {
+		return nil
+	}
+
+	return logs
 }
 
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
@@ -808,6 +858,9 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	if expectNopUpdate {
 		update = append(update, "--expect-no-changes")
 	}
+	if pt.opts.PreviewCommandlineFlags != nil {
+		preview = append(preview, pt.opts.PreviewCommandlineFlags...)
+	}
 	if pt.opts.UpdateCommandlineFlags != nil {
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
 	}
@@ -1114,14 +1167,7 @@ func (pt *programTester) prepareProjectDir(projectDir string) error {
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
 func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
-	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
-	// may run concurrently and yarn may fail if invoked concurrently
-	// https://github.com/yarnpkg/yarn/issues/683
-	// Also add --network-concurrency 1 since we've been seeing
-	// https://github.com/yarnpkg/yarn/issues/4563 as well
-	if err := ioutil.WriteFile(
-		filepath.Join(projinfo.Root, ".yarnrc"),
-		[]byte("--mutex network\n--network-concurrency 1\n"), 0644); err != nil {
+	if err := pulumi_testing.WriteYarnRCForTest(projinfo.Root); err != nil {
 		return err
 	}
 
@@ -1131,10 +1177,46 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
+	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
+	// direct dependency of the project, we change the version constraint in the package.json. For transitive
+	// dependeices, we use yarn's "resolutions" feature to force them to a specific version.
+	if len(pt.opts.Overrides) > 0 {
+		packageJSON, err := readPackageJSON(cwd)
+		if err != nil {
+			return err
+		}
+
+		overrides := make(map[string]interface{})
+
+		for packageName, packageVersion := range pt.opts.Overrides {
+			for _, section := range []string{"dependencies", "devDependencies"} {
+				if _, has := packageJSON[section]; has {
+					entry := packageJSON[section].(map[string]interface{})
+
+					if _, has := entry[packageName]; has {
+						entry[packageName] = packageVersion
+					}
+
+				}
+			}
+
+			fprintf(pt.opts.Stdout, "adding resolution for %s to version %s\n", packageName, packageVersion)
+			overrides["**/"+packageName] = packageVersion
+		}
+
+		// Wack any existing overrides section with our newly computed one.
+		packageJSON["overrides"] = overrides
+
+		if err := writePackageJSON(cwd, packageJSON); err != nil {
+			return err
+		}
+	}
+
 	// Now ensure dependencies are present.
-	if err = pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); err != nil {
+	if err = pt.runYarnCommand("yarn-install", []string{"install"}, cwd); err != nil {
 		return err
 	}
+
 	for _, dependency := range pt.opts.Dependencies {
 		if err = pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
 			return err
@@ -1150,6 +1232,36 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 
 	return nil
 
+}
+
+// readPackageJSON unmarshals the package.json file located in pathToPackage.
+func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
+	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
+	if err != nil {
+		return nil, errors.Wrap(err, "opening package.json")
+	}
+	defer contract.IgnoreClose(f)
+
+	var ret map[string]interface{}
+	if err := json.NewDecoder(f).Decode(&ret); err != nil {
+		return nil, errors.Wrap(err, "decoding package.json")
+	}
+
+	return ret, nil
+}
+
+func writePackageJSON(pathToPackage string, metadata map[string]interface{}) error {
+	// os.Create truncates the already existing file.
+	f, err := os.Create(filepath.Join(pathToPackage, "package.json"))
+	if err != nil {
+		return errors.Wrap(err, "opening package.json")
+	}
+	defer contract.IgnoreClose(f)
+
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+
+	return errors.Wrap(encoder.Encode(metadata), "writing package.json")
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.

@@ -138,6 +138,18 @@ type ResOpFailedEvent struct {
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
 type EngineEvent struct {
+	// Sequence is a unique, and monotonically increasing number for each engine event sent to the
+	// Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
+	// the sequence number is to ensure events can be placed into a total ordering.
+	//
+	// - No two events can have the same sequence number
+	// - Events with a lower sequence number must have been emitted before those with a higher
+	//   sequence number.
+	Sequence int `json:"sequence"`
+
+	// Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+	Timestamp int `json:"timestamp"`
+
 	CancelEvent      *CancelEvent       `json:"cancelEvent,omitempty"`
 	StdoutEvent      *StdoutEngineEvent `json:"stdoutEvent,omitempty"`
 	DiagnosticEvent  *DiagnosticEvent   `json:"diagnosticEvent,omitempty"`

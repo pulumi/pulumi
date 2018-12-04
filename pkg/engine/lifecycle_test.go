@@ -227,13 +227,13 @@ type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, er
 type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal, events []Event, err error) error
 
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	dryRun bool, validate ValidateFunc) (*deploy.Snapshot, error) {
+	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, error) {
 
-	return op.RunWithContext(context.Background(), project, target, opts, dryRun, validate)
+	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
 
 func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Project, target deploy.Target,
-	opts UpdateOptions, dryRun bool, validate ValidateFunc) (*deploy.Snapshot, error) {
+	opts UpdateOptions, dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, error) {
 
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
@@ -256,6 +256,7 @@ func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Pro
 		Cancel:          cancelCtx,
 		Events:          events,
 		SnapshotManager: journal,
+		BackendClient:   backendClient,
 	}
 
 	// Begin draining events.
@@ -293,13 +294,14 @@ type TestStep struct {
 }
 
 type TestPlan struct {
-	Project   string
-	Stack     string
-	Runtime   string
-	Config    config.Map
-	Decrypter config.Decrypter
-	Options   UpdateOptions
-	Steps     []TestStep
+	Project       string
+	Stack         string
+	Runtime       string
+	Config        config.Map
+	Decrypter     config.Decrypter
+	BackendClient deploy.BackendClient
+	Options       UpdateOptions
+	Steps         []TestStep
 }
 
 //nolint: goconst
@@ -367,7 +369,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		if !step.SkipPreview {
 			previewSnap := CloneSnapshot(t, snap)
 			previewTarget := p.GetTarget(previewSnap)
-			_, err := step.Op.Run(project, previewTarget, p.Options, true, step.Validate)
+			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -378,7 +380,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 
 		var err error
 		target := p.GetTarget(snap)
-		snap, err = step.Op.Run(project, target, p.Options, false, step.Validate)
+		snap, err = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
 			assert.Error(t, err)
 			continue
@@ -907,6 +909,57 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	// Resume the lifecycle with another no-op update.
 	p.Steps = steps[2:]
 	p.Run(t, snap)
+}
+
+func TestSingleResourceDiffUnavailable(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+
+					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", inputs)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// Now change the inputs to our resource and run a preview.
+	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	_, err = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ *Journal, events []Event, err error) error {
+			found := false
+			for _, e := range events {
+				if e.Type == DiagEvent {
+					p := e.Payload.(DiagEventPayload)
+					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "diff unavailable" {
+						found = true
+						break
+					}
+				}
+			}
+			assert.True(t, found)
+			return err
+		})
+	assert.NoError(t, err)
 }
 
 func TestDestroyWithPendingDelete(t *testing.T) {
@@ -1739,7 +1792,7 @@ func TestCanceledRefresh(t *testing.T) {
 		return err
 	}
 
-	snap, err := op.RunWithContext(ctx, project, target, options, false, validate)
+	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
 	assert.Error(t, err)
 
 	t.Logf("%v/%v resources refreshed", len(refreshed), len(oldResources))
@@ -1978,7 +2031,7 @@ func TestProviderCancellation(t *testing.T) {
 	}
 	project, target := p.GetProject(), p.GetTarget(nil)
 
-	_, err := op.RunWithContext(ctx, project, target, options, false, nil)
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 	assert.Error(t, err)
 
 	// Wait for the program to finish.
@@ -2033,11 +2086,11 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(old)
 
 	// A preview should succeed despite the pending operations.
-	_, err := op.Run(project, target, options, true, nil)
+	_, err := op.Run(project, target, options, true, nil, nil)
 	assert.NoError(t, err)
 
 	// But an update should fail.
-	_, err = op.Run(project, target, options, false, nil)
+	_, err = op.Run(project, target, options, false, nil, nil)
 	assert.EqualError(t, err, deploy.PlanPendingOperationsError{}.Error())
 }
 
@@ -2127,4 +2180,110 @@ func TestUpdatePartialFailure(t *testing.T) {
 	}
 
 	p.Run(t, old)
+}
+
+// Tests that the StackReference resource works as intended,
+func TestStackReference(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{}
+
+	// Test that the normal lifecycle works correctly.
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, state, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "other",
+			}))
+		assert.NoError(t, err)
+		if !info.DryRun {
+			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
+		}
+		return nil
+	})
+	p := &TestPlan{
+		BackendClient: &deploytest.BackendClient{
+			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+				switch name {
+				case "other":
+					return resource.NewPropertyMapFromMap(map[string]interface{}{
+						"foo": "bar",
+					}), nil
+				default:
+					return nil, errors.Errorf("unknown stack \"%s\"", name)
+				}
+			},
+		},
+		Options: UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)},
+		Steps:   MakeBasicLifecycleSteps(t, 2),
+	}
+	p.Run(t, nil)
+
+	// Test that changes to `name` cause replacement.
+	resURN := p.NewURN("pulumi:pulumi:StackReference", "other", "")
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   resURN.Type(),
+				URN:    resURN,
+				Custom: true,
+				ID:     "1",
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"name": "other2",
+				}),
+				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"name":    "other2",
+					"outputs": resource.PropertyMap{},
+				}),
+			},
+		},
+	}
+	p.Steps = []TestStep{{
+		Op:          Update,
+		SkipPreview: true,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+			assert.NoError(t, err)
+			for _, entry := range j.Entries {
+				switch urn := entry.Step.URN(); urn {
+				case resURN:
+					switch entry.Step.Op() {
+					case deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReplace:
+						// OK
+					default:
+						t.Fatalf("unexpected journal operation: %v", entry.Step.Op())
+					}
+				}
+			}
+
+			return err
+		},
+	}}
+	p.Run(t, old)
+
+	// Test that unknown stacks are handled appropriately.
+	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "rehto",
+			}))
+		assert.Error(t, err)
+		return err
+	})
+	p.Options = UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: true,
+		SkipPreview:   true,
+	}}
+	p.Run(t, nil)
+
+	// Test that unknown properties cause errors.
+	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "other",
+				"foo":  "bar",
+			}))
+		assert.Error(t, err)
+		return err
+	})
+	p.Options = UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	p.Run(t, nil)
 }

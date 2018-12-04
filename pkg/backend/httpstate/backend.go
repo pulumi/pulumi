@@ -139,13 +139,14 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d      diag.Sink
-	url    string
-	client *client.Client
+	d               diag.Sink
+	url             string
+	stackConfigFile string
+	client          *client.Client
 }
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL string) (Backend, error) {
+func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	apiToken, err := workspace.GetAccessToken(cloudURL)
 	if err != nil {
@@ -153,14 +154,15 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	}
 
 	return &cloudBackend{
-		d:      d,
-		url:    cloudURL,
-		client: client.NewClient(cloudURL, apiToken, d),
+		d:               d,
+		url:             cloudURL,
+		stackConfigFile: stackConfigFile,
+		client:          client.NewClient(cloudURL, apiToken, d),
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -232,11 +234,11 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 		return nil, err
 	}
 
-	return New(d, cloudURL)
+	return New(d, cloudURL, stackConfigFile)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, opts display.Options) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -248,7 +250,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 				return nil, err
 			}
 
-			return New(d, cloudURL)
+			return New(d, cloudURL, stackConfigFile)
 		}
 	}
 
@@ -315,7 +317,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL)
+				return loginWithBrowser(ctx, d, cloudURL, stackConfigFile)
 			}
 		}
 	}
@@ -333,7 +335,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 		return nil, err
 	}
 
-	return New(d, cloudURL)
+	return New(d, cloudURL, stackConfigFile)
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -653,7 +655,15 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	workspaceStack, err := workspace.DetectProjectStack(stackRef.Name())
+	stackConfigFile := b.stackConfigFile
+	if stackConfigFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackRef.Name())
+		if err != nil {
+			return client.UpdateIdentifier{}, 0, "", err
+		}
+		stackConfigFile = f
+	}
+	workspaceStack, err := workspace.LoadProjectStack(stackConfigFile)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
 	}
@@ -767,6 +777,7 @@ func (b *cloudBackend) runEngineAction(
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
+		BackendClient:   backend.NewBackendClient(b),
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
@@ -819,6 +830,10 @@ func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	stack, err := b.client.GetStack(ctx, stackID)
 	if err != nil {
 		return err
+	}
+
+	if stack.ActiveUpdate == "" {
+		return errors.Errorf("stack %v has never been updated", stackRef)
 	}
 
 	// Compute the update identifier and attempt to cancel the update.

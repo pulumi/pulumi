@@ -22,6 +22,8 @@ import { output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as typescript from "typescript";
 
+import * as deploymentOnlyModule from "./deploymentOnlyModule";
+
 interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
     title: string;                  // a title banner for the test case.
@@ -5053,196 +5055,180 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
         });
     }
 
-// NOTE: this test is disabled because it fails non-deterministically.
-//       Fixing this test is tracked by #2182.
-//
-//    {
-//        // Used just to validate that if we capture a Config object we see these values serialized over.
-//        // Specifically, the module that Config uses needs to be captured by value and not be
-//        // 'require-reference'.
-//        runtime.setConfig("test:TestingKey1", "TestingValue1");
-//        const testConfig = new pulumi.Config("test");
-//
-//        cases.push({
-//            title: "Capture config created on the outside",
-//            func: function () { const v = testConfig.get("TestingKey1"); console.log(v); },
-//            expectText: `exports.handler = __f0;
-//
-//var __testConfig_proto = {};
-//var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
-//var __options = {project: undefined};
-//var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
-//var __metadata_1 = {getProject: __getProject};
-//__f1.prototype = __testConfig_proto;
-//Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
-//(...)
-//Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f17 });
-//var __testConfig = Object.create(__testConfig_proto);
-//__testConfig.name = "test";
-//
-//function __getConfig() {
-//  return (function() {
-//    with({ config: __config, getConfig: __getConfig }) {
-//
-//return function /*getConfig*/(k) {
-//    return config[k];
-//};
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//
-//function __0_getProject() {
-//  return (function() {
-//    with({ options: __options, getProject: __0_getProject }) {
-//
-//return function /*getProject*/() {
-//    return options.project;
-//};
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//
-//function __getProject() {
-//  return (function() {
-//    with({ runtime: __runtime, getProject: __getProject }) {
-//
-//return function /*getProject*/() {
-//    const project = runtime.getProject();
-//    if (project) {
-//        return project;
-//    }
-//    throw new Error("Project unknown; are you using the Pulumi CLI?");
-//};
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//
-//function __f1() {
-//  return (function() {
-//    with({ metadata_1: __metadata_1 }) {
-//
-//return function /*constructor*/(name) {
-//        if (name === undefined) {
-//            name = metadata_1.getProject();
-//        }
-//        if (name.endsWith(":config")) {
-//            name = name.replace(/:config$/, "");
-//        }
-//        this.name = name;
-//    };
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//(...)
-//function __f0() {
-//  return (function() {
-//    with({ testConfig: __testConfig }) {
-//
-//return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//`,
-//        });
-//    }
+    {
+       // Used just to validate that if we capture a Config object we see these values serialized over.
+       // Specifically, the module that Config uses needs to be captured by value and not be
+       // 'require-reference'.
+       deploymentOnlyModule.setConfig("test:TestingKey1", "TestingValue1");
+       const testConfig = new deploymentOnlyModule.Config("test");
 
-// NOTE: this test is disabled because it fails non-deterministically.
-//       Fixing this test is tracked by #2182.
-//
-//    {
-//        runtime.setConfig("test:TestingKey2", "TestingValue2");
-//
-//        cases.push({
-//            title: "Capture config created on the inside",
-//            func: function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); },
-//            expectText: `exports.handler = __f0;
-//
-//var __options = {project: undefined};
-//var __config = {["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }", ["pkg:color"]: "orange", ["pkg:strlen"]: "abcdefgh", ["pkg:pattern"]: "aBcDeFgH", ["pkg:quantity"]: "8", ["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
-//var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
-//var __metadata_1 = {getProject: __getProject};
-//var __f1_prototype = {};
-//Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-//(...)
-//Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f17 });
-//__f1.prototype = __f1_prototype;
-//var __pulumi = {Config: __f1};
-//
-//function __0_getProject() {
-//  return (function() {
-//    with({ options: __options, getProject: __0_getProject }) {
-//
-//return function /*getProject*/() {
-//    return options.project;
-//};
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//
-//function __getConfig() {
-//  return (function() {
-//    with({ config: __config, getConfig: __getConfig }) {
-//
-//return function /*getConfig*/(k) {
-//    return config[k];
-//};
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//
-//function __getProject() {
-//  return (function() {
-//    with({ runtime: __runtime, getProject: __getProject }) {
-//
-//return function /*getProject*/() {
-//    const project = runtime.getProject();
-//    if (project) {
-//        return project;
-//    }
-//    throw new Error("Project unknown; are you using the Pulumi CLI?");
-//};
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//
-//function __f1() {
-//  return (function() {
-//    with({ metadata_1: __metadata_1 }) {
-//
-//return function /*constructor*/(name) {
-//        if (name === undefined) {
-//            name = metadata_1.getProject();
-//        }
-//        if (name.endsWith(":config")) {
-//            name = name.replace(/:config$/, "");
-//        }
-//        this.name = name;
-//    };
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//(...)
-//function __f0() {
-//  return (function() {
-//    with({ pulumi: __pulumi }) {
-//
-//return function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); };
-//
-//    }
-//  }).apply(undefined, undefined).apply(this, arguments);
-//}
-//`,
-//        });
-//    }
+       cases.push({
+           title: "Capture config created on the outside",
+           func: function () { const v = testConfig.get("TestingKey1"); console.log(v); },
+           expectText: `exports.handler = __f0;
+
+var __testConfig_proto = {};
+__f1.prototype = __testConfig_proto;
+Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
+var __runtimeConfig_1 = {getConfig: __getConfig};
+Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f3 });
+var __testConfig = Object.create(__testConfig_proto);
+__testConfig.name = "test";
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(name) {
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+        this.name = name;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getConfig() {
+  return (function() {
+    with({ config: __config, getConfig: __getConfig }) {
+
+return function /*getConfig*/(k) {
+    return config[k];
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ runtimeConfig_1: __runtimeConfig_1 }) {
+
+return function /*get*/(key) {
+        const v = runtimeConfig_1.getConfig(this.fullKey(key));
+        if (v === undefined) {
+            return undefined;
+        }
+        return v;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*fullKey*/(key) {
+        return this.name + ":" + key;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ testConfig: __testConfig }) {
+
+return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+       });
+   }
+
+   {
+        deploymentOnlyModule.setConfig("test:TestingKey2", "TestingValue2");
+
+        cases.push({
+           title: "Capture config created on the inside",
+           func: function () { const v = new deploymentOnlyModule.Config("test").get("TestingKey2"); console.log(v); },
+           expectText: `exports.handler = __f0;
+
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
+var __runtimeConfig_1 = {getConfig: __getConfig};
+Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __f1_prototype;
+var __deploymentOnlyModule = {Config: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(name) {
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+        this.name = name;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getConfig() {
+  return (function() {
+    with({ config: __config, getConfig: __getConfig }) {
+
+return function /*getConfig*/(k) {
+    return config[k];
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ runtimeConfig_1: __runtimeConfig_1 }) {
+
+return function /*get*/(key) {
+        const v = runtimeConfig_1.getConfig(this.fullKey(key));
+        if (v === undefined) {
+            return undefined;
+        }
+        return v;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*fullKey*/(key) {
+        return this.name + ":" + key;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ deploymentOnlyModule: __deploymentOnlyModule }) {
+
+return function () { const v = new deploymentOnlyModule.Config("test").get("TestingKey2"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+       });
+   }
 
     {
         cases.push({

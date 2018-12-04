@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"unicode"
@@ -442,8 +443,8 @@ func stackInit(b backend.Backend, stackName string, setCurrent bool) (backend.St
 }
 
 // saveConfig saves the config for the stack.
-func saveConfig(stackName tokens.QName, c config.Map) error {
-	ps, err := workspace.DetectProjectStack(stackName)
+func saveConfig(stack backend.Stack, c config.Map) error {
+	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
 	}
@@ -452,7 +453,7 @@ func saveConfig(stackName tokens.QName, c config.Map) error {
 		ps.Config[k] = v
 	}
 
-	return workspace.SaveProjectStack(stackName, ps)
+	return saveProjectStack(stack, ps)
 }
 
 // installDependencies will install dependencies for the project, e.g. by running
@@ -469,9 +470,6 @@ func installDependencies(message string) error {
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		command = "npm install"
 		c = exec.Command("npm", "install")
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		command = "pip install -r requirements.txt"
-		c = exec.Command("pip", "install", "-r", "requirements.txt")
 	} else {
 		return nil
 	}
@@ -500,7 +498,9 @@ func runUpOrPrintNextSteps(
 
 	// Currently go projects require a build/install step before deployment, so we won't automatically run `up` for
 	// such projects. Once we switch over to using `go run` for go, we can remove this and always run `up`.
-	runUp := !strings.EqualFold(proj.Runtime.Name(), "go")
+	isGo := strings.EqualFold(proj.Runtime.Name(), "go")
+	isPython := strings.EqualFold(proj.Runtime.Name(), "python")
+	runUp := !isGo && !isPython
 
 	if runUp {
 		m, err := getUpdateMetadata("", root)
@@ -524,36 +524,72 @@ func runUpOrPrintNextSteps(
 			return nil
 		}
 	} else {
-		// If the current working directory changed, add instructions to cd into the directory.
-		var deployMsg string
-		if originalCwd != cwd {
-			// If we can determine a relative path, use that, otherwise use the full path.
-			var cd string
-			if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
-				cd = rel
-			} else {
-				cd = cwd
-			}
-
-			// Surround the path with double quotes if it contains whitespace.
-			if containsWhiteSpace(cd) {
-				cd = fmt.Sprintf("\"%s\"", cd)
-			}
-
-			cd = fmt.Sprintf("cd %s", cd)
-
-			deployMsg = "To deploy it, '" + cd + "' and then run 'pulumi up'."
-			deployMsg = colors.Highlight(deployMsg, cd, colors.BrightBlue+colors.Underline+colors.Bold)
-		} else {
-			deployMsg = "To deploy it, run 'pulumi up'."
-		}
-
-		// Colorize and print the next step deploy action.
-		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Println(opts.Display.Color.Colorize(deployMsg))
+		// If we're not running up, print out the steps necessary to get the environment to state where we *can* run up.
+		printNextSteps(opts, originalCwd, cwd, isPython)
 	}
 
 	return nil
+}
+
+// printNextSteps prints out a series of commands that the user needs to run before their stack is able to be updated.
+func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPython bool) {
+	var commands []string
+
+	// If the target working directory is not the same as our current WD, tell the user to
+	// CD to the target directory.
+	if originalCwd != cwd {
+		// If we can determine a relative path, use that, otherwise use the full path.
+		var cd string
+		if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
+			cd = rel
+		} else {
+			cd = cwd
+		}
+
+		// Surround the path with double quotes if it contains whitespace.
+		if containsWhiteSpace(cd) {
+			cd = fmt.Sprintf("\"%s\"", cd)
+		}
+
+		cd = fmt.Sprintf("cd %s", cd)
+		commands = append(commands, cd)
+	}
+
+	// If we're generating a Python project, instruct the user to set up and activate a virtual
+	// environment.
+	if isPython {
+		// Create the virtual environment.
+		commands = append(commands, "virtualenv -p python3 venv")
+
+		// Activate the virtual environment. Only active in the user's current shell, so we can't
+		// just run it for the user here.
+		switch runtime.GOOS {
+		case "windows":
+			commands = append(commands, "venv\\Scripts\\activate")
+		default:
+			commands = append(commands, "source venv/bin/activate")
+		}
+
+		// Install dependencies within the virtualenv
+		commands = append(commands, "pip3 install -r requirements.txt")
+	}
+
+	if len(commands) == 0 { // No additional commands need to be run.
+		deployMsg := "To deploy it, run 'pulumi up'."
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Println(opts.Display.Color.Colorize(deployMsg))
+		return
+	}
+
+	// One or more additional commands needs to be run.
+	fmt.Println("To deploy it, run the following commands:")
+	for i, cmd := range commands {
+		cmdColors := colors.BrightGreen + colors.Bold + cmd + colors.Reset
+		fmt.Printf("   %d. %s\n", i+1, opts.Display.Color.Colorize(cmdColors))
+	}
+
+	upMsg := colors.Highlight("Then, run 'pulumi up'.", "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+	fmt.Println(opts.Display.Color.Colorize(upMsg))
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
