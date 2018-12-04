@@ -117,15 +117,15 @@ var (
 	BrightMagenta = Command("fg 13")
 	BrightCyan    = Command("fg 14")
 
-	RedBg		  = Command("bg 1")
-	GreenBg		  = Command("bg 2")
-	YellowBg      = Command("bg 3")
-	BlueBg        = Command("bg 4")
+	RedBg    = Command("bg 1")
+	GreenBg  = Command("bg 2")
+	YellowBg = Command("bg 3")
+	BlueBg   = Command("bg 4")
 
 	// We explicitly do not expose blacks/whites.  They're problematic given that we don't know what
 	// terminal settings the user has.  Best to avoid them and not run into contrast problems.
 
-	Black         	 = Command("fg 0") //only use with background color
+	Black = Command("fg 0") //only use with background color
 	// White         = Command("fg 7")
 	// BrightBlack   = Command("fg 8")
 	// BrightYellow  = Command("fg 11")
