@@ -205,6 +205,7 @@ type PatchUpdateCheckpointRequest struct {
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
+// No longer sent from the CLI, but the type definition is still required for backwards compat with older clients.
 type AppendUpdateLogEntryRequest struct {
 	Kind   string                 `json:"kind"`
 	Fields map[string]interface{} `json:"fields"`

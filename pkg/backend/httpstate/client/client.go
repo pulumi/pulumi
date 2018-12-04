@@ -504,27 +504,15 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }
 
-// AppendUpdateLogEntry appends the given entry to the indicated update's logs.
-func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentifier, kind string,
-	fields map[string]interface{}, token string) error {
-
-	req := apitype.AppendUpdateLogEntryRequest{
-		Kind:   kind,
-		Fields: fields,
-	}
-
-	// Retrying this POST operation could cause us to have multiple copies of the same log message for a given
-	// operation. The alternative, however, is worse. A failure in this call will fail the entire update, so we're
-	// forcing retry of these operations, at the expense of duplicated log messages in some cases.
-	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "log"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
-}
-
 // RecordEngineEvent posts an engine event to the Pulumi service.
 func (pc *Client) RecordEngineEvent(
 	ctx context.Context, update UpdateIdentifier, event apitype.EngineEvent, token string) error {
+	callOpts := httpCallOptions{
+		GzipCompress:    true,
+		RetryAllMethods: true,
+	}
 	return pc.updateRESTCall(
 		ctx, "POST", getUpdatePath(update, "events"),
 		nil, event, nil,
-		updateAccessToken(token), httpCallOptions{GzipCompress: true})
+		updateAccessToken(token), callOpts)
 }

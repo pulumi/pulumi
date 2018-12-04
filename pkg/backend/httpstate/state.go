@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -158,45 +157,7 @@ func (u *cloudUpdate) recordEvent(
 	}
 	apiEvent.Sequence = sequenceNumber
 	apiEvent.Timestamp = int(time.Now().Unix())
-	if err = u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token); err != nil {
-		return err
-	}
-
-	// We also pre-render the event using the DiffView and post as applicable. Ideally this data
-	// is redundant because we could produce the same log from the raw engine event stream, which
-	// is stored above. As soon as the Pulumi Service can render update logs from raw engine events,
-	// this can safely be removed.
-	fields := make(map[string]interface{})
-	kind := string(apitype.StdoutEvent)
-	if event.Type == engine.DiagEvent {
-		payload := event.Payload.(engine.DiagEventPayload)
-		fields["severity"] = string(payload.Severity)
-		if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-			kind = string(apitype.StderrEvent)
-		}
-	}
-
-	// Ensure we render events with raw colorization tags.  Also, render these as 'diff' events so
-	// the user has a rich diff-log they can see when the look at their logs in the service.
-	opts.Color = colors.Raw
-	msg := display.RenderDiffEvent(action, event, seen, opts)
-
-	// If we have a message, upload it as <= 1MB chunks.
-	for msg != "" {
-		chunk := msg
-		const maxLen = 1 << 20 // 1 MB
-		if len(chunk) > maxLen {
-			chunk = colors.TrimPartialCommand(msg)
-		}
-		msg = msg[len(chunk):]
-
-		fields["text"] = chunk
-		fields["colorize"] = colors.Always
-		if err = u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token); err != nil {
-			return err
-		}
-	}
-	return nil
+	return u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token)
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as

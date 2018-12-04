@@ -97,7 +97,6 @@ func init() {
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}", "startDestroy")
 	addEndpoint("PATCH", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}/checkpoint", "patchUpdateCheckpoint")
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}/complete", "completeUpdate")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}/log", "appendUpdateLogEntry")
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}/renew_lease", "renewUpdateLease")
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/preview", "previewUpdate")
 	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/preview/{updateID}", "getPreviewStatus")
@@ -107,6 +106,5 @@ func init() {
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}", "startUpdate")
 	addEndpoint("PATCH", "/api/stacks/{orgName}/{stackName}/update/{updateID}/checkpoint", "patchUpdateCheckpoint")
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/complete", "completeUpdate")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/log", "appendUpdateLogEntry")
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/renew_lease", "renewUpdateLease")
 }
