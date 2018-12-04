@@ -144,7 +144,7 @@ export interface ResourceOptions {
     /**
      * An optional additional explicit dependencies on other resources.
      */
-    dependsOn?: Resource[] | Resource;
+    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
@@ -618,7 +618,7 @@ export type Inputs = Record<string, Input<any>>;
  * In other words, this should not be used as the shape of an object: `{ a: Promise<Output<...>> }`.
  * It should always either be `{ a: Promise<NonOutput> }` or just `{ a: Output<...> }`.
  */
-type Unwrap<T> =
+export type Unwrap<T> =
     // 1. If we have a promise, just get the type it itself is wrapping and recursively unwrap that.
     // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
     // 3. Otherwise, we have a basic type.  Just unwrap that.
@@ -631,7 +631,7 @@ type primitive = Function | string | number | boolean | undefined | null;
 /**
  * Handles encountering basic types when unwrapping.
  */
-type UnwrapSimple<T> =
+export type UnwrapSimple<T> =
     // 1. Any of the primitive types just unwrap to themselves.
     // 2. An array of some types unwraps to an array of that type itself unwrapped. Note, due to a
     //    TS limitation we cannot express that as Array<Unwrap<U>> due to how it handles recursive
@@ -646,8 +646,8 @@ type UnwrapSimple<T> =
     T extends object ? UnwrappedObject<T> :
     never;
 
-interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
+export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 
-type UnwrappedObject<T> = {
+export type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };

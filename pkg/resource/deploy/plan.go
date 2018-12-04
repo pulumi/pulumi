@@ -31,6 +31,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// BackendClient provides an interface for retrieving information about other stacks.
+type BackendClient interface {
+	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
+	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
+}
+
 // Options controls the planning and deployment process.
 type Options struct {
 	Events            Events // an optional events callback interface.
@@ -168,7 +174,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 // Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
 // a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
 func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source, analyzers []tokens.QName,
-	preview bool) (*Plan, error) {
+	preview bool, backendClient BackendClient) (*Plan, error) {
 
 	contract.Assert(ctx != nil)
 	contract.Assert(target != nil)
@@ -212,10 +218,13 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		depGraph = graph.NewDependencyGraph(oldResources)
 	}
 
+	// Create a new builtin provider. This provider implements features such as `getStack`.
+	builtins := newBuiltinProvider(backendClient)
+
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
-	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview)
+	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, builtins)
 	if err != nil {
 		return nil, err
 	}

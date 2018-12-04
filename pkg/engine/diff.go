@@ -155,7 +155,7 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 			write(&b, deploy.OpDelete, "%s", old.Provider)
 			writeVerbatim(&b, deploy.OpUpdate, " => ")
 			if newProv.ID() == providers.UnknownID {
-				write(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::computed<string>")
+				write(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::output<string>")
 			} else {
 				write(&b, deploy.OpCreate, "%s", new.Provider)
 			}

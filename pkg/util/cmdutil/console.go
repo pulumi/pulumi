@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -92,4 +93,89 @@ func RemoveTralingNewline(s string) string {
 	}
 
 	return s
+}
+
+type Table struct {
+	Headers []string
+	Rows    []TableRow // Rows of the table.
+	Prefix  string     // Optional prefix to print before each row
+}
+
+// TableRow is a row in a table we want to print.  It can be a series of a columns, followed
+// by an additional line of information.
+type TableRow struct {
+	Columns        []string // Columns of the row
+	AdditionalInfo string   // an optional line of information to print after the row
+}
+
+// PrintTable prints a grid of rows and columns.  Width of columns is automatically determined by
+// the max length of the items in each column.  A default gap of two spaces is printed between each
+// column.
+func PrintTable(table Table) {
+	PrintTableWithGap(table, "  ")
+}
+
+// PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
+// by the max length of the items in each column.  A gap can be specified between the columns.
+func PrintTableWithGap(table Table, columnGap string) {
+	columnCount := len(table.Headers)
+
+	// Figure out the preferred column width for each column.  It will be set to the max length of
+	// any item in that column.
+	preferredColumnWidths := make([]int, columnCount)
+
+	allRows := []TableRow{{
+		Columns: table.Headers,
+	}}
+
+	allRows = append(allRows, table.Rows...)
+
+	for rowIndex, row := range allRows {
+		columns := row.Columns
+		if len(columns) != len(preferredColumnWidths) {
+			panic(fmt.Sprintf(
+				"Error printing table.  Column count of row %v didn't match header column count. %v != %v",
+				rowIndex, len(columns), len(preferredColumnWidths)))
+		}
+
+		for columnIndex, val := range columns {
+			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], len(val))
+		}
+	}
+
+	format := ""
+	for i, maxWidth := range preferredColumnWidths {
+		if i < len(preferredColumnWidths)-1 {
+			format += "%-" + strconv.Itoa(maxWidth+len(columnGap)) + "s"
+		} else {
+			// do not want whitespace appended to the last column.  It would cause wrapping on lines
+			// that were not actually long if some other line was very long.
+			format += "%s"
+		}
+	}
+	format += "\n"
+
+	columns := make([]interface{}, columnCount)
+	for _, row := range allRows {
+		for columnIndex, value := range row.Columns {
+			// Now, ensure we have the requested gap between columns as well.
+			if columnIndex < columnCount-1 {
+				value += columnGap
+			}
+
+			columns[columnIndex] = value
+		}
+
+		fmt.Printf(table.Prefix+format, columns...)
+		if row.AdditionalInfo != "" {
+			fmt.Print(row.AdditionalInfo)
+		}
+	}
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

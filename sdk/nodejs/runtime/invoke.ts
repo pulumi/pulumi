@@ -29,7 +29,8 @@ const resproto = require("../proto/resource_pb.js");
  * resolves when the invoke finishes.
  */
 export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): Promise<any> {
-    log.debug(`Invoking function: tok=${tok}` +
+    const label = `Invoking function: tok=${tok}`;
+    log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
     opts = opts || {};
@@ -76,7 +77,7 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
                 else {
                     innerResolve(innerResponse);
                 }
-            })));
+            })), label);
 
         // If there were failures, propagate them.
         const failures: any = resp.getFailuresList();

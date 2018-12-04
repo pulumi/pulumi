@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -36,17 +35,8 @@ func TestParseKey(t *testing.T) {
 
 	_, err = ParseKey("foo")
 	assert.Error(t, err)
-}
 
-func TestFromModuleMember(t *testing.T) {
-	mm := tokens.ModuleMember("test:config:key")
-	k, err := fromModuleMember(mm)
-	assert.NoError(t, err)
-	assert.Equal(t, "test", k.namespace)
-	assert.Equal(t, "key", k.name)
-
-	mm = tokens.ModuleMember("test:data:key")
-	_, err = fromModuleMember(mm)
+	_, err = ParseKey("test:data:key")
 	assert.Error(t, err)
 }
 

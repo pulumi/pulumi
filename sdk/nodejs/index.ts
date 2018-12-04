@@ -21,6 +21,7 @@ export * from "./errors";
 export * from "./invoke";
 export * from "./metadata";
 export * from "./resource";
+export * from "./stackReference";
 
 // Export submodules individually.
 import * as asset from "./asset";

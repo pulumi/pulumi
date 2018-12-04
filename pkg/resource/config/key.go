@@ -36,26 +36,30 @@ func MustMakeKey(namespace string, name string) Key {
 }
 
 func ParseKey(s string) (Key, error) {
-	mm, err := tokens.ParseModuleMember(s)
-	if err == nil {
-		return fromModuleMember(mm)
-	}
-	if idx := strings.Index(s, ":"); idx > -1 {
+	// Keys can take on of two forms:
+	//
+	// - <namespace>:<name> (the preferred form)
+	// - <namespace>:config:<name> (compat with an old requirement that every config value be in the "config" module)
+	//
+	// Where <namespace> and <name> may be any string of characters, excluding ':'.
+
+	switch strings.Count(s, ":") {
+	case 1:
+		idx := strings.Index(s, ":")
 		return Key{namespace: s[:idx], name: s[idx+1:]}, nil
+	case 2:
+		if mm, err := tokens.ParseModuleMember(s); err == nil {
+			if mm.Module().Name() == tokens.ModuleName("config") {
+				return Key{
+					namespace: mm.Module().Package().String(),
+					name:      mm.Name().String(),
+				}, nil
+			}
+		}
 	}
 
-	return Key{}, errors.Errorf("could not parse %s as a configuration key", s)
-}
-
-func fromModuleMember(m tokens.ModuleMember) (Key, error) {
-	if m.Module().Name() != tokens.ModuleName("config") {
-		return Key{}, errors.Errorf("%s is not in config module", m)
-	}
-
-	return Key{
-		namespace: m.Module().Package().String(),
-		name:      m.Name().String(),
-	}, nil
+	return Key{}, errors.Errorf("could not parse %s as a configuration key "+
+		"(configuration keys should be of the form `<namespace>:<name>`)", s)
 }
 
 func (k Key) Namespace() string {

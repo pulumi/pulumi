@@ -5,6 +5,7 @@ package ints
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -214,13 +215,12 @@ func TestStackOutputsJSON(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
-	stdout, stderr := e.RunCommand("pulumi", "stack", "output", "--json")
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
 	assert.Equal(t, `{
   "foo": 42,
   "xyz": "ABC"
 }
 `, stdout)
-	assert.Equal(t, "", stderr)
 }
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
@@ -552,5 +552,49 @@ func TestGetCreated(t *testing.T) {
 		Dir:          "get_created",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+	})
+}
+
+// Tests that stack references work.
+func TestStackReference(t *testing.T) {
+	opts := &integration.ProgramTestOptions{
+		Dir:          "stack_reference",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	}
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		opts.Config = map[string]string{
+			"org": owner,
+		}
+	}
+	integration.ProgramTest(t, opts)
+}
+
+// Tests that we issue an error if we fail to locate the Python command when running
+// a Python example.
+func TestPython3NotInstalled(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	badPython := "python3000"
+	expectedError := fmt.Sprintf(
+		"error: Failed to locate '%s' on your PATH. Have you installed Python 3.6 or greater?",
+		badPython)
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: path.Join("empty", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Env: []string{
+			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
+			// for Python 3, since anyone running tests surely already has Python 3 installed on their
+			// machine. The code paths are functionally the same.
+			fmt.Sprintf("PULUMI_PYTHON_CMD=%s", badPython),
+		},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
+		},
 	})
 }

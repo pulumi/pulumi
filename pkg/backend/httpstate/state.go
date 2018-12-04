@@ -17,10 +17,8 @@ package httpstate
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -143,8 +141,8 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 // recordEvent will record the event with the Pulumi service, enabling things like viewing
 // the rendered update logs or drilling into the timeline of an update.
 func (u *cloudUpdate) recordEvent(
-	action apitype.UpdateKind, event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	opts display.Options) error {
+	action apitype.UpdateKind, event engine.Event, sequenceNumber int,
+	seen map[resource.URN]engine.StepEventMetadata, opts display.Options) error {
 	contract.Assert(u.tokenSource != nil)
 	token, err := u.tokenSource.GetToken()
 	if err != nil {
@@ -154,19 +152,20 @@ func (u *cloudUpdate) recordEvent(
 	// Send the event to the Pulumi Service to power things like the update summary page.
 	// Currently opt-in via flag to allow for gathering per data before the service-side changes
 	// are available in production.
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_RECORD_ENGINE_EVENTS")) {
-		apiEvent, convErr := convertEngineEvent(event)
-		if convErr != nil {
-			return errors.Wrap(convErr, "converting engine event")
-		}
-		if err = u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token); err != nil {
-			return err
-		}
+	apiEvent, convErr := convertEngineEvent(event)
+	if convErr != nil {
+		return errors.Wrap(convErr, "converting engine event")
+	}
+	apiEvent.Sequence = sequenceNumber
+	apiEvent.Timestamp = int(time.Now().Unix())
+	if err = u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token); err != nil {
+		return err
 	}
 
 	// We also pre-render the event using the DiffView and post as applicable. Ideally this data
 	// is redundant because we could produce the same log from the raw engine event stream, which
-	// is stored above.
+	// is stored above. As soon as the Pulumi Service can render update logs from raw engine events,
+	// this can safely be removed.
 	fields := make(map[string]interface{})
 	kind := string(apitype.StdoutEvent)
 	if event.Type == engine.DiagEvent {
@@ -212,12 +211,19 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, done, opts, isPreview)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
+
+	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
+	// ensure events can be reconstructured in the same order they were emitted. (And not
+	// out of order from parallel writes and/or network delays.)
+	eventIdx := 0
 	for e := range events {
+		eventIdx++
+
 		// First echo the event to the local display.
 		displayEvents <- e
 
 		// Then render and record the event for posterity.
-		if err := u.recordEvent(action, e, seen, opts); err != nil {
+		if err := u.recordEvent(action, e, eventIdx, seen, opts); err != nil {
 			diagEvent := engine.Event{
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
@@ -281,7 +287,15 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
-	stk, err := workspace.DetectProjectStack(stackRef.Name())
+	stackConfigFile := b.stackConfigFile
+	if stackConfigFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackRef.Name())
+		if err != nil {
+			return nil, err
+		}
+		stackConfigFile = f
+	}
+	stk, err := workspace.LoadProjectStack(stackConfigFile)
 	if err != nil {
 		return nil, err
 	}
@@ -364,6 +378,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.S
 
 // convertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
+// EngineEvent.{ Sequence, Timestamp } are expected to be set by the caller.
 func convertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 

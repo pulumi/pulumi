@@ -422,7 +422,7 @@ func (v PropertyValue) TypeString() string {
 	} else if v.IsObject() {
 		return "object"
 	} else if v.IsComputed() {
-		return "computed<" + v.Input().Element.TypeString() + ">"
+		return "output<" + v.Input().Element.TypeString() + ">"
 	} else if v.IsOutput() {
 		return "output<" + v.OutputValue().Element.TypeString() + ">"
 	}
