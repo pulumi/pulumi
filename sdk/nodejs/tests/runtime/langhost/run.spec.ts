@@ -427,11 +427,9 @@ describe("rpc", () => {
                             expectProtect = true;
                             break;
                         case "c3":
+                        case "r3":
                             // Force provider
                             expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
-                            break;
-                        case "r3":
-                            // Do nothing.
                             break;
                         default:
                             assert.fail(`unexpected path element in name: ${rpath[i]}`);
@@ -445,8 +443,8 @@ describe("rpc", () => {
 
                     const providerName = provider!.split("::").reduce((_, v) => v);
 
-                    assert.strictEqual(protect!, expectProtect);
-                    assert.strictEqual(providerName, expectProviderName);
+                    assert.strictEqual(`${name}.protect: ${protect!}`, `${name}.protect: ${expectProtect}`);
+                    assert.strictEqual(`${name}.provider: ${providerName}`, `${name}.provider: ${expectProviderName}`);
                 }
 
                 return { urn: makeUrn(t, name), id: name, props: {} };
