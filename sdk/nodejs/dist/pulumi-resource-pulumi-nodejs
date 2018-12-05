@@ -1,2 +1,5 @@
 #!/bin/sh
-node ./node_modules/@pulumi/pulumi/cmd/dynamic-provider $@
+PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH=$(node -e "console.log(require.resolve('@pulumi/pulumi/cmd/dynamic-provider'))")
+if [ ! -z "$PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH" ]; then
+    node "$PULUMI_DYNAMIC_PROVIDER_SCRIPT_PATH" $@
+fi

@@ -8,6 +8,8 @@
   
 - Fix an error about a bad icotl when trying to read sensitive input from the console and standard in was not connected to a terminal.
 
+- The dynamic provider would fail to launch if your `node_modules` folder was non in the default location or had a non standard layout. This has been fixed so we correctly find your `node_modules` folder in the same way node does. (fixes [pulumi/pulumi#2261](https://github.com/pulumi/pulumi/issues/2261))
+
 ## 0.16.6 (Released November 28th, 2018)
 
 ### Major Changes
