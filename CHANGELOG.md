@@ -1,11 +1,13 @@
-## 0.16.7 (not yet released)
+## 0.16.8 (Unreleased)
+
+## 0.16.7 (Release December 5th, 2018)
 
 ### Improvements
 
 - Configuration and stack commands now take a `--config-file` options. This option allows the user to override the file used to fetch and store config information for a stack during the execution of a command.
 
 - Fix an issue where ANSI escape codes would appear in messages printed from the CLI when running on Windows.
-  
+
 - Fix an error about a bad icotl when trying to read sensitive input from the console and standard in was not connected to a terminal.
 
 - The dynamic provider would fail to launch if your `node_modules` folder was non in the default location or had a non standard layout. This has been fixed so we correctly find your `node_modules` folder in the same way node does. (fixes [pulumi/pulumi#2261](https://github.com/pulumi/pulumi/issues/2261))
