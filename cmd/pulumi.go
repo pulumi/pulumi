@@ -28,6 +28,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
+	"github.com/docker/docker/pkg/term"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -76,6 +77,10 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://pulumi.io",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// We run this method for its side-effects. On windows, this will enable the windows terminal
+			// to understand ANSI escape codes.
+			_, _, _ = term.StdStreams()
+
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
 			// get DisplayOptions passed in.
