@@ -1,11 +1,23 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"time"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -19,15 +31,14 @@ import (
 
 func newHistoryCmd() *cobra.Command {
 	var stack string
-	var outputJSON bool // Requires PULUMI_DEBUG_COMMANDS
 	var cmd = &cobra.Command{
 		Use:        "history",
 		Aliases:    []string{"hist"},
 		SuggestFor: []string{"updates"},
 		Short:      "Update history for a stack",
 		Long: "Update history for a stack\n" +
-			"\n" +
-			"This command lists data about previous updates for a stack.",
+		"\n" +
+		"This command lists data about previous updates for a stack.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 
@@ -48,68 +59,66 @@ func newHistoryCmd() *cobra.Command {
 				return errors.Wrap(err, "getting history")
 			}
 
-			if outputJSON {
-				b, err := json.MarshalIndent(updates, "", "    ")
-				if err != nil {
-					return err
-				}
-				fmt.Println(string(b))
-			} else {
-				printUpdateHistory(updates, opts)
-			}
+			displayUpdate(updates, opts)
+
 			return nil
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
-	// pulumi/issues/496 tracks adding a --format option across all commands. Rather than expose a partial solution
-	// for just `history`, we put the JSON flag behind an env var so we can use in tests w/o making public.
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
-		cmd.PersistentFlags().BoolVar(&outputJSON, "output-json", false, "Output stack history as JSON")
-	}
+
 	return cmd
 }
-func printUpdateHistory(updates []backend.UpdateInfo, opts display.Options) {
+
+func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 
 	if len(updates) == 0 {
 		fmt.Println("Stack has never been updated")
 		return
 	}
 
+	printResourceChanges := func(backgroundColor string, textColor string, sign string, amountOfChange int, resetColor string) {
+		msg := opts.Color.Colorize(fmt.Sprintf("%s%s%s%v%s", backgroundColor, textColor, sign, amountOfChange, resetColor))
+		fmt.Print(msg)
+	}
+
 	for _, update := range updates {
 
-		fmt.Print(
-			opts.Color.Colorize(
-				fmt.Sprintf("%s%s%s\n", colors.Green, "-----------------------", colors.Reset)))
+		fmt.Print( opts.Color.Colorize( fmt.Sprintf("%s%s%s\n", colors.Green, "-----------------------", colors.Reset)))
 
-		fmt.Printf("  UpdateKind: %v \n  Status: %v  m: %v \n", update.Kind, update.Result, update.Message)
-		fmt.Print(
-			opts.Color.Colorize(
-				fmt.Sprintf("  %s%s+%v%s%s%s-%v%s%s%s~%v%s%s%s %v%s",
-					colors.GreenBg, colors.Black, update.ResourceChanges["create"], colors.Reset,
-					colors.RedBg, colors.Black, update.ResourceChanges["delete"], colors.Reset,
-					colors.YellowBg, colors.Black, update.ResourceChanges["update"], colors.Reset,
-					colors.BlueBg, colors.Black, update.ResourceChanges["same"], colors.Reset)))
+		fmt.Printf("UpdateKind: %v\n", update.Kind)
+		fmt.Printf("Status: %v m: %v \n", update.Result, update.Message)
 
-		tStart := time.Unix(update.StartTime, 0)
-		tCreated := humanize.Time(tStart)
-		tEnd := time.Unix(update.EndTime, 0)
-		duration := tEnd.Sub(tStart)
+		printResourceChanges(colors.GreenBackground, colors.Black, "+", update.ResourceChanges["create"], colors.Reset)
+		printResourceChanges(colors.RedBackground, colors.Black, "-", update.ResourceChanges["delete"], colors.Reset)
+		printResourceChanges(colors.YellowBackground, colors.Black, "~", update.ResourceChanges["update"], colors.Reset)
+		printResourceChanges(colors.BlueBackground, colors.Black, " ", update.ResourceChanges["same"], colors.Reset)
 
-		fmt.Printf("  Updated %s took %s\n", tCreated, duration)
+		timeStart := time.Unix(update.StartTime, 0)
+		timeCreated := humanize.Time(timeStart)
+		timeEnd := time.Unix(update.EndTime, 0)
+		duration := timeEnd.Sub(timeStart)
 
-		if len(update.Environment) != 0 {
-			fmt.Printf("    Github-Login: %s\n", update.Environment["github.login"])
-			fmt.Printf("    Github-Committer: %s <%s>\n",
-				update.Environment["git.committer"], update.Environment["git.committer.email"])
-			fmt.Print(
-				opts.Color.Colorize(
-					fmt.Sprintf("%s    commit %s%s\n", colors.Yellow, update.Environment["git.head"], colors.Reset)))
+		space := 2
+		fmt.Printf("%*sUpdated %s took %s\n", space, "", timeCreated, duration)
+
+		empty := func(s string) bool {
+			if len(strings.TrimSpace(s)) == 0 {
+				return true
+			}
+			return false
 		}
 
-		fmt.Print(
-			opts.Color.Colorize(
-				fmt.Sprintf("%s%s%s\n", colors.Cyan, "-----------------------", colors.Reset)))
+		if len(update.Environment) != 0 {
+			indent := 4
+			if !empty(update.Environment["github.login"]) && !empty(update.Environment["git.committer"]) && !empty(update.Environment["git.committer.email"]) && !empty(update.Environment["git.head"]) {
+				fmt.Printf("%*sGithub-Login: %s\n", indent, "", update.Environment["github.login"])
+				fmt.Printf("%*sGithub-Committer: %s <%s>\n", indent, "", update.Environment["git.committer"], update.Environment["git.committer.email"])
+				fmt.Print(opts.Color.Colorize(fmt.Sprintf("%*s%scommit %s%s\n", indent, "", colors.Yellow, update.Environment["git.head"], colors.Reset)))
+			}
+		}
+
+		fmt.Print( opts.Color.Colorize( fmt.Sprintf("%s%s%s\n", colors.Cyan, "-----------------------", colors.Reset)))
 	}
 }
