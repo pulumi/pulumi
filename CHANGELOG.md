@@ -1,5 +1,9 @@
 ## 0.16.8 (Unreleased)
 
+### Improvements
+
+- Update the error message when When `pulumi` commands fail to detect your project to mention that `pulumi new` can be used to create a new project (fixes [pulumi/pulumi#2234](https://github.com/pulumi/pulumi/issues/2234))
+
 ## 0.16.7 (Release December 5th, 2018)
 
 ### Improvements

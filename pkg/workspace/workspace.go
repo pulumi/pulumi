@@ -89,7 +89,8 @@ func NewFrom(dir string) (W, error) {
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, errors.New("no Pulumi.yaml project file found")
+		return nil, errors.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+			"created a project yet, use `pulumi new` to do so", dir)
 	}
 
 	proj, err := LoadProject(path)
