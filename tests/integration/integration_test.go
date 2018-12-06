@@ -411,9 +411,9 @@ func TestConfigSave(t *testing.T) {
 		assert.Equal(t, v, dv)
 	}
 
-	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
+	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, ".pulumi", "Pulumi.testing-1.yaml"))
 	assert.NoError(t, err)
-	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
+	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, ".pulumi", "Pulumi.testing-2.yaml"))
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(testStack1.Config))

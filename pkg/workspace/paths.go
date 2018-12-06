@@ -73,15 +73,30 @@ func DetectProjectPath() (string, error) {
 	return path, nil
 }
 
-// DetectProjectStackPath returns the name of the file to store stack specific project settings in. We place stack
-// specific settings next to the Pulumi.yaml file, named like: Pulumi.<stack-name>.yaml
+// DetectProjectStackPath returns the name of the file to store stack specific project settings in. By default, we
+// write this into a .pulumi folder next to the Pulumi.yaml file for the project, but we allow this behavior to be
+// configured by a setting in the project file and also have some compatibility behavior to support our older model
+// where we wrote the configuration YAML into a file next to Pulumi.yaml by default.
 func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 	proj, projPath, err := DetectProjectAndPath()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
+	configRoot := proj.Config
+
+	// If the location has not been overridden and an existing configuration file doesn't exist next to Pulumi.yaml,
+	// prefer storing in the .pulumi folder instead.
+	if configRoot == "" {
+		candidateFile := filepath.Join(filepath.Dir(projPath),
+			fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath)))
+
+		if _, err := os.Stat(candidateFile); os.IsNotExist(err) {
+			configRoot = ".pulumi"
+		}
+	}
+
+	return filepath.Join(filepath.Dir(projPath), configRoot, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
 		filepath.Ext(projPath))), nil
 }
 
