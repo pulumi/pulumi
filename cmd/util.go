@@ -286,7 +286,8 @@ func readProject() (*workspace.Project, string, error) {
 			"could not locate Pulumi.yaml project file (searching upwards from %s)", pwd)
 	} else if path == "" {
 		return nil, "", errors.Errorf(
-			"no Pulumi.yaml project file found (searching upwards from %s)", pwd)
+			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+				"created a project yet, use `pulumi new` to do so", pwd)
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
