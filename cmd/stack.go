@@ -31,6 +31,7 @@ import (
 func newStackCmd() *cobra.Command {
 	var showIDs bool
 	var showURNs bool
+	var stackName string
 
 	cmd := &cobra.Command{
 		Use:   "stack",
@@ -46,7 +47,7 @@ func newStackCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireCurrentStack(true, opts, true /*setCurrent*/)
+			s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -156,7 +157,9 @@ func newStackCmd() *cobra.Command {
 			return nil
 		}),
 	}
-
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVarP(
 		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.PersistentFlags().BoolVarP(

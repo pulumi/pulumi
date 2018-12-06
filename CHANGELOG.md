@@ -1,5 +1,9 @@
 ## 0.16.8 (Unreleased)
 
+### Improvements
+
+- Added a `--stack` argument (short form `-s`) to `pulumi stack`, `pulumi stack init`, `pulumi state delete` and `pulumi state unprotect` to allow operating on a different stack than the currently selected stack. This brings these commands in line with the other commands that operate on stacks and already provided a `--stack` option (fixes [pulumi/pulumi#1648](https://github.com/pulumi/pulumi/issues/1648))
+
 ## 0.16.7 (Release December 5th, 2018)
 
 ### Improvements

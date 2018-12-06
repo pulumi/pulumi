@@ -23,6 +23,8 @@ import (
 )
 
 func newStackInitCmd() *cobra.Command {
+	var stackName string
+
 	cmd := &cobra.Command{
 		Use:   "init [<organization-name>/]<stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -44,10 +46,15 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			var stackName string
 			if len(args) > 0 {
+				if stackName != "" {
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
+				}
+
 				stackName = args[0]
-			} else if cmdutil.Interactive() {
+			}
+
+			if stackName == "" && cmdutil.Interactive() {
 				name, nameErr := cmdutil.ReadConsole("Enter a stack name")
 				if nameErr != nil {
 					return nameErr
@@ -69,5 +76,7 @@ func newStackInitCmd() *cobra.Command {
 			return err
 		}),
 	}
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to create")
 	return cmd
 }
