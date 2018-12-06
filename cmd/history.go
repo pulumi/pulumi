@@ -16,8 +16,8 @@ package cmd
 
 import (
 	"fmt"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -37,42 +37,34 @@ func newHistoryCmd() *cobra.Command {
 		SuggestFor: []string{"updates"},
 		Short:      "Update history for a stack",
 		Long: "Update history for a stack\n" +
-		"\n" +
-		"This command lists data about previous updates for a stack.",
+			"\n" +
+			"This command lists data about previous updates for a stack.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
-
+			s, err := requireStack(stack, false /*offerNew */, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-
 			b := s.Backend()
-
 			updates, err := b.GetHistory(commandContext(), s.Ref())
 			if err != nil {
 				return errors.Wrap(err, "getting history")
 			}
 
 			displayUpdate(updates, opts)
-
 			return nil
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
-
 	return cmd
 }
 
 func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
-
 	if len(updates) == 0 {
 		fmt.Println("Stack has never been updated")
 		return
@@ -85,10 +77,13 @@ func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 
 	for _, update := range updates {
 
-		fmt.Print( opts.Color.Colorize( fmt.Sprintf("%s%s%s\n", colors.Green, "-----------------------", colors.Reset)))
-
 		fmt.Printf("UpdateKind: %v\n", update.Kind)
-		fmt.Printf("Status: %v m: %v \n", update.Result, update.Message)
+		if update.Result == "succeeded" {
+			fmt.Print(opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Green, update.Result, colors.Reset)))
+		} else {
+			fmt.Print(opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Red, update.Result, colors.Reset)))
+		}
+		fmt.Printf("Message: %v\n", update.Message)
 
 		printResourceChanges(colors.GreenBackground, colors.Black, "+", update.ResourceChanges["create"], colors.Reset)
 		printResourceChanges(colors.RedBackground, colors.Black, "-", update.ResourceChanges["delete"], colors.Reset)
@@ -99,15 +94,10 @@ func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 		timeCreated := humanize.Time(timeStart)
 		timeEnd := time.Unix(update.EndTime, 0)
 		duration := timeEnd.Sub(timeStart)
-
-		space := 2
-		fmt.Printf("%*sUpdated %s took %s\n", space, "", timeCreated, duration)
+		fmt.Printf("%2sUpdated %s took %s\n", "", timeCreated, duration)
 
 		empty := func(s string) bool {
-			if len(strings.TrimSpace(s)) == 0 {
-				return true
-			}
-			return false
+			return len(strings.TrimSpace(s)) == 0
 		}
 
 		if len(update.Environment) != 0 {
@@ -118,7 +108,6 @@ func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 				fmt.Print(opts.Color.Colorize(fmt.Sprintf("%*s%scommit %s%s\n", indent, "", colors.Yellow, update.Environment["git.head"], colors.Reset)))
 			}
 		}
-
-		fmt.Print( opts.Color.Colorize( fmt.Sprintf("%s%s%s\n", colors.Cyan, "-----------------------", colors.Reset)))
+		fmt.Println("")
 	}
 }
