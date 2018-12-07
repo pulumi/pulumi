@@ -50,7 +50,6 @@ func DetectVars() Vars {
 		v.SHA = os.Getenv("Build.SourceVersion")
 		v.BranchName = os.Getenv("Build.SourceBranchName")
 		v.CommitMessage = os.Getenv("Build.SourceVersionMessage")
-
 	case CircleCI:
 		// See: https://circleci.com/docs/2.0/env-vars/
 		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
