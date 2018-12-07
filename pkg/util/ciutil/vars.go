@@ -43,6 +43,20 @@ func DetectVars() Vars {
 	// try to detect some additional CI-specific metadata that the CLI will use. It's okay if we can't,
 	// we'll just have reduced functionality for our various CI integrations.
 	switch v.Name {
+	case AzurePipelines:
+		// See: https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables
+		v.BuildID = os.Getenv("Build.BuildId")
+		v.BuildType = os.Getenv("Build.Reason")
+		v.SHA = os.Getenv("Build.SourceVersion")
+		v.BranchName = os.Getenv("Build.SourceBranchName")
+		v.CommitMessage = os.Getenv("Build.SourceVersionMessage")
+
+	case CircleCI:
+		// See: https://circleci.com/docs/2.0/env-vars/
+		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
+		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
+		v.SHA = os.Getenv("CIRCLE_SHA1")
+		v.BranchName = os.Getenv("CIRCLE_BRANCH")
 	case GitLab:
 		// See https://docs.gitlab.com/ee/ci/variables/.
 		v.BuildID = os.Getenv("CI_JOB_ID")
@@ -58,12 +72,6 @@ func DetectVars() Vars {
 		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
 		v.BranchName = os.Getenv("TRAVIS_BRANCH")
 		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
-	case CircleCI:
-		// See: https://circleci.com/docs/2.0/env-vars/
-		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
-		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
-		v.SHA = os.Getenv("CIRCLE_SHA1")
-		v.BranchName = os.Getenv("CIRCLE_BRANCH")
 	}
 	return v
 }

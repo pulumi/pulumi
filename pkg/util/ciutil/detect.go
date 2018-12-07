@@ -22,6 +22,7 @@ import (
 // CI. See https://github.com/watson/ci-info/blob/master/index.js
 var detectors = map[System]detector{
 	AppVeyor:                    envVarDetector{envVar: []string{"APPVEYOR"}},
+	AzurePipelines:              envVarDetector{envVar: []string{"System.TeamProjectId"}},
 	AWSCodeBuild:                envVarDetector{envVar: []string{"CODEBUILD_BUILD_ARN"}},
 	AtlassianBamboo:             envVarDetector{envVar: []string{"bamboo_planKey"}},
 	AtlassianBitbucketPipelines: envVarDetector{envVar: []string{"BITBUCKET_COMMIT"}},

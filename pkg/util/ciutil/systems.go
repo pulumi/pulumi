@@ -17,6 +17,7 @@ package ciutil
 const (
 	AppVeyor                    System = "AppVeyor"
 	AWSCodeBuild                System = "AWS CodeBuild"
+	AzurePipelines              System = "Azure Pipelines"
 	AtlassianBamboo             System = "Atlassian Bamboo"
 	AtlassianBitbucketPipelines System = "Atlassian Bitbucket Pipelines"
 	Buildkite                   System = "Buildkite"
