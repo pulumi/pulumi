@@ -219,7 +219,16 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
+export function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
+    return serializePropertyWorker(ctx, prop, dependentResources, new Set());
+}
+
+async function serializePropertyWorker(
+    ctx: string, prop: Input<any>,
+    dependentResources: Resource[],
+    seenObjects: Set<any>): Promise<any> {
+
+    // Simple values, always serialize fully.
     if (prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
@@ -231,28 +240,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
         return prop;
     }
-    else if (prop instanceof Array) {
-        const elems: any[] = [];
-        for (let i = 0; i < prop.length; i++) {
-            if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
-            }
-            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
-            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
-            elems.push(elem === undefined ? null : elem);
-        }
-        return elems;
-    }
-    else if (CustomResource.isInstance(prop)) {
-        // Resources aren't serializable; instead, we serialize them as references to the ID property.
-        if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: resource ID`);
-        }
 
-        dependentResources.push(prop);
-        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
-    }
-    else if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
         const obj: any = {
@@ -261,16 +250,20 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 
         return await serializeAllKeys(prop, obj);
     }
-    else if (prop instanceof Promise) {
+
+    if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Promise<T>`);
         }
+
         const subctx = `Promise<${ctx}>`;
-        return serializeProperty(subctx,
-            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
+        return serializePropertyWorker(subctx,
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`),
+            dependentResources, seenObjects);
     }
-    else if (Output.isInstance(prop)) {
+
+    if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
@@ -281,11 +274,46 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
         // resolve isKnown to true) and for any resource outputs that were resolved with known values.
         const isKnown = await prop.isKnown;
-        const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
+        const value = await serializePropertyWorker(
+            `${ctx}.id`, prop.promise(), dependentResources, seenObjects);
         return isKnown ? value : unknownValue;
-    } else {
-        return await serializeAllKeys(prop, {});
     }
+
+    if (CustomResource.isInstance(prop)) {
+        // Resources aren't serializable; instead, we serialize them as references to the ID property.
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: custom resource id`);
+        }
+
+        dependentResources.push(prop);
+        return serializePropertyWorker(`${ctx}.id`, prop.id, dependentResources, seenObjects);
+    }
+
+    // We're now getting to complex objects where we are recursing into them.  Prevent infinite
+    // recursion if we've already seen this object before.
+    if (seenObjects.has(prop)) {
+        return undefined;
+    }
+
+    seenObjects.add(prop);
+
+    if (prop instanceof Array) {
+        const result: any[] = [];
+        for (let i = 0; i < prop.length; i++) {
+            if (excessiveDebugOutput) {
+                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+            }
+
+            // When serializing arrays, we serialize any undefined values as `null`. This matches
+            // JSON semantics.
+            const elem = await serializePropertyWorker(
+                `${ctx}[${i}]`, prop[i], dependentResources, seenObjects);
+            result.push(elem === undefined ? null : elem);
+        }
+        return result;
+    }
+
+    return await serializeAllKeys(prop, {});
 
     async function serializeAllKeys(innerProp: any, obj: any) {
         for (const k of Object.keys(innerProp)) {
@@ -294,7 +322,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             }
 
             // When serializing an object, we omit any keys with undefined values. This matches JSON semantics.
-            const v = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
+            const v = await serializePropertyWorker(
+                `${ctx}.${k}`, innerProp[k], dependentResources, seenObjects);
             if (v !== undefined) {
                 obj[k] = v;
             }
