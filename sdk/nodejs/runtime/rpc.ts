@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComponentResource, CustomResource, Input, Inputs, Output, Resource } from "../resource";
+import { CustomResource, Input, Inputs, Output, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 
