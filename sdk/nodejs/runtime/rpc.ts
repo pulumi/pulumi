@@ -241,22 +241,6 @@ async function serializePropertyWorker(
         return prop;
     }
 
-    if (prop instanceof Array) {
-        const result: any[] = [];
-        for (let i = 0; i < prop.length; i++) {
-            if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
-            }
-
-            // When serializing arrays, we serialize any undefined values as `null`. This matches
-            // JSON semantics.
-            const elem = await serializePropertyWorker(
-                `${ctx}[${i}]`, prop[i], dependentResources, seenObjects);
-            result.push(elem === undefined ? null : elem);
-        }
-        return result;
-    }
-
     if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
@@ -312,6 +296,22 @@ async function serializePropertyWorker(
     }
 
     seenObjects.add(prop);
+
+    if (prop instanceof Array) {
+        const result: any[] = [];
+        for (let i = 0; i < prop.length; i++) {
+            if (excessiveDebugOutput) {
+                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+            }
+
+            // When serializing arrays, we serialize any undefined values as `null`. This matches
+            // JSON semantics.
+            const elem = await serializePropertyWorker(
+                `${ctx}[${i}]`, prop[i], dependentResources, seenObjects);
+            result.push(elem === undefined ? null : elem);
+        }
+        return result;
+    }
 
     return await serializeAllKeys(prop, {});
 
