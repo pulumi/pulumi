@@ -250,7 +250,8 @@ async function serializePropertyWorker(
 
             // When serializing arrays, we serialize any undefined values as `null`. This matches
             // JSON semantics.
-            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
+            const elem = await serializePropertyWorker(
+                `${ctx}[${i}]`, prop[i], dependentResources, seenObjects);
             result.push(elem === undefined ? null : elem);
         }
         return result;
@@ -273,8 +274,9 @@ async function serializePropertyWorker(
         }
 
         const subctx = `Promise<${ctx}>`;
-        return serializeProperty(subctx,
-            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
+        return serializePropertyWorker(subctx,
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`),
+            dependentResources, seenObjects);
     }
 
     if (Output.isInstance(prop)) {
@@ -288,7 +290,8 @@ async function serializePropertyWorker(
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
         // resolve isKnown to true) and for any resource outputs that were resolved with known values.
         const isKnown = await prop.isKnown;
-        const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
+        const value = await serializePropertyWorker(
+            `${ctx}.id`, prop.promise(), dependentResources, seenObjects);
         return isKnown ? value : unknownValue;
     }
 
@@ -299,7 +302,7 @@ async function serializePropertyWorker(
         }
 
         dependentResources.push(prop);
-        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+        return serializePropertyWorker(`${ctx}.id`, prop.id, dependentResources, seenObjects);
     }
 
     // We're now getting to complex objects where we are recursing into them.  Prevent infinite
@@ -319,7 +322,8 @@ async function serializePropertyWorker(
             }
 
             // When serializing an object, we omit any keys with undefined values. This matches JSON semantics.
-            const v = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
+            const v = await serializePropertyWorker(
+                `${ctx}.${k}`, innerProp[k], dependentResources, seenObjects);
             if (v !== undefined) {
                 obj[k] = v;
             }
