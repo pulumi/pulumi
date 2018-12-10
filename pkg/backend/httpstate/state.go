@@ -250,7 +250,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	// Pull the local stack info so we can get at its configuration bag.
 	stackConfigFile := b.stackConfigFile
 	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackRef.Name())
+		f, err := workspace.DetectProjectStackPath(stackRef.Owner(), stackRef.Name())
 		if err != nil {
 			return nil, err
 		}

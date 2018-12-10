@@ -310,21 +310,21 @@ var stackConfigFile string
 
 func getProjectStackPath(stack backend.Stack) (string, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStackPath(stack.Ref().Name())
+		return workspace.DetectProjectStackPath(stack.Ref().Owner(), stack.Ref().Name())
 	}
 	return stackConfigFile, nil
 }
 
 func loadProjectStack(stack backend.Stack) (*workspace.ProjectStack, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStack(stack.Ref().Name())
+		return workspace.DetectProjectStack(stack.Ref().Owner(), stack.Ref().Name())
 	}
 	return workspace.LoadProjectStack(stackConfigFile)
 }
 
 func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
 	if stackConfigFile == "" {
-		return workspace.SaveProjectStack(stack.Ref().Name(), ps)
+		return workspace.SaveProjectStack(stack.Ref().Owner(), stack.Ref().Name(), ps)
 	}
 	return ps.Save(stackConfigFile)
 }

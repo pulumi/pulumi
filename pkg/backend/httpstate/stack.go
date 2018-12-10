@@ -56,6 +56,10 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s", c.owner, c.name)
 }
 
+func (c cloudBackendReference) Owner() string {
+	return c.owner
+}
+
 func (c cloudBackendReference) Name() tokens.QName {
 	return c.name
 }

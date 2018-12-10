@@ -88,7 +88,7 @@ func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
 	stackConfigFile := b.stackConfigFile
 	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath("", stackName)
 		if err != nil {
 			return nil, err
 		}

@@ -53,7 +53,7 @@ func symmetricCrypter(stackName tokens.QName, configFile string) (config.Crypter
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath("", stackName)
 		if err != nil {
 			return nil, err
 		}

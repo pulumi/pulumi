@@ -74,30 +74,53 @@ func DetectProjectPath() (string, error) {
 }
 
 // DetectProjectStackPath returns the name of the file to store stack specific project settings in. By default, we
-// write this into a .pulumi folder next to the Pulumi.yaml file for the project, but we allow this behavior to be
-// configured by a setting in the project file and also have some compatibility behavior to support our older model
-// where we wrote the configuration YAML into a file next to Pulumi.yaml by default.
-func DetectProjectStackPath(stackName tokens.QName) (string, error) {
+// write this into a .pulumi folder next to the Pulumi.yaml file for the project, and for stacks managed by the
+// pulumi service, where there is the concept of an "owner" we further segment these files into directories named after
+// the owner.
+//
+// The ".pulumi" folder may be configured by setting the `config` property in the Project's Pulumi.yaml file.
+//
+// For compatibility, we have a few other paths that we prefer (when an actual file exists on disk), but when no
+// existing configuration file is present, we use the above path.
+func DetectProjectStackPath(owner string, stackName tokens.QName) (string, error) {
 	proj, projPath, err := DetectProjectAndPath()
 	if err != nil {
 		return "", err
 	}
 
+	projectRoot := filepath.Dir(projPath)
 	configRoot := proj.Config
+	stackFileName := qnameFileName(stackName)
+	stackFileExt := filepath.Ext(projPath)
 
-	// If the location has not been overridden and an existing configuration file doesn't exist next to Pulumi.yaml,
-	// prefer storing in the .pulumi folder instead.
+	// As our configuration system has evolved, we've made some changes to where we store stack specific configuration
+	// on disk. `candidates` is slice of possible paths to look. We start at the first element of the slice and return
+	// the first path that exists (so these are ordered from older formats to newer formats). If none of these files
+	// exist, we say the path is the last element in this slice (and so that should be the most preferred format).
+	candidates := []string{
+		filepath.Join(projectRoot, configRoot, fmt.Sprintf("%s.%s%s", ProjectFile, stackFileName, stackFileExt)),
+		filepath.Join(projectRoot, configRoot, owner, fmt.Sprintf("%s.%s%s", ProjectFile, stackFileName, stackFileExt)),
+	}
+
+	// When configRoot is unset, we also include ".pulumi" at the end of our candiates lists. We do this because we'd
+	// like an unset configuration root to mean ".pulumi", a change in behavior from the old default where we would
+	// just write them into next to Pulumi.yaml.
 	if configRoot == "" {
-		candidateFile := filepath.Join(filepath.Dir(projPath),
-			fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath)))
+		candidates = append(candidates, filepath.Join(projectRoot, ".pulumi",
+			fmt.Sprintf("%s.%s%s", ProjectFile, stackFileName, stackFileExt)))
+		candidates = append(candidates, filepath.Join(projectRoot, ".pulumi", owner,
+			fmt.Sprintf("%s.%s%s", ProjectFile, stackFileName, stackFileExt)))
+	}
 
-		if _, err := os.Stat(candidateFile); os.IsNotExist(err) {
-			configRoot = ".pulumi"
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
 		}
 	}
 
-	return filepath.Join(filepath.Dir(projPath), configRoot, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
-		filepath.Ext(projPath))), nil
+	// In the case where none of the candidate file exists, the last one in the candidate list is the canonical path
+	// we'd prefer to use.
+	return candidates[len(candidates)-1], nil
 }
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
@@ -114,8 +137,8 @@ func DetectProject() (*Project, error) {
 	return proj, err
 }
 
-func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {
-	path, err := DetectProjectStackPath(stackName)
+func DetectProjectStack(owner string, stackName tokens.QName) (*ProjectStack, error) {
+	path, err := DetectProjectStackPath(owner, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -147,8 +170,8 @@ func SaveProject(proj *Project) error {
 	return proj.Save(path)
 }
 
-func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
-	path, err := DetectProjectStackPath(stackName)
+func SaveProjectStack(owner string, stackName tokens.QName, stack *ProjectStack) error {
+	path, err := DetectProjectStackPath(owner, stackName)
 	if err != nil {
 		return err
 	}

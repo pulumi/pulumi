@@ -56,6 +56,9 @@ func (e StackAlreadyExistsError) Error() string {
 type StackReference interface {
 	// fmt.Stringer's String() method returns a string of the stack identity, suitable for display in the CLI
 	fmt.Stringer
+	// Owner is the name of the account that owns this stack. Not all backends have the concept of an owner (e.g the
+	// local filebased backend has no such concept) in which case this function returns the empty string.
+	Owner() string
 	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that informaion is not part of the StackName() we pass to the engine.

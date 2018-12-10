@@ -67,6 +67,10 @@ func (r localBackendReference) String() string {
 	return string(r.name)
 }
 
+func (r localBackendReference) Owner() string {
+	return ""
+}
+
 func (r localBackendReference) Name() tokens.QName {
 	return r.name
 }

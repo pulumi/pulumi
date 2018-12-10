@@ -8,6 +8,8 @@
 
 - Stack specific configuration settings are now stored in yaml files under the `.pulumi` folder, next to `Pulumi.yaml` instead of being in the same directory as `Pulumi.yaml`. However, if a configuration file is in the old location, it is used instead. The `config` property of the project's `Pulumi.yaml` can pick a different directory. To go back to the old behavior, add `config: .` to `Pulumi.yaml` (fixes [pulumi/pulumi#2005](https://github.com/pulumi/pulumi/issues/2005))
 
+- When using the Pulumi Service, stack configuration files are now segmented by owner. Previously, we share the same on disk location for a stack if its name was shared across organizations. This would lead to issues when encrypted configuration (which was encrypted with a per stack key) was not usable, except for the organization that the stack was created in. If an existing configuration file exists at the old location, it is prefered, to match behavior with older CLIs (fixes), so when you want to take advantage of this new feature, we recommend that you either manually move the old `Pulumi.<stack-name>.yaml` into its new prefered location (by default: `.pulumi/<organization-name>/Pulumi.<stack-name>.yaml`) or remove it from disk and run `pulumi config refresh` to sync the configuration from the last deployment into a new file in the correct location.  (fixes [pulumi/pulumi#1859](https://github.com/pulumi/pulumi/issues/1859))
+
 ## 0.16.7 (Release December 5th, 2018)
 
 ### Improvements

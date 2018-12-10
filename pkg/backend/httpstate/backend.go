@@ -657,7 +657,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	stackConfigFile := b.stackConfigFile
 	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackRef.Name())
+		f, err := workspace.DetectProjectStackPath(stackRef.Owner(), stackRef.Name())
 		if err != nil {
 			return client.UpdateIdentifier{}, 0, "", err
 		}
