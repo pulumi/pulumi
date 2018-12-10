@@ -27,21 +27,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var force bool // Force deletion of protected resources
-
 func newStateDeleteCommand() *cobra.Command {
+	var force bool // Force deletion of protected resources
+	var stack string
+
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
-		
+
 This command deletes a resource from a stack's state, as long as it is safe to do so. Resources can't be deleted if
 there exist other resources that depend on it or are parented to it. Protected resources will not be deleted unless
 it is specifically requested using the --force flag.`,
 		Args: cmdutil.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			urn := resource.URN(args[0])
-			err := runStateEdit(urn, doDeletion)
+			err := runStateEdit(stack, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+				if !force {
+					return edit.DeleteResource(snap, res)
+				}
+
+				if res.Protect {
+					cmdutil.Diag().Warningf(diag.RawMessage("" /*urn*/, "deleting protected resource due to presence of --force"))
+					res.Protect = false
+				}
+
+				return edit.DeleteResource(snap, res)
+			})
 			if err != nil {
 				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:
@@ -66,21 +78,9 @@ it is specifically requested using the --force flag.`,
 		}),
 	}
 
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&force, "force", false, "Force deletion of protected resources")
 	return cmd
-}
-
-// doDeletion implements edit.OperationFunc and deletes a resource from the snapshot. If the `force` flag is present,
-// doDeletion will unprotect the resource before deleting it.
-func doDeletion(snap *deploy.Snapshot, res *resource.State) error {
-	if !force {
-		return edit.DeleteResource(snap, res)
-	}
-
-	if res.Protect {
-		cmdutil.Diag().Warningf(diag.RawMessage("" /*urn*/, "deleting protected resource due to presence of --force"))
-		res.Protect = false
-	}
-
-	return edit.DeleteResource(snap, res)
 }

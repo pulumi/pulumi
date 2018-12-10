@@ -39,7 +39,7 @@ func newStateCmd() *cobra.Command {
 		Use:   "state",
 		Short: "Edit the current stack's state",
 		Long: `Edit the current stack's state
-		
+
 Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
 troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
 		Args: cmdutil.NoArgs,
@@ -108,9 +108,9 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	return optionMap[option], nil
 }
 
-// runStateEdit runs the given state edit function on a resource with the given URN in the current stack.
-func runStateEdit(urn resource.URN, operation edit.OperationFunc) error {
-	return runTotalStateEdit(func(opts display.Options, snap *deploy.Snapshot) error {
+// runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
+func runStateEdit(stackName string, urn resource.URN, operation edit.OperationFunc) error {
+	return runTotalStateEdit(stackName, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
 			return err
@@ -120,13 +120,13 @@ func runStateEdit(urn resource.URN, operation edit.OperationFunc) error {
 	})
 }
 
-// runTotalStateEdit runs a snapshot-mutating function on the entirity of the current stack's snapshot. Before mutating
+// runTotalStateEdit runs a snapshot-mutating function on the entirity of the given stack's snapshot. Before mutating
 // the snapshot, the user is prompted for confirmation if the current session is interactive.
-func runTotalStateEdit(operation func(opts display.Options, snap *deploy.Snapshot) error) error {
+func runTotalStateEdit(stackName string, operation func(opts display.Options, snap *deploy.Snapshot) error) error {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireCurrentStack(true, opts, true /*setCurrent*/)
+	s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
 	if err != nil {
 		return err
 	}
