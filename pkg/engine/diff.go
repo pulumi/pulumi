@@ -310,7 +310,7 @@ func GetResourceOutputsPropertiesString(
 }
 
 func considerSameIfNotCreateOrDelete(op deploy.StepOp) deploy.StepOp {
-	if op == deploy.OpCreate || op == deploy.OpDelete || op == deploy.OpDeleteReplaced {
+	if op == deploy.OpCreate || op == deploy.OpDelete || op == deploy.OpDeleteReplaced || op == deploy.OpReadRemove {
 		return op
 	}
 

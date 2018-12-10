@@ -123,7 +123,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
-			case deploy.OpDelete, deploy.OpDeleteReplaced:
+			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadRemove:
 				ops = append(ops, resource.NewOperation(e.Step.Old(), resource.OperationTypeDeleting))
 			case deploy.OpRead, deploy.OpReadReplacement:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeReading))
@@ -132,7 +132,8 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			}
 		case JournalEntryFailure, JournalEntrySuccess:
 			switch e.Step.Op() {
-			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate:
+			// nolint: lll
+			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate, deploy.OpReadRemove:
 				doneOps[e.Step.New()] = true
 			case deploy.OpDelete, deploy.OpDeleteReplaced:
 				doneOps[e.Step.Old()] = true
@@ -150,7 +151,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 				if old := e.Step.Old(); old != nil && old.PendingReplacement {
 					dones[old] = true
 				}
-			case deploy.OpDelete, deploy.OpDeleteReplaced:
+			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadRemove:
 				if old := e.Step.Old(); !old.PendingReplacement {
 					dones[old] = true
 				}
@@ -466,7 +467,12 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
 				// Should see only deletes.
 				for _, entry := range j.Entries {
-					assert.Equal(t, deploy.OpDelete, entry.Step.Op())
+					switch entry.Step.Op() {
+					case deploy.OpDelete, deploy.OpReadRemove:
+						// ok
+					default:
+						assert.Fail(t, "expected OpDelete or OpReadRemove")
+					}
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
 				return err
