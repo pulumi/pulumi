@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -36,9 +37,9 @@ func newHistoryCmd() *cobra.Command {
 		Aliases:    []string{"hist"},
 		SuggestFor: []string{"updates"},
 		Short:      "Update history for a stack",
-		Long: "Update history for a stack\n" +
-			"\n" +
-			"This command lists data about previous updates for a stack.",
+		Long: `Update history for a stack
+
+This command lists data about previous updates for a stack.`,
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -60,7 +61,7 @@ func newHistoryCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose an stack other than the currently selected one")
+		"Choose a stack other than the currently selected one")
 	return cmd
 }
 
@@ -70,8 +71,8 @@ func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 		return
 	}
 
-	printResourceChanges := func(backgroundColor string, textColor string, sign string, amountOfChange int, resetColor string) {
-		msg := opts.Color.Colorize(fmt.Sprintf("%s%s%s%v%s", backgroundColor, textColor, sign, amountOfChange, resetColor))
+	printResourceChanges := func(background, text, sign, reset string, amount int) {
+		msg := opts.Color.Colorize(fmt.Sprintf("%s%s%s%v%s", background, text, sign, amount, reset))
 		fmt.Print(msg)
 	}
 
@@ -85,27 +86,31 @@ func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 		}
 		fmt.Printf("Message: %v\n", update.Message)
 
-		printResourceChanges(colors.GreenBackground, colors.Black, "+", update.ResourceChanges["create"], colors.Reset)
-		printResourceChanges(colors.RedBackground, colors.Black, "-", update.ResourceChanges["delete"], colors.Reset)
-		printResourceChanges(colors.YellowBackground, colors.Black, "~", update.ResourceChanges["update"], colors.Reset)
-		printResourceChanges(colors.BlueBackground, colors.Black, " ", update.ResourceChanges["same"], colors.Reset)
+		printResourceChanges(colors.GreenBackground, colors.Black, "+", colors.Reset, update.ResourceChanges["create"])
+		printResourceChanges(colors.RedBackground, colors.Black, "-", colors.Reset, update.ResourceChanges["delete"])
+		printResourceChanges(colors.YellowBackground, colors.Black, "~", colors.Reset, update.ResourceChanges["update"])
+		printResourceChanges(colors.BlueBackground, colors.Black, " ", colors.Reset, update.ResourceChanges["same"])
 
 		timeStart := time.Unix(update.StartTime, 0)
 		timeCreated := humanize.Time(timeStart)
 		timeEnd := time.Unix(update.EndTime, 0)
 		duration := timeEnd.Sub(timeStart)
-		fmt.Printf("%2sUpdated %s took %s\n", "", timeCreated, duration)
+		fmt.Printf("%sUpdated %s took %s\n", " ", timeCreated, duration)
 
-		empty := func(s string) bool {
+		isEmpty := func(s string) bool {
 			return len(strings.TrimSpace(s)) == 0
 		}
-
-		if len(update.Environment) != 0 {
-			indent := 4
-			if !empty(update.Environment["github.login"]) && !empty(update.Environment["git.committer"]) && !empty(update.Environment["git.committer.email"]) && !empty(update.Environment["git.head"]) {
-				fmt.Printf("%*sGithub-Login: %s\n", indent, "", update.Environment["github.login"])
-				fmt.Printf("%*sGithub-Committer: %s <%s>\n", indent, "", update.Environment["git.committer"], update.Environment["git.committer.email"])
-				fmt.Print(opts.Color.Colorize(fmt.Sprintf("%*s%scommit %s%s\n", indent, "", colors.Yellow, update.Environment["git.head"], colors.Reset)))
+		var keys []string
+		for k := range update.Environment {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		indent := 4
+		for _, k := range keys {
+			if k == backend.GitHead && !isEmpty(update.Environment[k]) {
+				fmt.Print(opts.Color.Colorize(fmt.Sprintf("%*s%s%s: %s%s\n", indent, "", colors.Yellow, k, update.Environment[k], colors.Reset)))
+			} else if !isEmpty(update.Environment[k]) {
+				fmt.Printf("%*s%s: %s\n", indent, "", k, update.Environment[k])
 			}
 		}
 		fmt.Println("")

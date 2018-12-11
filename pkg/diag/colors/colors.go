@@ -125,7 +125,7 @@ var (
 	// We explicitly do not expose blacks/whites.  They're problematic given that we don't know what
 	// terminal settings the user has.  Best to avoid them and not run into contrast problems.
 
-	Black = Command("fg 0") //only use with background color
+	Black = Command("fg 0") // Only use with background colors.
 	// White         = Command("fg 7")
 	// BrightBlack   = Command("fg 8")
 	// BrightYellow  = Command("fg 11")
