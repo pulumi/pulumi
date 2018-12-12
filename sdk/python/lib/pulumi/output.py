@@ -63,18 +63,21 @@ class Output(Generic[T]):
     Future that actually produces the concrete value of this output.
     """
 
-    _resources: Set['Resource']
+    _resources: Awaitable[Set['Resource']]
     """
     The list of resources that this output value depends on.
     """
 
-    def __init__(self, resources: Set['Resource'], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
-        self._resources = resources
+    def __init__(self, resources: Union[Set['Resource'], Awaitable[Set['Resource']]], future: Awaitable[T], is_known: Awaitable[bool]) -> None:
+        if isinstance(resources, set):
+            resources_fut: asyncio.Future = asyncio.Future()
+            resources_fut.set_result(resources)
+            self._resources = resources_fut
+        else:
+            self._resources = resources
+
         self._future = future
         self._is_known = is_known
-
-    def resources(self) -> Set['Resource']:
-        return self._resources
 
     def future(self) -> Awaitable[T]:
         return self._future
@@ -115,6 +118,17 @@ class Output(Generic[T]):
             known = await self._is_known
             return inner and known
 
+
+        inner_resources: asyncio.Future = asyncio.Future()
+
+        # The "resources" coroutine that we pass to the output we're about to create is the union of the two
+        # sets of resources that we know about: our own (self._resources) and a future that we will resolve
+        # when running the apply.
+        async def resources() -> Set['Resource']:
+            inner = await inner_resources
+            ours = await self._resources
+            return inner.union(ours)
+
         # The "run" coroutine actually runs the apply.
         async def run() -> U:
             try:
@@ -127,6 +141,7 @@ class Output(Generic[T]):
                         # We didn't actually run the function, our new Output is definitely
                         # **not** known.
                         inner_is_known.set_result(False)
+                        inner_resources.set_result(set())
                         return cast(U, None)
 
                 transformed: Input[U] = func(value)
@@ -134,17 +149,20 @@ class Output(Generic[T]):
                 #  1. transformed is an Output[U]
                 if isinstance(transformed, Output):
                     # The inner Output is known if this returned output is known.
-                    inner_is_known.set_result(await self._is_known)
+                    inner_is_known.set_result(await transformed._is_known)
+                    inner_resources.set_result(await transformed._resources)
                     return await transformed.future()
 
                 #  2. transformed is an Awaitable[U]
                 if isawaitable(transformed):
                     # The inner Output is known.
                     inner_is_known.set_result(True)
+                    inner_resources.set_result(set())
                     return await cast(Awaitable[U], transformed)
 
                 #  3. transformed is U. It is trivially known.
                 inner_is_known.set_result(True)
+                inner_resources.set_result(set())
                 return cast(U, transformed)
             finally:
                 # Always resolve the future if it hasn't been done already.
@@ -156,9 +174,17 @@ class Output(Generic[T]):
                     except RuntimeError:
                         pass
 
+                # And the same for inner_resources.
+                if not inner_resources.done():
+                    try:
+                        inner_resources.set_result(set())
+                    except RuntimeError:
+                        pass
+
         run_fut = asyncio.ensure_future(run())
         is_known_fut = asyncio.ensure_future(is_known())
-        return Output(self._resources, run_fut, is_known_fut)
+        resources_fut = asyncio.ensure_future(resources())
+        return Output(resources_fut, run_fut, is_known_fut)
 
     def __getattr__(self, item: str) -> 'Output[Any]':
         """

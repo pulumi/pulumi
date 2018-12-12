@@ -139,6 +139,30 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(rpc.UNKNOWN, prop)
 
     @async_test
+    async def test_inner_output(self):
+        outer_dep = FakeCustomResource("outer-dependency")
+        inner_dep = FakeCustomResource("inner-dependency")
+
+        outer_fut = asyncio.Future()
+        outer_fut.set_result(42)
+        outer_known_fut = asyncio.Future()
+        outer_known_fut.set_result(True)
+        outer = Output({outer_dep}, outer_fut, outer_known_fut)
+
+        inner_fut = asyncio.Future()
+        inner_fut.set_result(24)
+        inner_known_fut = asyncio.Future()
+        inner_known_fut.set_result(True)
+        inner = Output({inner_dep}, inner_fut, inner_known_fut)
+
+        out = outer.apply(lambda o: inner)
+
+        deps = []
+        prop = await rpc.serialize_property(out, deps)
+        self.assertListEqual(deps, [outer_dep, inner_dep])
+        self.assertEqual(24, prop)
+
+    @async_test
     async def test_asset_archive(self):
         archive = AssetArchive({
             "foo": StringAsset("bar")
