@@ -446,6 +446,7 @@ export class Output<T> {
                             // We didn't actually run the function, our new Output is definitely
                             // **not** known.
                             innerIsKnownResolve(false);
+                            innerResourcesResolve(new Set<Resource>());
                             return <U><any>undefined;
                         }
                     }
