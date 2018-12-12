@@ -331,7 +331,8 @@ export class Output<T> {
      *
      * Only callable on the outside.
      */
-    /* @internal */ public readonly resources: () => Set<Resource>;
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public readonly __resources: Promise<Set<Resource>>;
 
     /**
      * Transforms the data of the output with the provided func.  The result remains a
@@ -393,16 +394,21 @@ export class Output<T> {
     }
 
     /* @internal */ public constructor(
-            resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
+            resources: Promise<Set<Resource>> | Set<Resource> | Resource[] | Resource,
+            promise: Promise<T>,
+            isKnown: Promise<boolean>) {
+
         this.isKnown = isKnown;
 
         // Always create a copy so that no one accidentally modifies our Resource list.
         if (Array.isArray(resources)) {
-            this.resources = () => new Set<Resource>(resources);
+            this.__resources = Promise.resolve(new Set<Resource>(resources));
         } else if (resources instanceof Set) {
-            this.resources = () => new Set<Resource>(resources);
+            this.__resources = Promise.resolve(new Set<Resource>(resources));
+        } else if (resources instanceof Promise) {
+            this.__resources = resources;
         } else {
-            this.resources = () => new Set<Resource>([resources]);
+            this.__resources = Promise.resolve(new Set<Resource>([resources]));
         }
 
         this.promise = () => promise;
@@ -413,12 +419,23 @@ export class Output<T> {
                 innerIsKnownResolve = resolve;
             });
 
+            let innerResourcesResolve: (val: Set<Resource>) => void;
+            const innerResources = new Promise<Set<Resource>>(resolve => {
+                innerResourcesResolve = resolve;
+            });
+
             // The known state of the output we're returning depends on if we're known as well, and
             // if a potential lifted inner Output is known.  If we get an inner Output, and it is
             // not known itself, then the result we return should not be known.
             const resultIsKnown = Promise.all([isKnown, innerIsKnown]).then(([k1, k2]) => k1 && k2);
 
-            return new Output<U>(resources, promise.then(async v => {
+            // Similarly, the set of resources of the output we're returning depends on both our set
+            // of resources and the set of resources of the lifted inner output.
+            const resultResources = Promise.all([this.__resources, innerResources]).then(([rs1, rs2]) => {
+                return new Set<Resource>([...rs1, ...rs2]);
+            });
+
+            return new Output<U>(resultResources, promise.then(async v => {
                 try {
                     if (runtime.isDryRun()) {
                         // During previews only perform the apply if the engine was able to
@@ -436,19 +453,21 @@ export class Output<T> {
                     const transformed = await func(v);
                     if (Output.isInstance(transformed)) {
                         // Note: if the func returned a Output, we unwrap that to get the inner value
-                        // returned by that Output.  Note that we are *not* capturing the Resources of
-                        // this inner Output.  That's intentional.  As the Output returned is only
-                        // supposed to be related this *this* Output object, those resources should
-                        // already be in our transitively reachable resource graph.
+                        // returned by that Output.
 
                         // The callback func has produced an inner Output that may be 'known' or 'unknown'.
                         // We have to properly forward that along to our outer output.  That way the Outer
                         // output doesn't consider itself 'known' then the inner Output did not.
                         innerIsKnownResolve(await transformed.isKnown);
+
+                        // Because the inner output may depend on a different set of resources than the original
+                        // output, we must incorporate its dependencies into the set we return.
+                        innerResourcesResolve(await transformed.__resources);
                         return await transformed.promise();
                     } else {
                         // We successfully ran the inner function.  Our new Output should be considered known.
                         innerIsKnownResolve(true);
+                        innerResourcesResolve(new Set<Resource>());
                         return transformed;
                     }
                 }
@@ -458,6 +477,7 @@ export class Output<T> {
                     // not-known. Awaiting this Output's promise() will still throw, but await'ing
                     // the isKnown bit will just return 'false'.
                     innerIsKnownResolve(false);
+                    innerResourcesResolve(new Set<Resource>());
                 }
             }), resultIsKnown);
         };
@@ -559,7 +579,7 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
         const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
         const promisedArray = Promise.all(allOutputs.map(o => o.promise()));
 
-        return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown);
+        return new Output<Unwrap<T>[]>(resources, promisedArray, isKnown);
     } else {
         const keysAndOutputs = Object.keys(val).map(key => ({ key, value: output(val[key]) }));
         const allOutputs = keysAndOutputs.map(kvp => kvp.value);
@@ -567,7 +587,7 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
         const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
         const promisedObject = getPromisedObject(keysAndOutputs);
 
-        return new Output<Record<string, Unwrap<T>>>(new Set<Resource>(resources), promisedObject, isKnown);
+        return new Output<Record<string, Unwrap<T>>>(resources, promisedObject, isKnown);
     }
 }
 
@@ -581,8 +601,10 @@ async function getPromisedObject<T>(
     return result;
 }
 
-function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[], Promise<boolean>] {
-    const allResources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
+function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Promise<Set<Resource>>, Promise<boolean>] {
+    const allResources = Promise.all(allOutputs.map(o => o.__resources)).then(sets => {
+        return new Set<Resource>(sets.reduce<Resource[]>((arr, s) => (arr.push(...s), arr), []));
+    });
 
     // A merged output is known if all of its inputs are known.
     const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
