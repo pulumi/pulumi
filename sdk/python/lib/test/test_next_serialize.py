@@ -159,7 +159,7 @@ class NextSerializationTests(unittest.TestCase):
 
         deps = []
         prop = await rpc.serialize_property(out, deps)
-        self.assertListEqual(deps, [outer_dep, inner_dep])
+        self.assertSetEqual(set(deps), {outer_dep, inner_dep})
         self.assertEqual(24, prop)
 
     @async_test
