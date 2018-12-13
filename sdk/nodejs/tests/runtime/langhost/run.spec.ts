@@ -547,6 +547,33 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        // A program that allocates several resources that have lifted dependencies in their inputs.
+        "lifted_dependencies": {
+            program: path.join(base, "020.lifted_dependencies"),
+            expectResourceCount: 5,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                assert.strictEqual(t, "test:index:MyResource");
+
+                let expectedDeps;
+                switch (name) {
+                    case "r3":
+                        expectedDeps = new Set<string>([makeUrn(t, "r0"), makeUrn(t, "r1")]);
+                        assert.deepStrictEqual(expectedDeps, new Set<string>(deps));
+                        break;
+
+                    case "r4":
+                        expectedDeps = new Set<string>([makeUrn(t, "r0"), makeUrn(t, "r1"), makeUrn(t, "r2")]);
+                        assert.deepStrictEqual(expectedDeps, new Set<string>(deps));
+                        break;
+
+                    default:
+                        assert.strictEqual(0, deps.length);
+                        break;
+                }
+
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {

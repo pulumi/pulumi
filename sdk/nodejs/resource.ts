@@ -428,7 +428,7 @@ export class Output<T> {
             this.resources = () => new Set<Resource>([resources]);
         }
 
-        this.__asyncResources = asyncResources || Promise.resolve(new Set<Resource>());
+        this.__asyncResources = asyncResources;
 
         this.promise = () => promise;
 
@@ -450,10 +450,10 @@ export class Output<T> {
 
             // Similarly, the set of resources of the output we're returning depends on both our set
             // of resources and the set of resources of the lifted inner output.
-            const resultAsyncResources = Promise.all([this.__asyncResources!, innerAsyncResources])
-                .then(([rs1, rs2]) => {
-                    return new Set<Resource>([...rs1, ...rs2]);
-                });
+            const outerAsyncResources = asyncResources || Promise.resolve(new Set<Resource>());
+            const resultAsyncResources = Promise.all([outerAsyncResources, innerAsyncResources]).then(([rs1, rs2]) => {
+                return new Set<Resource>([...rs1, ...rs2]);
+            });
 
             return new Output<U>(resources, promise.then(async v => {
                 try {

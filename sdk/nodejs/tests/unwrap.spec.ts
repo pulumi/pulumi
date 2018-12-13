@@ -246,6 +246,16 @@ describe("unwrap", () => {
             createOutput(Promise.resolve({ a: createOutput(1, r4, r5)}), r1, r2),
             { a: 1 },
             [r1, r2, r4, r5]));
+
+        it("across a single apply", testResources(
+            createOutput(3, r1, r2).apply(_ => createOutput(4, r2, r3)),
+            4,
+            [r1, r2, r3]));
+
+        it("across multiple applies", testResources(
+            createOutput(3, r1, r2).apply(_ => createOutput(4, r2, r3).apply(_ => createOutput(5, r3, r4))),
+            5,
+            [r1, r2, r3, r4]));
     });
 
 
