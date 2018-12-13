@@ -169,7 +169,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// Create a new channel to synchronize with the event renderer.
 	innerDone := make(chan bool)
 	defer func() {
-		// Wait for the display routime to exit, then notify the
+		// Wait for the display routime to exit, then notify any listeners that this routine is finished.
 		<-innerDone
 		close(done)
 	}()
