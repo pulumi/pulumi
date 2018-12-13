@@ -34,7 +34,6 @@ type Output struct {
 type outputState struct {
 	sync chan *valueOrError // the channel for outputs whose values are not yet known.
 	voe  *valueOrError      // the value or error, after the channel has been rendezvoused with.
-	deps []Resource         // the dependencies associated with this output property.
 }
 
 // valueOrError is a discriminated union between a value (possibly nil) or an error.
@@ -42,6 +41,7 @@ type valueOrError struct {
 	value interface{} // a value, if the output resolved to a value.
 	err   error       // an error, if the producer yielded an error instead of a value.
 	known bool        // true if this value is known, versus just being a placeholder during previews.
+	deps  []Resource  // the dependencies associated with this value.
 }
 
 // NewOutput returns an output value that can be used to rendezvous with the production of a value or error.  The
@@ -51,27 +51,31 @@ func NewOutput(deps []Resource) (*Output, func(interface{}, bool), func(error)) 
 	out := &Output{
 		s: &outputState{
 			sync: make(chan *valueOrError, 1),
-			deps: deps,
 		},
 	}
-	return out, out.resolve, out.reject
+
+	resolve := func(v interface{}, known bool) {
+		out.resolve(v, known, deps)
+	}
+
+	return out, resolve, out.reject
 }
 
 // resolve will resolve the output.  It is not exported, because we want to control the capabilities tightly, such
 // that anybody who happens to have an Output is not allowed to resolve it; only those who created it can.
-func (out *Output) resolve(v interface{}, known bool) {
+func (out *Output) resolve(v interface{}, known bool, deps []Resource) {
 	// If v is another output, chain this rather than resolving to an output directly.
-	if other, isOut := v.(*Output); known && isOut {
+	if other, isOut := v.(*Output); isOut {
 		go func() {
-			real, otherKnown, err := other.Value()
+			real, otherKnown, otherDeps, err := other.value()
 			if err != nil {
 				out.reject(err)
 			} else {
-				out.resolve(real, otherKnown)
+				out.resolve(real, known && otherKnown, append(deps, otherDeps...))
 			}
 		}()
 	} else {
-		out.s.sync <- &valueOrError{value: v, known: known}
+		out.s.sync <- &valueOrError{value: v, known: known, deps: deps}
 	}
 }
 
@@ -85,48 +89,32 @@ func (out *Output) reject(err error) {
 // and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.  This function
 // does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
 func (out *Output) Apply(applier func(v interface{}) (interface{}, error)) *Output {
-	result, resolve, reject := NewOutput(out.Deps())
+	result, _, _ := NewOutput(nil)
 	go func() {
-		for {
-			v, known, err := out.Value()
-			if err != nil {
-				reject(err)
-				break
-			} else {
-				if known {
-					// If we have a known value, run the applier to transform it.
-					u, err := applier(v)
-					if err != nil {
-						reject(err)
-						break
-					} else {
-						// Now that we've transformed the value, it's possible we have another output.  If so, pluck it
-						// out and go around to await it until we hit a real value.  Note that we are not capturing the
-						// resources of this inner output, intentionally, as the output returned should be related to
-						// this output already.
-						if newout, ok := v.(*Output); ok {
-							out = newout
-						} else {
-							resolve(u, true)
-							break
-						}
-					}
-				} else {
-					// If the value isn't known, skip the apply function.
-					resolve(nil, false)
-					break
-				}
-			}
+		v, known, deps, err := out.value()
+		if err != nil {
+			result.reject(err)
+			return
 		}
+		// If the value isn't known, skip the apply function.
+		if !known {
+			result.resolve(nil, false, deps)
+			return
+		}
+
+		// If we have a known value, run the applier to transform it.
+		u, err := applier(v)
+		if err != nil {
+			result.reject(err)
+			return
+		}
+
+		result.resolve(u, true, deps)
 	}()
 	return result
 }
 
-// Deps returns the dependencies for this output property.
-func (out *Output) Deps() []Resource { return out.s.deps }
-
-// Value retrieves the underlying value for this output property.
-func (out *Output) Value() (interface{}, bool, error) {
+func (out *Output) value() (interface{}, bool, []Resource, error) {
 	// If neither error nor value are available, first await the channel.  Only one Goroutine will make it through this
 	// and is responsible for closing the channel, to signal to other awaiters that it's safe to read the values.
 	if out.s.voe == nil {
@@ -135,7 +123,13 @@ func (out *Output) Value() (interface{}, bool, error) {
 			close(out.s.sync) // and close the channel to signal to others that the memozied value is available.
 		}
 	}
-	return out.s.voe.value, out.s.voe.known, out.s.voe.err
+	return out.s.voe.value, out.s.voe.known, out.s.voe.deps, out.s.voe.err
+}
+
+// Value retrieves the underlying value for this output property.
+func (out *Output) Value() (interface{}, bool, error) {
+	v, known, _, err := out.value()
+	return v, known, err
 }
 
 // Archive retrives the underlying value for this output property as an archive.

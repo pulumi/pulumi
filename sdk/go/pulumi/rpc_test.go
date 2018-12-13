@@ -24,8 +24,11 @@ import (
 
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
+	resourceURN := "res"
+	resource := newMockResource(resourceURN)
+
 	// Create interesting inputs.
-	out, resolve, _ := NewOutput(nil)
+	out, resolve, _ := NewOutput([]Resource{resource})
 	resolve("outputty", true)
 	input := map[string]interface{}{
 		"s":            "a string",
@@ -52,7 +55,8 @@ func TestMarshalRoundtrip(t *testing.T) {
 	// Marshal those inputs.
 	m, deps, err := marshalInputs(input)
 	if !assert.Nil(t, err) {
-		assert.Equal(t, 0, len(deps))
+		assert.Equal(t, 1, len(deps))
+		assert.Equal(t, URN(resourceURN), deps[0])
 
 		// Now just unmarshal and ensure the resulting map matches.
 		res, err := unmarshalOutputs(m)

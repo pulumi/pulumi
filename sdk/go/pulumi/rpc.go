@@ -175,7 +175,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 
 func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
 	// Await the value and return its raw value.
-	ov, known, err := out.Value()
+	ov, known, deps, err := out.value()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,11 +186,11 @@ func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
 		if merr != nil {
 			return nil, nil, merr
 		}
-		return e, append(out.Deps(), d...), nil
+		return e, append(deps, d...), nil
 	}
 
 	// Otherwise, simply return the unknown value sentinel.
-	return rpcTokenUnknownValue, out.Deps(), nil
+	return rpcTokenUnknownValue, deps, nil
 }
 
 // unmarshalOutputs unmarshals all the outputs into a simple map.

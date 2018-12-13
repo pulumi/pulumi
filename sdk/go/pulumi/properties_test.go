@@ -21,6 +21,38 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type mockResource struct {
+	urn *URNOutput
+}
+
+func (r *mockResource) URN() *URNOutput {
+	return r.urn
+}
+
+func newMockResource(urn string) Resource {
+	r := &mockResource{}
+	urnOutput, resolve, _ := NewOutput([]Resource{r})
+	resolve(urn, true)
+	r.urn = (*URNOutput)(urnOutput)
+	return r
+}
+
+func assertSameDependencies(t *testing.T, expected []Resource, actual []Resource) {
+	expectedDeps := make(map[URN]bool)
+	for _, r := range expected {
+		urn, _ := r.URN().Value()
+		expectedDeps[urn] = true
+	}
+
+	actualDeps := make(map[URN]bool)
+	for _, r := range actual {
+		urn, _ := r.URN().Value()
+		actualDeps[urn] = true
+	}
+
+	assert.Equal(t, expectedDeps, actualDeps)
+}
+
 func TestBasicOutputs(t *testing.T) {
 	// Just test basic resolve and reject functionality.
 	{
@@ -28,11 +60,12 @@ func TestBasicOutputs(t *testing.T) {
 		go func() {
 			resolve(42, true)
 		}()
-		v, known, err := out.Value()
+		v, known, deps, err := out.value()
 		assert.Nil(t, err)
 		assert.True(t, known)
 		assert.NotNil(t, v)
 		assert.Equal(t, 42, v.(int))
+		assert.Empty(t, deps)
 	}
 	{
 		out, _, reject := NewOutput(nil)
@@ -190,6 +223,25 @@ func TestResolveOutputToOutput(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 	}
+	// Test that resolving an output to another output properly unions dependencies
+	{
+		outerDep := newMockResource("outer")
+		innerDep := newMockResource("inner")
+
+		outer, resolveOuter, _ := NewOutput([]Resource{outerDep})
+		go func() {
+			inner, resolveInner, _ := NewOutput([]Resource{innerDep})
+			resolveOuter(inner, true)
+			go func() { resolveInner(99, true) }()
+		}()
+
+		v, known, deps, err := outer.value()
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, v, 99)
+
+		assertSameDependencies(t, []Resource{outerDep, innerDep}, deps)
+	}
 }
 
 func TestOutputApply(t *testing.T) {
@@ -241,21 +293,26 @@ func TestOutputApply(t *testing.T) {
 	}
 	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
 	{
-		out, resolve, _ := NewOutput(nil)
+		outerDep := newMockResource("outer")
+		innerDep := newMockResource("inner")
+
+		out, resolve, _ := NewOutput([]Resource{outerDep})
 		go func() { resolve(42, true) }()
 		var ranApp bool
 		b := (*IntOutput)(out)
 		app := b.Apply(func(v int) (interface{}, error) {
-			other, resolveOther, _ := NewOutput(nil)
+			other, resolveOther, _ := NewOutput([]Resource{innerDep})
 			go func() { resolveOther(v+1, true) }()
 			ranApp = true
 			return other, nil
 		})
-		v, known, err := app.Value()
+		v, known, deps, err := app.value()
 		assert.True(t, ranApp)
 		assert.Nil(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
+
+		assertSameDependencies(t, []Resource{outerDep, innerDep}, deps)
 	}
 	// Test that an an apply that reject an output returns the rejection of that output, not the output itself.
 	{
