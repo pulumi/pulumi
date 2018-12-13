@@ -43,10 +43,12 @@ function testResources(val: any, expected: any, resources: TestResource[]) {
         const unwrapped = output(val);
         const actual = await unwrapped.promise();
 
-        assert.deepStrictEqual(actual, expected);
-        assert.deepStrictEqual(await unwrapped.__resources, new Set(resources));
+        const deps = await Output.allResources(unwrapped);
 
-        const unwrappedResources: TestResource[] = <any>[...(await unwrapped.__resources)];
+        assert.deepStrictEqual(actual, expected);
+        assert.deepStrictEqual(deps, new Set(resources));
+
+        const unwrappedResources: TestResource[] = <any>[...deps];
         unwrappedResources.sort((r1, r2) => r1.name.localeCompare(r2.name));
 
         resources.sort((r1, r2) => r1.name.localeCompare(r2.name));

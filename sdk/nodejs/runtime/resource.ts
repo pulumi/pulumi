@@ -274,7 +274,7 @@ async function gatherExplicitDependencies(
             // Recursively gather dependencies, await the promise, and append the output's dependencies.
             const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(gatherExplicitDependencies);
             const urns = await dos.promise();
-            const implicits = await gatherExplicitDependencies([...(await dos.__resources)]);
+            const implicits = await gatherExplicitDependencies([...(await Output.allResources(dos))]);
             return urns.concat(implicits);
         } else {
             return [await (dependsOn as Resource).urn.promise()];

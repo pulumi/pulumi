@@ -191,8 +191,9 @@ interface ClosurePropertyDescriptor {
 class SerializedOutput<T> implements resource.Output<T> {
     /* @internal */ public isKnown: Promise<boolean>;
     /* @internal */ public readonly promise: () => Promise<T>;
+    /* @internal */ public readonly resources: () => Set<resource.Resource>;
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __resources: Promise<Set<resource.Resource>>;
+    /* @internal */ public readonly __asyncResources: Promise<Set<resource.Resource>>;
     /* @internal */ private readonly value: T;
 
     public constructor(value: T) {

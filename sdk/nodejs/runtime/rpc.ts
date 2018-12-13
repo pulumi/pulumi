@@ -268,7 +268,7 @@ async function serializePropertyWorker(
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
-        dependentResources.push(...(await prop.__resources));
+        dependentResources.push(...(await Output.allResources(prop)));
 
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
