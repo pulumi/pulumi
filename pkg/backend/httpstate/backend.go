@@ -801,7 +801,6 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	close(displayDone)
 	contract.IgnoreClose(snapshotManager)
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt

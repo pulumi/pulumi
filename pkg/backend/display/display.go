@@ -78,7 +78,7 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 	defer func() {
 		spinner.Reset()
 		ticker.Stop()
-		done <- true
+		close(done)
 	}()
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
