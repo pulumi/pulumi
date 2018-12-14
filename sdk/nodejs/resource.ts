@@ -136,7 +136,7 @@ export abstract class Resource {
 
     /**
      * Optional dependencies that this resource depends on.  Subclasses can override this to return
-     * an additional set of resource that must also be awaited if something depends on this
+     * an additional set of resources that must also be awaited if something depends on this
      * Resource.
      *
      * This is most commonly used with ComponentResource that end up creating their own private

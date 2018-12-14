@@ -115,6 +115,34 @@ describe("resource", () => {
         const deps2 = await getTransitiveDependenciesAsync(r2, { dependsOn: <any>r1 });
         setEquals(deps2, r1, r0);
     }));
+    it("is ok with options array", asyncTest(async () => {
+        const r0 = new TestResource("r0");
+        const r1 = new TestResource("r1", [r0]);
+        const r2 = new TestResource("r2");
+        const deps1 = await getTransitiveDependenciesAsync(r1);
+        const deps2 = await getTransitiveDependenciesAsync(r2, { dependsOn: <any>[r1] });
+        setEquals(deps1);
+        setEquals(deps2, r1, r0);
+    }));
+    it("is ok with options promise array #1", asyncTest(async () => {
+        const r0 = new TestResource("r0");
+        const r1 = new TestResource("r1", [r0]);
+        const r2 = new TestResource("r2");
+        const deps1 = await getTransitiveDependenciesAsync(r1);
+        const deps2 = await getTransitiveDependenciesAsync(r2, { dependsOn: <any>[Promise.resolve(r1)] });
+        setEquals(deps1);
+        setEquals(deps2, r1, r0);
+    }));
+    it("is ok with options promise array #2", asyncTest(async () => {
+        const r0 = new TestResource("r0");
+        const r1 = new TestResource("r1", [r0]);
+        const r2 = new TestResource("r2");
+        const deps1 = await getTransitiveDependenciesAsync(r1);
+        const deps2 = await getTransitiveDependenciesAsync(r2,
+            { dependsOn: <any>Promise.resolve([Promise.resolve(r1)]) });
+        setEquals(deps1);
+        setEquals(deps2, r1, r0);
+    }));
     it("circularity throws", asyncTest(async () => {
         const r1 = new TestResource("r1", []);
         const r2 = new TestResource("r2");
