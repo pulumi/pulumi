@@ -280,17 +280,19 @@ async function getAllDependentUrns(label: string, dependencies: Set<Resource>, r
     }
     while (dependencies.size !== startingDependenciesSize);
 
+    for (const implicitDep of dependencies) {
+        if (implicitDep === res) {
+            // If one of res's dependencies caused a cycle with this resource then detect that
+            // immediately and give a prompt error.  If we don't do this we'll just end up awaiting
+            // res's URN (which won't work as we're in the process of getting things ready before
+            // even registering 'res' in the first place).
+            throw new Error(`Dependency cycle found in resource: ${label}`);
+        }
+    }
+
     // Now actually await completion of all these dependent resources.
     const dependentUrns = new Set<URN>();
     for (const implicitDep of dependencies) {
-        if (implicitDep === res) {
-            // If one of this resource's dependencies caused a cycle with this resource then detect
-            // that immediately and give a prompt error.  If we don't do this we'll just end up
-            // awaiting this resource's URN (which won't work as we're in the process of getting
-            // things ready before even registering the resource in the first place).
-            throw new Error(`Dependency cycle found in resource: ${label}`);
-        }
-
         dependentUrns.add(await implicitDep.urn.promise());
     }
 
