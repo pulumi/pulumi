@@ -42,7 +42,7 @@ install_plugin::
 install:: install_package install_plugin
 
 test_fast::
-	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/dependencies.spec.js'
+	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
 	go test -count=1 -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
