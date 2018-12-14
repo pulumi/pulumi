@@ -1,4 +1,4 @@
-## 0.16.8 (Unreleased)
+## 0.16.9 (Unreleased)
 
 ### Improvements
 
@@ -6,9 +6,13 @@
 
 - Added a `--stack` argument (short form `-s`) to `pulumi stack`, `pulumi stack init`, `pulumi state delete` and `pulumi state unprotect` to allow operating on a different stack than the currently selected stack. This brings these commands in line with the other commands that operate on stacks and already provided a `--stack` option (fixes [pulumi/pulumi#1648](https://github.com/pulumi/pulumi/issues/1648))
 
+## 0.16.8 (Released December 14th, 2018)
+
+### Improvements
+
 - Fix an issue that caused panics due to shutting the Jaeger tracing infrastructure down before all traces had finished ([pulumi/pulumi#1850](https://github.com/pulumi/pulumi/issues/1850))
 
-## 0.16.7 (Release December 5th, 2018)
+## 0.16.7 (Released December 5th, 2018)
 
 ### Improvements
 
