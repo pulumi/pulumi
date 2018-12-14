@@ -237,7 +237,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    const dependentUrns = await getAllDependencyUrns(label, dependencies, res, opts);
+    const dependentUrns = await getAllDependentUrns(label, dependencies, res, opts);
 
     return {
         resolveURN: resolveURN!,
@@ -250,7 +250,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     };
 }
 
-async function getAllDependencyUrns(label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
+async function getAllDependentUrns(label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
     // Before we can proceed, all our dependencies must be finished.  Start with the set of resources
     // that are passed in as 'dependsOn' resources in the optional [opts] bag.
     //
