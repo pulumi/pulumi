@@ -166,10 +166,18 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
 	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
 
+	// Create a new channel to synchronize with the event renderer.
+	innerDone := make(chan bool)
+	defer func() {
+		// Wait for the display routime to exit, then notify any listeners that this routine is finished.
+		<-innerDone
+		close(done)
+	}()
+
 	// Start the local display processor.  Display things however the options have been
 	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, done, opts, isPreview)
+	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, innerDone, opts, isPreview)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 

@@ -1,6 +1,8 @@
-## 0.16.8 (Unreleased)
+## 0.16.8 (Released December 14th, 2018)
 
-## 0.16.7 (Release December 5th, 2018)
+- Fix an issue that caused panics due to shutting the Jaeger tracing infrastructure down before all traces had finished (fixes [pulumi/pulumi#1850](https://github.com/pulumi/pulumi/issues/1850))
+
+## 0.16.7 (Released December 5th, 2018)
 
 ### Improvements
 
