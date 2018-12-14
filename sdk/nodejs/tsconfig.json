@@ -53,6 +53,7 @@
         "cmd/run/run.ts",
 
         "tests/config.spec.ts",
+        "tests/dependencies.spec.ts",
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
         "tests/output.spec.ts",

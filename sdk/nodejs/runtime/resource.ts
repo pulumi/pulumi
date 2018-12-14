@@ -15,7 +15,7 @@
 import * as grpc from "grpc";
 import * as log from "../log";
 import { CustomResourceOptions, ID, Input, Inputs, Output, output, Resource, ResourceOptions, URN } from "../resource";
-import { debuggablePromise, errorString } from "./debuggable";
+import { debuggablePromise } from "./debuggable";
 import {
     deserializeProperties,
     deserializeProperty,
@@ -252,7 +252,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 
 async function getTransitiveDependencyUrns(
         label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
-    await addTransitiveDependencies(label, dependencies, res, opts);
+    await addTransitiveDependenciesAsync(label, dependencies, res, opts);
 
     // Now actually await completion of all these dependent resources.
     const dependentUrns = new Set<URN>();
@@ -263,7 +263,7 @@ async function getTransitiveDependencyUrns(
     return dependentUrns;
 }
 
-export async function addTransitiveDependencies(
+export async function addTransitiveDependenciesAsync(
         label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
     // Before we can proceed, all our dependencies must be finished.  Start with the set of resources
     // that are passed in as 'dependsOn' resources in the optional [opts] bag.
