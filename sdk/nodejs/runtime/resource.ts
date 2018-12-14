@@ -251,18 +251,23 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 }
 
 async function getAllDependencyUrns(label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
-    // Before we can proceed, all our dependencies must be finished.  Dependencies can come in two
-    // forms.  First, this resource can be passed a set of 'dependsOn' resources in its optional
-    // [opts] bag.  Second, a Resource subclass can return a set of dependsOn resources that should
-    // also be awaited along with it.
+    // Before we can proceed, all our dependencies must be finished.  Start with the set of resources
+    // that are passed in as 'dependsOn' resources in the optional [opts] bag.
     //
-    // Note: we only add the direct dependencies that are in these two lists.  A later pass will
-    // walk these to pull in transitive dependencies.
-    await addDirectDependencies(dependencies, res.dependsOn());
+    // Note: we only add the direct dependencies that are in that list.  A later pass will walk
+    // these to pull in transitive dependencies.
+    //
+    // Also, importantly, we do not add res.dependsOn here.  Those are the additional resources that
+    // 'res' is saying one should await if they dependOn 'res'.  Often, those will be child resources
+    // whose parent is 'res' itself.  So, awaiting those resources would just deadlock immediately as
+    // 'res' would be dependent on resources that were themselves dependent on 'res'.
+    //
+    // A good way to think about this is that this allows a 'opts.dependsOn' to not mean to depend
+    // on just that resource, but a tree of resources, with one logical resource at the root.
     await addDirectDependencies(dependencies, opts.dependsOn);
 
-    // now, keep iterating over the dependent resources of each dependency. This will add more
-    // dependencies up until we reach a fixed point.
+    // now, keep iterating over the 'dependsOn' resources of each dependent resource. This will add
+    // more dependencies up until we reach a fixed point.
     let startingDependenciesSize: number;
     do {
         startingDependenciesSize = dependencies.size;
@@ -280,7 +285,7 @@ async function getAllDependencyUrns(label: string, dependencies: Set<Resource>, 
     for (const implicitDep of dependencies) {
         if (implicitDep === res) {
             // If one of this resource's dependencies caused a cycle with this resource then detect
-            // that immediate and ive a prompt error.  If we don't do this we'll just end up
+            // that immediately and give a prompt error.  If we don't do this we'll just end up
             // awaiting this resource's URN (which won't work as we're in the process of getting
             // things ready before even registering the resource in the first place).
             throw new Error(`Dependency cycle found in resource: ${label}`);
