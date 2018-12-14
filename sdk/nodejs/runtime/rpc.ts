@@ -270,7 +270,9 @@ async function serializePropertyWorker(
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
-        dependentResources.push(...prop.resources());
+        for (const resource of prop.resources()) {
+            dependentResources.add(resource);
+        }
 
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
@@ -281,13 +283,17 @@ async function serializePropertyWorker(
         return isKnown ? value : unknownValue;
     }
 
+    if (Resource.isInstance(prop)) {
+        dependentResources.add(prop);
+        // intentional fall through.
+    }
+
     if (CustomResource.isInstance(prop)) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: custom resource id`);
         }
 
-        dependentResources.add(prop);
         return serializePropertyWorker(`${ctx}.id`, prop.id, dependentResources, seenObjects);
     }
 

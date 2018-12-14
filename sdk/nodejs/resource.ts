@@ -136,8 +136,12 @@ export abstract class Resource {
 
     /**
      * Optional dependencies that this resource depends on.  Subclasses can override this to return
-     * an additional set of resource that must await completion before this resource should be
-     * created.
+     * an additional set of resource that must also be awaited if something depends on this
+     * Resource.
+     *
+     * This is most commonly used with ComponentResource that end up creating their own private
+     * CustomResources.  In some cases, if someone is depending on the ComponentResource, it is
+     * important that they depend on the underlying Resource that component creates as well.
      */
     public dependsOn(): Input<Input<Resource>[]> {
         return [];

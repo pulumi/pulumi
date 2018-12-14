@@ -66,7 +66,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     const resopAsync = prepareResource(label, res, true, props, opts);
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
-        const resolvedID = await serializeProperty(label, id, []);
+        const resolvedID = await serializeProperty(label, id, new Set<Resource>());
         log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
@@ -215,14 +215,10 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
-    // Before we can proceed, all our dependencies must be finished.
+    // Serialize out all our props to their final values.  In doing so, we'll also collect all the
+    // Resources pointed to by any Output objects we encounter, adding them as our initial set of
+    // 'dependencies'.
     const dependencies = new Set<Resource>();
-    await addDirectDependencies(dependencies, res.dependsOn());
-    await addDirectDependencies(dependencies, opts.dependsOn);
-
-    // Serialize out all our props to their final values.  In doing so, we'll also collect all
-    // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-    const implicitDependencies: Resource[] = [];
     const serializedProps = await serializeResourceProperties(label, props, dependencies);
 
     let parentURN: URN | undefined;
@@ -241,23 +237,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    // now, keep iterating over the dependent resources, adding more direct dependencies. Do this
-    // until we reach a fixed point.
-    let startingDependenciesSize: number;
-    do {
-        startingDependenciesSize = dependencies.size;
-        const copy = new Set(dependencies.values());
-
-        for (const dep of copy) {
-            await addDirectDependencies(dependencies, dep.dependsOn());
-        }
-    }
-    while (dependencies.size !== startingDependenciesSize);
-
-    const dependentUrns: Set<URN> = new Set<URN>();
-    for (const implicitDep of dependencies) {
-        dependentUrns.add(await implicitDep.urn.promise());
-    }
+    const dependentUrns = await getAllDependencyUrns(label, dependencies, res, opts);
 
     return {
         resolveURN: resolveURN!,
@@ -270,6 +250,48 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     };
 }
 
+async function getAllDependencyUrns(label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
+    // Before we can proceed, all our dependencies must be finished.  Dependencies can come in two
+    // forms.  First, this resource can be passed a set of 'dependsOn' resources in its optional
+    // [opts] bag.  Second, a Resource subclass can return a set of dependsOn resources that should
+    // also be awaited along with it.
+    //
+    // Note: we only add the direct dependencies that are in these two lists.  A later pass will
+    // walk these to pull in transitive dependencies.
+    await addDirectDependencies(dependencies, res.dependsOn());
+    await addDirectDependencies(dependencies, opts.dependsOn);
+
+    // now, keep iterating over the dependent resources of each dependency. This will add more
+    // dependencies up until we reach a fixed point.
+    let startingDependenciesSize: number;
+    do {
+        startingDependenciesSize = dependencies.size;
+
+        // Make a copy so that we're not iterating over the same set that we're adding to.
+        const copy = new Set(dependencies.values());
+        for (const dep of copy) {
+            await addDirectDependencies(dependencies, dep.dependsOn());
+        }
+    }
+    while (dependencies.size !== startingDependenciesSize);
+
+    // Now actually await completion of all these dependent resources.
+    const dependentUrns = new Set<URN>();
+    for (const implicitDep of dependencies) {
+        if (implicitDep === res) {
+            // If one of this resource's dependencies caused a cycle with this resource then detect
+            // that immediate and ive a prompt error.  If we don't do this we'll just end up
+            // awaiting this resource's URN (which won't work as we're in the process of getting
+            // things ready before even registering the resource in the first place).
+            throw new Error(`Dependency cycle found in resource: ${label}`);
+        }
+
+        dependentUrns.add(await implicitDep.urn.promise());
+    }
+
+    return dependentUrns;
+}
+
 async function addDirectDependencies(
         result: Set<Resource>, dependsOn: Input<Input<Resource>[] | Resource> | undefined) {
 
@@ -277,7 +299,7 @@ async function addDirectDependencies(
         return;
     }
 
-    // It's worth expalining how this is works. First, We take the dependsOn input and pass it
+    // It's worth explaining how this is works. First, We take the dependsOn input and pass it
     // through the 'output' function.  This will have the positive impact of unwrapping any
     // outputs/promises that wrap the dependsOn and leaving us either with a Resource[] or a
     // Resource.  We then handle each of those cases in a chained .apply call, adding the individual
@@ -300,35 +322,6 @@ async function addDirectDependencies(
 }
 
 /**
- * Gathers explicit dependency URNs from a list of Resources (possibly Promises and/or Outputs).
- */
-async function gatherExplicitDependencies(
-    resource: Resource, dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<URN[]> {
-
-    if (dependsOn) {
-        if (Array.isArray(dependsOn)) {
-            const dos: URN[] = [];
-            for (const d of dependsOn) {
-                dos.push(...(await gatherExplicitDependencies(d)));
-            }
-            return dos;
-        } else if (dependsOn instanceof Promise) {
-            return gatherExplicitDependencies(await dependsOn);
-        } else if (Output.isInstance(dependsOn)) {
-            // Recursively gather dependencies, await the promise, and append the output's dependencies.
-            const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(gatherExplicitDependencies);
-            const urns = await dos.promise();
-            const implicits = await gatherExplicitDependencies([...dos.resources()]);
-            return urns.concat(implicits);
-        } else {
-            return [await (dependsOn as Resource).urn.promise()];
-        }
-    }
-
-    return [];
-}
-
-/**
  * Finishes a resource creation RPC operation by resolving its outputs to the resulting RPC payload.
  */
 async function resolveOutputs(res: Resource, t: string, name: string,
@@ -343,10 +336,11 @@ async function resolveOutputs(res: Resource, t: string, name: string,
     const label = `resource:${name}[${t}]#...`;
     for (const key of Object.keys(props)) {
         if (!allProps.hasOwnProperty(key)) {
-            // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
-            // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
-            // Output values are handled properly w.r.t. unknowns.
-            const inputProp = await serializeProperty(label, props[key], []);
+            // input prop the engine didn't give us a final value for.  Just use the value passed
+            // into the resource after round-tripping it through serialization. We do the
+            // round-tripping primarily s.t. we ensure that Output values are handled properly
+            // w.r.t. unknowns.
+            const inputProp = await serializeProperty(label, props[key], new Set<Resource>());
             if (inputProp === undefined) {
                 continue;
             }
@@ -358,7 +352,8 @@ async function resolveOutputs(res: Resource, t: string, name: string,
 }
 
 /**
- * registerResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
+ * registerResourceOutputs completes the resource registration, attaching an optional set of
+ * computed outputs.
  */
 export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise<Inputs> | Output<Inputs>) {
     // Now run the operation. Note that we explicitly do not serialize output registration with
@@ -370,7 +365,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         // The registration could very well still be taking place, so we will need to wait for its URN.
         // Additionally, the output properties might have come from other resources, so we must await those too.
         const urn = await res.urn.promise();
-        const resolved = await serializeProperties(opLabel, { outputs });
+        const resolved = await serializeProperties(opLabel, { outputs }, new Set());
         const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));
