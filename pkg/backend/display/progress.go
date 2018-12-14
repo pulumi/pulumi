@@ -282,7 +282,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	ticker.Stop()
 
 	// let our caller know we're done.
-	done <- true
+	close(done)
 }
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
