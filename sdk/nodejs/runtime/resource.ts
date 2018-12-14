@@ -237,7 +237,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    const dependentUrns = await getAllDependentUrns(label, dependencies, res, opts);
+    const dependencyUrns = await getTransitiveDependencyUrns(label, dependencies, res, opts);
 
     return {
         resolveURN: resolveURN!,
@@ -246,11 +246,25 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         serializedProps: serializedProps,
         parentURN: parentURN,
         providerRef: providerRef,
-        dependencies: dependentUrns,
+        dependencies: dependencyUrns,
     };
 }
 
-async function getAllDependentUrns(label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
+async function getTransitiveDependencyUrns(
+        label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
+    await addTransitiveDependencies(label, dependencies, res, opts);
+
+    // Now actually await completion of all these dependent resources.
+    const dependentUrns = new Set<URN>();
+    for (const implicitDep of dependencies) {
+        dependentUrns.add(await implicitDep.urn.promise());
+    }
+
+    return dependentUrns;
+}
+
+export async function addTransitiveDependencies(
+        label: string, dependencies: Set<Resource>, res: Resource, opts: ResourceOptions) {
     // Before we can proceed, all our dependencies must be finished.  Start with the set of resources
     // that are passed in as 'dependsOn' resources in the optional [opts] bag.
     //
@@ -290,13 +304,7 @@ async function getAllDependentUrns(label: string, dependencies: Set<Resource>, r
         }
     }
 
-    // Now actually await completion of all these dependent resources.
-    const dependentUrns = new Set<URN>();
-    for (const implicitDep of dependencies) {
-        dependentUrns.add(await implicitDep.urn.promise());
-    }
-
-    return dependentUrns;
+    return dependencies;
 }
 
 async function addDirectDependencies(
