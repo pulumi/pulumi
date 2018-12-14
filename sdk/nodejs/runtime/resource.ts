@@ -14,7 +14,7 @@
 
 import * as grpc from "grpc";
 import * as log from "../log";
-import { CustomResourceOptions, ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
+import { CustomResourceOptions, ID, Input, Inputs, Output, output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import {
     deserializeProperties,
@@ -216,12 +216,14 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
-    const explicitDependencies: URN[] = await gatherExplicitDependencies(opts.dependsOn);
+    const dependencies = new Set<Resource>();
+    await addDirectDependencies(dependencies, res.dependsOn());
+    await addDirectDependencies(dependencies, opts.dependsOn);
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
     const implicitDependencies: Resource[] = [];
-    const serializedProps = await serializeResourceProperties(label, props, implicitDependencies);
+    const serializedProps = await serializeResourceProperties(label, props, dependencies);
 
     let parentURN: URN | undefined;
     if (opts.parent) {
@@ -239,9 +241,22 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    const dependencies: Set<URN> = new Set<URN>(explicitDependencies);
-    for (const implicitDep of implicitDependencies) {
-        dependencies.add(await implicitDep.urn.promise());
+    // now, keep iterating over the dependent resources, adding more direct dependencies. Do this
+    // until we reach a fixed point.
+    let startingDependenciesSize: number;
+    do {
+        startingDependenciesSize = dependencies.size;
+        const copy = new Set(dependencies.values());
+
+        for (const dep of copy) {
+            await addDirectDependencies(dependencies, dep.dependsOn());
+        }
+    }
+    while (dependencies.size !== startingDependenciesSize);
+
+    const dependentUrns: Set<URN> = new Set<URN>();
+    for (const implicitDep of dependencies) {
+        dependentUrns.add(await implicitDep.urn.promise());
     }
 
     return {
@@ -251,15 +266,44 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         serializedProps: serializedProps,
         parentURN: parentURN,
         providerRef: providerRef,
-        dependencies: dependencies,
+        dependencies: dependentUrns,
     };
+}
+
+async function addDirectDependencies(
+        result: Set<Resource>, dependsOn: Input<Input<Resource>[] | Resource> | undefined) {
+
+    if (!dependsOn) {
+        return;
+    }
+
+    // It's worth expalining how this is works. First, We take the dependsOn input and pass it
+    // through the 'output' function.  This will have the positive impact of unwrapping any
+    // outputs/promises that wrap the dependsOn and leaving us either with a Resource[] or a
+    // Resource.  We then handle each of those cases in a chained .apply call, adding the individual
+    // resources to the result set.
+    //
+    // Now, this chained apply will itself give us an Output back.  We don't care about that Output
+    // except to get the promise for it, representing the work that needs to be done for the apply
+    // to happen.  We just await that work, ensuring that at the end of the await the changes will
+    // have been made.
+    await output(dependsOn).apply(arrayOrResource => {
+        if (Array.isArray(arrayOrResource)) {
+            for (const res of arrayOrResource) {
+                result.add(res);
+            }
+        }
+        else if (arrayOrResource) {
+            result.add(arrayOrResource);
+        }
+    }).promise();
 }
 
 /**
  * Gathers explicit dependency URNs from a list of Resources (possibly Promises and/or Outputs).
  */
 async function gatherExplicitDependencies(
-    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<URN[]> {
+    resource: Resource, dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<URN[]> {
 
     if (dependsOn) {
         if (Array.isArray(dependsOn)) {

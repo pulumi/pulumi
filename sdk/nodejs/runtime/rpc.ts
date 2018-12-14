@@ -70,13 +70,13 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 }
 
 /**
- * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for properties with
- * keys that match the provided filter, creating a reasonable POJO object that can be remoted over to
- * registerResource.
+ * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for
+ * properties with keys that match the provided filter, creating a reasonable POJO object that can
+ * be remoted over to registerResource.
  */
 async function serializeFilteredProperties(
         label: string, props: Inputs, acceptKey: (k: string) => boolean,
-        dependentResources: Resource[] = []): Promise<Record<string, any>> {
+        dependentResources: Set<Resource>): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
@@ -92,20 +92,21 @@ async function serializeFilteredProperties(
 }
 
 /**
- * serializeResourceProperties walks the props object passed in, awaiting all interior promises besides those for `id`
- * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
+ * serializeResourceProperties walks the props object passed in, awaiting all interior promises
+ * besides those for `id` and `urn`, creating a reasonable POJO object that can be remoted over to
+ * registerResource.
  */
 export async function serializeResourceProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
+        label: string, props: Inputs, dependentResources: Set<Resource>): Promise<Record<string, any>> {
     return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", dependentResources);
 }
 
 /**
- * serializeProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
- * POJO object that can be remoted over to registerResource.
+ * serializeProperties walks the props object passed in, awaiting all interior promises, creating a
+ * reasonable POJO object that can be remoted over to registerResource.
  */
 export async function serializeProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
+        label: string, props: Inputs, dependentResources: Set<Resource>): Promise<Record<string, any>> {
     return serializeFilteredProperties(label, props, key => true, dependentResources);
 }
 
@@ -216,16 +217,17 @@ export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 
 /**
- * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
- * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
+ * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved
+ * promises, as appropriate, in addition to translating certain "special" values so that they are
+ * ready to go on the wire.
  */
-export function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
+export function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
     return serializePropertyWorker(ctx, prop, dependentResources, new Set());
 }
 
 async function serializePropertyWorker(
     ctx: string, prop: Input<any>,
-    dependentResources: Resource[],
+    dependentResources: Set<Resource>,
     seenObjects: Set<any>): Promise<any> {
 
     // Simple values, always serialize fully.
@@ -285,7 +287,7 @@ async function serializePropertyWorker(
             log.debug(`Serialize property [${ctx}]: custom resource id`);
         }
 
-        dependentResources.push(prop);
+        dependentResources.add(prop);
         return serializePropertyWorker(`${ctx}.id`, prop.id, dependentResources, seenObjects);
     }
 

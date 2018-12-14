@@ -133,6 +133,15 @@ export abstract class Resource {
             registerResource(this, t, name, custom, props, opts);
         }
     }
+
+    /**
+     * Optional dependencies that this resource depends on.  Subclasses can override this to return
+     * an additional set of resource that must await completion before this resource should be
+     * created.
+     */
+    public dependsOn(): Input<Input<Resource>[]> {
+        return [];
+    }
 }
 
 (<any>Resource).doNotCapture = true;
@@ -152,7 +161,7 @@ export interface ResourceOptions {
     /**
      * An optional additional explicit dependencies on other resources.
      */
-    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
+    dependsOn?: Input<Input<Resource>[] | Resource>;
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
