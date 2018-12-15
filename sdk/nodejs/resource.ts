@@ -265,11 +265,11 @@ export class ComponentResource extends Resource {
      *
      * @param t The type of the resource.
      * @param name The _unique_ name of the resource.
-     * @param props [Deprecated].  Component resources do not communicate or store their properties
-     *              with the Pulumi engine.
+     * @param unused [Deprecated].  Component resources do not communicate or store their properties
+     *               with the Pulumi engine.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(type: string, name: string, props?: Inputs, opts: ComponentResourceOptions = {}) {
+    constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
         if ((<any>opts).provider !== undefined) {
             throw new ResourceError("Explicit providers may not be used with component resources", opts.parent);
         }
