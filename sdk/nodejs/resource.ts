@@ -291,7 +291,7 @@ export class ComponentResource extends Resource {
     // they are done creating child resources.  While not strictly necessary, this helps the
     // experience by ensuring the UI transitions the ComponentResource to the 'complete' state as
     // quickly as possible (instead of waiting until the entire application completes).
-    protected registerOutputs(outputs: Inputs | Promise<Inputs> | Output<Inputs> | undefined): void {
+    protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
         if (outputs) {
             registerResourceOutputs(this, outputs);
         }
