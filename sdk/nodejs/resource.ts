@@ -285,8 +285,12 @@ export class ComponentResource extends Resource {
         super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
     }
 
-    // registerOutputs registers synthetic outputs that a component has initialized, usually by allocating
-    // other child sub-resources and propagating their resulting property values.
+    // registerOutputs registers synthetic outputs that a component has initialized, usually by
+    // allocating other child sub-resources and propagating their resulting property values.
+    // ComponentResources should always call this at the end of their constructor to indicate that
+    // they are done creating child resources.  While not strictly necessary, this helps the
+    // experience by ensuring the UI transitions the ComponentResource to the 'complete' state as
+    // quickly as possible (instead of waiting until the entire application completes).
     protected registerOutputs(outputs: Inputs | Promise<Inputs> | Output<Inputs> | undefined): void {
         if (outputs) {
             registerResourceOutputs(this, outputs);
