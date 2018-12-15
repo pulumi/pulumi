@@ -257,23 +257,32 @@ export abstract class ProviderResource extends CustomResource {
  */
 export class ComponentResource extends Resource {
     /**
-     * Creates and registers a new component resource.  t is the fully qualified type token and name
-     * is the "name" part to use in creating a stable and globally unique URN for the object. parent
-     * is the optional parent for this component, and dependsOn is an optional list of other
-     * resources that this resource depends on, controlling the order in which we perform resource
-     * operations.
+     * Creates and registers a new component resource.  [type] is the fully qualified type token and
+     * [name] is the "name" part to use in creating a stable and globally unique URN for the object.
+     * [opts.parent] is the optional parent for this component, and [opts.dependsOn] is an optional
+     * list of other resources that this resource depends on, controlling the order in which we
+     * perform resource operations.
      *
      * @param t The type of the resource.
      * @param name The _unique_ name of the resource.
-     * @param props The arguments to use to populate the new resource.
+     * @param props [Deprecated].  Component resources do not communicate or store their properties
+     *              with the Pulumi engine.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, props?: Inputs, opts: ComponentResourceOptions = {}) {
+    constructor(type: string, name: string, props?: Inputs, opts: ComponentResourceOptions = {}) {
         if ((<any>opts).provider !== undefined) {
             throw new ResourceError("Explicit providers may not be used with component resources", opts.parent);
         }
 
-        super(t, name, false, props, opts);
+        // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
+        // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
+        // only as a container for other resources.  Another way to think about this is that a normal
+        // 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
+        // in some way, the cloud resource needs to be updated (and vice versa).  That is not true
+        // for a component resource.  The component is just used for organizational purposes and does
+        // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
+        // do not have any effect on the cloud side of things at all.
+        super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
     }
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by allocating
