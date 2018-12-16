@@ -14,7 +14,8 @@
 
 import * as grpc from "grpc";
 import * as log from "../log";
-import { CustomResourceOptions, ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
+import { CustomResourceOptions, ID, Input, Inputs, Output, ProviderResource, Resource,
+         ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import {
     deserializeProperties,
@@ -53,7 +54,8 @@ interface ResourceResolverOperation {
  * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
  * will not be part of the resulting stack's state, as they are presumed to belong to another.
  */
-export function readResource(res: Resource, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
+export function readResource(
+        res: Resource, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
     const id: Input<ID> | undefined = opts.id;
     if (!id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
@@ -63,7 +65,19 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     log.debug(`Reading resource: id=${id}, t=${t}, name=${name}`);
 
     const monitor: any = getMonitor();
-    const resopAsync = prepareResource(label, res, true, props, opts);
+
+    // Get the ResourceResolverOperation for this resource.  Note: we grab the parent URN eagerly
+    // and we pass it in.  This is because resource calling into [readResource] will potentially
+    // update its URN immediately after calling us.  Because prepareResource performs async
+    // operations we may see the URN *post* update which is not what we want.  Indeed, this would
+    // cause cycles as urn is updated to to be dependent on children.  So we must grab the URN
+    // before there is any chance of that happening.
+    const resopAsync = prepareResource(
+        label, res, true, props,
+        (<CustomResourceOptions>opts).provider,
+        opts.parent && opts.parent.urn,
+        opts.dependsOn);
+
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
         const resolvedID = await serializeProperty(label, id, []);
@@ -115,7 +129,18 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
 
     const monitor: any = getMonitor();
-    const resopAsync = prepareResource(label, res, custom, props, opts);
+
+    // Get the ResourceResolverOperation for this resource.  Note: we grab the parent URN eagerly
+    // and we pass it in.  This is because resource calling into [registerResource] will potentially
+    // update its URN immediately after calling us.  Because prepareResource performs async
+    // operations we may see the URN *post* update which is not what we want.  Indeed, this would
+    // cause cycles as urn is updated to to be dependent on children.  So we must grab the URN
+    // before there is any chance of that happening.
+    const resopAsync = prepareResource(
+        label, res, custom, props,
+        (<CustomResourceOptions>opts).provider,
+        opts.parent && opts.parent.urn,
+        opts.dependsOn);
 
     // In order to present a useful stack trace if an error does occur, we preallocate potential
     // errors here. V8 captures a stack trace at the moment an Error is created and this stack
@@ -175,10 +200,16 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 }
 
 /**
- * Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
+ * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
+ * properties.
  */
-async function prepareResource(label: string, res: Resource, custom: boolean,
-                               props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
+async function prepareResource(
+    label: string, res: Resource,
+    custom: boolean, props: Inputs,
+    provider: ProviderResource | undefined,
+    parentURNOutput: Output<string> | undefined,
+    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<ResourceResolverOperation> {
+
     // Simply initialize the URN property and get prepared to resolve it later on.
     // Note: a resource urn will always get a value, and thus the output property
     // for it can always run .apply calls.
@@ -216,7 +247,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
-    const explicitDependencies: URN[] = await gatherExplicitDependencies(opts.dependsOn);
+    const explicitDependencies: URN[] = await gatherExplicitDependencies(dependsOn);
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
@@ -224,22 +255,21 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     const serializedProps = await serializeResourceProperties(label, props, implicitDependencies);
 
     let parentURN: URN | undefined;
-    if (opts.parent) {
-        parentURN = await opts.parent.urn.promise();
+    if (parentURNOutput) {
+        parentURN = await parentURNOutput.promise();
     } else {
         // If no parent was provided, parent to the root resource.
         parentURN = await getRootResource();
     }
 
     let providerRef: string | undefined;
-    if (custom && (<CustomResourceOptions>opts).provider) {
-        const provider = (<CustomResourceOptions>opts).provider!;
+    if (custom && provider) {
         const providerURN = await provider.urn.promise();
         const providerID = await provider.id.promise() || unknownValue;
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    const dependencies: Set<URN> = new Set<URN>(explicitDependencies);
+    const dependencies = new Set<URN>(explicitDependencies);
     for (const implicitDep of implicitDependencies) {
         dependencies.add(await implicitDep.urn.promise());
     }

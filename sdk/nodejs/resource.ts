@@ -148,6 +148,11 @@ export abstract class Resource {
         if (opts.parent) {
             const finalUrn = all([opts.parent.urn, this.urn]).apply(([u1, _]) => u1);
 
+            // const finalUrn = new Output(
+            //     new Set(allResources),
+            //     Promise.all([this.urn.promise(), opts.parent.urn.promise()]),
+            //     this.urn.isKnown);
+
             // urn is declared as readonly (so that others are not allowed to update it).  So cast
             // to any so we can do it.  We're the only code path that is allowed to change this.
             //

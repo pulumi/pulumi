@@ -5,15 +5,48 @@ let assert = require("assert");
 
 let pulumi = require("../../../../../");
 
+function checkCycle(res) {
+	const resources = [res];
+	for (let current = res.__parent; current; current = current.__parent) {
+		for (const r of resources) {
+			if (current === r) {
+				console.log("Cycle detected: ");
+				for (const res of resources) {
+					console.log(res.__name);
+				}
+
+				throw new Error("Cycle");
+			}
+		}
+
+		resources.push(current);
+	}
+}
+
 class Provider extends pulumi.ProviderResource {
 	constructor(name, opts) {
 		super("test", name, {}, opts);
+		this.__name = name;
+		this.__parent = opts && opts.parent;
+
+		checkCycle(this);
+		// if (opts.parent) {
+		// 	console.log(`Adding ${this.__name} to ${opts.parent.__name}`);
+		// }
 	}
 }
 
 class Resource extends pulumi.CustomResource {
 	constructor(name, createChildren, opts) {
-		super("test:index:Resource", name, {}, opts)
+		super("test:index:Resource", name, {}, opts);
+		this.__name = name;
+		this.__parent = opts && opts.parent;
+
+		checkCycle(this);
+
+		// if (opts.parent) {
+		// 	console.log(`Adding ${this.__name} to ${opts.parent.__name}`);
+		// }
 
 		if (createChildren) {
 			createChildren(name, this);
@@ -24,6 +57,13 @@ class Resource extends pulumi.CustomResource {
 class Component extends pulumi.ComponentResource {
 	constructor(name, createChildren, opts) {
 		super("test:index:Component", name, {}, opts);
+		this.__name = name;
+		this.__parent = opts && opts.parent;
+
+		checkCycle(this);
+		// if (opts.parent) {
+		// 	console.log(`Adding ${this.__name} to ${opts.parent.__name}`);
+		// }
 
 		createChildren(name, this);
 	}
