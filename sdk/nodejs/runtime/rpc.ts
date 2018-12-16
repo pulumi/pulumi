@@ -231,7 +231,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
         return prop;
     }
-    else if (prop instanceof Array) {
+
+    if (prop instanceof Array) {
         const elems: any[] = [];
         for (let i = 0; i < prop.length; i++) {
             if (excessiveDebugOutput) {
@@ -243,7 +244,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
         return elems;
     }
-    else if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
         const obj: any = {
@@ -252,7 +254,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 
         return await serializeAllKeys(prop, obj);
     }
-    else if (prop instanceof Promise) {
+
+    if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Promise<T>`);
@@ -261,7 +264,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         return serializeProperty(subctx,
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
     }
-    else if (Output.isInstance(prop)) {
+
+    if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
