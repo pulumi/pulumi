@@ -132,6 +132,39 @@ export abstract class Resource {
             // hand, values will never resolve.
             registerResource(this, t, name, custom, props, opts);
         }
+
+        // If we have a parent, we want to consider any dependency on it to be a dependency on us as
+        // well. i.e. say there is ComponentResource 'r1' which makes CustomResource 'c1' in its
+        // construct, and is used as the parent of a CustomResource 'c2' made later on.  If someone
+        // other resource depends on 'r1', we want them to actually be dependent 'c1' and 'c2'
+        // automatically.  This is important so that the ComponentResource actually represents an
+        // aggregation of other resources and that dependsOn meaningfully will block forward
+        // movement on the children of the Component actually being created.
+        //
+        // To do this, we wait until after readResource/registerResource has kicked off.  At this
+        // point *this* resource will have promise kicked off to figure out our URN.  So, we then
+        // take our parent and update it's URN such that it is only complete once both it's original
+        // computation and our URN computation is actually done.
+        if (opts.parent) {
+            const finalUrn = all([opts.parent.urn, this.urn]).apply(([u1, _]) => u1);
+
+            // urn is declared as readonly (so that others are not allowed to update it).  So cast
+            // to any so we can do it.  We're the only code path that is allowed to change this.
+            //
+            // Note: this does mean the urn for our parent can go from a 'done' state to an 'undone'
+            // state.  That's an acceptable part of our programming model.  If someone waits on 'r1'
+            // right after it is created, they will be effectively waiting on 'r1' and 'c1', but not
+            // necessarily 'c2'.  Once 'c2' is created, waiting on 'r1' will then wait on all three
+            // resources.
+            //
+            // We feel this is actually a sensible programming model.  When someone waits on a
+            // resource they're waiting on what that resource logically represents at that point in
+            // their program.  If, later on, that resource logically represents a larger tree (which
+            // would only happen if the user program did something to cause that), then waiting should
+            // now wait on that new tree.  This model works well for complex ComponentResources that
+            // may have their entire tree dynamically created over many steps as a pulumi app runs.
+            (<any>opts.parent).urn = finalUrn;
+        }
     }
 }
 
