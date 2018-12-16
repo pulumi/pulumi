@@ -247,6 +247,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Promise<T>`);
         }
+
         const subctx = `Promise<${ctx}>`;
         return serializeProperty(subctx,
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
@@ -300,16 +301,16 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
     }
 
     if (prop instanceof Array) {
-        const elems: any[] = [];
+        const result: any[] = [];
         for (let i = 0; i < prop.length; i++) {
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
             // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
             const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
-            elems.push(elem === undefined ? null : elem);
+            result.push(elem === undefined ? null : elem);
         }
-        return elems;
+        return result;
     }
 
     return await serializeAllKeys(prop, {});
