@@ -65,340 +65,339 @@ describe("rpc", () => {
     const base: string = path.join(path.dirname(__filename), "cases");
     const cases: {[key: string]: RunCase} = {
         // An empty program.
-        // "empty": {
-        //     program: path.join(base, "000.empty"),
-        //     expectResourceCount: 0,
-        // },
-        // // The same thing, just using pwd rather than an absolute program path.
-        // "empty.pwd": {
-        //     pwd: path.join(base, "000.empty"),
-        //     program: "./",
-        //     expectResourceCount: 0,
-        // },
-        // // The same thing, just using pwd and the filename rather than an absolute program path.
-        // "empty.pwd.index.js": {
-        //     pwd: path.join(base, "000.empty"),
-        //     program: "./index.js",
-        //     expectResourceCount: 0,
-        // },
-        // // A program that allocates a single resource.
-        // "one_resource": {
-        //     program: path.join(base, "001.one_resource"),
-        //     expectResourceCount: 1,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         assert.strictEqual(name, "testResource1");
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
-        // // A program that allocates ten simple resources.
-        // "ten_resources": {
-        //     program: path.join(base, "002.ten_resources"),
-        //     expectResourceCount: 10,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         if (ctx.seen) {
-        //             assert(!ctx.seen[name],
-        //                    `Got multiple resources with same name ${name}`);
-        //         }
-        //         else {
-        //             ctx.seen = {};
-        //         }
-        //         const prefix = "testResource";
-        //         assert.strictEqual(name.substring(0, prefix.length), prefix,
-        //                            `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-        //         const seqnum = parseInt(name.substring(prefix.length), 10);
-        //         assert(!isNaN(seqnum),
-        //                `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
-        //         ctx.seen[name] = true;
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
-        // // A program that allocates a complex resource with lots of input and output properties.
-        // "one_complex_resource": {
-        //     program: path.join(base, "003.one_complex_resource"),
-        //     expectResourceCount: 1,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         assert.strictEqual(name, "testResource1");
-        //         assert.deepEqual(res, {
-        //             inpropB1: false,
-        //             inpropB2: true,
-        //             inpropN: 42,
-        //             inpropS: "a string",
-        //             inpropA: [ true, 99, "what a great property" ],
-        //             inpropO: {
-        //                 b1: false,
-        //                 b2: true,
-        //                 n: 42,
-        //                 s: "another string",
-        //                 a: [ 66, false, "strings galore" ],
-        //                 o: { z: "x" },
-        //             },
-        //         });
-        //         return {
-        //             urn: makeUrn(t, name),
-        //             id: name,
-        //             props: {
-        //                 outprop1: "output properties ftw",
-        //                 outprop2: 998.6,
-        //             },
-        //         };
-        //     },
-        // },
-        // // A program that allocates 10 complex resources with lots of input and output properties.
-        // "ten_complex_resources": {
-        //     program: path.join(base, "004.ten_complex_resources"),
-        //     expectResourceCount: 10,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         if (ctx.seen) {
-        //             assert(!ctx.seen[name],
-        //                    `Got multiple resources with same name ${name}`);
-        //         }
-        //         else {
-        //             ctx.seen = {};
-        //         }
-        //         const prefix = "testResource";
-        //         assert.strictEqual(name.substring(0, prefix.length), prefix,
-        //                            `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-        //         const seqnum = parseInt(name.substring(prefix.length), 10);
-        //         assert(!isNaN(seqnum),
-        //                `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
-        //         ctx.seen[name] = true;
-        //         assert.deepEqual(res, {
-        //             inseq: seqnum,
-        //             inpropB1: false,
-        //             inpropB2: true,
-        //             inpropN: 42,
-        //             inpropS: "a string",
-        //             inpropA: [ true, 99, "what a great property" ],
-        //             inpropO: {
-        //                 b1: false,
-        //                 b2: true,
-        //                 n: 42,
-        //                 s: "another string",
-        //                 a: [ 66, false, "strings galore" ],
-        //                 o: { z: "x" },
-        //             },
-        //         });
-        //         return {
-        //             urn: makeUrn(t, name),
-        //             id: name,
-        //             props: {
-        //                 outseq: seqnum,
-        //                 outprop1: "output properties ftw",
-        //                 outprop2: 998.6,
-        //             },
-        //         };
-        //     },
-        // },
-        // // A program that allocates a single resource.
-        // "resource_thens": {
-        //     program: path.join(base, "005.resource_thens"),
-        //     expectResourceCount: 2,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string,
-        //                        res: any, dependencies: string[]) => {
-        //         let id: ID | undefined;
-        //         let props: any | undefined;
-        //         switch (t) {
-        //             case "test:index:ResourceA": {
-        //                 assert.strictEqual(name, "resourceA");
-        //                 assert.deepEqual(res, { inprop: 777 });
-        //                 if (!dryrun) {
-        //                     id = name;
-        //                     props = { outprop: "output yeah" };
-        //                 }
-        //                 break;
-        //             }
-        //             case "test:index:ResourceB": {
-        //                 assert.strictEqual(name, "resourceB");
-        //                 assert.deepEqual(dependencies, ["test:index:ResourceA::resourceA"]);
+        "empty": {
+            program: path.join(base, "000.empty"),
+            expectResourceCount: 0,
+        },
+        // The same thing, just using pwd rather than an absolute program path.
+        "empty.pwd": {
+            pwd: path.join(base, "000.empty"),
+            program: "./",
+            expectResourceCount: 0,
+        },
+        // The same thing, just using pwd and the filename rather than an absolute program path.
+        "empty.pwd.index.js": {
+            pwd: path.join(base, "000.empty"),
+            program: "./index.js",
+            expectResourceCount: 0,
+        },
+        // A program that allocates a single resource.
+        "one_resource": {
+            program: path.join(base, "001.one_resource"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        // A program that allocates ten simple resources.
+        "ten_resources": {
+            program: path.join(base, "002.ten_resources"),
+            expectResourceCount: 10,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                if (ctx.seen) {
+                    assert(!ctx.seen[name],
+                           `Got multiple resources with same name ${name}`);
+                }
+                else {
+                    ctx.seen = {};
+                }
+                const prefix = "testResource";
+                assert.strictEqual(name.substring(0, prefix.length), prefix,
+                                   `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                const seqnum = parseInt(name.substring(prefix.length), 10);
+                assert(!isNaN(seqnum),
+                       `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                ctx.seen[name] = true;
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        // A program that allocates a complex resource with lots of input and output properties.
+        "one_complex_resource": {
+            program: path.join(base, "003.one_complex_resource"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.deepEqual(res, {
+                    inpropB1: false,
+                    inpropB2: true,
+                    inpropN: 42,
+                    inpropS: "a string",
+                    inpropA: [ true, 99, "what a great property" ],
+                    inpropO: {
+                        b1: false,
+                        b2: true,
+                        n: 42,
+                        s: "another string",
+                        a: [ 66, false, "strings galore" ],
+                        o: { z: "x" },
+                    },
+                });
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {
+                        outprop1: "output properties ftw",
+                        outprop2: 998.6,
+                    },
+                };
+            },
+        },
+        // A program that allocates 10 complex resources with lots of input and output properties.
+        "ten_complex_resources": {
+            program: path.join(base, "004.ten_complex_resources"),
+            expectResourceCount: 10,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                if (ctx.seen) {
+                    assert(!ctx.seen[name],
+                           `Got multiple resources with same name ${name}`);
+                }
+                else {
+                    ctx.seen = {};
+                }
+                const prefix = "testResource";
+                assert.strictEqual(name.substring(0, prefix.length), prefix,
+                                   `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                const seqnum = parseInt(name.substring(prefix.length), 10);
+                assert(!isNaN(seqnum),
+                       `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                ctx.seen[name] = true;
+                assert.deepEqual(res, {
+                    inseq: seqnum,
+                    inpropB1: false,
+                    inpropB2: true,
+                    inpropN: 42,
+                    inpropS: "a string",
+                    inpropA: [ true, 99, "what a great property" ],
+                    inpropO: {
+                        b1: false,
+                        b2: true,
+                        n: 42,
+                        s: "another string",
+                        a: [ 66, false, "strings galore" ],
+                        o: { z: "x" },
+                    },
+                });
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {
+                        outseq: seqnum,
+                        outprop1: "output properties ftw",
+                        outprop2: 998.6,
+                    },
+                };
+            },
+        },
+        // A program that allocates a single resource.
+        "resource_thens": {
+            program: path.join(base, "005.resource_thens"),
+            expectResourceCount: 2,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string,
+                               res: any, dependencies: string[]) => {
+                let id: ID | undefined;
+                let props: any | undefined;
+                switch (t) {
+                    case "test:index:ResourceA": {
+                        assert.strictEqual(name, "resourceA");
+                        assert.deepEqual(res, { inprop: 777 });
+                        if (!dryrun) {
+                            id = name;
+                            props = { outprop: "output yeah" };
+                        }
+                        break;
+                    }
+                    case "test:index:ResourceB": {
+                        assert.strictEqual(name, "resourceB");
+                        assert.deepEqual(dependencies, ["test:index:ResourceA::resourceA"]);
 
-        //                 if (dryrun) {
-        //                     // If this is a dry-run, we will have the values of the original
-        //                     // resource copied over as outputs.  Note: this should really
-        //                     // only be done for values known to be stable.  This is tracked
-        //                     // by: https://github.com/pulumi/pulumi/issues/1055
-        //                     assert.deepEqual(res, {
-        //                         otherIn: 777,
-        //                         otherOut: runtime.unknownValue,
-        //                     });
-        //                 }
-        //                 else {
-        //                     // Otherwise, we will:
-        //                     assert.deepEqual(res, {
-        //                         otherIn: 777,
-        //                         otherOut: "output yeah",
-        //                     });
-        //                 }
+                        if (dryrun) {
+                            // If this is a dry-run, we will have the values of the original
+                            // resource copied over as outputs.  Note: this should really
+                            // only be done for values known to be stable.  This is tracked
+                            // by: https://github.com/pulumi/pulumi/issues/1055
+                            assert.deepEqual(res, {
+                                otherIn: 777,
+                                otherOut: runtime.unknownValue,
+                            });
+                        }
+                        else {
+                            // Otherwise, we will:
+                            assert.deepEqual(res, {
+                                otherIn: 777,
+                                otherOut: "output yeah",
+                            });
+                        }
 
-        //                 if (!dryrun) {
-        //                     id = name;
-        //                 }
-        //                 break;
-        //             }
-        //             default:
-        //                 assert.fail(`Unrecognized resource type ${t}`);
-        //                 throw new Error();
-        //         }
-        //         return {
-        //             urn: makeUrn(t, name),
-        //             id: id,
-        //             props: props,
-        //         };
-        //     },
-        // },
-        // "input_output": {
-        //     pwd: path.join(base, "006.asset"),
-        //     expectResourceCount: 1,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:FileResource");
-        //         assert.strictEqual(name, "file1");
-        //         assert.deepEqual(res, {
-        //             data: {
-        //                 [runtime.specialSigKey]: runtime.specialAssetSig,
-        //                 __pulumiAsset: true,
-        //                 path: "./testdata.txt",
-        //             },
-        //         });
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
-        // "promises_io": {
-        //     pwd: path.join(base, "007.promises_io"),
-        //     expectResourceCount: 1,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:FileResource");
-        //         assert.strictEqual(name, "file1");
-        //         assert.deepEqual(res, {
-        //             data: "The test worked!\n\nIf you can see some data!\n\n",
-        //         });
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
-        // // A program that allocates ten simple resources that use dependsOn to
-        // //depend on one another, 10 different ways.
-        // "ten_depends_on_resources": {
-        //     program: path.join(base, "008.ten_depends_on_resources"),
-        //     expectResourceCount: 100,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         if (ctx.seen) {
-        //             assert(!ctx.seen[name],
-        //                    `Got multiple resources with same name ${name}`);
-        //         }
-        //         else {
-        //             ctx.seen = {};
-        //         }
-        //         const prefix = "testResource";
-        //         assert.strictEqual(name.substring(0, prefix.length), prefix,
-        //                            `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-        //         const seqnum = parseInt(name.substring(prefix.length), 10);
-        //         assert(!isNaN(seqnum),
-        //                `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
-        //         ctx.seen[name] = true;
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
-        // // A simple test of the invocation RPC pathways.
-        // "invoke": {
-        //     program: path.join(base, "009.invoke"),
-        //     expectResourceCount: 0,
-        //     invoke: (ctx: any, tok: string, args: any) => {
-        //         assert.strictEqual(tok, "invoke:index:echo");
-        //         assert.deepEqual(args, {
-        //             a: "hello",
-        //             b: true,
-        //             c: [ 0.99, 42, { z: "x" } ],
-        //             id: "some-id",
-        //             urn: "some-urn",
-        //         });
-        //         return { failures: undefined, ret: args };
-        //     },
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         assert.strictEqual(name, "testResource1");
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
-        // // Simply test that certain runtime properties are available.
-        // "runtimeSettings": {
-        //     project: "runtimeSettingsProject",
-        //     stack: "runtimeSettingsStack",
-        //     config: {
-        //         "myBag:A": "42",
-        //         "myBag:bbbb": "a string o' b's",
-        //     },
-        //     program: path.join(base, "010.runtime_settings"),
-        //     expectResourceCount: 0,
-        // },
-        // // A program that throws an ordinary unhandled error.
-        // "unhandled_error": {
-        //     program: path.join(base, "011.unhandled_error"),
-        //     expectResourceCount: 0,
-        //     expectError: "Program exited with non-zero exit code: 1",
-        // },
-        // // A program that creates one resource that contains an assets archive.
-        // "assets_archive": {
-        //     program: path.join(base, "012.assets_archive"),
-        //     expectResourceCount: 1,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         return { urn: makeUrn(t, name), id: undefined, props: res };
-        //     },
-        // },
-        // // A program that contains an unhandled promise rejection.
-        // "unhandled_promise_rejection": {
-        //     program: path.join(base, "013.unhandled_promise_rejection"),
-        //     expectResourceCount: 0,
-        //     expectError: "Program exited with non-zero exit code: 1",
-        // },
-        // // A simple test of the read resource behavior.
-        // "read_resource": {
-        //     program: path.join(base, "014.read_resource"),
-        //     expectResourceCount: 0,
-        //     readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
-        //         assert.strictEqual(t, "test:read:resource");
-        //         assert.strictEqual(name, "foo");
-        //         assert.strictEqual(id, "abc123");
-        //         assert.deepEqual(state, {
-        //             a: "fizzz",
-        //             b: false,
-        //             c: [ 0.73, "x", { zed: 923 } ],
-        //         });
-        //         return {
-        //             urn: makeUrn(t, name),
-        //             props: {
-        //                 b: true,
-        //                 d: "and then, out of nowhere ...",
-        //             },
-        //         };
-        //     },
-        // },
-        // // Test that the runtime can be loaded twice.
-        // "runtime_sxs": {
-        //     program: path.join(base, "015.runtime_sxs"),
-        //     config: {
-        //         "sxs:message": "SxS config works!",
-        //     },
-        //     expectResourceCount: 2,
-        //     expectedLogs: {
-        //         count: 2,
-        //         ignoreDebug: true,
-        //     },
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         return { urn: makeUrn(t, name), id: name, props: undefined };
-        //     },
-        //     log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
-        //         assert.strictEqual(severity, engineproto.LogSeverity.INFO);
-        //         assert.strictEqual(/logging via (.*) works/.test(message), true);
-        //     },
-        // },
-        // // Test that leaked debuggable promises fail the deployment.
-        // "promise_leak": {
-        //     program: path.join(base, "016.promise_leak"),
-        //     expectError: "Program exited with non-zero exit code: 1",
-        // },
+                        if (!dryrun) {
+                            id = name;
+                        }
+                        break;
+                    }
+                    default:
+                        assert.fail(`Unrecognized resource type ${t}`);
+                        throw new Error();
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    id: id,
+                    props: props,
+                };
+            },
+        },
+        "input_output": {
+            pwd: path.join(base, "006.asset"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:FileResource");
+                assert.strictEqual(name, "file1");
+                assert.deepEqual(res, {
+                    data: {
+                        [runtime.specialSigKey]: runtime.specialAssetSig,
+                        __pulumiAsset: true,
+                        path: "./testdata.txt",
+                    },
+                });
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "promises_io": {
+            pwd: path.join(base, "007.promises_io"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:FileResource");
+                assert.strictEqual(name, "file1");
+                assert.deepEqual(res, {
+                    data: "The test worked!\n\nIf you can see some data!\n\n",
+                });
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        // A program that allocates ten simple resources that use dependsOn to depend on one another, 10 different ways.
+        "ten_depends_on_resources": {
+            program: path.join(base, "008.ten_depends_on_resources"),
+            expectResourceCount: 100,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                if (ctx.seen) {
+                    assert(!ctx.seen[name],
+                           `Got multiple resources with same name ${name}`);
+                }
+                else {
+                    ctx.seen = {};
+                }
+                const prefix = "testResource";
+                assert.strictEqual(name.substring(0, prefix.length), prefix,
+                                   `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                const seqnum = parseInt(name.substring(prefix.length), 10);
+                assert(!isNaN(seqnum),
+                       `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                ctx.seen[name] = true;
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        // A simple test of the invocation RPC pathways.
+        "invoke": {
+            program: path.join(base, "009.invoke"),
+            expectResourceCount: 0,
+            invoke: (ctx: any, tok: string, args: any) => {
+                assert.strictEqual(tok, "invoke:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [ 0.99, 42, { z: "x" } ],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        // Simply test that certain runtime properties are available.
+        "runtimeSettings": {
+            project: "runtimeSettingsProject",
+            stack: "runtimeSettingsStack",
+            config: {
+                "myBag:A": "42",
+                "myBag:bbbb": "a string o' b's",
+            },
+            program: path.join(base, "010.runtime_settings"),
+            expectResourceCount: 0,
+        },
+        // A program that throws an ordinary unhandled error.
+        "unhandled_error": {
+            program: path.join(base, "011.unhandled_error"),
+            expectResourceCount: 0,
+            expectError: "Program exited with non-zero exit code: 1",
+        },
+        // A program that creates one resource that contains an assets archive.
+        "assets_archive": {
+            program: path.join(base, "012.assets_archive"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                return { urn: makeUrn(t, name), id: undefined, props: res };
+            },
+        },
+        // A program that contains an unhandled promise rejection.
+        "unhandled_promise_rejection": {
+            program: path.join(base, "013.unhandled_promise_rejection"),
+            expectResourceCount: 0,
+            expectError: "Program exited with non-zero exit code: 1",
+        },
+        // A simple test of the read resource behavior.
+        "read_resource": {
+            program: path.join(base, "014.read_resource"),
+            expectResourceCount: 0,
+            readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
+                assert.strictEqual(t, "test:read:resource");
+                assert.strictEqual(name, "foo");
+                assert.strictEqual(id, "abc123");
+                assert.deepEqual(state, {
+                    a: "fizzz",
+                    b: false,
+                    c: [ 0.73, "x", { zed: 923 } ],
+                });
+                return {
+                    urn: makeUrn(t, name),
+                    props: {
+                        b: true,
+                        d: "and then, out of nowhere ...",
+                    },
+                };
+            },
+        },
+        // Test that the runtime can be loaded twice.
+        "runtime_sxs": {
+            program: path.join(base, "015.runtime_sxs"),
+            config: {
+                "sxs:message": "SxS config works!",
+            },
+            expectResourceCount: 2,
+            expectedLogs: {
+                count: 2,
+                ignoreDebug: true,
+            },
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                return { urn: makeUrn(t, name), id: name, props: undefined };
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                assert.strictEqual(/logging via (.*) works/.test(message), true);
+            },
+        },
+        // Test that leaked debuggable promises fail the deployment.
+        "promise_leak": {
+            program: path.join(base, "016.promise_leak"),
+            expectError: "Program exited with non-zero exit code: 1",
+        },
         // A test of parent default behaviors.
         "parent_defaults": {
             program: path.join(base, "017.parent_defaults"),
@@ -451,103 +450,103 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: name, props: {} };
             },
         },
-        // "logging": {
-        //     program: path.join(base, "018.logging"),
-        //     expectResourceCount: 1,
-        //     expectedLogs: {
-        //         count: 5,
-        //         ignoreDebug: true,
-        //     },
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         // "test" is the one resource this test creates - save the URN so we can assert
-        //         // it gets passed to log later on.
-        //         if (name === "test") {
-        //             ctx.testUrn = makeUrn(t, name);
-        //         }
+        "logging": {
+            program: path.join(base, "018.logging"),
+            expectResourceCount: 1,
+            expectedLogs: {
+                count: 5,
+                ignoreDebug: true,
+            },
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                // "test" is the one resource this test creates - save the URN so we can assert
+                // it gets passed to log later on.
+                if (name === "test") {
+                    ctx.testUrn = makeUrn(t, name);
+                }
 
-        //         return { urn: makeUrn(t, name), id: name, props: res};
-        //     },
-        //     log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
-        //         switch (message) {
-        //             case "info message":
-        //                 assert.strictEqual(severity, engineproto.LogSeverity.INFO);
-        //                 return;
-        //             case "warning message":
-        //                 assert.strictEqual(severity, engineproto.LogSeverity.WARNING);
-        //                 return;
-        //             case "error message":
-        //                 assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
-        //                 return;
-        //             case "attached to resource":
-        //                 assert.strictEqual(severity, engineproto.LogSeverity.INFO);
-        //                 assert.strictEqual(urn, ctx.testUrn);
-        //                 return;
-        //             case "with streamid":
-        //                 assert.strictEqual(severity, engineproto.LogSeverity.INFO);
-        //                 assert.strictEqual(urn, ctx.testUrn);
-        //                 assert.strictEqual(streamId, 42);
-        //                 return;
-        //             default:
-        //                 assert.fail("unexpected message: " + message);
-        //                 break;
-        //         }
-        //     },
-        // },
-        // // Test stack outputs via exports.
-        // "stack_exports": {
-        //     program: path.join(base, "019.stack_exports"),
-        //     expectResourceCount: 0,
-        //     registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
-        //                               t: string, name: string, res: any, outputs: any | undefined) => {
-        //         assert.strictEqual(t, "pulumi:pulumi:Stack");
-        //         assert.strictEqual(outputs, {
-        //             a: {
-        //                 x: 99,
-        //                 y: "z",
-        //             },
-        //             b: 42,
-        //             c: {
-        //                 d: "a",
-        //                 e: false,
-        //             },
-        //         });
-        //     },
-        // },
-        // "root_resource": {
-        //     program: path.join(base, "001.one_resource"),
-        //     expectResourceCount: 2,
-        //     showRootResourceRegistration: true,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
-        //                        custom: boolean, protect: boolean, parent: string) => {
-        //         if (t === "pulumi:pulumi:Stack") {
-        //             ctx.stackUrn = makeUrn(t, name);
-        //             return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //         }
+                return { urn: makeUrn(t, name), id: name, props: res};
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                switch (message) {
+                    case "info message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        return;
+                    case "warning message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.WARNING);
+                        return;
+                    case "error message":
+                        assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
+                        return;
+                    case "attached to resource":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        assert.strictEqual(urn, ctx.testUrn);
+                        return;
+                    case "with streamid":
+                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                        assert.strictEqual(urn, ctx.testUrn);
+                        assert.strictEqual(streamId, 42);
+                        return;
+                    default:
+                        assert.fail("unexpected message: " + message);
+                        break;
+                }
+            },
+        },
+        // Test stack outputs via exports.
+        "stack_exports": {
+            program: path.join(base, "019.stack_exports"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    a: {
+                        x: 99,
+                        y: "z",
+                    },
+                    b: 42,
+                    c: {
+                        d: "a",
+                        e: false,
+                    },
+                });
+            },
+        },
+        "root_resource": {
+            program: path.join(base, "001.one_resource"),
+            expectResourceCount: 2,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
 
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         assert.strictEqual(name, "testResource1");
-        //         assert.strictEqual(parent, ctx.stackUrn);
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
-        // "backcompat_root_resource": {
-        //     program: path.join(base, "001.one_resource"),
-        //     expectResourceCount: 2,
-        //     skipRootResourceEndpoints: true,
-        //     showRootResourceRegistration: true,
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
-        //                        custom: boolean, protect: boolean, parent: string) => {
-        //         if (t === "pulumi:pulumi:Stack") {
-        //             ctx.stackUrn = makeUrn(t, name);
-        //             return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //         }
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.strictEqual(parent, ctx.stackUrn);
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "backcompat_root_resource": {
+            program: path.join(base, "001.one_resource"),
+            expectResourceCount: 2,
+            skipRootResourceEndpoints: true,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
 
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         assert.strictEqual(name, "testResource1");
-        //         assert.strictEqual(parent, ctx.stackUrn);
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.strictEqual(parent, ctx.stackUrn);
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
