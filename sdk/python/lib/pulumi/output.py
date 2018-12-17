@@ -180,9 +180,9 @@ class Output(Generic[T]):
         """
         Takes an Input value and produces an Output value from it.
         """
-        # Is it an output already? nothing to do.
+        # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
-            return val
+            return val.apply(Output.from_input)
 
         # If it's not an output, it must be known.
         is_known_fut = asyncio.Future()
@@ -191,7 +191,12 @@ class Output(Generic[T]):
         # Is it awaitable? If so, schedule it for execution and use the resulting future
         # as the value future for a new output.
         if isawaitable(val):
-            return Output(set(), asyncio.ensure_future(val), is_known_fut)
+            promise_output = Output(set(), asyncio.ensure_future(val), is_known_fut)
+            return promise_output.apply(Output.from_input)
+
+        if isinstance(val, dict):
+            transformed = {k: Output.from_input(v) for k, v in val.items()}
+            return Output.all(transformed)
 
         # Is it a prompt value? Set up a new resolved future and use that as the value future.
         value_fut = asyncio.Future()
