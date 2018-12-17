@@ -138,6 +138,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(opts, proj, pwd, main, target, plugctx, dryRun)
 	if err != nil {
+		contract.IgnoreClose(plugctx)
 		return nil, err
 	}
 
@@ -157,6 +158,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	plan, err := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, dryRun, ctx.BackendClient)
 	if err != nil {
+		contract.IgnoreClose(plugctx)
 		return nil, err
 	}
 	return &planResult{

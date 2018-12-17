@@ -2287,3 +2287,83 @@ func TestStackReference(t *testing.T) {
 	p.Options = UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
 	p.Run(t, nil)
 }
+
+type channelWriter struct {
+	channel chan []byte
+}
+
+func (cw *channelWriter) Write(d []byte) (int, error) {
+	cw.channel <- d
+	return len(d), nil
+}
+
+// Tests that a failed plugin load correctly shuts down the host.
+func TestLoadFailureShutdown(t *testing.T) {
+	release, done := make(chan bool), make(chan bool)
+	sinkWriter := &channelWriter{channel: make(chan []byte)}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoaderWithHost("pkgA", semver.MustParse("1.0.0"), func(host plugin.Host) (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConfigureF: func(news resource.PropertyMap) error {
+					go func() {
+						<-release
+						host.Log(diag.Info, "", "configuring pkgA provider...", 0)
+						close(done)
+					}()
+					return nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return nil, errors.New("pkgB load failure")
+		}),
+	}
+
+	p := &TestPlan{}
+	provAURN := p.NewProviderURN("pkgA", "default", "")
+	provBURN := p.NewProviderURN("pkgB", "default", "")
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:    provAURN.Type(),
+				URN:     provAURN,
+				Custom:  true,
+				ID:      "0",
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+			{
+				Type:    provBURN.Type(),
+				URN:     provBURN,
+				Custom:  true,
+				ID:      "1",
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+		},
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+
+	op := TestOp(Update)
+	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
+	options := UpdateOptions{host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
+	project, target := p.GetProject(), p.GetTarget(old)
+
+	go func() {
+		for m := range sinkWriter.channel {
+			t.Logf("%s", string(m))
+		}
+	}()
+
+	_, err := op.Run(project, target, options, true, nil, nil)
+	assert.Error(t, err)
+
+	close(sinkWriter.channel)
+	close(release)
+	<-done
+}
