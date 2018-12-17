@@ -178,13 +178,25 @@ class Output(Generic[T]):
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
         """
-        Takes an Input value and produces an Output value from it.
+        Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values as necessary
+        given the type.
         """
         # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
             return val.apply(Output.from_input)
 
-        # If it's not an output, it must be known.
+        # Is a dict or list? Recurse into the values within them.
+        if isinstance(val, dict):
+            # Since Output.all works on lists early, serialize this dictionary into a list of lists first.
+            # Once we have a output of the list of properties, we can use an apply to re-hydrate it back into a dict.
+            transformed_items = [[k, Output.from_input(v)] for k, v in val.items()]
+            return Output.all(*transformed_items).apply(lambda props: {k: v for k, v in props})
+
+        if isinstance(val, list):
+            transformed_items = [Output.from_input(v) for v in val]
+            return Output.all(*transformed_items)
+
+        # If it's not an output, list, or dict, it must be known.
         is_known_fut = asyncio.Future()
         is_known_fut.set_result(True)
 
@@ -193,10 +205,6 @@ class Output(Generic[T]):
         if isawaitable(val):
             promise_output = Output(set(), asyncio.ensure_future(val), is_known_fut)
             return promise_output.apply(Output.from_input)
-
-        if isinstance(val, dict):
-            transformed = {k: Output.from_input(v) for k, v in val.items()}
-            return Output.all(transformed)
 
         # Is it a prompt value? Set up a new resolved future and use that as the value future.
         value_fut = asyncio.Future()
