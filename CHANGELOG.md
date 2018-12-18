@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- Added `pulumi stack tag` commands for managing stack tags stored in the cloud backend.
+
 - Link directly to /account/tokens when prompting for an access token.
 
 ## 0.16.9 (Released December 24th, 2018)
