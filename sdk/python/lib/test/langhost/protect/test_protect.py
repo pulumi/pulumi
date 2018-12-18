@@ -15,22 +15,19 @@ from os import path
 from ..util import LanghostTest
 
 
-class ConfigTest(LanghostTest):
-    def setUp(self):
-        self.seen = {}
-
-    def test_config(self):
+class ProtectTest(LanghostTest):
+    """
+    Tests that protected resources correctly pass the "protect" boolean to the engine.
+    """
+    def test_protect(self):
         self.run_test(
-            program=path.join(self.base_path(), "config"),
-            config={
-                "foo:name": "myname"
-            },
+            program=path.join(self.base_path(), "protect"),
             expected_resource_count=1)
 
-    def register_resource(self, ctx, dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider):
-        self.assertEqual("test:index:MyResource", ty)
-        self.assertEqual("myname", name)
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
+                          _dependencies, _parent, _custom, protect, _provider):
+        self.assertEqual("foo", name)
+        self.assertTrue(protect)
         return {
             "urn": self.make_urn(ty, name)
         }

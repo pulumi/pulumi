@@ -11,20 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os import path
-from ..util import LanghostTest
+from pulumi import CustomResource, ProviderResource, ResourceOptions
+
+class Provider(ProviderResource):
+    def __init__(self, name, opts=None):
+        ProviderResource.__init__(self, "test", name, {}, opts)
 
 
-class OneResourceTest(LanghostTest):
-    def test_one_resource(self):
-        self.run_test(
-            program=path.join(self.base_path(), "one_resource"),
-            expected_resource_count=1)
+class Resource(CustomResource):
+    def __init__(self, name, opts=None):
+        CustomResource.__init__(self, "test:index:Resource", name, {}, opts)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider):
-        self.assertEqual(ty, "test:index:MyResource")
-        self.assertEqual(name, "testResource1")
-        return {
-            "urn": self.make_urn(ty, name),
-        }
+# Create a Provider that we'll use to create other resources.
+prov = Provider("testprov")
+
+# Use this Provider to create a resource.
+res = Resource("testres", ResourceOptions(provider=prov))

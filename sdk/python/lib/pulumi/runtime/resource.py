@@ -26,14 +26,39 @@ if TYPE_CHECKING:
     from ..output import Output, Inputs
 
 
-class ResourceResolverOperations(NamedTuple): #TODO(sean) rename
+class ResourceResolverOperations(NamedTuple):
+    """
+    The set of properties resulting from a successful call to prepare_resource.
+    """
+
     parent_urn: Optional[str]
+    """
+    This resource's parent URN.
+    """
+
     serialized_props: Dict[str, Any]
+    """
+    This resource's input properties, serialized into protobuf structures.
+    """
+
     dependencies: Set[str]
+    """
+    The set of URNs, corresponding to the resources that this resource depends on.
+    """
+
+    provider_ref: Optional[str]
+    """
+    An optional reference to a provider that should be used for this resource's CRUD operations.
+    """
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
-async def prepare_resource(res: 'Resource', ty: str, props: 'Inputs', opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
+# pylint: disable=too-many-locals
+async def prepare_resource(res: 'Resource',
+                           ty: str,
+                           custom: bool,
+                           props: 'Inputs',
+                           opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
     log.debug(f"resource {props} preparing to wait for dependencies")
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
@@ -56,7 +81,17 @@ async def prepare_resource(res: 'Resource', ty: str, props: 'Inputs', opts: Opti
         if parent is not None:
             parent_urn = await parent.urn.future()
 
-    # TODO(swgillespie, first class providers) here (pulumi/pulumi#1713)
+    # Construct the provider reference, if we were given a provider to use.
+    provider_ref = None
+    if custom and opts.provider is not None:
+        provider = opts.provider
+
+        # If we were given a provider, wait for it to resolve and construct a provider reference from it.
+        # A provider reference is a well-known string (two ::-separated values) that the engine interprets.
+        provider_urn = await provider.urn.future()
+        provider_id = await provider.id.future()
+        provider_ref = f"{provider_urn}::{provider_id}"
+
     dependencies = set(explicit_urn_dependencies)
     for implicit_dep in implicit_dependencies:
         dependencies.add(await implicit_dep.urn.future())
@@ -65,7 +100,8 @@ async def prepare_resource(res: 'Resource', ty: str, props: 'Inputs', opts: Opti
     return ResourceResolverOperations(
         parent_urn,
         serialized_props,
-        dependencies
+        dependencies,
+        provider_ref
     )
 
 
@@ -111,7 +147,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
     async def do_register():
         log.debug(f"preparing resource registration: ty={ty}, name={name}")
-        resolver = await prepare_resource(res, ty, props, opts)
+        resolver = await prepare_resource(res, ty, custom, props, opts)
         log.debug(f"resource registration prepared: ty={ty}, name={name}")
         req = resource_pb2.RegisterResourceRequest(
             type=ty,
@@ -119,7 +155,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             parent=resolver.parent_urn,
             custom=custom,
             object=resolver.serialized_props,
-            protect=False,
+            protect=opts.protect,
+            provider=resolver.provider_ref,
             dependencies=resolver.dependencies
         )
 
