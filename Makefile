@@ -37,6 +37,9 @@ test_fast::
 test_all::
 	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -count=1 -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
 
+ensure::
+	false
+
 .PHONY: publish_tgz
 publish_tgz:
 	$(call STEP_MESSAGE)
