@@ -2299,6 +2299,35 @@ func (cw *channelWriter) Write(d []byte) (int, error) {
 
 // Tests that a failed plugin load correctly shuts down the host.
 func TestLoadFailureShutdown(t *testing.T) {
+
+	// Note that the setup here is a bit baroque, and is intended to replicate the CLI architecture that lead to
+	// issue #2170. That issue--a panic on a closed channel--was caused by the intersection of several design choices:
+	//
+	// - The provider registry loads and configures the set of providers necessary for the resources currently in the
+	//   checkpoint it is processing at plan creation time. Registry creation fails promptly if a provider plugin
+	//   fails to load (e.g. because is binary is missing).
+	// - Provider configuration in the CLI's host happens asynchronously. This is meant to allow the engine to remain
+	//   responsive while plugins configure.
+	// - Providers may call back into the CLI's host for logging. Callbacks are processed as long as the CLI's plugin
+	//   context is open.
+	// - Log events from the CLI's host are delivered to the CLI's diagnostic streams via channels. The CLI closes
+	//   these channels once the engine operation it initiated completes.
+	//
+	// These choices gave rise to the following situation:
+	// 1. The provider registry loads a provider for package A and kicks off its configuration.
+	// 2. The provider registry attempts to load a provider for package B. The load fails, and the provider registry
+	//   creation call fails promptly.
+	// 3. The engine operation requested by the CLI fails promptly because provider registry creation failed.
+	// 4. The CLI shuts down its diagnostic channels.
+	// 5. The provider for package A calls back in to the host to log a message. The host then attempts to deliver
+	//    the message to the CLI's diagnostic channels, causing a panic.
+	//
+	// The fix was to properly close the plugin host during step (3) s.t. the host was no longer accepting callbacks
+	// and would not attempt to send messages to the CLI's diagnostic channels.
+	//
+	// As such, this test attempts to replicate the CLI architecture by using one provider that configures
+	// asynchronously and attempts to call back into the engine and a second provider that fails to load.
+
 	release, done := make(chan bool), make(chan bool)
 	sinkWriter := &channelWriter{channel: make(chan []byte)}
 
@@ -2353,12 +2382,6 @@ func TestLoadFailureShutdown(t *testing.T) {
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
 	options := UpdateOptions{host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(old)
-
-	go func() {
-		for m := range sinkWriter.channel {
-			t.Logf("%s", string(m))
-		}
-	}()
 
 	_, err := op.Run(project, target, options, true, nil, nil)
 	assert.Error(t, err)
