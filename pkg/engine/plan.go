@@ -311,6 +311,17 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 			op, record = step.(*deploy.RefreshStep).ResultOp(), true
 		}
 
+		if step.Op() == deploy.OpRead &&
+			step.Old().Outputs != nil &&
+			step.New().Outputs != nil {
+
+			// If reading a resource didn't result in any change to the resource, we then want to
+			// record this as a 'same'.  That way, when things haven't actually changed, but a user
+			// app did any 'reads' these don't show up in the resource summary at the end.
+			diff := step.Old().Outputs.Diff(step.New().Outputs)
+			record = diff != nil
+		}
+
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if record {
 			acts.MapLock.Lock()
