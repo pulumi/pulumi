@@ -45,7 +45,9 @@ func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProv
 	}
 }
 
-func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version, load LoadProviderWithHostFunc) *ProviderLoader {
+func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
+	load LoadProviderWithHostFunc) *ProviderLoader {
+
 	return &ProviderLoader{
 		pkg:          pkg,
 		version:      version,

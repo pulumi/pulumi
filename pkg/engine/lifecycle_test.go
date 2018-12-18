@@ -2332,18 +2332,19 @@ func TestLoadFailureShutdown(t *testing.T) {
 	sinkWriter := &channelWriter{channel: make(chan []byte)}
 
 	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoaderWithHost("pkgA", semver.MustParse("1.0.0"), func(host plugin.Host) (plugin.Provider, error) {
-			return &deploytest.Provider{
-				ConfigureF: func(news resource.PropertyMap) error {
-					go func() {
-						<-release
-						host.Log(diag.Info, "", "configuring pkgA provider...", 0)
-						close(done)
-					}()
-					return nil
-				},
-			}, nil
-		}),
+		deploytest.NewProviderLoaderWithHost("pkgA", semver.MustParse("1.0.0"),
+			func(host plugin.Host) (plugin.Provider, error) {
+				return &deploytest.Provider{
+					ConfigureF: func(news resource.PropertyMap) error {
+						go func() {
+							<-release
+							host.Log(diag.Info, "", "configuring pkgA provider...", 0)
+							close(done)
+						}()
+						return nil
+					},
+				}, nil
+			}),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return nil, errors.New("pkgB load failure")
 		}),
