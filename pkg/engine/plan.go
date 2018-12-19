@@ -312,6 +312,8 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 		}
 
 		if step.Op() == deploy.OpRead &&
+			step.Old() != nil &&
+			step.New() != nil &&
 			step.Old().Outputs != nil &&
 			step.New().Outputs != nil {
 
