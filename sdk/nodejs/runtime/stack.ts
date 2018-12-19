@@ -96,9 +96,15 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
     }
 
     // from this point on, we have complex objects.  If we see them again, we don't want to emit
-    // them again or else we'd loop infinitely.
+    // them again fully or else we'd loop infinitely.
     if (seenObjects.has(prop)) {
-        return;
+        // Note: for Resources we hit again, emit their urn so cycles can be easily understood
+        // in the pojo objects.
+        if (Resource.isInstance(prop)) {
+            return await massage(prop.urn, seenObjects);
+        }
+
+        return undefined;
     }
 
     seenObjects.add(prop);
