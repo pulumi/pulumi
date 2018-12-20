@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -189,19 +188,13 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// perf problems when issuing the requests serially.
 	var wg sync.WaitGroup
 	recordEngineEvent := func(event engine.Event, eventIdx int) {
-		wg.Add(1)
-		defer func() { wg.Done() }()
-
-		if err := u.recordEngineEvent(event, eventIdx); err != nil {
-			diagEvent := engine.Event{
-				Type: engine.DiagEvent,
-				Payload: engine.DiagEventPayload{
-					Message:  fmt.Sprintf("failed to record event: %v", err),
-					Severity: diag.Infoerr,
-				},
-			}
-			displayEvents <- diagEvent
-		}
+		defer wg.Done()
+		// We just silently drop any errors recording the events. Obviously not great, but
+		// we cannot tell for certain what state the displayEvents channel is in. Dropped
+		// engine events just mean that the logs display on the Pulumi Service could look
+		// weird. It won't have any impact on correctness of checkpoint data.
+		err := u.recordEngineEvent(event, eventIdx)
+		contract.IgnoreError(err)
 	}
 
 	for e := range events {
@@ -210,6 +203,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 
 		// Then render and record the event for posterity.
 		eventIdx++
+		wg.Add(1)
 		go recordEngineEvent(e, eventIdx)
 
 		if e.Type == engine.CancelEvent {
