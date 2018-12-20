@@ -17,6 +17,7 @@ package httpstate
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -28,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -137,26 +137,26 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
 }
 
-// recordEvent will record the event with the Pulumi service, enabling things like viewing
-// the rendered update logs or drilling into the timeline of an update.
-func (u *cloudUpdate) recordEvent(
-	action apitype.UpdateKind, event engine.Event, sequenceNumber int,
-	seen map[resource.URN]engine.StepEventMetadata, opts display.Options) error {
+// recordEngineEvent will record the event with the Pulumi Service, enabling things like viewing
+// the update logs or drilling into the timeline of an update.
+func (u *cloudUpdate) recordEngineEvent(event engine.Event, sequenceNumber int) error {
 	contract.Assert(u.tokenSource != nil)
 	token, err := u.tokenSource.GetToken()
 	if err != nil {
 		return err
 	}
 
-	// Send the event to the Pulumi Service to power things like the update summary page.
-	// Currently opt-in via flag to allow for gathering per data before the service-side changes
-	// are available in production.
 	apiEvent, convErr := convertEngineEvent(event)
 	if convErr != nil {
 		return errors.Wrap(convErr, "converting engine event")
 	}
+
+	// Each event within an update must have a unique sequence number. Any request to
+	// emit an update with the same sequence number will fail. (Read: use a mutex to
+	// increment if needed.)
 	apiEvent.Sequence = sequenceNumber
 	apiEvent.Timestamp = int(time.Now().Unix())
+
 	return u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token)
 }
 
@@ -179,20 +179,20 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	displayEvents := make(chan engine.Event)
 	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, innerDone, opts, isPreview)
 
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-
 	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
 	// ensure events can be reconstructured in the same order they were emitted. (And not
 	// out of order from parallel writes and/or network delays.)
 	eventIdx := 0
-	for e := range events {
-		eventIdx++
 
-		// First echo the event to the local display.
-		displayEvents <- e
+	// We start the requests to record engine events in separate Go routines since they can
+	// all be done independently, and updates with a "chatty" event stream can have serious
+	// perf problems when issuing the requests serially.
+	var wg sync.WaitGroup
+	recordEngineEvent := func(event engine.Event, eventIdx int) {
+		wg.Add(1)
+		defer func() { wg.Done() }()
 
-		// Then render and record the event for posterity.
-		if err := u.recordEvent(action, e, eventIdx, seen, opts); err != nil {
+		if err := u.recordEngineEvent(event, eventIdx); err != nil {
 			diagEvent := engine.Event{
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
@@ -202,11 +202,23 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 			}
 			displayEvents <- diagEvent
 		}
+	}
+
+	for e := range events {
+		// First echo the event to the local display.
+		displayEvents <- e
+
+		// Then render and record the event for posterity.
+		eventIdx++
+		go recordEngineEvent(e, eventIdx)
 
 		if e.Type == engine.CancelEvent {
 			return
 		}
 	}
+
+	// Block until all of the spawned Go-routines complete.
+	wg.Wait()
 }
 
 func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, proj *workspace.Project,
