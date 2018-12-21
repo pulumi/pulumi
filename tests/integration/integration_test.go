@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -47,6 +48,23 @@ func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("empty", "go"),
 		Quick: true,
+	})
+}
+
+// Tests emitting many engine events doesn't result in a performance problem.
+func TestEngineEventStress(t *testing.T) {
+	start := time.Now()
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "ee_stress",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
+			// Since then, it should now be down to ~4s, with additional padding.
+			if time.Since(start) > 8*time.Second {
+				t.Errorf("Performance regression in test ee_stress. Took %s to execute.", time.Since(start))
+			}
+		},
 	})
 }
 

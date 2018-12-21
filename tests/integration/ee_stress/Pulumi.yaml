@@ -1,0 +1,4 @@
+name: ee-stress
+runtime: nodejs
+description: Emits a large number of Pulumi engine events for benchmarking throughput.
+
