@@ -207,7 +207,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 		go recordEngineEvent(e, eventIdx)
 
 		if e.Type == engine.CancelEvent {
-			return
+			break
 		}
 	}
 
