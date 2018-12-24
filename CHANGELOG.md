@@ -6,6 +6,12 @@
 
 - Added a `--stack` argument (short form `-s`) to `pulumi stack`, `pulumi stack init`, `pulumi state delete` and `pulumi state unprotect` to allow operating on a different stack than the currently selected stack. This brings these commands in line with the other commands that operate on stacks and already provided a `--stack` option (fixes [pulumi/pulumi#1648](https://github.com/pulumi/pulumi/issues/1648))
 
+- Added `Output.all` and `Output.from_input` to the Python SDK.
+
+- During previews and updates, read operations (i.e. calls to `.get` methods) are no longer shown in the output unless they cause any changes.
+
+- Fix a performance regression where `pulumi preview` and `pulumi update` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
+	
 ## 0.16.8 (Released December 14th, 2018)
 
 ### Improvements
