@@ -1,5 +1,9 @@
 ## 0.16.10 (Unreleased)
 
+### Improvements
+
+- Link directly to /account/tokens when prompting for an access token.
+
 ## 0.16.9 (Released December 24th, 2018)
 
 ### Improvements
@@ -13,7 +17,7 @@
 - During previews and updates, read operations (i.e. calls to `.get` methods) are no longer shown in the output unless they cause any changes.
 
 - Fix a performance regression where `pulumi preview` and `pulumi update` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
-	
+
 ## 0.16.8 (Released December 14th, 2018)
 
 ### Improvements
