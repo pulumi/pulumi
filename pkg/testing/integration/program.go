@@ -95,9 +95,9 @@ type TestCommandStats struct {
 	StackName string `json:"stackName"`
 	// TestId is the unique ID of the test run
 	TestID string `json:"testId"`
-	// StepName is the command line which was invoked1
+	// StepName is the command line which was invoked
 	StepName string `json:"stepName"`
-	// CommandLine is the command line which was invoked1
+	// CommandLine is the command line which was invoked
 	CommandLine string `json:"commandLine"`
 	// TestName is the name of the directory in which the test was executed
 	TestName string `json:"testName"`
