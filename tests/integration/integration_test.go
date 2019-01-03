@@ -96,6 +96,8 @@ func TestEngineEventPerf(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ReportStats:  benchmarkEnforcer,
+		// Don't run in parallel since it is sensitive to system resources.
+		NoParallel: true,
 	})
 }
 
