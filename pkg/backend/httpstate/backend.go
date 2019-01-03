@@ -257,7 +257,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
 	accessToken := os.Getenv(AccessTokenEnvVar)
-	accountLink := cloudConsoleURL(cloudURL, "account")
+	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
 
 	if accessToken != "" {
 		// If there's already a token from the environment, use it.
@@ -801,7 +801,6 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	close(displayDone)
 	contract.IgnoreClose(snapshotManager)
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt

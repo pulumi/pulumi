@@ -1,10 +1,40 @@
-## 0.16.7 (not yet released)
+## 0.16.10 (Unreleased)
+
+### Improvements
+
+- Link directly to /account/tokens when prompting for an access token.
+
+## 0.16.9 (Released December 24th, 2018)
+
+### Improvements
+
+- Update the error message when When `pulumi` commands fail to detect your project to mention that `pulumi new` can be used to create a new project (fixes [pulumi/pulumi#2234](https://github.com/pulumi/pulumi/issues/2234))
+
+- Added a `--stack` argument (short form `-s`) to `pulumi stack`, `pulumi stack init`, `pulumi state delete` and `pulumi state unprotect` to allow operating on a different stack than the currently selected stack. This brings these commands in line with the other commands that operate on stacks and already provided a `--stack` option (fixes [pulumi/pulumi#1648](https://github.com/pulumi/pulumi/issues/1648))
+
+- Added `Output.all` and `Output.from_input` to the Python SDK.
+
+- During previews and updates, read operations (i.e. calls to `.get` methods) are no longer shown in the output unless they cause any changes.
+
+- Fix a performance regression where `pulumi preview` and `pulumi update` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
+
+## 0.16.8 (Released December 14th, 2018)
+
+### Improvements
+
+- Fix an issue that caused panics due to shutting the Jaeger tracing infrastructure down before all traces had finished ([pulumi/pulumi#1850](https://github.com/pulumi/pulumi/issues/1850))
+
+## 0.16.7 (Released December 5th, 2018)
 
 ### Improvements
 
 - Configuration and stack commands now take a `--config-file` options. This option allows the user to override the file used to fetch and store config information for a stack during the execution of a command.
 
+- Fix an issue where ANSI escape codes would appear in messages printed from the CLI when running on Windows.
+
 - Fix an error about a bad icotl when trying to read sensitive input from the console and standard in was not connected to a terminal.
+
+- The dynamic provider would fail to launch if your `node_modules` folder was non in the default location or had a non standard layout. This has been fixed so we correctly find your `node_modules` folder in the same way node does. (fixes [pulumi/pulumi#2261](https://github.com/pulumi/pulumi/issues/2261))
 
 ## 0.16.6 (Released November 28th, 2018)
 

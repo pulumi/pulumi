@@ -350,7 +350,6 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	close(displayDone)
 	contract.IgnoreClose(manager)
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.

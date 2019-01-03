@@ -138,6 +138,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(opts, proj, pwd, main, target, plugctx, dryRun)
 	if err != nil {
+		contract.IgnoreClose(plugctx)
 		return nil, err
 	}
 
@@ -157,6 +158,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	plan, err := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, dryRun, ctx.BackendClient)
 	if err != nil {
+		contract.IgnoreClose(plugctx)
 		return nil, err
 	}
 	return &planResult{
@@ -309,6 +311,10 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 			op, record = step.(*deploy.RefreshStep).ResultOp(), true
 		}
 
+		if step.Op() == deploy.OpRead {
+			record = ShouldRecordReadStep(step)
+		}
+
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if record {
 			acts.MapLock.Lock()
@@ -320,6 +326,19 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 	}
 
 	return nil
+}
+
+func ShouldRecordReadStep(step deploy.Step) bool {
+	contract.Assertf(step.Op() == deploy.OpRead, "Only call this on a Read step")
+
+	// If reading a resource didn't result in any change to the resource, we then want to
+	// record this as a 'same'.  That way, when things haven't actually changed, but a user
+	// app did any 'reads' these don't show up in the resource summary at the end.
+	return step.Old() != nil &&
+		step.New() != nil &&
+		step.Old().Outputs != nil &&
+		step.New().Outputs != nil &&
+		step.Old().Outputs.Diff(step.New().Outputs) != nil
 }
 
 func (acts *planActions) OnResourceOutputs(step deploy.Step) error {

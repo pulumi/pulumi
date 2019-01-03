@@ -10,9 +10,9 @@ try {
   git describe --tags --exact-match >$null 2>$null
   # If we get here the above did not throw, so we can use the exact tag
   if ($dirty) {
-      Write-Output "$(git describe --tags --exact-match)"
-  } else {
       Write-Output "$(git describe --tags --exact-match)+dirty"
+  } else {
+      Write-Output "$(git describe --tags --exact-match)"
   }
 } catch {
     # Otherwise, take the existing tag, increment the patch version and append the timestamp of the commit and hash

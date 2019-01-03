@@ -220,8 +220,10 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	return acts.Context.SnapshotManager.BeginMutation(step)
 }
 
-func (acts *updateActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, err error) error {
+func (acts *updateActions) OnResourceStepPost(
+	ctx interface{}, step deploy.Step,
+	status resource.Status, err error) error {
+
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -255,6 +257,10 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
 			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
+
+		if step.Op() == deploy.OpRead {
+			record = ShouldRecordReadStep(step)
 		}
 
 		if record {
