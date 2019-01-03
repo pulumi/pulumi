@@ -44,7 +44,7 @@ export class StackReference extends CustomResource {
         super("pulumi:pulumi:StackReference", name, {
             name: args.name || name,
             outputs: undefined,
-        }, opts);
+        }, { ...opts, id: args.name || name });
     }
 
     /**
