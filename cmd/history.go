@@ -108,7 +108,8 @@ func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 		indent := 4
 		for _, k := range keys {
 			if k == backend.GitHead && !isEmpty(update.Environment[k]) {
-				fmt.Print(opts.Color.Colorize(fmt.Sprintf("%*s%s%s: %s%s\n", indent, "", colors.Yellow, k, update.Environment[k], colors.Reset)))
+				fmt.Print(opts.Color.Colorize(
+					fmt.Sprintf("%*s%s%s: %s%s\n", indent, "", colors.Yellow, k, update.Environment[k], colors.Reset)))
 			} else if !isEmpty(update.Environment[k]) {
 				fmt.Printf("%*s%s: %s\n", indent, "", k, update.Environment[k])
 			}

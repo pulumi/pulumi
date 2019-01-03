@@ -14,11 +14,11 @@
 package tests
 
 import (
+	"testing"
 
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // assertHasNoHistory runs `pulumi history` and confirms an error that the stack has not
@@ -40,6 +40,7 @@ func TestHistoryCommand(t *testing.T) {
 		assert.Equal(t, "", out)
 		assert.Contains(t, err, "error: no stack selected")
 	})
+
 	// We don't display any history for a stack that has never been updated.
 	t.Run("NoUpdates", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
@@ -49,6 +50,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "no-updates-test")
 		assertHasNoHistory(e)
 	})
+
 	// The "history" command uses the currently selected stack.
 	t.Run("CurrentlySelectedStack", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
