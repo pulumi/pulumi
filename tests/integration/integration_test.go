@@ -507,6 +507,27 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 	})
 }
 
+func TestStackTagsNodeJS(t *testing.T) {
+	// Only validate custom tags when using the cloud backend as the local backend
+	// doesn't currently support persisting tags.
+	customtag := "false"
+	if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
+		customtag = "true"
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_tags", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"customtag": customtag,
+		},
+		StackTags: map[string]string{
+			"foo": "bar",
+		},
+	})
+}
+
 func TestInvalidVersionInPackageJson(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("invalid_package_json"),
@@ -518,15 +539,40 @@ func TestInvalidVersionInPackageJson(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
-	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("config_basic", "python"),
+		Dir: filepath.Join("config_basic", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
 		Quick: true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a Pythonic value",
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super Pythonic secret is encrypted",
+		},
+	})
+}
+
+func TestStackTagsPython(t *testing.T) {
+	// Only validate custom tags when using the cloud backend as the local backend
+	// doesn't currently support persisting tags.
+	customtag := "false"
+	if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
+		customtag = "true"
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_tags", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"customtag": customtag,
+		},
+		StackTags: map[string]string{
+			"foo": "bar",
 		},
 	})
 }
@@ -541,6 +587,26 @@ func TestConfigBasicGo(t *testing.T) {
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
+		},
+	})
+}
+
+func TestStackTagsGo(t *testing.T) {
+	// Only validate custom tags when using the cloud backend as the local backend
+	// doesn't currently support persisting tags.
+	customtag := "false"
+	if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
+		customtag = "true"
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("stack_tags", "go"),
+		Quick: true,
+		Config: map[string]string{
+			"customtag": customtag,
+		},
+		StackTags: map[string]string{
+			"foo": "bar",
 		},
 	})
 }

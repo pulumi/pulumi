@@ -104,6 +104,26 @@ func (ctx *Context) Project() string { return ctx.info.Project }
 // Stack returns the current stack name being deployed into.
 func (ctx *Context) Stack() string { return ctx.info.Stack }
 
+// GetStackTag returns the stack tag value, as a string, and a bool indicating whether it exists or not.
+func (ctx *Context) GetStackTag(name string) (string, bool) {
+	v, ok := ctx.info.StackTags[name]
+	return v, ok
+}
+
+// GetStackTags returns a copy of the stack tags.
+func (ctx *Context) GetStackTags() map[string]string {
+	if ctx.info.StackTags == nil {
+		return nil
+	}
+
+	// Make a copy of the tags.
+	copy := make(map[string]string)
+	for k, v := range ctx.info.StackTags {
+		copy[k] = v
+	}
+	return copy
+}
+
 // Parallel returns the degree of parallelism currently being used by the engine (1 being entirely serial).
 func (ctx *Context) Parallel() int { return ctx.info.Parallel }
 

@@ -61,6 +61,9 @@ const (
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
+
+	// The runtime expects the stack tags to be saved to this environment variable.
+	pulumiStackTagsVar = "PULUMI_STACK_TAGS"
 )
 
 // Launches the language host RPC endpoint, which in turn fires
@@ -289,9 +292,15 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		err = errors.Wrap(err, "failed to serialize configuration")
 		return nil, err
 	}
+	tags, err := host.constructStackTags(req)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serialize stack tags")
+		return nil, err
+	}
 
 	env := os.Environ()
 	env = append(env, pulumiConfigVar+"="+config)
+	env = append(env, pulumiStackTagsVar+"="+tags)
 
 	if host.typescript {
 		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
@@ -399,6 +408,21 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 	}
 
 	return string(configJSON), nil
+}
+
+// constructStackTags json-serializes the stack tag data given as part of a RunRequest.
+func (host *nodeLanguageHost) constructStackTags(req *pulumirpc.RunRequest) (string, error) {
+	tags := req.GetStackTags()
+	if tags == nil {
+		return "{}", nil
+	}
+
+	tagsJSON, err := json.Marshal(tags)
+	if err != nil {
+		return "", err
+	}
+
+	return string(tagsJSON), nil
 }
 
 func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

@@ -51,6 +51,9 @@ const (
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
+
+	// The runtime expects the stack tags to be saved to this environment variable.
+	pulumiStackTagsVar = "PULUMI_STACK_TAGS"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -153,6 +156,12 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
+	tags, err := host.constructStackTags(req)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serialize stack tags")
+		return nil, err
+	}
+
 	if logging.V(5) {
 		commandStr := strings.Join(args, " ")
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
@@ -177,8 +186,15 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	cmd := exec.Command(pythonPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if config != "" {
-		cmd.Env = append(os.Environ(), pulumiConfigVar+"="+config)
+	if config != "" || tags != "" {
+		env := os.Environ()
+		if config != "" {
+			env = append(env, pulumiConfigVar+"="+config)
+		}
+		if tags != "" {
+			env = append(env, pulumiStackTagsVar+"="+tags)
+		}
+		cmd.Env = env
 	}
 	if err := cmd.Run(); err != nil {
 		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we
@@ -253,6 +269,21 @@ func (host *pythonLanguageHost) constructConfig(req *pulumirpc.RunRequest) (stri
 	}
 
 	return string(configJSON), nil
+}
+
+// constructStackTags json-serializes the stack tag data given as part of a RunRequest.
+func (host *pythonLanguageHost) constructStackTags(req *pulumirpc.RunRequest) (string, error) {
+	tags := req.GetStackTags()
+	if tags == nil {
+		return "", nil
+	}
+
+	tagsJSON, err := json.Marshal(tags)
+	if err != nil {
+		return "", err
+	}
+
+	return string(tagsJSON), nil
 }
 
 func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

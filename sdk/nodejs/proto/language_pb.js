@@ -443,7 +443,8 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
     dryrun: jspb.Message.getFieldWithDefault(msg, 7, false),
     parallel: jspb.Message.getFieldWithDefault(msg, 8, 0),
-    monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, "")
+    monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, ""),
+    stacktagsMap: (f = msg.getStacktagsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -517,6 +518,12 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 9:
       var value = /** @type {string} */ (reader.readString());
       msg.setMonitorAddress(value);
+      break;
+    case 10:
+      var value = msg.getStacktagsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
+         });
       break;
     default:
       reader.skipField();
@@ -606,6 +613,10 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
       9,
       f
     );
+  }
+  f = message.getStacktagsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(10, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -761,6 +772,24 @@ proto.pulumirpc.RunRequest.prototype.getMonitorAddress = function() {
 /** @param {string} value */
 proto.pulumirpc.RunRequest.prototype.setMonitorAddress = function(value) {
   jspb.Message.setProto3StringField(this, 9, value);
+};
+
+
+/**
+ * map<string, string> stackTags = 10;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.RunRequest.prototype.getStacktagsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 10, opt_noLazyCreate,
+      null));
+};
+
+
+proto.pulumirpc.RunRequest.prototype.clearStacktagsMap = function() {
+  this.getStacktagsMap().clear();
 };
 
 

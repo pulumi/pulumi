@@ -1,0 +1,3 @@
+name: stack_tags_go
+runtime: go
+description: A simple Go program that uses stack tags

@@ -15,16 +15,18 @@
 package deploy
 
 import (
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // Target represents information about a deployment target.
 type Target struct {
-	Name      tokens.QName     // the target stack name.
-	Config    config.Map       // optional configuration key/value pairs.
-	Decrypter config.Decrypter // decrypter for secret configuration values.
-	Snapshot  *Snapshot        // the last snapshot deployed to the target.
+	Name      tokens.QName                    // the target stack name.
+	Config    config.Map                      // optional configuration key/value pairs.
+	Decrypter config.Decrypter                // decrypter for secret configuration values.
+	Snapshot  *Snapshot                       // the last snapshot deployed to the target.
+	Tags      map[apitype.StackTagName]string // the target stack's tags.
 }
 
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.

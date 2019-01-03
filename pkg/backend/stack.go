@@ -118,33 +118,6 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 	return s.Backend().UpdateStackTags(ctx, s.Ref(), tags)
 }
 
-// GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment
-// and Pulumi.yaml file.
-func GetMergedStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
-	// Get the stack's existing tags.
-	tags, err := GetStackTags(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-	if tags == nil {
-		tags = make(map[apitype.StackTagName]string)
-	}
-
-	// Get latest environment tags for the current stack.
-	envTags, err := GetEnvironmentTagsForCurrentStack()
-	if err != nil {
-		return nil, err
-	}
-
-	// Add each new environment tag to the existing tags, overwriting existing tags with the
-	// latest values.
-	for k, v := range envTags {
-		tags[k] = v
-	}
-
-	return tags, nil
-}
-
 // GetEnvironmentTagsForCurrentStack returns the set of tags for the "current" stack, based on the environment
 // and Pulumi.yaml file.
 func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error) {

@@ -22,4 +22,5 @@ from .resource import *
 from .rpc import *
 from .settings import *
 from .stack import *
+from .stack_tags import *
 from .invoke import *

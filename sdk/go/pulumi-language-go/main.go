@@ -179,6 +179,11 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 		return nil, err
 	}
 
+	tags, err := host.constructStackTags(req)
+	if err != nil {
+		return nil, err
+	}
+
 	env := os.Environ()
 	maybeAppendEnv := func(k, v string) {
 		if v != "" {
@@ -193,6 +198,7 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	maybeAppendEnv(pulumi.EnvParallel, fmt.Sprint(req.GetParallel()))
 	maybeAppendEnv(pulumi.EnvMonitor, req.GetMonitorAddress())
 	maybeAppendEnv(pulumi.EnvEngine, host.engineAddress)
+	maybeAppendEnv(pulumi.EnvStackTags, tags)
 
 	return env, nil
 }
@@ -210,6 +216,21 @@ func (host *goLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, 
 	}
 
 	return string(configJSON), nil
+}
+
+// constructStackTags json-serializes the stack tag data given as part of a RunRequest.
+func (host *goLanguageHost) constructStackTags(req *pulumirpc.RunRequest) (string, error) {
+	tags := req.GetStackTags()
+	if tags == nil {
+		return "", nil
+	}
+
+	tagsJSON, err := json.Marshal(tags)
+	if err != nil {
+		return "", err
+	}
+
+	return string(tagsJSON), nil
 }
 
 func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

@@ -31,10 +31,11 @@ import (
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
-	CloudURL() string                      // the URL to the cloud containing this stack.
-	OrgName() string                       // the organization that owns this stack.
-	ConsoleURL() (string, error)           // the URL to view the stack's information on Pulumi.com
-	Tags() map[apitype.StackTagName]string // the stack's tags.
+	CloudURL() string                               // the URL to the cloud containing this stack.
+	OrgName() string                                // the organization that owns this stack.
+	ConsoleURL() (string, error)                    // the URL to view the stack's information on Pulumi.com
+	Tags() map[apitype.StackTagName]string          // the stack's tags.
+	MergeTags(tags map[apitype.StackTagName]string) // merges tags with the stack's existing tags.
 }
 
 type cloudBackendReference struct {
@@ -101,6 +102,22 @@ func (s *cloudStack) Backend() backend.Backend              { return s.b }
 func (s *cloudStack) CloudURL() string                      { return s.cloudURL }
 func (s *cloudStack) OrgName() string                       { return s.orgName }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string { return s.tags }
+
+func (s *cloudStack) MergeTags(tags map[apitype.StackTagName]string) {
+	if len(tags) == 0 {
+		return
+	}
+
+	if s.tags == nil {
+		s.tags = make(map[apitype.StackTagName]string)
+	}
+
+	// Add each new tag to the existing tags, overwriting existing tags with the
+	// latest values.
+	for k, v := range tags {
+		s.tags[k] = v
+	}
+}
 
 func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {

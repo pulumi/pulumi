@@ -114,6 +114,7 @@ type RunInfo struct {
 	DryRun      bool
 	MonitorAddr string
 	EngineAddr  string
+	StackTags   map[string]string
 }
 
 // getEnvInfo reads various program information from the process environment.
@@ -127,6 +128,11 @@ func getEnvInfo() RunInfo {
 		_ = json.Unmarshal([]byte(cfg), &config)
 	}
 
+	var tags map[string]string
+	if tgs := os.Getenv(EnvStackTags); tgs != "" {
+		_ = json.Unmarshal([]byte(tgs), &tags)
+	}
+
 	return RunInfo{
 		Project:     os.Getenv(EnvProject),
 		Stack:       os.Getenv(EnvStack),
@@ -135,6 +141,7 @@ func getEnvInfo() RunInfo {
 		DryRun:      dryRun,
 		MonitorAddr: os.Getenv(EnvMonitor),
 		EngineAddr:  os.Getenv(EnvEngine),
+		StackTags:   tags,
 	}
 }
 
@@ -153,4 +160,6 @@ const (
 	EnvMonitor = "PULUMI_MONITOR"
 	// EnvEngine is the envvar used to read the current Pulumi engine RPC address.
 	EnvEngine = "PULUMI_ENGINE"
+	// EnvStackTags is the envvar used to read the current Pulumi stack tags.
+	EnvStackTags = "PULUMI_STACK_TAGS"
 )

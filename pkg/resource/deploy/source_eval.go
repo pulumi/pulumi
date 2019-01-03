@@ -197,6 +197,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				Config:         config,
 				DryRun:         iter.src.dryRun,
 				Parallel:       opts.Parallel,
+				StackTags:      iter.src.runinfo.Target.Tags,
 			})
 			if err == nil && progerr != "" {
 				// If the program had an unhandled error; propagate it to the caller.

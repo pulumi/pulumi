@@ -147,6 +147,7 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		Config:         config,
 		DryRun:         info.DryRun,
 		Parallel:       int32(info.Parallel),
+		StackTags:      info.StackTags,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

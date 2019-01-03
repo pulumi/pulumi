@@ -225,7 +225,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	wg.Wait()
 }
 
-func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, proj *workspace.Project,
+func (b *cloudBackend) newUpdate(ctx context.Context, stack backend.Stack, proj *workspace.Project,
 	root string, update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
 
 	// Create a token source for this update if necessary.
@@ -239,7 +239,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	// Construct the deployment target.
-	target, err := b.getTarget(ctx, stackRef)
+	target, err := b.getTarget(ctx, stack.Ref(), stack.(Stack).Tags())
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,9 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	return snapshot, nil
 }
 
-func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
+func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
+	tags map[apitype.StackTagName]string) (*deploy.Target, error) {
+
 	// Pull the local stack info so we can get at its configuration bag.
 	stackConfigFile := b.stackConfigFile
 	if stackConfigFile == "" {
@@ -308,6 +310,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 		Config:    stk.Config,
 		Decrypter: decrypter,
 		Snapshot:  snapshot,
+		Tags:      tags,
 	}, nil
 }
 

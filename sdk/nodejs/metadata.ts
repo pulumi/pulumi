@@ -26,6 +26,7 @@ export function getProject(): string {
     }
     throw new Error("Project unknown; are you using the Pulumi CLI?");
 }
+
 /**
  * getStack returns the current stack name.  It throws an exception if none is registered.
  */
@@ -35,4 +36,18 @@ export function getStack(): string {
         return stack;
     }
     throw new Error("Stack unknown; are you using the Pulumi CLI?");
+}
+
+/**
+ * getStackTag returns a stack tag's value or undefined if it is unset.
+ */
+export function getStackTag(name: string): string | undefined {
+    return runtime.getStackTag(name);
+}
+
+/**
+ * getStackTags returns a copy of all the stack tags.
+ */
+export function getStackTags(): {[name: string]: string} {
+    return runtime.allStackTags();
 }

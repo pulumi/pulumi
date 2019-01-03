@@ -601,6 +601,13 @@ func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackRefere
 		return nil, errors.New("stack not found")
 	}
 
+	// Get latest environment tags for the current stack.
+	envTags, err := backend.GetEnvironmentTagsForCurrentStack()
+	if err != nil {
+		return nil, err
+	}
+	stack.(Stack).MergeTags(envTags)
+
 	return stack, nil
 }
 
@@ -681,11 +688,7 @@ func (b *cloudBackend) createAndStartUpdate(
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags, err := backend.GetMergedStackTags(ctx, stack)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting stack tags")
-	}
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, token, err := b.client.StartUpdate(ctx, update, stack.(Stack).Tags())
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -730,16 +733,18 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		}
 	}
 
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack, op, update, token, events, opts.DryRun)
 }
 
 func (b *cloudBackend) runEngineAction(
-	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, error) {
 
+	stackRef := stack.Ref()
+
 	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
+	u, err := b.newUpdate(ctx, stack, op.Proj, op.Root, update, token)
 	if err != nil {
 		return nil, err
 	}
@@ -931,7 +936,7 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 		return nil, errors.New("stack not found")
 	}
 
-	target, targetErr := b.getTarget(ctx, stackRef)
+	target, targetErr := b.getTarget(ctx, stackRef, nil)
 	if targetErr != nil {
 		return nil, targetErr
 	}

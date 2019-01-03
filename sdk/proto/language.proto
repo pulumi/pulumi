@@ -42,15 +42,16 @@ message GetRequiredPluginsResponse {
 
 // RunRequest asks the interpreter to execute a program.
 message RunRequest {
-    string project = 1;             // the project name.
-    string stack = 2;               // the name of the stack being deployed into.
-    string pwd = 3;                 // the program's working directory.
-    string program = 4;             // the path to the program to execute.
-    repeated string args = 5;       // any arguments to pass to the program.
-    map<string, string> config = 6; // the configuration variables to apply before running.
-    bool dryRun = 7;                // true if we're only doing a dryrun (preview).
-    int32 parallel = 8;             // the degree of parallelism for resource operations (<=1 for serial).
-    string monitor_address = 9;     // the address for communicating back to the resource monitor.
+    string project = 1;                 // the project name.
+    string stack = 2;                   // the name of the stack being deployed into.
+    string pwd = 3;                     // the program's working directory.
+    string program = 4;                 // the path to the program to execute.
+    repeated string args = 5;           // any arguments to pass to the program.
+    map<string, string> config = 6;     // the configuration variables to apply before running.
+    bool dryRun = 7;                    // true if we're only doing a dryrun (preview).
+    int32 parallel = 8;                 // the degree of parallelism for resource operations (<=1 for serial).
+    string monitor_address = 9;         // the address for communicating back to the resource monitor.
+    map<string, string> stackTags = 10; // the stack tags to pass to the program.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.

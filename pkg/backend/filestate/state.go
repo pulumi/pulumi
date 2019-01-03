@@ -70,8 +70,20 @@ func (u *update) GetTarget() *deploy.Target {
 func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
+	// The local backend does not currently persist stack tags, so we'll just get
+	// the latest tags from the environment and pass those along.
+	tags, err := backend.GetEnvironmentTagsForCurrentStack()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting stack tags")
+	}
+
+	// Validate names and tags.
+	if err := backend.ValidateStackProperties(string(stackName), tags); err != nil {
+		return nil, errors.Wrap(err, "validating stack properties")
+	}
+
 	// Construct the deployment target.
-	target, err := b.getTarget(stackName)
+	target, err := b.getTarget(stackName, tags)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +97,9 @@ func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 	}, nil
 }
 
-func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
+func (b *localBackend) getTarget(stackName tokens.QName,
+	tags map[apitype.StackTagName]string) (*deploy.Target, error) {
+
 	stackConfigFile := b.stackConfigFile
 	if stackConfigFile == "" {
 		f, err := workspace.DetectProjectStackPath(stackName)
@@ -112,6 +126,7 @@ func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 		Config:    stk.Config,
 		Decrypter: decrypter,
 		Snapshot:  snapshot,
+		Tags:      tags,
 	}, nil
 }
 

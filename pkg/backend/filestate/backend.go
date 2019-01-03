@@ -420,7 +420,7 @@ func (b *localBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stackRef.Name()
-	target, err := b.getTarget(stackName)
+	target, err := b.getTarget(stackName, nil)
 	if err != nil {
 		return nil, err
 	}

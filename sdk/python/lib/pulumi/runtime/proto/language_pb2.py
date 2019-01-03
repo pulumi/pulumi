@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pulumirpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0elanguage.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\"J\n\x19GetRequiredPluginsRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\x0b\n\x03pwd\x18\x02 \x01(\t\x12\x0f\n\x07program\x18\x03 \x01(\t\"J\n\x1aGetRequiredPluginsResponse\x12,\n\x07plugins\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.PluginDependency\"\xf5\x01\n\nRunRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\r\n\x05stack\x18\x02 \x01(\t\x12\x0b\n\x03pwd\x18\x03 \x01(\t\x12\x0f\n\x07program\x18\x04 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12\x31\n\x06\x63onfig\x18\x06 \x03(\x0b\x32!.pulumirpc.RunRequest.ConfigEntry\x12\x0e\n\x06\x64ryRun\x18\x07 \x01(\x08\x12\x10\n\x08parallel\x18\x08 \x01(\x05\x12\x17\n\x0fmonitor_address\x18\t \x01(\t\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x1c\n\x0bRunResponse\x12\r\n\x05\x65rror\x18\x01 \x01(\t2\xf0\x01\n\x0fLanguageRuntime\x12\x63\n\x12GetRequiredPlugins\x12$.pulumirpc.GetRequiredPluginsRequest\x1a%.pulumirpc.GetRequiredPluginsResponse\"\x00\x12\x36\n\x03Run\x12\x15.pulumirpc.RunRequest\x1a\x16.pulumirpc.RunResponse\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0elanguage.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\"J\n\x19GetRequiredPluginsRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\x0b\n\x03pwd\x18\x02 \x01(\t\x12\x0f\n\x07program\x18\x03 \x01(\t\"J\n\x1aGetRequiredPluginsResponse\x12,\n\x07plugins\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.PluginDependency\"\xe0\x02\n\nRunRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\r\n\x05stack\x18\x02 \x01(\t\x12\x0b\n\x03pwd\x18\x03 \x01(\t\x12\x0f\n\x07program\x18\x04 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12\x31\n\x06\x63onfig\x18\x06 \x03(\x0b\x32!.pulumirpc.RunRequest.ConfigEntry\x12\x0e\n\x06\x64ryRun\x18\x07 \x01(\x08\x12\x10\n\x08parallel\x18\x08 \x01(\x05\x12\x17\n\x0fmonitor_address\x18\t \x01(\t\x12\x37\n\tstackTags\x18\n \x03(\x0b\x32$.pulumirpc.RunRequest.StackTagsEntry\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a\x30\n\x0eStackTagsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x1c\n\x0bRunResponse\x12\r\n\x05\x65rror\x18\x01 \x01(\t2\xf0\x01\n\x0fLanguageRuntime\x12\x63\n\x12GetRequiredPlugins\x12$.pulumirpc.GetRequiredPluginsRequest\x1a%.pulumirpc.GetRequiredPluginsResponse\"\x00\x12\x36\n\x03Run\x12\x15.pulumirpc.RunRequest\x1a\x16.pulumirpc.RunResponse\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
   ,
   dependencies=[plugin__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -137,8 +137,45 @@ _RUNREQUEST_CONFIGENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=425,
-  serialized_end=470,
+  serialized_start=482,
+  serialized_end=527,
+)
+
+_RUNREQUEST_STACKTAGSENTRY = _descriptor.Descriptor(
+  name='StackTagsEntry',
+  full_name='pulumirpc.RunRequest.StackTagsEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.RunRequest.StackTagsEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.RunRequest.StackTagsEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=_b('8\001'),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=529,
+  serialized_end=577,
 )
 
 _RUNREQUEST = _descriptor.Descriptor(
@@ -211,10 +248,17 @@ _RUNREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stackTags', full_name='pulumirpc.RunRequest.stackTags', index=9,
+      number=10, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
-  nested_types=[_RUNREQUEST_CONFIGENTRY, ],
+  nested_types=[_RUNREQUEST_CONFIGENTRY, _RUNREQUEST_STACKTAGSENTRY, ],
   enum_types=[
   ],
   serialized_options=None,
@@ -224,7 +268,7 @@ _RUNREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=225,
-  serialized_end=470,
+  serialized_end=577,
 )
 
 
@@ -254,13 +298,15 @@ _RUNRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=472,
-  serialized_end=500,
+  serialized_start=579,
+  serialized_end=607,
 )
 
 _GETREQUIREDPLUGINSRESPONSE.fields_by_name['plugins'].message_type = plugin__pb2._PLUGINDEPENDENCY
 _RUNREQUEST_CONFIGENTRY.containing_type = _RUNREQUEST
+_RUNREQUEST_STACKTAGSENTRY.containing_type = _RUNREQUEST
 _RUNREQUEST.fields_by_name['config'].message_type = _RUNREQUEST_CONFIGENTRY
+_RUNREQUEST.fields_by_name['stackTags'].message_type = _RUNREQUEST_STACKTAGSENTRY
 DESCRIPTOR.message_types_by_name['GetRequiredPluginsRequest'] = _GETREQUIREDPLUGINSREQUEST
 DESCRIPTOR.message_types_by_name['GetRequiredPluginsResponse'] = _GETREQUIREDPLUGINSRESPONSE
 DESCRIPTOR.message_types_by_name['RunRequest'] = _RUNREQUEST
@@ -289,12 +335,20 @@ RunRequest = _reflection.GeneratedProtocolMessageType('RunRequest', (_message.Me
     # @@protoc_insertion_point(class_scope:pulumirpc.RunRequest.ConfigEntry)
     ))
   ,
+
+  StackTagsEntry = _reflection.GeneratedProtocolMessageType('StackTagsEntry', (_message.Message,), dict(
+    DESCRIPTOR = _RUNREQUEST_STACKTAGSENTRY,
+    __module__ = 'language_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.RunRequest.StackTagsEntry)
+    ))
+  ,
   DESCRIPTOR = _RUNREQUEST,
   __module__ = 'language_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.RunRequest)
   ))
 _sym_db.RegisterMessage(RunRequest)
 _sym_db.RegisterMessage(RunRequest.ConfigEntry)
+_sym_db.RegisterMessage(RunRequest.StackTagsEntry)
 
 RunResponse = _reflection.GeneratedProtocolMessageType('RunResponse', (_message.Message,), dict(
   DESCRIPTOR = _RUNRESPONSE,
@@ -305,6 +359,7 @@ _sym_db.RegisterMessage(RunResponse)
 
 
 _RUNREQUEST_CONFIGENTRY._options = None
+_RUNREQUEST_STACKTAGSENTRY._options = None
 
 _LANGUAGERUNTIME = _descriptor.ServiceDescriptor(
   name='LanguageRuntime',
@@ -312,8 +367,8 @@ _LANGUAGERUNTIME = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=503,
-  serialized_end=743,
+  serialized_start=610,
+  serialized_end=850,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetRequiredPlugins',

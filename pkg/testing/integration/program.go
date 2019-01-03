@@ -126,6 +126,8 @@ type ProgramTestOptions struct {
 	Config map[string]string
 	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
 	Secrets map[string]string
+	// Map of stack tags to set on the stack.
+	StackTags map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
@@ -422,6 +424,7 @@ func GetLogs(
 //   pulumi stack init integrationtesting
 //   pulumi config set <each opts.Config>
 //   pulumi config set --secret <each opts.Secrets>
+//   pulumi stack tag set <each opts.StackTags>
 //   pulumi preview
 //   pulumi update
 //   pulumi stack export --file stack.json
@@ -787,6 +790,13 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	for key, value := range pt.opts.Secrets {
 		if err := pt.runPulumiCommand("pulumi-config",
 			[]string{"config", "set", "--secret", key, value}, dir); err != nil {
+			return err
+		}
+	}
+
+	for key, value := range pt.opts.StackTags {
+		if err := pt.runPulumiCommand("pulumi-stack-tag",
+			[]string{"stack", "tag", "set", key, value}, dir); err != nil {
 			return err
 		}
 	}

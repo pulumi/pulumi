@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict
+
 from . import runtime
 
 
@@ -27,3 +29,17 @@ def get_stack() -> str:
     Returns the current stack name.
     """
     return runtime.get_stack()
+
+
+def get_stack_tag(name: str) -> str:
+    """
+    Returns a stack tag's value or None.
+    """
+    return runtime.get_stack_tag(name)
+
+
+def get_stack_tags() -> Dict[str, str]:
+    """
+    Returns a copy of all the stack tags.
+    """
+    return runtime.get_stack_tags()

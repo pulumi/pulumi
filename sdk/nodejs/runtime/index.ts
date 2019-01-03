@@ -27,3 +27,4 @@ export * from "./resource";
 export * from "./rpc";
 export * from "./settings";
 export * from "./stack";
+export * from "./stackTags";
