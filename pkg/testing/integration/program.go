@@ -95,9 +95,9 @@ type TestCommandStats struct {
 	StackName string `json:"stackName"`
 	// TestId is the unique ID of the test run
 	TestID string `json:"testId"`
-	// StepName is the command line which was invoked1
+	// StepName is the command line which was invoked
 	StepName string `json:"stepName"`
-	// CommandLine is the command line which was invoked1
+	// CommandLine is the command line which was invoked
 	CommandLine string `json:"commandLine"`
 	// TestName is the name of the directory in which the test was executed
 	TestName string `json:"testName"`
@@ -166,6 +166,8 @@ type ProgramTestOptions struct {
 
 	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocatoions.
 	Tracing string
+	// NoParallel will opt the test out of being ran in parallel.
+	NoParallel bool
 
 	// PrePulumiCommand specifies a callback that will be executed before each `pulumi` invocation. This callback may
 	// optionally return another callback to be invoked after the `pulumi` invocation completes.
@@ -450,7 +452,10 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		t.Errorf("error setting env var '%s': %v", filestate.DisableCheckpointBackupsEnvVar, err)
 	}
 
-	t.Parallel()
+	// We want tests to default into being ran in parallel, hence the odd double negative.
+	if !opts.NoParallel {
+		t.Parallel()
+	}
 
 	if ciutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skip("Skipping: PULUMI_ACCESS_TOKEN is not set")
