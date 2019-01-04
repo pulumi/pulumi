@@ -1724,7 +1724,7 @@ func TestCanceledRefresh(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Serialize all refreshes s.t. we can cancel after the first is issued.
-	refreshes := make(chan resource.ID)
+	refreshes, cancelled := make(chan resource.ID), make(chan bool)
 	go func() {
 		<-refreshes
 		cancel()
@@ -1736,14 +1736,16 @@ func TestCanceledRefresh(t *testing.T) {
 				ReadF: func(urn resource.URN, id resource.ID,
 					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 
-					select {
-					case refreshes <- id:
-					case <-ctx.Done():
-					}
+					refreshes <- id
+					<-cancelled
 
 					new, hasNewState := newStates[id]
 					assert.True(t, hasNewState)
 					return new, resource.StatusOK, nil
+				},
+				CancelF: func() error {
+					close(cancelled)
+					return nil
 				},
 			}, nil
 		}),
@@ -1794,8 +1796,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
 	assert.Error(t, err)
-
-	t.Logf("%v/%v resources refreshed", len(refreshed), len(oldResources))
+	assert.Equal(t, 1, len(refreshed))
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
