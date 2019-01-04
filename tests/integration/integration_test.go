@@ -84,11 +84,13 @@ func TestEmptyGo(t *testing.T) {
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
-	// Since then, it should now be down to ~4s, with additional padding.
+	// Since then, it should now be down to ~4s, with additional padding,
+	// since some travis machines (espically the OSX ones) seem quite slow
+	// to begin with.
 	benchmarkEnforcer := &assertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 6 * time.Second,
-		MaxUpdateDuration:  6 * time.Second,
+		MaxPreviewDuration: 8 * time.Second,
+		MaxUpdateDuration:  8 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
