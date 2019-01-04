@@ -17,9 +17,10 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"path/filepath"
 	"regexp"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -107,9 +108,46 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 	return s.Backend().ImportDeployment(ctx, s.Ref(), deployment)
 }
 
-// GetStackTags returns the set of tags for the "current" stack, based on the environment
+// GetStackTags fetches the stack's existing tags.
+func GetStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
+	return s.Backend().GetStackTags(ctx, s.Ref())
+}
+
+// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName]string) error {
+	return s.Backend().UpdateStackTags(ctx, s.Ref(), tags)
+}
+
+// GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment
 // and Pulumi.yaml file.
-func GetStackTags() (map[apitype.StackTagName]string, error) {
+func GetMergedStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
+	// Get the stack's existing tags.
+	tags, err := GetStackTags(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+	if tags == nil {
+		tags = make(map[apitype.StackTagName]string)
+	}
+
+	// Get latest environment tags for the current stack.
+	envTags, err := GetEnvironmentTagsForCurrentStack()
+	if err != nil {
+		return nil, err
+	}
+
+	// Add each new environment tag to the existing tags, overwriting existing tags with the
+	// latest values.
+	for k, v := range envTags {
+		tags[k] = v
+	}
+
+	return tags, nil
+}
+
+// GetEnvironmentTagsForCurrentStack returns the set of tags for the "current" stack, based on the environment
+// and Pulumi.yaml file.
+func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error) {
 	tags := make(map[apitype.StackTagName]string)
 
 	// Tags based on Pulumi.yaml.
@@ -184,21 +222,11 @@ func validateStackName(s string) error {
 	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
 }
 
-// ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
-// naming and length restrictions.
-func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
-	const maxStackName = 100 // Derived from the regex in validateStackName.
-	if len(stack) > maxStackName {
-		return errors.Errorf("stack name too long (max length %d characters)", maxStackName)
-	}
-	if err := validateStackName(stack); err != nil {
-		return errors.Wrapf(err, "invalid stack name")
-	}
-
-	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
-	// values make sense, e.g. ProjectRuntimeTag is a supported runtime.
+// ValidateStackTags validates the tag names and values.
+func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 	const maxTagName = 40
 	const maxTagValue = 256
+
 	for t, v := range tags {
 		if len(t) == 0 {
 			return errors.Errorf("invalid stack tag %q", t)
@@ -212,4 +240,20 @@ func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string)
 	}
 
 	return nil
+}
+
+// ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
+// naming and length restrictions.
+func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
+	const maxStackName = 100 // Derived from the regex in validateStackName.
+	if len(stack) > maxStackName {
+		return errors.Errorf("stack name too long (max length %d characters)", maxStackName)
+	}
+	if err := validateStackName(stack); err != nil {
+		return errors.Wrapf(err, "invalid stack name")
+	}
+
+	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
+	// values make sense, e.g. ProjectRuntimeTag is a supported runtime.
+	return ValidateStackTags(tags)
 }
