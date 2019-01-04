@@ -29,7 +29,8 @@ class ResourceThensTest(LanghostTest):
             program=path.join(self.base_path(), "resource_thens"),
             expected_resource_count=2)
 
-    def register_resource(self, _ctx, dry_run, ty, name, res, deps):
+    def register_resource(self, _ctx, dry_run, ty, name, res, deps,
+                          _parent, custom, _protect, _provider):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
             self.assertDictEqual(res, {"inprop": 777})

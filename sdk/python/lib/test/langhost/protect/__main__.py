@@ -11,20 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os import path
-from ..util import LanghostTest
+from pulumi import CustomResource, ResourceOptions
 
+class MyResource(CustomResource):
+    def __init__(self, name, opts=None):
+        CustomResource.__init__(self, "test:index:MyResource", name, opts=opts)
 
-class OneResourceTest(LanghostTest):
-    def test_one_resource(self):
-        self.run_test(
-            program=path.join(self.base_path(), "one_resource"),
-            expected_resource_count=1)
-
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider):
-        self.assertEqual(ty, "test:index:MyResource")
-        self.assertEqual(name, "testResource1")
-        return {
-            "urn": self.make_urn(ty, name),
-        }
+res = MyResource("foo", opts=ResourceOptions(protect=True))

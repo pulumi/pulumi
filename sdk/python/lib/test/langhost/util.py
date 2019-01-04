@@ -83,10 +83,14 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         name = request.name
         props = rpc.deserialize_properties(request.object)
         deps = list(request.dependencies)
+        parent = request.parent
+        custom = request.custom
+        protect = request.protect
+        provider = request.provider
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
             outs = self.langhost_test.register_resource(
-                context, self.dryrun, type_, name, props, deps)
+                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider)
             if outs.get("urn"):
                 urn = outs["urn"]
                 self.registrations[urn] = {
