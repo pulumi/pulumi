@@ -117,7 +117,7 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     return process.exit(1);
 }
 
-export function run(argv: minimist.ParsedArgs): void {
+export function run(argv: minimist.ParsedArgs, programStarted: () => void): void {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -158,7 +158,6 @@ export function run(argv: minimist.ParsedArgs): void {
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
     // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
-    let uncaught: Error | undefined;
     const errorSet = new Set<Error>();
 
     const uncaughtHandler = (err: Error) => {
@@ -190,22 +189,13 @@ export function run(argv: minimist.ParsedArgs): void {
             log.error(`Running program '${program}' failed with an unhandled exception:`);
             log.error(defaultMessage);
         }
-
-        // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
-        uncaught = err;
     };
 
     process.on("uncaughtException", uncaughtHandler);
     process.on("unhandledRejection", uncaughtHandler);
+    process.on("exit", runtime.disconnectSync);
 
-    process.on("exit", (code: number) => {
-        runtime.disconnectSync();
-
-        // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
-        if (code === 0 && uncaught) {
-            process.exitCode = 1;
-        }
-    });
+    programStarted();
 
     // Construct a `Stack` resource to represent the outputs of the program.
     runtime.runInPulumiStack(() => {
