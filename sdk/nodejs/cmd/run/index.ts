@@ -23,7 +23,7 @@ const uncaughtHandler = (err: Error) => {
     if (!programRunning) {
         console.error(err.stack || err.message);
     }
-}
+};
 process.on("uncaughtException", uncaughtHandler);
 process.on("unhandledRejection", uncaughtHandler);
 process.on("exit", (code: number) => {
