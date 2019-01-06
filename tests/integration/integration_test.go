@@ -85,7 +85,7 @@ func TestEmptyGo(t *testing.T) {
 func TestEngineEventPerf(t *testing.T) {
 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
 	// Since then, it should now be down to ~4s, with additional padding,
-	// since some travis machines (espically the OSX ones) seem quite slow
+	// since some travis machines (especially the OSX ones) seem quite slow
 	// to begin with.
 	benchmarkEnforcer := &assertPerfBenchmark{
 		T:                  t,
