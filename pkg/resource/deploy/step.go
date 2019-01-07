@@ -262,7 +262,7 @@ func (s *DeleteStep) Op() StepOp {
 	if s.replacing {
 		return OpDeleteReplaced
 	} else if s.old.External {
-		return OpReadRemove
+		return OpReadDiscard
 	}
 	return OpDelete
 }
@@ -681,7 +681,7 @@ const (
 	OpRead              StepOp = "read"               // reading an existing resource.
 	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
 	OpRefresh           StepOp = "refresh"            // refreshing an existing resource.
-	OpReadRemove        StepOp = "remove"             // removing a resource that was read.
+	OpReadDiscard       StepOp = "discard"            // removing a resource that was read.
 
 	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 )
@@ -698,7 +698,7 @@ var StepOps = []StepOp{
 	OpRead,
 	OpReadReplacement,
 	OpRefresh,
-	OpReadRemove,
+	OpReadDiscard,
 	OpRemovePendingReplace,
 }
 
@@ -725,7 +725,7 @@ func (op StepOp) Color() string {
 		return colors.SpecReplace
 	case OpRefresh:
 		return colors.SpecUpdate
-	case OpReadRemove:
+	case OpReadDiscard:
 		return colors.SpecDelete
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
@@ -761,7 +761,7 @@ func (op StepOp) RawPrefix() string {
 		return ">>"
 	case OpRefresh:
 		return "~ "
-	case OpReadRemove:
+	case OpReadDiscard:
 		return "< "
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
@@ -777,8 +777,8 @@ func (op StepOp) PastTense() string {
 		return "refreshed"
 	case OpRead:
 		return "read"
-	case OpReadRemove:
-		return "removed"
+	case OpReadDiscard:
+		return "discarded"
 	default:
 		contract.Failf("Unexpected resource step op: %v", op)
 		return ""
