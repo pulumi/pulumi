@@ -28,6 +28,7 @@ __all__ = ['runtime']
 from .asset import *
 from .config import *
 from .errors import *
+from .invoke import *
 from .metadata import *
 from .resource import *
 from .output import *
