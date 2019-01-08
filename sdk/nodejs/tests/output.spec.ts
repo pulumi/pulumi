@@ -64,4 +64,11 @@ describe("output", () => {
 
         assert.fail("Should not read here");
     }));
+
+    it("toStrings to helpful warnning.", asyncTest(async () => {
+        const output = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+        const expected = "<<< Warning: called 'toString' on an Output, use 'apply' instead: https://pulumi.io/help/outputs >>>";
+        assert.equal("" + output, expected);
+        assert.equal(`${output}`, expected);
+    }));
 });

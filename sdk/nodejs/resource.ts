@@ -480,6 +480,13 @@ export class Output<T> {
 To manipulate the value of this Output, use '.apply' instead.`);
         };
     }
+
+    // We override `toString` to provide more useful guidance when `Output`s are converted to strings, instead of just
+    // printing `[object Object]`.
+    toString() {
+        return "<<< Warning: called 'toString' on an Output, use 'apply' instead: https://pulumi.io/help/outputs >>>";
+    }
+
 }
 
 /**
