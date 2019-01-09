@@ -89,7 +89,7 @@ async def prepare_resource(res: 'Resource',
         # If we were given a provider, wait for it to resolve and construct a provider reference from it.
         # A provider reference is a well-known string (two ::-separated values) that the engine interprets.
         provider_urn = await provider.urn.future()
-        provider_id = await provider.id.future()
+        provider_id = await provider.id.future() or rpc.UNKNOWN
         provider_ref = f"{provider_urn}::{provider_id}"
 
     dependencies = set(explicit_urn_dependencies)
