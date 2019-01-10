@@ -2,14 +2,8 @@
 if: branch = master OR branch =~ ^features/ OR branch =~ ^release/ OR tag IS present
 matrix:
   include:
-    - os: linux
-      env: NODE_VERSION=v8.11.1 TRAVIS_PUBLISH_PACKAGES=true
-    - os: linux
-      env: NODE_VERSION=v10.7
     - os: osx
       env: NODE_VERSION=v6.10.3
-    - os: linux
-      env: NODE_VERSION=v11.0.0
 language: go
 go: 1.11
 sudo: true # give us 7.5GB and >2 bursted cores.
@@ -17,6 +11,7 @@ git:
   depth: false
 before_install:
     - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
+    - git -C "${GOPATH}/src/github.com/pulumi/scripts" checkout ellismg/run-brew-update
     - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
