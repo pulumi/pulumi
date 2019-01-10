@@ -979,22 +979,16 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	return nil
 }
 
-// getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
-// the current working directory.
+// getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack
 func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	owner := stackRef.(cloudBackendReference).owner
-	var err error
-
-	if owner == "" {
-		owner, err = b.client.GetPulumiAccountName(context.Background())
-		if err != nil {
-			return client.StackIdentifier{}, err
-		}
+	cloudBackendStackRef, ok := stackRef.(cloudBackendReference)
+	if !ok {
+		return client.StackIdentifier{}, errors.New("bad stack reference type")
 	}
 
 	return client.StackIdentifier{
-		Owner: owner,
-		Stack: string(stackRef.Name()),
+		Owner: cloudBackendStackRef.owner,
+		Stack: string(cloudBackendStackRef.name),
 	}, nil
 }
 
