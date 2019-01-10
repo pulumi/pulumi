@@ -217,7 +217,18 @@ def deserialize_property(value: Any) -> Any:
     return value
 
 
-Resolver = Callable[[Any, bool], None]
+Resolver = Callable[[Any, bool, Optional[Exception]], None]
+"""
+A Resolver is a function that takes three arguments:
+    1. A value, which represents the "resolved" value of a particular output (from the engine)
+    2. A boolean "is_known", which represents whether or not this value is known to have a particular value at this
+       point in time (not always true for previews), and
+    3. An exception, which (if provided) is an exception that occured when attempting to create the resource to whom
+       this resolver belongs.
+
+If argument 3 is not none, this output is considered to be abnormally resolved and attempts to await its future will
+result in the exception being re-thrown.
+"""
 
 
 def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]:
@@ -230,9 +241,19 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
         resolve_value = asyncio.Future()
         resolve_is_known = asyncio.Future()
 
-        def do_resolve(value_fut: asyncio.Future, known_fut: asyncio.Future, value: Any, is_known: bool):
-            value_fut.set_result(value)
-            known_fut.set_result(is_known)
+        def do_resolve(value_fut: asyncio.Future,
+                       known_fut: asyncio.Future,
+                       value: Any,
+                       is_known: bool,
+                       failed: Optional[Exception]):
+            # Was an exception provided? If so, this is an abnormal (exceptional) resolution. Resolve the futures
+            # using set_exception so that any attempts to wait for their resolution will also fail.
+            if failed is not None:
+                value_fut.set_exception(failed)
+                known_fut.set_exception(failed)
+            else:
+                value_fut.set_result(value)
+                known_fut.set_result(is_known)
 
         # Important to note here is that the resolver's future is assigned to the resource object using the
         # name before translation. When properties are returned from the engine, we must first translate the name
@@ -319,15 +340,28 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
         if not settings.is_dry_run():
             # normal 'pulumi update'.  resolve the output with the value we got back
             # from the engine.  That output can always run its .apply calls.
-            resolve(value, True)
+            resolve(value, True, None)
         else:
             # We're previewing. If the engine was able to give us a reasonable value back,
             # then use it. Otherwise, inform the Output that the value isn't known.
-            resolve(value, value is not None)
+            resolve(value, value is not None, None)
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
     # preview.
     for key, resolve in resolvers.items():
         if key not in all_properties:
-            resolve(None, not settings.is_dry_run())
+            resolve(None, not settings.is_dry_run(), None)
+
+
+def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Exception):
+    """
+    Resolves all outputs with resolvers exceptionally, using the given exception as the reason why the resolver has
+    failed to resolve.
+
+    :param resolvers: Resolvers associated with a resource's outputs.
+    :param exn: The exception that occured when trying (and failing) to create this resource.
+    """
+    for key, resolve in resolvers.items():
+        log.debug(f"sending exception to resolver for {key}")
+        resolve(None, False, exn)
