@@ -8,13 +8,19 @@ import sys
 import traceback
 import runpy
 
+# The user might not have installed Pulumi yet in their environment - provide a high-quality error message in that case.
 try:
     import pulumi
     import pulumi.runtime
 except ImportError:
-    sys.stderr.write("It looks like the Pulumi SDK has not been installed. Have you run pip install?")
+    # For whatever reason, sys.stderr.write is not picked up by the engine as a message, but 'print' is. The Python
+    # langhost automatically flushes stdout and stderr on shutdown, so we don't need to do it here - just trust that
+    # Python does the sane thing when printing to stderr.
+    print(traceback.format_exc(), file=sys.stderr)
+    print("""
+It looks like the Pulumi SDK has not been installed. Have you run pip install?
+If you are running in a virtualenv, you must run pip install -r requirements.txt from inside the virtualenv.""", file=sys.stderr)
     sys.exit(1)
-
 
 if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
