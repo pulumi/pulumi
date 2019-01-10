@@ -1043,7 +1043,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "reading failed"
 			case deploy.OpRefresh:
 				return "refreshing failed"
-			case deploy.OpReadDiscard:
+			case deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				return "discarding failed"
 			}
 		} else {
@@ -1071,6 +1071,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "refresh"
 			case deploy.OpReadDiscard:
 				return "discarded"
+			case deploy.OpDiscardReplaced:
+				return "discarded original"
 			}
 		}
 
@@ -1109,7 +1111,9 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 	case deploy.OpRefresh:
 		return "refreshing"
 	case deploy.OpReadDiscard:
-		return "discarding"
+		return "discard"
+	case deploy.OpDiscardReplaced:
+		return "discard origina;"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1128,7 +1132,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 		return "update"
 	case deploy.OpDelete:
 		return "delete"
-	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement:
+	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement, deploy.OpDiscardReplaced:
 		return "replace"
 	case deploy.OpRead:
 		// nolint: goconst
@@ -1159,7 +1163,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 		// Once done, show the steps for replacing as a single 'replaced' step.
 		// During update, we'll show these individual steps.
 		if display.isPreview || display.done {
-			if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+			if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
 				return deploy.OpReplace
 			}
 		}
@@ -1209,6 +1213,8 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "refreshing"
 		case deploy.OpReadDiscard:
 			return "discarding"
+		case deploy.OpDiscardReplaced:
+			return "discarding original"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)

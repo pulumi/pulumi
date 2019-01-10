@@ -123,7 +123,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
-			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard:
+			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				ops = append(ops, resource.NewOperation(e.Step.Old(), resource.OperationTypeDeleting))
 			case deploy.OpRead, deploy.OpReadReplacement:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeReading))
@@ -135,7 +135,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			// nolint: lll
 			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate:
 				doneOps[e.Step.New()] = true
-			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard:
+			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				doneOps[e.Step.Old()] = true
 			}
 		}
@@ -151,7 +151,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 				if old := e.Step.Old(); old != nil && old.PendingReplacement {
 					dones[old] = true
 				}
-			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard:
+			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				if old := e.Step.Old(); !old.PendingReplacement {
 					dones[old] = true
 				}
