@@ -1203,9 +1203,6 @@ async function getOrCreateEntryAsync(
         // into the Object-Entry for the SerializedOutput instance.
 
         // First get the underlying value of the out, and create the environment entry for it.
-        if (!(output.promise instanceof Function)) {
-            console.log(JSON.stringify(output));
-        }
         const val = await output.promise();
         const valEntry = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo);
 
