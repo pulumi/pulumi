@@ -1,14 +1,20 @@
-## 0.16.10 (Unreleased)
+## 0.16.11 (Unreleased)
+
+## 0.16.10 (Released January 11th, 2019)
 
 ### Improvements
+
+- Support for first-class providers in Python.
+
+- Fix a bug where `StackReference` outputs were not updated when changes occured in the referenced stack.
 
 - Added `pulumi stack tag` commands for managing stack tags stored in the cloud backend.
 
 - Link directly to /account/tokens when prompting for an access token.
 
-## 0.16.9 (Released December 24th, 2018)
-
 - Exporting a Resource from an application Stack now exports it as a rich recursive pojo instead of just being an opaque URN (fixes https://github.com/pulumi/pulumi/issues/1858).
+
+## 0.16.9 (Released December 24th, 2018)
 
 ### Improvements
 
