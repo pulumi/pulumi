@@ -480,6 +480,25 @@ export class Output<T> {
             throw new Error(`Cannot call '.get' during update or preview.
 To manipulate the value of this Output, use '.apply' instead.`);
         };
+
+        // return new Proxy(this, {
+        //     get: (obj, prop) => {
+        //         // Recreate the prototype walk to ensure we find any actual things on `Output<T>`
+        //         for (let o = obj; o; o = Object.getPrototypeOf(o)) {
+        //             if (o.hasOwnProperty(prop)) {
+        //                 return (<any>o)[prop];
+        //             }
+        //         }
+
+        //         // Skip internal properties like __resource, markers like doNotCapture
+        //         if ((typeof prop === "string" && prop[0] === "_") || prop === "then" || prop === "doNotCapture") {
+        //             return undefined;
+        //         }
+        //         // Else for *any other* property lookup, succeed the lookup and return a lifted `apply` on the
+        //         // underlying `Output`.
+        //         return obj.apply(ob => (<any>ob)[prop]);
+        //     },
+        // });
     }
 }
 

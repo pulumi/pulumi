@@ -188,11 +188,8 @@ interface ClosurePropertyDescriptor {
  * IMPORTANT: Do not change the structure of this type.  Closure serialization code takes a
  * dependency on the actual shape (including the names of properties like 'value').
  */
-class SerializedOutput<T> implements resource.Output<T> {
-    /* @internal */ public isKnown: Promise<boolean>;
-    /* @internal */ public readonly promise: () => Promise<T>;
-    /* @internal */ public readonly resources: () => Set<resource.Resource>;
-    /* @internal */ private readonly value: T;
+class SerializedOutput<T> {
+    private readonly value: T;
 
     public constructor(value: T) {
         this.value = value;
@@ -667,7 +664,7 @@ async function throwSerializationErrorAsync(
         const moduleName = module.name;
         message += "\n";
 
-        if (await hasTruthyMemberAsync(module.value, "deploymentOnlyModule")) {
+        if (hasTrueBooleanMember(module.value, "deploymentOnlyModule")) {
             message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
         }
         else {
@@ -803,7 +800,7 @@ async function getOrCreateEntryAsync(
         return entry;
     }
 
-    if (obj instanceof Function && await hasTruthyMemberAsync(obj, "doNotCapture")) {
+    if (obj instanceof Function && hasTrueBooleanMember(obj, "doNotCapture")) {
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
@@ -832,7 +829,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (await hasTruthyMemberAsync(obj, "doNotCapture")) {
+        if (hasTrueBooleanMember(obj, "doNotCapture")) {
             // object has set itself as something that should not be captured.
             return true;
         }
@@ -1137,7 +1134,7 @@ async function getOrCreateEntryAsync(
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
-        if (await hasTruthyMemberAsync(obj, "deploymentOnlyModule") || isLocalModule) {
+        if (hasTrueBooleanMember(obj, "deploymentOnlyModule") || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
             //
             // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
@@ -1206,6 +1203,9 @@ async function getOrCreateEntryAsync(
         // into the Object-Entry for the SerializedOutput instance.
 
         // First get the underlying value of the out, and create the environment entry for it.
+        if (!(output.promise instanceof Function)) {
+            console.log(JSON.stringify(output));
+        }
         const val = await output.promise();
         const valEntry = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo);
 
@@ -1246,7 +1246,7 @@ async function isOutputAsync(obj: any): Promise<boolean> {
 // constructors was set to not be captured.
 async function isDerivedNoCaptureConstructorAsync(func: Function): Promise<boolean> {
     for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
-        if (await hasTruthyMemberAsync(current, "doNotCapture")) {
+        if (hasTrueBooleanMember(current, "doNotCapture")) {
             return true;
         }
     }
@@ -1316,12 +1316,16 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     return undefined;
 }
 
-async function hasTruthyMemberAsync(obj: any, memberName: string): Promise<boolean> {
-    if (!obj) {
+function hasTrueBooleanMember(obj: any, memberName: string): boolean {
+    if (obj === undefined || obj === null) {
         return false;
     }
 
-    return obj[memberName] ? true : false;
+    if (typeof obj[memberName] !== "boolean") {
+        return false;
+    }
+
+    return obj[memberName];
 }
 
 function createClosurePropertyDescriptor(

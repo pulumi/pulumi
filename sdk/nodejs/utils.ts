@@ -23,5 +23,14 @@
  */
 /** @internal */
 export function isInstance<T>(obj: any, name: keyof T): obj is T {
-    return obj !== undefined && obj !== null && typeof (<T>obj)[name] === "boolean" && !!(<T>obj)[name];
+    if (obj === undefined || obj === null) {
+        return false;
+    }
+
+    const val = (<T>obj)[name];
+    if (typeof val !== "boolean") {
+        return false;
+    }
+
+    return val === true;
 }
