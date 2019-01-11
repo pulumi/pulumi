@@ -15,6 +15,7 @@
 import { ResourceError } from "./errors";
 import * as runtime from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import * as utils from "./utils";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -27,7 +28,7 @@ export abstract class Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
      // tslint:disable-next-line:variable-name
-     /* @internal */ private readonly __pulumiResource: boolean = true;
+     /* @internal */ public readonly __pulumiResource: boolean = true;
 
     /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
@@ -48,7 +49,7 @@ export abstract class Resource {
     /* @internal */ private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
-        return obj && obj.__pulumiResource;
+        return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
     // getProvider fetches the provider for the given module member, if any.
@@ -192,7 +193,7 @@ export abstract class CustomResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumiCustomResource: boolean = true;
+    /* @internal */ public readonly __pulumiCustomResource: boolean = true;
 
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
@@ -205,7 +206,7 @@ export abstract class CustomResource extends Resource {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is CustomResource {
-        return obj && obj.__pulumiCustomResource;
+        return utils.isInstance<CustomResource>(obj, "__pulumiCustomResource");
     }
 
     /**
@@ -320,7 +321,7 @@ export class Output<T> {
      * This is internal instead of being truly private, to support mixins and our serialization model.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiOutput?: boolean = true;
+    /* @internal */ public readonly __pulumiOutput: boolean = true;
 
     /**
      * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
@@ -402,7 +403,7 @@ export class Output<T> {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance<T>(obj: any): obj is Output<T> {
-        return obj && obj.__pulumiOutput ? true : false;
+        return utils.isInstance(obj, "__pulumiOutput");
     }
 
     /* @internal */ public constructor(

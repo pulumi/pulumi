@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Resource } from "./resource";
+import * as utils from "./utils";
 
 /**
  * RunError can be used for terminating a program abruptly, but resulting in a clean exit rather
@@ -25,14 +26,14 @@ export class RunError extends Error {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumiRunError: boolean = true;
+    /* @internal */ public readonly __pulumiRunError: boolean = true;
 
     /**
      * Returns true if the given object is an instance of a RunError.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is RunError {
-        return obj && obj.__pulumiRunError;
+        return utils.isInstance<RunError>(obj, "__pulumiRunError");
     }
 
     constructor(message: string) {
@@ -51,14 +52,14 @@ export class ResourceError extends Error {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumResourceError: boolean = true;
+    /* @internal */ public readonly __pulumiResourceError: boolean = true;
 
     /**
      * Returns true if the given object is an instance of a ResourceError.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is ResourceError {
-        return obj && obj.__pulumResourceError;
+        return utils.isInstance<ResourceError>(obj, "__pulumiResourceError");
     }
 
     constructor(message: string, public resource: Resource | undefined, public hideStack?: boolean) {

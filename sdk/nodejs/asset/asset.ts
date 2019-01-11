@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input } from "../resource";
+import * as utils from "../utils";
 
 /**
  * Asset represents a single blob of text or data that is managed as a first class entity.
@@ -22,14 +22,14 @@ export abstract class Asset {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumiAsset: boolean = true;
+    /* @internal */ public readonly __pulumiAsset: boolean = true;
 
     /**
      * Returns true if the given object is an instance of an Asset.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is Asset {
-        return obj && obj.__pulumiAsset;
+        return utils.isInstance<Asset>(obj, "__pulumiAsset");
     }
 }
 
