@@ -481,24 +481,45 @@ export class Output<T> {
 To manipulate the value of this Output, use '.apply' instead.`);
         };
 
-        // return new Proxy(this, {
-        //     get: (obj, prop) => {
-        //         // Recreate the prototype walk to ensure we find any actual things on `Output<T>`
-        //         for (let o = obj; o; o = Object.getPrototypeOf(o)) {
-        //             if (o.hasOwnProperty(prop)) {
-        //                 return (<any>o)[prop];
-        //             }
-        //         }
+        return new Proxy(this, {
+            get: (obj, prop: keyof T) => {
+                // Recreate the prototype walk to ensure we find any actual members defined directly
+                // on `Output<T>`.
+                for (let o = obj; o; o = Object.getPrototypeOf(o)) {
+                    if (o.hasOwnProperty(prop)) {
+                        return (<any>o)[prop];
+                    }
+                }
 
-        //         // Skip internal properties like __resource, markers like doNotCapture
-        //         if ((typeof prop === "string" && prop[0] === "_") || prop === "then" || prop === "doNotCapture") {
-        //             return undefined;
-        //         }
-        //         // Else for *any other* property lookup, succeed the lookup and return a lifted `apply` on the
-        //         // underlying `Output`.
-        //         return obj.apply(ob => (<any>ob)[prop]);
-        //     },
-        // });
+                // Always explicitly fail on a member called 'then'.  It is used by other systems to
+                // determine if this is a Promise, and we do not want to indicate that that's what
+                // we are.
+                if (prop === "then") {
+                    return undefined;
+                }
+
+                // Fail out if we are being accessed using a symbol.  Many APIs will access with a
+                // well known symbol (like 'Symbol.toPrimitive') to check for the presence of something.
+                // They will only check for the existence of that member, and we don't want to make it
+                // appear that have those.
+                //
+                // Another way of putting this is that we only forward 'string/number' members to our
+                // underlying value.
+                if (typeof prop === "symbol") {
+                    return undefined;
+                }
+
+                // Else for *any other* property lookup, succeed the lookup and return a lifted
+                // `apply` on the underlying `Output`.
+                return obj.apply(ob => {
+                    if (ob === undefined || ob === null) {
+                        return undefined;
+                    }
+
+                    return ob[prop];
+                });
+            },
+        });
     }
 }
 
