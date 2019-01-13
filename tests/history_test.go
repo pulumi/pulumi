@@ -16,9 +16,10 @@ package tests
 import (
 	"testing"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/stretchr/testify/assert"
+
+	ptesting "github.com/pulumi/pulumi/pkg/testing"
 )
 
 // assertHasNoHistory runs `pulumi history` and confirms an error that the stack has not
@@ -56,6 +57,7 @@ func TestHistoryCommand(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/stack_dependencies")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.ImportDirectory("integration/stack_outputs")
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
