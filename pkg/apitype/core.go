@@ -261,7 +261,7 @@ type Stack struct {
 	OrgName   string `json:"orgName"`
 
 	RepoName    string       `json:"repoName"`
-	ProjectName string       `json:"projName"`
+	ProjectName string       `json:"projectName"`
 	StackName   tokens.QName `json:"stackName"`
 
 	ActiveUpdate string                  `json:"activeUpdate"`
