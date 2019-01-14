@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import sys
+import traceback
 from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, TYPE_CHECKING
 import grpc
 
@@ -124,19 +125,24 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     urn_future = asyncio.Future()
     urn_known = asyncio.Future()
     urn_known.set_result(True)
-    resolve_urn: Callable[[str], None] = urn_future.set_result
+    resolve_urn = urn_future.set_result
+    resolve_urn_exn = urn_future.set_exception
     res.urn = known_types.new_output({res}, urn_future, urn_known)
 
     # If a custom resource, make room for the ID property.
-    resolve_id: Optional[Callable[[Any, str], None]] = None
+    resolve_id: Optional[Callable[[Any, str, Optional[Exception]], None]] = None
     if custom:
         resolve_value = asyncio.Future()
         resolve_perform_apply = asyncio.Future()
         res.id = known_types.new_output({res}, resolve_value, resolve_perform_apply)
 
-        def do_resolve(value: Any, perform_apply: bool):
-            resolve_value.set_result(value)
-            resolve_perform_apply.set_result(perform_apply)
+        def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
+            if exn is not None:
+                resolve_value.set_exception(exn)
+                resolve_perform_apply.set_exception(exn)
+            else:
+                resolve_value.set_result(value)
+                resolve_perform_apply.set_result(perform_apply)
 
         resolve_id = do_resolve
 
@@ -146,39 +152,47 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     resolvers = rpc.transfer_properties(res, props)
 
     async def do_register():
-        log.debug(f"preparing resource registration: ty={ty}, name={name}")
-        resolver = await prepare_resource(res, ty, custom, props, opts)
-        log.debug(f"resource registration prepared: ty={ty}, name={name}")
-        req = resource_pb2.RegisterResourceRequest(
-            type=ty,
-            name=name,
-            parent=resolver.parent_urn,
-            custom=custom,
-            object=resolver.serialized_props,
-            protect=opts.protect,
-            provider=resolver.provider_ref,
-            dependencies=resolver.dependencies
-        )
+        try:
+            log.debug(f"preparing resource registration: ty={ty}, name={name}")
+            resolver = await prepare_resource(res, ty, custom, props, opts)
+            log.debug(f"resource registration prepared: ty={ty}, name={name}")
+            req = resource_pb2.RegisterResourceRequest(
+                type=ty,
+                name=name,
+                parent=resolver.parent_urn,
+                custom=custom,
+                object=resolver.serialized_props,
+                protect=opts.protect,
+                provider=resolver.provider_ref,
+                dependencies=resolver.dependencies
+            )
 
-        def do_rpc_call():
-            try:
-                return monitor.RegisterResource(req)
-            except grpc.RpcError as exn:
-                # See the comment on invoke for the justification for disabling
-                # this warning
-                # pylint: disable=no-member
-                if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                    sys.exit(0)
+            def do_rpc_call():
+                try:
+                    return monitor.RegisterResource(req)
+                except grpc.RpcError as exn:
+                    # See the comment on invoke for the justification for disabling
+                    # this warning
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
 
-                details = exn.details()
-            raise Exception(details)
+                    details = exn.details()
+                raise Exception(details)
+            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        except Exception as exn:
+            log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            rpc.resolve_outputs_due_to_exception(resolvers, exn)
+            resolve_urn_exn(exn)
+            if resolve_id is not None:
+                resolve_id(None, False, exn)
+            raise
 
-        resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
         if resolve_id:
             is_known = resp.id is not None
-            resolve_id(resp.id, is_known)
+            resolve_id(resp.id, is_known, None)
 
         await rpc.resolve_outputs(res, props, resp.object, resolvers)
 

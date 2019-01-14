@@ -3,6 +3,7 @@
 
 import argparse
 import asyncio
+import logging
 import os
 import sys
 import traceback
@@ -61,6 +62,24 @@ if __name__ == "__main__":
 
     successful = False
     loop = asyncio.get_event_loop()
+    
+    # We are (unfortunately) suppressing the log output of asyncio to avoid showing to users some of the bad things we
+    # do in our programming model.
+    #
+    # Fundamentally, Pulumi is a way for users to build asynchronous dataflow graphs that, as their deployments
+    # progress, resolve naturally and eventually result in the complete resolution of the graph. If one node in the
+    # graph fails (i.e. a resource fails to create, there's an exception in an apply, etc.), part of the graph remains
+    # unevaluated at the time that we exit.
+    #
+    # asyncio abhors this. It gets very upset if the process terminates without having observed every future that we
+    # have resolved. If we are terminating abnormally, it is highly likely that we are not going to observe every single
+    # future that we have created. Furthermore, it's *harmless* to do this - asyncio logs errors because it thinks it
+    # needs to tell users that they're doing bad things (which, to their credit, they are), but we are doing this
+    # deliberately.
+    #
+    # In order to paper over this for our users, we simply turn off the logger for asyncio. Users won't see any asyncio
+    # error messages, but if they stick to the Pulumi programming model, they wouldn't be seeing any anyway.
+    logging.getLogger("asyncio").setLevel(logging.CRITICAL)
     try:
         coro = pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
         loop.run_until_complete(coro)
