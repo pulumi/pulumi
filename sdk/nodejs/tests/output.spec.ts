@@ -94,5 +94,10 @@ describe("output", () => {
             assert.ok(output1.apply instanceof Function);
             assert.ok(output1.isKnown instanceof Promise);
         }));
+
+        it("does not lift symbols", asyncTest(async () => {
+            const output1 = resource.output({ apply: 1, promise: 2 });
+            assert.strictEqual((<any>output1)[Symbol.toPrimitive], undefined);
+        }));
     });
 });
