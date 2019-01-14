@@ -65,6 +65,70 @@ describe("output", () => {
         assert.fail("Should not read here");
     }));
 
+    describe("concat", () => {
+        it ("handles no args", asyncTest(async () => {
+            const result = resource.concat();
+            assert.equal(await result.promise(), "");
+        }));
+
+        it ("handles empty string arg", asyncTest(async () => {
+            const result = resource.concat("");
+            assert.equal(await result.promise(), "");
+        }));
+
+        it ("handles non-empty string arg", asyncTest(async () => {
+            const result = resource.concat("a");
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles promise string arg", asyncTest(async () => {
+            const result = resource.concat(Promise.resolve("a"));
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles output string arg", asyncTest(async () => {
+            const result = resource.concat(resource.output("a"));
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles multiple args", asyncTest(async () => {
+            const result = resource.concat("http://", resource.output("a"), ":", 80);
+            assert.equal(await result.promise(), "http://a:80");
+        }));
+    });
+
+    describe("interpolate", () => {
+        it ("handles empty interpolation", asyncTest(async () => {
+            const result = resource.interpolate ``;
+            assert.equal(await result.promise(), "");
+        }));
+
+        it ("handles no placeholders arg", asyncTest(async () => {
+            const result = resource.interpolate `a`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles string placeholders arg", asyncTest(async () => {
+            const result = resource.interpolate `${"a"}`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles promise placeholders arg", asyncTest(async () => {
+            const result = resource.interpolate `${Promise.resolve("a")}`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles output placeholders arg", asyncTest(async () => {
+            const result = resource.interpolate `${resource.output("a")}`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles multiple args", asyncTest(async () => {
+            const result = resource.interpolate `http://${resource.output("a")}:${80}/`;
+            assert.equal(await result.promise(), "http://a:80/");
+        }));
+    });
+
     describe("lifted operations", () => {
         it("lifts properties from inner object", asyncTest(async () => {
             const output1 = resource.output({ a: 1, b: true, c: "str", d: [2], e: { f: 3 }, g: undefined, h: null });
