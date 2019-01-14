@@ -3,6 +3,8 @@
 ### Improvements
 
 - Link directly to /account/tokens when prompting for an access token.
+- Output<T> now 'lifts' property members from the value it wraps, simplifying common coding patterns.
+- pulumi.interpolate and pulumi.concat have been added as convenient ways to combine Output values into strings.
 
 ## 0.16.9 (Released December 24th, 2018)
 
