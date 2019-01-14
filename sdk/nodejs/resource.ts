@@ -645,14 +645,13 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[]
 }
 
 /**
- * Input is a property input for a resource.  It may be a promptly available T, a promise
- * for one, or the output from a existing Resource.
+ * [Input] is a property input for a resource.  It may be a promptly available T, a promise for one,
+ * or the output from a existing Resource.
  */
 export type Input<T> = T | Promise<T> | Output<T>;
 
 /**
- * Inputs is a map of property name to property input, one for each resource
- * property value.
+ * [Inputs] is a map of property name to property input, one for each resource property value.
  */
 export type Inputs = Record<string, Input<any>>;
 
