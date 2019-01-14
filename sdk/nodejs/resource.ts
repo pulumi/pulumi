@@ -714,6 +714,10 @@ export type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
 
+/**
+ * Static side of the [Output<T>] type.  Can be used to [create] Outputs as well as test
+ * arbitrary values to see if they are [Output]s.
+ */
 export interface OutputConstructor {
     create<T>(val: Input<T>): Output<Unwrap<T>>;
     create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
@@ -726,11 +730,88 @@ export interface OutputConstructor {
             isKnown: Promise<boolean>): Output<T>;
 }
 
+/**
+ * [Output] helps encode the relationship between Resources in a Pulumi application. Specifically an
+ * [Output] holds onto a piece of Data and the Resource it was generated from. An [Output] value can
+ * then be provided when constructing new Resources, allowing that new Resource to know both the
+ * value as well as the Resource the value came from.  This allows for a precise 'Resource
+ * dependency graph' to be created, which properly tracks the relationship between resources.
+ *
+ * An [Output] is used in a Pulumi program differently depending on if the application is executing
+ * at 'deployment time' (i.e. when actually running the 'pulumi' executable), or at 'run time' (i.e.
+ * a piece of code running in some Cloud).
+ *
+ * At 'deployment time', the correct way to work with the underlying value is to call
+ * [Output.apply(func)].  This allows the value to be accessed and manipulated, while still
+ * resulting in an [Output] that is keeping track of [Resource]s appropriately.  At deployment time
+ * the underlying value may or may not exist (for example, if a preview is being performed).  In
+ * this case, the 'func' callback will not be executed, and calling [.apply] will immediately return
+ * an [Output] that points to the [undefined] value.  During a normal [update] though, the 'func'
+ * callbacks should always be executed.
+ *
+ * At 'run time', the correct way to work with the underlying value is to simply call [Output.get]
+ * which will be promptly return the entire value.  This will be a simple JavaScript object that can
+ * be manipulated as necessary.
+ *
+ * To ease with using [Output]s at 'deployment time', pulumi will 'lift' simple data properties of
+ * an underlying value to the [Output] itself.  For example:
+ *
+ * ```ts
+ *      const o: Output<{ name: string, age: number, orders: Order[] }> = ...;
+ *      const name : Output<string> = o.name;
+ *      const age  : Output<number> = o.age;
+ *      const first: Output<Order>  = o.orders[0];
+ * ```
+ *
+ * Instead of having to write:
+ *
+ * ```ts
+ *      const o: Output<{ name: string, age: number, orders: Order[] }> = ...;
+ *      const name : Output<string> = o.apply(v => v.name);
+ *      const age  : Output<number> = o.apply(v => v.age);
+ *      const first: Output<Order> = o.apply(v => v.orders[0]);
+ * ```
+ */
 export type Output<T> = OutputImpl<T> & Lifted<T>;
 // tslint:disable-next-line:variable-name
 export const Output: OutputConstructor = <any>OutputImpl;
 
+/**
+ * The [Lifted] type allows us to express the operation of taking a type, with potentially deeply
+ * nested objects and arrays and to then get a type with the same properties, except whose property
+ * types are now [Output]s of the original property type.
+ *
+ * For example:
+ *
+ *
+ *      `type X = { A: string, B: { c: boolean } }`
+ *
+ * Then `Lifted<X>` would be equivalent to:
+ *
+ *      `...    = { A: Output<string>, B: Output<{ C: Output<boolean> }> }`
+ *
+ * [Lifted] is somewhat the opposite of [Unwrap].  It's primary purpose is to allow an instance of
+ * [Output<SomeType>] to provide simple access to the properties of [SomeType] directly on the instance
+ * itself (instead of haveing to use [.apply]).
+ *
+ * This lifting only happens through simple pojo objects and arrays.  Functions, for example, are not
+ * lifted.  So you cannot do:
+ *
+ * ```ts
+ *      const o: Output<string> = ...;
+ *      const c: Output<number> = o.charCodeAt(0);
+ * ```
+ *
+ * Instead, you still need to write;
+ *
+ * ```ts
+ *      const o: Output<string> = ...;
+ *      const c: Output<number> = o.apply(v => v.charCodeAt(0));
+ * ```
+ */
 export type Lifted<T> =
+    // Output<T> is an intersection type with 'Lifted<T>'.  So, when we don't want to add any
+    // members to Output<T>, we just return `{}` which will leave it untouched.
     T extends Function ? {} :
     T extends primitive ? {} :
     T extends Resource ? {} :
@@ -743,6 +824,3 @@ export interface LiftedArray<T> extends Array<Output<T>> {}
 export type LiftedObject<T> = {
     [P in keyof T]: Output<T[P]>;
 };
-
-// let a: Output<string>;
-// a.apply(m => ({ a: 1, b: true, c: m, d: [m]})).d[0].
