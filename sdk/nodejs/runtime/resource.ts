@@ -263,11 +263,12 @@ async function gatherExplicitDependencies(
 
     if (dependsOn) {
         if (Array.isArray(dependsOn)) {
-            const dos: URN[] = [];
+            const urns: URN[] = [];
             for (const d of dependsOn) {
-                dos.push(...(await gatherExplicitDependencies(d)));
+                const input = <Input<Resource>>d;
+                urns.push(...(await gatherExplicitDependencies(input)));
             }
-            return dos;
+            return urns;
         } else if (dependsOn instanceof Promise) {
             return gatherExplicitDependencies(await dependsOn);
         } else if (Output.isInstance(dependsOn)) {

@@ -314,7 +314,7 @@ export const testingOptions = {
  * value as well as the Resource the value came from.  This allows for a precise 'Resource
  * dependency graph' to be created, which properly tracks the relationship between resources.
  */
-export class Output<T> {
+class OutputImpl<T> {
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
@@ -421,7 +421,7 @@ export class Output<T> {
 
         this.promise = () => promise;
 
-        this.apply = <U>(func: (t: T) => Input<U>) => {
+        this.apply = <any>(<U>(func: (t: T) => Input<U>) => {
             let innerIsKnownResolve: (val: boolean) => void;
             const innerIsKnown = new Promise<boolean>(resolve => {
                 innerIsKnownResolve = resolve;
@@ -474,7 +474,7 @@ export class Output<T> {
                     innerIsKnownResolve(false);
                 }
             }), resultIsKnown);
-        };
+        });
 
         this.get = () => {
             throw new Error(`Cannot call '.get' during update or preview.
@@ -713,3 +713,36 @@ export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 export type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
+
+export interface OutputConstructor {
+    create<T>(val: Input<T>): Output<Unwrap<T>>;
+    create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+
+    isInstance<T>(obj: any): obj is Output<T>;
+
+    /* @internal */ new<T>(
+            resources: Set<Resource> | Resource[] | Resource,
+            promise: Promise<T>,
+            isKnown: Promise<boolean>): Output<T>;
+}
+
+export type Output<T> = OutputImpl<T> & Lifted<T>;
+// tslint:disable-next-line:variable-name
+export const Output: OutputConstructor = <any>OutputImpl;
+
+export type Lifted<T> =
+    T extends Function ? {} :
+    T extends primitive ? {} :
+    T extends Resource ? {} :
+    T extends Array<infer U> ? LiftedArray<U> :
+    T extends object ? LiftedObject<T> :
+    never;
+
+export interface LiftedArray<T> extends Array<Output<T>> {}
+
+export type LiftedObject<T> = {
+    [P in keyof T]: Output<T[P]>;
+};
+
+// let a: Output<string>;
+// a.apply(m => ({ a: 1, b: true, c: m, d: [m]})).d[0].
