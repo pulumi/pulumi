@@ -51,7 +51,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
     def Invoke(self, request, context):
         args = rpc.deserialize_properties(request.args)
-        failures, ret = self.langhost_test.invoke(context, request.tok, args)
+        failures, ret = self.langhost_test.invoke(context, request.tok, args, request.provider)
         failures_rpc = list(map(
             lambda fail: provider_pb2.CheckFailure(property=fail["property"], reason=fail["reason"]), failures))
 
@@ -83,10 +83,14 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         name = request.name
         props = rpc.deserialize_properties(request.object)
         deps = list(request.dependencies)
+        parent = request.parent
+        custom = request.custom
+        protect = request.protect
+        provider = request.provider
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
             outs = self.langhost_test.register_resource(
-                context, self.dryrun, type_, name, props, deps)
+                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider)
             if outs.get("urn"):
                 urn = outs["urn"]
                 self.registrations[urn] = {
@@ -224,7 +228,7 @@ class LanghostTest(unittest.TestCase):
 
             monitor.server.stop(0)
 
-    def invoke(self, _ctx, _token, _args):
+    def invoke(self, _ctx, _token, _args, _provider):
         """
         Method corresponding to the `Invoke` resource monitor RPC call.
         Override for custom behavior or assertions.

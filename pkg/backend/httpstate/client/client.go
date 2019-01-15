@@ -516,3 +516,15 @@ func (pc *Client) RecordEngineEvent(
 		nil, event, nil,
 		updateAccessToken(token), callOpts)
 }
+
+// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+func (pc *Client) UpdateStackTags(
+	ctx context.Context, stack StackIdentifier, tags map[apitype.StackTagName]string) error {
+
+	// Validate stack tags.
+	if err := backend.ValidateStackTags(tags); err != nil {
+		return err
+	}
+
+	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
+}

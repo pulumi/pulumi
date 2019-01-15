@@ -509,7 +509,7 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
-	tags, err := backend.GetStackTags()
+	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
@@ -648,10 +648,12 @@ func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	ctx context.Context, action apitype.UpdateKind, stackRef backend.StackReference,
+	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
-	stack, err := b.getCloudStackIdentifier(stackRef)
+	stackRef := stack.Ref()
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -672,14 +674,14 @@ func (b *cloudBackend) createAndStartUpdate(
 		Environment: op.M.Environment,
 	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stack, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
+		ctx, action, stackID, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags, err := backend.GetStackTags()
+	tags, err := backend.GetMergedStackTags(ctx, stack)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting stack tags")
 	}
@@ -704,7 +706,7 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
 
 	// Create an update object to persist results.
-	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack.Ref(), op, opts.DryRun)
+	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -1154,4 +1156,31 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 	}
 
 	return true, nil
+}
+
+// GetStackTags fetches the stack's existing tags.
+func (b *cloudBackend) GetStackTags(ctx context.Context,
+	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
+
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	if stack == nil {
+		return nil, errors.New("stack not found")
+	}
+
+	return stack.(Stack).Tags(), nil
+}
+
+// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+func (b *cloudBackend) UpdateStackTags(ctx context.Context,
+	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
+
+	stack, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return err
+	}
+
+	return b.client.UpdateStackTags(ctx, stack, tags)
 }
