@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each
+// Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
 //
 // This interface hides some of the messiness of the underlying machinery, since providers are behind an RPC boundary.
