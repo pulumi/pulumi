@@ -338,7 +338,8 @@ func getUpgradeCommand() string {
 		powershellCmd = "powershell"
 	}
 
-	return "> " + powershellCmd + ` -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ` +
+	return "> " + powershellCmd + ` -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "` +
+		`[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex ` +
 		`((New-Object System.Net.WebClient).DownloadString('https://get.pulumi.com/install.ps1'))"`
 }
 
