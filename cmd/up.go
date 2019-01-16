@@ -191,13 +191,14 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		// Load the project, update the name & description, and save it.
+		// Load the project, update the name & description, remove the template section, and save it.
 		proj, root, err := readProject()
 		if err != nil {
 			return err
 		}
 		proj.Name = tokens.PackageName(name)
 		proj.Description = &description
+		proj.Template = nil
 		if err = workspace.SaveProject(proj); err != nil {
 			return errors.Wrap(err, "saving project")
 		}
