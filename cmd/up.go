@@ -170,7 +170,8 @@ func newUpCmd() *cobra.Command {
 		// Prompt for the project name, if we don't already have one from an existing stack.
 		if name == "" {
 			defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
-			name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
+			name, err = promptForValue(
+				yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -180,7 +181,8 @@ func newUpCmd() *cobra.Command {
 		if description == "" {
 			defaultValue := workspace.ValueOrDefaultProjectDescription(
 				description, template.ProjectDescription, template.Description)
-			description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
+			description, err = promptForValue(
+				yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
 				return err
 			}

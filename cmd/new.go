@@ -86,8 +86,8 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Validate name (if specified) before further prompts/operations.
-			if name != "" && !workspace.IsValidProjectName(name) {
-				return errors.Errorf("'%s' is not a valid project name", name)
+			if name != "" && workspace.ValidateProjectName(name) != nil {
+				return errors.Errorf("'%s' is not a valid project name. %s.", name, workspace.ValidateProjectName(name))
 			}
 
 			// Get the current working directory.
@@ -200,7 +200,8 @@ func newNewCmd() *cobra.Command {
 			// Prompt for the project name, if it wasn't already specified.
 			if name == "" {
 				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, filepath.Base(cwd))
-				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
+				name, err = promptForValue(
+					yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -210,7 +211,8 @@ func newNewCmd() *cobra.Command {
 			if description == "" {
 				defaultValue := workspace.ValueOrDefaultProjectDescription(
 					description, template.ProjectDescription, template.Description)
-				description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
+				description, err = promptForValue(
+					yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -409,7 +411,7 @@ func promptAndCreateStack(
 	defaultValue := getDevStackName(projectName)
 
 	for {
-		stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, opts)
+		stackName, err := promptForValue(yes, "stack name", defaultValue, false, workspace.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -767,20 +769,24 @@ func promptForConfig(
 
 // promptForValue prompts the user for a value with a defaultValue preselected. Hitting enter accepts the
 // default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
-// when specified, it will be run to validate that value entered. An invalid value will result in an error
-// message followed by another prompt for the value.
+// when specified, it will be run to validate that value entered. When this function returns a non nil error
+// validation is assumed to have failed and an error is printed. The error returned by isValidFn is also displayed
+// to provide information about why the validation failed. A period is appended to this message. `promptForValue` then
+// prompts again.
 func promptForValue(
-	yes bool, prompt string, defaultValue string, secret bool,
-	isValidFn func(value string) bool, opts display.Options) (string, error) {
+	yes bool, valueType string, defaultValue string, secret bool,
+	isValidFn func(value string) error, opts display.Options) (string, error) {
 
 	if yes {
 		return defaultValue, nil
 	}
 
 	for {
+		var prompt string
+
 		if defaultValue == "" {
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
+				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, valueType, colors.Reset))
 		} else {
 			defaultValuePrompt := defaultValue
 			if secret {
@@ -788,7 +794,7 @@ func promptForValue(
 			}
 
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValuePrompt, colors.Reset))
+				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, valueType, defaultValuePrompt, colors.Reset))
 		}
 		fmt.Print(prompt)
 
@@ -809,12 +815,17 @@ func promptForValue(
 		value = strings.TrimSpace(value)
 
 		if value != "" {
-			if isValidFn == nil || isValidFn(value) {
+			var validationError error
+			if isValidFn != nil {
+				validationError = isValidFn(value)
+			}
+
+			if validationError == nil {
 				return value, nil
 			}
 
 			// The value is invalid, let the user know and try again
-			fmt.Printf("Sorry, '%s' is not a valid %s.\n", value, prompt)
+			fmt.Printf("Sorry, '%s' is not a valid %s. %s.\n", value, valueType, validationError)
 			continue
 		}
 		return defaultValue, nil
