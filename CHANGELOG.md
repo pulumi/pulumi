@@ -1,5 +1,9 @@
 ## 0.16.11 (Unreleased)
 
+### Improvements
+
+- In the nodejs SDK, `pulumi.interpolate` and `pulumi.concat` have been added as convenient ways to combine Output values into strings.
+
 ## 0.16.10 (Released January 11th, 2019)
 
 ### Improvements
@@ -13,8 +17,6 @@
 - Link directly to /account/tokens when prompting for an access token.
 
 - Exporting a Resource from an application Stack now exports it as a rich recursive pojo instead of just being an opaque URN (fixes https://github.com/pulumi/pulumi/issues/1858).
-
-- pulumi.interpolate and pulumi.concat have been added as convenient ways to combine Output values into strings.
 
 ## 0.16.9 (Released December 24th, 2018)
 
