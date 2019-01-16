@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -28,7 +29,6 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
 )
@@ -375,9 +375,52 @@ func GetTemplateDir() (string, error) {
 	return dir, nil
 }
 
-// IsValidProjectName returns true if the project name is a valid name.
-func IsValidProjectName(name string) bool {
-	return tokens.IsPackageName(name)
+// We are moving towards a world where these restrictions will be enforced by all our backends. When we get there,
+// we can consider removing this code in favor of exported functions in the backend package. For now, these are more
+// restrictive that what the backend enforces, but we want to "stop the bleeding" for new projects created via
+// `pulumi new`.
+var (
+	stackNameAndProjectRegexp = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
+)
+
+// ValidateProjectName ensures a project name is valid, if it is not it returns an error with a message suitable
+// for display to an end user.
+func ValidateProjectName(s string) error {
+	if len(s) > 100 {
+		return errors.New("A project name must be 100 characters or less")
+	}
+
+	if !stackNameAndProjectRegexp.MatchString(s) {
+		return errors.New("A project name may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+
+	return nil
+}
+
+// ValidateProjectDescription ensures a project description name is valid, if it is not it returns an error with a
+// message suitable for display to an end user.
+func ValidateProjectDescription(s string) error {
+	const maxTagValueLength = 256
+
+	if len(s) > maxTagValueLength {
+		return errors.New("A project description must be 256 characters or less")
+	}
+
+	return nil
+}
+
+// ValidateStackName ensures a stack name is valid, if it is not it returns an error with a message suitable
+// for display to an end user.
+func ValidateStackName(s string) error {
+	if len(s) > 100 {
+		return errors.New("A stack name must be 100 characters or less")
+	}
+
+	if !stackNameAndProjectRegexp.MatchString(s) {
+		return errors.New("A stack name may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+
+	return nil
 }
 
 // ValueOrSanitizedDefaultProjectName returns the value or a sanitized valid project name
@@ -418,7 +461,7 @@ func ValueOrDefaultProjectDescription(
 // getValidProjectName returns a valid project name based on the passed-in name.
 func getValidProjectName(name string) string {
 	// If the name is valid, return it.
-	if IsValidProjectName(name) {
+	if ValidateProjectName(name) == nil {
 		return name
 	}
 
@@ -426,7 +469,7 @@ func getValidProjectName(name string) string {
 	var result string
 	for i := 0; i < len(name); i++ {
 		temp := result + string(name[i])
-		if IsValidProjectName(temp) {
+		if ValidateProjectName(temp) == nil {
 			result = temp
 		}
 	}
