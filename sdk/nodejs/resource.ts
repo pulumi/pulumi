@@ -672,3 +672,46 @@ export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 export type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
+
+/**
+ * [concat] takes a sequence of [Inputs], stringifies each, and concatenates all values into one
+ * final string.  Individual inputs can be any sort of [Input] value.  i.e. they can be [Promise]s,
+ * [Output]s, or just plain JavaScript values.  This can be used like so:
+ *
+ * ```ts
+ *      // 'server' and 'loadBalancer' are both resources that expose [Output] properties.
+ *      let val: Output<string> = pulumi.concat("http://", server.hostname, ":", loadBalancer.port);
+ * ```
+ *
+ */
+export function concat(...params: Input<any>[]): Output<string> {
+    return output(params).apply(array => array.join(""));
+}
+
+/**
+ * [interpolate] is similar to [concat] but is designed to be used as a tagged template expression.
+ * i.e.:
+ *
+ * ```ts
+ *      // 'server' and 'loadBalancer' are both resources that expose [Output] properties.
+ *      let val: Output<string> = pulumi.interpolate `http://${server.hostname}:${loadBalancer.port}`
+ * ```
+ *
+ * As with [concat] the 'placeholders' between `${}` can be any Inputs.  i.e. they can be
+ * [Promise]s, [Output]s, or just plain JavaScript values.
+ */
+export function interpolate(literals: TemplateStringsArray, ...placeholders: Input<any>[]): Output<string> {
+    return output(placeholders).apply(unwrapped => {
+        let result = "";
+
+        // interleave the literals with the placeholders
+        for (let i = 0; i < unwrapped.length; i++) {
+            result += literals[i];
+            result += unwrapped[i];
+        }
+
+        // add the last literal
+        result += literals[literals.length - 1];
+        return result;
+    });
+}
