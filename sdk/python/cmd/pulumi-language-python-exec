@@ -49,8 +49,8 @@ if __name__ == "__main__":
             engine=args.engine,
             project=args.project,
             stack=args.stack,
-            parallel=args.parallel,
-            dry_run=args.dry_run
+            parallel=int(args.parallel),
+            dry_run=args.dry_run == "true"
         )
     )
 
