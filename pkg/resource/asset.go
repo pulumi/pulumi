@@ -799,9 +799,23 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 				return nil
 			}
 
-			// If this was a directory or a symlink, skip it.
-			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+			// If this was a directory, skip it.
+			if f.IsDir() {
 				return nil
+			}
+
+			// If this is a symlink and it points at a directory, skip it. Otherwise continue along. This will mean
+			// that the file will be added to the list of files to archive. When you go to read this archive, you'll
+			// get a copy of the file (instead of a symlink) to some other file in the archive.
+			if f.Mode()&os.ModeSymlink != 0 {
+				fileInfo, statErr := os.Stat(filePath)
+				if statErr != nil {
+					return statErr
+				}
+
+				if fileInfo.IsDir() {
+					return nil
+				}
 			}
 
 			// Otherwise, add this asset to the list of paths and keep going.
