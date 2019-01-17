@@ -31,6 +31,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -504,12 +505,13 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 
 // programTester contains state associated with running a single test pass.
 type programTester struct {
-	t         *testing.T          // the Go tester for this run.
-	opts      *ProgramTestOptions // options that control this test run.
-	bin       string              // the `pulumi` binary we are using.
-	yarnBin   string              // the `yarn` binary we are using.
-	goBin     string              // the `go` binary we are using.
-	pipenvBin string              // The `pipenv` binary we are using.
+	t           *testing.T          // the Go tester for this run.
+	opts        *ProgramTestOptions // options that control this test run.
+	bin         string              // the `pulumi` binary we are using.
+	yarnBin     string              // the `yarn` binary we are using.
+	goBin       string              // the `go` binary we are using.
+	pipenvBin   string              // The `pipenv` binary we are using.
+	pipenvMutex sync.Mutex          // Serializes pipenv invocations. See comment in `runPipenvCommand` for details
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
@@ -644,6 +646,38 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 }
 
 func (pt *programTester) runPipenvCommand(name string, args []string, wd string) error {
+	// Pipenv uses setuptools to install and uninstall packages. Setuptools has an installation mode called "develop"
+	// that we use to install the package being tested, since it is 1) lightweight and 2) not doing so has its own set
+	// of annoying problems.
+	//
+	// Setuptools develop does three things:
+	//   1. It invokes the "egg_info" command in the target package,
+	//   2. It creates a special `.egg-link` sentinel file in the current site-packages folder, pointing to the package
+	//      being installed's path on disk
+	//   3. It updates easy-install.pth in site-packages so that pip understand that this package has been installed.
+	//
+	// Steps 2 and 3 operate entirely within the context of a virtualenv. The state that they mutate is fully contained
+	// within the current virtualenv. However, step 1 operates in the context of the package's source tree. Egg info
+	// is responsible for producing a minimal "egg" for a particular package, and its largest responsibility is creating
+	// a PKG-INFO file for a package. PKG-INFO contains, among other things, the version of the package being installed.
+	//
+	// If two packages are being installed in "develop" mode simultaneously (which happens often, when running tests),
+	// both installations will run "egg_info" on the source tree and both processes will be writing the same files
+	// simultaneously. If one process catches "PKG-INFO" in a half-written state, the one process that observed the
+	// torn write will fail to install the package (setuptools crashes).
+	//
+	// To avoid this problem, we use pipenvMutex to explicitly serialize installation operations. Doing so avoids the
+	// problem of multiple processes stomping on the same files in the source tree.
+	if name == "pipenv-install-package" {
+		if pt.opts.Verbose {
+			fprintf(pt.opts.Stdout, "serializing pipenv install action\n")
+			defer fprintf(pt.opts.Stdout, "pipenv install action complete\n")
+		}
+
+		pt.pipenvMutex.Lock()
+		defer pt.pipenvMutex.Unlock()
+	}
+
 	cmd, err := pt.pipenvCmd(args)
 	if err != nil {
 		return err
