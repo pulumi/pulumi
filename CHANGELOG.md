@@ -1,8 +1,20 @@
-## 0.16.11 (Unreleased)
+## 0.16.12 (Unreleased)
+
+### Improvements
+
+## 0.16.11 (Released January 16th, 2019)
 
 ### Improvements
 
 - In the nodejs SDK, `pulumi.interpolate` and `pulumi.concat` have been added as convenient ways to combine Output values into strings.
+
+- Added `pulumi history` to show information about the history of updates to a stack.
+
+- When creating a project with `pulumi new` the generated `Pulumi.yaml` file no longer contains the template section, which was unused after creating a project
+
+- In the Python SDK, the `is_dry_run` function just always returned `true`, even when an update (and not a preview) was being preformed. This has been fixed.
+
+- Python programs will no longer deadlock due to exceptions in functions run during applies.
 
 ## 0.16.10 (Released January 11th, 2019)
 
