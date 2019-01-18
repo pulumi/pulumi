@@ -17,6 +17,7 @@ import * as path from "path";
 
 import * as dynamic from "../../dynamic";
 import * as resource from "../../resource";
+import * as runtime from "../../runtime";
 import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
@@ -69,7 +70,7 @@ async function checkRPC(call: any, callback: any): Promise<void> {
 
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        const provider = getProvider(news);
+        const provider = getProvider(news[providerKey] === runtime.unknownValue ? olds : news);
 
         let inputs: any = news;
         let failures: any[] = [];
@@ -122,7 +123,7 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         // time the provider was updated.
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        const provider = getProvider(news);
+        const provider = getProvider(news[providerKey] === runtime.unknownValue ? olds : news);
         if (provider.diff) {
             const result: any = await provider.diff(req.getId(), olds, news);
 
