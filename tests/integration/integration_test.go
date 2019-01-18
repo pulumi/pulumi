@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -508,19 +509,14 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 }
 
 func TestStackTagsNodeJS(t *testing.T) {
-	// Only validate custom tags when using the cloud backend as the local backend
-	// doesn't currently support persisting tags.
-	customtag := "false"
-	if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
-		customtag = "true"
-	}
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_tags", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		Config: map[string]string{
-			"customtag": customtag,
+			// Only validate custom tags when using the cloud backend as the local backend
+			// doesn't currently support persisting tags.
+			"customtag": strconv.FormatBool(os.Getenv("PULUMI_ACCESS_TOKEN") != ""),
 		},
 		StackTags: map[string]string{
 			"foo": "bar",
@@ -555,13 +551,6 @@ func TestConfigBasicPython(t *testing.T) {
 }
 
 func TestStackTagsPython(t *testing.T) {
-	// Only validate custom tags when using the cloud backend as the local backend
-	// doesn't currently support persisting tags.
-	customtag := "false"
-	if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
-		customtag = "true"
-	}
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_tags", "python"),
 		Dependencies: []string{
@@ -569,7 +558,9 @@ func TestStackTagsPython(t *testing.T) {
 		},
 		Quick: true,
 		Config: map[string]string{
-			"customtag": customtag,
+			// Only validate custom tags when using the cloud backend as the local backend
+			// doesn't currently support persisting tags.
+			"customtag": strconv.FormatBool(os.Getenv("PULUMI_ACCESS_TOKEN") != ""),
 		},
 		StackTags: map[string]string{
 			"foo": "bar",
@@ -592,18 +583,13 @@ func TestConfigBasicGo(t *testing.T) {
 }
 
 func TestStackTagsGo(t *testing.T) {
-	// Only validate custom tags when using the cloud backend as the local backend
-	// doesn't currently support persisting tags.
-	customtag := "false"
-	if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
-		customtag = "true"
-	}
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("stack_tags", "go"),
 		Quick: true,
 		Config: map[string]string{
-			"customtag": customtag,
+			// Only validate custom tags when using the cloud backend as the local backend
+			// doesn't currently support persisting tags.
+			"customtag": strconv.FormatBool(os.Getenv("PULUMI_ACCESS_TOKEN") != ""),
 		},
 		StackTags: map[string]string{
 			"foo": "bar",
