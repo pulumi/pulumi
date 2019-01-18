@@ -148,7 +148,7 @@ func newLogsCmd() *cobra.Command {
 		&stackConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	logsCmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit outputs as JSON")
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	logsCmd.PersistentFlags().BoolVarP(
 		&follow, "follow", "f", false,
 		"Follow the log stream in real time (like tail -f)")
