@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- Added support for reading stack tags from Pulumi programs (fixes [pulumi/pulumi#2144](https://github.com/pulumi/pulumi/issues/2144)).
+
 ## 0.16.11 (Released January 16th, 2019)
 
 ### Improvements
