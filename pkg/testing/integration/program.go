@@ -31,9 +31,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	"github.com/gofrs/flock"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -511,11 +512,19 @@ type programTester struct {
 	yarnBin     string              // the `yarn` binary we are using.
 	goBin       string              // the `go` binary we are using.
 	pipenvBin   string              // The `pipenv` binary we are using.
-	pipenvMutex sync.Mutex          // Serializes pipenv invocations. See comment in `runPipenvCommand` for details
+	pipenvMutex *flock.Flock        // Serializes pipenv invocations. See comment in `runPipenvCommand` for details
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
-	return &programTester{t: t, opts: opts}
+	lockFile := filepath.Join(os.TempDir(), "pulumi-pipenv.lock")
+	if opts.Verbose {
+		fprintf(os.Stdout, "Using Pipenv lock: %s\n", lockFile)
+	}
+	return &programTester{
+		t:           t,
+		opts:        opts,
+		pipenvMutex: flock.New(lockFile),
+	}
 }
 
 func (pt *programTester) getBin() (string, error) {
@@ -667,7 +676,10 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 	// torn write will fail to install the package (setuptools crashes).
 	//
 	// To avoid this problem, we use pipenvMutex to explicitly serialize installation operations. Doing so avoids the
-	// problem of multiple processes stomping on the same files in the source tree.
+	// problem of multiple processes stomping on the same files in the source tree. Note that pipenvMutex is a file
+	// mutex, so this strategy works even if the go test runner chooses to split up text execution across multiple
+	// processes. (Furthermore, each test gets an instance of programTester and thus the mutex, so we'd need to be
+	// sharing the mutex globally in each test process if we weren't using the file system to lock.)
 	if name == "pipenv-install-package" {
 		if pt.opts.Verbose {
 			fprintf(pt.opts.Stdout, "serializing pipenv install action\n")
