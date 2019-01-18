@@ -76,6 +76,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		},
 		[]string{},
 		"",
+		nil,
 	)
 
 	dep := SerializeResource(res)

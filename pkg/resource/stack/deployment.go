@@ -262,9 +262,16 @@ func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
 		return nil, err
 	}
 
+	// TODO(pdg): deserialize property dependencies
+	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
+	for pk := range inputs {
+		propertyDependencies[pk] = res.Dependencies
+	}
+
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
-		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider), nil
+		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
+		propertyDependencies), nil
 }
 
 func DeserializeOperation(op apitype.OperationV1) (resource.Operation, error) {
