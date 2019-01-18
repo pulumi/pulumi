@@ -87,7 +87,7 @@ func newStackLsCmd() *cobra.Command {
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit outputs as JSON")
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().BoolVarP(
 		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
