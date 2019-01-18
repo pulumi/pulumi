@@ -266,7 +266,18 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 
 	// Create a reference using the URN and the unknown ID and fetch the provider.
 	provider, ok := r.GetProvider(mustNewReference(urn, UnknownID))
-	contract.Assertf(ok, "'Check' must be called before 'Diff'")
+	if !ok {
+		// In this case, we are doing a diff as part of evaluating the fanout of a delete-before-replace operation.
+		// We can just use the old provider here, and we will not unload it.
+		provider, ok = r.GetProvider(mustNewReference(urn, id))
+		contract.Assertf(ok, "Provider must have been registered by NewRegistry for DBR Diff (%v::%v)", urn, id)
+
+		diff, err := provider.DiffConfig(olds, news)
+		if err != nil {
+			return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
+		}
+		return diff, nil
+	}
 
 	// Diff the properties.
 	diff, err := provider.DiffConfig(olds, news)
@@ -302,7 +313,7 @@ func (r *Registry) Create(urn resource.URN,
 
 	// Fetch the unconfigured provider, configure it, and register it under a new ID.
 	provider, ok := r.GetProvider(mustNewReference(urn, UnknownID))
-	contract.Assertf(ok, "'Check' must be called before 'Create'")
+	contract.Assertf(ok, "'Check' must be called before 'Create' (%v)", urn)
 
 	if err := provider.Configure(news); err != nil {
 		return "", nil, resource.StatusOK, err
@@ -329,7 +340,7 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
 
 	// Fetch the unconfigured provider and configure it.
 	provider, ok := r.GetProvider(mustNewReference(urn, UnknownID))
-	contract.Assertf(ok, "'Check' and 'Diff' must be called before 'Update'")
+	contract.Assertf(ok, "'Check' and 'Diff' must be called before 'Update' (%v)", urn)
 
 	if err := provider.Configure(news); err != nil {
 		return nil, resource.StatusUnknown, err

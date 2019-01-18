@@ -15,11 +15,13 @@
 package deploy
 
 import (
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -59,7 +61,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, *re
 		true,  /*external*/
 		event.Dependencies(),
 		nil, /* initErrors */
-		event.Provider())
+		event.Provider(),
+		nil /* propertyDependencies */)
 	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
@@ -127,29 +130,12 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 	// get serialized into the checkpoint file.
 	inputs := goal.Properties
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider)
+		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies)
 
-	// Fetch the provider for this resource type, assuming it isn't just a logical one.
-	var prov plugin.Provider
-	var err error
-	if goal.Custom {
-		// If this resource is a provider resource, use the plan's provider registry for its CRUD operations.
-		// Otherwise, resolve the the resource's provider reference.
-		if providers.IsProviderType(goal.Type) {
-			prov = sg.plan.providers
-		} else {
-			contract.Assert(goal.Provider != "")
-			ref, refErr := providers.ParseReference(goal.Provider)
-			if refErr != nil {
-				return nil, result.Errorf(
-					"bad provider reference '%v' for resource '%v': %v", goal.Provider, urn, refErr)
-			}
-			p, ok := sg.plan.GetProvider(ref)
-			if !ok {
-				return nil, result.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
-			}
-			prov = p
-		}
+	// Fetch the provider for this resource.
+	prov, err := sg.getResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
+	if err != nil {
+		return nil, result.FromError(err)
 	}
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
@@ -336,21 +322,24 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 
 					// DeleteBeforeCreate implies that we must immediately delete the resource. For correctness,
 					// we must also eagerly delete all resources that depend directly or indirectly on the resource
-					// being replaced.
+					// being replaced and would be replaced by a change to the relevant dependency.
 					//
 					// To do this, we'll utilize the dependency information contained in the snapshot if it is
 					// trustworthy, which is interpreted by the DependencyGraph type.
 					var steps []Step
 					if sg.opts.TrustDependencies {
-						dependents := sg.plan.depGraph.DependingOn(old)
+						toReplace, err := sg.calculateDependentReplacements(old)
+						if err != nil {
+							return nil, result.FromError(err)
+						}
 
 						// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 						// order, so we iterate in reverse.
-						for i := len(dependents) - 1; i >= 0; i-- {
-							dependentResource := dependents[i]
+						for i := len(toReplace) - 1; i >= 0; i-- {
+							dependentResource := toReplace[i]
 
 							// If we already deleted this resource due to some other DBR, don't do it again.
-							if sg.deletes[urn] {
+							if sg.deletes[dependentResource.URN] {
 								continue
 							}
 
@@ -617,6 +606,122 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 		}
 	}
 	return true
+}
+
+func (sg *stepGenerator) getResourceProvider(
+	urn resource.URN, custom bool, provider string, typ tokens.Type) (plugin.Provider, error) {
+
+	// If this is not a custom resource, then it has no provider by definition.
+	if !custom {
+		return nil, nil
+	}
+
+	// If this resource is a provider resource, use the plan's provider registry for its CRUD operations.
+	// Otherwise, resolve the the resource's provider reference.
+	if providers.IsProviderType(typ) {
+		return sg.plan.providers, nil
+	}
+
+	contract.Assert(provider != "")
+	ref, refErr := providers.ParseReference(provider)
+	if refErr != nil {
+		return nil, errors.Errorf("bad provider reference '%v' for resource '%v': %v", provider, urn, refErr)
+	}
+	p, ok := sg.plan.GetProvider(ref)
+	if !ok {
+		return nil, errors.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
+	}
+	return p, nil
+}
+
+func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]*resource.State, error) {
+	// We need to compute the set of resources that may be replaced by a change to the resource under consideration.
+	// We do this by taking the complete set of transitive dependents on the resource under consideration and
+	// removing any resources that would not be replaced by changes to their dependencies. We determine whether or not
+	// a resource may be replaced by substituting unknowns for input properties that may change due to deletion of the
+	// resources their value depends on and calling the resource provider's `Diff` method.
+	//
+	// This is perhaps clearer when described by example. Consider the following dependency graph:
+	//
+	//       A
+	//     __|__
+	//     B   C
+	//     |  _|_
+	//     D  E F
+	//
+	// In this graph, all of B, C, D, E, and F transitively depend on A. It may be the case, however, that changes to
+	// the specific properties of any of those resources R that would occur if a resource on the path to A were deleted
+	// and recreated may not cause R to be replaced. For example, the edge from B to A may be a simple `dependsOn` edge
+	// such that a change to B does not actually influence any of B's input properties. In that case, neither B nor D
+	// would need to be deleted before A could be deleted.
+	var toReplace []*resource.State
+	replaceSet := map[resource.URN]bool{root.URN: true}
+
+	requiresReplacement := func(r *resource.State) (bool, error) {
+		// Neither custom nor external resources require replacement.
+		if !r.Custom || r.External {
+			return false, nil
+		}
+
+		// If the resource's provider is in the delete set, we mustreplace this resource.
+		if r.Provider != "" {
+			ref, err := providers.ParseReference(r.Provider)
+			if err != nil {
+				return false, err
+			}
+			if replaceSet[ref.URN()] {
+				return true, nil
+			}
+		}
+
+		// Scan the properties of this resource in order to determine whether or not any of them depend on a resource
+		// that requires replacement and build a set of input properties for the provider diff.
+		hasDependencyInReplaceSet, inputsForDiff := false, resource.PropertyMap{}
+		for pk, pv := range r.Inputs {
+			for _, propertyDep := range r.PropertyDependencies[pk] {
+				if replaceSet[propertyDep] {
+					hasDependencyInReplaceSet = true
+					pv = resource.MakeComputed(resource.NewStringProperty("<unknown>"))
+				}
+			}
+			inputsForDiff[pk] = pv
+		}
+
+		// If none of this resource's properties depend on a resource in the replace set, then none of the properties
+		// may change and this resource does not need to be replaced.
+		if !hasDependencyInReplaceSet {
+			return false, nil
+		}
+
+		// Otherwise, fetch the resource's provider. Since we have filtered out component resources, this resource must
+		// have a provider.
+		prov, err := sg.getResourceProvider(r.URN, r.Custom, r.Provider, r.Type)
+		if err != nil {
+			return false, err
+		}
+		contract.Assert(prov != nil)
+
+		// Call the provider's `Diff` method and return.
+		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
+		if err != nil {
+			return false, err
+		}
+		return diff.Replace(), nil
+	}
+
+	// Walk the root resource's dependents in order and build up the set of resources that require replacement.
+	for _, d := range sg.plan.depGraph.DependingOn(root) {
+		replace, err := requiresReplacement(d)
+		if err != nil {
+			return nil, err
+		}
+		if replace {
+			toReplace, replaceSet[d.URN] = append(toReplace, d), true
+		}
+	}
+
+	// Return the list of resources to replace.
+	return toReplace, nil
 }
 
 // newStepGenerator creates a new step generator that operates on the given plan.
