@@ -75,15 +75,18 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
  * registerResource.
  */
 async function serializeFilteredProperties(
-        label: string, props: Inputs, acceptKey: (k: string) => boolean,
-        dependentResources: Resource[] = []): Promise<Record<string, any>> {
+    label: string, props: Inputs, acceptKey: (k: string) => boolean,
+    propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
+
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
-            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
+            const deps: Resource[] = [];
+            const v = await serializeProperty(`${label}.${k}`, props[k], deps);
             if (v !== undefined) {
                 result[k] = v;
+                propertyDependencies[k] = deps;
             }
         }
     }
@@ -96,8 +99,8 @@ async function serializeFilteredProperties(
  * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
 export async function serializeResourceProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", dependentResources);
+        label: string, props: Inputs, propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
+    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", propertyDependencies);
 }
 
 /**
@@ -105,8 +108,8 @@ export async function serializeResourceProperties(
  * POJO object that can be remoted over to registerResource.
  */
 export async function serializeProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => true, dependentResources);
+    label: string, props: Inputs, propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
+    return serializeFilteredProperties(label, props, key => true, propertyDependencies);
 }
 
 /**

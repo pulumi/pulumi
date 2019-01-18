@@ -48,8 +48,8 @@ interface RunCase {
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
         urn: URN | undefined, props: any | undefined };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
-                        custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
-        urn: URN | undefined, id: ID | undefined, props: any | undefined };
+                        custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                        propertyDeps?: any) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
@@ -547,9 +547,61 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "property_dependencies": {
+            program: path.join(base, "020.property_dependencies"),
+            expectResourceCount: 5,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string, provider: string,
+                               propertyDeps: any) => {
+
+                assert.strictEqual(t, "test:index:MyResource");
+
+                switch (name) {
+                    case "resA":
+                        assert.deepStrictEqual(deps, []);
+                        assert.deepStrictEqual(propertyDeps, {});
+                        break;
+                    case "resB":
+                        assert.deepStrictEqual(deps, [ "resA" ]);
+                        assert.deepStrictEqual(propertyDeps, {});
+                        break;
+                    case "resC":
+                        assert.deepStrictEqual(deps, [ "resA", "resB" ]);
+                        assert.deepStrictEqual(propertyDeps, {
+                            "propA": [ "resA" ],
+                            "propB": [ "resB" ],
+                            "propC": [],
+                        });
+                        break;
+                    case "resD":
+                        assert.deepStrictEqual(deps, [ "resA", "resB", "resC" ]);
+                        assert.deepStrictEqual(propertyDeps, {
+                            "propA": [ "resA", "resB" ],
+                            "propB": [ "resC" ],
+                            "propC": [],
+                        });
+                        break;
+                    case "resE":
+                        assert.deepStrictEqual(deps, [ "resA", "resB", "resC", "resD" ]);
+                        assert.deepStrictEqual(propertyDeps, {
+                            "propA": [ "resC" ],
+                            "propB": [ "resA", "resB" ],
+                            "propC": [],
+                        });
+                        break;
+                    default:
+                        break;
+                }
+
+                return { urn: name, id: undefined, props: { "outprop": "qux" } };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
+        if (casename !== "property_dependencies") {
+            continue;
+        }
         const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
             // For each test case, run it twice: first to preview and then to update.
@@ -602,13 +654,17 @@ describe("rpc", () => {
                                 const t = req.getType();
                                 const name = req.getName();
                                 const res: any = req.getObject().toJavaScript();
-                                const deps: string[] = req.getDependenciesList();
+                                const deps: string[] = req.getDependenciesList().sort();
                                 const custom: boolean = req.getCustom();
                                 const protect: boolean = req.getProtect();
                                 const parent: string = req.getParent();
                                 const provider: string = req.getProvider();
+                                const propertyDeps: any = Array.from(req.getPropertydependenciesMap().entries())
+                                    .reduce((o: any, [key, value]: [any, any]) => {
+                                        return { ...o, [key]: value.getUrnList().sort() };
+                                    }, {});
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
-                                    custom, protect, parent, provider);
+                                    custom, protect, parent, provider, propertyDeps);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));
