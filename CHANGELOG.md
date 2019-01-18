@@ -1,5 +1,7 @@
 ## 0.16.12 (Unreleased)
 
+- Stack names are now scoped within the context of a project, so you may duplicate stack names across different projects.
+
 ### Improvements
 
 - Add `--json` to `pulumi config`, `pulumi config get`, `pulumi history` and `pulumi plugin ls` to request the output be in JSON.

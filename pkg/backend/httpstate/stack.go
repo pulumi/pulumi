@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
@@ -38,9 +39,10 @@ type Stack interface {
 }
 
 type cloudBackendReference struct {
-	name  tokens.QName
-	owner string
-	b     *cloudBackend
+	name    tokens.QName
+	project string
+	owner   string
+	b       *cloudBackend
 }
 
 func (c cloudBackendReference) String() string {
@@ -49,11 +51,15 @@ func (c cloudBackendReference) String() string {
 		curUser = ""
 	}
 
-	if c.owner == curUser {
+	if c.owner == curUser && c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
 		return string(c.name)
 	}
 
-	return fmt.Sprintf("%s/%s", c.owner, c.name)
+	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
+		return fmt.Sprintf("%s/%s", c.owner, c.name)
+	}
+
+	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
 }
 
 func (c cloudBackendReference) Name() tokens.QName {
@@ -82,9 +88,10 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
-			owner: apistack.OrgName,
-			name:  apistack.StackName,
-			b:     b,
+			owner:   apistack.OrgName,
+			project: apistack.ProjectName,
+			name:    apistack.StackName,
+			b:       b,
 		},
 		cloudURL: b.CloudURL(),
 		orgName:  apistack.OrgName,
@@ -160,10 +167,13 @@ type cloudStackSummary struct {
 }
 
 func (css cloudStackSummary) Name() backend.StackReference {
+	contract.Assert(css.summary.ProjectName != "")
+
 	return cloudBackendReference{
-		owner: css.summary.OrgName,
-		name:  tokens.QName(css.summary.StackName),
-		b:     css.b,
+		owner:   css.summary.OrgName,
+		project: css.summary.ProjectName,
+		name:    tokens.QName(css.summary.StackName),
+		b:       css.b,
 	}
 }
 

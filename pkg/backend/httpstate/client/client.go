@@ -85,7 +85,8 @@ func (pc *Client) updateRESTCall(ctx context.Context, method, path string, query
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the stack root.
 func getStackPath(stack StackIdentifier, components ...string) string {
-	return path.Join(append([]string{fmt.Sprintf("/api/stacks/%s/%s", stack.Owner, stack.Stack)}, components...)...)
+	prefix := fmt.Sprintf("/api/stacks/%s/%s/%s", stack.Owner, stack.Project, stack.Stack)
+	return path.Join(append([]string{prefix}, components...)...)
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -218,9 +219,10 @@ func (pc *Client) CreateStack(
 	}
 
 	stack := apitype.Stack{
-		StackName: tokens.QName(stackID.Stack),
-		OrgName:   stackID.Owner,
-		Tags:      tags,
+		StackName:   tokens.QName(stackID.Stack),
+		ProjectName: stackID.Project,
+		OrgName:     stackID.Owner,
+		Tags:        tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
 		StackName: stackID.Stack,
@@ -228,8 +230,10 @@ func (pc *Client) CreateStack(
 	}
 
 	var createStackResp apitype.CreateStackResponse
+
+	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
 	if err := pc.restCall(
-		ctx, "POST", fmt.Sprintf("/api/stacks/%s", stackID.Owner), nil, &createStackReq, &createStackResp); err != nil {
+		ctx, "POST", endpoint, nil, &createStackReq, &createStackResp); err != nil {
 		return apitype.Stack{}, err
 	}
 
