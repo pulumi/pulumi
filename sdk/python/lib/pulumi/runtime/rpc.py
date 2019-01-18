@@ -42,7 +42,7 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 
 
 async def serialize_properties(inputs: 'Inputs',
-                               deps: List['Resource'],
+                               property_deps: Dict[str, List['Resource']],
                                input_transformer: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
@@ -51,6 +51,7 @@ async def serialize_properties(inputs: 'Inputs',
     """
     struct = struct_pb2.Struct()
     for k, v in inputs.items():
+        deps = []
         result = await serialize_property(v, deps, input_transformer)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
@@ -62,6 +63,7 @@ async def serialize_properties(inputs: 'Inputs',
                 log.debug(f"top-level input property translated: {k} -> {translated_name}")
             # pylint: disable=unsupported-assignment-operation
             struct[translated_name] = result
+            property_deps[translated_name] = deps
 
     return struct
 
