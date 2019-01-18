@@ -15,7 +15,7 @@
 """
 Runtime support for Pulumi stack tags.  Please use pulumi.get_stack_tag or pulumi.get_stack_tags instead.
 """
-from typing import Dict
+from typing import Dict, Optional
 
 import json
 import os
@@ -29,7 +29,7 @@ def get_stack_tags() -> Dict[str, str]:
         return json.loads(env_tags)
     return dict()
 
-def get_stack_tag(n: str) -> str:
+def get_stack_tag(n: str) -> Optional[str]:
     """
     Returns a stack tag value or None if it is unset.
     """

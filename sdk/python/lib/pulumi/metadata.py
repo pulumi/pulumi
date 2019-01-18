@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
+from typing import Dict, Optional
 
 from . import runtime
 
@@ -31,7 +31,7 @@ def get_stack() -> str:
     return runtime.get_stack()
 
 
-def get_stack_tag(name: str) -> str:
+def get_stack_tag(name: str) -> Optional[str]:
     """
     Returns a stack tag's value or None.
     """
