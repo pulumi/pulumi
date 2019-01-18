@@ -14,6 +14,7 @@
 
 import { Resource } from "../../resource";
 import * as closure from "./createClosure";
+import * as utils from "./utils";
 
 /**
  * SerializeFunctionArgs are arguments used to serialize a JavaScript function
@@ -61,12 +62,6 @@ export interface SerializedFunction {
      * The name of the exported module member.
      */
     exportName: string;
-    /**
-     * The set of packages that we emitted explicit 'require' calls to ourself when serializing the
-     * closure. Can be used by downstream consumers to ensure that these modules will be include
-     * unilaterally.
-     */
-    requiredPackages: Set<string>;
 }
 
 /**
@@ -136,7 +131,6 @@ function serializeJavaScriptText(
     const envEntryToEnvVar = new Map<closure.Entry, string>();
     const envVarNames = new Set<string>();
     const functionInfoToEnvVar = new Map<closure.FunctionInfo, string>();
-    const requiredPackages = new Set<string>();
 
     let environmentText = "";
     let functionText = "";
@@ -161,7 +155,7 @@ function serializeJavaScriptText(
         text = exportText + "\n" + environmentText + functionText;
     }
 
-    return { text, exportName, requiredPackages };
+    return { text, exportName };
 
     function emitFunctionAndGetName(functionInfo: closure.FunctionInfo): string {
         // If this is the first time seeing this function, then actually emit the function code for
@@ -253,7 +247,6 @@ function serializeJavaScriptText(
             return emitFunctionAndGetName(envEntry.function);
         }
         else if (envEntry.module !== undefined) {
-            requiredPackages.add(envEntry.module);
             return `require("${envEntry.module}")`;
         }
         else if (envEntry.output !== undefined) {
@@ -345,7 +338,7 @@ function serializeJavaScriptText(
                 const propName = envEntryToString(keyEntry, keyName);
                 const propVal = simpleEnvEntryToString(valEntry, keyName);
 
-                if (typeof keyEntry.json === "string" && closure.isLegalMemberName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && utils.isLegalMemberName(keyEntry.json)) {
                     props.push(`${keyEntry.json}: ${propVal}`);
                 }
                 else {
@@ -398,7 +391,7 @@ function serializeJavaScriptText(
 
             if (isSimplePropertyInfo(info)) {
                 // normal property.  Just emit simply as a direct assignment.
-                if (typeof keyEntry.json === "string" && closure.isLegalMemberName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && utils.isLegalMemberName(keyEntry.json)) {
                     environmentText += `${envVar}.${keyEntry.json} = ${valString};\n`;
                 }
                 else {

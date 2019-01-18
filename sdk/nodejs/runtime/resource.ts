@@ -101,7 +101,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
             resop.resolveID!(resolvedID, resolvedID !== undefined);
             await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
         });
-    }));
+    }), label);
 }
 
 /**
@@ -144,10 +144,10 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     log.debug(`RegisterResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
                         // If the monitor is unavailable, it is in the process of shutting down or has already
-                        // shut down. Don't emit an error and don't do any more RPCs.
+                        // shut down. Don't emit an error and don't do any more RPCs, just exit.
                         if (err.code === grpc.status.UNAVAILABLE) {
                             log.debug("Resource monitor is terminating");
-                            waitForDeath();
+                            process.exit(0);
                         }
 
                         // Node lets us hack the message as long as we do it before accessing the `stack` property.
@@ -171,7 +171,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             // Now resolve the output properties.
             await resolveOutputs(res, t, name, props, resp.getObject(), resop.resolvers);
         });
-    }));
+    }), label);
 }
 
 /**
@@ -183,7 +183,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // Note: a resource urn will always get a value, and thus the output property
     // for it can always run .apply calls.
     let resolveURN: (urn: URN) => void;
-    (res as any).urn = Output.create(
+    (res as any).urn = new Output(
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
@@ -195,7 +195,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     if (custom) {
         let resolveValue: (v: ID) => void;
         let resolvePerformApply: (v: boolean) => void;
-        (res as any).id = Output.create(
+        (res as any).id = new Output(
             res,
             debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
             debuggablePromise(new Promise<boolean>(
@@ -216,14 +216,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
-    let dependsOn: Resource[] = [];
-    if (Array.isArray(opts.dependsOn)) {
-        dependsOn = opts.dependsOn;
-    } else if (opts.dependsOn) {
-        dependsOn = [opts.dependsOn];
-    }
-    const explicitURNDeps = await debuggablePromise(
-        Promise.all(dependsOn.map(d => d.urn.promise())), `dependsOn(${label})`);
+    const explicitDependencies: URN[] = await gatherExplicitDependencies(opts.dependsOn);
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
@@ -246,7 +239,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    const dependencies: Set<URN> = new Set<URN>(explicitURNDeps);
+    const dependencies: Set<URN> = new Set<URN>(explicitDependencies);
     for (const implicitDep of implicitDependencies) {
         dependencies.add(await implicitDep.urn.promise());
     }
@@ -260,6 +253,35 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef: providerRef,
         dependencies: dependencies,
     };
+}
+
+/**
+ * Gathers explicit dependency URNs from a list of Resources (possibly Promises and/or Outputs).
+ */
+async function gatherExplicitDependencies(
+    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<URN[]> {
+
+    if (dependsOn) {
+        if (Array.isArray(dependsOn)) {
+            const dos: URN[] = [];
+            for (const d of dependsOn) {
+                dos.push(...(await gatherExplicitDependencies(d)));
+            }
+            return dos;
+        } else if (dependsOn instanceof Promise) {
+            return gatherExplicitDependencies(await dependsOn);
+        } else if (Output.isInstance(dependsOn)) {
+            // Recursively gather dependencies, await the promise, and append the output's dependencies.
+            const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(gatherExplicitDependencies);
+            const urns = await dos.promise();
+            const implicits = await gatherExplicitDependencies([...dos.resources()]);
+            return urns.concat(implicits);
+        } else {
+            return [await (dependsOn as Resource).urn.promise()];
+        }
+    }
+
+    return [];
 }
 
 /**
@@ -316,16 +338,17 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         req.setUrn(urn);
         req.setOutputs(outputsObj);
 
+        const label = `monitor.registerResourceOutputs(${urn}, ...)`;
         await debuggablePromise(new Promise((resolve, reject) =>
             monitor.registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
                 log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
                     `err: ${err}, resp: ${innerResponse}`);
                 if (err) {
                     // If the monitor is unavailable, it is in the process of shutting down or has already
-                    // shut down. Don't emit an error and don't do any more RPCs.
+                    // shut down. Don't emit an error and don't do any more RPCs, just exit.
                     if (err.code === grpc.status.UNAVAILABLE) {
                         log.debug("Resource monitor is terminating");
-                        waitForDeath();
+                        process.exit(0);
                     }
 
                     log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
@@ -334,7 +357,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                 else {
                     resolve();
                 }
-            })), opLabel);
+            })), label);
     }, false);
 }
 
@@ -359,11 +382,13 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is current`);
         }
         return callback();
-    }));
+    }), label + "-initial");
 
     // Ensure the process won't exit until this RPC call finishes and resolve it when appropriate.
     const done: () => void = rpcKeepAlive();
-    const finalOp: Promise<void> = debuggablePromise(resourceOp.then(() => { done(); }, () => { done(); }));
+    const finalOp: Promise<void> = debuggablePromise(
+        resourceOp.then(() => { done(); }, () => { done(); }),
+        label + "-final");
 
     // Set up another promise that propagates the error, if any, so that it triggers unhandled rejection logic.
     resourceOp.catch((err) => Promise.reject(err));
@@ -376,21 +401,4 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
-}
-
-/**
- * waitForDeath loops forever. This is a hack.
- *
- * The purpose of this hack is to deal with graceful termination of the resource monitor.
- * When the engine decides that it needs to terminate, it shuts down the Log and ResourceMonitor RPC
- * endpoints. Shutting down RPC endpoints involves draining all outstanding RPCs and denying new connections.
- *
- * This is all fine for us as the language host, but we need to 1) not let the RPC that just failed due to
- * the ResourceMonitor server shutdown get displayed as an error and 2) not do any more RPCs, since they'll fail.
- *
- * We can accomplish both by just doing nothing until the engine kills us. It's ugly, but it works.
- */
-function waitForDeath(): never {
-    // tslint:disable-next-line
-    while (true) {}
 }

@@ -31,6 +31,42 @@ import (
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
+// VCSKind represents the hostname of a specific type of VCS.
+// For eg., github.com, gitlab.com etc.
+type VCSKind = string
+
+// Constants related to detecting the right type of source control provider for git.
+const (
+	defaultGitCloudRepositorySuffix = ".git"
+
+	// The host name for GitLab.
+	GitLabHostName VCSKind = "gitlab.com"
+	// The host name for GitHub.
+	GitHubHostName VCSKind = "github.com"
+	// The host name for Azure DevOps
+	AzureDevOpsHostName VCSKind = "dev.azure.com"
+	// The host name for Bitbucket
+	BitbucketHostName VCSKind = "bitbucket.org"
+)
+
+// The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
+// Note: If you are renaming any of the group names in the regex (the ?P<group_name> part) to something else,
+// be sure to update its usage elsewhere in the code as well.
+// The nolint instruction prevents gometalinter from complaining about the length of the line.
+var (
+	cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
+	azureSourceControlSSHRegex = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+)
+
+// VCSInfo describes a cloud-hosted version control system.
+// Cloud hosted VCS' typically have an owner (could be an organization),
+// to whom the repo belongs.
+type VCSInfo struct {
+	Owner string
+	Repo  string
+	Kind  VCSKind
+}
+
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
 func GetGitRepository(dir string) (*git.Repository, error) {
@@ -55,48 +91,118 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 
 // GetGitHubProjectForOrigin returns the GitHub login, and GitHub repo name if the "origin" remote is
 // a GitHub URL.
-func GetGitHubProjectForOrigin(dir string) (string, string, error) {
+func GetGitHubProjectForOrigin(dir string) (*VCSInfo, error) {
 	repo, err := GetGitRepository(dir)
 	if repo == nil {
-		return "", "", fmt.Errorf("no git repository found from %v", dir)
+		return nil, fmt.Errorf("no git repository found from %v", dir)
 	}
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return GetGitHubProjectForOriginByRepo(repo)
+	remoteURL, err := GetGitRemoteURL(repo, "origin")
+	if err != nil {
+		return nil, err
+	}
+	return TryGetVCSInfo(remoteURL)
 }
 
-// GetGitHubProjectForOriginByRepo returns the GitHub login, and GitHub repo name if the "origin" remote is
-// a GitHub URL.
-func GetGitHubProjectForOriginByRepo(repo *git.Repository) (string, string, error) {
-	remote, err := repo.Remote("origin")
+// GetGitRemoteURL returns the remote URL for the given remoteName in the repo.
+func GetGitRemoteURL(repo *git.Repository, remoteName string) (string, error) {
+	remote, err := repo.Remote(remoteName)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not read origin information")
+		return "", errors.Wrap(err, "could not read origin information")
 	}
 
 	remoteURL := ""
 	if len(remote.Config().URLs) > 0 {
 		remoteURL = remote.Config().URLs[0]
 	}
+
+	return remoteURL, nil
+}
+
+// IsGitOriginURLGitHub returns true if the provided remoteURL is detected as GitHub.
+func IsGitOriginURLGitHub(remoteURL string) bool {
+	return strings.Contains(remoteURL, GitHubHostName)
+}
+
+// TryGetVCSInfo attempts to detect whether the provided remoteURL
+// is an SSH or an HTTPS remote URL. It then extracts the repo, owner name,
+// and the type (kind) of VCS from it.
+func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 	project := ""
+	vcsKind := ""
 
-	const GitHubSSHPrefix = "git@github.com:"
-	const GitHubHTTPSPrefix = "https://github.com/"
-	const GitHubRepositorySuffix = ".git"
-
-	if strings.HasPrefix(remoteURL, GitHubSSHPrefix) {
-		project = trimGitRemoteURL(remoteURL, GitHubSSHPrefix, GitHubRepositorySuffix)
-	} else if strings.HasPrefix(remoteURL, GitHubHTTPSPrefix) {
-		project = trimGitRemoteURL(remoteURL, GitHubHTTPSPrefix, GitHubRepositorySuffix)
+	// If the remote is using git SSH, then we extract the named groups by matching
+	// with the pre-compiled regex pattern.
+	if strings.HasPrefix(remoteURL, "git@") {
+		// Most cloud-hosted VCS have the ssh URL of the format git@somehostname.com:owner/repo
+		if cloudSourceControlSSHRegex.MatchString(remoteURL) {
+			groups := getMatchedGroupsFromRegex(cloudSourceControlSSHRegex, remoteURL)
+			vcsKind = groups["host_name"]
+			project = groups["owner_and_repo"]
+			project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
+		} else if azureSourceControlSSHRegex.MatchString(remoteURL) {
+			// Azure's DevOps service uses a git SSH url, that is completely different
+			// from the rest of the services.
+			groups := getMatchedGroupsFromRegex(azureSourceControlSSHRegex, remoteURL)
+			vcsKind = groups["host_name"]
+			project = groups["owner_and_repo"]
+			project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
+		}
+	} else if strings.HasPrefix(remoteURL, "http") {
+		// This could be an HTTP(S)-based remote.
+		if parsedURL, err := url.Parse(remoteURL); err == nil {
+			vcsKind = parsedURL.Host
+			project = parsedURL.Path
+			// Replace the .git extension from the path.
+			project = strings.TrimSuffix(project, defaultGitCloudRepositorySuffix)
+			// Remove the prefix "/". TrimPrefix returns the same value if there is no prefix.
+			// So it is safe to use it instead of doing any sort of substring matches.
+			project = strings.TrimPrefix(project, "/")
+		}
 	}
 
+	if project == "" {
+		return nil, errors.Errorf("detecting the VCS info from the remote URL %v", remoteURL)
+	}
+
+	// For Azure, we will have more than 2 parts in the array.
+	// Ex: owner/project/repo.git
+	if vcsKind == AzureDevOpsHostName {
+		azureSplit := strings.SplitN(project, "/", 2)
+		return &VCSInfo{
+			Owner: azureSplit[0],
+			Repo:  azureSplit[1],
+			Kind:  vcsKind,
+		}, nil
+	}
+
+	// Since the vcsKind is not Azure, we can try to detect the other kinds of VCS.
 	split := strings.Split(project, "/")
-
 	if len(split) != 2 {
-		return "", "", errors.Errorf("could not detect GitHub project from url: %v", remote)
+		return nil, errors.Errorf("could not detect VCS project from url: %v", remoteURL)
 	}
 
-	return split[0], split[1], nil
+	return &VCSInfo{
+		Owner: split[0],
+		Repo:  split[1],
+		Kind:  vcsKind,
+	}, nil
+}
+
+func getMatchedGroupsFromRegex(regex *regexp.Regexp, remoteURL string) map[string]string {
+	// Get all matching groups.
+	matches := regex.FindAllStringSubmatch(remoteURL, -1)[0]
+	// Get the named groups in our regex.
+	groupNames := regex.SubexpNames()
+
+	groups := map[string]string{}
+	for i, value := range matches {
+		groups[groupNames[i]] = value
+	}
+
+	return groups
 }
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
@@ -325,10 +431,6 @@ func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
 	sort.Sort(byShortNameLengthDesc(results))
 
 	return results, nil
-}
-
-func trimGitRemoteURL(url string, prefix string, suffix string) string {
-	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }
 
 type byShortNameLengthDesc []plumbing.ReferenceName

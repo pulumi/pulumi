@@ -17,6 +17,7 @@ package cmd
 import (
 	"context"
 	"io/ioutil"
+	"math"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -36,7 +37,7 @@ import (
 )
 
 const (
-	defaultParallel = 10
+	defaultParallel = math.MaxInt32
 )
 
 // nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
@@ -56,6 +57,7 @@ func newUpCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var skipPreview bool
+	var suppressOutputs bool
 	var yes bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
@@ -72,7 +74,7 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			if err = saveConfig(s.Ref().Name(), commandLineConfig); err != nil {
+			if err = saveConfig(s, commandLineConfig); err != nil {
 				return errors.Wrap(err, "saving config")
 			}
 		}
@@ -113,14 +115,10 @@ func newUpCmd() *cobra.Command {
 		}
 	}
 
-	// up implementation used when the source of the Pulumi program is a URL.
-	upURL := func(url string, opts backend.UpdateOptions) error {
-		if !workspace.IsTemplateURL(url) {
-			return errors.Errorf("%s is not a valid URL", url)
-		}
-
+	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
+	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) error {
 		// Retrieve the template repo.
-		repo, err := workspace.RetrieveTemplates(url, false)
+		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false)
 		if err != nil {
 			return err
 		}
@@ -134,12 +132,16 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		// Make sure only a single template is found.
-		// Alternatively, we could consider prompting to choose one instead of failing.
-		if len(templates) != 1 {
-			return errors.Errorf("more than one application found at %s", url)
+		var template workspace.Template
+		if len(templates) == 0 {
+			return errors.New("no template found")
+		} else if len(templates) == 1 {
+			template = templates[0]
+		} else {
+			if template, err = chooseTemplate(templates, opts.Display); err != nil {
+				return err
+			}
 		}
-		template := templates[0]
 
 		// Create temp directory for the "virtual workspace".
 		temp, err := ioutil.TempDir("", "pulumi-up-")
@@ -168,7 +170,8 @@ func newUpCmd() *cobra.Command {
 		// Prompt for the project name, if we don't already have one from an existing stack.
 		if name == "" {
 			defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
-			name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
+			name, err = promptForValue(
+				yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -178,7 +181,8 @@ func newUpCmd() *cobra.Command {
 		if description == "" {
 			defaultValue := workspace.ValueOrDefaultProjectDescription(
 				description, template.ProjectDescription, template.Description)
-			description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
+			description, err = promptForValue(
+				yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -189,13 +193,14 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		// Load the project, update the name & description, and save it.
+		// Load the project, update the name & description, remove the template section, and save it.
 		proj, root, err := readProject()
 		if err != nil {
 			return err
 		}
 		proj.Name = tokens.PackageName(name)
 		proj.Description = &description
+		proj.Template = nil
 		if err = workspace.SaveProject(proj); err != nil {
 			return errors.Wrap(err, "saving project")
 		}
@@ -209,7 +214,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(s, url, template, configArray, yes, opts.Display); err != nil {
+		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts.Display); err != nil {
 			return err
 		}
 
@@ -255,9 +260,9 @@ func newUpCmd() *cobra.Command {
 	}
 
 	var cmd = &cobra.Command{
-		Use:        "up [url]",
+		Use:        "up [template|url]",
 		Aliases:    []string{"update"},
-		SuggestFor: []string{"deploy", "push"},
+		SuggestFor: []string{"apply", "deploy", "push"},
 		Short:      "Create or update the resources in a stack",
 		Long: "Create or update the resources in a stack.\n" +
 			"\n" +
@@ -287,13 +292,14 @@ func newUpCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			}
 
 			if len(args) > 0 {
-				return upURL(args[0], opts)
+				return upTemplateNameOrURL(args[0], opts)
 			}
 
 			return upWorkingDirectory(opts)
@@ -309,6 +315,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
@@ -326,7 +335,7 @@ func newUpCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVarP(
 		&refresh, "refresh", "r", false,
 		"Refresh the state of the stack's resources before this update")
@@ -342,6 +351,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not perform a preview before performing the update")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
@@ -396,7 +408,7 @@ func handleConfig(
 
 	// Save the config.
 	if c != nil {
-		if err = saveConfig(s.Ref().Name(), c); err != nil {
+		if err = saveConfig(s, c); err != nil {
 			return errors.Wrap(err, "saving config")
 		}
 	}

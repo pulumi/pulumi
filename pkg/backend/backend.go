@@ -26,7 +26,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -112,6 +115,11 @@ type Backend interface {
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stackRef StackReference) (config.Map, error)
 
+	// GetStackTags fetches the stack's existing tags.
+	GetStackTags(ctx context.Context, stackRef StackReference) (map[apitype.StackTagName]string, error)
+	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+	UpdateStackTags(ctx context.Context, stackRef StackReference, tags map[apitype.StackTagName]string) error
+
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
 	ExportDeployment(ctx context.Context, stackRef StackReference) (*apitype.UntypedDeployment, error)
 	// ImportDeployment imports the given deployment into the indicated stack.
@@ -126,7 +134,7 @@ type Backend interface {
 type UpdateOperation struct {
 	Proj   *workspace.Project
 	Root   string
-	M      UpdateMetadata
+	M      *UpdateMetadata
 	Opts   UpdateOptions
 	Scopes CancellationScopeSource
 }
@@ -180,4 +188,37 @@ func ContextWithTracingOptions(ctx context.Context, opts TracingOptions) context
 func TracingOptionsFromContext(ctx context.Context) TracingOptions {
 	opts, _ := ctx.Value(tracingOptionsKey).(TracingOptions)
 	return opts
+}
+
+// NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
+func NewBackendClient(backend Backend) deploy.BackendClient {
+	return &backendClient{backend: backend}
+}
+
+type backendClient struct {
+	backend Backend
+}
+
+// GetStackOutputs returns the outputs of the stack with the given name.
+func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+	ref, err := c.backend.ParseStackReference(name)
+	if err != nil {
+		return nil, err
+	}
+	s, err := c.backend.GetStack(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil {
+		return nil, errors.Errorf("unknown stack \"%s\"", name)
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, _ := stack.GetRootStackResource(snap)
+	if res == nil {
+		return resource.PropertyMap{}, nil
+	}
+	return res.Outputs, nil
 }

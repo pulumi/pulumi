@@ -17,8 +17,7 @@ package cmdutil
 import (
 	"os"
 
-	"golang.org/x/crypto/ssh/terminal"
-
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -26,30 +25,54 @@ import (
 
 var snk diag.Sink
 
-var globalColorization = colors.Always
+// By default we'll attempt to figure out if we should have colors or not. This can be overridden
+// for any command by passing --color=... at the command line.
+var globalColorization = colors.Auto
 
 // GetGlobalColorization gets the global setting for how things should be colored.
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
 func GetGlobalColorization() colors.Colorization {
+	if globalColorization != colors.Auto {
+		// User has set an explicit colorization preference.  We'll respect whatever they asked for,
+		// no matter what.
+		return globalColorization
+	}
+
+	// Colorization is set to 'auto' (either explicit set to that by the user, or not set at all).
+	// Figure out the best thing to do here.
+
+	// If the external environment has requested no colors, then turn off all colors when in 'auto' mode.
 	if _, ok := os.LookupEnv("NO_COLOR"); ok {
 		return colors.Never
 	}
 
-	// Only have colors when we're in an interactive session.  If we're non-interactive (i.e.
-	// redirecting stdout), then disable colors as well.  We don't want to put color tags into the
-	// stream.  We only do this if the color is set to be on.  If it was set to 'raw' then we don't
-	// touch it.
-	if globalColorization == colors.Always && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+	// Disable colors if we're not in an interactive session (i.e. we're redirecting stdout).  This
+	// will just inject color tags into the stream which are not desirable here.
+	if !InteractiveTerminal() {
 		return colors.Never
 	}
 
-	return globalColorization
+	// Things otherwise look good.  Turn on colors.
+	return colors.Always
 }
 
 // SetGlobalColorization sets the global setting for how things should be colored.
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
-func SetGlobalColorization(color colors.Colorization) {
-	globalColorization = color
+func SetGlobalColorization(value string) error {
+	switch value {
+	case "auto":
+		globalColorization = colors.Auto
+	case "always":
+		globalColorization = colors.Always
+	case "never":
+		globalColorization = colors.Never
+	case "raw":
+		globalColorization = colors.Raw
+	default:
+		return errors.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", value)
+	}
+
+	return nil
 }
 
 // Diag lazily allocates a sink to be used if we can't create a compiler.

@@ -37,6 +37,7 @@ func newPreviewCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var suppressOutputs bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -67,6 +68,7 @@ func newPreviewCmd() *cobra.Command {
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
+					SuppressOutputs:      suppressOutputs,
 					IsInteractive:        cmdutil.Interactive(),
 					DiffDisplay:          diffDisplay,
 					Debug:                debug,
@@ -115,6 +117,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
@@ -129,7 +134,7 @@ func newPreviewCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -139,6 +144,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 
 	return cmd
 }

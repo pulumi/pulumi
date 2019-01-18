@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each
+// Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
 //
 // This interface hides some of the messiness of the underlying machinery, since providers are behind an RPC boundary.
@@ -106,4 +106,19 @@ type DiffResult struct {
 // Replace returns true if this diff represents a replacement.
 func (r DiffResult) Replace() bool {
 	return len(r.ReplaceKeys) > 0
+}
+
+// DiffUnavailableError may be returned by a provider if the provider is unable to diff a resource.
+type DiffUnavailableError struct {
+	reason string
+}
+
+// DiffUnavailable creates a new DiffUnavailableError with the given message.
+func DiffUnavailable(reason string) DiffUnavailableError {
+	return DiffUnavailableError{reason: reason}
+}
+
+// Error returns the error message for this DiffUnavailableError.
+func (e DiffUnavailableError) Error() string {
+	return e.reason
 }

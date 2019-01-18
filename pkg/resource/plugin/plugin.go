@@ -55,6 +55,12 @@ func NewMissingError(info workspace.PluginInfo) error {
 }
 
 func (err *MissingError) Error() string {
+	if err.Info.Version != nil {
+		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
+			err.Info.Kind, err.Info.Name, err.Info.Version)
+	}
+
 	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
 		err.Info.Kind, err.Info.String())
 }
@@ -170,7 +176,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	go runtrace(plug.Stdout, false, stdoutDone)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(":"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+	conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
 		rpcutil.OpenTracingClientInterceptor(),
 	))
 	if err != nil {
@@ -241,7 +247,6 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	}
 	args = append(args, pluginArgs...)
 
-	// nolint: gas
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd

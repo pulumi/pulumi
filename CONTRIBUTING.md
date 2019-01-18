@@ -8,12 +8,12 @@ For larger features, we'd appreciate it if you open a [new issue](https://github
 
 To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
 
-- Go 1.9 or Later
-- NodeJS 6.10.X or 8.11.X (LTS releases).  Others may work, but there are [known issues using Node 10](https://github.com/pulumi/pulumi/issues/1270).
-- Python 2.7.X
+- Go 1.9 or later
+- NodeJS 6.10.X or later
+- Python 3.6 or later
 - [pipenv](https://github.com/pypa/pipenv)
 - [dep](https://github.com/golang/dep)
-- [Gometalinter](https://github.com/alecthomas/gometalinter)
+- [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
 
 ## Getting dependencies on macOS
@@ -21,7 +21,7 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 You can easily get all required dependencies with brew
 
 ```bash
-brew install node pipenv python@2 typescript dep yarn pandoc
+brew install node pipenv python@3 typescript dep yarn pandoc
 ```
 
 ## Make build system
@@ -39,8 +39,21 @@ We make heavy use of integration level testing where we invoke `pulumi` to creat
 
 This repository does not actually create any real cloud resources as part of testing, but still uses Pulumi.com to store information abot some synthetic resources it creates during testing. Other repositories may require additional setup before running tests (most often this is just setting a few environment variables that tell the tests some information about how to use the cloud provider we are testing). Please see the `CONTRIBUTING.md` file in the repository, which will explain what additional configuration needs to be done before running tests.
 
-Pulumi integration tests make use of the Go test runner. When using Go 1.10 or above, we recommend setting the `GOCACHE` environment variable to `off` to avoid
-erroneously caching test results.
+## Debugging
+
+The Pulumi tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and adding new logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
+
+All logging is done using Google's [Glog library](https://github.com/golang/glog).  It is relatively bare-bones, and adds basic leveled logging, stack dumping, and other capabilities beyond what Go's built-in logging routines offer.
+
+The `pulumi` command line has two flags that control this logging and that can come in handy when debugging problems. The `--logtostderr` flag spews directly to stderr, rather than the default of logging to files in your temp directory. And the `--verbose=n` flag (`-v=n` for short) sets the logging level to `n`.  Anything greater than 3 is reserved for debug-level logging, greater than 5 is going to be quite verbose, and anything beyond 7 is extremely noisy.
+
+For example, the command
+
+```sh
+$ pulumi preview --logtostderr -v=5
+```
+
+is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
 ## Submitting a Pull Request
 

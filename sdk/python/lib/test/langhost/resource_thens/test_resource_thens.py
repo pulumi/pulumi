@@ -12,40 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import path
-import unittest
 from ..util import LanghostTest
 
-from pulumi.runtime.rpc import Unknown
 
 class ResourceThensTest(LanghostTest):
+    """
+    Test that tests Pulumi's ability to track dependencies between resources.
+
+    ResourceA has an (unknown during preview) output property that ResourceB
+    depends on. In all cases, the SDK must inform the engine that ResourceB
+    depends on ResourceA. When not doing previews, ResourceB has a partial view
+    of ResourceA's properties. 
+    """
     def test_resource_thens(self):
         self.run_test(
             program=path.join(self.base_path(), "resource_thens"),
             expected_resource_count=2)
 
-    def register_resource(self, _ctx, dry_run, ty, name, resource,
-                          _dependencies):
-        id_ = None
-        props = resource
-        props["stable"] = "yeah"
-        if ty == "test:index:MyResource":
-            self.assertEqual(name, "first")
-            self.assertEqual(resource["foo"], "bar")
+    def register_resource(self, _ctx, dry_run, ty, name, res, deps,
+                          _parent, custom, _protect, _provider):
+        if ty == "test:index:ResourceA":
+            self.assertEqual(name, "resourceA")
+            self.assertDictEqual(res, {"inprop": 777})
+            urn = self.make_urn(ty, name)
+            res_id = None
+            props = {}
             if not dry_run:
-                id_ = name
+                res_id = name
                 props["outprop"] = "output yeah"
-        elif ty == "test:index:OtherResource":
-            self.assertEqual(name, "second")
+
+            return {
+                "urn": urn,
+                "id": res_id,
+                "object": props
+            }
+
+        if ty == "test:index:ResourceB":
+            self.assertEqual(name, "resourceB")
+            self.assertListEqual(deps, ["test:index:ResourceA::resourceA"])
             if dry_run:
-                self.assertIsInstance(resource["inprop"], Unknown)
+                self.assertDictEqual(res, {
+                    "other_in": 777,
+                    # other_out is unknown, so it is not in the dictionary.
+                })
             else:
-                self.assertEqual(resource["inprop"], "output yeah")
+                self.assertDictEqual(res, {
+                    "other_in": 777,
+                    "other_out": "output yeah"
+                })
 
+            res_id = None
             if not dry_run:
-                id_ = name
+                res_id = name
 
-        return {
-            "urn": self.make_urn(ty, name),
-            "id": id_,
-            "object": props
-        }
+            return {
+                "urn": self.make_urn(ty, name),
+                "id": res_id,
+                "object": {}
+            }
+
+        self.fail(f"unknown resource type: {ty}")

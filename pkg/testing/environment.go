@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -44,10 +45,24 @@ type Environment struct {
 	CWD string
 }
 
+// WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
+// to work around some test issues we see in Travis.
+func WriteYarnRCForTest(root string) error {
+	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
+	// may run concurrently and yarn may fail if invoked concurrently
+	// https://github.com/yarnpkg/yarn/issues/683
+	// Also add --network-concurrency 1 since we've been seeing
+	// https://github.com/yarnpkg/yarn/issues/4563 as well
+	return ioutil.WriteFile(
+		filepath.Join(root, ".yarnrc"),
+		[]byte("--mutex network\n--network-concurrency 1\n"), 0644)
+}
+
 // NewEnvironment returns a new Environment object, located in a temp directory.
 func NewEnvironment(t *testing.T) *Environment {
 	root, err := ioutil.TempDir("", "test-env")
 	assert.NoError(t, err, "creating temp directory")
+	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{
@@ -70,6 +85,14 @@ func (e *Environment) DeleteEnvironment() {
 	e.Helper()
 	err := os.RemoveAll(e.RootPath)
 	assert.NoError(e, err, "cleaning up the test directory")
+}
+
+// DeleteIfNotFailed deletes the environment's RootPath if the test hasn't failed. Otherwise
+// keeps the files around for aiding debugging.
+func (e *Environment) DeleteIfNotFailed() {
+	if !e.T.Failed() {
+		e.DeleteEnvironment()
+	}
 }
 
 // PathExists returns whether or not a file or directory exists relative to Environment's working directory.
@@ -130,4 +153,19 @@ func (e *Environment) GetCommandResults(t *testing.T, command string, args ...st
 
 	runErr := cmd.Run()
 	return outBuffer.String(), errBuffer.String(), runErr
+}
+
+// WriteTestFile writes a new test file relative to the Environment's CWD with the given contents.
+// Aborts the underlying test on any errors.
+func (e *Environment) WriteTestFile(filename string, contents string) {
+	filename = filepath.Join(e.CWD, filename)
+
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		e.T.Fatalf("error making directories for test file (%v): %v", filename, err)
+	}
+
+	if err := ioutil.WriteFile(filename, []byte(contents), os.ModePerm); err != nil {
+		e.T.Fatalf("writing test file (%v): %v", filename, err)
+	}
 }

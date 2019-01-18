@@ -24,6 +24,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/golang/glog"
 	multierror "github.com/hashicorp/go-multierror"
@@ -41,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
+	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
@@ -57,9 +60,9 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 		return nil, err
 	}
 	if filestate.IsLocalBackendURL(creds.Current) {
-		return filestate.New(cmdutil.Diag(), creds.Current)
+		return filestate.New(cmdutil.Diag(), creds.Current, stackConfigFile)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, stackConfigFile, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -283,7 +286,8 @@ func readProject() (*workspace.Project, string, error) {
 			"could not locate Pulumi.yaml project file (searching upwards from %s)", pwd)
 	} else if path == "" {
 		return nil, "", errors.Errorf(
-			"no Pulumi.yaml project file found (searching upwards from %s)", pwd)
+			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+				"created a project yet, use `pulumi new` to do so", pwd)
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
@@ -291,48 +295,6 @@ func readProject() (*workspace.Project, string, error) {
 	}
 
 	return proj, filepath.Dir(path), nil
-}
-
-type colorFlag struct {
-	value colors.Colorization
-}
-
-func (cf *colorFlag) String() string {
-	return string(cf.Colorization())
-}
-
-func (cf *colorFlag) Set(value string) error {
-	switch value {
-	case "always":
-		cf.value = colors.Always
-	case "never":
-		cf.value = colors.Never
-	case "raw":
-		cf.value = colors.Raw
-	// Backwards compat for old flag values.
-	case "auto":
-		cf.value = colors.Always
-	default:
-		return errors.Errorf("unsupported color option: '%s'.  Supported values are: always, never, raw", value)
-	}
-
-	return nil
-}
-
-func (cf *colorFlag) Type() string {
-	return "colors.Colorization"
-}
-
-func (cf *colorFlag) Colorization() colors.Colorization {
-	if _, ok := os.LookupEnv("NO_COLOR"); ok {
-		return colors.Never
-	}
-
-	if cf.value == "" {
-		return colors.Always
-	}
-
-	return cf.value
 }
 
 // anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a
@@ -347,16 +309,16 @@ func (w *anyWriter) Write(d []byte) (int, error) {
 }
 
 // isGitWorkTreeDirty returns true if the work tree for the current directory's repository is dirty.
-func isGitWorkTreeDirty() (bool, error) {
+func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 	gitBin, err := exec.LookPath("git")
 	if err != nil {
 		return false, err
 	}
 
-	// nolint: gas
 	gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
 	var anyOutput anyWriter
 	var stderr bytes.Buffer
+	gitStatusCmd.Dir = repoRoot
 	gitStatusCmd.Stdout = &anyOutput
 	gitStatusCmd.Stderr = &stderr
 	if err = gitStatusCmd.Run(); err != nil {
@@ -371,22 +333,23 @@ func isGitWorkTreeDirty() (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
-	m := backend.UpdateMetadata{
+func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
+	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
 	}
 
-	if err := addGitMetadataToEnvironment(root, m.Environment); err != nil {
+	if err := addGitMetadata(root, m); err != nil {
 		glog.V(3).Infof("errors detecting git metadata: %s", err)
 	}
+
 	addCIMetadataToEnvironment(m.Environment)
 
 	return m, nil
 }
 
-// addGitMetadataToEnvironment populate's the environment metadata bag with Git-related values.
-func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
+// addGitMetadata populate's the environment metadata bag with Git-related values.
+func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
@@ -398,30 +361,68 @@ func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
 		return nil
 	}
 
-	if err := addGitHubMetadataToEnvironment(repo, env); err != nil {
+	if err := AddGitRemoteMetadataToMap(repo, m.Environment); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	if err := addGitCommitMetadataToEnvironment(repo, env); err != nil {
+	if err := addGitCommitMetadata(repo, repoRoot, m); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
 	return allErrors.ErrorOrNil()
 }
 
-func addGitHubMetadataToEnvironment(repo *git.Repository, env map[string]string) error {
-	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
-	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByRepo(repo)
+// AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.
+func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) error {
+	var allErrors *multierror.Error
+
+	// Get the remote URL for this repo.
+	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
 	if err != nil {
-		return errors.Wrap(err, "detecting GitHub project information")
+		return errors.Wrap(err, "detecting Git remote URL")
 	}
-	env[backend.GitHubLogin] = ghLogin
-	env[backend.GitHubRepo] = ghRepo
+	if remoteURL == "" {
+		return nil
+	}
+
+	// Check if the remote URL is a GitHub or a GitLab URL.
+	if err := addVCSMetadataToEnvironment(remoteURL, env); err != nil {
+		allErrors = multierror.Append(allErrors, err)
+	}
+
+	// If the environment map contains the vcs kind and if it is GitHub,
+	// then let's set the old metadata keys as well, so that the UI can continue to read those.
+	// As of this writing, none of the other VCS were detected _previously_ and only the `github` keys were set
+	// when the origin remote was truly a github remote.
+	// TODO [pulumi/pulumi-service#2306] Once the UI is updated and we no longer need these keys, we can remove this block.
+	if env[backend.VCSRepoKind] == gitutil.GitHubHostName && env[backend.VCSRepoOwner] != "" {
+		env[backend.GitHubLogin] = env[backend.VCSRepoOwner]
+		env[backend.GitHubRepo] = env[backend.VCSRepoName]
+	}
+
+	return allErrors.ErrorOrNil()
+}
+
+func addVCSMetadataToEnvironment(remoteURL string, env map[string]string) error {
+	// GitLab, Bitbucket, Azure DevOps etc. repo slug if applicable.
+	// We don't require a cloud-hosted VCS, so swallow errors.
+	vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL)
+	if err != nil {
+		return errors.Wrap(err, "detecting VCS project information")
+	}
+	env[backend.VCSRepoOwner] = vcsInfo.Owner
+	env[backend.VCSRepoName] = vcsInfo.Repo
+	env[backend.VCSRepoKind] = vcsInfo.Kind
 
 	return nil
 }
 
-func addGitCommitMetadataToEnvironment(repo *git.Repository, env map[string]string) error {
+func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.UpdateMetadata) error {
+	// When running in a CI/CD environment, the current git repo may be running from a
+	// detached HEAD and may not have have the latest commit message. We fall back to
+	// CI-system specific environment variables when possible.
+	ciVars := ciutil.DetectVars()
+
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
@@ -429,72 +430,90 @@ func addGitCommitMetadataToEnvironment(repo *git.Repository, env map[string]stri
 	}
 
 	hash := head.Hash()
-	env[backend.GitHead] = hash.String()
+	m.Environment[backend.GitHead] = hash.String()
 	commit, commitErr := repo.CommitObject(hash)
 	if commitErr != nil {
 		return errors.Wrap(commitErr, "getting HEAD commit info")
 	}
-	env[backend.GitCommitter] = commit.Committer.Name
-	env[backend.GitCommitterEmail] = commit.Committer.Email
-	env[backend.GitAuthor] = commit.Author.Name
-	env[backend.GitAuthorEmail] = commit.Author.Email
 
-	isDirty, err := isGitWorkTreeDirty()
+	// If in detached head, will be "HEAD", and fallback to use value from CI/CD system if possible.
+	// Otherwise, the value will be like "refs/heads/master".
+	headName := head.Name().String()
+	if headName == "HEAD" && ciVars.BranchName != "" {
+		headName = ciVars.BranchName
+	}
+	if headName != "HEAD" {
+		m.Environment[backend.GitHeadName] = headName
+	}
+
+	// If there is no message set manually, default to the Git commit's title.
+	msg := strings.TrimSpace(commit.Message)
+	if msg == "" && ciVars.CommitMessage != "" {
+		msg = ciVars.CommitMessage
+	}
+	if m.Message == "" {
+		m.Message = gitCommitTitle(msg)
+	}
+
+	// Store committer and author information.
+	m.Environment[backend.GitCommitter] = commit.Committer.Name
+	m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
+	m.Environment[backend.GitAuthor] = commit.Author.Name
+	m.Environment[backend.GitAuthorEmail] = commit.Author.Email
+
+	// If the worktree is dirty, set a bit, as this could be a mistake.
+	isDirty, err := isGitWorkTreeDirty(repoRoot)
 	if err != nil {
 		return errors.Wrapf(err, "checking git worktree dirty state")
 	}
-	env[backend.GitDirty] = fmt.Sprint(isDirty)
+	m.Environment[backend.GitDirty] = strconv.FormatBool(isDirty)
 
 	return nil
 }
 
+// gitCommitTitle turns a commit message into its title, simply by taking the first line.
+func gitCommitTitle(s string) string {
+	if ixCR := strings.Index(s, "\r"); ixCR != -1 {
+		s = s[:ixCR]
+	}
+	if ixLF := strings.Index(s, "\n"); ixLF != -1 {
+		s = s[:ixLF]
+	}
+	return s
+}
+
 // addCIMetadataToEnvironment populates the environment metadata bag with CI/CD-related values.
 func addCIMetadataToEnvironment(env map[string]string) {
+	// Add the key/value pair to env, if there actually is a value.
+	addIfSet := func(key, val string) {
+		if val != "" {
+			env[key] = val
+		}
+	}
+
 	// If CI variables have been set specifically for Pulumi in the environment,
 	// use that in preference to attempting to automatically detect the CI system.
 	// This allows Pulumi to work with any CI system with appropriate configuration,
 	// rather than requiring explicit support for each one.
 	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
 		env[backend.CISystem] = os.Getenv("PULUMI_CI_SYSTEM")
+		addIfSet(backend.CIBuildID, os.Getenv("PULUMI_CI_BUILD_ID"))
+		addIfSet(backend.CIBuildType, os.Getenv("PULUMI_CI_BUILD_TYPE"))
+		addIfSet(backend.CIBuildURL, os.Getenv("PULUMI_CI_BUILD_URL"))
+		addIfSet(backend.CIPRHeadSHA, os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"))
 
-		// Set whatever variables we have available in the environment
-		if buildID := os.Getenv("PULUMI_CI_BUILD_ID"); buildID != "" {
-			env[backend.CIBuildID] = buildID
-		}
-		if buildType := os.Getenv("PULUMI_CI_BUILD_TYPE"); buildType != "" {
-			env[backend.CIBuildType] = buildType
-		}
-		if buildURL := os.Getenv("PULUMI_CI_BUILD_URL"); buildURL != "" {
-			env[backend.CIBuildURL] = buildURL
-		}
-
-		// Pass pull request-specific vales as appropriate.
-		if sha := os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"); sha != "" {
-			env[backend.CIPRHeadSHA] = sha
-		}
-
-		// Don't proceed with automatic CI detection
+		// Don't proceed with automatic CI detection since we are using the PULUMI_* values.
 		return
 	}
 
-	// If CI variables were not set in the environment, try to detect which
-	// CI system we are inside and set variables
-
-	// Check if running on Travis CI. See:
-	// https://docs.travis-ci.com/user/environment-variables/
-	if os.Getenv("TRAVIS") == "true" {
-		env[backend.CISystem] = "travis-ci"
-
-		// Pass build-related information.
-		env[backend.CIBuildID] = os.Getenv("TRAVIS_JOB_ID")
-		env[backend.CIBuildType] = os.Getenv("TRAVIS_EVENT_TYPE")
-		// Travis doesn't set a build URL in its environment, see:
-		// https://github.com/travis-ci/travis-ci/issues/8935
-
-		// Pass pull request-specific vales as appropriate.
-		if sha := os.Getenv("TRAVIS_PULL_REQUEST_SHA"); sha != "" {
-			env[backend.CIPRHeadSHA] = sha
-		}
+	// Use our built-in CI/CD detection logic.
+	vars := ciutil.DetectVars()
+	if vars.Name != "" {
+		env[backend.CISystem] = string(vars.Name)
+		addIfSet(backend.CIBuildID, vars.BuildID)
+		addIfSet(backend.CIBuildType, vars.BuildType)
+		addIfSet(backend.CIBuildURL, vars.BuildURL)
+		addIfSet(backend.CIPRHeadSHA, vars.SHA)
 	}
 }
 
@@ -568,7 +587,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
 func printJSON(v interface{}) error {
-	out, err := json.MarshalIndent(v, "", "    ")
+	out, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}

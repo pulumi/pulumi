@@ -6,7 +6,7 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-**The Pulumi Cloud Native Development Platform** is the easiest way to create and deploy cloud programs that use
+**Pulumi's Cloud Native SDK** is the easiest way to create and deploy cloud programs that use
 containers, serverless functions, hosted services, and infrastructure, on any cloud.
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your
@@ -79,6 +79,9 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 * **[Community Slack](https://slack.pulumi.io)**: join us over at our community Slack channel.  Any and all
   discussion or questions are welcome.
+
+* **[Roadmap](https://github.com/pulumi/pulumi/wiki/Roadmap)**: check out what's on the roadmap for the Pulumi 
+  project over the coming months.
 
 ## <a name="getting-started"></a>Getting Started
 
@@ -181,61 +184,6 @@ There are several libraries that encapsulate best practices and common patterns:
 | AWS Infrastructure | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-infra/) | [pulumi/pulumi-aws-infra](https://github.com/pulumi/pulumi-aws-infra) |
 | Pulumi Multi-Cloud Framework | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/cloud/) | [pulumi/pulumi-cloud](https://github.com/pulumi/pulumi-cloud) |
 
-## Development
+## Contributing
 
-If you'd like to contribute to Pulumi and/or build from source, this section is for you.
-
-### Prerequisites
-
-Pulumi is written in Go, uses Dep for dependency management, and GoMetaLinter for linting:
-
-* [Go](https://golang.org/doc/install): https://golang.org/dl
-* [Dep](https://github.com/golang/dep): `$ go get -u github.com/golang/dep/cmd/dep`
-* [GoMetaLinter](https://github.com/alecthomas/gometalinter):
-    - `$ go get -u github.com/alecthomas/gometalinter`
-    - `$ gometalinter --install`
-
-### Building and Testing
-
-To install the pre-built SDK, please run `curl -fsSL https://get.pulumi.com/ | sh`, or see detailed installation instructions on [the project page](https://pulumi.io/).  Read on if you want to install from source.
-
-To build a complete Pulumi SDK, ensure `$GOPATH` is set, and clone into a standard Go workspace:
-
-    $ git clone git@github.com:pulumi/pulumi $GOPATH/src/github.com/pulumi/pulumi
-    $ cd $GOPATH/src/github.com/pulumi/pulumi
-
-The first time you build, you must `make ensure` to install dependencies and perform other machine setup:
-
-    $ make ensure
-
-In the future, you can synch dependencies simply by running `dep ensure` explicitly:
-
-    $ dep ensure
-
-At this point you can run `make` to build and run tests:
-
-    $ make
-
-This installs the `pulumi` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
-
-The Makefile also supports just running tests (`make test_all` or `make test_fast`), just running the linter
-(`make lint`), just running Govet (`make vet`), and so on.  Please just refer to the Makefile for the full list of targets.
-
-### Debugging
-
-The Pulumi tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and adding new
-logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
-
-All logging is done using Google's [Glog library](https://github.com/golang/glog).  It is relatively bare-bones, and
-adds basic leveled logging, stack dumping, and other capabilities beyond what Go's built-in logging routines offer.
-
-The `pulumi` command line has two flags that control this logging and that can come in handy when debugging problems.
-The `--logtostderr` flag spews directly to stderr, rather than the default of logging to files in your temp directory.
-And the `--verbose=n` flag (`-v=n` for short) sets the logging level to `n`.  Anything greater than 3 is reserved for
-debug-level logging, greater than 5 is going to be quite verbose, and anything beyond 7 is extremely noisy.
-
-For example, the command
-
-    $ pulumi preview --logtostderr -v=5
-
-is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
+Please See [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md) for information on building Pulumi from source or contributing improvments.

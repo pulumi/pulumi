@@ -24,12 +24,17 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
+)
+
+const (
+	go19Version = "go1.9"
 )
 
 func TestAssetSerialize(t *testing.T) {
@@ -78,7 +83,13 @@ func TestAssetSerialize(t *testing.T) {
 		// now a map of nested assets and/or archives.
 		arch, err := NewAssetArchive(map[string]interface{}{"foo": asset})
 		assert.Nil(t, err)
-		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
+		switch runtime.Version() {
+		case go19Version:
+			assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
+		default:
+			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+			assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", arch.Hash)
+		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := DeserializeArchive(archSer)
 		assert.Nil(t, err)
@@ -87,7 +98,13 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, 1, len(archDes.Assets))
 		assert.True(t, archDes.Assets["foo"].(*Asset).IsText())
 		assert.Equal(t, text, archDes.Assets["foo"].(*Asset).Text)
-		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
+		switch runtime.Version() {
+		case go19Version:
+			assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
+		default:
+			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+			assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", archDes.Hash)
+		}
 	}
 	{
 		file := "/dev/null"
@@ -104,7 +121,13 @@ func TestAssetSerialize(t *testing.T) {
 
 		arch, err := NewAssetArchive(map[string]interface{}{"foo": asset})
 		assert.Nil(t, err)
-		assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
+		switch runtime.Version() {
+		case go19Version:
+			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
+		default:
+			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+			assert.Equal(t, "d2587a875f82cdf3d3e6cfe9f8c6e6032be5dde8c344466e664e628da15757b0", arch.Hash)
+		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := DeserializeArchive(archSer)
 		assert.Nil(t, err)
@@ -113,7 +136,13 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, 1, len(archDes.Assets))
 		assert.True(t, archDes.Assets["foo"].(*Asset).IsPath())
 		assert.Equal(t, file, archDes.Assets["foo"].(*Asset).Path)
-		assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
+		switch runtime.Version() {
+		case go19Version:
+			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
+		default:
+			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+			assert.Equal(t, "d2587a875f82cdf3d3e6cfe9f8c6e6032be5dde8c344466e664e628da15757b0", archDes.Hash)
+		}
 	}
 	{
 		url := "file:///dev/null"
@@ -130,7 +159,13 @@ func TestAssetSerialize(t *testing.T) {
 
 		arch, err := NewAssetArchive(map[string]interface{}{"foo": asset})
 		assert.Nil(t, err)
-		assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
+		switch runtime.Version() {
+		case go19Version:
+			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
+		default:
+			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+			assert.Equal(t, "d2587a875f82cdf3d3e6cfe9f8c6e6032be5dde8c344466e664e628da15757b0", arch.Hash)
+		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := DeserializeArchive(archSer)
 		assert.Nil(t, err)
@@ -139,7 +174,13 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, 1, len(archDes.Assets))
 		assert.True(t, archDes.Assets["foo"].(*Asset).IsURI())
 		assert.Equal(t, url, archDes.Assets["foo"].(*Asset).URI)
-		assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
+		switch runtime.Version() {
+		case go19Version:
+			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
+		default:
+			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+			assert.Equal(t, "d2587a875f82cdf3d3e6cfe9f8c6e6032be5dde8c344466e664e628da15757b0", archDes.Hash)
+		}
 	}
 	{
 		file, err := tempArchive("test", false)
@@ -264,11 +305,18 @@ asset jumps over the archive.
 func TestArchiveDir(t *testing.T) {
 	arch, err := NewPathArchive("./testdata/test_dir")
 	assert.Nil(t, err)
-	assert.Equal(t, "35ddf9c48ce6ac5ba657573d388db6ce41f3ed6965346a3086fb70a550fe0864", arch.Hash)
+	switch runtime.Version() {
+	case go19Version:
+		assert.Equal(t, "35ddf9c48ce6ac5ba657573d388db6ce41f3ed6965346a3086fb70a550fe0864", arch.Hash)
+	default:
+		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
+		assert.Equal(t, "489e9a9dad271922ecfbda590efc40e48788286a06bd406a357ab8d13f0b6abf", arch.Hash)
+	}
 	validateTestDirArchive(t, arch)
 }
 
 func TestArchiveTar(t *testing.T) {
+	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("./testdata/test_dir.tar")
 	assert.Nil(t, err)
 	assert.Equal(t, "c618d74a40f87de3092ca6a6c4cca834aa5c6a3956c6ceb2054b40d04bb4cd76", arch.Hash)
@@ -276,6 +324,7 @@ func TestArchiveTar(t *testing.T) {
 }
 
 func TestArchiveTgz(t *testing.T) {
+	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("./testdata/test_dir.tgz")
 	assert.Nil(t, err)
 	assert.Equal(t, "f9b33523b6a3538138aff0769ff9e7d522038e33c5cfe28b258332b3f15790c8", arch.Hash)
@@ -283,6 +332,7 @@ func TestArchiveTgz(t *testing.T) {
 }
 
 func TestArchiveZip(t *testing.T) {
+	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("./testdata/test_dir.zip")
 	assert.Nil(t, err)
 	assert.Equal(t, "343da72cec1302441efd4a490d66f861d393fb270afb3ced27f92a0d96abc068", arch.Hash)

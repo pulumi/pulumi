@@ -5,10 +5,12 @@ package ints
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -20,6 +22,36 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+// assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
+// failures when a scenario exceeds the provided threshold.
+type assertPerfBenchmark struct {
+	T                  *testing.T
+	MaxPreviewDuration time.Duration
+	MaxUpdateDuration  time.Duration
+}
+
+func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
+	var maxDuration *time.Duration
+	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
+		maxDuration = &t.MaxPreviewDuration
+	}
+	if strings.HasPrefix(stats.StepName, "pulumi-update") {
+		maxDuration = &t.MaxUpdateDuration
+	}
+
+	if maxDuration != nil && *maxDuration != 0 {
+		if stats.ElapsedSeconds < maxDuration.Seconds() {
+			t.T.Logf(
+				"Test step %q was under threshold. %.2f (max %.2fs)",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		} else {
+			t.T.Errorf(
+				"Test step %q took longer than expected. %.2f vs. max %.2fs",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		}
+	}
+}
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
@@ -33,7 +65,10 @@ func TestEmptyNodeJS(t *testing.T) {
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "python"),
+		Dir: filepath.Join("empty", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
 		Quick: true,
 	})
 }
@@ -46,10 +81,31 @@ func TestEmptyGo(t *testing.T) {
 	})
 }
 
+// Tests emitting many engine events doesn't result in a performance problem.
+func TestEngineEventPerf(t *testing.T) {
+	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
+	// Since then, it should now be down to ~4s, with additional padding,
+	// since some travis machines (especially the OSX ones) seem quite slow
+	// to begin with.
+	benchmarkEnforcer := &assertPerfBenchmark{
+		T:                  t,
+		MaxPreviewDuration: 8 * time.Second,
+		MaxUpdateDuration:  8 * time.Second,
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "ee_perf",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ReportStats:  benchmarkEnforcer,
+		// Don't run in parallel since it is sensitive to system resources.
+		NoParallel: true,
+	})
+}
+
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
-	var test integration.ProgramTestOptions
-	test = integration.ProgramTestOptions{
+	test := integration.ProgramTestOptions{
 		Dir:          "project_main",
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -69,7 +125,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
 		assert.Equal(t, "Updating (main-abs):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -85,7 +141,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
 		assert.Equal(t, "Updating (main-parent):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -152,9 +208,9 @@ func TestStackTagValidation(t *testing.T) {
 }
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
-func TestStackOutputs(t *testing.T) {
+func TestStackOutputsNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "stack_outputs",
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -174,6 +230,31 @@ func TestStackOutputs(t *testing.T) {
 	})
 }
 
+func TestStackOutputsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_outputs", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
+			}
+		},
+	})
+
+}
+
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
 func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
@@ -182,25 +263,24 @@ func TestStackOutputsJSON(t *testing.T) {
 			e.DeleteEnvironment()
 		}
 	}()
-	e.ImportDirectory("stack_outputs")
+	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
-	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
-	stdout, stderr := e.RunCommand("pulumi", "stack", "output", "--json")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
 	assert.Equal(t, `{
-    "foo": 42,
-    "xyz": "ABC"
+  "foo": 42,
+  "xyz": "ABC"
 }
 `, stdout)
-	assert.Equal(t, "", stderr)
 }
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
 func TestStackOutputsDisplayed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "stack_outputs",
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        false,
 		Verbose:      true,
@@ -209,8 +289,26 @@ func TestStackOutputsDisplayed(t *testing.T) {
 			output := stdout.String()
 
 			// ensure we get the outputs info both for the normal update, and for the no-change update.
-			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    1 change")
-			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    0 changes")
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    + 1 created")
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    1 unchanged")
+		},
+	})
+}
+
+// TestStackOutputsSuppressed ensures that outputs whose values are intentionally suppresses don't show.
+func TestStackOutputsSuppressed(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("stack_outputs", "nodejs"),
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  false,
+		Verbose:                true,
+		Stdout:                 stdout,
+		UpdateCommandlineFlags: []string{"--suppress-outputs"},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
 		},
 	})
 }
@@ -321,8 +419,8 @@ func TestConfigSave(t *testing.T) {
 	// Initialize an empty stack.
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
 	err := (&workspace.Project{
-		Name:        "testing-config",
-		RuntimeInfo: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Name:    "testing-config",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -420,6 +518,7 @@ func TestInvalidVersionInPackageJson(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
+	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("config_basic", "python"),
 		Quick: true,
@@ -506,5 +605,49 @@ func TestGetCreated(t *testing.T) {
 		Dir:          "get_created",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+	})
+}
+
+// Tests that stack references work.
+func TestStackReference(t *testing.T) {
+	opts := &integration.ProgramTestOptions{
+		Dir:          "stack_reference",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	}
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		opts.Config = map[string]string{
+			"org": owner,
+		}
+	}
+	integration.ProgramTest(t, opts)
+}
+
+// Tests that we issue an error if we fail to locate the Python command when running
+// a Python example.
+func TestPython3NotInstalled(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	badPython := "python3000"
+	expectedError := fmt.Sprintf(
+		"error: Failed to locate '%s' on your PATH. Have you installed Python 3.6 or greater?",
+		badPython)
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: path.Join("empty", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Env: []string{
+			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
+			// for Python 3, since anyone running tests surely already has Python 3 installed on their
+			// machine. The code paths are functionally the same.
+			fmt.Sprintf("PULUMI_PYTHON_CMD=%s", badPython),
+		},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
+		},
 	})
 }

@@ -46,6 +46,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
@@ -54,7 +55,7 @@ import (
 )
 
 const (
-	// The path to the "run" program which will spawn the rest of the language host. This may be overriden with
+	// The path to the "run" program which will spawn the rest of the language host. This may be overridden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
 	defaultRunPath = "@pulumi/pulumi/cmd/run"
 
@@ -124,7 +125,7 @@ func main() {
 // locateModule resolves a node module name to a file path that can be loaded
 func locateModule(mod string, nodePath string) (string, error) {
 	program := fmt.Sprintf("console.log(require.resolve('%s'));", mod)
-	cmd := exec.Command(nodePath, "-e", program) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(nodePath, "-e", program)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -142,7 +143,8 @@ type nodeLanguageHost struct {
 	typescript    bool
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress, tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(nodePath, runPath, engineAddress,
+	tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
@@ -289,7 +291,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 
 	env := os.Environ()
-	env = append(env, pulumiConfigVar+"="+string(config))
+	env = append(env, pulumiConfigVar+"="+config)
 
 	if host.typescript {
 		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
@@ -302,11 +304,20 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.nodeBin, args...) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(host.nodeBin, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
+		// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
+		// process writes using console.out and console.err synchronously, but it does not process writes using
+		// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
+		// writes on those file descriptors at the time that the Node process exits.
+		//
+		// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
+		// error messages in the engine.
+		contract.IgnoreError(os.Stdout.Sync())
+		contract.IgnoreError(os.Stderr.Sync())
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.

@@ -43,13 +43,17 @@ import (
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
-// nolint: lll
 type Asset struct {
-	Sig  string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the asset contents.
-	Text string `json:"text,omitempty" yaml:"text,omitempty"`                                     // a textual asset.
-	Path string `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
-	URI  string `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a URI (file://, http://, https://, or custom).
+	// Sig is the unique asset type signature (see properties.go).
+	Sig string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
+	// Hash is the SHA256 hash of the asset's contents.
+	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`
+	// Text is set to a non-empty value for textual assets.
+	Text string `json:"text,omitempty" yaml:"text,omitempty"`
+	// Path will contain a non-empty path to the file on the current filesystem for file assets.
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
+	// URI will contain a non-empty URI (file://, http://, https://, or custom) for URI-backed assets.
+	URI string `json:"uri,omitempty" yaml:"uri,omitempty"`
 }
 
 const (
@@ -422,13 +426,17 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 
 // Archive is a serialized archive reference.  It is a union: thus, only one of its fields will be non-nil.  Several
 // helper routines exist as members in order to easily interact with archives of different kinds.
-//nolint: lll
 type Archive struct {
-	Sig    string                 `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Hash   string                 `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the archive contents.
-	Assets map[string]interface{} `json:"assets,omitempty" yaml:"assets,omitempty"`                                 // a collection of other assets/archives.
-	Path   string                 `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
-	URI    string                 `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a remote URI (file://, http://, https://, etc).
+	// Sig is the unique archive type signature (see properties.go).
+	Sig string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
+	// Hash contains the SHA256 hash of the archive's contents.
+	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`
+	// Assets, when non-nil, is a collection of other assets/archives.
+	Assets map[string]interface{} `json:"assets,omitempty" yaml:"assets,omitempty"`
+	// Path is a non-empty string representing a path to a file on the current filesystem, for file archives.
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
+	// URI is a non-empty URI (file://, http://, https://, etc), for URI-backed archives.
+	URI string `json:"uri,omitempty" yaml:"uri,omitempty"`
 }
 
 const (
@@ -791,9 +799,23 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 				return nil
 			}
 
-			// If this was a directory or a symlink, skip it.
-			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+			// If this was a directory, skip it.
+			if f.IsDir() {
 				return nil
+			}
+
+			// If this is a symlink and it points at a directory, skip it. Otherwise continue along. This will mean
+			// that the file will be added to the list of files to archive. When you go to read this archive, you'll
+			// get a copy of the file (instead of a symlink) to some other file in the archive.
+			if f.Mode()&os.ModeSymlink != 0 {
+				fileInfo, statErr := os.Stat(filePath)
+				if statErr != nil {
+					return statErr
+				}
+
+				if fileInfo.IsDir() {
+					return nil
+				}
 			}
 
 			// Otherwise, add this asset to the list of paths and keep going.

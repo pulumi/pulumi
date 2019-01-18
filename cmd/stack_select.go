@@ -25,7 +25,7 @@ import (
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
 func newStackSelectCmd() *cobra.Command {
-	var cloud string
+	var stack string
 	cmd := &cobra.Command{
 		Use:   "select [<stack>]",
 		Short: "Switch the current workspace to the given stack",
@@ -47,7 +47,15 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				// A stack was given, ask all known backends about it
+				if stack != "" {
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
+				}
+
+				stack = args[0]
+			}
+
+			if stack != "" {
+				// A stack was given, ask the backend about it
 				stackRef, stackErr := b.ParseStackReference(args[0])
 				if stackErr != nil {
 					return stackErr
@@ -73,6 +81,7 @@ func newStackSelectCmd() *cobra.Command {
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&cloud, "cloud", "c", "", "A URL for the Pulumi Cloud containing the stack to be selected")
+		&stack, "stack", "s", "",
+		"The name of the stack to select")
 	return cmd
 }

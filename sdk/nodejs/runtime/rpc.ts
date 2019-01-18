@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { CustomResource, Input, Inputs, Output, Resource } from "../resource";
+import { ComponentResource, CustomResource, Input, Inputs, Output, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 
@@ -56,7 +56,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
             resolveIsKnown(isKnown);
         };
 
-        (<any>onto)[k] = Output.create(
+        (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolveValue = resolve),
@@ -144,25 +144,24 @@ export function resolveProperties(
         }
 
         // Otherwise, unmarshal the value, and store it on the resource object.
-        let resolve = resolvers[k];
+        const resolve = resolvers[k];
 
         if (resolve === undefined) {
-            let resolveValue: (v: any) => void;
-            let resolveIsKnown: (v: boolean) => void;
-
-            resolve = (v, isKnown) => {
-                resolveValue(v);
-                resolveIsKnown(isKnown);
-            };
-
-            // If there is no property yet, zero initialize it.  This ensures unexpected properties
-            // are still made available on the object.  This isn't ideal, because any code running
-            // prior to the actual resource CRUD operation can't hang computations off of it, but
-            // it's better than tossing it.
-            (res as any)[k] = Output.create(
-                res,
-                debuggablePromise(new Promise<any>(r => resolveValue = r)),
-                debuggablePromise(new Promise<boolean>(r => resolveIsKnown = r)));
+            // engine returned a property that was not in our initial property-map.  This can happen
+            // for outputs that were registered through direct calls to 'registerOutputs'. We do
+            // *not* want to do anything with these returned properties.  First, the component
+            // resources that were calling 'registerOutputs' will have already assigned these fields
+            // directly on them themselves.  Second, if we were to try to assign here we would have
+            // an incredibly bad race condition for two reasons:
+            //
+            //  1. This call to 'resolveProperties' happens asynchronously at some point far after
+            //     the resource was constructed.  So the user will have been able to observe the
+            //     initial value up until we get to this point.
+            //
+            //  2. The component resource will have often assigned a value of some arbitrary type
+            //     (say, a 'string').  If we overwrite this with an `Output<string>` we'll be changing
+            //     the type at some non-deterministic point in the future.
+            continue;
         }
 
         try {
@@ -232,28 +231,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
         return prop;
     }
-    else if (prop instanceof Array) {
-        const elems: any[] = [];
-        for (let i = 0; i < prop.length; i++) {
-            if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
-            }
-            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
-            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
-            elems.push(elem === undefined ? null : elem);
-        }
-        return elems;
-    }
-    else if (CustomResource.isInstance(prop)) {
-        // Resources aren't serializable; instead, we serialize them as references to the ID property.
-        if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: resource ID`);
-        }
 
-        dependentResources.push(prop);
-        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
-    }
-    else if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
         const obj: any = {
@@ -262,16 +241,19 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 
         return await serializeAllKeys(prop, obj);
     }
-    else if (prop instanceof Promise) {
+
+    if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Promise<T>`);
         }
+
         const subctx = `Promise<${ctx}>`;
         return serializeProperty(subctx,
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
     }
-    else if (Output.isInstance(prop)) {
+
+    if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
@@ -284,9 +266,54 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         const isKnown = await prop.isKnown;
         const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
         return isKnown ? value : unknownValue;
-    } else {
-        return await serializeAllKeys(prop, {});
     }
+
+    if (CustomResource.isInstance(prop)) {
+        // Resources aren't serializable; instead, we serialize them as references to the ID property.
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: custom resource id`);
+        }
+
+        dependentResources.push(prop);
+        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+    }
+
+    if (ComponentResource.isInstance(prop)) {
+        // Component resources often can contain cycles in them.  For example, an awsinfra
+        // SecurityGroupRule can point a the awsinfra SecurityGroup, which in turn can point back to
+        // its rules through its `egressRules` and `ingressRules` properties.  If serializing out
+        // the `SecurityGroup` resource ends up trying to serialize out those properties, a deadlock
+        // will happen, due to waiting on the child, which is waiting on the parent.
+        //
+        // Practically, there is no need to actually serialize out a component.  It doesn't represent
+        // a real resource, nor does it have normal properties that need to be tracked for differences
+        // (since changes to its properties don't represent changes to resources in the real world).
+        //
+        // So, to avoid these problems, while allowing a flexible and simple programming model, we
+        // just serialize out the component as its urn.  This allows the component to be identified
+        // and tracked in a reasonable manner, while not causing us to compute or embed information
+        // about it that is not needed, and which can lead to deadlocks.
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: component resource urnid`);
+        }
+
+        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+    }
+
+    if (prop instanceof Array) {
+        const result: any[] = [];
+        for (let i = 0; i < prop.length; i++) {
+            if (excessiveDebugOutput) {
+                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+            }
+            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
+            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
+            result.push(elem === undefined ? null : elem);
+        }
+        return result;
+    }
+
+    return await serializeAllKeys(prop, {});
 
     async function serializeAllKeys(innerProp: any, obj: any) {
         for (const k of Object.keys(innerProp)) {

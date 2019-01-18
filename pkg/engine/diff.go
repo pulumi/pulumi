@@ -62,10 +62,19 @@ func printStepHeader(b *bytes.Buffer, step StepEventMetadata) {
 	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
-func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
+func GetIndentationString(indent int) string {
 	var result string
 	for i := 0; i < indent; i++ {
 		result += "    "
+	}
+	return result
+}
+
+func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
+	var result = GetIndentationString(indent)
+
+	if !prefix {
+		return result
 	}
 
 	if result == "" {
@@ -73,12 +82,7 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 		return result
 	}
 
-	var rp string
-	if prefix {
-		rp = op.RawPrefix()
-	} else {
-		rp = "  "
-	}
+	rp := op.RawPrefix()
 	contract.Assert(len(rp) == 2)
 	contract.Assert(len(result) >= 2)
 	return result[:len(result)-2] + rp
@@ -151,7 +155,7 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 			write(&b, deploy.OpDelete, "%s", old.Provider)
 			writeVerbatim(&b, deploy.OpUpdate, " => ")
 			if newProv.ID() == providers.UnknownID {
-				write(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::computed<string>")
+				write(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::output<string>")
 			} else {
 				write(&b, deploy.OpCreate, "%s", new.Provider)
 			}
@@ -281,7 +285,6 @@ func GetResourceOutputsPropertiesString(
 	maxkey := maxKey(keys)
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
-	firstout := true
 	for _, k := range keys {
 		out := outs[k]
 
@@ -293,10 +296,6 @@ func GetResourceOutputsPropertiesString(
 			}
 
 			if print {
-				if firstout {
-					writeString(b, colors.SpecHeadline+"Outputs:"+colors.Reset+"\n")
-					firstout = false
-				}
 				if outputDiff != nil {
 					printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
 				} else {

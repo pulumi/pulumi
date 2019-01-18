@@ -28,6 +28,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
+	"github.com/docker/docker/pkg/term"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -54,7 +55,7 @@ func NewPulumiCmd() *cobra.Command {
 	var tracingHeaderFlag string
 	var profiling string
 	var verbose int
-	var color colorFlag
+	var color string
 
 	cmd := &cobra.Command{
 		Use:   "pulumi",
@@ -76,17 +77,19 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://pulumi.io",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// We run this method for its side-effects. On windows, this will enable the windows terminal
+			// to understand ANSI escape codes.
+			_, _, _ = term.StdStreams()
+
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
 			// get DisplayOptions passed in.
 			cmdFlag := cmd.Flag("color")
 			if cmdFlag != nil {
-				err := color.Set(cmdFlag.Value.String())
+				err := cmdutil.SetGlobalColorization(cmdFlag.Value.String())
 				if err != nil {
 					return err
 				}
-
-				cmdutil.SetGlobalColorization(color.Colorization())
 			}
 
 			if cwd != "" {
@@ -142,8 +145,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
-	cmd.PersistentFlags().Var(
-		&color, "color", "Colorize output. Choices are: always, never, raw, auto")
+	cmd.PersistentFlags().StringVar(
+		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
 	//     - Getting Started Commands
@@ -162,20 +165,20 @@ func NewPulumiCmd() *cobra.Command {
 	//     - Advanced Commands:
 	cmd.AddCommand(newCancelCmd())
 	cmd.AddCommand(newRefreshCmd())
+	cmd.AddCommand(newStateCmd())
 	//     - Other Commands:
 	cmd.AddCommand(newLogsCmd())
 	cmd.AddCommand(newPluginCmd())
 	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newHistoryCmd())
 
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
 
-	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
+	// We have a set of options that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
 	// set to true.
 	if hasDebugCommands() {
-		cmd.AddCommand(newArchiveCommand())
-
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
 	}

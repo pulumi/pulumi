@@ -21,6 +21,7 @@
         "errors.ts",
         "metadata.ts",
         "resource.ts",
+        "stackReference.ts",
         "version.ts",
 
         "asset/index.ts",
@@ -28,6 +29,8 @@
         "asset/archive.ts",
 
         "dynamic/index.ts",
+
+        "iterable/index.ts",
 
         "log/index.ts",
 
@@ -51,10 +54,12 @@
 
         "tests/config.spec.ts",
         "tests/init.spec.ts",
+        "tests/iterable.spec.ts",
         "tests/output.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
-        "tests/runtime/closure.spec.ts",
+        "tests/runtime/closureLoader.spec.ts",
+        "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/langhost/run.spec.ts"
     ]

@@ -54,8 +54,9 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d   diag.Sink
-	url string
+	d               diag.Sink
+	url             string
+	stackConfigFile string
 }
 
 type localBackendReference struct {
@@ -74,18 +75,19 @@ func IsLocalBackendURL(url string) bool {
 	return strings.HasPrefix(url, localBackendURLPrefix)
 }
 
-func New(d diag.Sink, url string) (Backend, error) {
+func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
 	if !IsLocalBackendURL(url) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
 	}
 	return &localBackend{
-		d:   d,
-		url: url,
+		d:               d,
+		url:             url,
+		stackConfigFile: stackConfigFile,
 	}, nil
 }
 
-func Login(d diag.Sink, url string) (Backend, error) {
-	be, err := New(d, url)
+func Login(d diag.Sink, url, stackConfigFile string) (Backend, error) {
+	be, err := New(d, url, stackConfigFile)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +146,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	tags, err := backend.GetStackTags()
+	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting stack tags")
 	}
@@ -213,7 +215,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 }
 
 func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	return symmetricCrypter(stackRef.Name())
+	return symmetricCrypter(stackRef.Name(), b.stackConfigFile)
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
@@ -294,7 +296,8 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go display.ShowEvents(
-		strings.ToLower(actionLabel), kind, stackName, op.Proj.Name, displayEvents, displayDone, op.Opts.Display)
+		strings.ToLower(actionLabel), kind, stackName, op.Proj.Name,
+		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
@@ -318,7 +321,12 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Create the management machinery.
 	persister := b.newSnapshotPersister(stackName)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
+	engineCtx := &engine.Context{
+		Cancel:          scope.Context(),
+		Events:          engineEvents,
+		SnapshotManager: manager,
+		BackendClient:   backend.NewBackendClient(b),
+	}
 
 	// Perform the update
 	start := time.Now().Unix()
@@ -342,12 +350,11 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	close(displayEvents)
-	close(displayDone)
 	contract.IgnoreClose(manager)
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
 	<-eventsDone
+	close(displayEvents)
 
 	// Save update results.
 	result := backend.SucceededResult
@@ -530,4 +537,20 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	}
 
 	return stacks, nil
+}
+
+// GetStackTags fetches the stack's existing tags.
+func (b *localBackend) GetStackTags(ctx context.Context,
+	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
+
+	// The local backend does not currently persist tags.
+	return nil, nil
+}
+
+// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+func (b *localBackend) UpdateStackTags(ctx context.Context,
+	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
+
+	// The local backend does not currently persist tags.
+	return nil
 }

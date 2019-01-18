@@ -19,9 +19,8 @@ class UnhandledExceptionTest(LanghostTest):
     def test_unhandled_exception(self):
         self.run_test(
             program=path.join(self.base_path(), "resource_op_fail"),
-            expected_stderr_contains="oh no",
             expected_error="Program exited with non-zero exit code: 1")
 
     def register_resource(self, _ctx, _dry_run, _ty, _name, _resource,
-                          _dependencies):
+                          _dependencies, _parent, _custom, _protect, _provider):
         raise Exception("oh no")

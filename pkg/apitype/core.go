@@ -190,10 +190,10 @@ type ResourceV2 struct {
 	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
 	External bool `json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
-	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
+	Dependencies []resource.URN `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
-	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
+	InitErrors []string `json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
 	// Provider is a reference to the provider that is associated with this resource.
 	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
 }
@@ -239,10 +239,20 @@ const (
 	ProjectDescriptionTag StackTagName = "pulumi:description"
 	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
+	// TODO [pulumi/pulumi-service#2306] Once the UI is updated, we would no longer need the GitHub specific keys.
 	GitHubOwnerNameTag StackTagName = "gitHub:owner"
 	// GitHubRepositoryNameTag is a tag that represents the name of a repository on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	GitHubRepositoryNameTag StackTagName = "gitHub:repo"
+	// VCSOwnerNameTag is a tag that represents the name of the owner on the cloud VCS that this stack
+	// may be associated with (inferred by the CLI based on git remote info).
+	VCSOwnerNameTag StackTagName = "vcs:owner"
+	// VCSRepositoryNameTag is a tag that represents the name of a repository on the cloud VCS that this stack
+	// may be associated with (inferred by the CLI based on git remote info).
+	VCSRepositoryNameTag StackTagName = "vcs:repo"
+	// VCSRepositoryKindTag is a tag that represents the kind of the cloud VCS that this stack
+	// may be associated with (inferred by the CLI based on the git remote info).
+	VCSRepositoryKindTag StackTagName = "vcs:kind"
 )
 
 // Stack describes a Stack running on a Pulumi Cloud.
@@ -251,7 +261,7 @@ type Stack struct {
 	OrgName   string `json:"orgName"`
 
 	RepoName    string       `json:"repoName"`
-	ProjectName string       `json:"projName"`
+	ProjectName string       `json:"projectName"`
 	StackName   tokens.QName `json:"stackName"`
 
 	ActiveUpdate string                  `json:"activeUpdate"`

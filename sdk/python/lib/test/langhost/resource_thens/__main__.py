@@ -11,44 +11,38 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pulumi import CustomResource
-from pulumi.runtime import Unknown
+from functools import partial
+from pulumi import CustomResource, Output
 
+def assert_eq(l, r):
+    assert l == r
 
-class MyResource(CustomResource):
-    def __init__(self, name):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            "foo": "bar"
+class ResourceA(CustomResource):
+    inprop: Output[int]
+    outprop: Output[str]
+
+    def __init__(self, name: str) -> None:
+        CustomResource.__init__(self, "test:index:ResourceA", name, {
+            "inprop": 777,
+            "outprop": None
         })
 
-    def set_outputs(self, outputs):
-        self.outprop = Unknown()
-        self.stable = Unknown()
-        if "outprop" in outputs:
-            self.outprop = outputs["outprop"]
+class ResourceB(CustomResource):
+    other_in: Output[int]
+    other_out: Output[str]
 
-        if "stable" in outputs:
-            self.stable = outputs["stable"]
+    def __init__(self, name: str, res: ResourceA) -> None:
+        CustomResource.__init__(self, "test:index:ResourceB", name, {
+            "other_in": res.inprop,
+            "other_out": res.outprop
+        })
 
+a = ResourceA("resourceA")
+a.urn.apply(lambda urn: assert_eq(urn, "test:index:ResourceA::resourceA"))
+a.inprop.apply(lambda v: assert_eq(v, 777))
+a.outprop.apply(lambda v: assert_eq(v, "output yeah"))
 
-   
-class OtherResource(CustomResource):
-    def __init__(self, name, props):
-        CustomResource.__init__(self, "test:index:OtherResource", name, props=props)
-
-    def set_outputs(self, outputs):
-        self.inprop = Unknown()
-        self.stable = Unknown()
-        if "inprop" in outputs:
-            self.inprop = outputs["inprop"]
-
-        if "stable" in outputs:
-            self.stable = outputs["stable"]
-
-a = MyResource("first")
-assert a.stable == "yeah"
-b = OtherResource("second", {
-    "inprop": a.outprop
-})
-assert b.inprop == a.outprop
-assert b.stable == "yeah"
+b = ResourceB("resourceB", a)
+b.urn.apply(lambda urn: assert_eq(urn, "test:index:ResourceB::resourceB"))
+b.other_in.apply(lambda v: assert_eq(v, 777))
+b.other_out.apply(lambda v: assert_eq(v, "output yeah"))

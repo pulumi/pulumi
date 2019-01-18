@@ -15,15 +15,13 @@
 package gitutil
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseGitRepoURL(t *testing.T) {
@@ -77,7 +75,7 @@ func TestParseGitRepoURL(t *testing.T) {
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// Create local test repository.
 	repoPath := filepath.Join(e.RootPath, "repo")
@@ -190,15 +188,15 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 func createTestRepo(e *ptesting.Environment) {
 	e.RunCommand("git", "init")
 
-	writeTestFile(e, "README.md", "test repo")
+	e.WriteTestFile("README.md", "test repo")
 	e.RunCommand("git", "add", "*")
 	e.RunCommand("git", "commit", "-m", "'Initial commit'")
 
-	writeTestFile(e, "foo/bar.md", "foo-bar.md")
+	e.WriteTestFile("foo/bar.md", "foo-bar.md")
 	e.RunCommand("git", "add", "*")
 	e.RunCommand("git", "commit", "-m", "'foo dir'")
 
-	writeTestFile(e, "content/foo/bar.md", "content-foo-bar.md")
+	e.WriteTestFile("content/foo/bar.md", "content-foo-bar.md")
 	e.RunCommand("git", "add", "*")
 	e.RunCommand("git", "commit", "-m", "'content-foo dir'")
 
@@ -206,21 +204,59 @@ func createTestRepo(e *ptesting.Environment) {
 	e.RunCommand("git", "tag", "my")
 }
 
-func writeTestFile(e *ptesting.Environment, filename string, contents string) {
-	filename = filepath.Join(e.CWD, filename)
+func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
+	gitTests := []struct {
+		Remote      string
+		WantVCSInfo *VCSInfo
+	}{
+		// SSH remotes
+		{
+			"git@gitlab.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitLabHostName},
+		},
+		{
+			"git@github.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"git@bitbucket.org:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: BitbucketHostName},
+		},
+		{
+			"git@ssh.dev.azure.com:v3/owner-name/project/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "project/repo-name", Kind: AzureDevOpsHostName},
+		},
 
-	dir := filepath.Dir(filename)
-	err := os.MkdirAll(dir, os.ModePerm)
-	assert.NoError(e, err, "making all directories %s", dir)
+		//HTTPS remotes
+		{
+			"https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitLabHostName},
+		},
+		{
+			"https://github.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"https://ploke@bitbucket.org/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: BitbucketHostName},
+		},
+		{
+			"https://user@dev.azure.com/owner-name/project/_git/repo-name",
+			&VCSInfo{Owner: "owner-name", Repo: "project/_git/repo-name", Kind: AzureDevOpsHostName},
+		},
 
-	err = ioutil.WriteFile(filename, []byte(contents), os.ModePerm)
-	assert.NoError(e, err, "writing %s file", filename)
-}
+		//Unknown or bad remotes
+		{"", nil},
+		{"asdf", nil},
+		{"svn:something.com/owner/repo", nil},
+	}
 
-// deleteIfNotFailed deletes the files in the testing environment if the testcase has
-// not failed. (Otherwise they are left to aid debugging.)
-func deleteIfNotFailed(e *ptesting.Environment) {
-	if !e.T.Failed() {
-		e.DeleteEnvironment()
+	for _, test := range gitTests {
+		got, err := TryGetVCSInfo(test.Remote)
+		// Only assert the returned error if we don't expect to get an error.
+		if test.WantVCSInfo != nil {
+			assert.Nil(t, err)
+		}
+		assert.Equal(t, test.WantVCSInfo, got)
 	}
 }

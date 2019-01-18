@@ -12,6 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The very first thing we do is set up unhandled exception and rejection hooks to ensure that these events cause us to
+// exit with a non-zero code. It is criticially important that we do this early: if we do not, unhandled rejections in
+// particular may cause us to exit with a 0 exit code, which will trick the engine into thinking that the program ran
+// successfully. This can cause the engine to decide to delete all of a stack's resources.
+let uncaught: Error | undefined;
+let programRunning = false;
+const uncaughtHandler = (err: Error) => {
+    uncaught = err;
+    if (!programRunning) {
+        console.error(err.stack || err.message);
+    }
+};
+process.on("uncaughtException", uncaughtHandler);
+process.on("unhandledRejection", uncaughtHandler);
+process.on("exit", (code: number) => {
+    // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
+    if (code === 0 && uncaught) {
+        process.exitCode = 1;
+    }
+});
+
+// As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
+// this as some information is only sent out as events, without any way to query for it after the
+// fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
+// report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
+// by register to hear about scripts being parsed.
+import * as v8Hooks from "../../runtime/closure/v8Hooks";
+
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 import * as minimist from "minimist";
 
@@ -79,7 +107,13 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_MONITOR", argv["monitor"]);
     addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
 
-    require("./run").run(argv);
+    // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
+    v8Hooks.isInitializedAsync().then(() => {
+        require("./run").run(argv, () => {
+            programRunning = true;
+        });
+        programRunning = false;
+    });
 }
 
 function addToEnvIfDefined(key: string, value: string | undefined) {

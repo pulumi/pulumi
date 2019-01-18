@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	// nolint: gosec
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -88,7 +89,8 @@ func NewFrom(dir string) (W, error) {
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, errors.New("no Pulumi.yaml project file found")
+		return nil, errors.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+			"created a project yet, use `pulumi new` to do so", dir)
 	}
 
 	proj, err := LoadProject(path)
@@ -174,6 +176,7 @@ func (pw *projectWorkspace) settingsPath() string {
 
 // sha1HexString returns a hex string of the sha1 hash of value.
 func sha1HexString(value string) string {
+	// nolint: gosec
 	h := sha1.New()
 	_, err := h.Write([]byte(value))
 	contract.AssertNoError(err)

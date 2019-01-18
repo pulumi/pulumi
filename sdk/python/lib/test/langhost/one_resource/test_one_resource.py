@@ -22,7 +22,7 @@ class OneResourceTest(LanghostTest):
             expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies):
+                          _dependencies, _parent, _custom, _protect, _provider):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "testResource1")
         return {

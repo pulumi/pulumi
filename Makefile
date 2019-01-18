@@ -7,9 +7,6 @@ PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v /vendor/)
 VERSION         := $(shell scripts/get-version)
 
-GOMETALINTERBIN := gometalinter
-GOMETALINTER    := ${GOMETALINTERBIN} --config=Gometalinter.json
-
 TESTPARALLELISM := 10
 
 # Our travis workers are a little show and sometime the fast tests take a little longer
@@ -31,17 +28,14 @@ install::
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
-LINT_SUPPRESS="or be unexported"
 lint::
-	$(GOMETALINTER) main.go | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	$(GOMETALINTER) ./cmd/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	golangci-lint run
 
 test_fast::
-	go test -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -timeout $(TEST_FAST_TIMEOUT) -count=1 -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 test_all::
-	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
+	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -count=1 -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:

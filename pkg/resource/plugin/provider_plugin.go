@@ -55,8 +55,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		return nil, err
 	} else if path == "" {
 		return nil, NewMissingError(workspace.PluginInfo{
-			Kind: workspace.ResourcePlugin,
-			Name: string(pkg),
+			Kind:    workspace.ResourcePlugin,
+			Name:    string(pkg),
+			Version: version,
 		})
 	}
 
@@ -108,39 +109,13 @@ func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, erro
 	// 1. Configuration differences in which all properties are known
 	// 2. Configuration differences in which some new property is unknown.
 	//
-	// Despite the fact that in both scenarios we know that configuration has changed, they differ in whether or not
-	// they return a diff result that indicates that the provider should be replaced (and thus require that any
-	// existing resource managed by the provider are also replaced).
-	//
-	// In the first case, we return a diff result that indicates that the provider _should not_ be replaced. We may
-	// encounter this scenario during any update or any preview in which all properties are known. Although this
+	// In both cases, we return a diff result that indicates that the provider _should not_ be replaced. Although this
 	// decision is not conservative--indeed, the conservative decision would be to always require replacement of a
 	// provider if any input has changed--we believe that it results in the best possible user experience for providers
 	// that do not implement DiffConfig functionality. If we took the conservative route here, any change to a
 	// provider's configuration (no matter how inconsequential) would cause all of its resources to be replaced. This
 	// is clearly a bad experience, and differs from how things worked prior to first-class providers.
-	//
-	// In the second case, we return a diff result that indicates that the provider _should_ be replaced. This may
-	// occur during any preview, but will never occur during an update. This decision is conservative because we
-	// believe that it is unlikely that a provider property that may be unknown is very likely to be a property that
-	// is fundamental to the provider's ability to manage its existing resources.
-	//
-	// The different decisions we make here cause a bit of a sharp edge: a provider with unknown configuration during
-	// preview will appear to require replacement, but will never actually require replacement during an update, as by
-	// that point all of its configuration will necessarily be known.
-
-	var replaceKeys []resource.PropertyKey
-	for k, v := range news {
-		// These are ensured during Check().
-		contract.Assert(v.IsString() || v.IsComputed())
-
-		// As per the note above, any unknown properties require replacement.
-		if v.IsComputed() {
-			replaceKeys = append(replaceKeys, k)
-		}
-	}
-
-	return DiffResult{Changes: DiffUnknown, ReplaceKeys: replaceKeys}, nil
+	return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
 }
 
 // getClient returns the client, and ensures that the target provider has been configured.  This just makes it safer
@@ -282,10 +257,15 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, err
 	}
 
-	// If this function is called, we must have complete configuration for the underlying provider. Per DiffConfig,
-	// any unknown input will cause the provider to be replaced, which will cause all of its resources to be replaced,
-	// and we do not call `Diff` for resources that are being replaced due to a change to their provider reference.
-	contract.Assert(p.cfgknown)
+	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
+	// property was sourced from another resource's output properties--don't call into the underlying provider.
+	// Instead, indicate that the diff is unavailable and write a message
+	if !p.cfgknown {
+		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
+		const message = "The provider for this resource has inputs that are not known during preview.\n" +
+			"This preview may not correctly represent the changes that will be applied during an update."
+		return DiffResult{}, DiffUnavailable(message)
+	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})

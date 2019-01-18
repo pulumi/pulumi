@@ -34,17 +34,19 @@ type UpdateResult string
 
 const (
 	// InProgressResult is for updates that have not yet completed.
-	InProgressResult = "in-progress"
+	InProgressResult UpdateResult = "in-progress"
 	// SucceededResult is for updates that completed successfully.
 	SucceededResult UpdateResult = "succeeded"
 	// FailedResult is for updates that have failed.
-	FailedResult = "failed"
+	FailedResult UpdateResult = "failed"
 )
 
 // Keys we use for values put into UpdateInfo.Environment.
 const (
 	// GitHead is the commit hash of HEAD.
 	GitHead = "git.head"
+	// GitHeadName is the name of the HEAD ref. e.g. "refs/heads/master" or "refs/tags/v1.0.0".
+	GitHeadName = "git.headName"
 	// GitDirty ("true", "false") indiciates if there are any unstaged or modified files in the local repo.
 	GitDirty = "git.dirty"
 
@@ -58,9 +60,17 @@ const (
 	GitAuthorEmail = "git.author.email"
 
 	// GitHubLogin is the user/organization who owns the local repo, if the origin remote is hosted on GitHub.com.
+	// TODO [pulumi/pulumi-service#2306] Once the UI is updated, we would no longer need the GitHub specific keys.
 	GitHubLogin = "github.login"
 	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
 	GitHubRepo = "github.repo"
+
+	// VCSRepoOwner is the user who owns the local repo, if the origin remote is a cloud host.
+	VCSRepoOwner = "vcs.owner"
+	// VCSRepoName is the name of the repo, if the local git repo's remote origin is a cloud host.
+	VCSRepoName = "vcs.repo"
+	//VCSRepoKind is the cloud host where the repo is hosted.
+	VCSRepoKind = "vcs.kind"
 
 	// CISystem is the name of the CI system running the pulumi operation.
 	CISystem = "ci.system"

@@ -13,9 +13,13 @@
 # limitations under the License.
 
 """
-The primary Pulumi Python SDK package.
+The primary Pulumi Python SDK package, targeting Python 3.6 and above.
+
+The pulumi.next package is a point-in-time subpackage to facilitate the
+upgrade of the Pulumi Python SDK to Python 3.6. It provides Python 3-only
+implementations of different parts of the SDK that are being used to replace
+the Python 2 implementations in a piecemeal fashion.
 """
-from __future__ import absolute_import
 
 # Make subpackages available.
 __all__ = ['runtime']
@@ -24,5 +28,8 @@ __all__ = ['runtime']
 from .asset import *
 from .config import *
 from .errors import *
+from .invoke import *
 from .metadata import *
 from .resource import *
+from .output import *
+from .log import *

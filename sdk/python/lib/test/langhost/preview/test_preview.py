@@ -12,46 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import path
-from pulumi.runtime.rpc import Unknown
 from ..util import LanghostTest
 
 
 class PreviewTest(LanghostTest):
     """
-    This test tries to re-create a common setup for doing previews
-    in Python.
-
-    It is extremely common to use the "id" fields of resources to
-    associate one resource to another. This test does this so that
-    we are absolutely sure that it works for previews, otherwise
-    previews in Python are pretty useless.
+    Test that tests that pulumi.runtime.is_dry_run actually returns True on previews and False on updates.
     """
     def test_preview(self):
         self.run_test(
             program=path.join(self.base_path(), "preview"),
-            expected_resource_count=2)
+            expected_resource_count=1)
 
     def register_resource(self, _ctx, dry_run, ty, name, resource,
-                          _dependencies):
-        id_ = None
-        props = resource
-        props["stable"] = "cool stable"
-        if ty == "test:index:Bucket":
-            self.assertEqual(name, "mybucket")
-            if not dry_run:
-                id_ = "mybucketid"
-        elif ty == "test:index:BucketObject":
-            self.assertEqual(name, "mybucketobject")
-            if dry_run:
-                self.assertIsInstance(resource["bucket"], Unknown)
-            else:
-                self.assertEqual(resource["bucket"], "mybucketid")
-
-            if not dry_run:
-                id_ = name
-
+                          _dependencies, _parent, _custom, _protect, _provider):
+        self.assertEqual(ty, "test:index:MyResource")
+        self.assertEqual(name, "foo")
+        if dry_run:
+            self.assertDictEqual({
+                "is_preview": True
+            }, resource)
+        else:
+            self.assertDictEqual({
+                "is_preview": False
+            }, resource)
         return {
             "urn": self.make_urn(ty, name),
-            "id": id_,
-            "object": props
         }

@@ -17,7 +17,6 @@ package cmd
 import (
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -47,14 +46,6 @@ func newPluginLsCmd() *cobra.Command {
 				}
 			}
 
-			// Devote 26 characters to the name width, unless there is a longer name.
-			maxname := 26
-			for _, plugin := range plugins {
-				if len(plugin.Name) > maxname {
-					maxname = len(plugin.Name)
-				}
-			}
-
 			// Sort the plugins: by name first alphabetical ascending and version descending, so that plugins
 			// with the same name/kind sort by newest to oldest.
 			sort.Slice(plugins, func(i, j int) bool {
@@ -70,8 +61,9 @@ func newPluginLsCmd() *cobra.Command {
 
 			// And now pretty-print the list.
 			var totalSize uint64
-			fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-12s %-26s %-18s %-18s %-18s\n",
-				"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED")
+
+			rows := []cmdutil.TableRow{}
+
 			for _, plugin := range plugins {
 				var version string
 				if plugin.Version != nil {
@@ -95,10 +87,18 @@ func newPluginLsCmd() *cobra.Command {
 				} else {
 					lastUsedTime = humanize.Time(plugin.LastUsedTime)
 				}
-				fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-12s %-26s %-18s %-18s %-18s\n",
-					plugin.Name, plugin.Kind, version, bytes, installTime, lastUsedTime)
+
+				rows = append(rows, cmdutil.TableRow{
+					Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
+				})
+
 				totalSize += uint64(plugin.Size)
 			}
+
+			cmdutil.PrintTable(cmdutil.Table{
+				Headers: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
+				Rows:    rows,
+			})
 
 			fmt.Printf("\n")
 			fmt.Printf("TOTAL plugin cache size: %s\n", humanize.Bytes(totalSize))

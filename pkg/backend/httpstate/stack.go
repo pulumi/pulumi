@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -61,16 +60,22 @@ func (c cloudBackendReference) Name() tokens.QName {
 	return c.name
 }
 
-// nolint: lll
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
-	ref      backend.StackReference          // the stack's ref (unique name).
-	cloudURL string                          // the URL to the cloud containing this stack.
-	orgName  string                          // the organization that owns this stack.
-	config   config.Map                      // the stack's config bag.
-	snapshot **deploy.Snapshot               // a snapshot representing the latest deployment state (allocated on first use)
-	b        *cloudBackend                   // a pointer to the backend this stack belongs to.
-	tags     map[apitype.StackTagName]string // the stack's tags.
+	// ref is the stack's unique name.
+	ref backend.StackReference
+	// cloudURL is the URl to the cloud containing this stack.
+	cloudURL string
+	// orgName is the organization that owns this stack.
+	orgName string
+	// config is this stack's config bag.
+	config config.Map
+	// snapshot contains the latest deployment state, allocated on first use.
+	snapshot **deploy.Snapshot
+	// b is a pointer to the backend that this stack belongs to.
+	b *cloudBackend
+	// tags contains metadata tags describing additional, extensible properties about this stack.
+	tags map[apitype.StackTagName]string
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
@@ -144,15 +149,7 @@ func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 }
 
 func (s *cloudStack) ConsoleURL() (string, error) {
-	path, err := s.b.StackConsoleURL(s.ref)
-	if err != nil {
-		return "", nil
-	}
-	url := s.b.CloudConsoleURL(path)
-	if url == "" {
-		return "", errors.New("could not determine clould console URL")
-	}
-	return url, nil
+	return s.b.StackConsoleURL(s.ref)
 }
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping

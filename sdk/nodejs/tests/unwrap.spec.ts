@@ -83,6 +83,7 @@ describe("unwrap", () => {
         it("strings", testUntouched("foo"));
         it("arrays", testUntouched([]));
         it("object", testUntouched({}));
+        it("function", testUntouched(() => {}));
     });
 
     describe("handles promises", () => {
@@ -96,6 +97,7 @@ describe("unwrap", () => {
         it("with strings", testPromise("foo"));
         it("with array", testPromise([]));
         it("with object", testPromise({}));
+        it("with function", testPromise(() => {}));
         it("with nested promise", test(Promise.resolve(Promise.resolve(4)), 4))
     });
 
@@ -110,6 +112,7 @@ describe("unwrap", () => {
         it("with strings", testOutput("foo"));
         it("with array", testOutput([]));
         it("with object", testOutput({}));
+        it("with function", testOutput(() => {}));
         it("with nested output", test(output(output(4)), 4));
         it("with output of promise", test(output(Promise.resolve(4)), 4));
     });
@@ -124,7 +127,7 @@ describe("unwrap", () => {
 
     describe("handles complex object", () => {
         it("empty", testUntouched({}));
-        it("with primitives", testUntouched({ a: 1, b: true }));
+        it("with primitives", testUntouched({ a: 1, b: true, c: () => {} }));
         it("with inner promise", test({ a: 1, b: true, c: Promise.resolve("") }, { a: 1, b: true, c: "" }));
         it("with inner and outer promise", test(Promise.resolve({ a: 1, b: true, c: Promise.resolve("") }), { a: 1, b: true, c: "" }));
         it("recursion", test({ a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } }, { a: 1, b: "", c: { d: true, e: 4 } }));
@@ -315,6 +318,13 @@ describe("unwrap", () => {
 
             // The runtime value better be a number[]
             x.c.e.push(1);
+        }));
+
+        it ("does not wrap functions", asyncTest(async () => {
+            var sentinel = function(_: () => void) {}
+
+            // `v` should be type `() => void` rather than `UnwrappedObject<void>`.
+            output(function() {}).apply(v => sentinel(v));
         }));
     });
 

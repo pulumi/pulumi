@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -50,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -141,13 +139,14 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d      diag.Sink
-	url    string
-	client *client.Client
+	d               diag.Sink
+	url             string
+	stackConfigFile string
+	client          *client.Client
 }
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL string) (Backend, error) {
+func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	apiToken, err := workspace.GetAccessToken(cloudURL)
 	if err != nil {
@@ -155,14 +154,15 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	}
 
 	return &cloudBackend{
-		d:      d,
-		url:    cloudURL,
-		client: client.NewClient(cloudURL, apiToken, d),
+		d:               d,
+		url:             cloudURL,
+		stackConfigFile: stackConfigFile,
+		client:          client.NewClient(cloudURL, apiToken, d),
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -234,11 +234,11 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 		return nil, err
 	}
 
-	return New(d, cloudURL)
+	return New(d, cloudURL, stackConfigFile)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, opts display.Options) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -250,23 +250,27 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 				return nil, err
 			}
 
-			return New(d, cloudURL)
+			return New(d, cloudURL, stackConfigFile)
 		}
 	}
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
 	accessToken := os.Getenv(AccessTokenEnvVar)
-	accountLink := cloudConsoleURL(cloudURL, "account")
+	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
 
 	if accessToken != "" {
-		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
+		// If there's already a token from the environment, use it.
+		_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
+		contract.IgnoreError(err)
 	} else if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
 		return nil, errors.Errorf(
 			"%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)
 	} else {
+		// If no access token is available from the environment, and we are interactive, prompt and offer to
+		// open a browser to make it easy to generate and use a fresh token.
 		line1 := fmt.Sprintf("Manage your Pulumi stacks by logging in.")
 		line1len := len(line1)
 		line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
@@ -313,7 +317,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL)
+				return loginWithBrowser(ctx, d, cloudURL, stackConfigFile)
 			}
 		}
 	}
@@ -331,7 +335,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 		return nil, err
 	}
 
-	return New(d, cloudURL)
+	return New(d, cloudURL, stackConfigFile)
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -340,7 +344,13 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 		return "", err
 	}
 
-	return b.cloudConsoleStackPath(stackID), nil
+	path := b.cloudConsoleStackPath(stackID)
+
+	url := b.CloudConsoleURL(path)
+	if url == "" {
+		return "", errors.New("could not determine clould console URL")
+	}
+	return url, nil
 }
 
 func (b *cloudBackend) Name() string {
@@ -491,35 +501,20 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
-// CreateStackOptions is an optional bag of options specific to creating cloud stacks.
-type CreateStackOptions struct {
-	// CloudName is the optional PPC name to create the stack in.  If omitted, the organization's default PPC is used.
-	CloudName string
-}
-
-func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	opts interface{}) (backend.Stack, error) {
-
-	if opts == nil {
-		opts = CreateStackOptions{}
-	}
-
-	cloudOpts, ok := opts.(CreateStackOptions)
-	if !ok {
-		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
-	}
-
+func (b *cloudBackend) CreateStack(
+	ctx context.Context, stackRef backend.StackReference, _ interface{} /* No custom options for httpstate backend. */) (
+	backend.Stack, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	tags, err := backend.GetStackTags()
+	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, cloudOpts.CloudName, tags)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags)
 	if err != nil {
 		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -653,18 +648,24 @@ func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	ctx context.Context, action apitype.UpdateKind, stackRef backend.StackReference,
+	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
-	stack, err := b.getCloudStackIdentifier(stackRef)
+	stackRef := stack.Ref()
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	programContext, main, err := getContextAndMain(op.Proj, op.Root)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", err
+	stackConfigFile := b.stackConfigFile
+	if stackConfigFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackRef.Name())
+		if err != nil {
+			return client.UpdateIdentifier{}, 0, "", err
+		}
+		stackConfigFile = f
 	}
-	workspaceStack, err := workspace.DetectProjectStack(stackRef.Name())
+	workspaceStack, err := workspace.LoadProjectStack(stackConfigFile)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
 	}
@@ -672,19 +673,15 @@ func (b *cloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-	getContents := func() (io.ReadCloser, int64, error) {
-		const showProgress = true
-		return getUpdateContents(programContext, op.Proj.UseDefaultIgnores(), showProgress, op.Opts.Display)
-	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stack, op.Proj, workspaceStack.Config, main, metadata, op.Opts.Engine, dryRun, getContents)
+		ctx, action, stackID, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags, err := backend.GetStackTags()
+	tags, err := backend.GetMergedStackTags(ctx, stack)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting stack tags")
 	}
@@ -709,7 +706,7 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
 
 	// Create an update object to persist results.
-	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack.Ref(), op, opts.DryRun)
+	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -736,61 +733,32 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
 }
 
-// uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
-// meaning whatever Pulumi program is found in the CWD or parent directory.
-// If set, printSize will print the size of the data being uploaded.
-func getUpdateContents(
-	context string, useDefaultIgnores bool,
-	progress bool, opts display.Options) (io.ReadCloser, int64, error) {
-
-	archiveContents, err := archive.Process(context, useDefaultIgnores)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "creating archive")
-	}
-
-	archiveReader := ioutil.NopCloser(archiveContents)
-
-	// If progress is requested, show a little animated ASCII progress bar.
-	if progress {
-		bar := pb.New(archiveContents.Len())
-		archiveReader = newBarProxyReadCloser(bar, archiveReader)
-		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Uploading program: "))
-		bar.Postfix(opts.Color.Colorize(colors.Reset))
-		bar.SetMaxWidth(80)
-		bar.SetUnits(pb.U_BYTES)
-		bar.Start()
-	}
-
-	return archiveReader, int64(archiveContents.Len()), nil
-}
-
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, error) {
+
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
 	if err != nil {
 		return nil, err
 	}
 
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	manager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+	// displayEvents renders the event to the console and Pulumi service. The processor for the
+	// will signal all events have been proceed when a value is written to the displayDone channel.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, stackRef, op, displayEvents, displayDone, op.Opts.Display)
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
+		displayEvents, displayDone, op.Opts.Display, dryRun)
 
+	// The engineEvents channel receives all events from the engine, which we then forward onto other
+	// channels for actual processing. (displayEvents and callerEventsOpt.)
 	engineEvents := make(chan engine.Event)
-
-	scope := op.Scopes.NewScope(engineEvents, dryRun)
 	eventsDone := make(chan bool)
 	go func() {
-		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
 			displayEvents <- e
-
 			if callerEventsOpt != nil {
 				callerEventsOpt <- e
 			}
@@ -799,9 +767,20 @@ func (b *cloudBackend) runEngineAction(
 		close(eventsDone)
 	}()
 
+	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
+	// the Snapshot (checkpoint file) in the HTTP backend.
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
+	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
+	engineCtx := &engine.Context{
+		Cancel:          cancellationScope.Context(),
+		Events:          engineEvents,
+		SnapshotManager: snapshotManager,
+		BackendClient:   backend.NewBackendClient(b),
+	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
@@ -820,23 +799,22 @@ func (b *cloudBackend) runEngineAction(
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
 
-	// Wait for the display to finish showing all the events.
+	// Wait for dependent channels to finish processing engineEvents before closing.
 	<-displayDone
-	scope.Close() // Don't take any cancellations anymore, we're shutting down.
+	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	close(displayEvents)
-	close(displayDone)
-	contract.IgnoreClose(manager)
+	contract.IgnoreClose(snapshotManager)
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
+	close(displayEvents)
 
+	// Mark the update as complete.
 	status := apitype.UpdateStatusSucceeded
 	if err != nil {
 		status = apitype.UpdateStatusFailed
 	}
-
 	completeErr := u.Complete(status)
 	if completeErr != nil {
 		err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
@@ -853,6 +831,10 @@ func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	stack, err := b.client.GetStack(ctx, stackID)
 	if err != nil {
 		return err
+	}
+
+	if stack.ActiveUpdate == "" {
+		return errors.Errorf("stack %v has never been updated", stackRef)
 	}
 
 	// Compute the update identifier and attempt to cancel the update.
@@ -1134,7 +1116,6 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it and keep
 			// continuing.  The sole exception is if we've done this 10 times.  At that point, we will have
 			// been waiting for many seconds, and want to let the user know something might be wrong.
-			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
 			if try < 10 {
 				warn = false
 			}
@@ -1175,4 +1156,31 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 	}
 
 	return true, nil
+}
+
+// GetStackTags fetches the stack's existing tags.
+func (b *cloudBackend) GetStackTags(ctx context.Context,
+	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
+
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	if stack == nil {
+		return nil, errors.New("stack not found")
+	}
+
+	return stack.(Stack).Tags(), nil
+}
+
+// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+func (b *cloudBackend) UpdateStackTags(ctx context.Context,
+	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
+
+	stack, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return err
+	}
+
+	return b.client.UpdateStackTags(ctx, stack, tags)
 }

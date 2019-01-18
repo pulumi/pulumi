@@ -26,11 +26,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
-// nolint: structcheck, host is used in a different file
+//
+// This structre is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
+// linter.
+// nolint: structcheck
 type UpdateOptions struct {
 	// an optional set of analyzers to run as part of this deployment.
 	Analyzers []string
@@ -216,8 +220,10 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	return acts.Context.SnapshotManager.BeginMutation(step)
 }
 
-func (acts *updateActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, err error) error {
+func (acts *updateActions) OnResourceStepPost(
+	ctx interface{}, step deploy.Step,
+	status resource.Status, err error) error {
+
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -253,6 +259,10 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 			op, record = step.(*deploy.RefreshStep).ResultOp(), true
 		}
 
+		if step.Op() == deploy.OpRead {
+			record = ShouldRecordReadStep(step)
+		}
+
 		if record {
 			// Increment the counters.
 			acts.MapLock.Lock()
@@ -266,6 +276,31 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh {
 			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug)
+		}
+	}
+
+	// See pulumi/pulumi#2011 for details. Terraform always returns the existing state with the diff applied to it in
+	// the event of an update failure. It's appropriate that we save this new state in the output of the resource, but
+	// it is not appropriate to save the inputs, because the resource that exists was not created or updated
+	// successfully with those inputs.
+	//
+	// If we were doing an update and got a `StatusPartialFailure`, the resource that ultimately gets persisted in the
+	// snapshot should be old inputs and new outputs. We accomplish that here by clobbering the new resource's inputs
+	// with the old inputs.
+	//
+	// This is a little kludgy given that these resources are global state. However, given the way that we have
+	// implemented the snapshot manager and engine today, it's the easiest way to accomplish what we are trying to do.
+	if status == resource.StatusPartialFailure && step.Op() == deploy.OpUpdate {
+		logging.V(7).Infof(
+			"OnResourceStepPost(%s): Step is partially-failed update, saving old inputs instead of new inputs",
+			step.URN())
+		new := step.New()
+		old := step.Old()
+		contract.Assert(new != nil)
+		contract.Assert(old != nil)
+		new.Inputs = make(resource.PropertyMap)
+		for key, value := range old.Inputs {
+			new.Inputs[key] = value
 		}
 	}
 

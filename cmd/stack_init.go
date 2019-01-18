@@ -19,20 +19,23 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackInitCmd() *cobra.Command {
-	var ppc string
+	var stackName string
+
 	cmd := &cobra.Command{
-		Use:   "init <stack-name>",
+		Use:   "init [<organization-name>/]<stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
-			"but afterwards it can become the target of a deployment using the `update` command.",
+			"but afterwards it can become the target of a deployment using the `update` command.\n" +
+			"\n" +
+			"To create a stack in an organization, prefix the stack name with the organization name\n" +
+			"and a slash (e.g. 'my-organization/my-great-stack')",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -43,17 +46,15 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			var createOpts interface{}
-			if _, ok := b.(httpstate.Backend); ok {
-				createOpts = httpstate.CreateStackOptions{
-					CloudName: ppc,
+			if len(args) > 0 {
+				if stackName != "" {
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
+
+				stackName = args[0]
 			}
 
-			var stackName string
-			if len(args) > 0 {
-				stackName = args[0]
-			} else if cmdutil.Interactive() {
+			if stackName == "" && cmdutil.Interactive() {
 				name, nameErr := cmdutil.ReadConsole("Enter a stack name")
 				if nameErr != nil {
 					return nameErr
@@ -70,11 +71,12 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
+			var createOpts interface{} // Backend-specific config options, none currently.
 			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/)
 			return err
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&ppc, "ppc", "p", "", "An optional Pulumi Private Cloud (PPC) name to initialize this stack in")
+		&stackName, "stack", "s", "", "The name of the stack to create")
 	return cmd
 }

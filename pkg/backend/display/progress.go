@@ -233,7 +233,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options) {
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
@@ -247,6 +247,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 
 	display := &ProgressDisplay{
 		action:                 action,
+		isPreview:              isPreview,
 		opts:                   opts,
 		stack:                  stack,
 		proj:                   proj,
@@ -281,7 +282,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	ticker.Stop()
 
 	// let our caller know we're done.
-	done <- true
+	close(done)
 }
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
@@ -587,15 +588,10 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 		var maxColumnLengths []int
 		display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
 
-		for i, row := range rows {
-			var id string
-			if i == 0 {
-				id = "#"
-			} else {
-				id = fmt.Sprintf("%v", i)
-			}
+		removeInfoColumnIfUnneeded(rows)
 
-			display.refreshColumns(id, row, maxColumnLengths)
+		for i, row := range rows {
+			display.refreshColumns(fmt.Sprintf("%v", i), row, maxColumnLengths)
 		}
 
 		systemID := len(rows)
@@ -628,6 +624,19 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 			}
 		}
 	}
+}
+
+func removeInfoColumnIfUnneeded(rows [][]string) {
+	// If there have been no info messages, then don't print out the info column header.
+	for i := 1; i < len(rows); i++ {
+		row := rows[i]
+		if row[len(row)-1] != "" {
+			return
+		}
+	}
+
+	firstRow := rows[0]
+	firstRow[len(firstRow)-1] = ""
 }
 
 // Performs all the work at the end once we've heard about the last message from the engine.
@@ -722,7 +731,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// If we get stack outputs, display them at the end.
 	var wroteOutputs bool
-	if display.stackUrn != "" && display.seenStackOutputs {
+	if display.stackUrn != "" && display.seenStackOutputs && !display.opts.SuppressOutputs {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 		props := engine.GetResourceOutputsPropertiesString(
 			stackStep, 1, display.isPreview, display.opts.Debug, false /* refresh */)
@@ -732,6 +741,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			}
 
 			wroteOutputs = true
+			display.writeSimpleMessage(colors.SpecHeadline + "Outputs:" + colors.Reset)
 			display.writeSimpleMessage(props)
 		}
 	}
@@ -848,7 +858,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// once we start hearing about actual resource events.
 
 		payload := event.Payload.(engine.PreludeEventPayload)
-		display.isPreview = payload.IsPreview
 		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
 		return
 	case engine.SummaryEvent:

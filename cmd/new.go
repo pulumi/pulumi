@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"unicode"
@@ -49,17 +50,18 @@ import (
 // nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
 func newNewCmd() *cobra.Command {
 	var configArray []string
-	var name string
 	var description string
-	var stack string
-	var force bool
-	var yes bool
-	var offline bool
-	var generateOnly bool
 	var dir string
+	var force bool
+	var generateOnly bool
+	var name string
+	var offline bool
+	var stack string
+	var suppressOutputs bool
+	var yes bool
 
 	cmd := &cobra.Command{
-		Use:        "new [template]",
+		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
 		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
@@ -75,16 +77,17 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 			opts.Display = display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
+				Color:           cmdutil.GetGlobalColorization(),
+				SuppressOutputs: suppressOutputs,
+				IsInteractive:   interactive,
 			}
 			opts.Engine = engine.UpdateOptions{
 				Parallel: defaultParallel,
 			}
 
 			// Validate name (if specified) before further prompts/operations.
-			if name != "" && !workspace.IsValidProjectName(name) {
-				return errors.Errorf("'%s' is not a valid project name", name)
+			if name != "" && workspace.ValidateProjectName(name) != nil {
+				return errors.Errorf("'%s' is not a valid project name. %s.", name, workspace.ValidateProjectName(name))
 			}
 
 			// Get the current working directory.
@@ -186,7 +189,7 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Show instructions, if we're going to show at least one prompt.
-			hasAtLeastOnePrompt := (name == "") || (description == "") || (stack == "")
+			hasAtLeastOnePrompt := (name == "") || (description == "") || (!generateOnly && stack == "")
 			if !yes && hasAtLeastOnePrompt {
 				fmt.Println("This command will walk you through creating a new Pulumi project.")
 				fmt.Println()
@@ -197,7 +200,8 @@ func newNewCmd() *cobra.Command {
 			// Prompt for the project name, if it wasn't already specified.
 			if name == "" {
 				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, filepath.Base(cwd))
-				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
+				name, err = promptForValue(
+					yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -207,7 +211,8 @@ func newNewCmd() *cobra.Command {
 			if description == "" {
 				defaultValue := workspace.ValueOrDefaultProjectDescription(
 					description, template.ProjectDescription, template.Description)
-				description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
+				description, err = promptForValue(
+					yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -223,13 +228,14 @@ func newNewCmd() *cobra.Command {
 
 			fmt.Printf("Created project '%s'.\n", name)
 
-			// Load the project, update the name & description, and save it.
+			// Load the project, update the name & description, remove the template section, and save it.
 			proj, _, err := readProject()
 			if err != nil {
 				return err
 			}
 			proj.Name = tokens.PackageName(name)
 			proj.Description = &description
+			proj.Template = nil
 			if err = workspace.SaveProject(proj); err != nil {
 				return errors.Wrap(err, "saving project")
 			}
@@ -311,29 +317,32 @@ func newNewCmd() *cobra.Command {
 		&configArray, "config", "c", []string{},
 		"Config to save")
 	cmd.PersistentFlags().StringVarP(
-		&name, "name", "n", "",
-		"The project name; if not specified, a prompt will request it")
-	cmd.PersistentFlags().StringVarP(
 		&description, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
+	cmd.PersistentFlags().StringVar(
+		&dir, "dir", "",
+		"The location to place the generated project; if not specified, the current directory is used")
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Skip prompts and proceed with default values")
+		&generateOnly, "generate-only", "g", false,
+		"Generate the project only; do not create a stack, save config, or install dependencies")
+	cmd.PersistentFlags().StringVarP(
+		&name, "name", "n", "",
+		"The project name; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
-		&generateOnly, "generate-only", "g", false,
-		"Generate the project only; do not create a stack, save config, or install dependencies")
-	cmd.PersistentFlags().StringVar(
-		&dir, "dir", "",
-		"The location to place the generated project; if not specified, the current directory is used")
+		&yes, "yes", "y", false,
+		"Skip prompts and proceed with default values")
 
 	return cmd
 }
@@ -402,7 +411,7 @@ func promptAndCreateStack(
 	defaultValue := getDevStackName(projectName)
 
 	for {
-		stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, opts)
+		stackName, err := promptForValue(yes, "stack name", defaultValue, false, workspace.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -437,8 +446,8 @@ func stackInit(b backend.Backend, stackName string, setCurrent bool) (backend.St
 }
 
 // saveConfig saves the config for the stack.
-func saveConfig(stackName tokens.QName, c config.Map) error {
-	ps, err := workspace.DetectProjectStack(stackName)
+func saveConfig(stack backend.Stack, c config.Map) error {
+	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
 	}
@@ -447,7 +456,7 @@ func saveConfig(stackName tokens.QName, c config.Map) error {
 		ps.Config[k] = v
 	}
 
-	return workspace.SaveProjectStack(stackName, ps)
+	return saveProjectStack(stack, ps)
 }
 
 // installDependencies will install dependencies for the project, e.g. by running
@@ -461,12 +470,9 @@ func installDependencies(message string) error {
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
 	var command string
 	var c *exec.Cmd
-	if strings.EqualFold(proj.RuntimeInfo.Name(), "nodejs") {
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		command = "npm install"
-		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
-	} else if strings.EqualFold(proj.RuntimeInfo.Name(), "python") {
-		command = "pip install -r requirements.txt"
-		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
+		c = exec.Command("npm", "install")
 	} else {
 		return nil
 	}
@@ -495,7 +501,9 @@ func runUpOrPrintNextSteps(
 
 	// Currently go projects require a build/install step before deployment, so we won't automatically run `up` for
 	// such projects. Once we switch over to using `go run` for go, we can remove this and always run `up`.
-	runUp := !strings.EqualFold(proj.RuntimeInfo.Name(), "go")
+	isGo := strings.EqualFold(proj.Runtime.Name(), "go")
+	isPython := strings.EqualFold(proj.Runtime.Name(), "python")
+	runUp := !isGo && !isPython
 
 	if runUp {
 		m, err := getUpdateMetadata("", root)
@@ -519,36 +527,72 @@ func runUpOrPrintNextSteps(
 			return nil
 		}
 	} else {
-		// If the current working directory changed, add instructions to cd into the directory.
-		var deployMsg string
-		if originalCwd != cwd {
-			// If we can determine a relative path, use that, otherwise use the full path.
-			var cd string
-			if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
-				cd = rel
-			} else {
-				cd = cwd
-			}
-
-			// Surround the path with double quotes if it contains whitespace.
-			if containsWhiteSpace(cd) {
-				cd = fmt.Sprintf("\"%s\"", cd)
-			}
-
-			cd = fmt.Sprintf("cd %s", cd)
-
-			deployMsg = "To deploy it, '" + cd + "' and then run 'pulumi up'."
-			deployMsg = colors.Highlight(deployMsg, cd, colors.BrightBlue+colors.Underline+colors.Bold)
-		} else {
-			deployMsg = "To deploy it, run 'pulumi up'."
-		}
-
-		// Colorize and print the next step deploy action.
-		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Println(opts.Display.Color.Colorize(deployMsg))
+		// If we're not running up, print out the steps necessary to get the environment to state where we *can* run up.
+		printNextSteps(opts, originalCwd, cwd, isPython)
 	}
 
 	return nil
+}
+
+// printNextSteps prints out a series of commands that the user needs to run before their stack is able to be updated.
+func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPython bool) {
+	var commands []string
+
+	// If the target working directory is not the same as our current WD, tell the user to
+	// CD to the target directory.
+	if originalCwd != cwd {
+		// If we can determine a relative path, use that, otherwise use the full path.
+		var cd string
+		if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
+			cd = rel
+		} else {
+			cd = cwd
+		}
+
+		// Surround the path with double quotes if it contains whitespace.
+		if containsWhiteSpace(cd) {
+			cd = fmt.Sprintf("\"%s\"", cd)
+		}
+
+		cd = fmt.Sprintf("cd %s", cd)
+		commands = append(commands, cd)
+	}
+
+	// If we're generating a Python project, instruct the user to set up and activate a virtual
+	// environment.
+	if isPython {
+		// Create the virtual environment.
+		commands = append(commands, "virtualenv -p python3 venv")
+
+		// Activate the virtual environment. Only active in the user's current shell, so we can't
+		// just run it for the user here.
+		switch runtime.GOOS {
+		case "windows":
+			commands = append(commands, "venv\\Scripts\\activate")
+		default:
+			commands = append(commands, "source venv/bin/activate")
+		}
+
+		// Install dependencies within the virtualenv
+		commands = append(commands, "pip3 install -r requirements.txt")
+	}
+
+	if len(commands) == 0 { // No additional commands need to be run.
+		deployMsg := "To deploy it, run 'pulumi up'."
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Println(opts.Display.Color.Colorize(deployMsg))
+		return
+	}
+
+	// One or more additional commands needs to be run.
+	fmt.Println("To deploy it, run the following commands:")
+	for i, cmd := range commands {
+		cmdColors := colors.BrightGreen + colors.Bold + cmd + colors.Reset
+		fmt.Printf("   %d. %s\n", i+1, opts.Display.Color.Colorize(cmdColors))
+	}
+
+	upMsg := colors.Highlight("Then, run 'pulumi up'.", "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+	fmt.Println(opts.Display.Color.Colorize(upMsg))
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
@@ -725,20 +769,24 @@ func promptForConfig(
 
 // promptForValue prompts the user for a value with a defaultValue preselected. Hitting enter accepts the
 // default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
-// when specified, it will be run to validate that value entered. An invalid value will result in an error
-// message followed by another prompt for the value.
+// when specified, it will be run to validate that value entered. When this function returns a non nil error
+// validation is assumed to have failed and an error is printed. The error returned by isValidFn is also displayed
+// to provide information about why the validation failed. A period is appended to this message. `promptForValue` then
+// prompts again.
 func promptForValue(
-	yes bool, prompt string, defaultValue string, secret bool,
-	isValidFn func(value string) bool, opts display.Options) (string, error) {
+	yes bool, valueType string, defaultValue string, secret bool,
+	isValidFn func(value string) error, opts display.Options) (string, error) {
 
 	if yes {
 		return defaultValue, nil
 	}
 
 	for {
+		var prompt string
+
 		if defaultValue == "" {
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
+				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, valueType, colors.Reset))
 		} else {
 			defaultValuePrompt := defaultValue
 			if secret {
@@ -746,7 +794,7 @@ func promptForValue(
 			}
 
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValuePrompt, colors.Reset))
+				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, valueType, defaultValuePrompt, colors.Reset))
 		}
 		fmt.Print(prompt)
 
@@ -767,12 +815,17 @@ func promptForValue(
 		value = strings.TrimSpace(value)
 
 		if value != "" {
-			if isValidFn == nil || isValidFn(value) {
+			var validationError error
+			if isValidFn != nil {
+				validationError = isValidFn(value)
+			}
+
+			if validationError == nil {
 				return value, nil
 			}
 
 			// The value is invalid, let the user know and try again
-			fmt.Printf("Sorry, '%s' is not a valid %s.\n", value, prompt)
+			fmt.Printf("Sorry, '%s' is not a valid %s. %s.\n", value, valueType, validationError)
 			continue
 		}
 		return defaultValue, nil
@@ -795,7 +848,8 @@ func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
 		// Create the option string that combines the name, padding, and description.
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, template.Description)
+		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
 		// Add it to the array and map.
 		options = append(options, option)

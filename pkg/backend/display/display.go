@@ -39,12 +39,14 @@ import (
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
-func ShowEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowEvents(
+	op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+
 	if opts.DiffDisplay {
 		ShowDiffEvents(op, action, events, done, opts)
 	} else {
-		ShowProgressEvents(op, action, stack, proj, events, done, opts)
+		ShowProgressEvents(op, action, stack, proj, events, done, opts, isPreview)
 	}
 }
 
@@ -76,7 +78,7 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 	defer func() {
 		spinner.Reset()
 		ticker.Stop()
-		done <- true
+		close(done)
 	}()
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
@@ -114,20 +116,28 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
+
+		// Currently, prelude, summar, and stdout events are printed the same for both the diff and
+		// progress displays.
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
 		return renderSummaryEvent(action, event.Payload.(engine.SummaryEventPayload), opts)
-	case engine.ResourceOperationFailed:
-		return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
-	case engine.ResourceOutputsEvent:
-		return renderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
-	case engine.ResourcePreEvent:
-		return renderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
+
+		// Resource operations have very specific displays for either diff or progress displays.
+		// These functions should not be directly used by the progress display without validating
+		// that the display is appropriate for both.
+	case engine.ResourceOperationFailed:
+		return renderDiffResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+	case engine.ResourceOutputsEvent:
+		return renderDiffResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
+	case engine.ResourcePreEvent:
+		return renderDiffResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
+
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
@@ -138,7 +148,7 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
-	return opts.Color.Colorize(payload.Message)
+	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
 func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
@@ -148,24 +158,17 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
 	changes := event.ResourceChanges
 
-	changeCount := 0
-	for op, c := range changes {
-		if op != deploy.OpSame {
-			changeCount += c
-		}
-	}
-
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
-	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("    %s%d %s%s\n",
-			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset)))
 
 	var planTo string
 	if event.IsPreview {
 		planTo = "to "
 	}
+
+	var changeCount = 0
+	var sameCount = changes[deploy.OpSame]
 
 	// Now summarize all of the changes; we print sames a little differently.
 	for _, op := range deploy.StepOps {
@@ -175,20 +178,49 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 				if !event.IsPreview {
 					opDescription = op.PastTense()
 				}
-				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %s%d %s%s%s\n",
-					op.Prefix(), c, planTo, opDescription, colors.Reset)))
+
+				changeCount++
+				fprintIgnoreError(out, opts.Color.Colorize(
+					fmt.Sprintf("    %s%d %s%s%s\n", op.Prefix(), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}
 
-	if c := changes[deploy.OpSame]; c > 0 {
-		fprintfIgnoreError(out, "    %d unchanged\n", c)
+	summaryPieces := []string{}
+	if changeCount >= 2 {
+		// Only if we made multiple types of changes do we need to print out the total number of
+		// changes.  i.e. we don't need "10 changes" and "+ 10 to create".  We can just say "+ 10 to create"
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%s%d %s%s",
+			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset))
+	}
+
+	if sameCount != 0 {
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%d unchanged", sameCount))
+	}
+
+	if len(summaryPieces) > 0 {
+		fprintfIgnoreError(out, "    ")
+
+		for i, piece := range summaryPieces {
+			if i > 0 {
+				fprintfIgnoreError(out, ". ")
+			}
+
+			out.WriteString(opts.Color.Colorize(piece))
+		}
+
+		fprintfIgnoreError(out, "\n")
 	}
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
-		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration: %s%s\n",
-			colors.SpecHeadline, colors.Reset, event.Duration)))
+		// Round up to the nearest second.  It's not useful to spit out time with 9 digits of
+		// precision.
+		roundedSeconds := int64(math.Ceil(event.Duration.Seconds()))
+		roundedDuration := time.Duration(roundedSeconds) * time.Second
+
+		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration:%s %s\n",
+			colors.SpecHeadline, colors.Reset, roundedDuration)))
 	}
 
 	return out.String()
@@ -216,7 +248,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	return out.String()
 }
 
-func renderResourceOperationFailedEvent(
+func renderDiffResourceOperationFailedEvent(
 	payload engine.ResourceOperationFailedPayload, opts Options) string {
 
 	// It's not actually useful or interesting to print out any details about
@@ -229,7 +261,7 @@ func renderResourceOperationFailedEvent(
 	return ""
 }
 
-func renderResourcePreEvent(
+func renderDiffResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) string {
@@ -253,7 +285,7 @@ func renderResourcePreEvent(
 	return out.String()
 }
 
-func renderResourceOutputsEvent(
+func renderDiffResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) string {
@@ -269,9 +301,14 @@ func renderResourceOutputsEvent(
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
-		text := engine.GetResourceOutputsPropertiesString(
-			payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh)
-		fprintIgnoreError(out, opts.Color.Colorize(text))
+		if !opts.SuppressOutputs {
+			if text := engine.GetResourceOutputsPropertiesString(
+				payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh); text != "" {
+				fprintfIgnoreError(out, "%v%v--outputs:--%v\n",
+					payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
+				fprintIgnoreError(out, opts.Color.Colorize(text))
+			}
+		}
 	}
 	return out.String()
 }

@@ -41,6 +41,7 @@ func newDestroyCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var skipPreview bool
+	var suppressOutputs bool
 	var yes bool
 
 	var cmd = &cobra.Command{
@@ -72,6 +73,7 @@ func newDestroyCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
@@ -118,6 +120,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
@@ -131,7 +136,7 @@ func newDestroyCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVarP(
 		&refresh, "refresh", "r", false,
 		"Refresh the state of the stack's resources before this update")
@@ -147,6 +152,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not perform a preview before performing the destroy")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")

@@ -11,43 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import six
 from pulumi import CustomResource
-from pulumi.runtime import Unknown
+from pulumi.runtime import is_dry_run
 
-
-class Bucket(CustomResource):
+class MyResource(CustomResource):
     def __init__(self, name):
-        CustomResource.__init__(self, "test:index:Bucket", name)
-
-    def set_outputs(self, outputs):
-        self.bucket = Unknown()
-        self.stable = Unknown()
-        if "stable" in outputs:
-            self.bucket = outputs["stable"]
-        if "bucket" in outputs:
-            self.bucket = outputs["bucket"]
-
-
-class BucketObject(CustomResource):
-    def __init__(self, name, bucket=None):
-        if not bucket:
-            raise TypeError("bucket is required")
-
-        if not isinstance(bucket, six.string_types):
-            raise TypeError("bucket must be a string")
-
-        CustomResource.__init__(self, "test:index:BucketObject", name, props={
-            "bucket": bucket
+        CustomResource.__init__(self, "test:index:MyResource", name, {
+            "is_preview": is_dry_run()
         })
 
-    def set_outputs(self, outputs):
-        self.stabke = Unknown()
-        self.bucket = Unknown()
-        if "stable" in outputs:
-            self.bucket = outputs["stable"]
-        if "bucket" in outputs:
-            self.bucket = outputs["bucket"]
 
-bucket = Bucket("mybucket")
-obj = BucketObject("mybucketobject", bucket=bucket.id)
+MyResource("foo")

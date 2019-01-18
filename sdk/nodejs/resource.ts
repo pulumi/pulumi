@@ -63,8 +63,8 @@ export abstract class Resource {
     }
 
     /**
-     * Creates and registers a new resource object.  t is the fully qualified type token and name is
-     * the "name" part to use in creating a stable and globally unique URN for the object.
+     * Creates and registers a new resource object.  [t] is the fully qualified type token and
+     * [name] is the "name" part to use in creating a stable and globally unique URN for the object.
      * dependsOn is an optional list of other resources that this resource depends on, controlling
      * the order in which we perform resource operations.
      *
@@ -99,6 +99,14 @@ export abstract class Resource {
                 const provider = (<CustomResourceOptions>opts).provider;
                 if (provider === undefined) {
                     (<CustomResourceOptions>opts).provider = opts.parent.getProvider(t);
+                } else {
+                    // If a provider was specified, add it to the providers map under this type's package so that
+                    // any children of this resource inherit its provider.
+                    const typeComponents = t.split(":");
+                    if (typeComponents.length === 3) {
+                        const pkg = typeComponents[0];
+                        this.__providers = { ...this.__providers, [pkg]: provider };
+                    }
                 }
             }
         }
@@ -144,7 +152,7 @@ export interface ResourceOptions {
     /**
      * An optional additional explicit dependencies on other resources.
      */
-    dependsOn?: Resource[] | Resource;
+    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
@@ -249,28 +257,41 @@ export abstract class ProviderResource extends CustomResource {
  */
 export class ComponentResource extends Resource {
     /**
-     * Creates and registers a new component resource.  t is the fully qualified type token and name
-     * is the "name" part to use in creating a stable and globally unique URN for the object. parent
-     * is the optional parent for this component, and dependsOn is an optional list of other
-     * resources that this resource depends on, controlling the order in which we perform resource
-     * operations.
+     * Creates and registers a new component resource.  [type] is the fully qualified type token and
+     * [name] is the "name" part to use in creating a stable and globally unique URN for the object.
+     * [opts.parent] is the optional parent for this component, and [opts.dependsOn] is an optional
+     * list of other resources that this resource depends on, controlling the order in which we
+     * perform resource operations.
      *
      * @param t The type of the resource.
      * @param name The _unique_ name of the resource.
-     * @param props The arguments to use to populate the new resource.
+     * @param unused [Deprecated].  Component resources do not communicate or store their properties
+     *               with the Pulumi engine.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, props?: Inputs, opts: ComponentResourceOptions = {}) {
+    constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
         if ((<any>opts).provider !== undefined) {
             throw new ResourceError("Explicit providers may not be used with component resources", opts.parent);
         }
 
-        super(t, name, false, props, opts);
+        // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
+        // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
+        // only as a container for other resources.  Another way to think about this is that a normal
+        // 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
+        // in some way, the cloud resource needs to be updated (and vice versa).  That is not true
+        // for a component resource.  The component is just used for organizational purposes and does
+        // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
+        // do not have any effect on the cloud side of things at all.
+        super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
     }
 
-    // registerOutputs registers synthetic outputs that a component has initialized, usually by allocating
-    // other child sub-resources and propagating their resulting property values.
-    protected registerOutputs(outputs: Inputs | Promise<Inputs> | Output<Inputs> | undefined): void {
+    // registerOutputs registers synthetic outputs that a component has initialized, usually by
+    // allocating other child sub-resources and propagating their resulting property values.
+    // ComponentResources should always call this at the end of their constructor to indicate that
+    // they are done creating child resources.  While not strictly necessary, this helps the
+    // experience by ensuring the UI transitions the ComponentResource to the 'complete' state as
+    // quickly as possible (instead of waiting until the entire application completes).
+    protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
         if (outputs) {
             registerResourceOutputs(this, outputs);
         }
@@ -362,29 +383,40 @@ export class Output<T> {
      * would allow Output values to flow into Resources while losing the data that would allow
      * the dependency graph to be changed.
      */
-     public readonly get: () => T;
+    public readonly get: () => T;
 
     // Statics
+
+    /**
+     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
+     * values as necessary.
+     */
+    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
+    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+        return output<T>(<any>val);
+    }
 
     /**
      * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance<T>(obj: any): obj is Output<T> {
-        return obj && obj.__pulumiOutput;
-    }
-
-    /* @internal */ public static create<T>(
-            resource: Resource, promise: Promise<T>, isKnown: Promise<boolean>): Output<T> {
-        return new Output<T>(new Set<Resource>([resource]), promise, isKnown);
+        return obj && obj.__pulumiOutput ? true : false;
     }
 
     /* @internal */ public constructor(
-            resources: Set<Resource>, promise: Promise<T>, isKnown: Promise<boolean>) {
+            resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
         this.isKnown = isKnown;
 
         // Always create a copy so that no one accidentally modifies our Resource list.
-        this.resources = () => new Set<Resource>(resources);
+        if (Array.isArray(resources)) {
+            this.resources = () => new Set<Resource>(resources);
+        } else if (resources instanceof Set) {
+            this.resources = () => new Set<Resource>(resources);
+        } else {
+            this.resources = () => new Set<Resource>([resources]);
+        }
 
         this.promise = () => promise;
 
@@ -452,7 +484,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
 
 /**
  * [output] takes any Input value and converts it into an Output, deeply unwrapping nested Input
- * values as necessary".
+ * values as necessary.
  *
  * The expected way to use this function is like so:
  *
@@ -552,7 +584,8 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
     }
 }
 
-async function getPromisedObject<T>(keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
+async function getPromisedObject<T>(
+        keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
     const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await kvp.value.promise();
@@ -606,7 +639,7 @@ export type Inputs = Record<string, Input<any>>;
  * In other words, this should not be used as the shape of an object: `{ a: Promise<Output<...>> }`.
  * It should always either be `{ a: Promise<NonOutput> }` or just `{ a: Output<...> }`.
  */
-type Unwrap<T> =
+export type Unwrap<T> =
     // 1. If we have a promise, just get the type it itself is wrapping and recursively unwrap that.
     // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
     // 3. Otherwise, we have a basic type.  Just unwrap that.
@@ -614,12 +647,12 @@ type Unwrap<T> =
     T extends Output<infer U2> ? UnwrapSimple<U2> :
     UnwrapSimple<T>;
 
-type primitive = string | number | boolean | undefined | null;
+type primitive = Function | string | number | boolean | undefined | null;
 
 /**
  * Handles encountering basic types when unwrapping.
  */
-type UnwrapSimple<T> =
+export type UnwrapSimple<T> =
     // 1. Any of the primitive types just unwrap to themselves.
     // 2. An array of some types unwraps to an array of that type itself unwrapped. Note, due to a
     //    TS limitation we cannot express that as Array<Unwrap<U>> due to how it handles recursive
@@ -634,8 +667,51 @@ type UnwrapSimple<T> =
     T extends object ? UnwrappedObject<T> :
     never;
 
-interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
+export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 
-type UnwrappedObject<T> = {
+export type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
 };
+
+/**
+ * [concat] takes a sequence of [Inputs], stringifies each, and concatenates all values into one
+ * final string.  Individual inputs can be any sort of [Input] value.  i.e. they can be [Promise]s,
+ * [Output]s, or just plain JavaScript values.  This can be used like so:
+ *
+ * ```ts
+ *      // 'server' and 'loadBalancer' are both resources that expose [Output] properties.
+ *      let val: Output<string> = pulumi.concat("http://", server.hostname, ":", loadBalancer.port);
+ * ```
+ *
+ */
+export function concat(...params: Input<any>[]): Output<string> {
+    return output(params).apply(array => array.join(""));
+}
+
+/**
+ * [interpolate] is similar to [concat] but is designed to be used as a tagged template expression.
+ * i.e.:
+ *
+ * ```ts
+ *      // 'server' and 'loadBalancer' are both resources that expose [Output] properties.
+ *      let val: Output<string> = pulumi.interpolate `http://${server.hostname}:${loadBalancer.port}`
+ * ```
+ *
+ * As with [concat] the 'placeholders' between `${}` can be any Inputs.  i.e. they can be
+ * [Promise]s, [Output]s, or just plain JavaScript values.
+ */
+export function interpolate(literals: TemplateStringsArray, ...placeholders: Input<any>[]): Output<string> {
+    return output(placeholders).apply(unwrapped => {
+        let result = "";
+
+        // interleave the literals with the placeholders
+        for (let i = 0; i < unwrapped.length; i++) {
+            result += literals[i];
+            result += unwrapped[i];
+        }
+
+        // add the last literal
+        result += literals[literals.length - 1];
+        return result;
+    });
+}

@@ -15,7 +15,6 @@
 """
 The runtime implementation of the Pulumi Python SDK.
 """
-from __future__ import absolute_import
 
 # Make all module members inside of this package available as package members.
 from .config import *
@@ -23,3 +22,4 @@ from .resource import *
 from .rpc import *
 from .settings import *
 from .stack import *
+from .invoke import *
