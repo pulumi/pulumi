@@ -25,13 +25,13 @@ RUN apt-get update && apt-get install -y apt-transport-https
 RUN set -x \
     && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.asc.gpg \
     && mv microsoft.asc.gpg /etc/apt/trusted.gpg.d/ \
-    && wget -q https://packages.microsoft.com/config/debian/8/prod.list \
+    && wget -q https://packages.microsoft.com/config/debian/9/prod.list \
     && mv prod.list /etc/apt/sources.list.d/microsoft-prod.list \
     && chown root:root /etc/apt/trusted.gpg.d/microsoft.asc.gpg \
     && chown root:root /etc/apt/sources.list.d/microsoft-prod.list
 
 RUN apt-get update \
-    && apt-get install -y curl unzip golang git python-pip python-dev dotnet-sdk-2.1
+    && apt-get install -y curl unzip golang git python-pip python-dev dotnet-sdk-2.2
 RUN pip install --upgrade pip
 
 # Install `protoc` v3.5.1.
