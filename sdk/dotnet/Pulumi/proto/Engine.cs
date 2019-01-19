@@ -25,16 +25,28 @@ namespace Pulumirpc {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
             "CgxlbmdpbmUucHJvdG8SCXB1bHVtaXJwYxobZ29vZ2xlL3Byb3RvYnVmL2Vt",
-            "cHR5LnByb3RvInkKCkxvZ1JlcXVlc3QSKAoIc2V2ZXJpdHkYASABKA4yFi5w",
-            "dWx1bWlycGMuTG9nU2V2ZXJpdHkSDwoHbWVzc2FnZRgCIAEoCRILCgN1cm4Y",
-            "AyABKAkSEAoIc3RyZWFtSWQYBCABKAUSEQoJZXBoZW1lcmFsGAUgASgIKjoK",
-            "C0xvZ1NldmVyaXR5EgkKBURFQlVHEAASCAoESU5GTxABEgsKB1dBUk5JTkcQ",
-            "AhIJCgVFUlJPUhADMkAKBkVuZ2luZRI2CgNMb2cSFS5wdWx1bWlycGMuTG9n",
-            "UmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAYgZwcm90bzM="));
+            "cHR5LnByb3RvGhxnb29nbGUvcHJvdG9idWYvc3RydWN0LnByb3RvInkKCkxv",
+            "Z1JlcXVlc3QSKAoIc2V2ZXJpdHkYASABKA4yFi5wdWx1bWlycGMuTG9nU2V2",
+            "ZXJpdHkSDwoHbWVzc2FnZRgCIAEoCRILCgN1cm4YAyABKAkSEAoIc3RyZWFt",
+            "SWQYBCABKAUSEQoJZXBoZW1lcmFsGAUgASgIIhgKFkdldFJvb3RSZXNvdXJj",
+            "ZVJlcXVlc3QiJgoXR2V0Um9vdFJlc291cmNlUmVzcG9uc2USCwoDdXJuGAEg",
+            "ASgJIiUKFlNldFJvb3RSZXNvdXJjZVJlcXVlc3QSCwoDdXJuGAEgASgJIhkK",
+            "F1NldFJvb3RSZXNvdXJjZVJlc3BvbnNlKjoKC0xvZ1NldmVyaXR5EgkKBURF",
+            "QlVHEAASCAoESU5GTxABEgsKB1dBUk5JTkcQAhIJCgVFUlJPUhADMvgBCgZF",
+            "bmdpbmUSNgoDTG9nEhUucHVsdW1pcnBjLkxvZ1JlcXVlc3QaFi5nb29nbGUu",
+            "cHJvdG9idWYuRW1wdHkiABJaCg9HZXRSb290UmVzb3VyY2USIS5wdWx1bWly",
+            "cGMuR2V0Um9vdFJlc291cmNlUmVxdWVzdBoiLnB1bHVtaXJwYy5HZXRSb290",
+            "UmVzb3VyY2VSZXNwb25zZSIAEloKD1NldFJvb3RSZXNvdXJjZRIhLnB1bHVt",
+            "aXJwYy5TZXRSb290UmVzb3VyY2VSZXF1ZXN0GiIucHVsdW1pcnBjLlNldFJv",
+            "b3RSZXNvdXJjZVJlc3BvbnNlIgBiBnByb3RvMw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
-          new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.EmptyReflection.Descriptor, },
+          new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.EmptyReflection.Descriptor, global::Google.Protobuf.WellKnownTypes.StructReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Pulumirpc.LogSeverity), }, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.LogRequest), global::Pulumirpc.LogRequest.Parser, new[]{ "Severity", "Message", "Urn", "StreamId", "Ephemeral" }, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.LogRequest), global::Pulumirpc.LogRequest.Parser, new[]{ "Severity", "Message", "Urn", "StreamId", "Ephemeral" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.GetRootResourceRequest), global::Pulumirpc.GetRootResourceRequest.Parser, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.GetRootResourceResponse), global::Pulumirpc.GetRootResourceResponse.Parser, new[]{ "Urn" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.SetRootResourceRequest), global::Pulumirpc.SetRootResourceRequest.Parser, new[]{ "Urn" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.SetRootResourceResponse), global::Pulumirpc.SetRootResourceResponse.Parser, null, null, null, null)
           }));
     }
     #endregion
@@ -322,6 +334,478 @@ namespace Pulumirpc {
             Ephemeral = input.ReadBool();
             break;
           }
+        }
+      }
+    }
+
+  }
+
+  /// <summary>
+  /// empty.
+  /// </summary>
+  public sealed partial class GetRootResourceRequest : pb::IMessage<GetRootResourceRequest> {
+    private static readonly pb::MessageParser<GetRootResourceRequest> _parser = new pb::MessageParser<GetRootResourceRequest>(() => new GetRootResourceRequest());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<GetRootResourceRequest> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Pulumirpc.EngineReflection.Descriptor.MessageTypes[1]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public GetRootResourceRequest() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public GetRootResourceRequest(GetRootResourceRequest other) : this() {
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public GetRootResourceRequest Clone() {
+      return new GetRootResourceRequest(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as GetRootResourceRequest);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(GetRootResourceRequest other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(GetRootResourceRequest other) {
+      if (other == null) {
+        return;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class GetRootResourceResponse : pb::IMessage<GetRootResourceResponse> {
+    private static readonly pb::MessageParser<GetRootResourceResponse> _parser = new pb::MessageParser<GetRootResourceResponse>(() => new GetRootResourceResponse());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<GetRootResourceResponse> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Pulumirpc.EngineReflection.Descriptor.MessageTypes[2]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public GetRootResourceResponse() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public GetRootResourceResponse(GetRootResourceResponse other) : this() {
+      urn_ = other.urn_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public GetRootResourceResponse Clone() {
+      return new GetRootResourceResponse(this);
+    }
+
+    /// <summary>Field number for the "urn" field.</summary>
+    public const int UrnFieldNumber = 1;
+    private string urn_ = "";
+    /// <summary>
+    /// the URN of the root resource, or the empty string if one was not set.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public string Urn {
+      get { return urn_; }
+      set {
+        urn_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as GetRootResourceResponse);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(GetRootResourceResponse other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (Urn != other.Urn) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (Urn.Length != 0) hash ^= Urn.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      if (Urn.Length != 0) {
+        output.WriteRawTag(10);
+        output.WriteString(Urn);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      if (Urn.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(Urn);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(GetRootResourceResponse other) {
+      if (other == null) {
+        return;
+      }
+      if (other.Urn.Length != 0) {
+        Urn = other.Urn;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            Urn = input.ReadString();
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class SetRootResourceRequest : pb::IMessage<SetRootResourceRequest> {
+    private static readonly pb::MessageParser<SetRootResourceRequest> _parser = new pb::MessageParser<SetRootResourceRequest>(() => new SetRootResourceRequest());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<SetRootResourceRequest> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Pulumirpc.EngineReflection.Descriptor.MessageTypes[3]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public SetRootResourceRequest() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public SetRootResourceRequest(SetRootResourceRequest other) : this() {
+      urn_ = other.urn_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public SetRootResourceRequest Clone() {
+      return new SetRootResourceRequest(this);
+    }
+
+    /// <summary>Field number for the "urn" field.</summary>
+    public const int UrnFieldNumber = 1;
+    private string urn_ = "";
+    /// <summary>
+    /// the URN of the root resource, or the empty string.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public string Urn {
+      get { return urn_; }
+      set {
+        urn_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as SetRootResourceRequest);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(SetRootResourceRequest other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (Urn != other.Urn) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (Urn.Length != 0) hash ^= Urn.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      if (Urn.Length != 0) {
+        output.WriteRawTag(10);
+        output.WriteString(Urn);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      if (Urn.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(Urn);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(SetRootResourceRequest other) {
+      if (other == null) {
+        return;
+      }
+      if (other.Urn.Length != 0) {
+        Urn = other.Urn;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            Urn = input.ReadString();
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  /// <summary>
+  /// empty.
+  /// </summary>
+  public sealed partial class SetRootResourceResponse : pb::IMessage<SetRootResourceResponse> {
+    private static readonly pb::MessageParser<SetRootResourceResponse> _parser = new pb::MessageParser<SetRootResourceResponse>(() => new SetRootResourceResponse());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<SetRootResourceResponse> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Pulumirpc.EngineReflection.Descriptor.MessageTypes[4]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public SetRootResourceResponse() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public SetRootResourceResponse(SetRootResourceResponse other) : this() {
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public SetRootResourceResponse Clone() {
+      return new SetRootResourceResponse(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as SetRootResourceResponse);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(SetRootResourceResponse other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(SetRootResourceResponse other) {
+      if (other == null) {
+        return;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
         }
       }
     }

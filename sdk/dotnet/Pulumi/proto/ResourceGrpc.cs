@@ -203,6 +203,18 @@ namespace Pulumirpc {
           .AddMethod(__Method_RegisterResourceOutputs, serviceImpl.RegisterResourceOutputs).Build();
     }
 
+    /// <summary>Register service method implementations with a service binder. Useful when customizing the service binding logic.
+    /// Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+    /// <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+    /// <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+    public static void BindService(grpc::ServiceBinderBase serviceBinder, ResourceMonitorBase serviceImpl)
+    {
+      serviceBinder.AddMethod(__Method_Invoke, serviceImpl.Invoke);
+      serviceBinder.AddMethod(__Method_ReadResource, serviceImpl.ReadResource);
+      serviceBinder.AddMethod(__Method_RegisterResource, serviceImpl.RegisterResource);
+      serviceBinder.AddMethod(__Method_RegisterResourceOutputs, serviceImpl.RegisterResourceOutputs);
+    }
+
   }
 }
 #endregion

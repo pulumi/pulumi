@@ -24,7 +24,9 @@ using grpc = global::Grpc.Core;
 
 namespace Pulumirpc {
   /// <summary>
-  /// Engine is an interface into the core engine responsible for orchestrating resource operations.
+  /// Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+  /// to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+  /// that can't store their own global state.
   /// </summary>
   public static partial class Engine
   {
@@ -32,6 +34,10 @@ namespace Pulumirpc {
 
     static readonly grpc::Marshaller<global::Pulumirpc.LogRequest> __Marshaller_pulumirpc_LogRequest = grpc::Marshallers.Create((arg) => global::Google.Protobuf.MessageExtensions.ToByteArray(arg), global::Pulumirpc.LogRequest.Parser.ParseFrom);
     static readonly grpc::Marshaller<global::Google.Protobuf.WellKnownTypes.Empty> __Marshaller_google_protobuf_Empty = grpc::Marshallers.Create((arg) => global::Google.Protobuf.MessageExtensions.ToByteArray(arg), global::Google.Protobuf.WellKnownTypes.Empty.Parser.ParseFrom);
+    static readonly grpc::Marshaller<global::Pulumirpc.GetRootResourceRequest> __Marshaller_pulumirpc_GetRootResourceRequest = grpc::Marshallers.Create((arg) => global::Google.Protobuf.MessageExtensions.ToByteArray(arg), global::Pulumirpc.GetRootResourceRequest.Parser.ParseFrom);
+    static readonly grpc::Marshaller<global::Pulumirpc.GetRootResourceResponse> __Marshaller_pulumirpc_GetRootResourceResponse = grpc::Marshallers.Create((arg) => global::Google.Protobuf.MessageExtensions.ToByteArray(arg), global::Pulumirpc.GetRootResourceResponse.Parser.ParseFrom);
+    static readonly grpc::Marshaller<global::Pulumirpc.SetRootResourceRequest> __Marshaller_pulumirpc_SetRootResourceRequest = grpc::Marshallers.Create((arg) => global::Google.Protobuf.MessageExtensions.ToByteArray(arg), global::Pulumirpc.SetRootResourceRequest.Parser.ParseFrom);
+    static readonly grpc::Marshaller<global::Pulumirpc.SetRootResourceResponse> __Marshaller_pulumirpc_SetRootResourceResponse = grpc::Marshallers.Create((arg) => global::Google.Protobuf.MessageExtensions.ToByteArray(arg), global::Pulumirpc.SetRootResourceResponse.Parser.ParseFrom);
 
     static readonly grpc::Method<global::Pulumirpc.LogRequest, global::Google.Protobuf.WellKnownTypes.Empty> __Method_Log = new grpc::Method<global::Pulumirpc.LogRequest, global::Google.Protobuf.WellKnownTypes.Empty>(
         grpc::MethodType.Unary,
@@ -39,6 +45,20 @@ namespace Pulumirpc {
         "Log",
         __Marshaller_pulumirpc_LogRequest,
         __Marshaller_google_protobuf_Empty);
+
+    static readonly grpc::Method<global::Pulumirpc.GetRootResourceRequest, global::Pulumirpc.GetRootResourceResponse> __Method_GetRootResource = new grpc::Method<global::Pulumirpc.GetRootResourceRequest, global::Pulumirpc.GetRootResourceResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "GetRootResource",
+        __Marshaller_pulumirpc_GetRootResourceRequest,
+        __Marshaller_pulumirpc_GetRootResourceResponse);
+
+    static readonly grpc::Method<global::Pulumirpc.SetRootResourceRequest, global::Pulumirpc.SetRootResourceResponse> __Method_SetRootResource = new grpc::Method<global::Pulumirpc.SetRootResourceRequest, global::Pulumirpc.SetRootResourceResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "SetRootResource",
+        __Marshaller_pulumirpc_SetRootResourceRequest,
+        __Marshaller_pulumirpc_SetRootResourceResponse);
 
     /// <summary>Service descriptor</summary>
     public static global::Google.Protobuf.Reflection.ServiceDescriptor Descriptor
@@ -56,6 +76,29 @@ namespace Pulumirpc {
       /// <param name="context">The context of the server-side call handler being invoked.</param>
       /// <returns>The response to send back to the client (wrapped by a task).</returns>
       public virtual global::System.Threading.Tasks.Task<global::Google.Protobuf.WellKnownTypes.Empty> Log(global::Pulumirpc.LogRequest request, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      /// <summary>
+      /// GetRootResource gets the URN of the root resource, the resource that should be the root of all
+      /// otherwise-unparented resources.
+      /// </summary>
+      /// <param name="request">The request received from the client.</param>
+      /// <param name="context">The context of the server-side call handler being invoked.</param>
+      /// <returns>The response to send back to the client (wrapped by a task).</returns>
+      public virtual global::System.Threading.Tasks.Task<global::Pulumirpc.GetRootResourceResponse> GetRootResource(global::Pulumirpc.GetRootResourceRequest request, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      /// <summary>
+      /// SetRootResource sets the URN of the root resource.
+      /// </summary>
+      /// <param name="request">The request received from the client.</param>
+      /// <param name="context">The context of the server-side call handler being invoked.</param>
+      /// <returns>The response to send back to the client (wrapped by a task).</returns>
+      public virtual global::System.Threading.Tasks.Task<global::Pulumirpc.SetRootResourceResponse> SetRootResource(global::Pulumirpc.SetRootResourceRequest request, grpc::ServerCallContext context)
       {
         throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
       }
@@ -129,6 +172,98 @@ namespace Pulumirpc {
       {
         return CallInvoker.AsyncUnaryCall(__Method_Log, null, options, request);
       }
+      /// <summary>
+      /// GetRootResource gets the URN of the root resource, the resource that should be the root of all
+      /// otherwise-unparented resources.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+      /// <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+      /// <param name="cancellationToken">An optional token for canceling the call.</param>
+      /// <returns>The response received from the server.</returns>
+      public virtual global::Pulumirpc.GetRootResourceResponse GetRootResource(global::Pulumirpc.GetRootResourceRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return GetRootResource(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      /// <summary>
+      /// GetRootResource gets the URN of the root resource, the resource that should be the root of all
+      /// otherwise-unparented resources.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="options">The options for the call.</param>
+      /// <returns>The response received from the server.</returns>
+      public virtual global::Pulumirpc.GetRootResourceResponse GetRootResource(global::Pulumirpc.GetRootResourceRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.BlockingUnaryCall(__Method_GetRootResource, null, options, request);
+      }
+      /// <summary>
+      /// GetRootResource gets the URN of the root resource, the resource that should be the root of all
+      /// otherwise-unparented resources.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+      /// <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+      /// <param name="cancellationToken">An optional token for canceling the call.</param>
+      /// <returns>The call object.</returns>
+      public virtual grpc::AsyncUnaryCall<global::Pulumirpc.GetRootResourceResponse> GetRootResourceAsync(global::Pulumirpc.GetRootResourceRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return GetRootResourceAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      /// <summary>
+      /// GetRootResource gets the URN of the root resource, the resource that should be the root of all
+      /// otherwise-unparented resources.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="options">The options for the call.</param>
+      /// <returns>The call object.</returns>
+      public virtual grpc::AsyncUnaryCall<global::Pulumirpc.GetRootResourceResponse> GetRootResourceAsync(global::Pulumirpc.GetRootResourceRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncUnaryCall(__Method_GetRootResource, null, options, request);
+      }
+      /// <summary>
+      /// SetRootResource sets the URN of the root resource.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+      /// <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+      /// <param name="cancellationToken">An optional token for canceling the call.</param>
+      /// <returns>The response received from the server.</returns>
+      public virtual global::Pulumirpc.SetRootResourceResponse SetRootResource(global::Pulumirpc.SetRootResourceRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return SetRootResource(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      /// <summary>
+      /// SetRootResource sets the URN of the root resource.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="options">The options for the call.</param>
+      /// <returns>The response received from the server.</returns>
+      public virtual global::Pulumirpc.SetRootResourceResponse SetRootResource(global::Pulumirpc.SetRootResourceRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.BlockingUnaryCall(__Method_SetRootResource, null, options, request);
+      }
+      /// <summary>
+      /// SetRootResource sets the URN of the root resource.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+      /// <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+      /// <param name="cancellationToken">An optional token for canceling the call.</param>
+      /// <returns>The call object.</returns>
+      public virtual grpc::AsyncUnaryCall<global::Pulumirpc.SetRootResourceResponse> SetRootResourceAsync(global::Pulumirpc.SetRootResourceRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return SetRootResourceAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      /// <summary>
+      /// SetRootResource sets the URN of the root resource.
+      /// </summary>
+      /// <param name="request">The request to send to the server.</param>
+      /// <param name="options">The options for the call.</param>
+      /// <returns>The call object.</returns>
+      public virtual grpc::AsyncUnaryCall<global::Pulumirpc.SetRootResourceResponse> SetRootResourceAsync(global::Pulumirpc.SetRootResourceRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncUnaryCall(__Method_SetRootResource, null, options, request);
+      }
       /// <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
       protected override EngineClient NewInstance(ClientBaseConfiguration configuration)
       {
@@ -141,7 +276,20 @@ namespace Pulumirpc {
     public static grpc::ServerServiceDefinition BindService(EngineBase serviceImpl)
     {
       return grpc::ServerServiceDefinition.CreateBuilder()
-          .AddMethod(__Method_Log, serviceImpl.Log).Build();
+          .AddMethod(__Method_Log, serviceImpl.Log)
+          .AddMethod(__Method_GetRootResource, serviceImpl.GetRootResource)
+          .AddMethod(__Method_SetRootResource, serviceImpl.SetRootResource).Build();
+    }
+
+    /// <summary>Register service method implementations with a service binder. Useful when customizing the service binding logic.
+    /// Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+    /// <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+    /// <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+    public static void BindService(grpc::ServiceBinderBase serviceBinder, EngineBase serviceImpl)
+    {
+      serviceBinder.AddMethod(__Method_Log, serviceImpl.Log);
+      serviceBinder.AddMethod(__Method_GetRootResource, serviceImpl.GetRootResource);
+      serviceBinder.AddMethod(__Method_SetRootResource, serviceImpl.SetRootResource);
     }
 
   }

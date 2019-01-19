@@ -756,6 +756,24 @@ namespace Pulumirpc {
           .AddMethod(__Method_GetPluginInfo, serviceImpl.GetPluginInfo).Build();
     }
 
+    /// <summary>Register service method implementations with a service binder. Useful when customizing the service binding logic.
+    /// Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+    /// <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+    /// <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+    public static void BindService(grpc::ServiceBinderBase serviceBinder, ResourceProviderBase serviceImpl)
+    {
+      serviceBinder.AddMethod(__Method_Configure, serviceImpl.Configure);
+      serviceBinder.AddMethod(__Method_Invoke, serviceImpl.Invoke);
+      serviceBinder.AddMethod(__Method_Check, serviceImpl.Check);
+      serviceBinder.AddMethod(__Method_Diff, serviceImpl.Diff);
+      serviceBinder.AddMethod(__Method_Create, serviceImpl.Create);
+      serviceBinder.AddMethod(__Method_Read, serviceImpl.Read);
+      serviceBinder.AddMethod(__Method_Update, serviceImpl.Update);
+      serviceBinder.AddMethod(__Method_Delete, serviceImpl.Delete);
+      serviceBinder.AddMethod(__Method_Cancel, serviceImpl.Cancel);
+      serviceBinder.AddMethod(__Method_GetPluginInfo, serviceImpl.GetPluginInfo);
+    }
+
   }
 }
 #endregion
