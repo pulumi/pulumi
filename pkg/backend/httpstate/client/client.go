@@ -464,7 +464,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV2,
+func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token string) error {
 
 	rawDeployment, err := json.Marshal(deployment)
@@ -473,7 +473,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	}
 
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    2,
+		Version:    3,
 		Deployment: rawDeployment,
 	}
 

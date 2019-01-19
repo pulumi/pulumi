@@ -206,17 +206,21 @@ export function resolveProperties(
  */
 export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 /**
- * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
+ * specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
  */
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
 /**
- * specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go.
+ * specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
  */
 export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
 /**
- * specialArchiveSig is a randomly assigned hash used to identify archives in maps.  See pkg/resource/asset.go.
+ * specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
  */
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
+/**
+ * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+ */
+export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
@@ -395,6 +399,8 @@ export function deserializeProperty(prop: any): any {
                     else {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
+                case specialSecretSig:
+                    throw new Error("this version of the Pulumi SDK does not support first-class secrets");
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }

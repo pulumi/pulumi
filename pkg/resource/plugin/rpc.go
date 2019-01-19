@@ -267,30 +267,41 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 
 		// Before returning it as an object, check to see if it's a known recoverable type.
 		objmap := obj.Mappable()
-		asset, isasset, err := resource.DeserializeAsset(objmap)
-		if err != nil {
-			return nil, err
-		} else if isasset {
-			if opts.ComputeAssetHashes {
-				if err = asset.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute asset hash")
+		if sig, hasSig := objmap[string(resource.SigKey)]; hasSig {
+			switch sig {
+			case resource.AssetSig:
+				asset, isasset, err := resource.DeserializeAsset(objmap)
+				if err != nil {
+					return nil, err
 				}
-			}
-			m := resource.NewAssetProperty(asset)
-			return &m, nil
-		}
-		archive, isarchive, err := resource.DeserializeArchive(objmap)
-		if err != nil {
-			return nil, err
-		} else if isarchive {
-			if opts.ComputeAssetHashes {
-				if err = archive.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute archive hash")
+				contract.Assert(isasset)
+				if opts.ComputeAssetHashes {
+					if err = asset.EnsureHash(); err != nil {
+						return nil, errors.Wrapf(err, "failed to compute asset hash")
+					}
 				}
+				m := resource.NewAssetProperty(asset)
+				return &m, nil
+			case resource.ArchiveSig:
+				archive, isarchive, err := resource.DeserializeArchive(objmap)
+				if err != nil {
+					return nil, err
+				}
+				contract.Assert(isarchive)
+				if opts.ComputeAssetHashes {
+					if err = archive.EnsureHash(); err != nil {
+						return nil, errors.Wrapf(err, "failed to compute archive hash")
+					}
+				}
+				m := resource.NewArchiveProperty(archive)
+				return &m, nil
+			case resource.SecretSig:
+				return nil, errors.New("this version of the Pulumi SDK does not support first-class secrets")
+			default:
+				return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)
 			}
-			m := resource.NewArchiveProperty(archive)
-			return &m, nil
 		}
+
 		m := resource.NewObjectProperty(obj)
 		return &m, nil
 
