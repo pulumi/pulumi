@@ -686,8 +686,8 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 			defer fprintf(pt.opts.Stdout, "pipenv install action complete\n")
 		}
 
-		pt.pipenvMutex.Lock()
-		defer pt.pipenvMutex.Unlock()
+		contract.IgnoreError(pt.pipenvMutex.Lock())
+		defer contract.IgnoreError(pt.pipenvMutex.Unlock())
 	}
 
 	cmd, err := pt.pipenvCmd(args)
