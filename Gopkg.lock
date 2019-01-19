@@ -119,6 +119,12 @@
   version = "v1.31.0"
 
 [[projects]]
+  name = "github.com/gofrs/flock"
+  packages = ["."]
+  revision = "7f43ea2e6a643ad441fc12d0ecc0d3388b300c53"
+  version = "v0.7.0"
+
+[[projects]]
   branch = "pulumi-master"
   name = "github.com/golang/glog"
   packages = ["."]
@@ -584,6 +590,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6767608d8cb6e96b1a0e0dbb5a2ad5b7e3cd07d6d9a5bcfe32c68b10358db62c"
+  inputs-digest = "20441aca93b203c1c03aed0d53e1469ef6bfe48f6193e91a22c5c93f9262704e"
   solver-name = "gps-cdcl"
   solver-version = 1
