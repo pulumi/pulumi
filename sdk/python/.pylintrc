@@ -142,6 +142,7 @@ disable=print-statement,
         comprehension-escape,
 
         # Pulumi-specific exclusions begin here
+        cyclic-import,
         too-few-public-methods,
         wildcard-import,
         global-statement,
