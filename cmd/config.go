@@ -374,7 +374,6 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 // configValueJSON is the shape of the --json output for a configuration value.  While we can add fields to this
 // structure in the future, we should not change existing fields.
 type configValueJSON struct {
-	Name string `json:"name"`
 	// When the value is encrypted and --show-secrets was not passed, the value will not be set.
 	Value  *string `json:"value,omitempty"`
 	Secret bool    `json:"secret"`
@@ -408,10 +407,9 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	sort.Sort(keys)
 
 	if jsonOut {
-		var configValues []configValueJSON
+		configValues := make(map[string]configValueJSON)
 		for _, key := range keys {
 			entry := configValueJSON{
-				Name:   key.String(),
 				Secret: cfg[key].Secure(),
 			}
 
@@ -428,7 +426,7 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 				entry.Value = nil
 			}
 
-			configValues = append(configValues, entry)
+			configValues[key.String()] = entry
 		}
 		out, err := json.MarshalIndent(configValues, "", "  ")
 		if err != nil {
@@ -480,7 +478,6 @@ func getConfig(stack backend.Stack, key config.Key, jsonOut bool) error {
 
 		if jsonOut {
 			value := configValueJSON{
-				Name:   key.String(),
 				Value:  &raw,
 				Secret: v.Secure(),
 			}
