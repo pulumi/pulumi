@@ -27,11 +27,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func newHistoryCmd() *cobra.Command {
 	var stack string
+	var jsonOut bool
+	var showSecrets bool
 	var cmd = &cobra.Command{
 		Use:        "history",
 		Aliases:    []string{"hist"},
@@ -54,21 +58,94 @@ This command lists data about previous updates for a stack.`,
 			if err != nil {
 				return errors.Wrap(err, "getting history")
 			}
+			var decrypter config.Decrypter
+			if showSecrets {
+				crypter, err := s.Backend().GetStackCrypter(s.Ref())
+				if err != nil {
+					return errors.Wrap(err, "decrypting secrets")
+				}
+				decrypter = crypter
+			}
 
-			displayUpdate(updates, opts)
-			return nil
+			if jsonOut {
+				return displayUpdatesJSON(updates, decrypter)
+			}
+
+			return displayUpdatesConsole(updates, opts)
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
+	cmd.Flags().BoolVar(
+		&showSecrets, "show-secrets", false,
+		"Show secret values when listing config instead of displaying blinded values")
+	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	return cmd
 }
 
-func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
+// updateInfoJSON is the shape of the --json output for a configuration value.  While we can add fields to this
+// structure in the future, we should not change existing fields.
+type updateInfoJSON struct {
+	Kind        string                     `json:"kind"`
+	StartTime   string                     `json:"startTime"`
+	Message     string                     `json:"message"`
+	Environment map[string]string          `json:"environment"`
+	Config      map[string]configValueJSON `json:"config"`
+	Result      string                     `json:"result,omitempty"`
+
+	// These values are only present once the update finishes
+	EndTime         *string         `json:"endTime,omitempty"`
+	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
+}
+
+func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) error {
+	makeStringRef := func(s string) *string {
+		return &s
+	}
+
+	updatesJSON := make([]updateInfoJSON, len(updates))
+	for idx, update := range updates {
+		info := updateInfoJSON{
+			Kind:        string(update.Kind),
+			StartTime:   time.Unix(update.StartTime, 0).UTC().Format(timeFormat),
+			Message:     update.Message,
+			Environment: update.Environment,
+		}
+
+		info.Config = make(map[string]configValueJSON)
+		for k, v := range update.Config {
+			configValue := configValueJSON{
+				Secret: v.Secure(),
+			}
+			if !v.Secure() || (v.Secure() && decrypter != nil) {
+				value, err := v.Value(decrypter)
+				contract.AssertNoError(err)
+				configValue.Value = makeStringRef(value)
+			}
+
+			info.Config[k.String()] = configValue
+		}
+		info.Result = string(update.Result)
+		if update.Result != backend.InProgressResult {
+			info.EndTime = makeStringRef(time.Unix(update.EndTime, 0).UTC().Format(timeFormat))
+			resourceChanges := make(map[string]int)
+			for k, v := range update.ResourceChanges {
+				resourceChanges[string(k)] = v
+			}
+			info.ResourceChanges = &resourceChanges
+		}
+		updatesJSON[idx] = info
+	}
+
+	return printJSON(updatesJSON)
+}
+
+func displayUpdatesConsole(updates []backend.UpdateInfo, opts display.Options) error {
 	if len(updates) == 0 {
 		fmt.Println("Stack has never been updated")
-		return
+		return nil
 	}
 
 	printResourceChanges := func(background, text, sign, reset string, amount int) {
@@ -116,4 +193,6 @@ func displayUpdate(updates []backend.UpdateInfo, opts display.Options) {
 		}
 		fmt.Println("")
 	}
+
+	return nil
 }

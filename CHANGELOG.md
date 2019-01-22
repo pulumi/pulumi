@@ -2,7 +2,7 @@
 
 ### Improvements
 
-- Add `--json` to `pulumi config`, `pulumi config get` and `pulumi plugin ls` to request the output be in JSON.
+- Add `--json` to `pulumi config`, `pulumi config get`, `pulumi history` and `pulumi plugin ls` to request the output be in JSON.
 
 ## 0.16.11 (Released January 16th, 2019)
 
