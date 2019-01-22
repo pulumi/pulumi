@@ -328,6 +328,10 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 	return nil
 }
 
+func (acts *planActions) RemovePendingReplacements([]*resource.State) error {
+	return nil
+}
+
 func ShouldRecordReadStep(step deploy.Step) bool {
 	contract.Assertf(step.Op() == deploy.OpRead, "Only call this on a Read step")
 

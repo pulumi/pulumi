@@ -271,6 +271,12 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 			// (we have pointers to engine-allocated objects), this transparently
 			// "just works" for the SnapshotManager.
 			csm.manager.markNew(step.New())
+
+			// If we had an old state that was marked as pending-replacement, mark its replacement as complete such
+			// that it is flushed from the state file.
+			if old := step.Old(); old != nil && old.PendingReplacement {
+				csm.manager.markDone(old)
+			}
 		}
 		return true
 	})
@@ -330,7 +336,9 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 		dsm.manager.markOperationComplete(step.Old())
 		if successful {
 			contract.Assert(!step.Old().Protect)
-			dsm.manager.markDone(step.Old())
+			if !step.Old().PendingReplacement {
+				dsm.manager.markDone(step.Old())
+			}
 		}
 		return true
 	})
@@ -392,6 +400,16 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
 		// have changed.
 		return false
+	})
+}
+
+func (sm *SnapshotManager) RemovePendingReplacements(resources []*resource.State) error {
+	return sm.mutate(func() bool {
+		for _, r := range resources {
+			contract.Assert(r.PendingReplacement)
+			sm.markDone(r)
+		}
+		return true
 	})
 }
 

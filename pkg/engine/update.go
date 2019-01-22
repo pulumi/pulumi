@@ -324,3 +324,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	// We need to perform another snapshot write to ensure they get written out.
 	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }
+
+func (acts *updateActions) RemovePendingReplacements(resources []*resource.State) error {
+	return acts.Context.SnapshotManager.RemovePendingReplacements(resources)
+}

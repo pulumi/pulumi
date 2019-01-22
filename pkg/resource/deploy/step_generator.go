@@ -62,7 +62,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, *re
 		event.Dependencies(),
 		nil, /* initErrors */
 		event.Provider(),
-		nil /* propertyDependencies */)
+		nil, /* propertyDependencies */
+		false)
 	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
@@ -130,7 +131,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 	// get serialized into the checkpoint file.
 	inputs := goal.Properties
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies)
+		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false)
 
 	// Fetch the provider for this resource.
 	prov, err := sg.getResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
@@ -398,11 +399,12 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes() []Step {
+func (sg *stepGenerator) GenerateDeletes() ([]Step, []*resource.State) {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
 	var dels []Step
+	var pendingReplaces []*resource.State
 	if prev := sg.plan.prev; prev != nil {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
@@ -443,11 +445,15 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
-				dels = append(dels, NewDeleteStep(sg.plan, res))
+				if !res.PendingReplacement {
+					dels = append(dels, NewDeleteStep(sg.plan, res))
+				} else {
+					pendingReplaces = append(pendingReplaces, res)
+				}
 			}
 		}
 	}
-	return dels
+	return dels, pendingReplaces
 }
 
 // GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be

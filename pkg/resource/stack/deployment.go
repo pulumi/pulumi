@@ -116,7 +116,6 @@ func DeserializeUntypedDeployment(deployment *apitype.UntypedDeployment) (*deplo
 		}
 		v3deployment = migrate.UpToDeploymentV3(v2deployment)
 	case 3:
-		var v3deployment apitype.DeploymentV3
 		if err := json.Unmarshal([]byte(deployment.Deployment), &v3deployment); err != nil {
 			return nil, err
 		}
@@ -203,6 +202,7 @@ func SerializeResource(res *resource.State) apitype.ResourceV3 {
 		InitErrors:           res.InitErrors,
 		Provider:             res.Provider,
 		PropertyDependencies: res.PropertyDependencies,
+		PendingReplacement:   res.PendingReplacement,
 	}
 }
 
@@ -274,7 +274,7 @@ func DeserializeResource(res apitype.ResourceV3) (*resource.State, error) {
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
-		res.PropertyDependencies), nil
+		res.PropertyDependencies, res.PendingReplacement), nil
 }
 
 func DeserializeOperation(op apitype.OperationV2) (resource.Operation, error) {

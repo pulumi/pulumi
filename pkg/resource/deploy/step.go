@@ -237,6 +237,8 @@ func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingDelete boo
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	contract.Assert(!pendingDelete || old.Delete)
+
+	old.PendingReplacement = !pendingDelete
 	return &DeleteStep{
 		plan:      plan,
 		old:       old,
@@ -588,8 +590,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		complete = func() { close(s.done) }
 	}
 
-	// Component and provider resources never change with a refresh; just return the current state.
-	if !s.old.Custom || providers.IsProviderType(s.old.Type) {
+	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
+	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
 		return resource.StatusOK, complete, nil
 	}
 
@@ -613,7 +615,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	if refreshed != nil {
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, s.old.Inputs, refreshed,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
-			s.old.PropertyDependencies)
+			s.old.PropertyDependencies, s.old.PendingReplacement)
 	} else {
 		s.new = nil
 	}

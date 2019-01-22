@@ -38,13 +38,14 @@ type State struct {
 	InitErrors           []string              // the set of errors encountered in the process of initializing resource.
 	Provider             string                // the provider to use for this resource.
 	PropertyDependencies map[PropertyKey][]URN // the set of dependencies that affect each property.
+	PendingReplacement   bool                  // true if this resource was deleted and is awaiting replacement.
 }
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,
 	external bool, dependencies []URN, initErrors []string, provider string,
-	propertyDependencies map[PropertyKey][]URN) *State {
+	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool) *State {
 
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -64,6 +65,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		InitErrors:           initErrors,
 		Provider:             provider,
 		PropertyDependencies: propertyDependencies,
+		PendingReplacement:   pendingReplacement,
 	}
 }
 

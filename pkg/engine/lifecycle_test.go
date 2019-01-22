@@ -48,15 +48,17 @@ import (
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin   JournalEntryKind = 0
-	JournalEntrySuccess JournalEntryKind = 1
-	JournalEntryFailure JournalEntryKind = 2
-	JournalEntryOutputs JournalEntryKind = 4
+	JournalEntryBegin              JournalEntryKind = 0
+	JournalEntrySuccess            JournalEntryKind = 1
+	JournalEntryFailure            JournalEntryKind = 2
+	JournalEntryOutputs            JournalEntryKind = 4
+	JournalEntryRemoveReplacements JournalEntryKind = 5
 )
 
 type JournalEntry struct {
-	Kind JournalEntryKind
-	Step deploy.Step
+	Kind      JournalEntryKind
+	Step      deploy.Step
+	Resources []*resource.State
 }
 
 type Journal struct {
@@ -108,6 +110,15 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 	return nil
 }
 
+func (j *Journal) RemovePendingReplacements(resources []*resource.State) error {
+	select {
+	case j.events <- JournalEntry{Kind: JournalEntryRemoveReplacements, Resources: resources}:
+		return nil
+	case <-j.cancel:
+		return errors.New("journal closed")
+	}
+}
+
 func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
@@ -117,7 +128,8 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
-		if e.Kind == JournalEntryBegin {
+		switch e.Kind {
+		case JournalEntryBegin:
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
@@ -128,11 +140,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			case deploy.OpUpdate:
 				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeUpdating))
 			}
-
-			continue
-		}
-
-		if e.Kind != JournalEntryOutputs {
+		case JournalEntryFailure, JournalEntrySuccess:
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate:
 				doneOps[e.Step.New()] = true
@@ -141,24 +149,33 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			}
 		}
 
-		if e.Kind != JournalEntrySuccess {
-			continue
-		}
-
-		switch e.Step.Op() {
-		case deploy.OpSame, deploy.OpUpdate:
-			resources = append(resources, e.Step.New())
-			dones[e.Step.Old()] = true
-		case deploy.OpCreate, deploy.OpCreateReplacement:
-			resources = append(resources, e.Step.New())
-		case deploy.OpDelete, deploy.OpDeleteReplaced:
-			dones[e.Step.Old()] = true
-		case deploy.OpReplace:
-			// do nothing.
-		case deploy.OpRead, deploy.OpReadReplacement:
-			resources = append(resources, e.Step.New())
-			if e.Step.Old() != nil {
+		// Now mark resources done as necessary.
+		switch e.Kind {
+		case JournalEntryRemoveReplacements:
+			for _, r := range e.Resources {
+				dones[r] = true
+			}
+		case JournalEntrySuccess:
+			switch e.Step.Op() {
+			case deploy.OpSame, deploy.OpUpdate:
+				resources = append(resources, e.Step.New())
 				dones[e.Step.Old()] = true
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				resources = append(resources, e.Step.New())
+				if old := e.Step.Old(); old != nil && old.PendingReplacement {
+					dones[old] = true
+				}
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
+				if old := e.Step.Old(); !old.PendingReplacement {
+					dones[old] = true
+				}
+			case deploy.OpReplace:
+				// do nothing.
+			case deploy.OpRead, deploy.OpReadReplacement:
+				resources = append(resources, e.Step.New())
+				if e.Step.Old() != nil {
+					dones[e.Step.Old()] = true
+				}
 			}
 		}
 	}

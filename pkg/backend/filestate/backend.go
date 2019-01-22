@@ -466,7 +466,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    2,
+		Version:    3,
 		Deployment: json.RawMessage(data),
 	}, nil
 }
