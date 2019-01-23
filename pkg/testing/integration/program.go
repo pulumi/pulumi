@@ -34,8 +34,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofrs/flock"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -510,26 +508,6 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 
 // programTester contains state associated with running a single test pass.
 type programTester struct {
-<<<<<<< HEAD
-	t           *testing.T          // the Go tester for this run.
-	opts        *ProgramTestOptions // options that control this test run.
-	bin         string              // the `pulumi` binary we are using.
-	yarnBin     string              // the `yarn` binary we are using.
-	goBin       string              // the `go` binary we are using.
-	pipenvBin   string              // The `pipenv` binary we are using.
-	pipenvMutex *flock.Flock        // Serializes pipenv invocations. See comment in `runPipenvCommand` for details
-}
-
-func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
-	lockFile := filepath.Join(os.TempDir(), "pulumi-pipenv.lock")
-	if opts.Verbose {
-		fprintf(os.Stdout, "Using Pipenv lock: %s\n", lockFile)
-	}
-	return &programTester{
-		t:           t,
-		opts:        opts,
-		pipenvMutex: flock.New(lockFile),
-=======
 	t         *testing.T          // the Go tester for this run.
 	opts      *ProgramTestOptions // options that control this test run.
 	bin       string              // the `pulumi` binary we are using.
@@ -542,7 +520,6 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 	return &programTester{
 		t:    t,
 		opts: opts,
->>>>>>> Use both a in-proc and out-of-proc pipenv lock
 	}
 }
 
@@ -704,10 +681,6 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 			panic(err)
 		}
 
-<<<<<<< HEAD
-		contract.IgnoreError(pt.pipenvMutex.Lock())
-		defer contract.IgnoreError(pt.pipenvMutex.Unlock())
-=======
 		if pt.opts.Verbose {
 			fprintf(pt.opts.Stdout, "acquired pipenv install lock\n")
 			defer fprintf(pt.opts.Stdout, "released pipenv install lock\n")
@@ -717,7 +690,6 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 				panic(err)
 			}
 		}()
->>>>>>> Use both a in-proc and out-of-proc pipenv lock
 	}
 
 	cmd, err := pt.pipenvCmd(args)
