@@ -80,10 +80,10 @@ func newStackLsCmd() *cobra.Command {
 			})
 
 			if jsonOut {
-				return formatJSON(b, current, stackSummaries)
+				return formatStackSummariesJSON(b, current, stackSummaries)
 			}
 
-			return formatConsole(b, current, stackSummaries)
+			return formatStackSummariesConsole(b, current, stackSummaries)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
@@ -106,7 +106,7 @@ type stackSummaryJSON struct {
 	URL              string `json:"url,omitempty"`
 }
 
-func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
+func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
 	output := make([]stackSummaryJSON, len(stackSummaries))
 	for idx, summary := range stackSummaries {
 		summaryJSON := stackSummaryJSON{
@@ -135,7 +135,7 @@ func formatJSON(b backend.Backend, currentStack string, stackSummaries []backend
 	return printJSON(output)
 }
 
-func formatConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
+func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
 	_, showURLColumn := b.(httpstate.Backend)
 
 	// Header string and formatting options to align columns.
