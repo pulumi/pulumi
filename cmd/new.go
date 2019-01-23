@@ -63,7 +63,7 @@ func newNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi project",
+		Short:      "Create and deploy a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			interactive := cmdutil.Interactive()
@@ -191,10 +191,16 @@ func newNewCmd() *cobra.Command {
 			// Show instructions, if we're going to show at least one prompt.
 			hasAtLeastOnePrompt := (name == "") || (description == "") || (!generateOnly && stack == "")
 			if !yes && hasAtLeastOnePrompt {
-				fmt.Println("This command will walk you through creating a new Pulumi project.")
+				fmt.Println("This command will walk you through creating and deploying a new Pulumi project.")
 				fmt.Println()
-				fmt.Println("Enter a value or leave blank to accept the default, and press <ENTER>.")
-				fmt.Println("Press ^C at any time to quit.")
+				fmt.Println(
+					opts.Display.Color.Colorize(
+						colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
+							"<ENTER>", colors.BrightCyan+colors.Bold)))
+				fmt.Println(
+					opts.Display.Color.Colorize(
+						colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
+				fmt.Println()
 			}
 
 			// Prompt for the project name, if it wasn't already specified.
@@ -226,7 +232,8 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Created project '%s'.\n", name)
+			fmt.Printf("Created project '%s'\n", name)
+			fmt.Println()
 
 			// Load the project, update the name & description, remove the template section, and save it.
 			proj, _, err := readProject()
@@ -245,7 +252,8 @@ func newNewCmd() *cobra.Command {
 				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts.Display); err != nil {
 					return err
 				}
-				// The backend will print "Created stack '<stack>'." on success.
+				// The backend will print "Created stack '<stack>'" on success.
+				fmt.Println()
 			}
 
 			// Prompt for config values (if needed) and save.
@@ -265,6 +273,7 @@ func newNewCmd() *cobra.Command {
 					opts.Display.Color.Colorize(
 						colors.BrightGreen+colors.Bold+"Your new project is configured and ready to go!"+colors.Reset) +
 						" " + cmdutil.EmojiOr("✨", ""))
+				fmt.Println()
 			}
 
 			// Run `up` automatically, or print out next steps to run `up` manually.
@@ -419,7 +428,7 @@ func promptAndCreateStack(
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
-				fmt.Printf("Sorry, could not create stack '%s': %v.\n", stackName, err)
+				fmt.Printf("Sorry, could not create stack '%s': %v\n", stackName, err)
 				continue
 			}
 			return nil, err
@@ -479,13 +488,19 @@ func installDependencies(message string) error {
 
 	if message != "" {
 		fmt.Println(message)
+		fmt.Println()
 	}
 
 	// Run the command.
-	if out, err := c.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "%s", out)
-		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again", command)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment", command)
 	}
+
+	fmt.Println("Finished installing dependencies")
+	fmt.Println()
 
 	return nil
 }
@@ -511,6 +526,9 @@ func runUpOrPrintNextSteps(
 			return errors.Wrap(err, "gathering environment metadata")
 		}
 
+		fmt.Println("Previewing initial update...")
+		fmt.Println()
+
 		_, err = stack.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
@@ -522,8 +540,22 @@ func runUpOrPrintNextSteps(
 		case err == context.Canceled:
 			return errors.New("update cancelled")
 		case err != nil:
+			fmt.Println(
+				opts.Display.Color.Colorize(
+					colors.Highlight("An error occurred; address the issue, then run 'pulumi up' to try again",
+						"pulumi up", colors.BrightBlue+colors.Bold)))
 			return PrintEngineError(err)
 		default:
+			fmt.Println()
+			fmt.Println(
+				opts.Display.Color.Colorize(
+					colors.BrightGreen+colors.Bold+"Initial update complete!"+colors.Reset) +
+					" " + cmdutil.EmojiOr("✨", ""))
+			fmt.Println()
+			fmt.Println(
+				opts.Display.Color.Colorize(
+					colors.Highlight("Modify your program as needed, then run 'pulumi up' to deploy the changes",
+						"pulumi up", colors.BrightBlue+colors.Bold)))
 			return nil
 		}
 	} else {
@@ -578,20 +610,20 @@ func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPytho
 	}
 
 	if len(commands) == 0 { // No additional commands need to be run.
-		deployMsg := "To deploy it, run 'pulumi up'."
-		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+		deployMsg := "To perform an initial deployment, run 'pulumi up'"
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
 		fmt.Println(opts.Display.Color.Colorize(deployMsg))
 		return
 	}
 
 	// One or more additional commands needs to be run.
-	fmt.Println("To deploy it, run the following commands:")
+	fmt.Println("To perform an initial deployment, run the following commands:")
 	for i, cmd := range commands {
-		cmdColors := colors.BrightGreen + colors.Bold + cmd + colors.Reset
+		cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
 		fmt.Printf("   %d. %s\n", i+1, opts.Display.Color.Colorize(cmdColors))
 	}
 
-	upMsg := colors.Highlight("Then, run 'pulumi up'.", "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+	upMsg := colors.Highlight("Then, run 'pulumi up'", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Display.Color.Colorize(upMsg))
 }
 
@@ -786,7 +818,7 @@ func promptForValue(
 
 		if defaultValue == "" {
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, valueType, colors.Reset))
+				fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
 		} else {
 			defaultValuePrompt := defaultValue
 			if secret {
@@ -794,7 +826,7 @@ func promptForValue(
 			}
 
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, valueType, defaultValuePrompt, colors.Reset))
+				fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
 		}
 		fmt.Print(prompt)
 
