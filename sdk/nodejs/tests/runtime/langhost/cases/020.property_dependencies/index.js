@@ -5,10 +5,9 @@ let pulumi = require("../../../../../");
 
 class MyResource extends pulumi.CustomResource {
 	constructor(name, args, opts) {
-		super("test:index:MyResource", name, {
-			...args,
+		super("test:index:MyResource", name, Object.assign(args, {
 			outprop: undefined,
-		}, opts);
+		}), opts);
 	}
 }
 
