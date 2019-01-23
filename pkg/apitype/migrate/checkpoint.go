@@ -36,3 +36,18 @@ func UpToCheckpointV2(v1 apitype.CheckpointV1) apitype.CheckpointV2 {
 	v2.Latest = v2deploy
 	return v2
 }
+
+// UpToCheckpointV3 migrates a CheckpointV2 to a CheckpointV3.
+func UpToCheckpointV3(v2 apitype.CheckpointV2) apitype.CheckpointV3 {
+	var v3 apitype.CheckpointV3
+	v3.Stack = v2.Stack
+	v3.Config = v2.Config
+
+	var v3deploy *apitype.DeploymentV3
+	if v2.Latest != nil {
+		deploy := UpToDeploymentV3(*v2.Latest)
+		v3deploy = &deploy
+	}
+	v3.Latest = v3deploy
+	return v3
+}

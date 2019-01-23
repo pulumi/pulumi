@@ -16,6 +16,7 @@ package migrate
 
 import (
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/resource"
 )
 
 // UpToResourceV2 migrates a resource from ResourceV1 to ResourceV2.
@@ -46,4 +47,32 @@ func UpToResourceV2(v1 apitype.ResourceV1) apitype.ResourceV2 {
 	v2.Dependencies = append(v2.Dependencies, v1.Dependencies...)
 	v2.InitErrors = append(v2.InitErrors, v1.InitErrors...)
 	return v2
+}
+
+// UpToResourceV3 migrates a resource from ResourceV2 to ResourceV3.
+func UpToResourceV3(v2 apitype.ResourceV2) apitype.ResourceV3 {
+	var v3 apitype.ResourceV3
+	v3.URN = v2.URN
+	v3.Custom = v2.Custom
+	v3.Delete = v2.Delete
+	v3.ID = v2.ID
+	v3.Type = v2.Type
+	v3.Inputs = v2.Inputs
+	v3.Outputs = v2.Outputs
+	v3.Parent = v2.Parent
+	v3.Protect = v2.Protect
+	v3.External = v2.External
+	v3.Dependencies = v2.Dependencies
+	v3.InitErrors = v2.InitErrors
+	v3.Provider = v2.Provider
+
+	// v3.PropertyDependencies tracks dependencies on a per-input-property basis. We conservatively assume that all
+	// properties depend on all of the resource's dependencies.
+	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
+	for pk := range v3.Inputs {
+		propertyDependencies[resource.PropertyKey(pk)] = v3.Dependencies
+	}
+	v3.PropertyDependencies = propertyDependencies
+
+	return v3
 }
