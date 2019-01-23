@@ -34,8 +34,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofrs/flock"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -368,10 +366,14 @@ func (rf *regexFlag) Set(v string) error {
 
 var directoryMatcher regexFlag
 var listDirs bool
+var pipenvMutex *fsutil.FileMutex
 
 func init() {
 	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
 	flag.BoolVar(&listDirs, "list-dirs", false, "list available integration tests without running them")
+
+	mutexPath := filepath.Join(os.TempDir(), "pipenv-mutex.lock")
+	pipenvMutex = fsutil.NewFileMutex(mutexPath)
 }
 
 // GetLogs retrieves the logs for a given stack in a particular region making the query provided.
@@ -506,24 +508,18 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 
 // programTester contains state associated with running a single test pass.
 type programTester struct {
-	t           *testing.T          // the Go tester for this run.
-	opts        *ProgramTestOptions // options that control this test run.
-	bin         string              // the `pulumi` binary we are using.
-	yarnBin     string              // the `yarn` binary we are using.
-	goBin       string              // the `go` binary we are using.
-	pipenvBin   string              // The `pipenv` binary we are using.
-	pipenvMutex *flock.Flock        // Serializes pipenv invocations. See comment in `runPipenvCommand` for details
+	t         *testing.T          // the Go tester for this run.
+	opts      *ProgramTestOptions // options that control this test run.
+	bin       string              // the `pulumi` binary we are using.
+	yarnBin   string              // the `yarn` binary we are using.
+	goBin     string              // the `go` binary we are using.
+	pipenvBin string              // The `pipenv` binary we are using.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
-	lockFile := filepath.Join(os.TempDir(), "pulumi-pipenv.lock")
-	if opts.Verbose {
-		fprintf(os.Stdout, "Using Pipenv lock: %s\n", lockFile)
-	}
 	return &programTester{
-		t:           t,
-		opts:        opts,
-		pipenvMutex: flock.New(lockFile),
+		t:    t,
+		opts: opts,
 	}
 }
 
@@ -681,13 +677,19 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 	// processes. (Furthermore, each test gets an instance of programTester and thus the mutex, so we'd need to be
 	// sharing the mutex globally in each test process if we weren't using the file system to lock.)
 	if name == "pipenv-install-package" {
-		if pt.opts.Verbose {
-			fprintf(pt.opts.Stdout, "serializing pipenv install action\n")
-			defer fprintf(pt.opts.Stdout, "pipenv install action complete\n")
+		if err := pipenvMutex.Lock(); err != nil {
+			panic(err)
 		}
 
-		contract.IgnoreError(pt.pipenvMutex.Lock())
-		defer contract.IgnoreError(pt.pipenvMutex.Unlock())
+		if pt.opts.Verbose {
+			fprintf(pt.opts.Stdout, "acquired pipenv install lock\n")
+			defer fprintf(pt.opts.Stdout, "released pipenv install lock\n")
+		}
+		defer func() {
+			if err := pipenvMutex.Unlock(); err != nil {
+				panic(err)
+			}
+		}()
 	}
 
 	cmd, err := pt.pipenvCmd(args)
