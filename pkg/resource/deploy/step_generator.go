@@ -43,6 +43,10 @@ type stepGenerator struct {
 	creates        map[resource.URN]bool    // set of URNs created in this plan
 	sames          map[resource.URN]bool    // set of URNs that were not changed in this plan
 	pendingDeletes map[*resource.State]bool // set of resources (not URNs!) that are pending deletion
+
+	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
+	// delete-before-replace.
+	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -216,9 +220,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 		// Unmark this resource as deleted, we now know it's being replaced instead.
 		delete(sg.deletes, urn)
 		sg.replaces[urn] = true
+		keys := sg.dependentReplaceKeys[urn]
 		return []Step{
 			NewReplaceStep(sg.plan, old, new, nil, false),
-			NewCreateReplacementStep(sg.plan, event, old, new, nil, false),
+			NewCreateReplacementStep(sg.plan, event, old, new, keys, false),
 		}, nil
 	}
 
@@ -337,12 +342,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 						// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 						// order, so we iterate in reverse.
 						for i := len(toReplace) - 1; i >= 0; i-- {
-							dependentResource := toReplace[i]
+							dependentResource := toReplace[i].res
 
 							// If we already deleted this resource due to some other DBR, don't do it again.
 							if sg.deletes[dependentResource.URN] {
 								continue
 							}
+
+							sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
 
 							logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 								dependentResource.URN, urn)
@@ -640,7 +647,12 @@ func (sg *stepGenerator) getResourceProvider(
 	return p, nil
 }
 
-func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]*resource.State, error) {
+type dependentReplace struct {
+	res  *resource.State
+	keys []resource.PropertyKey
+}
+
+func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]dependentReplace, error) {
 	// We need to compute the set of resources that may be replaced by a change to the resource under consideration.
 	// We do this by taking the complete set of transitive dependents on the resource under consideration and
 	// removing any resources that would not be replaced by changes to their dependencies. We determine whether or not
@@ -660,23 +672,23 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// and recreated may not cause R to be replaced. For example, the edge from B to A may be a simple `dependsOn` edge
 	// such that a change to B does not actually influence any of B's input properties. In that case, neither B nor D
 	// would need to be deleted before A could be deleted.
-	var toReplace []*resource.State
+	var toReplace []dependentReplace
 	replaceSet := map[resource.URN]bool{root.URN: true}
 
-	requiresReplacement := func(r *resource.State) (bool, error) {
+	requiresReplacement := func(r *resource.State) (bool, []resource.PropertyKey, error) {
 		// Neither custom nor external resources require replacement.
 		if !r.Custom || r.External {
-			return false, nil
+			return false, nil, nil
 		}
 
 		// If the resource's provider is in the delete set, we mustreplace this resource.
 		if r.Provider != "" {
 			ref, err := providers.ParseReference(r.Provider)
 			if err != nil {
-				return false, err
+				return false, nil, err
 			}
 			if replaceSet[ref.URN()] {
-				return true, nil
+				return true, nil, nil
 			}
 		}
 
@@ -696,33 +708,33 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		// If none of this resource's properties depend on a resource in the replace set, then none of the properties
 		// may change and this resource does not need to be replaced.
 		if !hasDependencyInReplaceSet {
-			return false, nil
+			return false, nil, nil
 		}
 
 		// Otherwise, fetch the resource's provider. Since we have filtered out component resources, this resource must
 		// have a provider.
 		prov, err := sg.getResourceProvider(r.URN, r.Custom, r.Provider, r.Type)
 		if err != nil {
-			return false, err
+			return false, nil, err
 		}
 		contract.Assert(prov != nil)
 
 		// Call the provider's `Diff` method and return.
 		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
 		if err != nil {
-			return false, err
+			return false, nil, err
 		}
-		return diff.Replace(), nil
+		return diff.Replace(), diff.ReplaceKeys, nil
 	}
 
 	// Walk the root resource's dependents in order and build up the set of resources that require replacement.
 	for _, d := range sg.plan.depGraph.DependingOn(root) {
-		replace, err := requiresReplacement(d)
+		replace, keys, err := requiresReplacement(d)
 		if err != nil {
 			return nil, err
 		}
 		if replace {
-			toReplace, replaceSet[d.URN] = append(toReplace, d), true
+			toReplace, replaceSet[d.URN] = append(toReplace, dependentReplace{res: d, keys: keys}), true
 		}
 	}
 
@@ -733,15 +745,16 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 // newStepGenerator creates a new step generator that operates on the given plan.
 func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 	return &stepGenerator{
-		plan:           plan,
-		opts:           opts,
-		urns:           make(map[resource.URN]bool),
-		reads:          make(map[resource.URN]bool),
-		creates:        make(map[resource.URN]bool),
-		sames:          make(map[resource.URN]bool),
-		replaces:       make(map[resource.URN]bool),
-		updates:        make(map[resource.URN]bool),
-		deletes:        make(map[resource.URN]bool),
-		pendingDeletes: make(map[*resource.State]bool),
+		plan:                 plan,
+		opts:                 opts,
+		urns:                 make(map[resource.URN]bool),
+		reads:                make(map[resource.URN]bool),
+		creates:              make(map[resource.URN]bool),
+		sames:                make(map[resource.URN]bool),
+		replaces:             make(map[resource.URN]bool),
+		updates:              make(map[resource.URN]bool),
+		deletes:              make(map[resource.URN]bool),
+		pendingDeletes:       make(map[*resource.State]bool),
+		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 	}
 }
