@@ -89,8 +89,8 @@ func TestEngineEventPerf(t *testing.T) {
 	// to begin with.
 	benchmarkEnforcer := &assertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 8 * time.Second,
-		MaxUpdateDuration:  8 * time.Second,
+		MaxPreviewDuration: 20 * time.Second,
+		MaxUpdateDuration:  20 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
