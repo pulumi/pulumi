@@ -3,8 +3,8 @@
 import { Resource } from "./resource";
 
 // The changing of a.state causes base to be DBR replaced. This in turn
-// causes the deletion of b and c eagerly. However, in this case, resource
-// c does not exist in this file anymore and won't be recreated.
+// causes the deletion of b and e eagerly. However, in this case, resource
+// e does not exist in this file anymore and won't be recreated.
 // The planner should execute these steps (in this exact order):
 //   1. DeleteReplacement Dependent-2
 //   2. DeleteReplacement Dependent
@@ -17,4 +17,4 @@ const a = new Resource("base", { uniqueKey: 1, state: 100 });
 //   7. CreateReplacement Dependent
 const b = new Resource("dependent", { state: a.state });
 
-//   Done. The CLI should correctly recognize resource-2 as deleted and not replaced.
+//   Done. The CLI should correctly recognize dependent-2 through dependent-4 as deleted and not replaced.
