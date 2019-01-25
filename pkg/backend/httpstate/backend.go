@@ -390,16 +390,17 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	var projectName string
 	var stackName string
 
-	if len(split) == 1 {
+	switch len(split) {
+	case 1:
 		stackName = split[0]
-	} else if len(split) == 2 {
+	case 2:
 		owner = split[0]
 		stackName = split[1]
-	} else if len(split) == 3 {
+	case 3:
 		owner = split[0]
 		projectName = split[1]
 		stackName = split[2]
-	} else {
+	default:
 		return nil, errors.Errorf("could not parse stack name '%s'", s)
 	}
 

@@ -51,11 +51,11 @@ func (c cloudBackendReference) String() string {
 		curUser = ""
 	}
 
-	if c.owner == curUser && c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
-		return string(c.name)
-	}
-
+	// If the project names match, we can elide them.
 	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
+		if c.owner == curUser {
+			return string(c.name) // Elide owner too, if it is the current user.
+		}
 		return fmt.Sprintf("%s/%s", c.owner, c.name)
 	}
 
