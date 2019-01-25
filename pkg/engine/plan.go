@@ -328,7 +328,7 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 	return nil
 }
 
-func (acts *planActions) RemovePendingReplacements([]*resource.State) error {
+func (acts *planActions) RemovePendingReplacement(*resource.State) error {
 	return nil
 }
 

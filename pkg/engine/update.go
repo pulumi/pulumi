@@ -325,6 +325,6 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }
 
-func (acts *updateActions) RemovePendingReplacements(resources []*resource.State) error {
-	return acts.Context.SnapshotManager.RemovePendingReplacements(resources)
+func (acts *updateActions) RemovePendingReplacement(resource *resource.State) error {
+	return acts.Context.SnapshotManager.RemovePendingReplacement(resource)
 }

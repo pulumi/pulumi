@@ -40,9 +40,8 @@ type SnapshotManager interface {
 	// RecordPlugin records that the current plan loaded a plugin and saves it in the snapshot.
 	RecordPlugin(plugin workspace.PluginInfo) error
 
-	// RemovePendingReplacements removes a set of resources that were marked pending-replacement but never
-	// recreated.
-	RemovePendingReplacements(resources []*resource.State) error
+	// RemovePendingReplacement removes a resource that was marked pending-replacement but never recreated.
+	RemovePendingReplacement(resource *resource.State) error
 }
 
 // SnapshotMutation represents an outstanding mutation that is yet to be completed. When the engine completes

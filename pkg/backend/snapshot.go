@@ -403,12 +403,10 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	})
 }
 
-func (sm *SnapshotManager) RemovePendingReplacements(resources []*resource.State) error {
+func (sm *SnapshotManager) RemovePendingReplacement(res *resource.State) error {
 	return sm.mutate(func() bool {
-		for _, r := range resources {
-			contract.Assert(r.PendingReplacement)
-			sm.markDone(r)
-		}
+		contract.Assert(res.PendingReplacement)
+		sm.markDone(res)
 		return true
 	})
 }

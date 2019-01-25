@@ -48,17 +48,17 @@ import (
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin              JournalEntryKind = 0
-	JournalEntrySuccess            JournalEntryKind = 1
-	JournalEntryFailure            JournalEntryKind = 2
-	JournalEntryOutputs            JournalEntryKind = 4
-	JournalEntryRemoveReplacements JournalEntryKind = 5
+	JournalEntryBegin             JournalEntryKind = 0
+	JournalEntrySuccess           JournalEntryKind = 1
+	JournalEntryFailure           JournalEntryKind = 2
+	JournalEntryOutputs           JournalEntryKind = 4
+	JournalEntryRemoveReplacement JournalEntryKind = 5
 )
 
 type JournalEntry struct {
-	Kind      JournalEntryKind
-	Step      deploy.Step
-	Resources []*resource.State
+	Kind     JournalEntryKind
+	Step     deploy.Step
+	Resource *resource.State
 }
 
 type Journal struct {
@@ -110,9 +110,9 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 	return nil
 }
 
-func (j *Journal) RemovePendingReplacements(resources []*resource.State) error {
+func (j *Journal) RemovePendingReplacement(res *resource.State) error {
 	select {
-	case j.events <- JournalEntry{Kind: JournalEntryRemoveReplacements, Resources: resources}:
+	case j.events <- JournalEntry{Kind: JournalEntryRemoveReplacement, Resource: res}:
 		return nil
 	case <-j.cancel:
 		return errors.New("journal closed")
@@ -151,10 +151,8 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 
 		// Now mark resources done as necessary.
 		switch e.Kind {
-		case JournalEntryRemoveReplacements:
-			for _, r := range e.Resources {
-				dones[r] = true
-			}
+		case JournalEntryRemoveReplacement:
+			dones[e.Resource] = true
 		case JournalEntrySuccess:
 			switch e.Step.Op() {
 			case deploy.OpSame, deploy.OpUpdate:

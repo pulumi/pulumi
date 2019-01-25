@@ -285,6 +285,36 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return resource.StatusOK, func() {}, nil
 }
 
+type removePendingReplaceStep struct {
+	plan *Plan           // the current plan.
+	old  *resource.State // the state of the existing resource.
+}
+
+func newRemovePendingReplaceStep(plan *Plan, old *resource.State) Step {
+	contract.Assert(old != nil)
+	contract.Assert(old.PendingReplacement)
+	return &removePendingReplaceStep{
+		plan: plan,
+		old:  old,
+	}
+}
+
+func (s *removePendingReplaceStep) Op() StepOp {
+	return opRemovePendingReplace
+}
+func (s *removePendingReplaceStep) Plan() *Plan          { return s.plan }
+func (s *removePendingReplaceStep) Type() tokens.Type    { return s.old.Type }
+func (s *removePendingReplaceStep) Provider() string     { return s.old.Provider }
+func (s *removePendingReplaceStep) URN() resource.URN    { return s.old.URN }
+func (s *removePendingReplaceStep) Old() *resource.State { return s.old }
+func (s *removePendingReplaceStep) New() *resource.State { return nil }
+func (s *removePendingReplaceStep) Res() *resource.State { return s.old }
+func (s *removePendingReplaceStep) Logical() bool        { return false }
+
+func (s *removePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+	return resource.StatusOK, nil, errors.Errorf("cannot apply removePendingReplaceStep")
+}
+
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
 	plan    *Plan                  // the current plan.
@@ -637,6 +667,8 @@ const (
 	OpRead              StepOp = "read"               // reading an existing resource.
 	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
 	OpRefresh           StepOp = "refresh"            // refreshing an existing resource.
+
+	opRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 )
 
 // StepOps contains the full set of step operation types.

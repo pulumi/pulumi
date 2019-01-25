@@ -133,7 +133,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	canceled, pendingReplaces, err := func() (bool, []*resource.State, error) {
+	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
 			select {
@@ -143,11 +143,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				if event.Error != nil {
 					pe.reportError("", event.Error)
 					cancel()
-					return false, nil, event.Error
+					return false, event.Error
 				}
 
 				if event.Event == nil {
-					deleteSteps, pendingReplaces := pe.stepGen.GenerateDeletes()
+					deleteSteps := pe.stepGen.GenerateDeletes()
 					deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
 					// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
@@ -165,7 +165,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 					// We're done here - signal completion so that the step executor knows to terminate.
 					pe.stepExec.SignalCompletion()
-					return false, pendingReplaces, nil
+					return false, nil
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
@@ -174,14 +174,14 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
 					cancel()
-					return false, nil, result.TODO()
+					return false, result.TODO()
 				}
 			case <-ctx.Done():
 				logging.V(4).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 				// cancellation from internally-initiated cancellation.
-				return callerCtx.Err() != nil, nil, nil
+				return callerCtx.Err() != nil, nil
 			}
 		}
 	}()
@@ -194,10 +194,6 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		err = execError("failed", preview)
 	} else if canceled {
 		err = execError("canceled", preview)
-	} else if pendingReplaces != nil {
-		// If execution completed successfully, we may have leftover resources that were pending replacment but never
-		// re-registered. We will record that these resources are no longer pending replacement here.
-		err = opts.Events.RemovePendingReplacements(pendingReplaces)
 	}
 	return err
 }
