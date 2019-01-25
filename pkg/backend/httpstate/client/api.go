@@ -42,8 +42,9 @@ import (
 
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
 type StackIdentifier struct {
-	Owner string
-	Stack string
+	Owner   string
+	Project string
+	Stack   string
 }
 
 // UpdateIdentifier is the set of data needed to identify an update to a Pulumi Cloud stack.
@@ -158,7 +159,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 	req.Header.Set("User-Agent", userAgent)
 	// Specify the specific API version we accept.
-	req.Header.Set("Accept", "application/vnd.pulumi+2")
+	req.Header.Set("Accept", "application/vnd.pulumi+3")
 
 	// Apply credentials if provided.
 	if tok.String() != "" {
