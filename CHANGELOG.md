@@ -1,6 +1,8 @@
 ## 0.16.12 (Unreleased)
 
-- Stack names are now scoped within the context of a project, so you may duplicate stack names across different projects.
+### Major Changes
+
+- When using the cloud backend, stack names now must only be unique within a project, instead of across your entire account. Starting with version of 0.16.12 the CLI, you can create stacks with duplicate names. If an account has multiple stacks with the same name across different projects, you must use 0.16.12 or later of the CLI to manage them.
 
 ### Improvements
 
