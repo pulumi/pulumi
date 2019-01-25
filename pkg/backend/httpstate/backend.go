@@ -1007,8 +1007,8 @@ var (
 	projectNameCleanRegexp = regexp.MustCompile("[^a-zA-Z0-9-_.]")
 )
 
-// cleanProjectName replaces undesirable characters in project names with hypens. At some point, these restrictions
-// will be further enfornced by the service, but for now we need to ensure that if we are making a rest call, we
+// cleanProjectName replaces undesirable characters in project names with hyphens. At some point, these restrictions
+// will be further enforced by the service, but for now we need to ensure that if we are making a rest call, we
 // do this cleaning on our end.
 func cleanProjectName(projectName string) string {
 	return projectNameCleanRegexp.ReplaceAllString(projectName, "-")
