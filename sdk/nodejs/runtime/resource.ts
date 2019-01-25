@@ -141,7 +141,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const key of Object.keys(resop.propertyDependencies)) {
             const deps = new resproto.RegisterResourceRequest.PropertyDependencies();
-            deps.setUrnList(resop.propertyDependencies[key]);
+            deps.setUrnsList(resop.propertyDependencies[key]);
             propertyDependencies.set(key, deps);
         }
 

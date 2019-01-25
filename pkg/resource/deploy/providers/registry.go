@@ -267,8 +267,10 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	// Create a reference using the URN and the unknown ID and fetch the provider.
 	provider, ok := r.GetProvider(mustNewReference(urn, UnknownID))
 	if !ok {
-		// In this case, we are doing a diff as part of evaluating the fanout of a delete-before-replace operation.
-		// We can just use the old provider here, and we will not unload it.
+		// If the provider was not found in the registry under its URN and the Unknown ID, then it must have not have
+		// been subject to a call to `Check`. This can happen when we are diffing a provider's inputs as part of
+		// evaluating the fanout of a delete-before-replace operation. In this case, we can just use the old provider
+		// (which must have been loaded when the registry was created), and we will not unload it.
 		provider, ok = r.GetProvider(mustNewReference(urn, id))
 		contract.Assertf(ok, "Provider must have been registered by NewRegistry for DBR Diff (%v::%v)", urn, id)
 

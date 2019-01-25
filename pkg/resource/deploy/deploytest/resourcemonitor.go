@@ -50,7 +50,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 			pdeps = append(pdeps, string(d))
 		}
 		inputDeps[string(pk)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
-			Urn: pdeps,
+			Urns: pdeps,
 		}
 	}
 

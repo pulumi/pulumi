@@ -55,7 +55,7 @@ message ReadResourceResponse {
 message RegisterResourceRequest {
     // PropertyDependencies describes the resources that a particular property depends on.
     message PropertyDependencies {
-        repeated string urn = 1; // A list of URNs this property depends on.
+        repeated string urns = 1; // A list of URNs this property depends on.
     }
 
     string type = 1;                   // the type of the object allocated.

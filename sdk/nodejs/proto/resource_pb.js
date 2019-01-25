@@ -833,7 +833,7 @@ proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.toObject 
  */
 proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urnList: jspb.Message.getRepeatedField(msg, 1)
+    urnsList: jspb.Message.getRepeatedField(msg, 1)
   };
 
   if (includeInstance) {
@@ -872,7 +872,7 @@ proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.deserializeBinaryFr
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.addUrn(value);
+      msg.addUrns(value);
       break;
     default:
       reader.skipField();
@@ -903,7 +903,7 @@ proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.serialize
  */
 proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getUrnList();
+  f = message.getUrnsList();
   if (f.length > 0) {
     writer.writeRepeatedString(
       1,
@@ -914,16 +914,16 @@ proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.serializeBinaryToWr
 
 
 /**
- * repeated string urn = 1;
+ * repeated string urns = 1;
  * @return {!Array.<string>}
  */
-proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.getUrnList = function() {
+proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.getUrnsList = function() {
   return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
 /** @param {!Array.<string>} value */
-proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.setUrnList = function(value) {
+proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.setUrnsList = function(value) {
   jspb.Message.setField(this, 1, value || []);
 };
 
@@ -932,13 +932,13 @@ proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.setUrnLis
  * @param {!string} value
  * @param {number=} opt_index
  */
-proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.addUrn = function(value, opt_index) {
+proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.addUrns = function(value, opt_index) {
   jspb.Message.addToRepeatedField(this, 1, value, opt_index);
 };
 
 
-proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.clearUrnList = function() {
-  this.setUrnList([]);
+proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.prototype.clearUrnsList = function() {
+  this.setUrnsList([]);
 };
 
 

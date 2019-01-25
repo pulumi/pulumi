@@ -171,7 +171,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
-                property_dependencies[key] = resource_pb2.RegisterResourceRequest.PropertyDependencies(urn=deps)
+                property_dependencies[key] = resource_pb2.RegisterResourceRequest.PropertyDependencies(urns=deps)
 
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,

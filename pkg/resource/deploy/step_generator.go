@@ -354,7 +354,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 							logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 								dependentResource.URN, urn)
 
-							steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, false))
+							steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, true))
 							// Mark the condemned resource as deleted. We won't know until later in the plan whether
 							// or not we're going to be replacing this resource.
 							sg.deletes[dependentResource.URN] = true
@@ -362,7 +362,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 					}
 
 					return append(steps,
-						NewDeleteReplacementStep(sg.plan, old, false),
+						NewDeleteReplacementStep(sg.plan, old, true),
 						NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, false),
 						NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, false),
 					), nil
@@ -445,7 +445,7 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
-				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, true))
+				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, false))
 			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
@@ -669,18 +669,19 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// In this graph, all of B, C, D, E, and F transitively depend on A. It may be the case, however, that changes to
 	// the specific properties of any of those resources R that would occur if a resource on the path to A were deleted
 	// and recreated may not cause R to be replaced. For example, the edge from B to A may be a simple `dependsOn` edge
-	// such that a change to B does not actually influence any of B's input properties. In that case, neither B nor D
-	// would need to be deleted before A could be deleted.
+	// such that a change to B does not actually influence any of B's input properties.  More commonly, the edge from B
+	// to A may be due to a property from A being used as the input to a property of B that does not require B to be
+	// replaced upon a change. In these cases, neither B nor D would need to be deleted before A could be deleted.
 	var toReplace []dependentReplace
 	replaceSet := map[resource.URN]bool{root.URN: true}
 
 	requiresReplacement := func(r *resource.State) (bool, []resource.PropertyKey, error) {
-		// Neither custom nor external resources require replacement.
+		// Neither component nor external resources require replacement.
 		if !r.Custom || r.External {
 			return false, nil, nil
 		}
 
-		// If the resource's provider is in the delete set, we mustreplace this resource.
+		// If the resource's provider is in the replace set, we mustreplace this resource.
 		if r.Provider != "" {
 			ref, err := providers.ParseReference(r.Provider)
 			if err != nil {

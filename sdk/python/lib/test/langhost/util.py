@@ -90,7 +90,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
-            property_dependencies[key] = sorted(list(value.urn))
+            property_dependencies[key] = sorted(list(value.urns))
 
         outs = {}
         if type_ != "pulumi:pulumi:Stack":

@@ -616,7 +616,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Otherwise, unmarshal the per-property dependency information.
 		for pk, pd := range req.GetPropertyDependencies() {
 			var deps []resource.URN
-			for _, d := range pd.Urn {
+			for _, d := range pd.Urns {
 				deps = append(deps, resource.URN(d))
 			}
 			propertyDependencies[resource.PropertyKey(pk)] = deps

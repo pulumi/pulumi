@@ -661,7 +661,7 @@ describe("rpc", () => {
                                 const provider: string = req.getProvider();
                                 const propertyDeps: any = Array.from(req.getPropertydependenciesMap().entries())
                                     .reduce((o: any, [key, value]: [any, any]) => {
-                                        return { ...o, [key]: value.getUrnList().sort() };
+                                        return { ...o, [key]: value.getUrnsList().sort() };
                                     }, {});
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
                                     custom, protect, parent, provider, propertyDeps);
