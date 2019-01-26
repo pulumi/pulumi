@@ -22,7 +22,7 @@ install_package::
 
 install_plugin::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
-	
+
 install:: install_package install_plugin
 
 lint::
