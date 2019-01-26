@@ -5,6 +5,9 @@ set -o errexit
 set -o pipefail
 readonly ROOT=$(dirname "${0}")/..
 
+NPM_VERSION=$("${ROOT}/scripts/get-version")
+"${ROOT}/scripts/build-sdk.sh" $(echo ${NPM_VERSION} | sed -e 's/\+.*//g') $(git rev-parse HEAD)
+
 if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     echo "Publishing NPM package to NPMjs.com:"
     NPM_TAG="dev"
@@ -25,10 +28,8 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     twine upload \
         -u pulumi -p "${PYPI_PASSWORD}" \
         "${ROOT}/sdk/python/env/src/dist"/*.whl
+
+    "${ROOT}/scripts/build-and-publish-docker" "${NPM_VERSION}"
 fi
-
-NPM_VERSION=$("${ROOT}/scripts/get-version")
-
-"${ROOT}/scripts/build-sdk.sh" $(echo ${NPM_VERSION} | sed -e 's/\+.*//g') $(git rev-parse HEAD)
 
 exit 0

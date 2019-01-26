@@ -84,7 +84,7 @@ func newStackOutputCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit outputs as JSON")
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 

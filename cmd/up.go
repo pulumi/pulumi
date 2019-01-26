@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
@@ -407,10 +408,13 @@ func handleConfig(
 	}
 
 	// Save the config.
-	if c != nil {
+	if len(c) > 0 {
 		if err = saveConfig(s, c); err != nil {
 			return errors.Wrap(err, "saving config")
 		}
+
+		fmt.Println("Saved config")
+		fmt.Println()
 	}
 
 	return nil

@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -143,6 +144,7 @@ type cloudBackend struct {
 	url             string
 	stackConfigFile string
 	client          *client.Client
+	currentProject  *workspace.Project
 }
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
@@ -153,11 +155,18 @@ func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 		return nil, errors.Wrap(err, "getting stored credentials")
 	}
 
+	// When stringifying backend references, we take the current project (if present) into account.
+	currentProject, err := workspace.DetectProject()
+	if err != nil {
+		currentProject = nil
+	}
+
 	return &cloudBackend{
 		d:               d,
 		url:             cloudURL,
 		stackConfigFile: stackConfigFile,
 		client:          client.NewClient(cloudURL, apiToken, d),
+		currentProject:  currentProject,
 	}, nil
 }
 
@@ -378,14 +387,20 @@ func (b *cloudBackend) CloudURL() string { return b.url }
 func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
 	split := strings.Split(s, "/")
 	var owner string
+	var projectName string
 	var stackName string
 
-	if len(split) == 1 {
+	switch len(split) {
+	case 1:
 		stackName = split[0]
-	} else if len(split) == 2 {
+	case 2:
 		owner = split[0]
 		stackName = split[1]
-	} else {
+	case 3:
+		owner = split[0]
+		projectName = split[1]
+		stackName = split[2]
+	default:
 		return nil, errors.Errorf("could not parse stack name '%s'", s)
 	}
 
@@ -397,10 +412,20 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		owner = currentUser
 	}
 
+	if projectName == "" {
+		currentProject, projectErr := workspace.DetectProject()
+		if projectErr != nil {
+			return nil, projectErr
+		}
+
+		projectName = currentProject.Name.String()
+	}
+
 	return cloudBackendReference{
-		owner: owner,
-		name:  tokens.QName(stackName),
-		b:     b,
+		owner:   owner,
+		project: projectName,
+		name:    tokens.QName(stackName),
+		b:       b,
 	}, nil
 }
 
@@ -433,7 +458,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
 // must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
-	return path.Join(stackID.Owner, stackID.Stack)
+	return path.Join(stackID.Owner, stackID.Project, stackID.Stack)
 }
 
 // Logout logs out of the target cloud URL.
@@ -531,7 +556,14 @@ func (b *cloudBackend) CreateStack(
 
 func (b *cloudBackend) ListStacks(
 	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
-	apiSummaries, err := b.client.ListStacks(ctx, projectFilter)
+
+	var cleanedProjectName *string
+	if projectFilter != nil {
+		clean := cleanProjectName(string(*projectFilter))
+		cleanedProjectName = &clean
+	}
+
+	apiSummaries, err := b.client.ListStacks(ctx, cleanedProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -979,22 +1011,28 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	return nil
 }
 
-// getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
-// the current working directory.
-func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	owner := stackRef.(cloudBackendReference).owner
-	var err error
+var (
+	projectNameCleanRegexp = regexp.MustCompile("[^a-zA-Z0-9-_.]")
+)
 
-	if owner == "" {
-		owner, err = b.client.GetPulumiAccountName(context.Background())
-		if err != nil {
-			return client.StackIdentifier{}, err
-		}
+// cleanProjectName replaces undesirable characters in project names with hyphens. At some point, these restrictions
+// will be further enforced by the service, but for now we need to ensure that if we are making a rest call, we
+// do this cleaning on our end.
+func cleanProjectName(projectName string) string {
+	return projectNameCleanRegexp.ReplaceAllString(projectName, "-")
+}
+
+// getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack
+func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
+	cloudBackendStackRef, ok := stackRef.(cloudBackendReference)
+	if !ok {
+		return client.StackIdentifier{}, errors.New("bad stack reference type")
 	}
 
 	return client.StackIdentifier{
-		Owner: owner,
-		Stack: string(stackRef.Name()),
+		Owner:   cloudBackendStackRef.owner,
+		Project: cleanProjectName(cloudBackendStackRef.project),
+		Stack:   string(cloudBackendStackRef.name),
 	}, nil
 }
 
