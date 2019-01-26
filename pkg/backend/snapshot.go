@@ -151,6 +151,8 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return sm.doRead(step)
 	case deploy.OpRefresh:
 		return &refreshSnapshotMutation{sm}, nil
+	case deploy.OpRemovePendingReplace:
+		return &removePendingReplaceSnapshotMutation{sm}, nil
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -403,10 +405,17 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	})
 }
 
-func (sm *SnapshotManager) RemovePendingReplacement(res *resource.State) error {
-	return sm.mutate(func() bool {
+type removePendingReplaceSnapshotMutation struct {
+	manager *SnapshotManager
+}
+
+func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successful bool) error {
+	contract.Require(step != nil, "step != nil")
+	contract.Require(step.Op() == deploy.OpRemovePendingReplace, "step.Op() == deploy.OpRemovePendingReplace")
+	return rsm.manager.mutate(func() bool {
+		res := step.Old()
 		contract.Assert(res.PendingReplacement)
-		sm.markDone(res)
+		rsm.manager.markDone(res)
 		return true
 	})
 }

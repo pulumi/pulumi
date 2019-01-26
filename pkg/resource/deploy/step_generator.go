@@ -454,7 +454,7 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				if !res.PendingReplacement {
 					dels = append(dels, NewDeleteStep(sg.plan, res))
 				} else {
-					dels = append(dels, newRemovePendingReplaceStep(sg.plan, res))
+					dels = append(dels, NewRemovePendingReplaceStep(sg.plan, res))
 				}
 			}
 		}

@@ -257,17 +257,6 @@ func (se *stepExecutor) cancelDueToError() {
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	var payload interface{}
 	events := se.opts.Events
-
-	// We special-case removePendingReplace steps. These steps are not reported via the usual interfaces, and are
-	// simply used such that the removal of a pending-replace resource happens after anything that may refer to it
-	// (e.g. via a dependency or parent).
-	if step.Op() == opRemovePendingReplace {
-		if events != nil {
-			return events.RemovePendingReplacement(step.Res())
-		}
-		return nil
-	}
-
 	if events != nil {
 		var err error
 		payload, err = events.OnResourceStepPre(step)

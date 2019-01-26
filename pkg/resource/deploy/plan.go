@@ -65,7 +65,6 @@ type Events interface {
 	OnResourceStepPre(step Step) (interface{}, error)
 	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error
-	RemovePendingReplacement(res *resource.State) error
 }
 
 // PlanPendingOperationsError is an error returned from `NewPlan` if there exist pending operations in the

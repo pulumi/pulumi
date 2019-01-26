@@ -297,34 +297,34 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return resource.StatusOK, func() {}, nil
 }
 
-type removePendingReplaceStep struct {
+type RemovePendingReplaceStep struct {
 	plan *Plan           // the current plan.
 	old  *resource.State // the state of the existing resource.
 }
 
-func newRemovePendingReplaceStep(plan *Plan, old *resource.State) Step {
+func NewRemovePendingReplaceStep(plan *Plan, old *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.PendingReplacement)
-	return &removePendingReplaceStep{
+	return &RemovePendingReplaceStep{
 		plan: plan,
 		old:  old,
 	}
 }
 
-func (s *removePendingReplaceStep) Op() StepOp {
-	return opRemovePendingReplace
+func (s *RemovePendingReplaceStep) Op() StepOp {
+	return OpRemovePendingReplace
 }
-func (s *removePendingReplaceStep) Plan() *Plan          { return s.plan }
-func (s *removePendingReplaceStep) Type() tokens.Type    { return s.old.Type }
-func (s *removePendingReplaceStep) Provider() string     { return s.old.Provider }
-func (s *removePendingReplaceStep) URN() resource.URN    { return s.old.URN }
-func (s *removePendingReplaceStep) Old() *resource.State { return s.old }
-func (s *removePendingReplaceStep) New() *resource.State { return nil }
-func (s *removePendingReplaceStep) Res() *resource.State { return s.old }
-func (s *removePendingReplaceStep) Logical() bool        { return false }
+func (s *RemovePendingReplaceStep) Plan() *Plan          { return s.plan }
+func (s *RemovePendingReplaceStep) Type() tokens.Type    { return s.old.Type }
+func (s *RemovePendingReplaceStep) Provider() string     { return s.old.Provider }
+func (s *RemovePendingReplaceStep) URN() resource.URN    { return s.old.URN }
+func (s *RemovePendingReplaceStep) Old() *resource.State { return s.old }
+func (s *RemovePendingReplaceStep) New() *resource.State { return nil }
+func (s *RemovePendingReplaceStep) Res() *resource.State { return s.old }
+func (s *RemovePendingReplaceStep) Logical() bool        { return false }
 
-func (s *removePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	return resource.StatusOK, nil, errors.Errorf("cannot apply removePendingReplaceStep")
+func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+	return resource.StatusOK, nil, nil
 }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
@@ -680,7 +680,7 @@ const (
 	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
 	OpRefresh           StepOp = "refresh"            // refreshing an existing resource.
 
-	opRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
+	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 )
 
 // StepOps contains the full set of step operation types.
@@ -695,6 +695,7 @@ var StepOps = []StepOp{
 	OpRead,
 	OpReadReplacement,
 	OpRefresh,
+	OpRemovePendingReplace,
 }
 
 // Color returns a suggested color for lines of this op type.

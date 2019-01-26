@@ -264,6 +264,11 @@ type planActions struct {
 	MapLock sync.Mutex
 }
 
+func shouldReportStep(step deploy.Step, opts planOptions) bool {
+	return step.Op() != deploy.OpRemovePendingReplace &&
+		(opts.reportDefaultProviderSteps || !isDefaultProviderStep(step))
+}
+
 func newPlanActions(opts planOptions) *planActions {
 	return &planActions{
 		Ops:  make(map[deploy.StepOp]int),
@@ -277,8 +282,8 @@ func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
-	// Check for a default provider step and skip reporting if necessary.
-	if !acts.Opts.reportDefaultProviderSteps && isDefaultProviderStep(step) {
+	// Skip reporting if necessary.
+	if !shouldReportStep(step, acts.Opts) {
 		return nil, nil
 	}
 
@@ -293,7 +298,7 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	reportStep := acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step)
+	reportStep := shouldReportStep(step, acts.Opts)
 
 	if err != nil {
 		// We always want to report a failure. If we intend to elide this step overall, though, we report it as a
@@ -328,10 +333,6 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 	return nil
 }
 
-func (acts *planActions) RemovePendingReplacement(*resource.State) error {
-	return nil
-}
-
 func ShouldRecordReadStep(step deploy.Step) bool {
 	contract.Assertf(step.Op() == deploy.OpRead, "Only call this on a Read step")
 
@@ -350,8 +351,8 @@ func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	// Check for a default provider step and skip reporting if necessary.
-	if !acts.Opts.reportDefaultProviderSteps && isDefaultProviderStep(step) {
+	// Skip reporting if necessary.
+	if !shouldReportStep(step, acts.Opts) {
 		return nil
 	}
 

@@ -48,11 +48,10 @@ import (
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin             JournalEntryKind = 0
-	JournalEntrySuccess           JournalEntryKind = 1
-	JournalEntryFailure           JournalEntryKind = 2
-	JournalEntryOutputs           JournalEntryKind = 4
-	JournalEntryRemoveReplacement JournalEntryKind = 5
+	JournalEntryBegin   JournalEntryKind = 0
+	JournalEntrySuccess JournalEntryKind = 1
+	JournalEntryFailure JournalEntryKind = 2
+	JournalEntryOutputs JournalEntryKind = 4
 )
 
 type JournalEntry struct {
@@ -110,15 +109,6 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 	return nil
 }
 
-func (j *Journal) RemovePendingReplacement(res *resource.State) error {
-	select {
-	case j.events <- JournalEntry{Kind: JournalEntryRemoveReplacement, Resource: res}:
-		return nil
-	case <-j.cancel:
-		return errors.New("journal closed")
-	}
-}
-
 func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
@@ -150,10 +140,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 		}
 
 		// Now mark resources done as necessary.
-		switch e.Kind {
-		case JournalEntryRemoveReplacement:
-			dones[e.Resource] = true
-		case JournalEntrySuccess:
+		if e.Kind == JournalEntrySuccess {
 			switch e.Step.Op() {
 			case deploy.OpSame, deploy.OpUpdate:
 				resources = append(resources, e.Step.New())
@@ -174,6 +161,8 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 				if e.Step.Old() != nil {
 					dones[e.Step.Old()] = true
 				}
+			case deploy.OpRemovePendingReplace:
+				dones[e.Resource] = true
 			}
 		}
 	}
