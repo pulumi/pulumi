@@ -35,6 +35,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
+	defer func() { finished = true }()
+
 	go func() {
 		for !finished {
 			time.Sleep(30 * time.Second)
@@ -89,7 +91,6 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		})
 	}
 
-	finished = true
 	if runerr != nil {
 		fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 
@@ -108,6 +109,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		} else {
 			fprintf(opts.Stderr, "Wrote output to %s\n", logFile)
 		}
+	} else {
+		fprintf(opts.Stderr, "Command completed without output\n")
 	}
 
 	return runerr
