@@ -16,7 +16,7 @@ sudo: true # give us 7.5GB and >2 bursted cores.
 git:
   depth: false
 before_install:
-    - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
+    - git clone https://github.com/Frassle/scripts ${GOPATH}/src/github.com/pulumi/scripts
     - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
