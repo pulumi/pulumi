@@ -13,7 +13,7 @@ namespace Pulumi {
     }
 
     public static class Protobuf {
-        public static Value ToProtobuf<T>(T value) where T : IProtobuf {
+        public static Value ToProtobuf(IProtobuf value) {
             if( value == null) {
                 return Value.ForNull();
             } else {
@@ -96,6 +96,14 @@ namespace Pulumi {
         }
 
         // ToProtobuf IO
+        public static IO<Value> ToProtobuf(IIOProtobuf value) {
+            if( value == null) {
+                return null;
+            } else {
+                return value.ToProtobuf();
+            }
+        }
+
         public static IO<Value> ToProtobuf<T>(IO<T> value) where T : IIOProtobuf {
             if( value == null) {
                 return null;
