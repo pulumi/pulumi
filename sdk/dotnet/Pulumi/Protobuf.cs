@@ -210,5 +210,14 @@ namespace Pulumi {
             }
             return result;
         }
+
+        public static Dictionary<string, T> ToMap<T>(Value value, Func<Value, T> selector) {
+            var structValue = value.StructValue;
+            var result = new Dictionary<string, T>();
+            foreach(var field in structValue.Fields) {
+                result[field.Key] = selector(field.Value);
+            }
+            return result;
+        }
     }
 }
