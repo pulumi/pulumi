@@ -27,26 +27,30 @@ import (
 )
 
 // marshalInputs turns resource property inputs into a gRPC struct suitable for marshaling.
-func marshalInputs(props map[string]interface{}) (*structpb.Struct, []URN, error) {
+func marshalInputs(props map[string]interface{}) (*structpb.Struct, map[string][]URN, []URN, error) {
 	var depURNs []URN
-	pmap := make(map[string]interface{})
+	pmap, pdeps := make(map[string]interface{}), make(map[string][]URN)
 	for key := range props {
 		// Get the underlying value, possibly waiting for an output to arrive.
-		v, deps, err := marshalInput(props[key])
+		v, resourceDeps, err := marshalInput(props[key])
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "awaiting input property %s", key)
+			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", key)
 		}
 
 		pmap[key] = v
 
 		// Record all dependencies accumulated from reading this property.
-		for _, dep := range deps {
+		deps := make([]URN, 0, len(resourceDeps))
+		for _, dep := range resourceDeps {
 			depURN, err := dep.URN().Value()
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			depURNs = append(depURNs, depURN)
+			deps = append(deps, depURN)
 		}
+		pdeps[key] = deps
+
+		depURNs = append(depURNs, deps...)
 	}
 
 	// Marshal all properties for the RPC call.
@@ -54,7 +58,7 @@ func marshalInputs(props map[string]interface{}) (*structpb.Struct, []URN, error
 		resource.NewPropertyMapFromMap(pmap),
 		plugin.MarshalOptions{KeepUnknowns: true},
 	)
-	return m, depURNs, err
+	return m, pdeps, depURNs, err
 }
 
 // `gosec` thinks these are credentials, but they are not.
