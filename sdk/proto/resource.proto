@@ -53,6 +53,11 @@ message ReadResourceResponse {
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
 message RegisterResourceRequest {
+    // PropertyDependencies describes the resources that a particular property depends on.
+    message PropertyDependencies {
+        repeated string urns = 1; // A list of URNs this property depends on.
+    }
+
     string type = 1;                   // the type of the object allocated.
     string name = 2;                   // the name, for URN purposes, of the object.
     string parent = 3;                 // an optional parent URN that this child resource belongs to.
@@ -61,6 +66,8 @@ message RegisterResourceRequest {
     bool protect = 6;                  // true if the resource should be marked protected.
     repeated string dependencies = 7;  // a list of URNs that this resource depends on, as observed by the language host.
     string provider = 8;               // an optional reference to the provider to manage this resource's CRUD operations.
+
+    map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

@@ -32,17 +32,19 @@ UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
 
 _special_sig_key = "4dabf18193072939515e22adb298388d"
-"""specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go."""
+"""_special_sig_key is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go."""
 
 _special_asset_sig = "c44067f5952c0a294b673a41bacd8c17"
-"""specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go."""
+"""special_asset_sig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go."""
 
 _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
-"""specialArchiveSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go."""
+"""special_archive_sig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go."""
 
+_special_secret_sig = "1b47061264138c4ac30d75fd1eb44270"
+"""special_secret_sig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go"""
 
 async def serialize_properties(inputs: 'Inputs',
-                               deps: List['Resource'],
+                               property_deps: Dict[str, List['Resource']],
                                input_transformer: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
@@ -51,6 +53,7 @@ async def serialize_properties(inputs: 'Inputs',
     """
     struct = struct_pb2.Struct()
     for k, v in inputs.items():
+        deps = []
         result = await serialize_property(v, deps, input_transformer)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
@@ -62,6 +65,7 @@ async def serialize_properties(inputs: 'Inputs',
                 log.debug(f"top-level input property translated: {k} -> {translated_name}")
             # pylint: disable=unsupported-assignment-operation
             struct[translated_name] = result
+            property_deps[translated_name] = deps
 
     return struct
 
@@ -183,6 +187,8 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
                 return known_types.new_file_archive(props_struct["path"])
             if "uri" in props_struct:
                 return known_types.new_remote_archive(props_struct["uri"])
+        elif props_struct[_special_sig_key] == _special_secret_sig:
+            raise AssertionError("this version of the Pulumi SDK does not support first-class secrets")
 
         raise AssertionError("Unrecognized signature when unmarshaling resource property")
 

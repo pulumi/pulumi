@@ -256,7 +256,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal(providers.MakeProviderType(pkg), "default", true, inputs, "", false, nil, "", nil),
+		goal: resource.NewGoal(providers.MakeProviderType(pkg), "default", true, inputs, "", false, nil, "", nil, nil),
 		done: done,
 	}
 	return event, done, nil
@@ -605,6 +605,24 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 
+	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
+	if len(req.GetPropertyDependencies()) == 0 {
+		// If this request did not specify property dependencies, treat each property as depending on every resource
+		// in the request's dependency list.
+		for pk := range props {
+			propertyDependencies[pk] = dependencies
+		}
+	} else {
+		// Otherwise, unmarshal the per-property dependency information.
+		for pk, pd := range req.GetPropertyDependencies() {
+			var deps []resource.URN
+			for _, d := range pd.Urns {
+				deps = append(deps, resource.URN(d))
+			}
+			propertyDependencies[resource.PropertyKey(pk)] = deps
+		}
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v",
@@ -612,7 +630,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
-		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil),
+		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
+			propertyDependencies),
 		done: make(chan *RegisterResult),
 	}
 

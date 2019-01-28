@@ -30,7 +30,7 @@ class InheritDefaultsTest(LanghostTest):
             expected_resource_count=240)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, custom, protect, provider):
+                          _dependencies, _parent, custom, protect, provider, _property_deps):
         if custom and not ty.startswith("pulumi:providers:"):
             expect_protect = False
             expect_provider_name = ""

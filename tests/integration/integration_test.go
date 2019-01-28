@@ -558,8 +558,8 @@ func TestExplicitProvider(t *testing.T) {
 			// Expect one stack resource, two provider resources, and two custom resources.
 			assert.True(t, len(latest.Resources) == 5)
 
-			var defaultProvider *apitype.ResourceV2
-			var explicitProvider *apitype.ResourceV2
+			var defaultProvider *apitype.ResourceV3
+			var explicitProvider *apitype.ResourceV3
 			for _, res := range latest.Resources {
 				urn := res.URN
 				switch urn.Name() {

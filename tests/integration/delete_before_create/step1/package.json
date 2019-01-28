@@ -4,6 +4,9 @@
     "devDependencies": {
         "typescript": "^2.5.3"
     },
+    "dependencies": {
+        "uuid": "^3.3.2"
+    },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
     }

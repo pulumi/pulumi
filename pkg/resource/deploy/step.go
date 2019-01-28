@@ -231,12 +231,26 @@ func NewDeleteStep(plan *Plan, old *resource.State) Step {
 	}
 }
 
-func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingDelete bool) Step {
+func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingReplace bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
-	contract.Assert(!pendingDelete || old.Delete)
+
+	// There are two cases in which we create a delete-replacment step:
+	//
+	//   1. When creating the delete steps that occur due to a delete-before-replace
+	//   2. When creating the delete step that occurs due to a delete-after-replace
+	//
+	// In the former case, the persistence layer may require that the resource remain in the
+	// checkpoint file for purposes of checkpoint integrity. We communicate this case by means
+	// of the `PendingReplacement` field on `resource.State`, which we set here.
+	//
+	// In the latter case, the resource must be deleted, but the deletion may not occur if an earlier step fails.
+	// The engine requires that the fact that the old resource must be deleted is persisted in the checkpoint so
+	// that it can issue a deletion of this resource on the next update to this stack.
+	contract.Assert(pendingReplace != old.Delete)
+	old.PendingReplacement = pendingReplace
 	return &DeleteStep{
 		plan:      plan,
 		old:       old,
@@ -281,6 +295,36 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	return resource.StatusOK, func() {}, nil
+}
+
+type RemovePendingReplaceStep struct {
+	plan *Plan           // the current plan.
+	old  *resource.State // the state of the existing resource.
+}
+
+func NewRemovePendingReplaceStep(plan *Plan, old *resource.State) Step {
+	contract.Assert(old != nil)
+	contract.Assert(old.PendingReplacement)
+	return &RemovePendingReplaceStep{
+		plan: plan,
+		old:  old,
+	}
+}
+
+func (s *RemovePendingReplaceStep) Op() StepOp {
+	return OpRemovePendingReplace
+}
+func (s *RemovePendingReplaceStep) Plan() *Plan          { return s.plan }
+func (s *RemovePendingReplaceStep) Type() tokens.Type    { return s.old.Type }
+func (s *RemovePendingReplaceStep) Provider() string     { return s.old.Provider }
+func (s *RemovePendingReplaceStep) URN() resource.URN    { return s.old.URN }
+func (s *RemovePendingReplaceStep) Old() *resource.State { return s.old }
+func (s *RemovePendingReplaceStep) New() *resource.State { return nil }
+func (s *RemovePendingReplaceStep) Res() *resource.State { return s.old }
+func (s *RemovePendingReplaceStep) Logical() bool        { return false }
+
+func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+	return resource.StatusOK, nil, nil
 }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
@@ -588,8 +632,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		complete = func() { close(s.done) }
 	}
 
-	// Component and provider resources never change with a refresh; just return the current state.
-	if !s.old.Custom || providers.IsProviderType(s.old.Type) {
+	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
+	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
 		return resource.StatusOK, complete, nil
 	}
 
@@ -612,7 +656,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 
 	if refreshed != nil {
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, s.old.Inputs, refreshed,
-			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider)
+			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
+			s.old.PropertyDependencies, s.old.PendingReplacement)
 	} else {
 		s.new = nil
 	}
@@ -634,6 +679,8 @@ const (
 	OpRead              StepOp = "read"               // reading an existing resource.
 	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
 	OpRefresh           StepOp = "refresh"            // refreshing an existing resource.
+
+	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 )
 
 // StepOps contains the full set of step operation types.
@@ -648,6 +695,7 @@ var StepOps = []StepOp{
 	OpRead,
 	OpReadReplacement,
 	OpRefresh,
+	OpRemovePendingReplace,
 }
 
 // Color returns a suggested color for lines of this op type.
