@@ -17,6 +17,7 @@ git:
   depth: false
 before_install:
     - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
+    - git -C ${GOPATH}/src/github.com/pulumi/scripts checkout ellismg/update-yarn-version
     - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
