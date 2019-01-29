@@ -41,5 +41,17 @@ describe("runtime", () => {
             assert.equal(result.urn, "bar");
         }));
     });
-});
 
+    describe("deserializeProperty", () => {
+        it("fails on unsupported secret values", () => {
+            assert.throws(() => runtime.deserializeProperty({
+                [runtime.specialSigKey]: runtime.specialSecretSig,
+            }));
+        });
+        it("fails on unknown signature keys", () => {
+            assert.throws(() => runtime.deserializeProperty({
+                [runtime.specialSigKey]: "foobar",
+            }));
+        });
+    });
+});

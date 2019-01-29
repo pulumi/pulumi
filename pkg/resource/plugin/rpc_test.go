@@ -134,3 +134,24 @@ func TestComputedReject(t *testing.T) {
 		assert.Nil(t, cpropU)
 	}
 }
+
+func TestUnsupportedSecret(t *testing.T) {
+	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+		resource.SigKey: resource.SecretSig,
+	}))
+	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{})
+	assert.Nil(t, err)
+	_, err = UnmarshalPropertyValue(prop, MarshalOptions{})
+	assert.Error(t, err)
+}
+
+func TestUnknownSig(t *testing.T) {
+	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+		resource.SigKey: "foobar",
+	}))
+	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{})
+	assert.Nil(t, err)
+	_, err = UnmarshalPropertyValue(prop, MarshalOptions{})
+	assert.Error(t, err)
+
+}
