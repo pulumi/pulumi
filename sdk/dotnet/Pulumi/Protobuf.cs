@@ -83,6 +83,18 @@ namespace Pulumi {
             }
         }
 
+        public static Value ToProtobuf<T>(Dictionary<string, T> value, Func<T, Value> selector) {
+            if (value == null) {
+                return Value.ForNull();
+            } else {
+                var result = new Struct();
+                foreach(var field in value) {
+                    result.Fields[field.Key] = selector(field.Value);
+                }
+                return Value.ForStruct(result);
+            }
+        }
+
         public static Value ToProtobuf(params KeyValuePair<string, Value>[] fields) {
             if (fields == null) {
                 return Value.ForNull();
@@ -166,6 +178,21 @@ namespace Pulumi {
                 return null;
             } else {
                 return value.Select(item => ToProtobuf(item));
+            }
+        }
+
+        public static IO<Value> ToProtobuf<T>(IO<Dictionary<string, T>> value, Func<T, IO<Value>> selector) {
+            if (value == null) {
+                return null;
+            } else {
+                return value.SelectMany(item => {
+                    if (item == null) {
+                        return Value.ForNull();
+                    } else {
+                        var ioFields = item.Select(kv => selector(kv.Value).Select(v => new KeyValuePair<string, Value>(kv.Key, v)));
+                        return IO.WhenAll(ioFields).Select(ToProtobuf);
+                    }
+                });
             }
         }
 
