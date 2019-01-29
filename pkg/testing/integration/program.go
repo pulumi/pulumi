@@ -1113,7 +1113,10 @@ func (pt *programTester) performExtraRuntimeValidation(
 		RootResource: rootResource,
 		Outputs:      outputs,
 	}
+
+	fprintf(pt.opts.Stdout, "Performing extra runtime validation.\n")
 	extraRuntimeValidation(pt.t, stackInfo)
+	fprintf(pt.opts.Stdout, "Extra runtime validation complete.\n")
 	return nil
 }
 
