@@ -213,18 +213,20 @@ export interface ResourceOptions {
      * When set to true, protect ensures this resource cannot be deleted.
      */
     protect?: boolean;
-
     /**
      * Ignore changes to any of the specified properties.
      */
     ignoreChanges?: string[];
-
     /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
      * this resource. This version overrides the version information inferred from the current package and should
      * rarely be used.
      */
     version?: string;
+    /**
+     * An optional list of aliases to treat this resoruce as matching.
+     */
+    aliases?: URN[];
 }
 
 /**

@@ -331,7 +331,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ReadResourceRequest.repeatedFields_ = [6,10];
+proto.pulumirpc.ReadResourceRequest.repeatedFields_ = [6,10,11];
 
 
 
@@ -371,7 +371,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
     version: jspb.Message.getFieldWithDefault(msg, 8, ""),
     acceptsecrets: jspb.Message.getFieldWithDefault(msg, 9, false),
-    additionalsecretoutputsList: jspb.Message.getRepeatedField(msg, 10)
+    additionalsecretoutputsList: jspb.Message.getRepeatedField(msg, 10),
+    aliasesList: jspb.Message.getRepeatedField(msg, 11)
   };
 
   if (includeInstance) {
@@ -448,6 +449,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.addAdditionalsecretoutputs(value);
+      break;
+    case 11:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addAliases(value);
       break;
     default:
       reader.skipField();
@@ -546,6 +551,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeRepeatedString(
       10,
+      f
+    );
+  }
+  f = message.getAliasesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      11,
       f
     );
   }
@@ -744,6 +756,35 @@ proto.pulumirpc.ReadResourceRequest.prototype.addAdditionalsecretoutputs = funct
 
 proto.pulumirpc.ReadResourceRequest.prototype.clearAdditionalsecretoutputsList = function() {
   this.setAdditionalsecretoutputsList([]);
+};
+
+
+/**
+ * repeated string aliases = 11;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getAliasesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 11));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.ReadResourceRequest.prototype.setAliasesList = function(value) {
+  jspb.Message.setField(this, 11, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.addAliases = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 11, value, opt_index);
+};
+
+
+proto.pulumirpc.ReadResourceRequest.prototype.clearAliasesList = function() {
+  this.setAliasesList([]);
 };
 
 
@@ -956,7 +997,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15];
 
 
 
@@ -1000,7 +1041,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     version: jspb.Message.getFieldWithDefault(msg, 11, ""),
     ignorechangesList: jspb.Message.getRepeatedField(msg, 12),
     acceptsecrets: jspb.Message.getFieldWithDefault(msg, 13, false),
-    additionalsecretoutputsList: jspb.Message.getRepeatedField(msg, 14)
+    additionalsecretoutputsList: jspb.Message.getRepeatedField(msg, 14),
+    aliasesList: jspb.Message.getRepeatedField(msg, 15)
   };
 
   if (includeInstance) {
@@ -1095,6 +1137,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 14:
       var value = /** @type {string} */ (reader.readString());
       msg.addAdditionalsecretoutputs(value);
+      break;
+    case 15:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addAliases(value);
       break;
     default:
       reader.skipField();
@@ -1218,6 +1264,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeRepeatedString(
       14,
+      f
+    );
+  }
+  f = message.getAliasesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      15,
       f
     );
   }
@@ -1662,6 +1715,35 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addAdditionalsecretoutputs = f
 
 proto.pulumirpc.RegisterResourceRequest.prototype.clearAdditionalsecretoutputsList = function() {
   this.setAdditionalsecretoutputsList([]);
+};
+
+
+/**
+ * repeated string aliases = 15;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getAliasesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 15));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setAliasesList = function(value) {
+  jspb.Message.setField(this, 15, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addAliases = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 15, value, opt_index);
+};
+
+
+proto.pulumirpc.RegisterResourceRequest.prototype.clearAliasesList = function() {
+  this.setAliasesList([]);
 };
 
 

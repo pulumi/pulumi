@@ -57,6 +57,7 @@ message ReadResourceRequest {
     string version = 8;                    // the version of the provider to use when servicing this request.
     bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
+    repeated string aliases = 11;           // a list of additional URNs that shoud be considered the same.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -86,6 +87,7 @@ message RegisterResourceRequest {
     repeated string ignoreChanges = 12; // a list of property selectors to ignore during updates.
     bool acceptSecrets = 13;           // when true operations should return secrets as strongly typed.
     repeated string additionalSecretOutputs = 14;  // a list of output properties that should also be treated as secret, in addition to ones we detect.
+    repeated string aliases = 15;      // a list of additional URNs that shoud be considered the same.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

@@ -183,6 +183,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
+        req.setAliasesList(opts.aliases);
 
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {

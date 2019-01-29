@@ -75,6 +75,9 @@ type EditDir struct {
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
 
+	// ExpectNoChanges is true if the edit is expected to not propose any changes.
+	ExpectNoChanges bool
+
 	// Stdout is the writer to use for all stdout messages.
 	Stdout io.Writer
 	// Stderr is the writer to use for all stderr messages.
@@ -1049,7 +1052,8 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure, false, false); err != nil {
+	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i),
+		edit.ExpectFailure, edit.ExpectNoChanges, edit.ExpectNoChanges); err != nil {
 		return err
 	}
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
