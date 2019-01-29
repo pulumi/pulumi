@@ -34,10 +34,27 @@ echo -e "\tGo: $GO_PULUMIRPC [$GO_PROTOFLAGS]"
 mkdir -p $GO_PULUMIRPC
 $PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC $PROTO_FILES
 
-JS_PULUMIRPC=/nodejs/proto/
-JS_PROTOFLAGS="import_style=commonjs,binary"
-echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"
-$PROTOC --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=minimum_node_version=6:$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin $JS_PROTO_FILES
+# Protoc for JavaScript has a bug where it emits Google Closure Compiler directives in the module prologue that mutate
+# the global object, which causes side-by-side bugs in pulumi/pulumi (pulumi/pulumi#2401). The protoc compiler
+# absolutely should not be emitting commonjs modules that mutate global, but alas, it does, and we have to sed the
+# output to not do that.
+#
+# We're replacing the literal code string
+#   var global = Function('return this')();
+# with
+#   var proto = { pulumirpc: {} }, global = proto;
+#
+# This sets up the remainder of the protobuf file so that it works fine, but doesn't mess with global.
+$DOCKER_RUN /bin/bash -c 'JS_PULUMIRPC=/nodejs/proto && \
+    JS_PROTOFLAGS="import_style=commonjs,binary"    && \
+    echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"  && \
+    TEMP_DIR=/tmp/nodejs-build                      && \
+    echo -e "\tJS temp dir: $TEMP_DIR"              && \
+    mkdir -p "$TEMP_DIR"                            && \
+    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin *.proto && \
+    sed -i "s/^var global = .*;/var proto = { pulumirpc: {} }, global = proto;/" "$TEMP_DIR"/*.js && \
+    cp "$TEMP_DIR"/*.js "$JS_PULUMIRPC"'
+
 
 function on_exit() {
     rm -rf "$TEMP_DIR"
