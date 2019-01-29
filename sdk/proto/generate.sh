@@ -42,19 +42,20 @@ $PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC $PROTO_FILES
 # We're replacing the literal code string
 #   var global = Function('return this')();
 # with
-#   var proto = { pulumirpc: {}, google: { rpc: {} } }, global = proto;
+#   var proto = { pulumirpc: {} }, global = proto;
 #
 # This sets up the remainder of the protobuf file so that it works fine, but doesn't mess with global.
-$DOCKER_RUN /bin/bash -c 'JS_PULUMIRPC=/nodejs/proto && \
+$DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     JS_PROTOFLAGS="import_style=commonjs,binary"    && \
+    JS_HACK_PROTOS=$(find . -name "*.proto" -not -name "status.proto") && \
     echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"  && \
     TEMP_DIR=/tmp/nodejs-build                      && \
     echo -e "\tJS temp dir: $TEMP_DIR"              && \
     mkdir -p "$TEMP_DIR"                            && \
-    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin *.proto && \
-    sed -i "s/^var global = .*;/var proto = { pulumirpc: {}, google: { rpc: {} } }, global = proto;/" "$TEMP_DIR"/*.js && \
+    protoc --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=minimum_node_version=6:$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin status.proto && \
+    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin $JS_HACK_PROTOS && \
+    sed -i "s/^var global = .*;/var proto = { pulumirpc: {} }, global = proto;/" "$TEMP_DIR"/*.js && \
     cp "$TEMP_DIR"/*.js "$JS_PULUMIRPC"'
-
 
 function on_exit() {
     rm -rf "$TEMP_DIR"
