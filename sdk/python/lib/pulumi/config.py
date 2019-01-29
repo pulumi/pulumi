@@ -46,7 +46,7 @@ class Config:
         if not isinstance(name, str):
             raise TypeError('Expected name to be a string')
         self.name = name
-        
+
     def get(self, key: str) -> Optional[str]:
         """
         Returns an optional configuration value by its key, or None if it doesn't exist.
@@ -130,7 +130,7 @@ class Config:
         """
         Returns a configuration value, as a bool, by its given key.  If it doesn't exist, or the
         configuration value is not a legal bool, an error is thrown.
-        
+
         :param str key: The requested configuration key.
         :return: The configuration key's value.
         :rtype: bool
