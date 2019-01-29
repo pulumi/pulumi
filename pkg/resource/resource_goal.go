@@ -34,13 +34,14 @@ type Goal struct {
 	DeleteBeforeReplace     bool                  // true if this resource should be deleted prior to replacement.
 	IgnoreChanges           []string              // a list of property names to ignore during changes.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
+	Aliases                 []URN                 // additional URNs that should be aliased to this resource.
 }
 
 // NewGoal allocates a new resource goal state.
 func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace bool, ignoreChanges []string,
-	additionalSecretOutputs []PropertyKey) *Goal {
+	additionalSecretOutputs []PropertyKey, aliases []URN) *Goal {
 
 	return &Goal{
 		Type:                    t,
@@ -56,5 +57,6 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 		DeleteBeforeReplace:     deleteBeforeReplace,
 		IgnoreChanges:           ignoreChanges,
 		AdditionalSecretOutputs: additionalSecretOutputs,
+		Aliases:                 aliases,
 	}
 }
