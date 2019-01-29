@@ -9,7 +9,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: {} }, global = proto;
+var proto = { pulumirpc: {}, google: { rpc: {} } }, global = proto;
 
 goog.exportSymbol('proto.pulumirpc.ErrorCause', null, global);
 
