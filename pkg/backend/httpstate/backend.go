@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -811,7 +812,7 @@ func (b *cloudBackend) runEngineAction(
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
-		BackendClient:   backend.NewBackendClient(b),
+		BackendClient:   httpstateBackendClient{backend: b},
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
@@ -1221,4 +1222,19 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	}
 
 	return b.client.UpdateStackTags(ctx, stack, tags)
+}
+
+type httpstateBackendClient struct {
+	backend Backend
+}
+
+func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+	// When using the cloud backend, require that stack references are fully qualified so they
+	// look like "<org>/<project>/<stack>"
+	if strings.Count(name, "/") != 2 {
+		return nil, errors.Errorf("a stack reference's name should be of the form " +
+			"'<organization>/<project>/<stack>'. See https://pulumi.io/help/stack-reference for more information.")
+	}
+
+	return backend.NewBackendClient(c.backend).GetStackOutputs(ctx, name)
 }
