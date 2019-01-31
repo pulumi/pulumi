@@ -610,15 +610,17 @@ func TestGetCreated(t *testing.T) {
 
 // Tests that stack references work.
 func TestStackReference(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
 	opts := &integration.ProgramTestOptions{
 		Dir:          "stack_reference",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-	}
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
-		opts.Config = map[string]string{
-			"org": owner,
-		}
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
 	}
 	integration.ProgramTest(t, opts)
 }

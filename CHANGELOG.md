@@ -2,11 +2,15 @@
 
 ### Improvements
 
+- Issue a more perscriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
+
 ## 0.16.12 (Released January 25th, 2019)
 
 ### Major Changes
 
 - When using the cloud backend, stack names now must only be unique within a project, instead of across your entire account. Starting with version of 0.16.12 the CLI, you can create stacks with duplicate names. If an account has multiple stacks with the same name across different projects, you must use 0.16.12 or later of the CLI to manage them.
+
+**BREAKING CHANGE NOTICE**: As part of the above change, when using the 0.16.12 CLI (or a later version) the names passed to `StackReference` must be updated to be of the form (`<organization>/<project>/<stack>`) e.g. `acmecorp/infra/dev` to refer to the `dev` stack of the `infra` project in the `acmecorp` organization.
 
 ### Improvements
 
