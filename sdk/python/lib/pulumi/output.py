@@ -75,11 +75,13 @@ class Output(Generic[T]):
         self._future = future
         self._is_known = is_known
 
+    # Private implementation details - do not document.
     def resources(self) -> Set['Resource']:
         return self._resources
 
     def future(self) -> Awaitable[T]:
         return self._future
+    # End private implementation details.
 
     def apply(self, func: Callable[[T], Input[U]]) -> 'Output[U]':
         """
@@ -89,23 +91,16 @@ class Output(Generic[T]):
         'func' is not allowed to make resources.
 
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
-        and you want to get a transitive dependency of it.  i.e.
-        ```python
-        d1: Output[SomeVal];
-        d2 = d1.apply(lambda x: v.x.y.OtherOutput); # getting an output off of 'v'.
-        (or, equivalently:)
-        d2 = d1.x.y.OtherOutput
-        ```
+        and you want to get a transitive dependency of it.
 
-        In this example, taking a dependency on d2 means a resource will depend on all the resources
-        of d1.  It will *not* depend on the resources of v.x.y.OtherDep.
+        This function will be called during execution of a 'pulumi update' request.  It may not run
+        during 'pulumi preview' (as the values of resources are of course may not be known then).
 
-        Importantly, the Resources that d2 feels like it will depend on are the same resources as d1.
-        If you need have multiple Outputs and a single Output is needed that combines both
-        set of resources, then 'pulumi.all' should be used instead.
-
-        This function will only be called execution of a 'pulumi update' request.  It will not run
-        during 'pulumi preview' (as the values of resources are of course not known then).
+        :param Callable[[T],Input[U]] func: A function that will, given this Output's value, transform the value to
+               an Input of some kind, where an Input is either a prompt value, a Future, or another Output of the given
+               type.
+        :return: A transformed Output obtained from running the transformation function on this Output's value.
+        :rtype: Output[U]
         """
         inner_is_known: asyncio.Future = asyncio.Future()
 
@@ -165,6 +160,10 @@ class Output(Generic[T]):
     def __getattr__(self, item: str) -> 'Output[Any]':
         """
         Syntax sugar for retrieving attributes off of outputs.
+
+        :param str item: An attribute name.
+        :return: An Output of this Output's underlying value's property with the given name.
+        :rtype: Output[Any]
         """
         return self.apply(lambda v: getattr(v, item))
 
@@ -172,6 +171,10 @@ class Output(Generic[T]):
     def __getitem__(self, key: Any) -> 'Output[Any]':
         """
         Syntax sugar for looking up attributes dynamically off of outputs.
+
+        :param Any key: Key for the attribute dictionary.
+        :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
+        :rtype: Output[Any]
         """
         return self.apply(lambda v: v[key])
 
@@ -180,6 +183,10 @@ class Output(Generic[T]):
         """
         Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values as necessary
         given the type.
+
+        :param Input[T] val: An Input to be converted to an Output.
+        :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
+        :rtype: Output[T]
         """
         # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
@@ -217,17 +224,12 @@ class Output(Generic[T]):
         Produces an Output of Lists from a List of Inputs.
 
         This function can be used to combine multiple, separate Inputs into a single
-        Output which can then be used as the target of `apply`. This can be used
-        in the following manner:
+        Output which can then be used as the target of `apply`. Resource dependencies
+        are preserved in the returned Output.
 
-        ```python
-        d1: Output[str]
-        d2: Output[str]
-
-        d3: Output[str] = Output.all(d1, d2).apply(lambda l: l[0] + l[1])
-        ```
-
-        Resource dependencies are preserved in the returned Output.
+        :param List[Input[T]] args: A list of Inputs to convert.
+        :return: An output of lists, converted from an Input to prompt values.
+        :rtype: Output[List[T]]
         """
 
         # Two asynchronous helper functions to assist in the implementation:
