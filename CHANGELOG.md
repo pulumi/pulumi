@@ -1,4 +1,12 @@
-## 0.16.13 (Unreleased)
+## 0.16.14 (Unreleased)
+
+## 0.16.13 (Released January 31th, 2019)
+
+### Major Changes
+
+- When used in conjuction with the latest versions of the various language SDKs, the Pulumi CLI is now more precise about the dependent resources that must be deleted when a given resource must be deleted before it can be replaced (fixes [pulumi/pulumi#2167](https://github.com/pulumi/pulumi/issues/2167)).
+
+**NOTE**: As part of the above change, once a stack is updated with v0.16.13, previous versions of `pulumi` will be unable to manage it.
 
 ### Improvements
 
