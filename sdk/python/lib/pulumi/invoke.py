@@ -28,5 +28,11 @@ class InvokeOptions:
     """
 
     def __init__(self, parent: Optional['Resource'] = None, provider: Optional['ProviderResource'] = None) -> None:
+        """
+        :param Optional[Resource] parent: An optional parent to use for default options for this invoke (e.g. the
+               default provider to use).
+        :param Optional[ProviderResource] provider: An optional provider to use for this invocation. If no provider is
+               supplied, the default provider for the invoked function's package will be used.
+        """
         self.parent = parent
         self.provider = provider

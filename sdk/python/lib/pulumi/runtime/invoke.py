@@ -49,7 +49,7 @@ def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> Awaitable[Any
             log.debug(f"Invoke using provider {provider_ref}")
 
         monitor = get_monitor()
-        inputs = await rpc.serialize_properties(props, [])
+        inputs = await rpc.serialize_properties(props, {})
         log.debug(f"Invoking function prepared: tok={tok}")
         req = provider_pb2.InvokeRequest(tok=tok, args=inputs, provider=provider_ref)
 

@@ -1,4 +1,44 @@
-## 0.16.11 (Unreleased)
+## 0.16.14 (Unreleased)
+
+## 0.16.13 (Released January 31th, 2019)
+
+### Major Changes
+
+- When used in conjuction with the latest versions of the various language SDKs, the Pulumi CLI is now more precise about the dependent resources that must be deleted when a given resource must be deleted before it can be replaced (fixes [pulumi/pulumi#2167](https://github.com/pulumi/pulumi/issues/2167)).
+
+**NOTE**: As part of the above change, once a stack is updated with v0.16.13, previous versions of `pulumi` will be unable to manage it.
+
+### Improvements
+
+- Issue a more perscriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
+
+## 0.16.12 (Released January 25th, 2019)
+
+### Major Changes
+
+- When using the cloud backend, stack names now must only be unique within a project, instead of across your entire account. Starting with version of 0.16.12 the CLI, you can create stacks with duplicate names. If an account has multiple stacks with the same name across different projects, you must use 0.16.12 or later of the CLI to manage them.
+
+**BREAKING CHANGE NOTICE**: As part of the above change, when using the 0.16.12 CLI (or a later version) the names passed to `StackReference` must be updated to be of the form (`<organization>/<project>/<stack>`) e.g. `acmecorp/infra/dev` to refer to the `dev` stack of the `infra` project in the `acmecorp` organization.
+
+### Improvements
+
+- Add `--json` to `pulumi config`, `pulumi config get`, `pulumi history` and `pulumi plugin ls` to request the output be in JSON.
+
+- Changes to `pulumi new`'s output to improve the experience.
+
+## 0.16.11 (Released January 16th, 2019)
+
+### Improvements
+
+- In the nodejs SDK, `pulumi.interpolate` and `pulumi.concat` have been added as convenient ways to combine Output values into strings.
+
+- Added `pulumi history` to show information about the history of updates to a stack.
+
+- When creating a project with `pulumi new` the generated `Pulumi.yaml` file no longer contains the template section, which was unused after creating a project
+
+- In the Python SDK, the `is_dry_run` function just always returned `true`, even when an update (and not a preview) was being preformed. This has been fixed.
+
+- Python programs will no longer deadlock due to exceptions in functions run during applies.
 
 ## 0.16.10 (Released January 11th, 2019)
 

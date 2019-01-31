@@ -293,9 +293,7 @@ export class ComponentResource extends Resource {
     // experience by ensuring the UI transitions the ComponentResource to the 'complete' state as
     // quickly as possible (instead of waiting until the entire application completes).
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
-        if (outputs) {
-            registerResourceOutputs(this, outputs);
-        }
+        registerResourceOutputs(this, outputs || {});
     }
 }
 

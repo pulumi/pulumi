@@ -24,7 +24,7 @@ class AssetTest(LanghostTest):
             expected_resource_count=3)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider):
+                          _dependencies, _parent, _custom, _protect, _provider, _property_deps):
         self.assertEqual(ty, "test:index:MyResource")
         if name == "file":
             self.assertIsInstance(resource["asset"], FileAsset)

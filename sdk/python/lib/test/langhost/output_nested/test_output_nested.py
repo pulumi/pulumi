@@ -22,7 +22,7 @@ class OutputNestedTest(LanghostTest):
             expected_resource_count=3)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider):
+                          _dependencies, _parent, _custom, _protect, _provider, _property_deps):
         nested_numbers = None
         if name == "testResource1":
             self.assertEqual(ty, "test:index:MyResource")

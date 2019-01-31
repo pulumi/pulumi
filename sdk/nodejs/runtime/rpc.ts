@@ -75,15 +75,18 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
  * registerResource.
  */
 async function serializeFilteredProperties(
-        label: string, props: Inputs, acceptKey: (k: string) => boolean,
-        dependentResources: Resource[] = []): Promise<Record<string, any>> {
+    label: string, props: Inputs, acceptKey: (k: string) => boolean,
+    propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
+
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
-            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
+            const deps: Resource[] = [];
+            const v = await serializeProperty(`${label}.${k}`, props[k], deps);
             if (v !== undefined) {
                 result[k] = v;
+                propertyDependencies[k] = deps;
             }
         }
     }
@@ -96,8 +99,8 @@ async function serializeFilteredProperties(
  * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
 export async function serializeResourceProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", dependentResources);
+        label: string, props: Inputs, propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
+    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", propertyDependencies);
 }
 
 /**
@@ -105,8 +108,8 @@ export async function serializeResourceProperties(
  * POJO object that can be remoted over to registerResource.
  */
 export async function serializeProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => true, dependentResources);
+    label: string, props: Inputs, propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
+    return serializeFilteredProperties(label, props, key => true, propertyDependencies);
 }
 
 /**
@@ -203,17 +206,21 @@ export function resolveProperties(
  */
 export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 /**
- * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
+ * specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
  */
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
 /**
- * specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go.
+ * specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
  */
 export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
 /**
- * specialArchiveSig is a randomly assigned hash used to identify archives in maps.  See pkg/resource/asset.go.
+ * specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
  */
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
+/**
+ * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+ */
+export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
@@ -392,6 +399,8 @@ export function deserializeProperty(prop: any): any {
                     else {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
+                case specialSecretSig:
+                    throw new Error("this version of the Pulumi SDK does not support first-class secrets");
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }

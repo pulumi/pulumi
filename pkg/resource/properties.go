@@ -525,7 +525,7 @@ type Property struct {
 
 // SigKey is sometimes used to encode type identity inside of a map.  This is required when flattening into ordinary
 // maps, like we do when performing serialization, to ensure recoverability of type identities later on.
-const SigKey = PropertyKey("4dabf18193072939515e22adb298388d")
+const SigKey = "4dabf18193072939515e22adb298388d"
 
 // HasSig checks to see if the given property map contains the specific signature match.
 func HasSig(obj PropertyMap, match string) bool {
@@ -534,3 +534,6 @@ func HasSig(obj PropertyMap, match string) bool {
 	}
 	return false
 }
+
+// SecretSig is the unique secret signature.
+const SecretSig = "1b47061264138c4ac30d75fd1eb44270"

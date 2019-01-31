@@ -2,11 +2,10 @@
 
 import * as pulumi from "@pulumi/pulumi";
 import * as dynamic from "@pulumi/pulumi/dynamic";
+import uuidv4 = require("uuid/v4");
 
 export class Provider implements dynamic.ResourceProvider {
     public static readonly instance = new Provider();
-
-    private id: number = 0;
 
     public async check(olds: any, news: any): Promise<dynamic.CheckResult> {
         return {
@@ -23,6 +22,12 @@ export class Provider implements dynamic.ResourceProvider {
             };
         }
 
+        if (olds.noReplace !== news.noReplace) {
+            return {
+                changes: true,
+            }
+        }
+
         return {
             changes: false,
         };
@@ -30,7 +35,7 @@ export class Provider implements dynamic.ResourceProvider {
 
     public async create(inputs: any): Promise<dynamic.CreateResult> {
         return {
-            id: (this.id++).toString(),
+            id: uuidv4(),
             outs: inputs,
         };
     }
@@ -39,6 +44,7 @@ export class Provider implements dynamic.ResourceProvider {
 export class Resource extends pulumi.dynamic.Resource {
     public uniqueKey?: pulumi.Output<number>;
     public state: pulumi.Output<number>;
+    public noReplace?: pulumi.Output<number>;
 
     constructor(name: string, props: ResourceProps, opts?: pulumi.ResourceOptions) {
         super(Provider.instance, name, props, opts);
@@ -48,4 +54,5 @@ export class Resource extends pulumi.dynamic.Resource {
 export interface ResourceProps {
     readonly uniqueKey?: pulumi.Input<number>;
     readonly state: pulumi.Input<number>;
+    readonly noReplace?: pulumi.Input<number>;
 }

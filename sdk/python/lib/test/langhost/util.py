@@ -56,7 +56,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             lambda fail: provider_pb2.CheckFailure(property=fail["property"], reason=fail["reason"]), failures))
 
         loop = asyncio.new_event_loop()
-        ret_proto = loop.run_until_complete(rpc.serialize_properties(ret, []))
+        ret_proto = loop.run_until_complete(rpc.serialize_properties(ret, {}))
         loop.close()
         fields = {"failures": failures_rpc, "return": ret_proto}
         return proto.InvokeResponse(**fields)
@@ -71,7 +71,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
                                                 parent, state)
         if "properties" in outs:
             loop = asyncio.new_event_loop()
-            props_proto = loop.run_until_complete(rpc.serialize_properties(outs["properties"], []))
+            props_proto = loop.run_until_complete(rpc.serialize_properties(outs["properties"], {}))
             loop.close()
         else:
             props_proto = None
@@ -82,15 +82,20 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         type_ = request.type
         name = request.name
         props = rpc.deserialize_properties(request.object)
-        deps = list(request.dependencies)
+        deps = sorted(list(request.dependencies))
         parent = request.parent
         custom = request.custom
         protect = request.protect
         provider = request.provider
+
+        property_dependencies = {}
+        for key, value in request.propertyDependencies.items():
+            property_dependencies[key] = sorted(list(value.urns))
+
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
             outs = self.langhost_test.register_resource(
-                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider)
+                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider, property_dependencies)
             if outs.get("urn"):
                 urn = outs["urn"]
                 self.registrations[urn] = {
@@ -113,7 +118,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             return proto.RegisterResourceResponse(urn=urn, id="teststack", object=None)
         if "object" in outs:
             loop = asyncio.new_event_loop()
-            obj_proto = loop.run_until_complete(rpc.serialize_properties(outs["object"], []))
+            obj_proto = loop.run_until_complete(rpc.serialize_properties(outs["object"], {}))
             loop.close()
         else:
             obj_proto = None

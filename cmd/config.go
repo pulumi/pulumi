@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -38,6 +39,7 @@ import (
 func newConfigCmd() *cobra.Command {
 	var stack string
 	var showSecrets bool
+	var jsonOut bool
 
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -56,13 +58,16 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			return listConfig(stack, showSecrets)
+			return listConfig(stack, showSecrets, jsonOut)
 		}),
 	}
 
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
+	cmd.Flags().BoolVarP(
+		&jsonOut, "json", "j", false,
+		"Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -79,6 +84,8 @@ func newConfigCmd() *cobra.Command {
 }
 
 func newConfigGetCmd(stack *string) *cobra.Command {
+	var jsonOut bool
+
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a single configuration value",
@@ -98,9 +105,12 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			return getConfig(s, key)
+			return getConfig(s, key, jsonOut)
 		}),
 	}
+	getCmd.Flags().BoolVarP(
+		&jsonOut, "json", "j", false,
+		"Emit output as JSON")
 
 	return getCmd
 }
@@ -361,7 +371,15 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 	return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
 }
 
-func listConfig(stack backend.Stack, showSecrets bool) error {
+// configValueJSON is the shape of the --json output for a configuration value.  While we can add fields to this
+// structure in the future, we should not change existing fields.
+type configValueJSON struct {
+	// When the value is encrypted and --show-secrets was not passed, the value will not be set.
+	Value  *string `json:"value,omitempty"`
+	Secret bool    `json:"secret"`
+}
+
+func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -369,7 +387,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 
 	cfg := ps.Config
 
-	// By default, we will use a blinding decrypter to show '******'.  If requested, display secrets in plaintext.
+	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	var decrypter config.Decrypter
 	if cfg.HasSecureValue() && showSecrets {
 		decrypter, err = backend.GetStackCrypter(stack)
@@ -388,24 +406,54 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 	}
 	sort.Sort(keys)
 
-	rows := []cmdutil.TableRow{}
-	for _, key := range keys {
-		decrypted, err := cfg[key].Value(decrypter)
+	if jsonOut {
+		configValues := make(map[string]configValueJSON)
+		for _, key := range keys {
+			entry := configValueJSON{
+				Secret: cfg[key].Secure(),
+			}
+
+			decrypted, err := cfg[key].Value(decrypter)
+			if err != nil {
+				return errors.Wrap(err, "could not decrypt configuration value")
+			}
+			entry.Value = &decrypted
+
+			// If the value was a secret value and we aren't showing secrets, then the above would have set value
+			// to "[secret]" which is reasonable when printing for human display, but for our JSON output, we'd rather
+			// just elide the value.
+			if cfg[key].Secure() && !showSecrets {
+				entry.Value = nil
+			}
+
+			configValues[key.String()] = entry
+		}
+		out, err := json.MarshalIndent(configValues, "", "  ")
 		if err != nil {
-			return errors.Wrap(err, "could not decrypt configuration value")
+			return err
+		}
+		fmt.Println(string(out))
+	} else {
+		rows := []cmdutil.TableRow{}
+		for _, key := range keys {
+			decrypted, err := cfg[key].Value(decrypter)
+			if err != nil {
+				return errors.Wrap(err, "could not decrypt configuration value")
+			}
+
+			rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
 		}
 
-		rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
+		cmdutil.PrintTable(cmdutil.Table{
+			Headers: []string{"KEY", "VALUE"},
+			Rows:    rows,
+		})
 	}
 
-	cmdutil.PrintTable(cmdutil.Table{
-		Headers: []string{"KEY", "VALUE"},
-		Rows:    rows,
-	})
 	return nil
 }
 
-func getConfig(stack backend.Stack, key config.Key) error {
+func getConfig(stack backend.Stack, key config.Key, jsonOut bool) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -427,7 +475,22 @@ func getConfig(stack backend.Stack, key config.Key) error {
 		if err != nil {
 			return errors.Wrap(err, "could not decrypt configuration value")
 		}
-		fmt.Printf("%v\n", raw)
+
+		if jsonOut {
+			value := configValueJSON{
+				Value:  &raw,
+				Secret: v.Secure(),
+			}
+
+			out, err := json.MarshalIndent(value, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
+		} else {
+			fmt.Printf("%v\n", raw)
+		}
+
 		return nil
 	}
 
