@@ -31,7 +31,7 @@ class ChainedFailureTest(LanghostTest):
             expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, res, _deps,
-                          _parent, _custom, _protect, _provider, _property_deps):
+                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
             self.assertDictEqual(res, {"inprop": 777})
