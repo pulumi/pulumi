@@ -66,7 +66,7 @@ class ResourceOptions:
                  depends_on: Optional[List['Resource']] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
-                 providers: Optional[Mapping[str, 'ProviderResource']],
+                 providers: Optional[Mapping[str, 'ProviderResource']] = None,
                  delete_before_replace: Optional[bool] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -79,7 +79,7 @@ class ResourceOptions:
                provider is pulled from the parent's provider bag.
         :param Optional[Mapping[str,ProviderResource]] providers: An optional set of providers to use for child resources. Keyed
                by package name (e.g. "aws")
-        :param Optional[bool] delete_before_repalce: If provided and True, this resource must be deleted before it is replaced.
+        :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
         """
         self.parent = parent
         self.depends_on = depends_on
