@@ -55,7 +55,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 		for _, s := range steps {
 			g := s.Goal()
 			urn, id, outs, err := resmon.RegisterResource(g.Type, string(g.Name), g.Custom, g.Parent, g.Protect,
-				g.Dependencies, g.Provider, g.Properties, g.PropertyDependencies)
+				g.Dependencies, g.Provider, g.Properties, g.PropertyDependencies, false)
 			if err != nil {
 				return err
 			}
@@ -143,16 +143,16 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		// Register a component resource.
 		&testRegEvent{
 			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil),
+				nil, "", []string{}, nil, false),
 		},
 		// Register a couple resources using provider A.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:index:typA", "res1", true, resource.PropertyMap{}, componentURN, false, nil,
-				providerARef.String(), []string{}, nil),
+				providerARef.String(), []string{}, nil, false),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:index:typA", "res2", true, resource.PropertyMap{}, componentURN, false, nil,
-				providerARef.String(), []string{}, nil),
+				providerARef.String(), []string{}, nil, false),
 		},
 		// Register two more providers.
 		newProviderEvent("pkgA", "providerB", nil, ""),
@@ -160,11 +160,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		// Register a few resources that use the new providers.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgB:index:typB", "res3", true, resource.PropertyMap{}, "", false, nil,
-				providerBRef.String(), []string{}, nil),
+				providerBRef.String(), []string{}, nil, false),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgB:index:typC", "res4", true, resource.PropertyMap{}, "", false, nil,
-				providerCRef.String(), []string{}, nil),
+				providerCRef.String(), []string{}, nil, false),
 		},
 	}
 
@@ -227,25 +227,25 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		// Register a component resource.
 		&testRegEvent{
 			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil),
+				nil, "", []string{}, nil, false),
 		},
 		// Register a couple resources from package A.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res1", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil),
+				componentURN, false, nil, "", []string{}, nil, false),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res2", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil),
+				componentURN, false, nil, "", []string{}, nil, false),
 		},
 		// Register a few resources from other packages.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgB:m:typB", "res3", true, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil),
+				nil, "", []string{}, nil, false),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil),
+				nil, "", []string{}, nil, false),
 		},
 	}
 

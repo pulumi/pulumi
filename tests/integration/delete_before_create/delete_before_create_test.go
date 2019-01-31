@@ -32,6 +32,10 @@ func TestDeleteBeforeCreate(t *testing.T) {
 				Dir:      "step5",
 				Additive: true,
 			},
+			{
+				Dir:      "step6",
+				Additive: true,
+			},
 		},
 	})
 }

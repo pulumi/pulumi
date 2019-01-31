@@ -182,7 +182,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 protect=opts.protect,
                 provider=resolver.provider_ref,
                 dependencies=resolver.dependencies,
-                propertyDependencies=property_dependencies
+                propertyDependencies=property_dependencies,
+                deleteBeforeReplace=opts.delete_before_replace
             )
 
             def do_rpc_call():

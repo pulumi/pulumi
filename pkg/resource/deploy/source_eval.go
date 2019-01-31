@@ -256,7 +256,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal(providers.MakeProviderType(pkg), "default", true, inputs, "", false, nil, "", nil, nil),
+		goal: resource.NewGoal(providers.MakeProviderType(pkg), "default", true, inputs, "", false, nil, "", nil, nil, false),
 		done: done,
 	}
 	return event, done, nil
@@ -569,6 +569,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	custom := req.GetCustom()
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
+	deleteBeforeReplace := req.GetDeleteBeforeReplace()
 	var t tokens.Type
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -625,13 +626,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
-			"provider=%v, deps=%v",
-		t, name, custom, len(props), parent, protect, provider, dependencies)
+			"provider=%v, deps=%v, deleteBeforeReplace=%v",
+		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies),
+			propertyDependencies, deleteBeforeReplace),
 		done: make(chan *RegisterResult),
 	}
 

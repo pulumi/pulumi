@@ -18,7 +18,7 @@ export class Provider implements dynamic.ResourceProvider {
             return {
                 changes: true,
                 replaces: ["state"],
-                deleteBeforeReplace: true,
+                deleteBeforeReplace: news.noDBR ? false : true,
             };
         }
 
@@ -46,7 +46,7 @@ export class Resource extends pulumi.dynamic.Resource {
     public state: pulumi.Output<number>;
     public noReplace?: pulumi.Output<number>;
 
-    constructor(name: string, props: ResourceProps, opts?: pulumi.ResourceOptions) {
+    constructor(name: string, props: ResourceProps, opts?: pulumi.CustomResourceOptions) {
         super(Provider.instance, name, props, opts);
     }
 }
@@ -55,4 +55,5 @@ export interface ResourceProps {
     readonly uniqueKey?: pulumi.Input<number>;
     readonly state: pulumi.Input<number>;
     readonly noReplace?: pulumi.Input<number>;
+    readonly noDBR?: pulumi.Input<boolean>;
 }
