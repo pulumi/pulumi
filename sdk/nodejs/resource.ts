@@ -170,6 +170,12 @@ export interface CustomResourceOptions extends ResourceOptions {
      * provider bag (see also ComponentResourceOptions.providers).
      */
     provider?: ProviderResource;
+
+    /**
+     * When set to true, deleteBeforeReplace indicates that this resource should be deleted before its replacement
+     * is created when replacement is necessary.
+     */
+    deleteBeforeReplace?: boolean;
 }
 
 /**

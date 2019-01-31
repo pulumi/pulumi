@@ -22,6 +22,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 ### Improvements
 
+- Individual resources may now be explicitly marked as requiring delete-before-replace behavior. This can be used e.g. to handle explicitly-named resources that may not be able to be replaced in the usual manner.
 - `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
 
 **NOTE**: As part of the above, an `Output<T>` will now appear to have more members than before in TypeScript.  This can cause incompabilities if your Pulumi application ends up referencing several different versions of `@pulumi/pulumi` (as through a newer version an `Output<T>` will appear to have these new members, and through an older version it will not).  It is recommended that you update all `@pulumi/...` dependencies to avoid this.

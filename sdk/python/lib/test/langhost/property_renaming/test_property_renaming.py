@@ -26,7 +26,7 @@ class PropertyRenamingTest(LanghostTest):
             expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, res, _deps,
-                          _parent, _custom, _protect, _provider, _property_deps):
+                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
         # Test:
         #  1. Everything that we receive from the running program is in camel-case. The engine never sees
         # the pre-translated names of the input properties.

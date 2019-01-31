@@ -610,7 +610,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     protect: jspb.Message.getFieldWithDefault(msg, 6, false),
     dependenciesList: jspb.Message.getRepeatedField(msg, 7),
     provider: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject) : []
+    propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject) : [],
+    deletebeforereplace: jspb.Message.getFieldWithDefault(msg, 10, false)
   };
 
   if (includeInstance) {
@@ -685,6 +686,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.deserializeBinaryFromReader);
          });
+      break;
+    case 10:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDeletebeforereplace(value);
       break;
     default:
       reader.skipField();
@@ -775,6 +780,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   f = message.getPropertydependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(9, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.serializeBinaryToWriter);
+  }
+  f = message.getDeletebeforereplace();
+  if (f) {
+    writer.writeBool(
+      10,
+      f
+    );
   }
 };
 
@@ -1110,6 +1122,23 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getPropertydependenciesMap = f
 
 proto.pulumirpc.RegisterResourceRequest.prototype.clearPropertydependenciesMap = function() {
   this.getPropertydependenciesMap().clear();
+};
+
+
+/**
+ * optional bool deleteBeforeReplace = 10;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getDeletebeforereplace = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 10, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setDeletebeforereplace = function(value) {
+  jspb.Message.setProto3BooleanField(this, 10, value);
 };
 
 

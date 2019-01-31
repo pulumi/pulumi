@@ -322,7 +322,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 				//
 				// The provider is responsible for requesting which of these two modes to use.
 
-				if diff.DeleteBeforeReplace {
+				if diff.DeleteBeforeReplace || goal.DeleteBeforeReplace {
 					logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
 					contract.Assert(sg.plan.depGraph != nil)
 

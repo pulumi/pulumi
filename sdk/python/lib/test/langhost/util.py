@@ -19,6 +19,7 @@ import asyncio
 import unittest
 from collections import namedtuple
 from concurrent import futures
+from inspect import signature
 import logging
 import subprocess
 from os import path
@@ -87,6 +88,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         custom = request.custom
         protect = request.protect
         provider = request.provider
+        delete_before_replace = request.deleteBeforeReplace
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
@@ -95,7 +97,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
             outs = self.langhost_test.register_resource(
-                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider, property_dependencies)
+                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider, property_dependencies, delete_before_replace)
             if outs.get("urn"):
                 urn = outs["urn"]
                 self.registrations[urn] = {
