@@ -3,7 +3,7 @@
 "use strict";
 const pulumi = require("@pulumi/pulumi");
 
-const config = new pulumi.Config("ee-perf");
+const config = new pulumi.Config();
 const iterations = config.getNumber("count") || 1000;
 
 // Emit many, many diagnostic events from the engine to stress test the
