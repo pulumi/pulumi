@@ -1,5 +1,11 @@
 ## 0.16.14 (Unreleased)
 
+### Improvements
+
+- `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
+
+**NOTE**: As part of the above, an `Output<T>` will now appear to have more members than before in TypeScript.  This can cause incompabilities if your Pulumi application ends up referencing several different versions of `@pulumi/pulumi` (as through a newer version an `Output<T>` will appear to have these new members, and through an older version it will not).  It is recommended that you update all `@pulumi/...` dependencies to avoid this.
+
 ## 0.16.13 (Released January 31th, 2019)
 
 ### Major Changes
@@ -44,9 +50,7 @@
 
 ### Improvements
 
-- Link directly to /account/tokens when prompting for an access token.
 - Support for first-class providers in Python.
-- Output<T> now 'lifts' property members from the value it wraps, simplifying common coding patterns.
 - pulumi.interpolate and pulumi.concat have been added as convenient ways to combine Output values into strings.
 
 - Fix a bug where `StackReference` outputs were not updated when changes occured in the referenced stack.
