@@ -191,7 +191,7 @@ class Resource:
 
         :param str module_member: The requested module member.
         :return: The :class:`ProviderResource` associated with the given module member, or None if one does not exist.
-        :rtype: Optional[ProviderReference]
+        :rtype: Optional[ProviderResource]
         """
         components = module_member.split(":")
         if len(components) != 3:
