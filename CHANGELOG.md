@@ -1,4 +1,24 @@
-## 0.16.14 (Unreleased)
+## 0.16.15 (Unreleased)
+
+### Improvements
+
+## 0.16.14 (Released January 31th, 2019)
+
+### Improvements
+
+- Fix a regression in `@pulumi/pulumi` introduced by 0.16.13 where an update could fail with an error like:
+
+```
+Diagnostics:
+  pulumi:pulumi:Stack (my-great-stack):
+    TypeError: resproto.InvokeRequest is not a constructor
+        at Object.<anonymous> (.../node_modules/@pulumi/pulumi/runtime/invoke.js:58:25)
+        at Generator.next (<anonymous>)
+        at fulfilled (.../node_modules/@pulumi/pulumi/runtime/invoke.js:17:58)
+        at <anonymous>
+```
+
+We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.com/pulumi/pulumi/issues/2414))
 
 ## 0.16.13 (Released January 31th, 2019)
 
