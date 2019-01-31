@@ -292,6 +292,7 @@ func (ctx *Context) RegisterResource(
 			Dependencies:         inputs.deps,
 			Provider:             inputs.provider,
 			PropertyDependencies: inputs.rpcPropertyDeps,
+			DeleteBeforeReplace:  inputs.deleteBeforeReplace,
 		})
 		if err != nil {
 			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -404,19 +405,20 @@ func (outputs *resourceOutputs) resolve(dryrun bool, err error, inputs map[strin
 
 // resourceInputs reflects all of the inputs necessary to perform core resource RPC operations.
 type resourceInputs struct {
-	parent          string
-	deps            []string
-	protect         bool
-	provider        string
-	rpcProps        *structpb.Struct
-	rpcPropertyDeps map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
+	parent              string
+	deps                []string
+	protect             bool
+	provider            string
+	rpcProps            *structpb.Struct
+	rpcPropertyDeps     map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
+	deleteBeforeReplace bool
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...ResourceOpt) (*resourceInputs, error) {
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	parent, optDeps, protect, provider, err := ctx.getOpts(opts...)
+	parent, optDeps, protect, provider, deleteBeforeReplace, err := ctx.getOpts(opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving options")
 	}
@@ -457,12 +459,13 @@ func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...
 	sort.Strings(deps)
 
 	return &resourceInputs{
-		parent:          string(parent),
-		deps:            deps,
-		protect:         protect,
-		provider:        provider,
-		rpcProps:        rpcProps,
-		rpcPropertyDeps: rpcPropertyDeps,
+		parent:              string(parent),
+		deps:                deps,
+		protect:             protect,
+		provider:            provider,
+		rpcProps:            rpcProps,
+		rpcPropertyDeps:     rpcPropertyDeps,
+		deleteBeforeReplace: deleteBeforeReplace,
 	}, nil
 }
 
@@ -474,11 +477,12 @@ type resourceOutput struct {
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
-func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, error) {
+func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool, error) {
 	var parent Resource
 	var deps []Resource
 	var protect bool
 	var provider ProviderResource
+	var deleteBeforeReplace bool
 	for _, opt := range opts {
 		if parent == nil && opt.Parent != nil {
 			parent = opt.Parent
@@ -492,6 +496,9 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, erro
 		if provider == nil && opt.Provider != nil {
 			provider = opt.Provider
 		}
+		if !deleteBeforeReplace && opt.DeleteBeforeReplace {
+			deleteBeforeReplace = true
+		}
 	}
 
 	var parentURN URN
@@ -500,7 +507,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, erro
 	} else {
 		urn, err := parent.URN().Value()
 		if err != nil {
-			return "", nil, false, "", err
+			return "", nil, false, "", false, err
 		}
 		parentURN = urn
 	}
@@ -511,7 +518,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, erro
 		for i, r := range deps {
 			urn, err := r.URN().Value()
 			if err != nil {
-				return "", nil, false, "", err
+				return "", nil, false, "", false, err
 			}
 			depURNs[i] = urn
 		}
@@ -521,12 +528,12 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, erro
 	if provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return "", nil, false, "", err
+			return "", nil, false, "", false, err
 		}
 		providerRef = pr
 	}
 
-	return parentURN, depURNs, protect, providerRef, nil
+	return parentURN, depURNs, protect, providerRef, false, nil
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {

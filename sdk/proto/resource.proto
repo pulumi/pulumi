@@ -66,8 +66,8 @@ message RegisterResourceRequest {
     bool protect = 6;                  // true if the resource should be marked protected.
     repeated string dependencies = 7;  // a list of URNs that this resource depends on, as observed by the language host.
     string provider = 8;               // an optional reference to the provider to manage this resource's CRUD operations.
-
     map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
+    bool deleteBeforeReplace = 10;      // true if this resource should be deleted before replacement.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

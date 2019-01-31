@@ -20,6 +20,10 @@ Diagnostics:
 
 We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.com/pulumi/pulumi/issues/2414))
 
+### Improvements
+
+- Individual resources may now be explicitly marked as requiring delete-before-replace behavior. This can be used e.g. to handle explicitly-named resources that may not be able to be replaced in the usual manner.
+
 ## 0.16.13 (Released January 31th, 2019)
 
 ### Major Changes
