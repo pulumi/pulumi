@@ -21,7 +21,7 @@ import { deserializeProperties, serializeProperties, unknownValue } from "./rpc"
 import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-const resproto = require("../proto/resource_pb.js");
+const providerproto = require("../proto/provider_pb.js");
 
 /**
  * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
@@ -55,7 +55,7 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
             providerRef = `${providerURN}::${providerID}`;
         }
 
-        const req = new resproto.InvokeRequest();
+        const req = new providerproto.InvokeRequest();
         req.setTok(tok);
         req.setArgs(obj);
         req.setProvider(providerRef);
