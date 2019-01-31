@@ -259,6 +259,13 @@ func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingReplace bo
 }
 
 func (s *DeleteStep) Op() StepOp {
+	if s.old.External {
+		if s.replacing {
+			return OpDiscardReplaced
+		}
+		return OpReadDiscard
+	}
+
 	if s.replacing {
 		return OpDeleteReplaced
 	}
@@ -669,17 +676,18 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 type StepOp string
 
 const (
-	OpSame              StepOp = "same"               // nothing to do.
-	OpCreate            StepOp = "create"             // creating a new resource.
-	OpUpdate            StepOp = "update"             // updating an existing resource.
-	OpDelete            StepOp = "delete"             // deleting an existing resource.
-	OpReplace           StepOp = "replace"            // replacing a resource with a new one.
-	OpCreateReplacement StepOp = "create-replacement" // creating a new resource for a replacement.
-	OpDeleteReplaced    StepOp = "delete-replaced"    // deleting an existing resource after replacement.
-	OpRead              StepOp = "read"               // reading an existing resource.
-	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
-	OpRefresh           StepOp = "refresh"            // refreshing an existing resource.
-
+	OpSame                 StepOp = "same"                   // nothing to do.
+	OpCreate               StepOp = "create"                 // creating a new resource.
+	OpUpdate               StepOp = "update"                 // updating an existing resource.
+	OpDelete               StepOp = "delete"                 // deleting an existing resource.
+	OpReplace              StepOp = "replace"                // replacing a resource with a new one.
+	OpCreateReplacement    StepOp = "create-replacement"     // creating a new resource for a replacement.
+	OpDeleteReplaced       StepOp = "delete-replaced"        // deleting an existing resource after replacement.
+	OpRead                 StepOp = "read"                   // reading an existing resource.
+	OpReadReplacement      StepOp = "read-replacement"       // reading an existing resource for a replacement.
+	OpRefresh              StepOp = "refresh"                // refreshing an existing resource.
+	OpReadDiscard          StepOp = "discard"                // removing a resource that was read.
+	OpDiscardReplaced      StepOp = "discard-replaced"       // discarding a read resource that was replaced.
 	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 )
 
@@ -695,6 +703,8 @@ var StepOps = []StepOp{
 	OpRead,
 	OpReadReplacement,
 	OpRefresh,
+	OpReadDiscard,
+	OpDiscardReplaced,
 	OpRemovePendingReplace,
 }
 
@@ -721,6 +731,8 @@ func (op StepOp) Color() string {
 		return colors.SpecReplace
 	case OpRefresh:
 		return colors.SpecUpdate
+	case OpReadDiscard, OpDiscardReplaced:
+		return colors.SpecDelete
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -750,11 +762,15 @@ func (op StepOp) RawPrefix() string {
 	case OpDeleteReplaced:
 		return "--"
 	case OpRead:
-		return ">-"
+		return "> "
 	case OpReadReplacement:
-		return ">~"
+		return ">>"
 	case OpRefresh:
 		return "~ "
+	case OpReadDiscard:
+		return "< "
+	case OpDiscardReplaced:
+		return "<<"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -769,6 +785,8 @@ func (op StepOp) PastTense() string {
 		return "refreshed"
 	case OpRead:
 		return "read"
+	case OpReadDiscard, OpDiscardReplaced:
+		return "discarded"
 	default:
 		contract.Failf("Unexpected resource step op: %v", op)
 		return ""
