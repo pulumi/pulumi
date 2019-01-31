@@ -310,11 +310,12 @@ func GetResourceOutputsPropertiesString(
 }
 
 func considerSameIfNotCreateOrDelete(op deploy.StepOp) deploy.StepOp {
-	if op == deploy.OpCreate || op == deploy.OpDelete || op == deploy.OpDeleteReplaced || op == deploy.OpReadDiscard || op == deploy.OpDiscardReplaced {
+	switch op {
+	case deploy.OpCreate, deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 		return op
+	default:
+		return deploy.OpSame
 	}
-
-	return deploy.OpSame
 }
 
 func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {

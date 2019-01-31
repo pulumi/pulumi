@@ -1132,7 +1132,8 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 		return "update"
 	case deploy.OpDelete:
 		return "delete"
-	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement, deploy.OpDiscardReplaced:
+	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement,
+		deploy.OpDiscardReplaced:
 		return "replace"
 	case deploy.OpRead:
 		// nolint: goconst
