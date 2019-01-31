@@ -28,6 +28,7 @@ import (
 	"path"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -912,7 +913,29 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 		})
 	}
 
-	return beUpdates, nil
+	// Sort the updates, so the newest ones are first.
+	sortableUpdates := sortableUpdates{updates: beUpdates}
+	sort.Sort(sortableUpdates)
+
+	return sortableUpdates.updates, nil
+}
+
+type sortableUpdates struct {
+	updates []backend.UpdateInfo
+}
+
+func (su sortableUpdates) Len() int {
+	return len(su.updates)
+}
+
+func (su sortableUpdates) Less(i int, j int) bool {
+	return su.updates[i].StartTime > su.updates[j].StartTime
+}
+
+func (su sortableUpdates) Swap(i int, j int) {
+	tmp := su.updates[i]
+	su.updates[i] = su.updates[j]
+	su.updates[j] = tmp
 }
 
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,

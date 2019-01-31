@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- `pulumi history` now shows updates from newest to oldest instead of an unsorted list of updates.
+
 ## 0.16.12 (Released January 25th, 2019)
 
 ### Major Changes
