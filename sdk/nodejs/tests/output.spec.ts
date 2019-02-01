@@ -131,7 +131,7 @@ describe("output", () => {
 
     describe("lifted operations", () => {
         it("lifts properties from inner object", asyncTest(async () => {
-            const output1 = resource.output({ a: 1, b: true, c: "str", d: [2], e: { f: 3 }, g: undefined, h: null });
+            const output1 = output({ a: 1, b: true, c: "str", d: [2], e: { f: 3 }, g: undefined, h: null });
 
             assert.equal(await output1.a.promise(), 1);
             assert.equal(await output1.b.promise(), true);
@@ -154,13 +154,13 @@ describe("output", () => {
         }));
 
         it("prefers Output members over lifted members", asyncTest(async () => {
-            const output1 = resource.output({ apply: 1, promise: 2 });
+            const output1 = output({ apply: 1, promise: 2 });
             assert.ok(output1.apply instanceof Function);
             assert.ok(output1.isKnown instanceof Promise);
         }));
 
         it("does not lift symbols", asyncTest(async () => {
-            const output1 = resource.output({ apply: 1, promise: 2 });
+            const output1 = output({ apply: 1, promise: 2 });
             assert.strictEqual((<any>output1)[Symbol.toPrimitive], undefined);
         }));
     });
