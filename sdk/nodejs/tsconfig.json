@@ -20,6 +20,7 @@
         "config.ts",
         "errors.ts",
         "metadata.ts",
+        "output.ts",
         "resource.ts",
         "stackReference.ts",
         "version.ts",

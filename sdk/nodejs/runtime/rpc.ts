@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComponentResource, CustomResource, Input, Inputs, Output, Resource } from "../resource";
+import { ComponentResource, CustomResource, Resource } from "../resource";
+import { Input, Inputs, Output } from "../output";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 

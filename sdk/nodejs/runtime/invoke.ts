@@ -15,10 +15,10 @@
 import * as grpc from "grpc";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { Inputs } from "../resource";
+import { Inputs } from "../output";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
-import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
+import { excessiveDebugOutput, getMonitor, rpcKeepAlive } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");

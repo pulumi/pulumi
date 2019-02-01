@@ -14,6 +14,7 @@
 
 import * as resource from "../resource";
 import * as runtime from "../runtime";
+import { Inputs } from "../output";
 
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
@@ -177,7 +178,7 @@ export abstract class Resource extends resource.CustomResource {
      *              property "__provider".
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(provider: ResourceProvider, name: string, props: resource.Inputs,
+    constructor(provider: ResourceProvider, name: string, props: Inputs,
                 opts?: resource.CustomResourceOptions) {
         const providerKey: string = "__provider";
         if (props[providerKey]) {
