@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Inputs } from "../output";
 import * as resource from "../resource";
 import * as runtime from "../runtime";
-import { Inputs } from "../output";
 
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.

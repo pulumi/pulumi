@@ -16,8 +16,8 @@
 
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
-import * as resource from "../../resource";
 import { Input, Output } from "../../output";
+import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import * as utils from "./utils";

@@ -14,8 +14,8 @@
 
 import * as grpc from "grpc";
 import * as log from "../log";
-import { CustomResourceOptions, ID, Resource, ResourceOptions, URN } from "../resource";
 import { Input, Inputs, Output } from "../output";
+import { CustomResourceOptions, ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import {
     deserializeProperties,

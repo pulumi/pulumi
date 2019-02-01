@@ -14,8 +14,8 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComponentResource, CustomResource, Resource } from "../resource";
 import { Input, Inputs, Output } from "../output";
+import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 

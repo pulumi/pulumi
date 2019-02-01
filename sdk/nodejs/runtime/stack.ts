@@ -14,8 +14,8 @@
 
 import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
-import { ComponentResource, Resource } from "../resource";
 import { Inputs, Output, output } from "../output";
+import { ComponentResource, Resource } from "../resource";
 import { getRootResource, setRootResource } from "./settings";
 
 /**
