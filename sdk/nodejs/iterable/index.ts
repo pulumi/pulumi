@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input, Output } from "../resource";
+import { Input, Output } from "../output";
 
 /**
  * toObject takes an array of T values, and a selector that produces key/value pairs from those inputs,
