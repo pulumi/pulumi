@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input } from "../resource";
-
 /**
  * Asset represents a single blob of text or data that is managed as a first class entity.
  */

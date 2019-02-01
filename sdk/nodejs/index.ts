@@ -20,6 +20,7 @@ export * from "./config";
 export * from "./errors";
 export * from "./invoke";
 export * from "./metadata";
+export * from "./output";
 export * from "./resource";
 export * from "./stackReference";
 
