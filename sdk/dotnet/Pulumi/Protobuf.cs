@@ -177,7 +177,7 @@ namespace Pulumi {
             if (value == null) {
                 return null;
             } else {
-                return value.Select(item => ToProtobuf(item));
+                return value.Select(ToProtobuf);
             }
         }
 
@@ -189,7 +189,14 @@ namespace Pulumi {
                     if (item == null) {
                         return Value.ForNull();
                     } else {
-                        var ioFields = item.Select(kv => selector(kv.Value).Select(v => new KeyValuePair<string, Value>(kv.Key, v)));
+                        var ioFields = item.Select(kv => {
+                            var selected = selector(kv.Value);
+                            if (selected == null) {
+                                return new KeyValuePair<string, Value>(kv.Key, null);
+                            } else {
+                                return selected.Select(v => new KeyValuePair<string, Value>(kv.Key, v));
+                            }
+                        });
                         return IO.WhenAll(ioFields).Select(ToProtobuf);
                     }
                 });
@@ -200,7 +207,14 @@ namespace Pulumi {
             if (fields == null) {
                 return null;
             } else {
-                var ioFields = fields.Select(kv => kv.Value.Select(value => new KeyValuePair<string, Value>(kv.Key, value)));
+                var ioFields = fields.Select(kv => {
+                    if (kv.Value == null) {
+                        return new KeyValuePair<string, Value>(kv.Key, null);
+                    } else {
+                        return kv.Value.Select(v => new KeyValuePair<string, Value>(kv.Key, v));
+                    }
+                    
+                });
                 return IO.WhenAll(ioFields).Select(ToProtobuf);
             }
         }
