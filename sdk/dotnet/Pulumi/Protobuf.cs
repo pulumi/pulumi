@@ -189,14 +189,13 @@ namespace Pulumi {
                     if (item == null) {
                         return Value.ForNull();
                     } else {
-                        var ioFields = item.Select(kv => {
+                        var ioFields = new List<IO<KeyValuePair<string, Value>>>();
+                        foreach(var kv in item) {
                             var selected = selector(kv.Value);
-                            if (selected == null) {
-                                return new KeyValuePair<string, Value>(kv.Key, null);
-                            } else {
-                                return selected.Select(v => new KeyValuePair<string, Value>(kv.Key, v));
+                            if (selected != null) {
+                                ioFields.Add(selected.Select(v => new KeyValuePair<string, Value>(kv.Key, v)));
                             }
-                        });
+                        }
                         return IO.WhenAll(ioFields).Select(ToProtobuf);
                     }
                 });
@@ -207,14 +206,12 @@ namespace Pulumi {
             if (fields == null) {
                 return null;
             } else {
-                var ioFields = fields.Select(kv => {
-                    if (kv.Value == null) {
-                        return new KeyValuePair<string, Value>(kv.Key, null);
-                    } else {
-                        return kv.Value.Select(v => new KeyValuePair<string, Value>(kv.Key, v));
+                var ioFields = new List<IO<KeyValuePair<string, Value>>>();
+                foreach(var kv in fields) {
+                    if (kv.Value != null) {
+                        ioFields.Add(kv.Value.Select(v => new KeyValuePair<string, Value>(kv.Key, v)));
                     }
-                    
-                });
+                }
                 return IO.WhenAll(ioFields).Select(ToProtobuf);
             }
         }
