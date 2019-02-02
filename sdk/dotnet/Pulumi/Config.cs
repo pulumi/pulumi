@@ -4,7 +4,10 @@ using Newtonsoft.Json;
 
 namespace Pulumi {
     public class Config {
-        private string m_prefix;
+        
+        /// name is the configuration bag's logical name and uniquely identifies it.  The default is the name of the current
+        /// project.
+        public readonly string Name;
 
         private static Dictionary<string, string> s_config = loadConfig();
 
@@ -17,12 +20,20 @@ namespace Pulumi {
             return new Dictionary<string, string>();
         }
 
-        public Config(string name) {
-            m_prefix = name;
+        public Config(string name = null) {
+            if (name == null) {
+                name = Runtime.Project;
+            }
+
+            if (name.EndsWith(":config")) {
+                name = name.Replace(":config", "");
+            }
+
+            Name = name;
         }
 
         private string FullKey(string name) {
-            return m_prefix + ":" + name;
+            return Name + ":" + name;
         }
 
         public string this[string name] {
