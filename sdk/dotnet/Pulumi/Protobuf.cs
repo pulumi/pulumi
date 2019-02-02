@@ -198,7 +198,7 @@ namespace Pulumi {
 
         public static IO<Value> ToProtobuf(params KeyValuePair<string, IO<Value>>[] fields) {
             if (fields == null) {
-                return Value.ForNull();
+                return null;
             } else {
                 var ioFields = fields.Select(kv => kv.Value.Select(value => new KeyValuePair<string, Value>(kv.Key, value)));
                 return IO.WhenAll(ioFields).Select(ToProtobuf);

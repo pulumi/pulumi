@@ -32,14 +32,21 @@ namespace Pulumi {
             Name = name;
         }
 
-        private string FullKey(string name) {
-            return Name + ":" + name;
+        private string FullKey(string key) {
+            return Name + ":" + key;
         }
 
-        public string this[string name] {
-            get {
-                return s_config[FullKey(name)];
+        public string Get(string key) {
+            return s_config[FullKey(key)];
+        }
+
+        /// require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
+        public string Require(string key) {
+            var v = Get(key);
+            if (v == null) {
+                throw new Exception(FullKey(key));
             }
+            return v;
         }
     }
 }
