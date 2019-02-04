@@ -65,9 +65,9 @@ class OutputImpl<T> implements OutputInstance<T> {
      * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
      * values as necessary.
      */
-    public static create<T>(val: Input<T>): OutputInstance<Unwrap<T>>;
-    public static create<T>(val: Input<T> | undefined): OutputInstance<Unwrap<T | undefined>>;
-    public static create<T>(val: Input<T | undefined>): OutputInstance<Unwrap<T | undefined>> {
+    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
+    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
         return output<T>(<any>val);
     }
 
