@@ -65,9 +65,9 @@ class OutputImpl<T> implements OutputInstance<T> {
      * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
      * values as necessary.
      */
-    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
-    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
-    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+    public static create<T>(val: Input<T>): OutputInstance<Unwrap<T>>;
+    public static create<T>(val: Input<T> | undefined): OutputInstance<Unwrap<T | undefined>>;
+    public static create<T>(val: Input<T | undefined>): OutputInstance<Unwrap<T | undefined>> {
         return output<T>(<any>val);
     }
 
@@ -340,7 +340,9 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[]
  * [Input] is a property input for a resource.  It may be a promptly available T, a promise for one,
  * or the output from a existing Resource.
  */
-export type Input<T> = T | Promise<T> | Output<T>;
+// Note: we accept an OutputInstance (and not an Output) here to be *more* flexible in terms of
+// what an Input is.  OutputInstance has *less* members than Output (because it doesn't lift anything).
+export type Input<T> = T | Promise<T> | OutputInstance<T>;
 
 /**
  * [Inputs] is a map of property name to property input, one for each resource property value.

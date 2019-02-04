@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input, Output } from "../output";
+import { all, Input, Output } from "../output";
 
 /**
  * toObject takes an array of T values, and a selector that produces key/value pairs from those inputs,
@@ -34,7 +34,7 @@ export function toObject<T, V>(
         for (const e of elems) {
             array.push(selector(<any>e));
         }
-        return Output.create(array).apply(kvps => {
+        return all(array).apply(kvps => {
             const obj: {[key: string]: V} = {};
             for (const kvp of kvps) {
                 obj[<any>kvp[0]] = <any>kvp[1];
@@ -65,7 +65,7 @@ export function groupBy<T, V>(
         for (const e of elems) {
             array.push(selector(<any>e));
         }
-        return Output.create(array).apply(kvps => {
+        return all(array).apply(kvps => {
             const obj: {[key: string]: V[]} = {};
             for (const kvp of kvps) {
                 let r = obj[<any>kvp[0]];
