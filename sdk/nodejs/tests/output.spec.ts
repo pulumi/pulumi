@@ -163,5 +163,10 @@ describe("output", () => {
             const output1 = output({ apply: 1, promise: 2 });
             assert.strictEqual((<any>output1)[Symbol.toPrimitive], undefined);
         }));
+
+        it("does not lift __ properties", asyncTest(async () => {
+            const output1 = output({ a: 1, b: 2 });
+            assert.strictEqual((<any>output1).__pulumiResource, undefined);
+        }));
     });
 });

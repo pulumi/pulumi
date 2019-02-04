@@ -171,6 +171,25 @@ To manipulate the value of this Output, use '.apply' instead.`);
                     return undefined;
                 }
 
+                // Do not lift members that start with __.  Technically, if all libraries were
+                // using this version of pulumi/pulumi we would not need this.  However, this is
+                // so that downstream consumers can use this version of pulumi/pulumi while also
+                // passing these new Outputs to older versions of pulumi/pulumi.  The reason this
+                // can be a problem is that older versions do an RTTI check that simply asks questions
+                // like:
+                //
+                //      Is there a member on this object called '__pulumiResource'
+                //
+                // If we automatically lift such a member (even if it eventually points to 'undefined'),
+                // then those RTTI checks will succeed.
+                //
+                // Note: this should be safe to not lift as, in general, properties with this prefix
+                // are not at all common (and in general are used to represent private things anyway
+                // that likely should not be exposed).
+                if (typeof prop === "string" && prop.startsWith("__")) {
+                    return undefined;
+                }
+
                 // Fail out if we are being accessed using a symbol.  Many APIs will access with a
                 // well known symbol (like 'Symbol.toPrimitive') to check for the presence of something.
                 // They will only check for the existence of that member, and we don't want to make it
