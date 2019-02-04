@@ -378,7 +378,7 @@ export type Unwrap<T> =
     // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
     // 3. Otherwise, we have a basic type.  Just unwrap that.
     T extends Promise<infer U1> ? UnwrapSimple<U1> :
-    T extends Output<infer U2> ? UnwrapSimple<U2> :
+    T extends OutputInstance<infer U2> ? UnwrapSimple<U2> :
     UnwrapSimple<T>;
 
 type primitive = Function | string | number | boolean | undefined | null;
