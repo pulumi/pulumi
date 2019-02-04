@@ -199,6 +199,10 @@ func checkForUpdate() {
 		return
 	}
 
+	if !isInstalledFromGetPulumiCom() {
+		return
+	}
+
 	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
 	if err != nil {
 		glog.V(3).Infof("error fetching latest version information: %s", err)
@@ -207,6 +211,22 @@ func checkForUpdate() {
 	if oldestAllowedVer.GT(curVer) {
 		cmdutil.Diag().Warningf(diag.RawMessage("", getUpgradeMessage(latestVer, curVer)))
 	}
+}
+
+// isInstalledFromGetPulumiCom returns true when we believe the CLI was installed from get.pulumi.com
+// (i.e. it has been installed to ~/.pulumi/bin)
+func isInstalledFromGetPulumiCom() bool {
+	curUser, err := user.Current()
+	if err != nil {
+		return false
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+
+	return filepath.Dir(exe) == filepath.Join(curUser.HomeDir, ".pulumi", "bin")
 }
 
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
@@ -300,46 +320,25 @@ type cachedVersionInfo struct {
 // getUpgradeMessage gets a message to display to a user instructing them they are out of date and how to move from
 // current to latest.
 func getUpgradeMessage(latest semver.Version, current semver.Version) string {
-	cmd := getUpgradeCommand()
-
-	msg := fmt.Sprintf("A new version of Pulumi is available. To upgrade from version '%s' to '%s', ", current, latest)
-	if cmd != "" {
-		msg += "run \n   " + cmd + "\nor "
-	}
-
-	msg += "visit https://pulumi.io/install for manual instructions and release notes."
-	return msg
-}
-
-// getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how
-// the CLI was installed, the empty string is returned.
-func getUpgradeCommand() string {
-	curUser, err := user.Current()
-	if err != nil {
-		return ""
-	}
-
-	exe, err := os.Executable()
-	if err != nil {
-		return ""
-	}
-
-	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, ".pulumi", "bin") {
-		return ""
-	}
+	var cmd string
 
 	if runtime.GOOS != "windows" {
-		return "$ curl -sSL https://get.pulumi.com | sh"
+		cmd = "$ curl -sSL https://get.pulumi.com | sh"
+	} else {
+		powershellCmd := `"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"`
+
+		if _, err := exec.LookPath("powershell"); err == nil {
+			powershellCmd = "powershell"
+		}
+
+		cmd = "> " + powershellCmd + ` -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ` +
+			`((New-Object System.Net.WebClient).DownloadString('https://get.pulumi.com/install.ps1'))"`
 	}
 
-	powershellCmd := `"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"`
-
-	if _, err := exec.LookPath("powershell"); err == nil {
-		powershellCmd = "powershell"
-	}
-
-	return "> " + powershellCmd + ` -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ` +
-		`((New-Object System.Net.WebClient).DownloadString('https://get.pulumi.com/install.ps1'))"`
+	return fmt.Sprintf(
+		"A new version of Pulumi is available. To upgrade from version '%s' to '%s', run \n"+
+			"    %s\n"+
+			"or visit https://pulumi.io/install for manual instructions and release notes.", current, latest, cmd)
 }
 
 func isDevVersion(s semver.Version) bool {

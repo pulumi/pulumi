@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- The CLI now only warns about a newer version being present if it looks like it was installed from `https://get.pulumi.com` (i.e it is located in `~/.pulumi/bin`). This should prevent cases where package managers like `brew` have not yet upgraded to a newer version yet the CLI warns a newer version is present on every invocation (fixes [pulumi/pulumi#2426](https://github.com/pulumi/pulumi/issues/2426)).
+
 ## 0.16.14 (Released January 31th, 2019)
 
 ### Improvements
