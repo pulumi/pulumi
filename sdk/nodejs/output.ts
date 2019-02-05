@@ -569,7 +569,7 @@ export type Lifted<T> =
 export interface LiftedArray<T> extends Array<Output<T>> {}
 
 export type LiftedObject<T> = {
-    [P in keyof T]: Output<T[P]>;
+    [P in keyof T]-?: Output<T[P]>;
 };
 
 /**
