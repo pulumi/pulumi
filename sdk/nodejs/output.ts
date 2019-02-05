@@ -560,13 +560,28 @@ export type Lifted<T> =
     // Output<T> is an intersection type with 'Lifted<T>'.  So, when we don't want to add any
     // members to Output<T>, we just return `{}` which will leave it untouched.
     T extends Function ? {} :
+    T extends string ? LiftedString :
     T extends primitive ? {} :
     T extends Resource ? {} :
     T extends Array<infer U> ? LiftedArray<U> :
     T extends object ? LiftedObject<T> :
     never;
 
-export interface LiftedArray<T> extends Array<Output<T>> {}
+export interface LiftedString {
+    /** Returns the length of a String object. */
+    readonly length: Output<number>;
+    readonly [index: number]: Output<string>;
+}
+
+export interface LiftedArray<T> {
+    /**
+      * Gets or sets the length of the array. This is a number one higher than the highest element
+      * defined in an array.
+      */
+    readonly length: Output<number>;
+
+    readonly [n: number]: Output<T>;
+}
 
 export type LiftedObject<T> = {
     [P in keyof T]-?: Output<T[P]>;
