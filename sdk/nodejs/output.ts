@@ -186,8 +186,13 @@ To manipulate the value of this Output, use '.apply' instead.`);
                 // Note: this should be safe to not lift as, in general, properties with this prefix
                 // are not at all common (and in general are used to represent private things anyway
                 // that likely should not be exposed).
-                if (typeof prop === "string" && prop.startsWith("__")) {
-                    return undefined;
+                //
+                // Similarly, do not respond to the 'doNotCapture' member name.  It serves a similar
+                // RTTI purpose.
+                if (typeof prop === "string") {
+                    if (prop.startsWith("__") || prop === "doNotCapture") {
+                        return undefined;
+                    }
                 }
 
                 // Fail out if we are being accessed using a symbol.  Many APIs will access with a
