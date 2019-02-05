@@ -559,33 +559,30 @@ export const Output: OutputConstructor = <any>OutputImpl;
 export type Lifted<T> =
     // Output<T> is an intersection type with 'Lifted<T>'.  So, when we don't want to add any
     // members to Output<T>, we just return `{}` which will leave it untouched.
-    T extends Function ? {} :
-    T extends string ? LiftedString :
-    T extends primitive ? {} :
     T extends Resource ? {} :
+    // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
+    T extends string ? LiftedObject<String> :
     T extends Array<infer U> ? LiftedArray<U> :
-    T extends object ? LiftedObject<T> :
-    never;
+    LiftedObject<T>;
 
-export interface LiftedString {
-    /** Returns the length of a String object. */
-    readonly length: Output<number>;
-    readonly [index: number]: Output<string>;
-}
+// The set of property names in T that are *not* functions.
+type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
 
-export interface LiftedArray<T> {
+// Lift up all the non-function properties, and make them non-optional.
+export type LiftedObject<T> = {
+    [P in NonFunctionPropertyNames<T>]-?: Output<T[P]>;
+};
+
+export type LiftedArray<T> = {
     /**
-      * Gets or sets the length of the array. This is a number one higher than the highest element
-      * defined in an array.
+      * Gets the length of the array. This is a number one higher than the highest element defined
+      * in an array.
       */
     readonly length: Output<number>;
 
     readonly [n: number]: Output<T>;
-}
-
-export type LiftedObject<T> = {
-    [P in keyof T]-?: Output<T[P]>;
 };
+
 
 /**
  * [concat] takes a sequence of [Inputs], stringifies each, and concatenates all values into one
