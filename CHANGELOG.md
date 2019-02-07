@@ -4,6 +4,8 @@
 
 - The CLI now only warns about a newer version being present if it looks like it was installed from `https://get.pulumi.com` (i.e it is located in `~/.pulumi/bin`). This should prevent cases where package managers like `brew` have not yet upgraded to a newer version yet the CLI warns a newer version is present on every invocation (fixes [pulumi/pulumi#2426](https://github.com/pulumi/pulumi/issues/2426)).
 
+- When trying to `stack rm` a stack managed by pulumi.com that has resources, the error message now informs you to pass `--force` if you really want to remove a stack that still has resources under management, as this would orphan these resources (fixes [pulumi/pulumi#2431](https://github.com/pulumi/pulumi/issues/2431)).
+
 ## 0.16.14 (Released January 31th, 2019)
 
 ### Improvements
