@@ -34,6 +34,8 @@ type Vars struct {
 	BranchName string
 	// CommitMessage is the full message of the Git commit being built.
 	CommitMessage string
+	// PRNumber is the pull-request ID/number in the source control system.
+	PRNumber string
 }
 
 // DetectVars detects and returns the CI variables for the current environment.
@@ -47,14 +49,15 @@ func DetectVars() Vars {
 		// See https://docs.gitlab.com/ee/ci/variables/.
 		v.BuildID = os.Getenv("CI_JOB_ID")
 		v.BuildURL = os.Getenv("CI_JOB_URL")
+		v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
 		v.SHA = os.Getenv("CI_COMMIT_SHA")
 		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
 		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
 	case Travis:
 		// See https://docs.travis-ci.com/user/environment-variables/.
-		// NOTE: Travis doesn't set a build URL in its environment, https://github.com/travis-ci/travis-ci/issues/8935.
 		v.BuildID = os.Getenv("TRAVIS_JOB_ID")
 		v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
+		v.BuildURL = os.Getenv("TRAVIS_BUILD_WEB_URL")
 		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
 		v.BranchName = os.Getenv("TRAVIS_BRANCH")
 		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
