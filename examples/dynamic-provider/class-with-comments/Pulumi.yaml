@@ -1,0 +1,4 @@
+name: four-function
+description: A silly four-function calculator.
+runtime: nodejs
+config: ./.config/

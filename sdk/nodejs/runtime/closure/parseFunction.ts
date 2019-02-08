@@ -164,6 +164,32 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     // We then see if we have an => or not.  if we do, it's a lambda.  If we don't, it's a function
     // with a computed name.
 
+    // Note: Using indexOf is problematic here as we can be thrown off by random code in the func
+    // string (for example comments).  When using indexOf, a justification should be given as to
+    // why this approach is more often correct than not.
+
+    // There are three general forms of node toString'ed Functions we're trying to find out here.
+    //
+    // 1. `class Foo { ... }`
+    //
+    //      i.e. node uses the entire string of a class when toString'ing the constructor function
+    //      for it.
+    //
+    // 2. `[mods] function ...
+    //
+    //      i.e. a normal function (maybe async, maybe a get/set function, but def not an arrow
+    //      function)
+    //
+    // 3. `[mods] (...) => ...
+    //
+    //      i.e. an arrow function.  Harder to figure out as we have to look further ahead (weakly)
+    //      for the `=>` portion.
+
+
+    // Using indexOf("{") is mostly acceptable here.  This is purely to see if we're a class or
+    // a function with a body.  If we do *not* find a curly *at all*, then this really could
+    // only be a lambda, and that's what this block is trying to check for.  If we do find an
+    // open curly, we attempt to figure out what sort of entity we are below.
     const openCurlyIndex = funcString.indexOf("{");
     if (openCurlyIndex < 0) {
         // No block body.  Can happen if this is an arrow function with an expression body.
@@ -176,33 +202,9 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         return [`the function form was not understood.`, <any>undefined];
     }
 
-    const signature = funcString.substr(0, openCurlyIndex);
-    if (signature.indexOf("=>") >= 0) {
-        // (...) => { ... }
-        return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
-    }
-
-    let isAsync = false;
-    if (funcString.startsWith("async ")) {
-        isAsync = true;
-        funcString = funcString.substr("async".length).trimLeft();
-    }
-
-    if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
-        const trimmed = funcString.substr("function get".length);
-        return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
-    }
-
-    if (funcString.startsWith("get ") || funcString.startsWith("set ")) {
-        const trimmed = funcString.substr("get ".length);
-        return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
-    }
-
-    if (funcString.startsWith("function")) {
-        const trimmed = funcString.substr("function".length);
-        return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ true);
-    }
-
+    // First check to see if this startsWith 'class'.  If so, this is definitely a class.  This
+    // works as Node does not place preceding comments on a class/function, allowing us to just
+    // directly see if we've started with the right text.
     if (funcString.startsWith("class ")) {
         // class constructor function.  We want to get the actual constructor
         // in the class definition (synthesizing an empty one if one does not)
@@ -224,59 +226,97 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             const isSubClass = classDecl.heritageClauses && classDecl.heritageClauses.some(
                 c => c.token === ts.SyntaxKind.ExtendsKeyword);
             return isSubClass
-                ? makeFunctionDeclaration("constructor() { super(); }", /*isFunctionDeclaration:*/ false)
-                : makeFunctionDeclaration("constructor() { }", /*isFunctionDeclaration:*/ false);
+                ? makeFunctionDeclaration("constructor() { super(); }", /*isAsync:*/ false, /*isFunctionDeclaration:*/ false)
+                : makeFunctionDeclaration("constructor() { }", /*isAsync:*/ false, /*isFunctionDeclaration:*/ false);
         }
 
-        const constructorCode = funcString.substring(constructor.pos, constructor.end).trim();
-        return makeFunctionDeclaration(constructorCode, /*isFunctionDeclaration: */ false);
+        const constructorCode = funcString.substring(constructor.getStart(file, /*includeJsDocComment*/ false), constructor.end).trim();
+        return makeFunctionDeclaration(constructorCode, /*isAsync:*/ false, /*isFunctionDeclaration: */ false);
+    }
+
+    let isAsync = false;
+    if (funcString.startsWith("async ")) {
+        isAsync = true;
+        funcString = funcString.substr("async".length).trimLeft();
+    }
+
+    // Note: this check is pretty weak.  It is only checking if `=>` appears some place within the
+    // part of the code we consider the signature.  It's possible (though unlikely) for this check
+    // to be wrong.  For example, if the user wrote:
+    //
+    //      function F() /* a => b */ { }
+    //
+    // Then this would be treated as an arrow-function, even though it's a normal function.  However
+    // the likelihood of a comment including `=>` *and* preceding the opening `{` is low enough that
+    // we accept this as a good-enough heuristic.
+    const signature = funcString.substr(0, openCurlyIndex);
+    if (signature.indexOf("=>") >= 0) {
+        // (...) => { ... }
+        return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
+    }
+
+    if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
+        const trimmed = funcString.substr("function get".length);
+        return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ false);
+    }
+
+    if (funcString.startsWith("get ") || funcString.startsWith("set ")) {
+        const trimmed = funcString.substr("get ".length);
+        return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ false);
+    }
+
+    if (funcString.startsWith("function")) {
+        const trimmed = funcString.substr("function".length);
+        return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ true);
     }
 
     // Add "function" (this will make methods parseable).  i.e.  "foo() { }" becomes
     // "function foo() { }"
     // this also does the right thing for functions with computed names.
-    return makeFunctionDeclaration(funcString, /*isFunctionDeclaration: */ false);
+    return makeFunctionDeclaration(funcString, isAsync, /*isFunctionDeclaration: */ false);
+}
 
-    function makeFunctionDeclaration(v: string, isFunctionDeclaration: boolean): [string, ParsedFunctionCode] {
-        let prefix = isAsync ? "async " : "";
-        prefix += "function ";
+function makeFunctionDeclaration(
+        v: string, isAsync: boolean, isFunctionDeclaration: boolean): [string, ParsedFunctionCode] {
 
-        v = v.trimLeft();
+    let prefix = isAsync ? "async " : "";
+    prefix += "function ";
 
-        if (v.startsWith("*")) {
-            v = v.substr(1).trimLeft();
-            prefix = "function* ";
-        }
+    v = v.trimLeft();
 
-        const openParenIndex = v.indexOf("(");
-        if (openParenIndex < 0) {
-            return [`the function form was not understood.`, <any>undefined];
-        }
+    if (v.startsWith("*")) {
+        v = v.substr(1).trimLeft();
+        prefix = "function* ";
+    }
 
-        if (isComputed(v, openParenIndex)) {
-            v = v.substr(openParenIndex);
-            return ["", {
-                funcExprWithoutName: prefix + v,
-                funcExprWithName: prefix + "__computed" + v,
-                functionDeclarationName: undefined,
-                isArrowFunction: false,
-            }];
-        }
+    const openParenIndex = v.indexOf("(");
+    if (openParenIndex < 0) {
+        return [`the function form was not understood.`, <any>undefined];
+    }
 
-        const nameChunk = v.substr(0, openParenIndex);
-        const funcName = utils.isLegalMemberName(nameChunk)
-            ? utils.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
-            : "";
-        const commentedName = utils.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
-        v = v.substr(openParenIndex).trimLeft();
-
+    if (isComputed(v, openParenIndex)) {
+        v = v.substr(openParenIndex);
         return ["", {
-            funcExprWithoutName: prefix + commentedName + v,
-            funcExprWithName: prefix + funcName + v,
-            functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
+            funcExprWithoutName: prefix + v,
+            funcExprWithName: prefix + "__computed" + v,
+            functionDeclarationName: undefined,
             isArrowFunction: false,
         }];
     }
+
+    const nameChunk = v.substr(0, openParenIndex);
+    const funcName = utils.isLegalMemberName(nameChunk)
+        ? utils.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
+        : "";
+    const commentedName = utils.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
+    v = v.substr(openParenIndex).trimLeft();
+
+    return ["", {
+        funcExprWithoutName: prefix + commentedName + v,
+        funcExprWithName: prefix + funcName + v,
+        functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
+        isArrowFunction: false,
+    }];
 }
 
 function isComputed(v: string, openParenIndex: number) {
