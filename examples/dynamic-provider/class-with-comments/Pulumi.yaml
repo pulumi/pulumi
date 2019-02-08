@@ -1,0 +1,3 @@
+name: class-with-comments
+description: A class with comments in it.
+runtime: nodejs

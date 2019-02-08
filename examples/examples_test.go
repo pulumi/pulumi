@@ -52,6 +52,11 @@ func TestExamples(t *testing.T) {
 			},
 		},
 		{
+			Dir:          path.Join(cwd, "dynamic-provider/class-with-comments"),
+			Dependencies: []string{"@pulumi/pulumi"},
+			Config:       map[string]string{},
+		},
+		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
 			Dependencies: []string{"@pulumi/pulumi"},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
