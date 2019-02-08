@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ResourceError } from "./errors";
+import { ResourceError, RunError } from "./errors";
 import { Input, Inputs, Output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 
@@ -86,7 +86,7 @@ export abstract class Resource {
         this.__providers = {};
         if (opts.parent) {
             if (!Resource.isInstance(opts.parent)) {
-                throw new ResourceError(`Resource parent is not a valid Resource: ${opts.parent}`, opts.parent);
+                throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
             }
 
             if (opts.protect === undefined) {
