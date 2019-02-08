@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import * as resource from "../resource";
+import { Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
@@ -23,8 +23,8 @@ describe("output", () => {
     it("propagates true isKnown bit from inner Output", asyncTest(async () => {
         runtime.setIsDryRun(true);
 
-        const output1 = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        const output2 = output1.apply(v => new resource.Output(new Set(), Promise.resolve("inner"), Promise.resolve(true)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true)));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, true);
@@ -36,8 +36,8 @@ describe("output", () => {
     it("propagates false isKnown bit from inner Output", asyncTest(async () => {
         runtime.setIsDryRun(true);
 
-        const output1 = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        const output2 = output1.apply(v => new resource.Output(new Set(), Promise.resolve("inner"), Promise.resolve(false)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(false)));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, false);
@@ -49,8 +49,8 @@ describe("output", () => {
     it("can await even when isKnown is a rejected promise.", asyncTest(async () => {
         runtime.setIsDryRun(true);
 
-        const output1 = new resource.Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        const output2 = output1.apply(v => new resource.Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error())));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error())));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, false);
@@ -64,4 +64,68 @@ describe("output", () => {
 
         assert.fail("Should not read here");
     }));
+
+    describe("concat", () => {
+        it ("handles no args", asyncTest(async () => {
+            const result = concat();
+            assert.equal(await result.promise(), "");
+        }));
+
+        it ("handles empty string arg", asyncTest(async () => {
+            const result = concat("");
+            assert.equal(await result.promise(), "");
+        }));
+
+        it ("handles non-empty string arg", asyncTest(async () => {
+            const result = concat("a");
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles promise string arg", asyncTest(async () => {
+            const result = concat(Promise.resolve("a"));
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles output string arg", asyncTest(async () => {
+            const result = concat(output("a"));
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles multiple args", asyncTest(async () => {
+            const result = concat("http://", output("a"), ":", 80);
+            assert.equal(await result.promise(), "http://a:80");
+        }));
+    });
+
+    describe("interpolate", () => {
+        it ("handles empty interpolation", asyncTest(async () => {
+            const result = interpolate ``;
+            assert.equal(await result.promise(), "");
+        }));
+
+        it ("handles no placeholders arg", asyncTest(async () => {
+            const result = interpolate `a`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles string placeholders arg", asyncTest(async () => {
+            const result = interpolate `${"a"}`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles promise placeholders arg", asyncTest(async () => {
+            const result = interpolate `${Promise.resolve("a")}`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles output placeholders arg", asyncTest(async () => {
+            const result = interpolate `${output("a")}`;
+            assert.equal(await result.promise(), "a");
+        }));
+
+        it ("handles multiple args", asyncTest(async () => {
+            const result = interpolate `http://${output("a")}:${80}/`;
+            assert.equal(await result.promise(), "http://a:80/");
+        }));
+    });
 });

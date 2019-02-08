@@ -16,6 +16,7 @@
 
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
+import { Input, Output } from "../../output";
 import * as resource from "../../resource";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
@@ -188,7 +189,7 @@ interface ClosurePropertyDescriptor {
  * IMPORTANT: Do not change the structure of this type.  Closure serialization code takes a
  * dependency on the actual shape (including the names of properties like 'value').
  */
-class SerializedOutput<T> implements resource.Output<T> {
+class SerializedOutput<T> implements Output<T> {
     /* @internal */ public isKnown: Promise<boolean>;
     /* @internal */ public readonly promise: () => Promise<T>;
     /* @internal */ public readonly resources: () => Set<resource.Resource>;
@@ -198,7 +199,7 @@ class SerializedOutput<T> implements resource.Output<T> {
         this.value = value;
     }
 
-    public apply<U>(func: (t: T) => resource.Input<U>): resource.Output<U> {
+    public apply<U>(func: (t: T) => Input<U>): Output<U> {
         throw new Error(
 "'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
     }
@@ -1176,7 +1177,7 @@ async function getOrCreateEntryAsync(
         }
     }
 
-    async function createOutputEntryAsync(output: resource.Output<any>): Promise<Entry> {
+    async function createOutputEntryAsync(output: Output<any>): Promise<Entry> {
         // We have an Output<T>.  This is effectively just a wrapped value 'V' at deployment-time.
         // We want to effectively generate a value post serialization effectively equivalent to `new
         // SerializedOutput(V)`.  It is tempting to want to just do the following:
@@ -1238,7 +1239,7 @@ async function getOrCreateEntryAsync(
 }
 
 async function isOutputAsync(obj: any): Promise<boolean> {
-    return resource.Output.isInstance(obj);
+    return Output.isInstance(obj);
 }
 
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to

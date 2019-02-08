@@ -24,7 +24,7 @@ class OutputAllTest(LanghostTest):
             expected_resource_count=3)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider):
+                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
         number = 0
         if name == "testResource1":
             self.assertEqual(ty, "test:index:MyResource")

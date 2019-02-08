@@ -57,8 +57,8 @@ import (
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
-	Deployment   *apitype.DeploymentV2
-	RootResource apitype.ResourceV2
+	Deployment   *apitype.DeploymentV3
+	RootResource apitype.ResourceV3
 	Outputs      map[string]interface{}
 }
 
@@ -366,10 +366,14 @@ func (rf *regexFlag) Set(v string) error {
 
 var directoryMatcher regexFlag
 var listDirs bool
+var pipenvMutex *fsutil.FileMutex
 
 func init() {
 	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
 	flag.BoolVar(&listDirs, "list-dirs", false, "list available integration tests without running them")
+
+	mutexPath := filepath.Join(os.TempDir(), "pipenv-mutex.lock")
+	pipenvMutex = fsutil.NewFileMutex(mutexPath)
 }
 
 // GetLogs retrieves the logs for a given stack in a particular region making the query provided.
@@ -513,7 +517,10 @@ type programTester struct {
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
-	return &programTester{t: t, opts: opts}
+	return &programTester{
+		t:    t,
+		opts: opts,
+	}
 }
 
 func (pt *programTester) getBin() (string, error) {
@@ -644,6 +651,47 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 }
 
 func (pt *programTester) runPipenvCommand(name string, args []string, wd string) error {
+	// Pipenv uses setuptools to install and uninstall packages. Setuptools has an installation mode called "develop"
+	// that we use to install the package being tested, since it is 1) lightweight and 2) not doing so has its own set
+	// of annoying problems.
+	//
+	// Setuptools develop does three things:
+	//   1. It invokes the "egg_info" command in the target package,
+	//   2. It creates a special `.egg-link` sentinel file in the current site-packages folder, pointing to the package
+	//      being installed's path on disk
+	//   3. It updates easy-install.pth in site-packages so that pip understand that this package has been installed.
+	//
+	// Steps 2 and 3 operate entirely within the context of a virtualenv. The state that they mutate is fully contained
+	// within the current virtualenv. However, step 1 operates in the context of the package's source tree. Egg info
+	// is responsible for producing a minimal "egg" for a particular package, and its largest responsibility is creating
+	// a PKG-INFO file for a package. PKG-INFO contains, among other things, the version of the package being installed.
+	//
+	// If two packages are being installed in "develop" mode simultaneously (which happens often, when running tests),
+	// both installations will run "egg_info" on the source tree and both processes will be writing the same files
+	// simultaneously. If one process catches "PKG-INFO" in a half-written state, the one process that observed the
+	// torn write will fail to install the package (setuptools crashes).
+	//
+	// To avoid this problem, we use pipenvMutex to explicitly serialize installation operations. Doing so avoids the
+	// problem of multiple processes stomping on the same files in the source tree. Note that pipenvMutex is a file
+	// mutex, so this strategy works even if the go test runner chooses to split up text execution across multiple
+	// processes. (Furthermore, each test gets an instance of programTester and thus the mutex, so we'd need to be
+	// sharing the mutex globally in each test process if we weren't using the file system to lock.)
+	if name == "pipenv-install-package" {
+		if err := pipenvMutex.Lock(); err != nil {
+			panic(err)
+		}
+
+		if pt.opts.Verbose {
+			fprintf(pt.opts.Stdout, "acquired pipenv install lock\n")
+			defer fprintf(pt.opts.Stdout, "released pipenv install lock\n")
+		}
+		defer func() {
+			if err := pipenvMutex.Unlock(); err != nil {
+				panic(err)
+			}
+		}()
+	}
+
 	cmd, err := pt.pipenvCmd(args)
 	if err != nil {
 		return err
@@ -1043,13 +1091,13 @@ func (pt *programTester) performExtraRuntimeValidation(
 	if err = json.NewDecoder(f).Decode(&untypedDeployment); err != nil {
 		return err
 	}
-	var deployment apitype.DeploymentV2
+	var deployment apitype.DeploymentV3
 	if err = json.Unmarshal(untypedDeployment.Deployment, &deployment); err != nil {
 		return err
 	}
 
 	// Get the root resource and outputs from the deployment
-	var rootResource apitype.ResourceV2
+	var rootResource apitype.ResourceV3
 	var outputs map[string]interface{}
 	for _, res := range deployment.Resources {
 		if res.Type == resource.RootStackType {
@@ -1065,7 +1113,10 @@ func (pt *programTester) performExtraRuntimeValidation(
 		RootResource: rootResource,
 		Outputs:      outputs,
 	}
+
+	fprintf(pt.opts.Stdout, "Performing extra runtime validation.\n")
 	extraRuntimeValidation(pt.t, stackInfo)
+	fprintf(pt.opts.Stdout, "Extra runtime validation complete.\n")
 	return nil
 }
 

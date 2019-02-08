@@ -221,7 +221,7 @@ func (a *Asset) Equals(other *Asset) bool {
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
 func (a *Asset) Serialize() map[string]interface{} {
 	result := map[string]interface{}{
-		string(SigKey): AssetSig,
+		SigKey: AssetSig,
 	}
 	if a.Hash != "" {
 		result[AssetHashProperty] = a.Hash
@@ -241,7 +241,7 @@ func (a *Asset) Serialize() map[string]interface{} {
 // DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
 func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	// If not an asset, return false immediately.
-	if obj[string(SigKey)] != AssetSig {
+	if obj[SigKey] != AssetSig {
 		return &Asset{}, false, nil
 	}
 
@@ -536,7 +536,7 @@ func (a *Archive) Equals(other *Archive) bool {
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
 func (a *Archive) Serialize() map[string]interface{} {
 	result := map[string]interface{}{
-		string(SigKey): ArchiveSig,
+		SigKey: ArchiveSig,
 	}
 	if a.Hash != "" {
 		result[ArchiveHashProperty] = a.Hash
@@ -567,7 +567,7 @@ func (a *Archive) Serialize() map[string]interface{} {
 // DeserializeArchive checks to see if the map contains an archive, using its signature, and if so deserializes it.
 func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 	// If not an archive, return false immediately.
-	if obj[string(SigKey)] != ArchiveSig {
+	if obj[SigKey] != ArchiveSig {
 		return &Archive{}, false, nil
 	}
 
@@ -799,9 +799,23 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 				return nil
 			}
 
-			// If this was a directory or a symlink, skip it.
-			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+			// If this was a directory, skip it.
+			if f.IsDir() {
 				return nil
+			}
+
+			// If this is a symlink and it points at a directory, skip it. Otherwise continue along. This will mean
+			// that the file will be added to the list of files to archive. When you go to read this archive, you'll
+			// get a copy of the file (instead of a symlink) to some other file in the archive.
+			if f.Mode()&os.ModeSymlink != 0 {
+				fileInfo, statErr := os.Stat(filePath)
+				if statErr != nil {
+					return statErr
+				}
+
+				if fileInfo.IsDir() {
+					return nil
+				}
 			}
 
 			// Otherwise, add this asset to the list of paths and keep going.

@@ -76,6 +76,8 @@ func TestDeploymentSerialization(t *testing.T) {
 		},
 		[]string{},
 		"",
+		nil,
+		false,
 	)
 
 	dep := SerializeResource(res)
@@ -167,4 +169,20 @@ func TestLoadTooOldDeployment(t *testing.T) {
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
+}
+
+func TestUnsupportedSecret(t *testing.T) {
+	rawProp := map[string]interface{}{
+		resource.SigKey: resource.SecretSig,
+	}
+	_, err := DeserializePropertyValue(rawProp)
+	assert.Error(t, err)
+}
+
+func TestUnknownSig(t *testing.T) {
+	rawProp := map[string]interface{}{
+		resource.SigKey: "foobar",
+	}
+	_, err := DeserializePropertyValue(rawProp)
+	assert.Error(t, err)
 }

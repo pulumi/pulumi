@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
@@ -170,7 +171,8 @@ func newUpCmd() *cobra.Command {
 		// Prompt for the project name, if we don't already have one from an existing stack.
 		if name == "" {
 			defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
-			name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
+			name, err = promptForValue(
+				yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -180,7 +182,8 @@ func newUpCmd() *cobra.Command {
 		if description == "" {
 			defaultValue := workspace.ValueOrDefaultProjectDescription(
 				description, template.ProjectDescription, template.Description)
-			description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
+			description, err = promptForValue(
+				yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -191,13 +194,14 @@ func newUpCmd() *cobra.Command {
 			return err
 		}
 
-		// Load the project, update the name & description, and save it.
+		// Load the project, update the name & description, remove the template section, and save it.
 		proj, root, err := readProject()
 		if err != nil {
 			return err
 		}
 		proj.Name = tokens.PackageName(name)
 		proj.Description = &description
+		proj.Template = nil
 		if err = workspace.SaveProject(proj); err != nil {
 			return errors.Wrap(err, "saving project")
 		}
@@ -404,10 +408,13 @@ func handleConfig(
 	}
 
 	// Save the config.
-	if c != nil {
+	if len(c) > 0 {
 		if err = saveConfig(s, c); err != nil {
 			return errors.Wrap(err, "saving config")
 		}
+
+		fmt.Println("Saved config")
+		fmt.Println()
 	}
 
 	return nil

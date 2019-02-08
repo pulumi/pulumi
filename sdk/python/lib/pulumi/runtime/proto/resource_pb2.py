@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pulumirpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0eresource.proto\x12\tpulumirpc\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x0eprovider.proto\"\xa2\x01\n\x13ReadResourceRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12+\n\nproperties\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x14\n\x0c\x64\x65pendencies\x18\x06 \x03(\t\x12\x10\n\x08provider\x18\x07 \x01(\t\"P\n\x14ReadResourceResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"\xb7\x01\n\x17RegisterResourceRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06parent\x18\x03 \x01(\t\x12\x0e\n\x06\x63ustom\x18\x04 \x01(\x08\x12\'\n\x06object\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07protect\x18\x06 \x01(\x08\x12\x14\n\x0c\x64\x65pendencies\x18\x07 \x03(\t\x12\x10\n\x08provider\x18\x08 \x01(\t\"}\n\x18RegisterResourceResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\t\x12\'\n\x06object\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0e\n\x06stable\x18\x04 \x01(\x08\x12\x0f\n\x07stables\x18\x05 \x03(\t\"W\n\x1eRegisterResourceOutputsRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12(\n\x07outputs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct2\xe4\x02\n\x0fResourceMonitor\x12?\n\x06Invoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse\"\x00\x12Q\n\x0cReadResource\x12\x1e.pulumirpc.ReadResourceRequest\x1a\x1f.pulumirpc.ReadResourceResponse\"\x00\x12]\n\x10RegisterResource\x12\".pulumirpc.RegisterResourceRequest\x1a#.pulumirpc.RegisterResourceResponse\"\x00\x12^\n\x17RegisterResourceOutputs\x12).pulumirpc.RegisterResourceOutputsRequest\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0eresource.proto\x12\tpulumirpc\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x0eprovider.proto\"\xa2\x01\n\x13ReadResourceRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12+\n\nproperties\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x14\n\x0c\x64\x65pendencies\x18\x06 \x03(\t\x12\x10\n\x08provider\x18\x07 \x01(\t\"P\n\x14ReadResourceResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"\xcc\x03\n\x17RegisterResourceRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06parent\x18\x03 \x01(\t\x12\x0e\n\x06\x63ustom\x18\x04 \x01(\x08\x12\'\n\x06object\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07protect\x18\x06 \x01(\x08\x12\x14\n\x0c\x64\x65pendencies\x18\x07 \x03(\t\x12\x10\n\x08provider\x18\x08 \x01(\t\x12Z\n\x14propertyDependencies\x18\t \x03(\x0b\x32<.pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry\x12\x1b\n\x13\x64\x65leteBeforeReplace\x18\n \x01(\x08\x1a$\n\x14PropertyDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1at\n\x19PropertyDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x46\n\x05value\x18\x02 \x01(\x0b\x32\x37.pulumirpc.RegisterResourceRequest.PropertyDependencies:\x02\x38\x01\"}\n\x18RegisterResourceResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\t\x12\'\n\x06object\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0e\n\x06stable\x18\x04 \x01(\x08\x12\x0f\n\x07stables\x18\x05 \x03(\t\"W\n\x1eRegisterResourceOutputsRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12(\n\x07outputs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct2\xe4\x02\n\x0fResourceMonitor\x12?\n\x06Invoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse\"\x00\x12Q\n\x0cReadResource\x12\x1e.pulumirpc.ReadResourceRequest\x1a\x1f.pulumirpc.ReadResourceResponse\"\x00\x12]\n\x10RegisterResource\x12\".pulumirpc.RegisterResourceRequest\x1a#.pulumirpc.RegisterResourceResponse\"\x00\x12^\n\x17RegisterResourceOutputs\x12).pulumirpc.RegisterResourceOutputsRequest\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,provider__pb2.DESCRIPTOR,])
 
@@ -140,6 +140,73 @@ _READRESOURCERESPONSE = _descriptor.Descriptor(
 )
 
 
+_REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIES = _descriptor.Descriptor(
+  name='PropertyDependencies',
+  full_name='pulumirpc.RegisterResourceRequest.PropertyDependencies',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urns', full_name='pulumirpc.RegisterResourceRequest.PropertyDependencies.urns', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=658,
+  serialized_end=694,
+)
+
+_REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIESENTRY = _descriptor.Descriptor(
+  name='PropertyDependenciesEntry',
+  full_name='pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=_b('8\001'),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=696,
+  serialized_end=812,
+)
+
 _REGISTERRESOURCEREQUEST = _descriptor.Descriptor(
   name='RegisterResourceRequest',
   full_name='pulumirpc.RegisterResourceRequest',
@@ -203,10 +270,24 @@ _REGISTERRESOURCEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='propertyDependencies', full_name='pulumirpc.RegisterResourceRequest.propertyDependencies', index=8,
+      number=9, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='deleteBeforeReplace', full_name='pulumirpc.RegisterResourceRequest.deleteBeforeReplace', index=9,
+      number=10, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
-  nested_types=[],
+  nested_types=[_REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIES, _REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIESENTRY, ],
   enum_types=[
   ],
   serialized_options=None,
@@ -216,7 +297,7 @@ _REGISTERRESOURCEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=352,
-  serialized_end=535,
+  serialized_end=812,
 )
 
 
@@ -274,8 +355,8 @@ _REGISTERRESOURCERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=537,
-  serialized_end=662,
+  serialized_start=814,
+  serialized_end=939,
 )
 
 
@@ -312,13 +393,17 @@ _REGISTERRESOURCEOUTPUTSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=664,
-  serialized_end=751,
+  serialized_start=941,
+  serialized_end=1028,
 )
 
 _READRESOURCEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _READRESOURCERESPONSE.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIES.containing_type = _REGISTERRESOURCEREQUEST
+_REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIESENTRY.fields_by_name['value'].message_type = _REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIES
+_REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIESENTRY.containing_type = _REGISTERRESOURCEREQUEST
 _REGISTERRESOURCEREQUEST.fields_by_name['object'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_REGISTERRESOURCEREQUEST.fields_by_name['propertyDependencies'].message_type = _REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIESENTRY
 _REGISTERRESOURCERESPONSE.fields_by_name['object'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _REGISTERRESOURCEOUTPUTSREQUEST.fields_by_name['outputs'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 DESCRIPTOR.message_types_by_name['ReadResourceRequest'] = _READRESOURCEREQUEST
@@ -343,11 +428,27 @@ ReadResourceResponse = _reflection.GeneratedProtocolMessageType('ReadResourceRes
 _sym_db.RegisterMessage(ReadResourceResponse)
 
 RegisterResourceRequest = _reflection.GeneratedProtocolMessageType('RegisterResourceRequest', (_message.Message,), dict(
+
+  PropertyDependencies = _reflection.GeneratedProtocolMessageType('PropertyDependencies', (_message.Message,), dict(
+    DESCRIPTOR = _REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIES,
+    __module__ = 'resource_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.RegisterResourceRequest.PropertyDependencies)
+    ))
+  ,
+
+  PropertyDependenciesEntry = _reflection.GeneratedProtocolMessageType('PropertyDependenciesEntry', (_message.Message,), dict(
+    DESCRIPTOR = _REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIESENTRY,
+    __module__ = 'resource_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry)
+    ))
+  ,
   DESCRIPTOR = _REGISTERRESOURCEREQUEST,
   __module__ = 'resource_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.RegisterResourceRequest)
   ))
 _sym_db.RegisterMessage(RegisterResourceRequest)
+_sym_db.RegisterMessage(RegisterResourceRequest.PropertyDependencies)
+_sym_db.RegisterMessage(RegisterResourceRequest.PropertyDependenciesEntry)
 
 RegisterResourceResponse = _reflection.GeneratedProtocolMessageType('RegisterResourceResponse', (_message.Message,), dict(
   DESCRIPTOR = _REGISTERRESOURCERESPONSE,
@@ -364,6 +465,7 @@ RegisterResourceOutputsRequest = _reflection.GeneratedProtocolMessageType('Regis
 _sym_db.RegisterMessage(RegisterResourceOutputsRequest)
 
 
+_REGISTERRESOURCEREQUEST_PROPERTYDEPENDENCIESENTRY._options = None
 
 _RESOURCEMONITOR = _descriptor.ServiceDescriptor(
   name='ResourceMonitor',
@@ -371,8 +473,8 @@ _RESOURCEMONITOR = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=754,
-  serialized_end=1110,
+  serialized_start=1031,
+  serialized_end=1387,
   methods=[
   _descriptor.MethodDescriptor(
     name='Invoke',

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -205,6 +207,31 @@ func TestStackTagValidation(t *testing.T) {
 		assert.Contains(t, stderr, "validating stack properties:")
 		assert.Contains(t, stderr, "stack tag \"pulumi:description\" value is too long (max length 256 characters)")
 	})
+}
+
+func TestRemoveWithResourcesBlocked(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex sould not fail with no maximum length is set")
+
+	e.ImportDirectory(filepath.Join("empty", "nodejs"))
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
+	assert.Contains(t, stderr, "--force")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
@@ -558,8 +585,8 @@ func TestExplicitProvider(t *testing.T) {
 			// Expect one stack resource, two provider resources, and two custom resources.
 			assert.True(t, len(latest.Resources) == 5)
 
-			var defaultProvider *apitype.ResourceV2
-			var explicitProvider *apitype.ResourceV2
+			var defaultProvider *apitype.ResourceV3
+			var explicitProvider *apitype.ResourceV3
 			for _, res := range latest.Resources {
 				urn := res.URN
 				switch urn.Name() {
@@ -610,15 +637,17 @@ func TestGetCreated(t *testing.T) {
 
 // Tests that stack references work.
 func TestStackReference(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
 	opts := &integration.ProgramTestOptions{
 		Dir:          "stack_reference",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-	}
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
-		opts.Config = map[string]string{
-			"org": owner,
-		}
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
 	}
 	integration.ProgramTest(t, opts)
 }

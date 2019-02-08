@@ -26,7 +26,7 @@ class FutureInputTest(LanghostTest):
             expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource, _deps,
-                          _parent, _custom, _protect, _provider):
+                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
         self.assertEqual(ty, "test:index:FileResource")
         self.assertEqual(name, "file")
         self.assertDictEqual(resource, {

@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -159,6 +160,10 @@ func (u *cloudUpdate) recordEngineEvent(event engine.Event, sequenceNumber int) 
 	return u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token)
 }
 
+func isDebugDiagEvent(e engine.Event) bool {
+	return e.Type == engine.DiagEvent && (e.Payload.(engine.DiagEventPayload)).Severity == diag.Debug
+}
+
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
 // posting them to the Pulumi service. Any failures will post DiaogEvents to be displayed in the CLI.
 func (u *cloudUpdate) RecordAndDisplayEvents(
@@ -200,6 +205,11 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	for e := range events {
 		// First echo the event to the local display.
 		displayEvents <- e
+
+		if isDebugDiagEvent(e) && !opts.Debug {
+			// Don't send diagnostics events to the service unless `--debug` was requested.
+			continue
+		}
 
 		// Then render and record the event for posterity.
 		eventIdx++

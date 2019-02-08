@@ -115,7 +115,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit stack tags as JSON")
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	return cmd
 }

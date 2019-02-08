@@ -63,7 +63,7 @@ func newNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi project",
+		Short:      "Create and deploy a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			interactive := cmdutil.Interactive()
@@ -86,8 +86,8 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Validate name (if specified) before further prompts/operations.
-			if name != "" && !workspace.IsValidProjectName(name) {
-				return errors.Errorf("'%s' is not a valid project name", name)
+			if name != "" && workspace.ValidateProjectName(name) != nil {
+				return errors.Errorf("'%s' is not a valid project name. %s.", name, workspace.ValidateProjectName(name))
 			}
 
 			// Get the current working directory.
@@ -191,16 +191,23 @@ func newNewCmd() *cobra.Command {
 			// Show instructions, if we're going to show at least one prompt.
 			hasAtLeastOnePrompt := (name == "") || (description == "") || (!generateOnly && stack == "")
 			if !yes && hasAtLeastOnePrompt {
-				fmt.Println("This command will walk you through creating a new Pulumi project.")
+				fmt.Println("This command will walk you through creating and deploying a new Pulumi project.")
 				fmt.Println()
-				fmt.Println("Enter a value or leave blank to accept the default, and press <ENTER>.")
-				fmt.Println("Press ^C at any time to quit.")
+				fmt.Println(
+					opts.Display.Color.Colorize(
+						colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
+							"<ENTER>", colors.BrightCyan+colors.Bold)))
+				fmt.Println(
+					opts.Display.Color.Colorize(
+						colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
+				fmt.Println()
 			}
 
 			// Prompt for the project name, if it wasn't already specified.
 			if name == "" {
 				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, filepath.Base(cwd))
-				name, err = promptForValue(yes, "project name", defaultValue, false, workspace.IsValidProjectName, opts.Display)
+				name, err = promptForValue(
+					yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -210,7 +217,8 @@ func newNewCmd() *cobra.Command {
 			if description == "" {
 				defaultValue := workspace.ValueOrDefaultProjectDescription(
 					description, template.ProjectDescription, template.Description)
-				description, err = promptForValue(yes, "project description", defaultValue, false, nil, opts.Display)
+				description, err = promptForValue(
+					yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
 				if err != nil {
 					return err
 				}
@@ -224,15 +232,17 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Created project '%s'.\n", name)
+			fmt.Printf("Created project '%s'\n", name)
+			fmt.Println()
 
-			// Load the project, update the name & description, and save it.
+			// Load the project, update the name & description, remove the template section, and save it.
 			proj, _, err := readProject()
 			if err != nil {
 				return err
 			}
 			proj.Name = tokens.PackageName(name)
 			proj.Description = &description
+			proj.Template = nil
 			if err = workspace.SaveProject(proj); err != nil {
 				return errors.Wrap(err, "saving project")
 			}
@@ -242,7 +252,8 @@ func newNewCmd() *cobra.Command {
 				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts.Display); err != nil {
 					return err
 				}
-				// The backend will print "Created stack '<stack>'." on success.
+				// The backend will print "Created stack '<stack>'" on success.
+				fmt.Println()
 			}
 
 			// Prompt for config values (if needed) and save.
@@ -262,6 +273,7 @@ func newNewCmd() *cobra.Command {
 					opts.Display.Color.Colorize(
 						colors.BrightGreen+colors.Bold+"Your new project is configured and ready to go!"+colors.Reset) +
 						" " + cmdutil.EmojiOr("✨", ""))
+				fmt.Println()
 			}
 
 			// Run `up` automatically, or print out next steps to run `up` manually.
@@ -405,10 +417,8 @@ func promptAndCreateStack(
 		return s, nil
 	}
 
-	defaultValue := getDevStackName(projectName)
-
 	for {
-		stackName, err := promptForValue(yes, "stack name", defaultValue, false, nil, opts)
+		stackName, err := promptForValue(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -416,21 +426,13 @@ func promptAndCreateStack(
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
-				fmt.Printf("Sorry, could not create stack '%s': %v.\n", stackName, err)
+				fmt.Printf("Sorry, could not create stack '%s': %v\n", stackName, err)
 				continue
 			}
 			return nil, err
 		}
 		return s, nil
 	}
-}
-
-// getDevStackName returns the stack name suffixed with -dev.
-func getDevStackName(name string) string {
-	const suffix = "-dev"
-	// Strip the suffix so we don't include two -dev suffixes
-	// if the name already has it.
-	return strings.TrimSuffix(name, suffix) + suffix
 }
 
 // stackInit creates the stack.
@@ -476,13 +478,19 @@ func installDependencies(message string) error {
 
 	if message != "" {
 		fmt.Println(message)
+		fmt.Println()
 	}
 
 	// Run the command.
-	if out, err := c.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "%s", out)
-		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again", command)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment", command)
 	}
+
+	fmt.Println("Finished installing dependencies")
+	fmt.Println()
 
 	return nil
 }
@@ -508,6 +516,9 @@ func runUpOrPrintNextSteps(
 			return errors.Wrap(err, "gathering environment metadata")
 		}
 
+		fmt.Println("Previewing initial update...")
+		fmt.Println()
+
 		_, err = stack.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
@@ -519,8 +530,22 @@ func runUpOrPrintNextSteps(
 		case err == context.Canceled:
 			return errors.New("update cancelled")
 		case err != nil:
+			fmt.Println(
+				opts.Display.Color.Colorize(
+					colors.Highlight("An error occurred; address the issue, then run 'pulumi up' to try again",
+						"pulumi up", colors.BrightBlue+colors.Bold)))
 			return PrintEngineError(err)
 		default:
+			fmt.Println()
+			fmt.Println(
+				opts.Display.Color.Colorize(
+					colors.BrightGreen+colors.Bold+"Initial update complete!"+colors.Reset) +
+					" " + cmdutil.EmojiOr("✨", ""))
+			fmt.Println()
+			fmt.Println(
+				opts.Display.Color.Colorize(
+					colors.Highlight("Modify your program as needed, then run 'pulumi up' to deploy the changes",
+						"pulumi up", colors.BrightBlue+colors.Bold)))
 			return nil
 		}
 	} else {
@@ -575,20 +600,20 @@ func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPytho
 	}
 
 	if len(commands) == 0 { // No additional commands need to be run.
-		deployMsg := "To deploy it, run 'pulumi up'."
-		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+		deployMsg := "To perform an initial deployment, run 'pulumi up'"
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
 		fmt.Println(opts.Display.Color.Colorize(deployMsg))
 		return
 	}
 
 	// One or more additional commands needs to be run.
-	fmt.Println("To deploy it, run the following commands:")
+	fmt.Println("To perform an initial deployment, run the following commands:")
 	for i, cmd := range commands {
-		cmdColors := colors.BrightGreen + colors.Bold + cmd + colors.Reset
+		cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
 		fmt.Printf("   %d. %s\n", i+1, opts.Display.Color.Colorize(cmdColors))
 	}
 
-	upMsg := colors.Highlight("Then, run 'pulumi up'.", "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+	upMsg := colors.Highlight("Then, run 'pulumi up'", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Display.Color.Colorize(upMsg))
 }
 
@@ -766,20 +791,24 @@ func promptForConfig(
 
 // promptForValue prompts the user for a value with a defaultValue preselected. Hitting enter accepts the
 // default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
-// when specified, it will be run to validate that value entered. An invalid value will result in an error
-// message followed by another prompt for the value.
+// when specified, it will be run to validate that value entered. When this function returns a non nil error
+// validation is assumed to have failed and an error is printed. The error returned by isValidFn is also displayed
+// to provide information about why the validation failed. A period is appended to this message. `promptForValue` then
+// prompts again.
 func promptForValue(
-	yes bool, prompt string, defaultValue string, secret bool,
-	isValidFn func(value string) bool, opts display.Options) (string, error) {
+	yes bool, valueType string, defaultValue string, secret bool,
+	isValidFn func(value string) error, opts display.Options) (string, error) {
 
 	if yes {
 		return defaultValue, nil
 	}
 
 	for {
+		var prompt string
+
 		if defaultValue == "" {
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
+				fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
 		} else {
 			defaultValuePrompt := defaultValue
 			if secret {
@@ -787,7 +816,7 @@ func promptForValue(
 			}
 
 			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValuePrompt, colors.Reset))
+				fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
 		}
 		fmt.Print(prompt)
 
@@ -808,12 +837,17 @@ func promptForValue(
 		value = strings.TrimSpace(value)
 
 		if value != "" {
-			if isValidFn == nil || isValidFn(value) {
+			var validationError error
+			if isValidFn != nil {
+				validationError = isValidFn(value)
+			}
+
+			if validationError == nil {
 				return value, nil
 			}
 
 			// The value is invalid, let the user know and try again
-			fmt.Printf("Sorry, '%s' is not a valid %s.\n", value, prompt)
+			fmt.Printf("Sorry, '%s' is not a valid %s. %s.\n", value, valueType, validationError)
 			continue
 		}
 		return defaultValue, nil

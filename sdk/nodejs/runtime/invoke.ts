@@ -15,13 +15,13 @@
 import * as grpc from "grpc";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { Inputs } from "../resource";
+import { Inputs } from "../output";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
-import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
+import { excessiveDebugOutput, getMonitor, rpcKeepAlive } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-const resproto = require("../proto/resource_pb.js");
+const providerproto = require("../proto/provider_pb.js");
 
 /**
  * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
@@ -42,7 +42,7 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
     const done = rpcKeepAlive();
     try {
         const obj = gstruct.Struct.fromJavaScript(
-            await serializeProperties(`invoke:${tok}`, props));
+            await serializeProperties(`invoke:${tok}`, props, {}));
         log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
         // Fetch the monitor and make an RPC request.
@@ -55,7 +55,7 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
             providerRef = `${providerURN}::${providerID}`;
         }
 
-        const req = new resproto.InvokeRequest();
+        const req = new providerproto.InvokeRequest();
         req.setTok(tok);
         req.setArgs(obj);
         req.setProvider(providerRef);

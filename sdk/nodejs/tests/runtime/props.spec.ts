@@ -31,7 +31,7 @@ describe("runtime", () => {
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             const transfer = gstruct.Struct.fromJavaScript(
-                await runtime.serializeProperties("test", inputs));
+                await runtime.serializeProperties("test", inputs, {}));
             const result = runtime.deserializeProperties(transfer);
             assert.equal(result.aNum, 42);
             assert.equal(result.bStr, "a string");
@@ -41,5 +41,17 @@ describe("runtime", () => {
             assert.equal(result.urn, "bar");
         }));
     });
-});
 
+    describe("deserializeProperty", () => {
+        it("fails on unsupported secret values", () => {
+            assert.throws(() => runtime.deserializeProperty({
+                [runtime.specialSigKey]: runtime.specialSecretSig,
+            }));
+        });
+        it("fails on unknown signature keys", () => {
+            assert.throws(() => runtime.deserializeProperty({
+                [runtime.specialSigKey]: "foobar",
+            }));
+        });
+    });
+});
