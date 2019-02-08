@@ -234,12 +234,6 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         return makeFunctionDeclaration(constructorCode, /*isAsync:*/ false, /*isFunctionDeclaration: */ false);
     }
 
-    let isAsync = false;
-    if (funcString.startsWith("async ")) {
-        isAsync = true;
-        funcString = funcString.substr("async".length).trimLeft();
-    }
-
     // Note: this check is pretty weak.  It is only checking if `=>` appears some place within the
     // part of the code we consider the signature.  It's possible (though unlikely) for this check
     // to be wrong.  For example, if the user wrote:
@@ -253,6 +247,12 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     if (signature.indexOf("=>") >= 0) {
         // (...) => { ... }
         return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
+    }
+
+    let isAsync = false;
+    if (funcString.startsWith("async ")) {
+        isAsync = true;
+        funcString = funcString.substr("async".length).trimLeft();
     }
 
     if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
