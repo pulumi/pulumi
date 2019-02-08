@@ -1,4 +1,3 @@
-name: four-function
-description: A silly four-function calculator.
+name: class-with-comments
+description: A class with comments in it.
 runtime: nodejs
-config: ./.config/
