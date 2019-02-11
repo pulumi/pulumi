@@ -4,7 +4,7 @@
 
 - When trying to `stack rm` a stack managed by pulumi.com that has resources, the error message now informs you to pass `--force` if you really want to remove a stack that still has resources under management, as this would orphan these resources (fixes [pulumi/pulumi#2431](https://github.com/pulumi/pulumi/issues/2431)).
 
-## 0.16.14 (Released January 31th, 2019)
+## 0.16.14 (Released January 31st, 2019)
 
 ### Improvements
 
@@ -26,7 +26,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Individual resources may now be explicitly marked as requiring delete-before-replace behavior. This can be used e.g. to handle explicitly-named resources that may not be able to be replaced in the usual manner.
 
-## 0.16.13 (Released January 31th, 2019)
+## 0.16.13 (Released January 31st, 2019)
 
 ### Major Changes
 
