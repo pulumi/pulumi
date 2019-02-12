@@ -98,9 +98,10 @@ func (proj *Project) Validate() error {
 }
 
 // TrustResourceDependencies returns whether or not this project's runtime can be trusted to accurately report
-// dependencies. Not all languages supported by Pulumi do this correctly.
+// dependencies. All languages supported by Pulumi today do this correctly. This option remains useful when bringing
+// up new Pulumi languages.
 func (proj *Project) TrustResourceDependencies() bool {
-	return proj.Runtime.Name() != "python"
+	return true
 }
 
 // Save writes a project definition to a file.
