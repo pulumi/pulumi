@@ -26,7 +26,7 @@ func newStackInitCmd() *cobra.Command {
 	var stackName string
 
 	cmd := &cobra.Command{
-		Use:   "init [<organization-name>/]<stack-name>",
+		Use:   "init [<org-name>/]<stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
@@ -35,7 +35,7 @@ func newStackInitCmd() *cobra.Command {
 			"but afterwards it can become the target of a deployment using the `update` command.\n" +
 			"\n" +
 			"To create a stack in an organization, prefix the stack name with the organization name\n" +
-			"and a slash (e.g. 'my-organization/my-great-stack')",
+			"and a slash (e.g. 'acmecorp/dev')",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -55,7 +55,9 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			if stackName == "" && cmdutil.Interactive() {
-				name, nameErr := cmdutil.ReadConsole("Enter a stack name")
+				name, nameErr := cmdutil.ReadConsole("Please enter your desired stack name.\n" +
+					"To create a stack in an organization, " +
+					"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)")
 				if nameErr != nil {
 					return nameErr
 				}
