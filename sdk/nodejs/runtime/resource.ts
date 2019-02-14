@@ -76,6 +76,8 @@ interface ResourceResolverOperation {
     propertyToDirectDependencyURNs: Map<string, Set<URN>>;
     // A list of aliases applied to this resource.
     aliases: URN[];
+    // An ID to import, if any.
+    import: ID | undefined;
 }
 
 /**
@@ -184,6 +186,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAcceptsecrets(true);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
+        req.setImportid(resop.import || "");
 
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
@@ -301,11 +304,16 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         : await getRootResource();
 
     let providerRef: string | undefined;
-    if (custom && (<CustomResourceOptions>opts).provider) {
-        const provider = (<CustomResourceOptions>opts).provider!;
-        const providerURN = await provider.urn.promise();
-        const providerID = await provider.id.promise() || unknownValue;
-        providerRef = `${providerURN}::${providerID}`;
+    let importID: ID | undefined;
+    if (custom) {
+        if ((<CustomResourceOptions>opts).provider !== undefined) {
+            const provider = (<CustomResourceOptions>opts).provider!;
+            const providerURN = await provider.urn.promise();
+            const providerID = await provider.id.promise() || unknownValue;
+            providerRef = `${providerURN}::${providerID}`;
+        }
+
+        importID = (<CustomResourceOptions>opts).import;
     }
 
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
@@ -348,6 +356,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         allDirectDependencyURNs: allDirectDependencyURNs,
         propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
         aliases: aliases,
+        import: importID,
     };
 }
 

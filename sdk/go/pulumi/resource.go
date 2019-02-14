@@ -62,6 +62,11 @@ type ResourceOpt struct {
 	Provider ProviderResource
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
+	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
+	// the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
+	// current state. Once a resource has been imported, the import property must be removed from the resource's
+	// options.
+	Import ID
 }
 
 // InvokeOpt contains optional settings that control an invoke's behavior.

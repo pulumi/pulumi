@@ -348,13 +348,20 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 func (data *resourceRowData) getInfoColumn() string {
 	step := data.step
-	if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced {
+	switch step.Op {
+	case deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
 		// if we're doing a replacement, see if we can find a replace step that contains useful
 		// information to display.
 		for _, outputStep := range data.outputSteps {
 			if outputStep.Op == deploy.OpReplace {
 				step = outputStep
 			}
+		}
+
+	case deploy.OpImport:
+		// If we're doing an import, see if we have the imported state to diff.
+		if len(data.outputSteps) != 0 {
+			step = data.outputSteps[0]
 		}
 	}
 

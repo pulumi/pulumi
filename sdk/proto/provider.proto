@@ -196,7 +196,7 @@ message ReadRequest {
 message ReadResponse {
     string id = 1;                         // the ID of the resource read back (or empty if missing).
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
-    google.protobuf.Struct inputs = 3;     // the inputs for this resource that would be returned from Check.
+	google.protobuf.Struct inputs = 3;     // the inputs for this resource that would be returned from Check.
 }
 
 message UpdateRequest {
@@ -224,5 +224,5 @@ message ErrorResourceInitFailed {
     string id = 1;                         // the ID of the created resource.
     google.protobuf.Struct properties = 2; // any properties that were computed during updating.
     repeated string reasons = 3;           // error messages associated with initialization failure.
-    google.protobuf.Struct inputs = 4;     // the current inputs to this resource (only applicable for Read)
+	google.protobuf.Struct inputs = 4;     // the current inputs to this resource (only applicable for Read)
 }

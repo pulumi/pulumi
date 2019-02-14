@@ -1042,7 +1042,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     ignorechangesList: jspb.Message.getRepeatedField(msg, 12),
     acceptsecrets: jspb.Message.getFieldWithDefault(msg, 13, false),
     additionalsecretoutputsList: jspb.Message.getRepeatedField(msg, 14),
-    aliasesList: jspb.Message.getRepeatedField(msg, 15)
+    aliasesList: jspb.Message.getRepeatedField(msg, 15),
+    importid: jspb.Message.getFieldWithDefault(msg, 16, "")
   };
 
   if (includeInstance) {
@@ -1141,6 +1142,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 15:
       var value = /** @type {string} */ (reader.readString());
       msg.addAliases(value);
+      break;
+    case 16:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setImportid(value);
       break;
     default:
       reader.skipField();
@@ -1271,6 +1276,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeRepeatedString(
       15,
+      f
+    );
+  }
+  f = message.getImportid();
+  if (f.length > 0) {
+    writer.writeString(
+      16,
       f
     );
   }
@@ -1744,6 +1756,21 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addAliases = function(value, o
 
 proto.pulumirpc.RegisterResourceRequest.prototype.clearAliasesList = function() {
   this.setAliasesList([]);
+};
+
+
+/**
+ * optional string importId = 16;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getImportid = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 16, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setImportid = function(value) {
+  jspb.Message.setProto3StringField(this, 16, value);
 };
 
 

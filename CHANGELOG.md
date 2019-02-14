@@ -12,6 +12,10 @@ CHANGELOG
   [#2871](https://github.com/pulumi/pulumi/issues/2871))
 - Promises/Outputs can now be directly exported as the top-level (i.e. not-named) output of a Stack.
   (fixes [#2910](https://github.com/pulumi/pulumi/issues/2910))
+- Add support for importing existing resources to be managed using Pulumi. A resource can be imported
+  by setting the `import` property in the resource options bag when instantiating a resource. In order to
+  successfully import a resource, its desired configuration (i.e. its inputs) must not differ from its
+  actual configuration (i.e. its state) as calculated by the resource's provider.
 
 ## 0.17.21 (2019-06-26)
 

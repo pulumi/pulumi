@@ -1,0 +1,3 @@
+name: import_acquire
+description: A program that adopts an external resource
+runtime: nodejs
