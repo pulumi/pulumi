@@ -210,7 +210,10 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
         if resolve_id:
-            is_known = resp.id is not None
+            # The ID is known if (and only if) it is a non-empty string. If it's either None or an empty string,
+            # we should treat it as unknown. TFBridge in particular is known to send the empty string as an ID when
+            # doing a preview.
+            is_known = bool(resp.id)
             resolve_id(resp.id, is_known, None)
 
         await rpc.resolve_outputs(res, props, resp.object, resolvers)
