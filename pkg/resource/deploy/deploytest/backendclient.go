@@ -26,7 +26,8 @@ import (
 
 // BackendClient provides a simple implementation of deploy.BackendClient that defers to a function value.
 type BackendClient struct {
-	GetStackOutputsF func(ctx context.Context, name string) (resource.PropertyMap, error)
+	GetStackOutputsF         func(ctx context.Context, name string) (resource.PropertyMap, error)
+	GetStackResourceOutputsF func(ctx context.Context, name, typ string) (resource.PropertyMap, error)
 }
 
 // GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
@@ -37,4 +38,13 @@ func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resou
 // DownloadPlugin optionally downloads a plugin corresponding to the requested plugin info.
 func (b *BackendClient) DownloadPlugin(ctx context.Context, plugin workspace.PluginInfo) (io.ReadCloser, error) {
 	return nil, errors.New("don't download plugins during unit tests")
+}
+
+// GetStackResourceOutputs returns the resource outputs of type (if any) for a stack, or an error if
+// the stack cannot be found. Resources are retrieved from the latest stack snapshot, which may
+// include ongoing updates. `typ` optionally specifies the type of resource to retrieve, formatted
+// using the Pulumi URN format (e.g., `kubernetes:core/v1:Service`).
+func (b *BackendClient) GetStackResourceOutputs(
+	ctx context.Context, name, typ string) (resource.PropertyMap, error) {
+	return b.GetStackResourceOutputsF(ctx, name, typ)
 }

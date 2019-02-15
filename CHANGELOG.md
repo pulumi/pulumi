@@ -1,5 +1,9 @@
 ## 0.17.7 (Unreleased)
 
+### Improvements
+
+- Add ability to enumerate resource outputs from state snapshot of arbitrary stacks.
+
 ## 0.17.6 (Released April 11, 2019)
 
 ### Improvements

@@ -19,8 +19,6 @@ import (
 	"io"
 	"math"
 
-	"github.com/pulumi/pulumi/pkg/workspace"
-
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -33,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // BackendClient provides an interface for retrieving information about other stacks.
@@ -41,6 +40,11 @@ type BackendClient interface {
 	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
 
 	DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error)
+
+	// GetStackResourceOutputs returns the resource outputs (if any) for a stack, or an
+	// error if the stack cannot be found. Resources are retrieved from the latest stack snapshot,
+	// which may include ongoing updates.
+	GetStackResourceOutputs(ctx context.Context, stackName string) (resource.PropertyMap, error)
 }
 
 // Options controls the planning and deployment process.
