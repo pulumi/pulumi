@@ -144,8 +144,16 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	if tok != "pulumi:pulumi:readStackResourceOutputs" {
+		return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
+	}
 
-	return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
+	outs, err := p.readStackResourceOutputs(args)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return outs, nil, nil
 }
 
 func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
@@ -168,6 +176,26 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	}
 
 	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	if err != nil {
+		return nil, err
+	}
+
+	return resource.PropertyMap{
+		"name":    name,
+		"outputs": resource.NewObjectProperty(outputs),
+	}, nil
+}
+
+func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	name, ok := inputs["stackName"]
+	contract.Assert(ok)
+	contract.Assert(name.IsString())
+
+	if p.backendClient == nil {
+		return nil, errors.New("no backend client is available")
+	}
+
+	outputs, err := p.backendClient.GetStackResourceOutputs(p.context, name.StringValue())
 	if err != nil {
 		return nil, err
 	}
