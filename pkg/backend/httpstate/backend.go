@@ -1328,3 +1328,8 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 func (c httpstateBackendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
 	return c.backend.DownloadPlugin(ctx, plug, false, display.Options{})
 }
+
+func (c httpstateBackendClient) GetStackResourceOutputs(
+	ctx context.Context, name string) (resource.PropertyMap, error) {
+	return backend.NewBackendClient(c.backend).GetStackResourceOutputs(ctx, name)
+}

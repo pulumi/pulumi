@@ -62,7 +62,6 @@ func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
-	var pluginEvents plugin.Events
 	diag := newEventSink(emitter, false)
 	statusDiag := newEventSink(emitter, true)
 
@@ -71,7 +70,7 @@ func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
 	contract.Assert(target != nil)
 
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: u.GetRoot()}, opts.host,
-		target, pluginEvents, diag, statusDiag, tracingSpan)
+		target, diag, statusDiag, tracingSpan)
 	if err != nil {
 		return result.FromError(err)
 	}
