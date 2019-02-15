@@ -222,3 +222,27 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	}
 	return res.Outputs, nil
 }
+
+// GetStackResourceOutputs returns the outputs of the stack with the given name.
+func (c *backendClient) GetStackResourceOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+	ref, err := c.backend.ParseStackReference(name)
+	if err != nil {
+		return nil, err
+	}
+	s, err := c.backend.GetStack(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil {
+		return nil, errors.Errorf("unknown stack \"%s\"", name)
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pm := resource.PropertyMap{}
+	for _, r := range snap.Resources {
+		pm[resource.PropertyKey(r.ID)] = resource.NewObjectProperty(r.Outputs)
+	}
+	return pm, nil
+}
