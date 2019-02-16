@@ -577,6 +577,7 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 	return nil
 }
 
+// urlScheme returns the scheme of the storage url e.g. file:// or s3://
 func (b *localBackend) urlScheme() string {
 	uri, _ := url.Parse(b.url)
 	return uri.Scheme + "://"

@@ -247,9 +247,11 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	// Get the backup directory.
 	backupDir := b.backupDirectory(name)
 
-	// Ensure the backup directory exists.
-	if err = os.MkdirAll(backupDir, 0700); err != nil {
-		return err
+	// Ensure the backup directory exists (only required for local filesystem).
+	if b.urlScheme() == "file://" {
+		if err = os.MkdirAll(backupDir, 0700); err != nil {
+			return err
+		}
 	}
 
 	// Write out the new backup checkpoint file.
@@ -328,8 +330,11 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 	contract.Require(name != "", "name")
 
 	dir := b.historyDirectory(name)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return err
+
+	if b.urlScheme() == "file://" {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return err
+		}
 	}
 
 	// Prefix for the update and checkpoint files.
