@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"os/user"
 	"path"
@@ -422,7 +423,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
-					colors.Underline+colors.BrightBlue+"file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
+					colors.Underline+colors.BrightBlue+"%s%s"+colors.Reset+"\n"), b.urlScheme(), stack.(*localStack).Path())
 	}
 
 	return changes, nil
@@ -574,4 +575,9 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 
 	// The local backend does not currently persist tags.
 	return nil
+}
+
+func (b *localBackend) urlScheme() string {
+	uri, _ := url.Parse(b.url)
+	return uri.Scheme + "://"
 }
