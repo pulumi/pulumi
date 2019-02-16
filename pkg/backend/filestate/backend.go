@@ -26,7 +26,10 @@ import (
 	"time"
 
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/fileblob" // driver for file:// state
+	_ "gocloud.dev/blob/azureblob" // driver for azblob://
+	_ "gocloud.dev/blob/fileblob"  // driver for file://
+	_ "gocloud.dev/blob/gcsblob"   // driver for s3://
+	_ "gocloud.dev/blob/s3blob"    // driver for gs://
 
 	"github.com/pkg/errors"
 
@@ -76,7 +79,18 @@ func (r localBackendReference) Name() tokens.QName {
 }
 
 func IsLocalBackendURL(url string) bool {
-	return strings.HasPrefix(url, localBackendURLPrefix)
+	supportedSchemes := []string{
+		"azblob://",
+		"file://",
+		"gs://",
+		"s3://",
+	}
+	for _, scheme := range supportedSchemes {
+		if strings.HasPrefix(url, scheme) {
+			return true
+		}
+	}
+	return false
 }
 
 func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
@@ -97,7 +111,7 @@ func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
 
 	bucket, err := blob.OpenBucket(context.Background(), url)
 	if err != nil {
-		return nil, errors.Errorf("unable to open bucket %s", url)
+		return nil, errors.Wrapf(err, "unable to open bucket %s", url)
 	}
 
 	return &localBackend{
