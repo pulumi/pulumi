@@ -18,12 +18,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gocloud.dev/blob"
+	_ "gocloud.dev/blob/fileblob" // driver for file:// state
 
 	"github.com/pkg/errors"
 
@@ -57,6 +60,7 @@ type localBackend struct {
 	d               diag.Sink
 	url             string
 	stackConfigFile string
+	bucket          *blob.Bucket
 }
 
 type localBackendReference struct {
@@ -79,10 +83,28 @@ func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
 	if !IsLocalBackendURL(url) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
 	}
+
+	if strings.HasPrefix(url, "file://") {
+		// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
+		localPath, _ := filepath.Abs(strings.TrimPrefix(url, "file://"))
+		url = path.Join("file://", localPath)
+
+		// Ensure the directory exists for a local file:// backend.
+		if err := os.MkdirAll(filepath.Dir(localPath), 0700); err != nil {
+			return nil, errors.Wrap(err, "An IO error occurred during the current operation")
+		}
+	}
+
+	bucket, err := blob.OpenBucket(context.Background(), url)
+	if err != nil {
+		return nil, errors.Errorf("unable to open bucket %s", url)
+	}
+
 	return &localBackend{
 		d:               d,
 		url:             url,
 		stackConfigFile: stackConfigFile,
+		bucket:          bucket,
 	}, nil
 }
 
@@ -109,23 +131,8 @@ func (b *localBackend) URL() string {
 	return b.url
 }
 
-func (b *localBackend) Dir() string {
-	path := b.url[len(localBackendURLPrefix):]
-	if path == "~" {
-		user, err := user.Current()
-		contract.AssertNoErrorf(err, "could not determine current user")
-		path = user.HomeDir
-	} else if path == "." {
-		pwd, err := os.Getwd()
-		contract.AssertNoErrorf(err, "could not determine current working directory")
-		path = pwd
-	}
-	return path
-}
-
 func (b *localBackend) StateDir() string {
-	dir := b.Dir()
-	return filepath.Join(dir, workspace.BookkeepingDir)
+	return workspace.BookkeepingDir
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
@@ -507,19 +514,19 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	// Read the stack directory.
 	path := b.stackPath("")
 
-	files, err := ioutil.ReadDir(path)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Errorf("could not read stacks: %v", err)
+	files, err := listBucket(b.bucket, path)
+	if err != nil {
+		return nil, errors.Wrap(err, "error listing stacks")
 	}
 
 	for _, file := range files {
 		// Ignore directories.
-		if file.IsDir() {
+		if file.IsDir {
 			continue
 		}
 
 		// Skip files without valid extensions (e.g., *.bak files).
-		stackfn := file.Name()
+		stackfn := objectName(file)
 		ext := filepath.Ext(stackfn)
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue
