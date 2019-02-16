@@ -105,7 +105,8 @@ func (p *builtinProvider) Create(urn resource.URN,
 	if err != nil {
 		return "", nil, resource.StatusUnknown, err
 	}
-	id := resource.ID(uuid.NewV4().String())
+	uuidv4, _ := uuid.NewV4()
+	id := resource.ID(uuidv4.String())
 	return id, state, resource.StatusOK, nil
 }
 

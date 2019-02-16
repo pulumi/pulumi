@@ -138,7 +138,8 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 				inputs["version"] = resource.NewStringProperty(version.String())
 			}
 
-			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.NewV4().String())
+			uuidv4, _ := uuid.NewV4()
+			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuidv4.String())
 			ref, err = providers.NewReference(urn, id)
 			contract.Assert(err == nil)
 
