@@ -20,6 +20,13 @@ import * as utils from "./utils";
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
 
+// TODO: It's unfortunate to have to guess the URN shape here - we traditionally have kept all knowledge of URN format
+// in the Engine.
+function childURN(parentURN: URN, childType: string, childName: string) {
+    const parentType = parentURN.substring(0, parentURN.lastIndexOf("::"));
+    return `${parentType}$${childType}::${childName}`;
+}
+
 /**
  * Resource represents a class whose CRUD operations are implemented by a provider plugin.
  */
@@ -94,6 +101,13 @@ export abstract class Resource {
 
     /**
      * @internal
+     * A list of aliases applied to this resource.
+     */
+     // tslint:disable-next-line:variable-name
+    private readonly __aliases: URN[];
+
+    /**
+     * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
      // tslint:disable-next-line:variable-name
@@ -149,6 +163,16 @@ export abstract class Resource {
                 opts.protect = opts.parent.__protect;
             }
 
+            for (const parentAlias of opts.parent.__aliases) {
+                console.log(`Parent alias: ${parentAlias}`);
+                if (!opts.aliases) {
+                    opts.aliases = [];
+                }
+                const childAlias = childURN(parentAlias, t, name);
+                console.log(`Child alias: ${childAlias}`);
+                opts.aliases.push(childAlias);
+            }
+
             this.__providers = opts.parent.__providers;
 
             if (custom) {
@@ -173,6 +197,7 @@ export abstract class Resource {
             }
         }
         this.__protect = !!opts.protect;
+        this.__aliases = opts.aliases || [];
 
         if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.

@@ -60,3 +60,9 @@ func GetBadProviderError(urn resource.URN) *Diag {
 func GetUnknownProviderError(urn resource.URN) *Diag {
 	return newError(urn, 2007, "unknown provider '%v' for resource '%v'")
 }
+
+func GetDuplicateResourceAliasError(urn resource.URN) *Diag {
+	return newError(urn, 2008,
+		"Duplicate resource alias '%v' applied to resource with URN '%v' conflicting with resource with URN '%v'",
+	)
+}
