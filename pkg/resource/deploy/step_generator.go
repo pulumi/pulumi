@@ -46,7 +46,7 @@ type stepGenerator struct {
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
-	aliased              map[resource.URN]bool // set of URNs that were aliased and shoud not be deleted
+	aliased              map[resource.URN]resource.URN // set of URNs that were aliased and shoud not be deleted
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -136,7 +136,11 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			oldInputs = old.Inputs
 			oldOutputs = old.Outputs
 			if urnOrAlias != urn {
-				sg.aliased[urnOrAlias] = true
+				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
+					invalid = true
+					sg.plan.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+				}
+				sg.aliased[urnOrAlias] = urn
 			}
 			break
 		}
@@ -464,10 +468,9 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
-
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, false))
-			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
-				!sg.reads[res.URN] && !sg.aliased[res.URN] {
+			} else if _, aliased := sg.aliased[res.URN]; !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
+				!sg.reads[res.URN] && !aliased {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
@@ -796,6 +799,6 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		deletes:              make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
-		aliased:              make(map[resource.URN]bool),
+		aliased:              make(map[resource.URN]resource.URN),
 	}
 }
