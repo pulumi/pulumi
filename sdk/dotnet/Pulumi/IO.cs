@@ -172,7 +172,7 @@ namespace Pulumi {
                 var isKnown = new TaskCompletionSource<bool>();
                 var task = Task<U>.Run(async () => {
                     if(await m_isKnown) {
-                        var io = selector(await Task);
+                        var io = selector(await m_task);
                         if(io.m_isKnown != null) {
                             isKnown.SetResult(await io.m_isKnown);
                             return await io.m_task;
@@ -180,6 +180,7 @@ namespace Pulumi {
                             isKnown.SetResult(true);
                             return await io.Task;
                         } else {
+                            isKnown.SetResult(true);
                             return io.m_rawValue;
                         }
                     } else {
