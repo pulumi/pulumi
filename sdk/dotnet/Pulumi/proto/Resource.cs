@@ -31,30 +31,37 @@ namespace Pulumirpc {
             "KAkSKwoKcHJvcGVydGllcxgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1",
             "Y3QSFAoMZGVwZW5kZW5jaWVzGAYgAygJEhAKCHByb3ZpZGVyGAcgASgJIlAK",
             "FFJlYWRSZXNvdXJjZVJlc3BvbnNlEgsKA3VybhgBIAEoCRIrCgpwcm9wZXJ0",
-            "aWVzGAIgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCK3AQoXUmVnaXN0",
+            "aWVzGAIgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCLMAwoXUmVnaXN0",
             "ZXJSZXNvdXJjZVJlcXVlc3QSDAoEdHlwZRgBIAEoCRIMCgRuYW1lGAIgASgJ",
             "Eg4KBnBhcmVudBgDIAEoCRIOCgZjdXN0b20YBCABKAgSJwoGb2JqZWN0GAUg",
             "ASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIPCgdwcm90ZWN0GAYgASgI",
-            "EhQKDGRlcGVuZGVuY2llcxgHIAMoCRIQCghwcm92aWRlchgIIAEoCSJ9ChhS",
-            "ZWdpc3RlclJlc291cmNlUmVzcG9uc2USCwoDdXJuGAEgASgJEgoKAmlkGAIg",
-            "ASgJEicKBm9iamVjdBgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QS",
-            "DgoGc3RhYmxlGAQgASgIEg8KB3N0YWJsZXMYBSADKAkiVwoeUmVnaXN0ZXJS",
-            "ZXNvdXJjZU91dHB1dHNSZXF1ZXN0EgsKA3VybhgBIAEoCRIoCgdvdXRwdXRz",
-            "GAIgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdDLkAgoPUmVzb3VyY2VN",
-            "b25pdG9yEj8KBkludm9rZRIYLnB1bHVtaXJwYy5JbnZva2VSZXF1ZXN0Ghku",
-            "cHVsdW1pcnBjLkludm9rZVJlc3BvbnNlIgASUQoMUmVhZFJlc291cmNlEh4u",
-            "cHVsdW1pcnBjLlJlYWRSZXNvdXJjZVJlcXVlc3QaHy5wdWx1bWlycGMuUmVh",
-            "ZFJlc291cmNlUmVzcG9uc2UiABJdChBSZWdpc3RlclJlc291cmNlEiIucHVs",
-            "dW1pcnBjLlJlZ2lzdGVyUmVzb3VyY2VSZXF1ZXN0GiMucHVsdW1pcnBjLlJl",
-            "Z2lzdGVyUmVzb3VyY2VSZXNwb25zZSIAEl4KF1JlZ2lzdGVyUmVzb3VyY2VP",
-            "dXRwdXRzEikucHVsdW1pcnBjLlJlZ2lzdGVyUmVzb3VyY2VPdXRwdXRzUmVx",
-            "dWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIAYgZwcm90bzM="));
+            "EhQKDGRlcGVuZGVuY2llcxgHIAMoCRIQCghwcm92aWRlchgIIAEoCRJaChRw",
+            "cm9wZXJ0eURlcGVuZGVuY2llcxgJIAMoCzI8LnB1bHVtaXJwYy5SZWdpc3Rl",
+            "clJlc291cmNlUmVxdWVzdC5Qcm9wZXJ0eURlcGVuZGVuY2llc0VudHJ5EhsK",
+            "E2RlbGV0ZUJlZm9yZVJlcGxhY2UYCiABKAgaJAoUUHJvcGVydHlEZXBlbmRl",
+            "bmNpZXMSDAoEdXJucxgBIAMoCRp0ChlQcm9wZXJ0eURlcGVuZGVuY2llc0Vu",
+            "dHJ5EgsKA2tleRgBIAEoCRJGCgV2YWx1ZRgCIAEoCzI3LnB1bHVtaXJwYy5S",
+            "ZWdpc3RlclJlc291cmNlUmVxdWVzdC5Qcm9wZXJ0eURlcGVuZGVuY2llczoC",
+            "OAEifQoYUmVnaXN0ZXJSZXNvdXJjZVJlc3BvbnNlEgsKA3VybhgBIAEoCRIK",
+            "CgJpZBgCIAEoCRInCgZvYmplY3QYAyABKAsyFy5nb29nbGUucHJvdG9idWYu",
+            "U3RydWN0Eg4KBnN0YWJsZRgEIAEoCBIPCgdzdGFibGVzGAUgAygJIlcKHlJl",
+            "Z2lzdGVyUmVzb3VyY2VPdXRwdXRzUmVxdWVzdBILCgN1cm4YASABKAkSKAoH",
+            "b3V0cHV0cxgCIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3Qy5AIKD1Jl",
+            "c291cmNlTW9uaXRvchI/CgZJbnZva2USGC5wdWx1bWlycGMuSW52b2tlUmVx",
+            "dWVzdBoZLnB1bHVtaXJwYy5JbnZva2VSZXNwb25zZSIAElEKDFJlYWRSZXNv",
+            "dXJjZRIeLnB1bHVtaXJwYy5SZWFkUmVzb3VyY2VSZXF1ZXN0Gh8ucHVsdW1p",
+            "cnBjLlJlYWRSZXNvdXJjZVJlc3BvbnNlIgASXQoQUmVnaXN0ZXJSZXNvdXJj",
+            "ZRIiLnB1bHVtaXJwYy5SZWdpc3RlclJlc291cmNlUmVxdWVzdBojLnB1bHVt",
+            "aXJwYy5SZWdpc3RlclJlc291cmNlUmVzcG9uc2UiABJeChdSZWdpc3RlclJl",
+            "c291cmNlT3V0cHV0cxIpLnB1bHVtaXJwYy5SZWdpc3RlclJlc291cmNlT3V0",
+            "cHV0c1JlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiAGIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.EmptyReflection.Descriptor, global::Google.Protobuf.WellKnownTypes.StructReflection.Descriptor, global::Pulumirpc.ProviderReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(null, new pbr::GeneratedClrTypeInfo[] {
             new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.ReadResourceRequest), global::Pulumirpc.ReadResourceRequest.Parser, new[]{ "Id", "Type", "Name", "Parent", "Properties", "Dependencies", "Provider" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.ReadResourceResponse), global::Pulumirpc.ReadResourceResponse.Parser, new[]{ "Urn", "Properties" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.RegisterResourceRequest), global::Pulumirpc.RegisterResourceRequest.Parser, new[]{ "Type", "Name", "Parent", "Custom", "Object", "Protect", "Dependencies", "Provider" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.RegisterResourceRequest), global::Pulumirpc.RegisterResourceRequest.Parser, new[]{ "Type", "Name", "Parent", "Custom", "Object", "Protect", "Dependencies", "Provider", "PropertyDependencies", "DeleteBeforeReplace" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies), global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies.Parser, new[]{ "Urns" }, null, null, null),
+            null, }),
             new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.RegisterResourceResponse), global::Pulumirpc.RegisterResourceResponse.Parser, new[]{ "Urn", "Id", "Object", "Stable", "Stables" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Pulumirpc.RegisterResourceOutputsRequest), global::Pulumirpc.RegisterResourceOutputsRequest.Parser, new[]{ "Urn", "Outputs" }, null, null, null)
           }));
@@ -590,6 +597,8 @@ namespace Pulumirpc {
       protect_ = other.protect_;
       dependencies_ = other.dependencies_.Clone();
       provider_ = other.provider_;
+      propertyDependencies_ = other.propertyDependencies_.Clone();
+      deleteBeforeReplace_ = other.deleteBeforeReplace_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -709,6 +718,33 @@ namespace Pulumirpc {
       }
     }
 
+    /// <summary>Field number for the "propertyDependencies" field.</summary>
+    public const int PropertyDependenciesFieldNumber = 9;
+    private static readonly pbc::MapField<string, global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies>.Codec _map_propertyDependencies_codec
+        = new pbc::MapField<string, global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies>.Codec(pb::FieldCodec.ForString(10), pb::FieldCodec.ForMessage(18, global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies.Parser), 74);
+    private readonly pbc::MapField<string, global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies> propertyDependencies_ = new pbc::MapField<string, global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies>();
+    /// <summary>
+    /// a map from property keys to the dependencies of the property.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public pbc::MapField<string, global::Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies> PropertyDependencies {
+      get { return propertyDependencies_; }
+    }
+
+    /// <summary>Field number for the "deleteBeforeReplace" field.</summary>
+    public const int DeleteBeforeReplaceFieldNumber = 10;
+    private bool deleteBeforeReplace_;
+    /// <summary>
+    /// true if this resource should be deleted before replacement.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool DeleteBeforeReplace {
+      get { return deleteBeforeReplace_; }
+      set {
+        deleteBeforeReplace_ = value;
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public override bool Equals(object other) {
       return Equals(other as RegisterResourceRequest);
@@ -730,6 +766,8 @@ namespace Pulumirpc {
       if (Protect != other.Protect) return false;
       if(!dependencies_.Equals(other.dependencies_)) return false;
       if (Provider != other.Provider) return false;
+      if (!PropertyDependencies.Equals(other.PropertyDependencies)) return false;
+      if (DeleteBeforeReplace != other.DeleteBeforeReplace) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -744,6 +782,8 @@ namespace Pulumirpc {
       if (Protect != false) hash ^= Protect.GetHashCode();
       hash ^= dependencies_.GetHashCode();
       if (Provider.Length != 0) hash ^= Provider.GetHashCode();
+      hash ^= PropertyDependencies.GetHashCode();
+      if (DeleteBeforeReplace != false) hash ^= DeleteBeforeReplace.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -786,6 +826,11 @@ namespace Pulumirpc {
         output.WriteRawTag(66);
         output.WriteString(Provider);
       }
+      propertyDependencies_.WriteTo(output, _map_propertyDependencies_codec);
+      if (DeleteBeforeReplace != false) {
+        output.WriteRawTag(80);
+        output.WriteBool(DeleteBeforeReplace);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -815,6 +860,10 @@ namespace Pulumirpc {
       size += dependencies_.CalculateSize(_repeated_dependencies_codec);
       if (Provider.Length != 0) {
         size += 1 + pb::CodedOutputStream.ComputeStringSize(Provider);
+      }
+      size += propertyDependencies_.CalculateSize(_map_propertyDependencies_codec);
+      if (DeleteBeforeReplace != false) {
+        size += 1 + 1;
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -851,6 +900,10 @@ namespace Pulumirpc {
       dependencies_.Add(other.dependencies_);
       if (other.Provider.Length != 0) {
         Provider = other.Provider;
+      }
+      propertyDependencies_.Add(other.propertyDependencies_);
+      if (other.DeleteBeforeReplace != false) {
+        DeleteBeforeReplace = other.DeleteBeforeReplace;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -898,9 +951,151 @@ namespace Pulumirpc {
             Provider = input.ReadString();
             break;
           }
+          case 74: {
+            propertyDependencies_.AddEntriesFrom(input, _map_propertyDependencies_codec);
+            break;
+          }
+          case 80: {
+            DeleteBeforeReplace = input.ReadBool();
+            break;
+          }
         }
       }
     }
+
+    #region Nested types
+    /// <summary>Container for nested types declared in the RegisterResourceRequest message type.</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static partial class Types {
+      /// <summary>
+      /// PropertyDependencies describes the resources that a particular property depends on.
+      /// </summary>
+      public sealed partial class PropertyDependencies : pb::IMessage<PropertyDependencies> {
+        private static readonly pb::MessageParser<PropertyDependencies> _parser = new pb::MessageParser<PropertyDependencies>(() => new PropertyDependencies());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public static pb::MessageParser<PropertyDependencies> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Pulumirpc.RegisterResourceRequest.Descriptor.NestedTypes[0]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public PropertyDependencies() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public PropertyDependencies(PropertyDependencies other) : this() {
+          urns_ = other.urns_.Clone();
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public PropertyDependencies Clone() {
+          return new PropertyDependencies(this);
+        }
+
+        /// <summary>Field number for the "urns" field.</summary>
+        public const int UrnsFieldNumber = 1;
+        private static readonly pb::FieldCodec<string> _repeated_urns_codec
+            = pb::FieldCodec.ForString(10);
+        private readonly pbc::RepeatedField<string> urns_ = new pbc::RepeatedField<string>();
+        /// <summary>
+        /// A list of URNs this property depends on.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public pbc::RepeatedField<string> Urns {
+          get { return urns_; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public override bool Equals(object other) {
+          return Equals(other as PropertyDependencies);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public bool Equals(PropertyDependencies other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if(!urns_.Equals(other.urns_)) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public override int GetHashCode() {
+          int hash = 1;
+          hash ^= urns_.GetHashCode();
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public void WriteTo(pb::CodedOutputStream output) {
+          urns_.WriteTo(output, _repeated_urns_codec);
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public int CalculateSize() {
+          int size = 0;
+          size += urns_.CalculateSize(_repeated_urns_codec);
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public void MergeFrom(PropertyDependencies other) {
+          if (other == null) {
+            return;
+          }
+          urns_.Add(other.urns_);
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        public void MergeFrom(pb::CodedInputStream input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 10: {
+                urns_.AddEntriesFrom(input, _repeated_urns_codec);
+                break;
+              }
+            }
+          }
+        }
+
+      }
+
+    }
+    #endregion
 
   }
 

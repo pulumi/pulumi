@@ -52,6 +52,11 @@ class ResourceResolverOperations(NamedTuple):
     An optional reference to a provider that should be used for this resource's CRUD operations.
     """
 
+    property_dependencies: Dict[str, List[str]]
+    """
+    A map from property name to the URNs of the resources the property depends on.
+    """
+
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
 # pylint: disable=too-many-locals
@@ -69,8 +74,8 @@ async def prepare_resource(res: 'Resource',
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-    implicit_dependencies: List[Resource] = []
-    serialized_props = await rpc.serialize_properties(props, implicit_dependencies, res.translate_input_property)
+    property_dependencies_resources: Dict[str, List['Resource']] = {}
+    serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, res.translate_input_property)
 
     # Wait for our parent to resolve
     parent_urn = ""
@@ -94,19 +99,26 @@ async def prepare_resource(res: 'Resource',
         provider_ref = f"{provider_urn}::{provider_id}"
 
     dependencies = set(explicit_urn_dependencies)
-    for implicit_dep in implicit_dependencies:
-        dependencies.add(await implicit_dep.urn.future())
+    property_dependencies: Dict[str, List[str]] = {}
+    for key, deps in property_dependencies_resources.items():
+        urns = set()
+        for dep in deps:
+            urn = await dep.urn.future()
+            urns.add(urn)
+            dependencies.add(urn)
+        property_dependencies[key] = list(urns)
 
     log.debug(f"resource {props} prepared")
     return ResourceResolverOperations(
         parent_urn,
         serialized_props,
         dependencies,
-        provider_ref
+        provider_ref,
+        property_dependencies
     )
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-statements
 def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
     """
     registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
@@ -156,6 +168,11 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             log.debug(f"preparing resource registration: ty={ty}, name={name}")
             resolver = await prepare_resource(res, ty, custom, props, opts)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
+
+            property_dependencies = {}
+            for key, deps in resolver.property_dependencies.items():
+                property_dependencies[key] = resource_pb2.RegisterResourceRequest.PropertyDependencies(urns=deps)
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -164,7 +181,9 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 object=resolver.serialized_props,
                 protect=opts.protect,
                 provider=resolver.provider_ref,
-                dependencies=resolver.dependencies
+                dependencies=resolver.dependencies,
+                propertyDependencies=property_dependencies,
+                deleteBeforeReplace=opts.delete_before_replace
             )
 
             def do_rpc_call():
@@ -191,7 +210,10 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
         if resolve_id:
-            is_known = resp.id is not None
+            # The ID is known if (and only if) it is a non-empty string. If it's either None or an empty string,
+            # we should treat it as unknown. TFBridge in particular is known to send the empty string as an ID when
+            # doing a preview.
+            is_known = bool(resp.id)
             resolve_id(resp.id, is_known, None)
 
         await rpc.resolve_outputs(res, props, resp.object, resolvers)
@@ -201,7 +223,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
     async def do_register_resource_outputs():
         urn = await res.urn.future()
-        serialized_props = await rpc.serialize_properties(outputs, [])
+        serialized_props = await rpc.serialize_properties(outputs, {})
         log.debug(f"register resource outputs prepared: urn={urn}, props={serialized_props}")
         monitor = settings.get_monitor()
         req = resource_pb2.RegisterResourceOutputsRequest(urn=urn, outputs=serialized_props)

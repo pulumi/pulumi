@@ -14,6 +14,7 @@
 import asyncio
 import unittest
 
+from google.protobuf import struct_pb2
 from pulumi.resource import CustomResource
 from pulumi.runtime import rpc, known_types
 from pulumi.output import Output
@@ -233,3 +234,26 @@ class NextSerializationTests(unittest.TestCase):
         prop = await rpc.serialize_property(asset, [])
         self.assertEqual(rpc._special_archive_sig, prop[rpc._special_sig_key])
         self.assertEqual("foo.tar.gz", prop["path"])
+
+class DeserializationTests(unittest.TestCase):
+    def test_unsupported_secret(self):
+        struct = struct_pb2.Struct()
+        struct[rpc._special_sig_key] = rpc._special_secret_sig
+
+        error = None
+        try:
+            rpc.deserialize_property(struct)
+        except  AssertionError as err:
+            error = err
+        self.assertIsNotNone(error)
+
+    def test_unsupported_sig(self):
+        struct = struct_pb2.Struct()
+        struct[rpc._special_sig_key] = "foobar"
+
+        error = None
+        try:
+            rpc.deserialize_property(struct)
+        except  AssertionError as err:
+            error = err
+        self.assertIsNotNone(error)

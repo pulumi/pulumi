@@ -30,12 +30,12 @@ class ResourceThensTest(LanghostTest):
             expected_resource_count=2)
 
     def register_resource(self, _ctx, dry_run, ty, name, res, deps,
-                          _parent, custom, _protect, _provider):
+                          _parent, custom, _protect, _provider, _property_deps, _delete_before_replace):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
             self.assertDictEqual(res, {"inprop": 777})
             urn = self.make_urn(ty, name)
-            res_id = None
+            res_id = ""
             props = {}
             if not dry_run:
                 res_id = name
@@ -54,14 +54,16 @@ class ResourceThensTest(LanghostTest):
                 self.assertDictEqual(res, {
                     "other_in": 777,
                     # other_out is unknown, so it is not in the dictionary.
+                    # other_id is also unknown so it is not in the dictionary
                 })
             else:
                 self.assertDictEqual(res, {
                     "other_in": 777,
-                    "other_out": "output yeah"
+                    "other_out": "output yeah",
+                    "other_id": "resourceA",
                 })
 
-            res_id = None
+            res_id = ""
             if not dry_run:
                 res_id = name
 

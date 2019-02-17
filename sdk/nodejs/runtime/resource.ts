@@ -14,8 +14,9 @@
 
 import * as grpc from "grpc";
 import * as log from "../log";
-import { CustomResourceOptions, ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
-import { debuggablePromise, errorString } from "./debuggable";
+import { Input, Inputs, Output } from "../output";
+import { CustomResourceOptions, ID, Resource, ResourceOptions, URN } from "../resource";
+import { debuggablePromise } from "./debuggable";
 import {
     deserializeProperties,
     deserializeProperty,
@@ -47,6 +48,8 @@ interface ResourceResolverOperation {
     serializedProps: Record<string, any>;
     // A set of dependency URNs that this resource is dependent upon (both implicitly and explicitly).
     dependencies: Set<URN>;
+    // A map from property name to a list of dependency URNs
+    propertyDependencies: Record<string, URN[]>;
 }
 
 /**
@@ -135,6 +138,14 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setProtect(opts.protect);
         req.setProvider(resop.providerRef);
         req.setDependenciesList(Array.from(resop.dependencies));
+        req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);
+
+        const propertyDependencies = req.getPropertydependenciesMap();
+        for (const key of Object.keys(resop.propertyDependencies)) {
+            const deps = new resproto.RegisterResourceRequest.PropertyDependencies();
+            deps.setUrnsList(resop.propertyDependencies[key]);
+            propertyDependencies.set(key, deps);
+        }
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.registerResource(${label})`;
@@ -220,8 +231,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-    const implicitDependencies: Resource[] = [];
-    const serializedProps = await serializeResourceProperties(label, props, implicitDependencies);
+    const propertyDependencies: Record<string, Resource[]> = {};
+    const serializedProps = await serializeResourceProperties(label, props, propertyDependencies);
 
     let parentURN: URN | undefined;
     if (opts.parent) {
@@ -240,8 +251,15 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     }
 
     const dependencies: Set<URN> = new Set<URN>(explicitDependencies);
-    for (const implicitDep of implicitDependencies) {
-        dependencies.add(await implicitDep.urn.promise());
+    const propertyDeps: Record<string, URN[]> = {};
+    for (const key of Object.keys(propertyDependencies)) {
+        const urns = new Set<URN>();
+        for (const dep of propertyDependencies[key]) {
+            const urn = await dep.urn.promise();
+            urns.add(urn);
+            dependencies.add(urn);
+        }
+        propertyDeps[key] = Array.from(urns);
     }
 
     return {
@@ -252,6 +270,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         parentURN: parentURN,
         providerRef: providerRef,
         dependencies: dependencies,
+        propertyDependencies: propertyDeps,
     };
 }
 
@@ -326,7 +345,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         // The registration could very well still be taking place, so we will need to wait for its URN.
         // Additionally, the output properties might have come from other resources, so we must await those too.
         const urn = await res.urn.promise();
-        const resolved = await serializeProperties(opLabel, { outputs });
+        const resolved = await serializeProperties(opLabel, { outputs }, {});
         const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));

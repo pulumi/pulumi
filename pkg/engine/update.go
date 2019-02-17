@@ -211,8 +211,8 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
-	// Check for a default provider step and skip reporting if necessary.
-	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
+	// Skip reporting if necessary.
+	if shouldReportStep(step, acts.Opts) {
 		acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 	}
 
@@ -234,7 +234,7 @@ func (acts *updateActions) OnResourceStepPost(
 		return nil
 	}
 
-	reportStep := acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step)
+	reportStep := shouldReportStep(step, acts.Opts)
 
 	// Report the result of the step.
 	if err != nil {
@@ -315,8 +315,8 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	// Check for a default provider step and skip reporting if necessary.
-	if acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step) {
+	// Skip reporting if necessary.
+	if shouldReportStep(step, acts.Opts) {
 		acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug)
 	}
 

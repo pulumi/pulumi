@@ -243,13 +243,27 @@ func (pc *Client) CreateStack(
 // DeleteStack deletes the indicated stack. If force is true, the stack is deleted even if it contains resources.
 func (pc *Client) DeleteStack(ctx context.Context, stack StackIdentifier, force bool) (bool, error) {
 	path := getStackPath(stack)
-	if force {
-		path += "?force=true"
+	queryObj := struct {
+		Force bool `url:"force"`
+	}{
+		Force: force,
 	}
 
-	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
-	//     resources and `force` was not true", we should sniff for that message and return a true for the boolean.
-	return false, pc.restCall(ctx, "DELETE", path, nil, nil, nil)
+	err := pc.restCall(ctx, "DELETE", path, queryObj, nil, nil)
+	return isStackHasResourcesError(err), err
+}
+
+func isStackHasResourcesError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errRsp, ok := err.(*apitype.ErrorResponse)
+	if !ok {
+		return false
+	}
+
+	return errRsp.Code == 400 && errRsp.Message == "Bad Request: Stack still contains resources."
 }
 
 // EncryptValue encrypts a plaintext value in the context of the indicated stack.
@@ -468,7 +482,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV2,
+func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token string) error {
 
 	rawDeployment, err := json.Marshal(deployment)
@@ -477,7 +491,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	}
 
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    2,
+		Version:    3,
 		Deployment: rawDeployment,
 	}
 

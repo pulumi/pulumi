@@ -28,8 +28,9 @@ type ResourceMonitor struct {
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool, parent resource.URN, protect bool,
-	dependencies []resource.URN, provider string,
-	inputs resource.PropertyMap) (resource.URN, resource.ID, resource.PropertyMap, error) {
+	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
+	propertyDeps map[resource.PropertyKey][]resource.URN,
+	deleteBeforeReplace bool) (resource.URN, resource.ID, resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -43,16 +44,29 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		deps = append(deps, string(d))
 	}
 
+	inputDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
+	for pk, pd := range propertyDeps {
+		pdeps := []string{}
+		for _, d := range pd {
+			pdeps = append(pdeps, string(d))
+		}
+		inputDeps[string(pk)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+			Urns: pdeps,
+		}
+	}
+
 	// submit request
 	resp, err := rm.resmon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
-		Type:         string(t),
-		Name:         name,
-		Custom:       custom,
-		Parent:       string(parent),
-		Protect:      protect,
-		Dependencies: deps,
-		Provider:     provider,
-		Object:       ins,
+		Type:                 string(t),
+		Name:                 name,
+		Custom:               custom,
+		Parent:               string(parent),
+		Protect:              protect,
+		Dependencies:         deps,
+		Provider:             provider,
+		Object:               ins,
+		PropertyDependencies: inputDeps,
+		DeleteBeforeReplace:  deleteBeforeReplace,
 	})
 	if err != nil {
 		return "", "", nil, err

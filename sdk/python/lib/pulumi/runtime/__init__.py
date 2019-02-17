@@ -16,10 +16,24 @@
 The runtime implementation of the Pulumi Python SDK.
 """
 
-# Make all module members inside of this package available as package members.
-from .config import *
-from .resource import *
-from .rpc import *
-from .settings import *
-from .stack import *
-from .invoke import *
+from .config import (
+    set_config,
+    get_config,
+    get_config_env,
+    get_config_env_key,
+)
+
+from .settings import (
+    Settings,
+    configure,
+    is_dry_run,
+)
+
+from .stack import (
+    run_in_stack,
+    get_root_resource,
+)
+
+from .invoke import (
+    invoke,
+)

@@ -40,7 +40,6 @@ lint::
 	golangci-lint run
 
 install_package::
-	cd $(PYENVSRC) && $(PIP) install --user -e .
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 
 install_plugin::

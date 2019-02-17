@@ -57,8 +57,8 @@ import (
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
-	Deployment   *apitype.DeploymentV2
-	RootResource apitype.ResourceV2
+	Deployment   *apitype.DeploymentV3
+	RootResource apitype.ResourceV3
 	Outputs      map[string]interface{}
 }
 
@@ -1091,13 +1091,13 @@ func (pt *programTester) performExtraRuntimeValidation(
 	if err = json.NewDecoder(f).Decode(&untypedDeployment); err != nil {
 		return err
 	}
-	var deployment apitype.DeploymentV2
+	var deployment apitype.DeploymentV3
 	if err = json.Unmarshal(untypedDeployment.Deployment, &deployment); err != nil {
 		return err
 	}
 
 	// Get the root resource and outputs from the deployment
-	var rootResource apitype.ResourceV2
+	var rootResource apitype.ResourceV3
 	var outputs map[string]interface{}
 	for _, res := range deployment.Resources {
 		if res.Type == resource.RootStackType {
@@ -1113,7 +1113,10 @@ func (pt *programTester) performExtraRuntimeValidation(
 		RootResource: rootResource,
 		Outputs:      outputs,
 	}
+
+	fprintf(pt.opts.Stdout, "Performing extra runtime validation.\n")
 	extraRuntimeValidation(pt.t, stackInfo)
+	fprintf(pt.opts.Stdout, "Extra runtime validation complete.\n")
 	return nil
 }
 

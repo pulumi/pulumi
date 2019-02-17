@@ -1,12 +1,53 @@
-## 0.16.13 (Unreleased)
+## 0.16.15 (Unreleased)
 
 ### Improvements
+
+- When trying to `stack rm` a stack managed by pulumi.com that has resources, the error message now informs you to pass `--force` if you really want to remove a stack that still has resources under management, as this would orphan these resources (fixes [pulumi/pulumi#2431](https://github.com/pulumi/pulumi/issues/2431)).
+- Enabled Python programs to delete resources in parallel (fixes [pulumi/pulumi#2382](https://github.com/pulumi/pulumi/issues/2382)). If you are using Python 2, you should upgrade to Python 3 or else you may experience problems when deleting resources.
+- Fixed an issue where Python programs would occasionally fail during preview with errors about empty IDs being passed
+  to resources. ([pulumi/pulumi#2450](https://github.com/pulumi/pulumi/issues/2450))
+
+## 0.16.14 (Released January 31st, 2019)
+
+### Improvements
+
+- Fix a regression in `@pulumi/pulumi` introduced by 0.16.13 where an update could fail with an error like:
+
+```
+Diagnostics:
+  pulumi:pulumi:Stack (my-great-stack):
+    TypeError: resproto.InvokeRequest is not a constructor
+        at Object.<anonymous> (.../node_modules/@pulumi/pulumi/runtime/invoke.js:58:25)
+        at Generator.next (<anonymous>)
+        at fulfilled (.../node_modules/@pulumi/pulumi/runtime/invoke.js:17:58)
+        at <anonymous>
+```
+
+We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.com/pulumi/pulumi/issues/2414))
+
+### Improvements
+
+- Individual resources may now be explicitly marked as requiring delete-before-replace behavior. This can be used e.g. to handle explicitly-named resources that may not be able to be replaced in the usual manner.
+
+## 0.16.13 (Released January 31st, 2019)
+
+### Major Changes
+
+- When used in conjuction with the latest versions of the various language SDKs, the Pulumi CLI is now more precise about the dependent resources that must be deleted when a given resource must be deleted before it can be replaced (fixes [pulumi/pulumi#2167](https://github.com/pulumi/pulumi/issues/2167)).
+
+**NOTE**: As part of the above change, once a stack is updated with v0.16.13, previous versions of `pulumi` will be unable to manage it.
+
+### Improvements
+
+- Issue a more perscriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
 
 ## 0.16.12 (Released January 25th, 2019)
 
 ### Major Changes
 
 - When using the cloud backend, stack names now must only be unique within a project, instead of across your entire account. Starting with version of 0.16.12 the CLI, you can create stacks with duplicate names. If an account has multiple stacks with the same name across different projects, you must use 0.16.12 or later of the CLI to manage them.
+
+**BREAKING CHANGE NOTICE**: As part of the above change, when using the 0.16.12 CLI (or a later version) the names passed to `StackReference` must be updated to be of the form (`<organization>/<project>/<stack>`) e.g. `acmecorp/infra/dev` to refer to the `dev` stack of the `infra` project in the `acmecorp` organization.
 
 ### Improvements
 
