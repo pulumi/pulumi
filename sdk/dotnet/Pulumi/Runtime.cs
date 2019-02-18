@@ -261,6 +261,7 @@ namespace Pulumi
                     GC.Collect();
                     GC.WaitForPendingFinalizers();
                     GC.Collect();
+                    System.Threading.Thread.Sleep(1);
                 }
             } catch (RunError err) {
                 // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
