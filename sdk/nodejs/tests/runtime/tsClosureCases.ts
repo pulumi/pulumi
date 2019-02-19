@@ -18,7 +18,7 @@ import * as assert from "assert";
 import { EOL } from "os";
 import { runtime } from "../../index";
 import * as pulumi from "../../index";
-import { output } from "../../resource";
+import { output } from "../../output";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as typescript from "typescript";
 

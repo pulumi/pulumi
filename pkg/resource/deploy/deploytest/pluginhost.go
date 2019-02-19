@@ -28,11 +28,13 @@ import (
 )
 
 type LoadProviderFunc func() (plugin.Provider, error)
+type LoadProviderWithHostFunc func(host plugin.Host) (plugin.Provider, error)
 
 type ProviderLoader struct {
-	pkg     tokens.Package
-	version semver.Version
-	load    LoadProviderFunc
+	pkg          tokens.Package
+	version      semver.Version
+	load         LoadProviderFunc
+	loadWithHost LoadProviderWithHostFunc
 }
 
 func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProviderFunc) *ProviderLoader {
@@ -43,6 +45,16 @@ func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProv
 	}
 }
 
+func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
+	load LoadProviderWithHostFunc) *ProviderLoader {
+
+	return &ProviderLoader{
+		pkg:          pkg,
+		version:      version,
+		loadWithHost: load,
+	}
+}
+
 type pluginHost struct {
 	providerLoaders []*ProviderLoader
 	languageRuntime plugin.LanguageRuntime
@@ -50,6 +62,7 @@ type pluginHost struct {
 	statusSink      diag.Sink
 
 	providers map[plugin.Provider]struct{}
+	closed    bool
 	m         sync.Mutex
 }
 
@@ -63,6 +76,12 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		statusSink:      statusSink,
 		providers:       make(map[plugin.Provider]struct{}),
 	}
+}
+
+func (host *pluginHost) isClosed() bool {
+	host.m.Lock()
+	defer host.m.Unlock()
+	return host.closed
 }
 
 func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
@@ -83,7 +102,14 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 		return nil, nil
 	}
 
-	prov, err := best.load()
+	load := best.load
+	if load == nil {
+		load = func() (plugin.Provider, error) {
+			return best.loadWithHost(host)
+		}
+	}
+
+	prov, err := load()
 	if err != nil {
 		return nil, err
 	}
@@ -112,16 +138,24 @@ func (host *pluginHost) SignalCancellation() error {
 	return err
 }
 func (host *pluginHost) Close() error {
+	host.m.Lock()
+	defer host.m.Unlock()
+
+	host.closed = true
 	return nil
 }
 func (host *pluginHost) ServerAddr() string {
 	panic("Host RPC address not available")
 }
 func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+	if !host.isClosed() {
+		host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+	}
 }
 func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.statusSink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+	if !host.isClosed() {
+		host.statusSink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+	}
 }
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")

@@ -14,7 +14,7 @@
 
 import * as assert from "assert";
 import * as iterable from "../iterable";
-import { Output } from "../resource";
+import { Output } from "../output";
 import { asyncTest } from "./util";
 
 describe("iterable", () => {

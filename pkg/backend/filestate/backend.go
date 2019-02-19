@@ -146,7 +146,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	tags, err := backend.GetStackTags()
+	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting stack tags")
 	}
@@ -466,7 +466,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    2,
+		Version:    3,
 		Deployment: json.RawMessage(data),
 	}, nil
 }
@@ -537,4 +537,20 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	}
 
 	return stacks, nil
+}
+
+// GetStackTags fetches the stack's existing tags.
+func (b *localBackend) GetStackTags(ctx context.Context,
+	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
+
+	// The local backend does not currently persist tags.
+	return nil, nil
+}
+
+// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+func (b *localBackend) UpdateStackTags(ctx context.Context,
+	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
+
+	// The local backend does not currently persist tags.
+	return nil
 }

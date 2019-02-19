@@ -1,0 +1,39 @@
+#!/bin/bash
+# Usage build-and-publish-docker [cli-version]
+set -o nounset
+set -o errexit
+set -o pipefail
+
+readonly SCRIPT_DIR="$( cd "$( dirname "${0}" )" && pwd )"
+
+if [ -z "${1:-}" ]; then
+    >&2 echo "error: missing version to publish"
+    exit 1
+fi
+
+if [ -z "${DOCKER_HUB_USER:-}" ]; then
+    >&2 echo "error: 'DOCKER_HUB_USER' should be defined"
+    exit 1
+fi
+
+if [ -z "${DOCKER_HUB_PASSWORD:-}" ]; then
+    >&2 echo "error: 'DOCKER_HUB_PASSWORD' should be defined"
+    exit 1
+fi
+
+CLI_VERSION="${1}"
+
+# We only want to push docker images for released versions of Pulumi. So if there are pre-release tags,
+# just skip publishing
+if [[ "${CLI_VERSION}" == *-* ]]; then
+    >&2 echo "Skipping docker publishing for ${CLI_VERSION} since it is a pre-release"
+    exit 0    
+fi
+
+echo "Building and publishing pulumi/pulumi:${CLI_VERSION}"
+docker build --build-arg PULUMI_VERSION="${CLI_VERSION}" -t "pulumi/pulumi:${CLI_VERSION}" -t "pulumi/pulumi:latest" "${SCRIPT_DIR}/../dist/docker"
+
+docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_PASSWORD}"
+docker push "pulumi/pulumi:${CLI_VERSION}"
+docker push "pulumi/pulumi:latest"
+docker logout

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { all, CustomResource, CustomResourceOptions, Input, Output, output } from "./resource";
+import { all, Input, Output, output } from "./output";
+import { CustomResource, CustomResourceOptions } from "./resource";
 
 /**
  * Manages a reference to a Pulumi stack. The referenced stack's outputs are available via the
@@ -44,7 +45,7 @@ export class StackReference extends CustomResource {
         super("pulumi:pulumi:StackReference", name, {
             name: args.name || name,
             outputs: undefined,
-        }, opts);
+        }, { ...opts, id: args.name || name });
     }
 
     /**

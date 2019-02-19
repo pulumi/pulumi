@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/stretchr/testify/assert"
 
@@ -21,6 +24,36 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+// assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
+// failures when a scenario exceeds the provided threshold.
+type assertPerfBenchmark struct {
+	T                  *testing.T
+	MaxPreviewDuration time.Duration
+	MaxUpdateDuration  time.Duration
+}
+
+func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
+	var maxDuration *time.Duration
+	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
+		maxDuration = &t.MaxPreviewDuration
+	}
+	if strings.HasPrefix(stats.StepName, "pulumi-update") {
+		maxDuration = &t.MaxUpdateDuration
+	}
+
+	if maxDuration != nil && *maxDuration != 0 {
+		if stats.ElapsedSeconds < maxDuration.Seconds() {
+			t.T.Logf(
+				"Test step %q was under threshold. %.2f (max %.2fs)",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		} else {
+			t.T.Errorf(
+				"Test step %q took longer than expected. %.2f vs. max %.2fs",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		}
+	}
+}
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
@@ -47,6 +80,28 @@ func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("empty", "go"),
 		Quick: true,
+	})
+}
+
+// Tests emitting many engine events doesn't result in a performance problem.
+func TestEngineEventPerf(t *testing.T) {
+	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
+	// Since then, it should now be down to ~4s, with additional padding,
+	// since some travis machines (especially the OSX ones) seem quite slow
+	// to begin with.
+	benchmarkEnforcer := &assertPerfBenchmark{
+		T:                  t,
+		MaxPreviewDuration: 8 * time.Second,
+		MaxUpdateDuration:  8 * time.Second,
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "ee_perf",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ReportStats:  benchmarkEnforcer,
+		// Don't run in parallel since it is sensitive to system resources.
+		NoParallel: true,
 	})
 }
 
@@ -152,6 +207,31 @@ func TestStackTagValidation(t *testing.T) {
 		assert.Contains(t, stderr, "validating stack properties:")
 		assert.Contains(t, stderr, "stack tag \"pulumi:description\" value is too long (max length 256 characters)")
 	})
+}
+
+func TestRemoveWithResourcesBlocked(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex sould not fail with no maximum length is set")
+
+	e.ImportDirectory("single_resource")
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
+	assert.Contains(t, stderr, "--force")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
@@ -505,8 +585,8 @@ func TestExplicitProvider(t *testing.T) {
 			// Expect one stack resource, two provider resources, and two custom resources.
 			assert.True(t, len(latest.Resources) == 5)
 
-			var defaultProvider *apitype.ResourceV2
-			var explicitProvider *apitype.ResourceV2
+			var defaultProvider *apitype.ResourceV3
+			var explicitProvider *apitype.ResourceV3
 			for _, res := range latest.Resources {
 				urn := res.URN
 				switch urn.Name() {
@@ -557,15 +637,17 @@ func TestGetCreated(t *testing.T) {
 
 // Tests that stack references work.
 func TestStackReference(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
 	opts := &integration.ProgramTestOptions{
 		Dir:          "stack_reference",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-	}
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
-		opts.Config = map[string]string{
-			"org": owner,
-		}
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
 	}
 	integration.ProgramTest(t, opts)
 }

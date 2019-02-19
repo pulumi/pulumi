@@ -85,7 +85,8 @@ func (pc *Client) updateRESTCall(ctx context.Context, method, path string, query
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the stack root.
 func getStackPath(stack StackIdentifier, components ...string) string {
-	return path.Join(append([]string{fmt.Sprintf("/api/stacks/%s/%s", stack.Owner, stack.Stack)}, components...)...)
+	prefix := fmt.Sprintf("/api/stacks/%s/%s/%s", stack.Owner, stack.Project, stack.Stack)
+	return path.Join(append([]string{prefix}, components...)...)
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -151,14 +152,14 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 }
 
 // ListStacks lists all stacks the current user has access to, optionally filtered by project.
-func (pc *Client) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]apitype.StackSummary, error) {
+func (pc *Client) ListStacks(ctx context.Context, projectFilter *string) ([]apitype.StackSummary, error) {
 
 	var resp apitype.ListStacksResponse
 	var queryFilter interface{}
 	if projectFilter != nil {
 		queryFilter = struct {
 			ProjectFilter string `url:"project"`
-		}{ProjectFilter: string(*projectFilter)}
+		}{ProjectFilter: *projectFilter}
 	}
 
 	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &resp); err != nil {
@@ -218,9 +219,10 @@ func (pc *Client) CreateStack(
 	}
 
 	stack := apitype.Stack{
-		StackName: tokens.QName(stackID.Stack),
-		OrgName:   stackID.Owner,
-		Tags:      tags,
+		StackName:   tokens.QName(stackID.Stack),
+		ProjectName: stackID.Project,
+		OrgName:     stackID.Owner,
+		Tags:        tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
 		StackName: stackID.Stack,
@@ -228,8 +230,10 @@ func (pc *Client) CreateStack(
 	}
 
 	var createStackResp apitype.CreateStackResponse
+
+	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
 	if err := pc.restCall(
-		ctx, "POST", fmt.Sprintf("/api/stacks/%s", stackID.Owner), nil, &createStackReq, &createStackResp); err != nil {
+		ctx, "POST", endpoint, nil, &createStackReq, &createStackResp); err != nil {
 		return apitype.Stack{}, err
 	}
 
@@ -239,13 +243,27 @@ func (pc *Client) CreateStack(
 // DeleteStack deletes the indicated stack. If force is true, the stack is deleted even if it contains resources.
 func (pc *Client) DeleteStack(ctx context.Context, stack StackIdentifier, force bool) (bool, error) {
 	path := getStackPath(stack)
-	if force {
-		path += "?force=true"
+	queryObj := struct {
+		Force bool `url:"force"`
+	}{
+		Force: force,
 	}
 
-	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
-	//     resources and `force` was not true", we should sniff for that message and return a true for the boolean.
-	return false, pc.restCall(ctx, "DELETE", path, nil, nil, nil)
+	err := pc.restCall(ctx, "DELETE", path, queryObj, nil, nil)
+	return isStackHasResourcesError(err), err
+}
+
+func isStackHasResourcesError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errRsp, ok := err.(*apitype.ErrorResponse)
+	if !ok {
+		return false
+	}
+
+	return errRsp.Code == 400 && errRsp.Message == "Bad Request: Stack still contains resources."
 }
 
 // EncryptValue encrypts a plaintext value in the context of the indicated stack.
@@ -464,7 +482,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV2,
+func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token string) error {
 
 	rawDeployment, err := json.Marshal(deployment)
@@ -473,7 +491,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	}
 
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    2,
+		Version:    3,
 		Deployment: rawDeployment,
 	}
 
@@ -515,4 +533,16 @@ func (pc *Client) RecordEngineEvent(
 		ctx, "POST", getUpdatePath(update, "events"),
 		nil, event, nil,
 		updateAccessToken(token), callOpts)
+}
+
+// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+func (pc *Client) UpdateStackTags(
+	ctx context.Context, stack StackIdentifier, tags map[apitype.StackTagName]string) error {
+
+	// Validate stack tags.
+	if err := backend.ValidateStackTags(tags); err != nil {
+		return err
+	}
+
+	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
 }

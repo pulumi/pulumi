@@ -17,8 +17,10 @@ package httpstate
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -26,9 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -137,27 +137,31 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
 }
 
-// recordEvent will record the event with the Pulumi service, enabling things like viewing
-// the rendered update logs or drilling into the timeline of an update.
-func (u *cloudUpdate) recordEvent(
-	action apitype.UpdateKind, event engine.Event, sequenceNumber int,
-	seen map[resource.URN]engine.StepEventMetadata, opts display.Options) error {
+// recordEngineEvent will record the event with the Pulumi Service, enabling things like viewing
+// the update logs or drilling into the timeline of an update.
+func (u *cloudUpdate) recordEngineEvent(event engine.Event, sequenceNumber int) error {
 	contract.Assert(u.tokenSource != nil)
 	token, err := u.tokenSource.GetToken()
 	if err != nil {
 		return err
 	}
 
-	// Send the event to the Pulumi Service to power things like the update summary page.
-	// Currently opt-in via flag to allow for gathering per data before the service-side changes
-	// are available in production.
 	apiEvent, convErr := convertEngineEvent(event)
 	if convErr != nil {
 		return errors.Wrap(convErr, "converting engine event")
 	}
+
+	// Each event within an update must have a unique sequence number. Any request to
+	// emit an update with the same sequence number will fail. (Read: use a mutex to
+	// increment if needed.)
 	apiEvent.Sequence = sequenceNumber
 	apiEvent.Timestamp = int(time.Now().Unix())
+
 	return u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token)
+}
+
+func isDebugDiagEvent(e engine.Event) bool {
+	return e.Type == engine.DiagEvent && (e.Payload.(engine.DiagEventPayload)).Severity == diag.Debug
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
@@ -179,34 +183,46 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	displayEvents := make(chan engine.Event)
 	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, innerDone, opts, isPreview)
 
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-
 	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
 	// ensure events can be reconstructured in the same order they were emitted. (And not
 	// out of order from parallel writes and/or network delays.)
 	eventIdx := 0
-	for e := range events {
-		eventIdx++
 
+	// We start the requests to record engine events in separate Go routines since they can
+	// all be done independently, and updates with a "chatty" event stream can have serious
+	// perf problems when issuing the requests serially.
+	var wg sync.WaitGroup
+	recordEngineEvent := func(event engine.Event, eventIdx int) {
+		defer wg.Done()
+		// We just silently drop any errors recording the events. Obviously not great, but
+		// we cannot tell for certain what state the displayEvents channel is in. Dropped
+		// engine events just mean that the logs display on the Pulumi Service could look
+		// weird. It won't have any impact on correctness of checkpoint data.
+		err := u.recordEngineEvent(event, eventIdx)
+		contract.IgnoreError(err)
+	}
+
+	for e := range events {
 		// First echo the event to the local display.
 		displayEvents <- e
 
-		// Then render and record the event for posterity.
-		if err := u.recordEvent(action, e, eventIdx, seen, opts); err != nil {
-			diagEvent := engine.Event{
-				Type: engine.DiagEvent,
-				Payload: engine.DiagEventPayload{
-					Message:  fmt.Sprintf("failed to record event: %v", err),
-					Severity: diag.Infoerr,
-				},
-			}
-			displayEvents <- diagEvent
+		if isDebugDiagEvent(e) && !opts.Debug {
+			// Don't send diagnostics events to the service unless `--debug` was requested.
+			continue
 		}
 
+		// Then render and record the event for posterity.
+		eventIdx++
+		wg.Add(1)
+		go recordEngineEvent(e, eventIdx)
+
 		if e.Type == engine.CancelEvent {
-			return
+			break
 		}
 	}
+
+	// Block until all of the spawned Go-routines complete.
+	wg.Wait()
 }
 
 func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, proj *workspace.Project,

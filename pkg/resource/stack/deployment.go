@@ -20,6 +20,7 @@ import (
 	"reflect"
 
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -47,7 +48,7 @@ var (
 )
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
+func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV3 {
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
@@ -70,17 +71,17 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resources []apitype.ResourceV2
+	var resources []apitype.ResourceV3
 	for _, res := range snap.Resources {
 		resources = append(resources, SerializeResource(res))
 	}
 
-	var operations []apitype.OperationV1
+	var operations []apitype.OperationV2
 	for _, op := range snap.PendingOperations {
 		operations = append(operations, SerializeOperation(op))
 	}
 
-	return &apitype.DeploymentV2{
+	return &apitype.DeploymentV3{
 		Manifest:          manifest,
 		Resources:         resources,
 		PendingOperations: operations,
@@ -99,28 +100,34 @@ func DeserializeUntypedDeployment(deployment *apitype.UntypedDeployment) (*deplo
 		return nil, ErrDeploymentSchemaVersionTooOld
 	}
 
-	var v2deployment apitype.DeploymentV2
+	var v3deployment apitype.DeploymentV3
 	switch deployment.Version {
 	case 1:
 		var v1deployment apitype.DeploymentV1
 		if err := json.Unmarshal([]byte(deployment.Deployment), &v1deployment); err != nil {
 			return nil, err
 		}
-
-		v2deployment = migrate.UpToDeploymentV2(v1deployment)
+		v2deployment := migrate.UpToDeploymentV2(v1deployment)
+		v3deployment = migrate.UpToDeploymentV3(v2deployment)
 	case 2:
+		var v2deployment apitype.DeploymentV2
 		if err := json.Unmarshal([]byte(deployment.Deployment), &v2deployment); err != nil {
+			return nil, err
+		}
+		v3deployment = migrate.UpToDeploymentV3(v2deployment)
+	case 3:
+		if err := json.Unmarshal([]byte(deployment.Deployment), &v3deployment); err != nil {
 			return nil, err
 		}
 	default:
 		contract.Failf("unrecognized version: %d", deployment.Version)
 	}
 
-	return DeserializeDeploymentV2(v2deployment)
+	return DeserializeDeploymentV3(v3deployment)
 }
 
-// DeserializeDeploymentV2 deserializes a typed DeploymentV2 into a `deploy.Snapshot`.
-func DeserializeDeploymentV2(deployment apitype.DeploymentV2) (*deploy.Snapshot, error) {
+// DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
+func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot, error) {
 	// Unpack the versions.
 	manifest := deploy.Manifest{
 		Time:    deployment.Manifest.Time,
@@ -166,7 +173,7 @@ func DeserializeDeploymentV2(deployment apitype.DeploymentV2) (*deploy.Snapshot,
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State) apitype.ResourceV2 {
+func SerializeResource(res *resource.State) apitype.ResourceV3 {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
@@ -180,26 +187,28 @@ func SerializeResource(res *resource.State) apitype.ResourceV2 {
 		outputs = SerializeProperties(outp)
 	}
 
-	return apitype.ResourceV2{
-		URN:          res.URN,
-		Custom:       res.Custom,
-		Delete:       res.Delete,
-		ID:           res.ID,
-		Type:         res.Type,
-		Parent:       res.Parent,
-		Inputs:       inputs,
-		Outputs:      outputs,
-		Protect:      res.Protect,
-		External:     res.External,
-		Dependencies: res.Dependencies,
-		InitErrors:   res.InitErrors,
-		Provider:     res.Provider,
+	return apitype.ResourceV3{
+		URN:                  res.URN,
+		Custom:               res.Custom,
+		Delete:               res.Delete,
+		ID:                   res.ID,
+		Type:                 res.Type,
+		Parent:               res.Parent,
+		Inputs:               inputs,
+		Outputs:              outputs,
+		Protect:              res.Protect,
+		External:             res.External,
+		Dependencies:         res.Dependencies,
+		InitErrors:           res.InitErrors,
+		Provider:             res.Provider,
+		PropertyDependencies: res.PropertyDependencies,
+		PendingReplacement:   res.PendingReplacement,
 	}
 }
 
-func SerializeOperation(op resource.Operation) apitype.OperationV1 {
+func SerializeOperation(op resource.Operation) apitype.OperationV2 {
 	res := SerializeResource(op.Resource)
-	return apitype.OperationV1{
+	return apitype.OperationV2{
 		Resource: res,
 		Type:     apitype.OperationType(op.Type),
 	}
@@ -251,7 +260,7 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV3) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs)
 	if err != nil {
@@ -264,10 +273,11 @@ func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
 
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
-		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider), nil
+		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
+		res.PropertyDependencies, res.PendingReplacement), nil
 }
 
-func DeserializeOperation(op apitype.OperationV1) (resource.Operation, error) {
+func DeserializeOperation(op apitype.OperationV2) (resource.Operation, error) {
 	res, err := DeserializeResource(op.Resource)
 	if err != nil {
 		return resource.Operation{}, err
@@ -313,20 +323,33 @@ func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}
+
 			// This could be an asset or archive; if so, recover its type.
 			objmap := obj.Mappable()
-			asset, isasset, err := resource.DeserializeAsset(objmap)
-			if err != nil {
-				return resource.PropertyValue{}, err
-			} else if isasset {
-				return resource.NewAssetProperty(asset), nil
+			if sig, hasSig := objmap[resource.SigKey]; hasSig {
+				switch sig {
+				case resource.AssetSig:
+					asset, isasset, err := resource.DeserializeAsset(objmap)
+					if err != nil {
+						return resource.PropertyValue{}, err
+					}
+					contract.Assert(isasset)
+					return resource.NewAssetProperty(asset), nil
+				case resource.ArchiveSig:
+					archive, isarchive, err := resource.DeserializeArchive(objmap)
+					if err != nil {
+						return resource.PropertyValue{}, err
+					}
+					contract.Assert(isarchive)
+					return resource.NewArchiveProperty(archive), nil
+				case resource.SecretSig:
+					return resource.PropertyValue{},
+						errors.New("this version of the Pulumi SDK does not support first-class secrets")
+				default:
+					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
+				}
 			}
-			archive, isarchive, err := resource.DeserializeArchive(objmap)
-			if err != nil {
-				return resource.PropertyValue{}, err
-			} else if isarchive {
-				return resource.NewArchiveProperty(archive), nil
-			}
+
 			// Otherwise, it's just a weakly typed object map.
 			return resource.NewObjectProperty(obj), nil
 		default:

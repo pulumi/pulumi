@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComponentResource, CustomResource, Input, Inputs, Output, Resource } from "../resource";
+import { Input, Inputs, Output } from "../output";
+import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 
@@ -75,15 +75,18 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
  * registerResource.
  */
 async function serializeFilteredProperties(
-        label: string, props: Inputs, acceptKey: (k: string) => boolean,
-        dependentResources: Resource[] = []): Promise<Record<string, any>> {
+    label: string, props: Inputs, acceptKey: (k: string) => boolean,
+    propertyToDependentResources: Map<string, Set<Resource>>): Promise<Record<string, any>> {
+
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
+            const dependentResources = new Set<Resource>();
             const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
             if (v !== undefined) {
                 result[k] = v;
+                propertyToDependentResources.set(k, dependentResources);
             }
         }
     }
@@ -96,8 +99,9 @@ async function serializeFilteredProperties(
  * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
 export async function serializeResourceProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", dependentResources);
+        label: string, props: Inputs, propertyToDependentResources: Map<string, Set<Resource>>) {
+    return serializeFilteredProperties(
+        label, props, key => key !== "id" && key !== "urn", propertyToDependentResources);
 }
 
 /**
@@ -105,8 +109,9 @@ export async function serializeResourceProperties(
  * POJO object that can be remoted over to registerResource.
  */
 export async function serializeProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => true, dependentResources);
+    label: string, props: Inputs, propertyToDependentResources: Map<string, Set<Resource>>) {
+    return serializeFilteredProperties(
+        label, props, _ => true, propertyToDependentResources);
 }
 
 /**
@@ -203,32 +208,27 @@ export function resolveProperties(
  */
 export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 /**
- * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
+ * specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
  */
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
 /**
- * specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go.
+ * specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
  */
 export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
 /**
- * specialArchiveSig is a randomly assigned hash used to identify archives in maps.  See pkg/resource/asset.go.
+ * specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
  */
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
+/**
+ * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+ */
+export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-export function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
-    return serializePropertyWorker(ctx, prop, dependentResources, new Set());
-}
-
-async function serializePropertyWorker(
-    ctx: string, prop: Input<any>,
-    dependentResources: Resource[],
-    seenObjects: Set<any>): Promise<any> {
-
-    // Simple values, always serialize fully.
+export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
     if (prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
@@ -258,9 +258,8 @@ async function serializePropertyWorker(
         }
 
         const subctx = `Promise<${ctx}>`;
-        return serializePropertyWorker(subctx,
-            await debuggablePromise(prop, `serializeProperty.await(${subctx})`),
-            dependentResources, seenObjects);
+        return serializeProperty(subctx,
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
     }
 
     if (Output.isInstance(prop)) {
@@ -268,14 +267,15 @@ async function serializePropertyWorker(
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
-        dependentResources.push(...prop.resources());
+        for (const resource of prop.resources()) {
+            dependentResources.add(resource);
+        }
 
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
         // resolve isKnown to true) and for any resource outputs that were resolved with known values.
         const isKnown = await prop.isKnown;
-        const value = await serializePropertyWorker(
-            `${ctx}.id`, prop.promise(), dependentResources, seenObjects);
+        const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
         return isKnown ? value : unknownValue;
     }
 
@@ -285,39 +285,19 @@ async function serializePropertyWorker(
             log.debug(`Serialize property [${ctx}]: custom resource id`);
         }
 
-        dependentResources.push(prop);
-        return serializePropertyWorker(`${ctx}.id`, prop.id, dependentResources, seenObjects);
+        dependentResources.add(prop);
+        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
     }
 
     if (ComponentResource.isInstance(prop)) {
-        // Component resources often can contain cycles in them.  For example, an awsinfra
-        // SecurityGroupRule can point a the awsinfra SecurityGroup, which in turn can point back to
-        // its rules through its `egressRules` and `ingressRules` properties.  If serializing out
-        // the `SecurityGroup` resource ends up trying to serialize out those properties, a deadlock
-        // will happen, due to waiting on the child, which is waiting on the parent.
-        //
-        // Practically, there is no need to actually serialize out a component.  It doesn't represent
-        // a real resource, nor does it have normal properties that need to be tracked for differences
-        // (since changes to its properties don't represent changes to resources in the real world).
-        //
-        // So, to avoid these problems, while allowing a flexible and simple programming model, we
-        // just serialize out the component as its urn.  This allows the component to be identified
-        // and tracked in a reasonable manner, while not causing us to compute or embed information
-        // about it that is not needed, and which can lead to deadlocks.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: component resource urnid`);
         }
 
-        return serializePropertyWorker(`${ctx}.urn`, prop.urn, dependentResources, seenObjects);
+        // Keep track of this resource as a dependency.
+        dependentResources.add(prop);
+        return unknownValue;
     }
-
-    // We're now getting to complex objects where we are recursing into them.  Prevent infinite
-    // recursion if we've already seen this object before.
-    if (seenObjects.has(prop)) {
-        return undefined;
-    }
-
-    seenObjects.add(prop);
 
     if (prop instanceof Array) {
         const result: any[] = [];
@@ -325,11 +305,8 @@ async function serializePropertyWorker(
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
-
-            // When serializing arrays, we serialize any undefined values as `null`. This matches
-            // JSON semantics.
-            const elem = await serializePropertyWorker(
-                `${ctx}[${i}]`, prop[i], dependentResources, seenObjects);
+            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
+            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
             result.push(elem === undefined ? null : elem);
         }
         return result;
@@ -344,8 +321,7 @@ async function serializePropertyWorker(
             }
 
             // When serializing an object, we omit any keys with undefined values. This matches JSON semantics.
-            const v = await serializePropertyWorker(
-                `${ctx}.${k}`, innerProp[k], dependentResources, seenObjects);
+            const v = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
             if (v !== undefined) {
                 obj[k] = v;
             }
@@ -415,6 +391,8 @@ export function deserializeProperty(prop: any): any {
                     else {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
+                case specialSecretSig:
+                    throw new Error("this version of the Pulumi SDK does not support first-class secrets");
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }

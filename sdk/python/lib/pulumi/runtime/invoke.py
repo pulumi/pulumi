@@ -17,6 +17,7 @@ from typing import Any, Awaitable
 import grpc
 
 from ..output import Inputs
+from ..invoke import InvokeOptions
 from .. import log
 from .settings import get_monitor
 from ..runtime.proto import provider_pb2
@@ -24,20 +25,33 @@ from . import rpc
 from .rpc_manager import RPC_MANAGER
 
 
-def invoke(tok: str, props: Inputs) -> Awaitable[Any]:
+def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> Awaitable[Any]:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
     log.debug(f"Invoking function: tok={tok}")
+    if opts is None:
+        opts = InvokeOptions()
 
     async def do_invoke():
-        # TODO(swgillespie, first class providers pulumi/pulumi#1713) here
+        # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
+        if opts.parent is not None and opts.provider is None:
+            opts.provider = opts.parent.get_provider(tok)
+
+        # Construct a provider reference from the given provider, if one was provided to us.
+        provider_ref = None
+        if opts.provider is not None:
+            provider_urn = await opts.provider.urn.future()
+            provider_id = (await opts.provider.id.future()) or rpc.UNKNOWN
+            provider_ref = f"{provider_urn}::{provider_id}"
+            log.debug(f"Invoke using provider {provider_ref}")
+
         monitor = get_monitor()
-        inputs = await rpc.serialize_properties(props, [])
+        inputs = await rpc.serialize_properties(props, {})
         log.debug(f"Invoking function prepared: tok={tok}")
-        req = provider_pb2.InvokeRequest(tok=tok, args=inputs)
+        req = provider_pb2.InvokeRequest(tok=tok, args=inputs, provider=provider_ref)
 
         def do_invoke():
             try:

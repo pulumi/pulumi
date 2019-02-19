@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV2, error) {
+func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV3, error) {
 	var versionedCheckpoint apitype.VersionedCheckpoint
 	if err := json.Unmarshal(bytes, &versionedCheckpoint); err != nil {
 		return nil, err
@@ -47,23 +47,33 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 			return nil, err
 		}
 
-		checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
-		return &checkpoint, nil
+		v2checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
+		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
+		return &v3checkpoint, nil
 	case 1:
 		var v1checkpoint apitype.CheckpointV1
 		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v1checkpoint); err != nil {
 			return nil, err
 		}
 
-		checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
-		return &checkpoint, nil
+		v2checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
+		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
+		return &v3checkpoint, nil
 	case 2:
 		var v2checkpoint apitype.CheckpointV2
 		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v2checkpoint); err != nil {
 			return nil, err
 		}
 
-		return &v2checkpoint, nil
+		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
+		return &v3checkpoint, nil
+	case 3:
+		var v3checkpoint apitype.CheckpointV3
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v3checkpoint); err != nil {
+			return nil, err
+		}
+
+		return &v3checkpoint, nil
 	default:
 		return nil, errors.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
 	}
@@ -72,12 +82,12 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
 func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *apitype.VersionedCheckpoint {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
-	var latest *apitype.DeploymentV2
+	var latest *apitype.DeploymentV3
 	if snap != nil {
 		latest = SerializeDeployment(snap)
 	}
 
-	b, err := json.Marshal(apitype.CheckpointV2{
+	b, err := json.Marshal(apitype.CheckpointV3{
 		Stack:  stack,
 		Config: config,
 		Latest: latest,
@@ -92,10 +102,10 @@ func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Sna
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot. Returns nil
 // if there have been no deployments performed on this checkpoint.
-func DeserializeCheckpoint(chkpoint *apitype.CheckpointV2) (*deploy.Snapshot, error) {
+func DeserializeCheckpoint(chkpoint *apitype.CheckpointV3) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 	if chkpoint.Latest != nil {
-		return DeserializeDeploymentV2(*chkpoint.Latest)
+		return DeserializeDeploymentV3(*chkpoint.Latest)
 	}
 
 	return nil, nil

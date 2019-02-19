@@ -18,6 +18,8 @@ package apitype
 type StackSummary struct {
 	// OrgName is the organization name the stack is found in.
 	OrgName string `json:"orgName"`
+	// ProjectName is the name of the project the stack is associated with.
+	ProjectName string `json:"projectName"`
 	// StackName is the name of the stack.
 	StackName string `json:"stackName"`
 

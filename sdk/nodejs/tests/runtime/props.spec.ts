@@ -31,7 +31,7 @@ describe("runtime", () => {
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             const transfer = gstruct.Struct.fromJavaScript(
-                await runtime.serializeProperties("test", inputs));
+                await runtime.serializeProperties("test", inputs, new Map()));
             const result = runtime.deserializeProperties(transfer);
             assert.equal(result.aNum, 42);
             assert.equal(result.bStr, "a string");
@@ -40,22 +40,18 @@ describe("runtime", () => {
             assert.equal(result.id, "foo");
             assert.equal(result.urn, "bar");
         }));
+    });
 
-        it("handles cycles", asyncTest(async () => {
-            const inputs: Inputs = {
-                array: <any[]>[1, "str", true],
-                obj: { a: "str" },
-            };
-
-            inputs.array.push(inputs.array);
-            inputs.obj.cycle1 = inputs.obj;
-
-            // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            const transfer = gstruct.Struct.fromJavaScript(
-                await runtime.serializeProperties("test", inputs));
-            const result = runtime.deserializeProperties(transfer);
-            assert.deepEqual(result.array, [ 1, "str", true, undefined ]);
-            assert.deepEqual(result.obj, { a: "str" });
-        }));
+    describe("deserializeProperty", () => {
+        it("fails on unsupported secret values", () => {
+            assert.throws(() => runtime.deserializeProperty({
+                [runtime.specialSigKey]: runtime.specialSecretSig,
+            }));
+        });
+        it("fails on unknown signature keys", () => {
+            assert.throws(() => runtime.deserializeProperty({
+                [runtime.specialSigKey]: "foobar",
+            }));
+        });
     });
 });

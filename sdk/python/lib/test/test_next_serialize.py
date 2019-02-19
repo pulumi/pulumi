@@ -14,6 +14,7 @@
 import asyncio
 import unittest
 
+from google.protobuf import struct_pb2
 from pulumi.resource import CustomResource
 from pulumi.runtime import rpc, known_types
 from pulumi.output import Output
@@ -104,7 +105,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual("hello.txt", prop["path"])
 
     @async_test
-    async def test_file_asset(self):
+    async def test_remote_asset(self):
         asset = RemoteAsset("https://pulumi.io")
         prop = await rpc.serialize_property(asset, [])
         self.assertEqual(rpc._special_asset_sig, prop[rpc._special_sig_key])
@@ -124,6 +125,70 @@ class NextSerializationTests(unittest.TestCase):
         prop = await rpc.serialize_property(out, deps)
         self.assertListEqual(deps, [existing, res])
         self.assertEqual(42, prop)
+
+    @async_test
+    async def test_output_all(self):
+        res = FakeCustomResource("some-resource")
+        fut = asyncio.Future()
+        fut.set_result(42)
+        known_fut = asyncio.Future()
+        known_fut.set_result(True)
+        out = Output({res}, fut, known_fut)
+
+        other = Output.from_input(99)
+        combined = Output.all(out, other)
+        deps = []
+        prop = await rpc.serialize_property(combined, deps)
+        self.assertListEqual(deps, [res])
+        self.assertEqual([42, 99], prop)
+
+    @async_test
+    async def test_output_all_composes_dependencies(self):
+        res = FakeCustomResource("some-resource")
+        fut = asyncio.Future()
+        fut.set_result(42)
+        known_fut = asyncio.Future()
+        known_fut.set_result(True)
+        out = Output({res}, fut, known_fut)
+
+        other = FakeCustomResource("some-other-resource")
+        other_fut = asyncio.Future()
+        other_fut.set_result(99)
+        other_known_fut = asyncio.Future()
+        other_known_fut.set_result(True)
+        other_out = Output({other}, other_fut, other_known_fut)
+
+        combined = Output.all(out, other_out)
+        deps = []
+        prop = await rpc.serialize_property(combined, deps)
+        self.assertSetEqual(set(deps), {res, other})
+        self.assertEqual([42, 99], prop)
+
+    @async_test
+    async def test_output_all_known_if_all_are_known(self):
+        res = FakeCustomResource("some-resource")
+        fut = asyncio.Future()
+        fut.set_result(42)
+        known_fut = asyncio.Future()
+        known_fut.set_result(True)
+        out = Output({res}, fut, known_fut)
+
+        other = FakeCustomResource("some-other-resource")
+        other_fut = asyncio.Future()
+        other_fut.set_result(99)
+        other_known_fut = asyncio.Future()
+        other_known_fut.set_result(False) # <- not known
+        other_out = Output({other}, other_fut, other_known_fut)
+
+        combined = Output.all(out, other_out)
+        deps = []
+        prop = await rpc.serialize_property(combined, deps)
+        self.assertSetEqual(set(deps), {res, other})
+
+        # The contents of the list are unknown if any of the Outputs used to
+        # create it were unknown.
+        self.assertEqual(rpc.UNKNOWN, prop)
+
 
     @async_test
     async def test_unknown_output(self):
@@ -169,3 +234,26 @@ class NextSerializationTests(unittest.TestCase):
         prop = await rpc.serialize_property(asset, [])
         self.assertEqual(rpc._special_archive_sig, prop[rpc._special_sig_key])
         self.assertEqual("foo.tar.gz", prop["path"])
+
+class DeserializationTests(unittest.TestCase):
+    def test_unsupported_secret(self):
+        struct = struct_pb2.Struct()
+        struct[rpc._special_sig_key] = rpc._special_secret_sig
+
+        error = None
+        try:
+            rpc.deserialize_property(struct)
+        except  AssertionError as err:
+            error = err
+        self.assertIsNotNone(error)
+
+    def test_unsupported_sig(self):
+        struct = struct_pb2.Struct()
+        struct[rpc._special_sig_key] = "foobar"
+
+        error = None
+        try:
+            rpc.deserialize_property(struct)
+        except  AssertionError as err:
+            error = err
+        self.assertIsNotNone(error)

@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
-import { ComponentResource, Inputs, Output, output } from "../resource";
+import { Inputs, Output, output } from "../output";
+import { ComponentResource, Resource } from "../resource";
 import { getRootResource, setRootResource } from "./settings";
 
 /**
@@ -64,9 +66,103 @@ class Stack extends ComponentResource {
         try {
             outputs = init();
         } finally {
-            super.registerOutputs(outputs);
+            // We want to expose stack outputs as simple pojo objects (including Resources).  This
+            // helps ensure that outputs can point to resources, and that that is stored and
+            // presented as something reasonable, and not as just an id/urn in the case of
+            // Resources.
+            const massaged = output(outputs).apply(v => massage(v, new Set()));
+            super.registerOutputs(massaged);
         }
 
         return outputs;
+    }
+}
+
+async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
+    if (prop === undefined ||
+        prop === null ||
+        typeof prop === "boolean" ||
+        typeof prop === "number" ||
+        typeof prop === "string") {
+
+        return prop;
+    }
+
+    if (prop instanceof Promise) {
+        return await massage(await prop, seenObjects);
+    }
+
+    if (Output.isInstance(prop)) {
+        return await massage(await prop.promise(), seenObjects);
+    }
+
+    // from this point on, we have complex objects.  If we see them again, we don't want to emit
+    // them again fully or else we'd loop infinitely.
+    if (seenObjects.has(prop)) {
+        // Note: for Resources we hit again, emit their urn so cycles can be easily understood
+        // in the pojo objects.
+        if (Resource.isInstance(prop)) {
+            return await massage(prop.urn, seenObjects);
+        }
+
+        return undefined;
+    }
+
+    seenObjects.add(prop);
+
+    if (asset.Asset.isInstance(prop)) {
+        if ((<asset.FileAsset>prop).path !== undefined) {
+            return { path: (<asset.FileAsset>prop).path };
+        }
+        else if ((<asset.RemoteAsset>prop).uri !== undefined) {
+            return { uri: (<asset.RemoteAsset>prop).uri };
+        }
+        else if ((<asset.StringAsset>prop).text !== undefined) {
+            return { text: "..." };
+        }
+
+        return undefined;
+    }
+
+    if (asset.Archive.isInstance(prop)) {
+        if ((<asset.AssetArchive>prop).assets) {
+            return { assets: massage((<asset.AssetArchive>prop).assets, seenObjects) };
+        }
+        else if ((<asset.FileArchive>prop).path !== undefined) {
+            return { path: (<asset.FileArchive>prop).path };
+        }
+        else if ((<asset.RemoteArchive>prop).uri !== undefined) {
+            return { uri: (<asset.RemoteArchive>prop).uri };
+        }
+
+        return undefined;
+    }
+
+    if (Resource.isInstance(prop)) {
+        // Emit a resource as a normal pojo.  But filter out all our internal properties so that
+        // they don't clutter the display/checkpoint with values not relevant to the application.
+        return serializeAllKeys(n => !n.startsWith("__"));
+    }
+
+    if (prop instanceof Array) {
+        const result = [];
+        for (let i = 0; i < prop.length; i++) {
+            result[i] = await massage(prop[i], seenObjects);
+        }
+
+        return result;
+    }
+
+    return await serializeAllKeys(n => true);
+
+    async function serializeAllKeys(include: (name: string) => boolean) {
+        const obj: Record<string, any> = {};
+        for (const k of Object.keys(prop)) {
+            if (include(k)) {
+                obj[k] = await massage(prop[k], seenObjects);
+            }
+        }
+
+        return obj;
     }
 }

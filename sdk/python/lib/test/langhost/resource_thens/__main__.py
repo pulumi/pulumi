@@ -34,7 +34,8 @@ class ResourceB(CustomResource):
     def __init__(self, name: str, res: ResourceA) -> None:
         CustomResource.__init__(self, "test:index:ResourceB", name, {
             "other_in": res.inprop,
-            "other_out": res.outprop
+            "other_out": res.outprop,
+            "other_id": res.id,
         })
 
 a = ResourceA("resourceA")

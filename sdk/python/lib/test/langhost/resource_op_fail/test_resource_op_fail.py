@@ -22,5 +22,5 @@ class UnhandledExceptionTest(LanghostTest):
             expected_error="Program exited with non-zero exit code: 1")
 
     def register_resource(self, _ctx, _dry_run, _ty, _name, _resource,
-                          _dependencies):
+                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
         raise Exception("oh no")

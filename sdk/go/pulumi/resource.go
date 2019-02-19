@@ -60,6 +60,8 @@ type ResourceOpt struct {
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
 	Provider ProviderResource
+	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
+	DeleteBeforeReplace bool
 }
 
 // InvokeOpt contains optional settings that control an invoke's behavior.
