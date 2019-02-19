@@ -191,7 +191,8 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 
 	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
 	if logging.V(apiRequestDetailLogLevel) {
-		logging.V(apiRequestDetailLogLevel).Infof("Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
+		logging.V(apiRequestDetailLogLevel).Infof(
+			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
 	var resp *http.Response
