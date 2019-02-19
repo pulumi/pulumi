@@ -6,6 +6,7 @@
 - Enabled Python programs to delete resources in parallel (fixes [pulumi/pulumi#2382](https://github.com/pulumi/pulumi/issues/2382)). If you are using Python 2, you should upgrade to Python 3 or else you may experience problems when deleting resources.
 - Fixed an issue where Python programs would occasionally fail during preview with errors about empty IDs being passed
   to resources. ([pulumi/pulumi#2450](https://github.com/pulumi/pulumi/issues/2450))
+- Return an error from `pulumi stack tag` commands when using the `--local` mode.
 
 ## 0.16.14 (Released January 31st, 2019)
 
