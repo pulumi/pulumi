@@ -544,7 +544,7 @@ func (b *localBackend) GetStackTags(ctx context.Context,
 	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
 
 	// The local backend does not currently persist tags.
-	return nil, nil
+	return nil, errors.New("stack tags not supported in --local mode")
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
@@ -552,5 +552,5 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
 
 	// The local backend does not currently persist tags.
-	return nil
+	return errors.New("stack tags not supported in --local mode")
 }
