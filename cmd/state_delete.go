@@ -32,7 +32,7 @@ func newStateDeleteCommand() *cobra.Command {
 	var stack string
 
 	cmd := &cobra.Command{
-		Use:   "delete",
+		Use:   "delete [resource URN]",
 		Short: "Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
 
