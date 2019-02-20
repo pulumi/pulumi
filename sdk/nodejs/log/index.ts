@@ -96,7 +96,7 @@ function log(
     const keepAlive: () => void = rpcKeepAlive();
 
     const urnPromise = resource
-        ? resource.__directUrn.promise()
+        ? resource.urn.promise()
         : Promise.resolve("");
 
     lastLog = Promise.all([lastLog, urnPromise]).then(([_, urn]) => {

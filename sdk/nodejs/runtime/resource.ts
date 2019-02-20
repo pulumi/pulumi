@@ -48,9 +48,10 @@ interface ResourceResolverOperation {
     providerRef: string | undefined;
     // All serialized properties, fully awaited, serialized, and ready to go.
     serializedProps: Record<string, any>;
-    // A set of dependency URNs that this resource is dependent upon (both implicitly and explicitly).
+    // A set of URNs that this resource is transitively dependent upon.
     allDependentResourceURNs: Set<URN>;
-    // A map from property name to a list of dependency URNs
+    // Set of URNs that this resource is transitively dependent upon, keyed by the property that
+    // causes the dependency.  All urns in this map must exist in [allDependentResourceURNs]
     propertyToDependentResourceURNs: Map<string, Set<URN>>;
 }
 
@@ -260,12 +261,17 @@ async function prepareResource(
 
     // Wait for the parent to complete.
     // If no parent was provided, parent to the root resource.
-    //
-    // Note: we use __directUrn as don't want to wait on the urn which may contain *us*
-    // as a dependent resource.
     const parentURN = opts.parent
-        ? await opts.parent.__directUrn.promise()
+        ? await opts.parent.urn.promise()
         : await getRootResource();
+
+    // // Also, wait for any of our previous siblings to complete.
+    // // NOTE(cyrus): Do we really want to do this?  This is nice so that consumers don't have to
+    // // pass siblings in as dependencies of other children.  However, it limits our ability to
+    // // parallelize child resources of a component resource.
+    // if (opts.parent) {
+    //     await getTransitivelyDependendentURNs(opts.parent.__childResources, res);
+    // }
 
     let providerRef: string | undefined;
     if (custom && opts.provider) {
@@ -274,29 +280,22 @@ async function prepareResource(
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    // Now, walk all the direct resource dependencies to get the total transitive resource dependencies.
-    expandResourceDependencies(explicitDependentResources, res);
-    for (const dependentResources of propertyToDependentResources.values()) {
-        expandResourceDependencies(dependentResources, res);
-    }
-
-    // Now, for all these resources we're dependent on, go get their URN.  Note: as with the parentURN
-    // above, we await the __directURN being complete as we do not want to wait on a URN that may end
-    // up depending on us.
-    const allDependentResourceURNs = new Set<URN>();
-    for (const resource of explicitDependentResources) {
-        allDependentResourceURNs.add(await resource.__directUrn.promise());
-    }
+    // Now, walk all the dependent resources we found and await their completion (by awaiting their
+    // URNs).  Also, collect those URNs for the engine so that it can understand the dependency
+    // graph and optimize operations accordingly.
+    //
+    // Note: we transitively walk resource dependencies here.  i.e. if one resource depends on some
+    // other component resource, then it will end up depending on all the children of that component
+    // resource as well.  That way, a parent acts as a "logical" collection of all those children
+    // and will not be considered complete until all of the children are complete as well.
+    const allDependentResourceURNs = await getTransitivelyDependentURNs(explicitDependentResources, res);
 
     const propertyToDependentResourceURNs = new Map<string, Set<URN>>();
     for (const [key, resources] of propertyToDependentResources) {
-        const dependentResourceURNs = new Set<URN>();
-        propertyToDependentResourceURNs.set(key, dependentResourceURNs);
+        const urns = await getTransitivelyDependentURNs(resources, res);
+        propertyToDependentResourceURNs.set(key, urns);
 
-        for (const resource of resources) {
-            const urn = await resource.__directUrn.promise();
-
-            dependentResourceURNs.add(urn);
+        for (const urn of urns) {
             allDependentResourceURNs.add(urn);
         }
     }
@@ -313,24 +312,60 @@ async function prepareResource(
     };
 }
 
-function expandResourceDependencies(resources: Set<Resource>, thisResource: Resource) {
+async function getTransitivelyDependentURNs(resources: Set<Resource>, thisResource: Resource) {
+    // first, expand the set of resources to everything transitively referenced.
+    const allResources = getTransitivelyDependentResources(resources, thisResource);
+
+    const result = new Set<string>();
+    for (const resource of allResources) {
+        result.add(await resource.urn.promise());
+    }
+
+    return result;
+}
+
+function getTransitivelyDependentResources(resources: Set<Resource>, thisResource: Resource) {
     // keep iterating until we reach a fixed point.
-    let size: number;
-    do {
-        size = resources.size;
+    while (true) {
+        const temp = new Set();
 
         // Hit each resource, and then add all the resources it depends on.
-        for (const resource of Array.from(resources)) {
-            for (const dependentResource of resource.urn.resources()) {
-                resources.add(dependentResource);
+        for (const resource of resources) {
+            temp.add(resource);
+
+            for (const childResource of resource.__childResources) {
+                resources.add(childResource);
             }
         }
-    }
-    while (resources.size !== size);
 
-    // never include this-resource in the list of dependencies.  We want to avoid cycles that
-    // will cause deadlocks.
-    resources.delete(thisResource);
+        // If the size didn't increase, then we found no new resources.  Can stop now.
+        if (temp.size === resources.size) {
+            break;
+        }
+
+        resources = temp;
+    }
+
+    // Now, exclude any resources that have 'this resource' somewhere in their parent chain.
+    // If we attempted to wait on them, we'd get a deadlock as they wait to wait on us.
+    const final = new Set<Resource>();
+    for (const resource of resources) {
+        if (!isDescendentOf(resource, thisResource)) {
+            final.add(resource);
+        }
+    }
+
+    return final;
+}
+
+function isDescendentOf(resource: Resource, potentialAncestor: Resource) {
+    for (let current = resource; current; current = current.__parentResource!) {
+        if (current === potentialAncestor) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -407,7 +442,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
     runAsyncResourceOp(opLabel, async () => {
         // The registration could very well still be taking place, so we will need to wait for its URN.
         // Additionally, the output properties might have come from other resources, so we must await those too.
-        const urn = await res.__directUrn.promise();
+        const urn = await res.urn.promise();
         const resolved = await serializeProperties(opLabel, { outputs }, new Map());
         const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +

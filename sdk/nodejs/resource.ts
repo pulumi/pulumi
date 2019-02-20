@@ -35,34 +35,25 @@ export abstract class Resource {
      */
     public readonly urn: Output<URN>;
 
+
     /**
-     * The URN to use for this resource when it is being passed in as the parent of another
-     * resource.  This will have the same [URN] *data* as [urn].  However, the [Resources] that each
-     * points at will be different.  Specifically [__directUrn] will only contain *this* instance
-     * as a resource, whereas [urn] will contain *this* instance and all child resources.
-     *
-     * The reason for both of these fields is so that we have a way for others to depend on a
-     * Resource as a logical aggregation of Resources.  i.e. if a [ComponentResource] ends up making
-     * a [Role] (and [RolePolicyAttachment]s), then logically, someone depending on that
-     * [ComponentResource] should depend on those child resources as well.  [urn] serves this
-     * purpose and is the publicly available manner for all resources to take such a dependency.
-     *
-     * However, when a parent resource actually is *creating* its children, we want to avoid a
-     * potential circularity.  i.e. if a parent creates a child, and the child then waits for the
-     * parent urn to be complete, then the child may end up waiting on itself *if* the child
-     * resource was added into the resources of [urn].  This can happen due to all the async work
-     * that happens when creating a resource.
-     *
-     * In general, the pulumi engine itself should only await on the promise of this property.
-     * Awaiting the promise for [urn] could cause deadlocks.  This is not an issue for 
+     * The optional parent of this resource.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __directUrn: Output<URN>;
+    /* @internal */ public readonly __parentResource: Resource | undefined;
+
+    /**
+     * The child resources of this resource.  Used so that if any resource wants to wait on this
+     * resource being complete, they will logically wait on all our child resources being complete
+     * as well.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public readonly __childResources = new Set<Resource>();
 
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
-     // tslint:disable-next-line:variable-name
+    // tslint:disable-next-line:variable-name
     /* @internal */ private readonly __protect: boolean;
 
     /**
@@ -113,6 +104,9 @@ export abstract class Resource {
                 throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
             }
 
+            this.__parentResource = opts.parent;
+            this.__parentResource.__childResources.add(this);
+
             if (opts.protect === undefined) {
                 opts.protect = opts.parent.__protect;
             }
@@ -157,41 +151,41 @@ export abstract class Resource {
             registerResource(this, t, name, custom, props, opts);
         }
 
-        // If we have a parent, we want to consider any dependency on it to be a dependency on us as
-        // well. i.e. say there is ComponentResource 'r1' which makes CustomResource 'c1' in its
-        // construct, and is used as the parent of a CustomResource 'c2' made later on.  If someone
-        // other resource depends on 'r1', we want them to actually be dependent 'c1' and 'c2'
-        // automatically.  This is important so that the ComponentResource actually represents an
-        // aggregation of other resources and that dependsOn meaningfully will block forward
-        // movement on the children of the Component actually being created.
-        //
-        // To do this, we wait until after readResource/registerResource has kicked off.  At this
-        // point *this* resource will have promise kicked off to figure out our URN.  So, we then
-        // take our parent and update it's URN such that it is only complete once both it's original
-        // computation and our URN computation is actually done.
-        if (opts.parent) {
-            // Stash away the original urn before we update the publicly visible one.
-            this.__directUrn = this.urn;
+        // // If we have a parent, we want to consider any dependency on it to be a dependency on us as
+        // // well. i.e. say there is ComponentResource 'r1' which makes CustomResource 'c1' in its
+        // // construct, and is used as the parent of a CustomResource 'c2' made later on.  If someone
+        // // other resource depends on 'r1', we want them to actually be dependent 'c1' and 'c2'
+        // // automatically.  This is important so that the ComponentResource actually represents an
+        // // aggregation of other resources and that dependsOn meaningfully will block forward
+        // // movement on the children of the Component actually being created.
+        // //
+        // // To do this, we wait until after readResource/registerResource has kicked off.  At this
+        // // point *this* resource will have promise kicked off to figure out our URN.  So, we then
+        // // take our parent and update it's URN such that it is only complete once both it's original
+        // // computation and our URN computation is actually done.
+        // if (opts.parent) {
+        //     // Stash away the original urn before we update the publicly visible one.
+        //     opts.parent.__childResources.push(this);
 
-            const finalUrn = all([opts.parent.urn, this.urn]).apply(([u1, _]) => u1);
+        //     // const finalUrn = all([opts.parent.urn, this.urn]).apply(([u1, _]) => u1);
 
-            // urn is declared as readonly (so that others are not allowed to update it).  So cast
-            // to any so we can do it.  We're the only code path that is allowed to change this.
-            //
-            // Note: this does mean the urn for our parent can go from a 'done' state to an 'undone'
-            // state.  That's an acceptable part of our programming model.  If someone waits on 'r1'
-            // right after it is created, they will be effectively waiting on 'r1' and 'c1', but not
-            // necessarily 'c2'.  Once 'c2' is created, waiting on 'r1' will then wait on all three
-            // resources.
-            //
-            // We feel this is actually a sensible programming model.  When someone waits on a
-            // resource they're waiting on what that resource logically represents at that point in
-            // their program.  If, later on, that resource logically represents a larger tree (which
-            // would only happen if the user program did something to cause that), then waiting should
-            // now wait on that new tree.  This model works well for complex ComponentResources that
-            // may have their entire tree dynamically created over many steps as a pulumi app runs.
-            (<any>opts.parent).urn = finalUrn;
-        }
+        //     // // urn is declared as readonly (so that others are not allowed to update it).  So cast
+        //     // // to any so we can do it.  We're the only code path that is allowed to change this.
+        //     // //
+        //     // // Note: this does mean the urn for our parent can go from a 'done' state to an 'undone'
+        //     // // state.  That's an acceptable part of our programming model.  If someone waits on 'r1'
+        //     // // right after it is created, they will be effectively waiting on 'r1' and 'c1', but not
+        //     // // necessarily 'c2'.  Once 'c2' is created, waiting on 'r1' will then wait on all three
+        //     // // resources.
+        //     // //
+        //     // // We feel this is actually a sensible programming model.  When someone waits on a
+        //     // // resource they're waiting on what that resource logically represents at that point in
+        //     // // their program.  If, later on, that resource logically represents a larger tree (which
+        //     // // would only happen if the user program did something to cause that), then waiting should
+        //     // // now wait on that new tree.  This model works well for complex ComponentResources that
+        //     // // may have their entire tree dynamically created over many steps as a pulumi app runs.
+        //     // (<any>opts.parent).urn = finalUrn;
+        // }
     }
 }
 
