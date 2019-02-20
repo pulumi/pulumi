@@ -233,7 +233,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
-    const explicitDependentResources = new Set(await getExplicitDependentResources(opts.dependsOn));
+    const explicitDependentResources = new Set(await gatherExplicitDependencies(opts.dependsOn));
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
@@ -349,31 +349,27 @@ function isDescendentOf(resource: Resource, potentialAncestor: Resource) {
 }
 
 /**
- * Gathers explicit dependency URNs from a list of Resources (possibly Promises and/or Outputs).
+ * Gathers explicit dependent Resources from a list of Resources (possibly Promises and/or Outputs).
  */
-async function getExplicitDependentResources(
+async function gatherExplicitDependencies(
     dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<Resource[]> {
 
     if (dependsOn) {
         if (Array.isArray(dependsOn)) {
-            const dependentResources: Resource[] = [];
+            const dos: Resource[] = [];
             for (const d of dependsOn) {
-                dependentResources.push(...await getExplicitDependentResources(d));
+                dos.push(...(await gatherExplicitDependencies(d)));
             }
-            return dependentResources;
-        }
-        else if (dependsOn instanceof Promise) {
-            return getExplicitDependentResources(await dependsOn);
-        }
-        else if (Output.isInstance(dependsOn)) {
+            return dos;
+        } else if (dependsOn instanceof Promise) {
+            return gatherExplicitDependencies(await dependsOn);
+        } else if (Output.isInstance(dependsOn)) {
             // Recursively gather dependencies, await the promise, and append the output's dependencies.
-            const output = (dependsOn as Output<Resource>).apply(getExplicitDependentResources);
-            const array1 = await output.promise();
-            const array2 = await getExplicitDependentResources(Array.from(output.resources()));
-
-            return array1.concat(array2);
-        }
-        else {
+            const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(gatherExplicitDependencies);
+            const urns = await dos.promise();
+            const implicits = await gatherExplicitDependencies([...dos.resources()]);
+            return urns.concat(implicits);
+        } else {
             return [dependsOn as Resource];
         }
     }
