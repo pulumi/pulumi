@@ -31,7 +31,7 @@ describe("runtime", () => {
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             const transfer = gstruct.Struct.fromJavaScript(
-                await runtime.serializeProperties("test", inputs, new Map()));
+                await runtime.serializeProperties("test", inputs));
             const result = runtime.deserializeProperties(transfer);
             assert.equal(result.aNum, 42);
             assert.equal(result.bStr, "a string");

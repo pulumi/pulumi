@@ -70,13 +70,14 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 }
 
 /**
- * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for properties with
- * keys that match the provided filter, creating a reasonable POJO object that can be remoted over to
- * registerResource.
+ * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for
+ * properties with keys that match the provided filter, creating a reasonable POJO object that can
+ * be remoted over to registerResource.
  */
 async function serializeFilteredProperties(
-    label: string, props: Inputs, acceptKey: (k: string) => boolean,
-    propertyToDependentResources: Map<string, Set<Resource>>): Promise<Record<string, any>> {
+        label: string, props: Inputs, acceptKey: (k: string) => boolean): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
+
+    const propertyToDependentResources = new Map<string, Set<Resource>>();
 
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
@@ -91,27 +92,24 @@ async function serializeFilteredProperties(
         }
     }
 
-    return result;
+    return [result, propertyToDependentResources];
 }
 
 /**
  * serializeResourceProperties walks the props object passed in, awaiting all interior promises besides those for `id`
  * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
-export async function serializeResourceProperties(
-        label: string, props: Inputs, propertyToDependentResources: Map<string, Set<Resource>>) {
-    return serializeFilteredProperties(
-        label, props, key => key !== "id" && key !== "urn", propertyToDependentResources);
+export async function serializeResourceProperties(label: string, props: Inputs) {
+    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn");
 }
 
 /**
  * serializeProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
  * POJO object that can be remoted over to registerResource.
  */
-export async function serializeProperties(
-    label: string, props: Inputs, propertyToDependentResources: Map<string, Set<Resource>>) {
-    return serializeFilteredProperties(
-        label, props, _ => true, propertyToDependentResources);
+export async function serializeProperties(label: string, props: Inputs) {
+    const [result] = await serializeFilteredProperties(label, props, _ => true);
+    return result;
 }
 
 /**

@@ -237,8 +237,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-    const propertyToDependentResources = new Map<string, Set<Resource>>();
-    const serializedProps = await serializeResourceProperties(label, props, propertyToDependentResources);
+    const [serializedProps, propertyToDependentResources] = await serializeResourceProperties(label, props);
 
     // Wait for the parent to complete.
     // If no parent was provided, parent to the root resource.
@@ -424,7 +423,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         // The registration could very well still be taking place, so we will need to wait for its URN.
         // Additionally, the output properties might have come from other resources, so we must await those too.
         const urn = await res.urn.promise();
-        const resolved = await serializeProperties(opLabel, { outputs }, new Map());
+        const resolved = await serializeProperties(opLabel, { outputs });
         const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));
