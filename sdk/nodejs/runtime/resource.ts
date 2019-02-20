@@ -193,10 +193,8 @@ export function registerResource(res: Resource, t: string, name: string, custom:
  * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
  * properties.
  */
-async function prepareResource(
-    label: string, res: Resource,
-    custom: boolean, props: Inputs,
-    opts: CustomResourceOptions = {}): Promise<ResourceResolverOperation> {
+async function prepareResource(label: string, res: Resource, custom: boolean,
+                               props: Inputs, opts: CustomResourceOptions): Promise<ResourceResolverOperation> {
 
     // Simply initialize the URN property and get prepared to resolve it later on.
     // Note: a resource urn will always get a value, and thus the output property
