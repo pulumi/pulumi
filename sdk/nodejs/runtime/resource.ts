@@ -255,8 +255,9 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 
     let providerRef: string | undefined;
     if (custom && opts.provider) {
-        const providerURN = await opts.provider.urn.promise();
-        const providerID = await opts.provider.id.promise() || unknownValue;
+        const provider = opts.provider;
+        const providerURN = await provider.urn.promise();
+        const providerID = await provider.id.promise() || unknownValue;
         providerRef = `${providerURN}::${providerID}`;
     }
 
