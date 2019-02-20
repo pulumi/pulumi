@@ -59,8 +59,7 @@ interface ResourceResolverOperation {
  * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
  * will not be part of the resulting stack's state, as they are presumed to belong to another.
  */
-export function readResource(
-        res: Resource, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
+export function readResource(res: Resource, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
     const id: Input<ID> | undefined = opts.id;
     if (!id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
