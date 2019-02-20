@@ -70,14 +70,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
     const monitor: any = getMonitor();
 
-    // Get the ResourceResolverOperation for this resource.  Note: we grab the parent URN eagerly
-    // and we pass it in.  This is because resource calling into [readResource] will potentially
-    // update its URN immediately after calling us.  Because prepareResource performs async
-    // operations we may see the URN *post* update which is not what we want.  Indeed, this would
-    // cause cycles as urn is updated to to be dependent on children.  So we must grab the URN
-    // before there is any chance of that happening.
-    const resopAsync = prepareResource(
-        label, res, true, props, <CustomResourceOptions>opts);
+    const resopAsync = prepareResource(label, res, true, props, opts);
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
@@ -131,14 +124,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
     const monitor: any = getMonitor();
 
-    // Get the ResourceResolverOperation for this resource.  Note: we grab the parent URN eagerly
-    // and we pass it in.  This is because resource calling into [registerResource] will potentially
-    // update its URN immediately after calling us.  Because prepareResource performs async
-    // operations we may see the URN *post* update which is not what we want.  Indeed, this would
-    // cause cycles as urn is updated to to be dependent on children.  So we must grab the URN
-    // before there is any chance of that happening.
-    const resopAsync = prepareResource(
-        label, res, custom, props, <CustomResourceOptions>opts);
+    const resopAsync = prepareResource(label, res, custom, props, opts);
 
     // In order to present a useful stack trace if an error does occur, we preallocate potential
     // errors here. V8 captures a stack trace at the moment an Error is created and this stack
