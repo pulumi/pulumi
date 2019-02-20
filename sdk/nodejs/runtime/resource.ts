@@ -313,8 +313,10 @@ function getTransitivelyDependentResources(resources: Set<Resource>, thisResourc
         for (const resource of resources) {
             temp.add(resource);
 
-            for (const childResource of resource.__childResources) {
-                resources.add(childResource);
+            if (resource.__childResources) {
+                for (const childResource of resource.__childResources) {
+                    resources.add(childResource);
+                }
             }
         }
 

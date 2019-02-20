@@ -48,7 +48,7 @@ export abstract class Resource {
      * as well.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __childResources = new Set<Resource>();
+    /* @internal */ public __childResources: Set<Resource> | undefined;
 
     /**
      * When set to true, protect ensures this resource cannot be deleted.
@@ -105,6 +105,7 @@ export abstract class Resource {
             }
 
             this.__parentResource = opts.parent;
+            this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
             this.__parentResource.__childResources.add(this);
 
             if (opts.protect === undefined) {
