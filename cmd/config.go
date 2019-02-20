@@ -45,7 +45,7 @@ func newConfigCmd() *cobra.Command {
 		Use:   "config",
 		Short: "Manage configuration",
 		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
-			"'pulumi config set', to remove and existing value run 'pulumi config rm'. To get the value of\n" +
+			"'pulumi config set'. To remove and existing value run 'pulumi config rm'. To get the value of\n" +
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
