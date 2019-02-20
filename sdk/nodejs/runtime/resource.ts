@@ -69,7 +69,6 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     log.debug(`Reading resource: id=${id}, t=${t}, name=${name}`);
 
     const monitor: any = getMonitor();
-
     const resopAsync = prepareResource(label, res, true, props, opts);
 
     const preallocError = new Error();
@@ -123,7 +122,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
 
     const monitor: any = getMonitor();
-
     const resopAsync = prepareResource(label, res, custom, props, opts);
 
     // In order to present a useful stack trace if an error does occur, we preallocate potential
