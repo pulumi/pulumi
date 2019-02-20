@@ -277,24 +277,40 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         return isKnown ? value : unknownValue;
     }
 
+    if (Resource.isInstance(prop)) {
+        // Keep track of this resource as a dependency.
+        dependentResources.add(prop);
+    }
+
     if (CustomResource.isInstance(prop)) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: custom resource id`);
         }
 
-        dependentResources.add(prop);
         return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
     }
 
     if (ComponentResource.isInstance(prop)) {
+        // Component resources often can contain cycles in them.  For example, an awsinfra
+        // SecurityGroupRule can point a the awsinfra SecurityGroup, which in turn can point back to
+        // its rules through its `egressRules` and `ingressRules` properties.  If serializing out
+        // the `SecurityGroup` resource ends up trying to serialize out those properties, a deadlock
+        // will happen, due to waiting on the child, which is waiting on the parent.
+        //
+        // Practically, there is no need to actually serialize out a component.  It doesn't represent
+        // a real resource, nor does it have normal properties that need to be tracked for differences
+        // (since changes to its properties don't represent changes to resources in the real world).
+        //
+        // So, to avoid these problems, while allowing a flexible and simple programming model, we
+        // just serialize out the component as its urn.  This allows the component to be identified
+        // and tracked in a reasonable manner, while not causing us to compute or embed information
+        // about it that is not needed, and which can lead to deadlocks.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: component resource urnid`);
         }
 
-        // Keep track of this resource as a dependency.
-        dependentResources.add(prop);
-        return unknownValue;
+        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
     }
 
     if (prop instanceof Array) {
