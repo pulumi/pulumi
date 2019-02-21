@@ -273,7 +273,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // component resource, then it will end up depending on all the children of that component
     // resource as well.  That way, a parent acts as a "logical" collection of all those children
     // and will not be considered complete until all of the children are complete as well.
-    await getResourceURNs(getTransitivelyDependentResources(allDirectDependencies));
+    await getResourceURNs(getTransitivelyReferencedChildResources(allDirectDependencies));
 
     return {
         resolveURN: resolveURN!,
