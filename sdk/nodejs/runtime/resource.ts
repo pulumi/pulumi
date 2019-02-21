@@ -274,7 +274,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // component resource, then it will end up depending on all the children of that component
     // resource as well.  That way, a parent acts as a "logical" collection of all those children
     // and will not be considered complete until all of the children are complete as well.
-    await getResourceURNs(getTransitivelyDependentResources(allDirectDependencies, res));
+    await getResourceURNs(getTransitivelyDependentResources(allDirectDependencies));
 
     return {
         resolveURN: resolveURN!,
@@ -303,50 +303,23 @@ async function getResourceURNs(resources: Set<Resource>) {
     return result;
 }
 
-function getTransitivelyDependentResources(resources: Set<Resource>, thisResource: Resource) {
-    // keep iterating until we reach a fixed point.
-    while (true) {
-        const temp = new Set();
-
-        // Hit each resource, and then add all its children.
-        for (const resource of resources) {
-            temp.add(resource);
-
-            if (resource.__childResources) {
-                for (const childResource of resource.__childResources) {
-                    resources.add(childResource);
-                }
-            }
-        }
-
-        // If the size didn't increase, then we found no new resources.  Can stop now.
-        if (temp.size === resources.size) {
-            break;
-        }
-
-        resources = temp;
-    }
-
-    // Now, exclude any resources that have 'this resource' somewhere in their parent chain.
-    // If we attempted to wait on them, we'd get a deadlock as they wait to wait on us.
-    const final = new Set<Resource>();
-    for (const resource of resources) {
-        if (!isDescendentOf(resource, thisResource)) {
-            final.add(resource);
-        }
-    }
-
-    return final;
+function getTransitivelyDependentResources(resources: Set<Resource>) {
+    // Recursively walk the dependent resources through their children, adding them to the result set.
+    const result = new Set<Resource>();
+    addTransitivelyDependentResources(resources, result);
+    return result;
 }
 
-function isDescendentOf(resource: Resource, potentialAncestor: Resource) {
-    for (let current = resource; current; current = current.__parentResource!) {
-        if (current === potentialAncestor) {
-            return true;
+function addTransitivelyDependentResources(resources: Set<Resource> | undefined, result: Set<Resource>) {
+    if (resources) {
+        for (const resource of resources) {
+            if (!result.has(resource)) {
+                result.add(resource);
+
+                addTransitivelyDependentResources(resource.__childResources, result);
+            }
         }
     }
-
-    return false;
 }
 
 /**
