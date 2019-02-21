@@ -7,6 +7,7 @@
 - Fixed an issue where Python programs would occasionally fail during preview with errors about empty IDs being passed
   to resources. ([pulumi/pulumi#2450](https://github.com/pulumi/pulumi/issues/2450))
 - Return an error from `pulumi stack tag` commands when using the `--local` mode.
+- Simplify how Inputs/Outputs and resource data types are represented.
 
 ## 0.16.14 (Released January 31st, 2019)
 
