@@ -48,11 +48,11 @@ interface ResourceResolverOperation {
     providerRef: string | undefined;
     // All serialized properties, fully awaited, serialized, and ready to go.
     serializedProps: Record<string, any>;
-    // A set of URNs that this resource is transitively dependent upon.
-    allDependentResourceURNs: Set<URN>;
-    // Set of URNs that this resource is transitively dependent upon, keyed by the property that
-    // causes the dependency.  All urns in this map must exist in [allDependentResourceURNs]
-    propertyToDependentResourceURNs: Map<string, Set<URN>>;
+    // A set of URNs that this resource is directly dependent upon.
+    allDirectDependencyURNs: Set<URN>;
+    // Set of URNs that this resource is directly dependent upon, keyed by the property that
+    // causes the dependency.  All urns in this map must exist in [allDirectDependencyURNs]
+    propertyToDirectDependencyURNs: Map<string, Set<URN>>;
 }
 
 /**
@@ -85,7 +85,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setParent(resop.parentURN);
         req.setProvider(resop.providerRef);
         req.setProperties(gstruct.Struct.fromJavaScript(resop.serializedProps));
-        req.setDependenciesList(Array.from(resop.allDependentResourceURNs));
+        req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
@@ -141,11 +141,11 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setObject(gstruct.Struct.fromJavaScript(resop.serializedProps));
         req.setProtect(opts.protect);
         req.setProvider(resop.providerRef);
-        req.setDependenciesList(Array.from(resop.allDependentResourceURNs));
+        req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);
 
         const propertyDependencies = req.getPropertydependenciesMap();
-        for (const [key, resourceURNs] of resop.propertyToDependentResourceURNs) {
+        for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
             const deps = new resproto.RegisterResourceRequest.PropertyDependencies();
             deps.setUrnsList(Array.from(resourceURNs));
             propertyDependencies.set(key, deps);
@@ -233,11 +233,11 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
-    const explicitDependentResources = new Set(await gatherExplicitDependencies(opts.dependsOn));
+    const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-    const [serializedProps, propertyToDependentResources] = await serializeResourceProperties(label, props);
+    const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props);
 
     // Wait for the parent to complete.
     // If no parent was provided, parent to the root resource.
@@ -265,24 +265,24 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // the dependency graph and optimize operations accordingly.
 
     // The list of all dependencies (implicit or explicit).
-    const allDependentResources = new Set<Resource>(explicitDependentResources);
+    const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
 
-    const allDependentResourceURNs = await getURNs(explicitDependentResources);
-    const propertyToDependentResourceURNs = new Map<string, Set<URN>>();
+    const allDirectDependencyURNs = await getResourceURNs(explicitDirectDependencies);
+    const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
-    for (const [key, resources] of propertyToDependentResources) {
-        addAll(allDependentResources, resources);
+    for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
+        addAll(allDirectDependencies, directDependencies);
 
-        const urns = await getURNs(resources);
-        addAll(allDependentResourceURNs, urns);
-        propertyToDependentResourceURNs.set(key, urns);
+        const urns = await getResourceURNs(directDependencies);
+        addAll(allDirectDependencyURNs, urns);
+        propertyToDirectDependencyURNs.set(propertyName, urns);
     }
 
     // Now await all dependencies transitively.  i.e. if one resource depends on some other
     // component resource, then it will end up depending on all the children of that component
     // resource as well.  That way, a parent acts as a "logical" collection of all those children
     // and will not be considered complete until all of the children are complete as well.
-    await awaitAllTransitivelyDependentResources(allDependentResources, res);
+    await getResourceURNs(getTransitivelyDependentResources(allDirectDependencies, res));
 
     return {
         resolveURN: resolveURN!,
@@ -291,8 +291,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         serializedProps: serializedProps,
         parentURN: parentURN,
         providerRef: providerRef,
-        allDependentResourceURNs: allDependentResourceURNs,
-        propertyToDependentResourceURNs: propertyToDependentResourceURNs,
+        allDirectDependencyURNs: allDirectDependencyURNs,
+        propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
     };
 }
 
@@ -302,22 +302,13 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getURNs(resources: Set<Resource>) {
+async function getResourceURNs(resources: Set<Resource>) {
     const result = new Set<URN>();
     for (const resource of resources) {
         result.add(await resource.urn.promise());
     }
 
     return result;
-}
-
-async function awaitAllTransitivelyDependentResources(resources: Set<Resource>, thisResource: Resource) {
-    // first, expand the set of resources to everything transitively referenced.
-    const allResources = getTransitivelyDependentResources(resources, thisResource);
-
-    for (const resource of allResources) {
-        await resource.urn.promise();
-    }
 }
 
 function getTransitivelyDependentResources(resources: Set<Resource>, thisResource: Resource) {
