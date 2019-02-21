@@ -245,14 +245,6 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         ? await opts.parent.urn.promise()
         : await getRootResource();
 
-    // // Also, wait for any of our previous siblings to complete.
-    // // NOTE(cyrus): Do we really want to do this?  This is nice so that consumers don't have to
-    // // pass siblings in as dependencies of other children.  However, it limits our ability to
-    // // parallelize child resources of a component resource.
-    // if (opts.parent) {
-    //     await getTransitivelyDependendentURNs(opts.parent.__childResources, res);
-    // }
-
     let providerRef: string | undefined;
     if (custom && opts.provider) {
         const provider = opts.provider;
