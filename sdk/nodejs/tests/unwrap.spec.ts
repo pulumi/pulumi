@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { output, Output, Resource } from "../index";
+import { output, Input, Output } from "../index";
 import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
@@ -246,10 +246,9 @@ describe("unwrap", () => {
             [r1, r2]));
     });
 
-
     describe("type system", () => {
         it ("across promises", asyncTest(async () => {
-            var v = { a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } };
+            var v: Input<pojo1> = { a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } };
             var xOutput = output(v);
             var x = await xOutput.promise();
 
@@ -261,7 +260,7 @@ describe("unwrap", () => {
         }));
 
         it ("across nested promises", asyncTest(async () => {
-            var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: Promise.resolve(4) }) };
+            var v: Input<pojo1> = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: Promise.resolve(4) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
 
@@ -273,7 +272,7 @@ describe("unwrap", () => {
         }));
 
         it ("across outputs", asyncTest(async () => {
-            var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: [4, 5, 6] }) };
+            var v: Input<pojo2> = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: [4, 5, 6] }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
 
@@ -285,7 +284,7 @@ describe("unwrap", () => {
         }));
 
         it ("across nested outputs", asyncTest(async () => {
-            var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: output([4, 5, 6]) }) };
+            var v: Input<pojo2>  = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: output([4, 5, 6]) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
 
@@ -297,7 +296,7 @@ describe("unwrap", () => {
         }));
 
         it ("across promise and output", asyncTest(async () => {
-            var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: output([4, 5, 6]) }) };
+            var v: Input<pojo2>  = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: output([4, 5, 6]) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
 
@@ -309,7 +308,7 @@ describe("unwrap", () => {
         }));
 
         it ("across output and promise", asyncTest(async () => {
-            var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: Promise.resolve([4, 5, 6]) }) };
+            var v: Input<pojo2>  = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: Promise.resolve([4, 5, 6]) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
 
@@ -333,3 +332,6 @@ describe("unwrap", () => {
         [1, { a: [[1, 2, { b: true, c: null }, undefined]]}]
     ));
 });
+
+interface pojo1 { a: number, b: string, c: { d: true, e: number } }
+interface pojo2 { a: number, b: string, c: { d: true, e: number[] } }

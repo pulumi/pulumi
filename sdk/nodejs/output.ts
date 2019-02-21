@@ -56,6 +56,37 @@ export class Output<T> {
     /* @internal */ public readonly resources: () => Set<Resource>;
 
     /**
+     * Retrieves the underlying value of this dependency.
+     *
+     * This function is only callable in code that runs in the cloud post-deployment.  At this
+     * point all Output values will be known and can be safely retrieved. During pulumi deployment
+     * or preview execution this must not be called (and will throw).  This is because doing so
+     * would allow Output values to flow into Resources while losing the data that would allow
+     * the dependency graph to be changed.
+     */
+    public readonly get: () => T;
+
+    // Statics
+
+    /**
+     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
+     * values as necessary.
+     */
+    public static create<T>(val: Input<T>): Output<T>;
+    public static create<T>(val: Input<T> | undefined): Output<T | undefined>;
+    public static create<T>(val: Input<T | undefined>): Output<T | undefined> {
+        return output<T>(<any>val);
+    }
+
+    /**
+     * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance<T>(obj: any): obj is Output<T> {
+        return obj && obj.__pulumiOutput ? true : false;
+    }
+
+    /**
      * Transforms the data of the output with the provided func.  The result remains a
      * Output so that dependent resources can be properly tracked.
      *
@@ -81,38 +112,10 @@ export class Output<T> {
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.
      */
-    public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
-
-    /**
-     * Retrieves the underlying value of this dependency.
-     *
-     * This function is only callable in code that runs in the cloud post-deployment.  At this
-     * point all Output values will be known and can be safely retrieved. During pulumi deployment
-     * or preview execution this must not be called (and will throw).  This is because doing so
-     * would allow Output values to flow into Resources while losing the data that would allow
-     * the dependency graph to be changed.
-     */
-    public readonly get: () => T;
-
-    // Statics
-
-    /**
-     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
-     * values as necessary.
-     */
-    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
-    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
-    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
-        return output<T>(<any>val);
-    }
-
-    /**
-     * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
-     * multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static isInstance<T>(obj: any): obj is Output<T> {
-        return obj && obj.__pulumiOutput ? true : false;
-    }
+    public apply<U>(func: (t: T) => Promise<U>): Output<U>;
+    public apply<U>(func: (t: T) => Output<U>): Output<U>;
+    public apply<U>(func: (t: T) => U): Output<U>;
+    public apply<U>(func: (t: T) => U) { /* will override this in constructor */ return undefined!; }
 
     /* @internal */ public constructor(
             resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
@@ -140,7 +143,7 @@ export class Output<T> {
             // not known itself, then the result we return should not be known.
             const resultIsKnown = Promise.all([isKnown, innerIsKnown]).then(([k1, k2]) => k1 && k2);
 
-            return new Output<U>(resources, promise.then(async v => {
+            return new Output<U>(resources, <Promise<U>>promise.then(async v => {
                 try {
                     if (runtime.isDryRun()) {
                         // During previews only perform the apply if the engine was able to
@@ -208,9 +211,9 @@ To manipulate the value of this Output, use '.apply' instead.`);
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
  */
-export function output<T>(val: Input<T>): Output<Unwrap<T>>;
-export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
-export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+export function output<T>(val: Input<T>): Output<T>;
+export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
+export function output<T>(val: Input<T | undefined>): Output<T | undefined> {
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
@@ -265,15 +268,15 @@ function createSimpleOutput(val: any) {
  * d1 and d2.
  */
 // tslint:disable:max-line-length
-export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
-export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
-export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
-export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
-export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
-export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
-export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
-export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>]>;
-export function all<T>(ds: (Input<T> | undefined)[]): Output<Unwrap<T>[]>;
+export function all<T>(val: Record<string, Input<T>>): Output<Record<string, T>>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7]>;
+export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[T1, T2, T3, T4, T5, T6]>;
+export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[T1, T2, T3, T4, T5]>;
+export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[T1, T2, T3, T4]>;
+export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[T1, T2, T3]>;
+export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[T1, T2]>;
+export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
 export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));
@@ -281,7 +284,7 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
         const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
         const promisedArray = Promise.all(allOutputs.map(o => o.promise()));
 
-        return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown);
+        return new Output<T[]>(new Set<Resource>(resources), promisedArray, isKnown);
     } else {
         const keysAndOutputs = Object.keys(val).map(key => ({ key, value: output(val[key]) }));
         const allOutputs = keysAndOutputs.map(kvp => kvp.value);
@@ -289,13 +292,13 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
         const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
         const promisedObject = getPromisedObject(keysAndOutputs);
 
-        return new Output<Record<string, Unwrap<T>>>(new Set<Resource>(resources), promisedObject, isKnown);
+        return new Output<Record<string, T>>(new Set<Resource>(resources), promisedObject, isKnown);
     }
 }
 
 async function getPromisedObject<T>(
-        keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
-    const result: Record<string, Unwrap<T>> = {};
+        keysAndOutputs: { key: string, value: Output<T> }[]): Promise<Record<string, T>> {
+    const result: Record<string, T> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await kvp.value.promise();
     }
@@ -303,7 +306,7 @@ async function getPromisedObject<T>(
     return result;
 }
 
-function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[], Promise<boolean>] {
+function getResourcesAndIsKnown<T>(allOutputs: Output<T>[]): [Resource[], Promise<boolean>] {
     const allResources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
 
     // A merged output is known if all of its inputs are known.
@@ -316,7 +319,19 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[]
  * Input is a property input for a resource.  It may be a promptly available T, a promise
  * for one, or the output from a existing Resource.
  */
-export type Input<T> = T | Promise<T> | Output<T>;
+export type SimpleInput<T> = T | Promise<T> | Output<T>;
+
+export type Input<T> =
+    T extends boolean ? SimpleInput<boolean> :
+    T extends primitive ? SimpleInput<T> :
+    T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
+    T extends object ? SimpleInput<InputObject<T>> :
+    never;
+
+export interface ArrayOfInputs<T> extends Array<Input<T>> { }
+export type InputObject<T> = {
+    [P in keyof T]: Input<T[P]>;
+};
 
 /**
  * Inputs is a map of property name to property input, one for each resource

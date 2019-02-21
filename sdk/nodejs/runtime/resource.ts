@@ -278,7 +278,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
  * Gathers explicit dependency URNs from a list of Resources (possibly Promises and/or Outputs).
  */
 async function gatherExplicitDependencies(
-    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<URN[]> {
+    dependsOn: Input<Resource[]> | Input<Resource> | undefined): Promise<URN[]> {
 
     if (dependsOn) {
         if (Array.isArray(dependsOn)) {

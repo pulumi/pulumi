@@ -14,17 +14,17 @@
 
 import * as assert from "assert";
 import * as iterable from "../iterable";
-import { Output } from "../output";
+import { Input, Output } from "../output";
 import { asyncTest } from "./util";
 
 describe("iterable", () => {
     it("toMap does its job", asyncTest(async () => {
         interface Instance {
-            id: Output<string>;
-            privateIp: Output<string>;
+            id: string;
+            privateIp: string;
         }
 
-        const instances: Instance[] = [
+        const instances: Input<Instance[]> = [
             { id: Output.create("i-1234"), privateIp: Output.create("192.168.1.2") },
             { id: Output.create("i-5678"), privateIp: Output.create("192.168.1.5") },
         ];
@@ -37,11 +37,11 @@ describe("iterable", () => {
     }));
     it("groupBy does its job", asyncTest(async () => {
         interface Instance {
-            id: Output<string>;
-            availabilityZone: Output<string>;
+            id: string;
+            availabilityZone: string;
         }
 
-        const instances: Instance[] = [
+        const instances: Input<Instance[]> = [
             { id: Output.create("i-1234"), availabilityZone: Output.create("us-east-1a") },
             { id: Output.create("i-1538"), availabilityZone: Output.create("us-west-2c") },
             { id: Output.create("i-5678"), availabilityZone: Output.create("us-east-1a") },

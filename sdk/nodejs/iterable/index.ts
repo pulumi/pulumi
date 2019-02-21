@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input, Output } from "../output";
+import { all, Input, Output } from "../output";
 
 /**
  * toObject takes an array of T values, and a selector that produces key/value pairs from those inputs,
@@ -28,16 +28,16 @@ import { Input, Output } from "../output";
  *
  */
 export function toObject<T, V>(
-        iter: Input<Input<T>[]>, selector: (t: T) => Input<[Input<string>, Input<V>]>): Output<{[key: string]: V}> {
-    return Output.create(iter).apply(elems => {
-        const array: Input<[Input<string>, Input<V>]>[] = [];
+        iter: Input<T[]>, selector: (t: T) => Input<[string, V]>): Output<{[key: string]: V}> {
+    return Output.create<T[]>(iter).apply(elems => {
+        const array: Input<[string, V]>[] = [];
         for (const e of elems) {
-            array.push(selector(<any>e));
+            array.push(selector(e));
         }
-        return Output.create(array).apply(kvps => {
+        return all<[string, V]>(array).apply(kvps => {
             const obj: {[key: string]: V} = {};
             for (const kvp of kvps) {
-                obj[<any>kvp[0]] = <any>kvp[1];
+                obj[kvp[0]] = kvp[1];
             }
             return obj;
         });
@@ -59,21 +59,21 @@ export function toObject<T, V>(
  *
  */
 export function groupBy<T, V>(
-        iter: Input<Input<T>[]>, selector: (t: T) => Input<[Input<string>, Input<V>]>): Output<{[key: string]: V[]}> {
-    return Output.create(iter).apply(elems => {
-        const array: Input<[Input<string>, Input<V>]>[] = [];
+        iter: Input<T[]>, selector: (t: T) => Input<[string, V]>): Output<{[key: string]: V[]}> {
+    return Output.create<T[]>(iter).apply(elems => {
+        const array: Input<[string, V]>[] = [];
         for (const e of elems) {
             array.push(selector(<any>e));
         }
-        return Output.create(array).apply(kvps => {
+        return all<[string, V]>(array).apply(kvps => {
             const obj: {[key: string]: V[]} = {};
             for (const kvp of kvps) {
-                let r = obj[<any>kvp[0]];
+                let r = obj[kvp[0]];
                 if (!r) {
                     r = [];
-                    obj[<any>kvp[0]] = r;
+                    obj[kvp[0]] = r;
                 }
-                r.push(<any>kvp[1]);
+                r.push(kvp[1]);
             }
             return obj;
         });
