@@ -277,17 +277,13 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         return isKnown ? value : unknownValue;
     }
 
-    if (Resource.isInstance(prop)) {
-        // Keep track of this resource as a dependency.
-        dependentResources.add(prop);
-    }
-
     if (CustomResource.isInstance(prop)) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: custom resource id`);
         }
 
+        dependentResources.add(prop);
         return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
     }
 
