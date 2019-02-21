@@ -261,25 +261,28 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef = `${providerURN}::${providerID}`;
     }
 
-    // Now, walk all the dependent resources we found and await their completion (by awaiting their
-    // URNs).  Also, collect those URNs for the engine so that it can understand the dependency
-    // graph and optimize operations accordingly.
-    //
-    // Note: we transitively walk resource dependencies here.  i.e. if one resource depends on some
-    // other component resource, then it will end up depending on all the children of that component
+    // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
+    // the dependency graph and optimize operations accordingly.
+
+    // The list of all dependencies (implicit or explicit).
+    const allDependentResources = new Set<Resource>(explicitDependentResources);
+
+    const allDependentResourceURNs = await getURNs(explicitDependentResources);
+    const propertyToDependentResourceURNs = new Map<string, Set<URN>>();
+
+    for (const [key, resources] of propertyToDependentResources) {
+        addAll(allDependentResources, resources);
+
+        const urns = await getURNs(resources);
+        addAll(allDependentResourceURNs, urns);
+        propertyToDependentResourceURNs.set(key, urns);
+    }
+
+    // Now await all dependencies transitively.  i.e. if one resource depends on some other
+    // component resource, then it will end up depending on all the children of that component
     // resource as well.  That way, a parent acts as a "logical" collection of all those children
     // and will not be considered complete until all of the children are complete as well.
-    const allDependentResourceURNs = await getTransitivelyDependentURNs(explicitDependentResources, res);
-
-    const propertyToDependentResourceURNs = new Map<string, Set<URN>>();
-    for (const [key, resources] of propertyToDependentResources) {
-        const urns = await getTransitivelyDependentURNs(resources, res);
-        propertyToDependentResourceURNs.set(key, urns);
-
-        for (const urn of urns) {
-            allDependentResourceURNs.add(urn);
-        }
-    }
+    await awaitAllTransitivelyDependentResources(allDependentResources, res);
 
     return {
         resolveURN: resolveURN!,
@@ -293,16 +296,28 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     };
 }
 
-async function getTransitivelyDependentURNs(resources: Set<Resource>, thisResource: Resource) {
-    // first, expand the set of resources to everything transitively referenced.
-    const allResources = getTransitivelyDependentResources(resources, thisResource);
+function addAll<T>(to: Set<T>, from: Set<T>) {
+    for (const val of from) {
+        to.add(val);
+    }
+}
 
-    const result = new Set<string>();
-    for (const resource of allResources) {
+async function getURNs(resources: Set<Resource>) {
+    const result = new Set<URN>();
+    for (const resource of resources) {
         result.add(await resource.urn.promise());
     }
 
     return result;
+}
+
+async function awaitAllTransitivelyDependentResources(resources: Set<Resource>, thisResource: Resource) {
+    // first, expand the set of resources to everything transitively referenced.
+    const allResources = getTransitivelyDependentResources(resources, thisResource);
+
+    for (const resource of allResources) {
+        await resource.urn.promise();
+    }
 }
 
 function getTransitivelyDependentResources(resources: Set<Resource>, thisResource: Resource) {
