@@ -1240,7 +1240,7 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 }
 
 // GetStackResourceOutputs returns the outputs of the stack with the given name.
-func (c httpstateBackendClient) GetStackResourceOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+func (c httpstateBackendClient) GetStackResourceOutputs(ctx context.Context, name, typ string) (resource.PropertyMap, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
 		return nil, err
@@ -1258,7 +1258,9 @@ func (c httpstateBackendClient) GetStackResourceOutputs(ctx context.Context, nam
 	}
 	pm := resource.PropertyMap{}
 	for _, r := range snap.Resources {
-		pm[resource.PropertyKey(r.ID)] = resource.NewObjectProperty(r.Outputs)
+		if typ == "" || string(r.Type) == typ {
+			pm[resource.PropertyKey(r.ID)] = resource.NewObjectProperty(r.Outputs)
+		}
 	}
 	return pm, nil
 }

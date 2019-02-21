@@ -35,6 +35,8 @@
 
         "log/index.ts",
 
+        "query/index.ts",
+
         "runtime/index.ts",
         "runtime/closure/v8.ts",
         "runtime/closure/createClosure.ts",
@@ -44,6 +46,7 @@
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
+        "runtime/query.ts",
         "runtime/resource.ts",
         "runtime/rpc.ts",
         "runtime/settings.ts",
