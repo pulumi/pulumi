@@ -302,7 +302,11 @@ async function getResourceURNs(resources: Set<Resource>) {
     return result;
 }
 
-function getTransitivelyDependentResources(resources: Set<Resource>) {
+/**
+ * Recursively walk the resources passed in, returning them and all resources reachable from
+ * [Resource.__childResources]
+ */
+function getTransitivelyReferencedChildResources(resources: Set<Resource>) {
     // Recursively walk the dependent resources through their children, adding them to the result set.
     const result = new Set<Resource>();
     addTransitivelyDependentResources(resources, result);
