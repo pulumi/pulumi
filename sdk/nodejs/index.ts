@@ -30,8 +30,9 @@ import * as dynamic from "./dynamic";
 import * as iterable from "./iterable";
 import * as log from "./log";
 import * as policy from "./policy";
+import * as query from "./query";
 import * as runtime from "./runtime";
-export { asset, dynamic, iterable, log, policy, runtime };
+export { asset, dynamic, iterable, log, policy, query, runtime };
 
 // @pulumi is a deployment-only module.  If someone tries to capture it, and we fail for some reason
 // we want to give a good message about what the problem likely is.  Note that capturing a

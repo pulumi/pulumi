@@ -191,11 +191,17 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 	contract.Assert(ok)
 	contract.Assert(name.IsString())
 
+	var typ string
+	if t, hasType := inputs["type"]; hasType {
+		contract.Assert(t.IsString())
+		typ = t.StringValue()
+	}
+
 	if p.backendClient == nil {
 		return nil, errors.New("no backend client is available")
 	}
 
-	outputs, err := p.backendClient.GetStackResourceOutputs(p.context, name.StringValue())
+	outputs, err := p.backendClient.GetStackResourceOutputs(p.context, name.StringValue(), typ)
 	if err != nil {
 		return nil, err
 	}

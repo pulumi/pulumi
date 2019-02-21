@@ -12,19 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export {
-    serializeFunctionAsync,
-    serializeFunction,
-    SerializedFunction,
-    SerializeFunctionArgs,
-} from "./closure/serializeClosure";
+import * as rxjs from "rxjs";
 
-export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
+export interface WatchContext<TArgs> {
+    list: (args: TArgs) => rxjs.Observable<any>;
+}
 
-export * from "./config";
-export * from "./invoke";
-export * from "./query";
-export * from "./resource";
-export * from "./rpc";
-export * from "./settings";
-export * from "./stack";
+export interface ListTypeArgs {
+    type: string;
+}
+
+export interface ListArgs extends ListTypeArgs {
+    stack?: string;
+}
+
+export interface ListContext {
+    // TODO: replace Observable with synchronous query model.
+
+    list: (args: ListArgs) => rxjs.Observable<any>;
+}

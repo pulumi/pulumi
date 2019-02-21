@@ -36,8 +36,9 @@ type BackendClient interface {
 	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
 
-	// GetStackResourceOutputs returns the resource outputs (if any) for the named stack or an error if the stack cannot be found.
-	GetStackResourceOutputs(ctx context.Context, stackName string) (resource.PropertyMap, error)
+	// GetStackResourceOutputs returns the resource outputs (if any) for the named stack or an
+	// error if the stack cannot be found.
+	GetStackResourceOutputs(ctx context.Context, stackName, typ string) (resource.PropertyMap, error)
 }
 
 // Options controls the planning and deployment process.

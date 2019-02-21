@@ -22,10 +22,17 @@ import (
 
 // BackendClient provides a simple implementation of deploy.BackendClient that defers to a function value.
 type BackendClient struct {
-	GetStackOutputsF func(ctx context.Context, name string) (resource.PropertyMap, error)
+	GetStackOutputsF         func(ctx context.Context, name string) (resource.PropertyMap, error)
+	GetStackResourceOutputsF func(ctx context.Context, name, typ string) (resource.PropertyMap, error)
 }
 
 // GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
 	return b.GetStackOutputsF(ctx, name)
+}
+
+// GetStackResourceOutputs returns the outputs of the stack with the given name.
+func (b *BackendClient) GetStackResourceOutputs(
+	ctx context.Context, name, typ string) (resource.PropertyMap, error) {
+	return b.GetStackResourceOutputsF(ctx, name, typ)
 }
