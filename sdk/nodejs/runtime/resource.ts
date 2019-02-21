@@ -16,7 +16,7 @@ import * as grpc from "grpc";
 import * as log from "../log";
 import { Input, Inputs, Output } from "../output";
 import { CustomResourceOptions, ID, ProviderResource, Resource,
-         ResourceOptions, URN } from "../resource";
+         ResourceOptions, URN, CustomResource } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 import {
@@ -194,7 +194,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
  * properties.
  */
 async function prepareResource(label: string, res: Resource, custom: boolean,
-                               props: Inputs, opts: CustomResourceOptions): Promise<ResourceResolverOperation> {
+                               props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
 
     // Simply initialize the URN property and get prepared to resolve it later on.
     // Note: a resource urn will always get a value, and thus the output property
@@ -246,8 +246,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         : await getRootResource();
 
     let providerRef: string | undefined;
-    if (custom && opts.provider) {
-        const provider = opts.provider;
+    if (custom && (<CustomResourceOptions>opts).provider) {
+        const provider = (<CustomResourceOptions>opts).provider!;
         const providerURN = await provider.urn.promise();
         const providerID = await provider.id.promise() || unknownValue;
         providerRef = `${providerURN}::${providerID}`;
@@ -308,7 +308,7 @@ function getTransitivelyDependentResources(resources: Set<Resource>, thisResourc
     while (true) {
         const temp = new Set();
 
-        // Hit each resource, and then add all the resources it depends on.
+        // Hit each resource, and then add all its children.
         for (const resource of resources) {
             temp.add(resource);
 
