@@ -322,7 +322,6 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<T>[]): [Resource[], Promis
  * for one, or the output from a existing Resource.
  */
 export type SimpleInput<T> = Promise<T> | Output<T> | T;
-// type primitive2 = Function | string | number | undefined | null;
 
 export type Input<T> =
     // Note: we handle boolean's specially because of how TS treats `boolean` as exactly the same as
