@@ -325,6 +325,10 @@ export type SimpleInput<T> = Promise<T> | Output<T> | T;
 // type primitive2 = Function | string | number | undefined | null;
 
 export type Input<T> =
+    // Note: we handle boolean's specially because of how TS treats `boolean` as exactly the same as
+    // `true | false`.  If we don't, we end up expanding things out such that you get `Input<boolean>`
+    // the same as `Promise<true> | Promise<false> | ...` instead of `Promise<boolean> | ...`.  The
+    // two are not compatible and can lead to cryptic errors.
     T extends boolean ? SimpleInput<boolean> :
     T extends primitive ? SimpleInput<T> :
     T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
