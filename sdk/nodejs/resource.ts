@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { ResourceError, RunError } from "./errors";
-import { Input, Inputs, Output } from "./output";
+import { all, Input, Inputs, Output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 
 export type ID = string;  // a provider-assigned ID.
@@ -35,10 +35,25 @@ export abstract class Resource {
      */
     public readonly urn: Output<URN>;
 
+
+    /**
+     * The optional parent of this resource.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public readonly __parentResource: Resource | undefined;
+
+    /**
+     * The child resources of this resource.  Used so that if any resource wants to wait on this
+     * resource being complete, they will logically wait on all our child resources being complete
+     * as well.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public __childResources: Set<Resource> | undefined;
+
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
-     // tslint:disable-next-line:variable-name
+    // tslint:disable-next-line:variable-name
     /* @internal */ private readonly __protect: boolean;
 
     /**
@@ -88,6 +103,10 @@ export abstract class Resource {
             if (!Resource.isInstance(opts.parent)) {
                 throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
             }
+
+            this.__parentResource = opts.parent;
+            this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
+            this.__parentResource.__childResources.add(this);
 
             if (opts.protect === undefined) {
                 opts.protect = opts.parent.__protect;

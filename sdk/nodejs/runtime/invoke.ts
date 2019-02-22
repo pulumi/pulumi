@@ -42,7 +42,7 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
     const done = rpcKeepAlive();
     try {
         const obj = gstruct.Struct.fromJavaScript(
-            await serializeProperties(`invoke:${tok}`, props, {}));
+            await serializeProperties(`invoke:${tok}`, props));
         log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
         // Fetch the monitor and make an RPC request.

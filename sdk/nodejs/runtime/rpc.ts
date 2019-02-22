@@ -70,46 +70,46 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 }
 
 /**
- * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for properties with
- * keys that match the provided filter, creating a reasonable POJO object that can be remoted over to
- * registerResource.
+ * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for
+ * properties with keys that match the provided filter, creating a reasonable POJO object that can
+ * be remoted over to registerResource.
  */
 async function serializeFilteredProperties(
-    label: string, props: Inputs, acceptKey: (k: string) => boolean,
-    propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
+        label: string, props: Inputs, acceptKey: (k: string) => boolean): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
+
+    const propertyToDependentResources = new Map<string, Set<Resource>>();
 
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
-            const deps: Resource[] = [];
-            const v = await serializeProperty(`${label}.${k}`, props[k], deps);
+            const dependentResources = new Set<Resource>();
+            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
             if (v !== undefined) {
                 result[k] = v;
-                propertyDependencies[k] = deps;
+                propertyToDependentResources.set(k, dependentResources);
             }
         }
     }
 
-    return result;
+    return [result, propertyToDependentResources];
 }
 
 /**
  * serializeResourceProperties walks the props object passed in, awaiting all interior promises besides those for `id`
  * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
-export async function serializeResourceProperties(
-        label: string, props: Inputs, propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", propertyDependencies);
+export async function serializeResourceProperties(label: string, props: Inputs) {
+    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn");
 }
 
 /**
  * serializeProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
  * POJO object that can be remoted over to registerResource.
  */
-export async function serializeProperties(
-    label: string, props: Inputs, propertyDependencies: Record<string, Resource[]>): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => true, propertyDependencies);
+export async function serializeProperties(label: string, props: Inputs) {
+    const [result] = await serializeFilteredProperties(label, props, _ => true);
+    return result;
 }
 
 /**
@@ -226,7 +226,7 @@ export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
+export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
     if (prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
@@ -265,7 +265,9 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
-        dependentResources.push(...prop.resources());
+        for (const resource of prop.resources()) {
+            dependentResources.add(resource);
+        }
 
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
@@ -281,7 +283,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             log.debug(`Serialize property [${ctx}]: custom resource id`);
         }
 
-        dependentResources.push(prop);
+        dependentResources.add(prop);
         return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
     }
 
