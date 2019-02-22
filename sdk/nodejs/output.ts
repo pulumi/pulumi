@@ -323,7 +323,12 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<T>[]): [Resource[], Promis
  */
 export type SimpleInput<T> = Promise<T> | Output<T> | T;
 
-export type Input<T> =
+export type Input<T> = InputIfUnion<T> | InputIfNotUnion<T>;
+
+type InputIfUnion<T> =
+    [T] extends [infer U] ? SimpleInput<U> : never;
+
+type InputIfNotUnion<T> =
     // Note: we handle boolean's specially because of how TS treats `boolean` as exactly the same as
     // `true | false`.  If we don't, we end up expanding things out such that you get `Input<boolean>`
     // the same as `Promise<true> | Promise<false> | ...` instead of `Promise<boolean> | ...`.  The
@@ -334,6 +339,42 @@ export type Input<T> =
     T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
     T extends object ? SimpleInput<InputObject<T>> :
     never;
+
+interface ImageArgs {
+    build: string | DockerBuild;
+}
+
+interface DockerBuild {
+    context?: string;
+    dockerfile?: string;
+    args?: Record<string, string>;
+}
+
+declare var pathOrBuild: Input<string | DockerBuild>;
+declare var repositoryUrl: Input<string>;
+declare var whatever: Input<number[]>;
+
+all([pathOrBuild, repositoryUrl]).apply(([a, b]) => {});
+
+// export interface ServiceLoadBalancer {
+//     containerName: Input<string>;
+//     containerPort: Input<number>;
+//     elbName?: Input<string>;
+//     targetGroupArn?: Input<string>;
+// }
+
+// export interface ServiceLoadBalancerProvider {
+//     serviceLoadBalancer(name: string): Input<ServiceLoadBalancer>;
+// }
+
+// export interface EC2ServiceArgs {
+//     loadBalancers?: (ServiceLoadBalancer | ServiceLoadBalancerProvider)[];
+// }
+
+// declare var v: Input<EC2ServiceArgs>;
+// var v2 = output(v);
+// v2.get().
+
 
 export interface ArrayOfInputs<T> extends Array<Input<T>> { }
 export type InputObject<T> = {
