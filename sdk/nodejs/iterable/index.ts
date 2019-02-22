@@ -34,13 +34,15 @@ export function toObject<T, V>(
         for (const e of elems) {
             array.push(selector(e));
         }
-        return all<[string, V]>(array).apply(kvps => {
+        const result = all<[string, V]>(array).apply(kvps => {
             const obj: {[key: string]: V} = {};
             for (const kvp of kvps) {
                 obj[kvp[0]] = kvp[1];
             }
             return obj;
         });
+
+        return result;
     });
 }
 

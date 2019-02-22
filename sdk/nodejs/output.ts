@@ -112,10 +112,10 @@ export class Output<T> {
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.
      */
-    public apply<U>(func: (t: T) => Promise<U>): Output<U>;
-    public apply<U>(func: (t: T) => Output<U>): Output<U>;
-    public apply<U>(func: (t: T) => U): Output<U>;
-    public apply<U>(func: (t: T) => U) { /* will override this in constructor */ return undefined!; }
+    // public apply<U>(func: (t: T) => Promise<U>): Output<U>;
+    // public apply<U>(func: (t: T) => Output<U>): Output<U>;
+    // public apply<U>(func: (t: T) => U): Output<U>;
+    public apply<U>(func: (t: T) => SimpleInput<U>): Output<U> { /* will override this in constructor */ return undefined!; }
 
     /* @internal */ public constructor(
             resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
@@ -132,7 +132,7 @@ export class Output<T> {
 
         this.promise = () => promise;
 
-        this.apply = <U>(func: (t: T) => Input<U>) => {
+        this.apply = <U>(func: (t: T) => SimpleInput<U>) => {
             let innerIsKnownResolve: (val: boolean) => void;
             const innerIsKnown = new Promise<boolean>(resolve => {
                 innerIsKnownResolve = resolve;
@@ -211,8 +211,8 @@ To manipulate the value of this Output, use '.apply' instead.`);
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
  */
-export function output(val: Input<boolean>): Output<boolean>;
-export function output(val: Input<boolean> | undefined): Output<boolean | undefined>;
+// export function output(val: Input<boolean>): Output<boolean>;
+// export function output(val: Input<boolean> | undefined): Output<boolean | undefined>;
 export function output<T>(val: Input<T>): Output<T>;
 export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
 export function output<T>(val: Input<T | undefined>): Output<T | undefined> {
@@ -234,7 +234,8 @@ export function output<T>(val: Input<T | undefined>): Output<T | undefined> {
         return <any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true)).apply(output);
     }
     else if (Output.isInstance(val)) {
-        return <any>val.apply(output);
+        const op = <Output<any>>val;
+        return <any>op.apply(output);
     }
     else if (val instanceof Array) {
         return <any>all(val.map(output));
@@ -321,24 +322,31 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<T>[]): [Resource[], Promis
  * Input is a property input for a resource.  It may be a promptly available T, a promise
  * for one, or the output from a existing Resource.
  */
-export type SimpleInput<T> = Promise<T> | Output<T> | T;
-
-export type Input<T> = InputIfUnion<T> | InputIfNotUnion<T>;
-
-type InputIfUnion<T> =
-    [T] extends [infer U] ? SimpleInput<T> : never;
-
-type InputIfNotUnion<T> =
-    // Note: we handle boolean's specially because of how TS treats `boolean` as exactly the same as
-    // `true | false`.  If we don't, we end up expanding things out such that you get `Input<boolean>`
-    // the same as `Promise<true> | Promise<false> | ...` instead of `Promise<boolean> | ...`.  The
-    // two are not compatible and can lead to cryptic errors.
-    T extends boolean ? SimpleInput<boolean> :
+export type Input<T> =
     T extends Function ? T :
+    T extends boolean ? SimpleInput<boolean> :
     T extends primitive ? SimpleInput<T> :
-    T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
-    T extends object ? SimpleInput<InputObject<T>> :
-    never;
+    T extends Array<infer U> ? ArrayOfInputs<U> | SimpleInput<T> :
+    T extends object ? SimpleInput<InputObject<T>> : never;
+
+type SimpleInput<T> = Output<T> | Promise<T> | T;
+
+// export type Input<T> = InputIfUnion<T> | InputIfNotUnion<T>;
+
+// type InputIfUnion<T> =
+//     [T] extends [infer U] ? SimpleInput<U> : never;
+
+// type InputPrime<T> =
+//     // // Note: we handle boolean's specially because of how TS treats `boolean` as exactly the same as
+//     // // `true | false`.  If we don't, we end up expanding things out such that you get `Input<boolean>`
+//     // // the same as `Promise<true> | Promise<false> | ...` instead of `Promise<boolean> | ...`.  The
+//     // // two are not compatible and can lead to cryptic errors.
+//     // T extends boolean ? SimpleInput<boolean> :
+//     // T extends Function ? T :
+//     // T extends primitive ? SimpleInput<T> :
+//     T extends Array<infer U> ? ArrayOfInputs<U> :
+//     T extends object ? InputObject<T> :
+//     never;
 
 interface ImageArgs {
     build: string | DockerBuild;
@@ -354,6 +362,8 @@ interface DockerBuild {
 // // pathOrBuild = output({ context: Promise.resolve("") });
 // declare var repositoryUrl: Input<string>;
 // declare var whatever: Input<number[]>;
+
+// all([repositoryUrl, whatever]);
 
 // all([pathOrBuild, repositoryUrl]).apply(([a, b]) => {});
 
@@ -374,7 +384,7 @@ interface DockerBuild {
 
 // declare var v: Input<EC2ServiceArgs>;
 // var v2 = output(v);
-// v2.get().
+// v2.get()
 
 
 export interface ArrayOfInputs<T> extends Array<Input<T>> { }
@@ -383,7 +393,7 @@ export type InputObject<T> = {
 };
 
 // interface pojo { a: boolean, b: boolean }
-// var ip2: Input<pojo> = { a: true, b: Promise.resolve(true) };
+// var ip2: Input<pojo> = Promise.resolve({ a: true, b: Promise.resolve(true) });
 
 // declare var bInput: Input<boolean>;
 // output(bInput);
