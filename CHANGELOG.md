@@ -7,6 +7,10 @@
 - Fixed an issue where Python programs would occasionally fail during preview with errors about empty IDs being passed
   to resources. ([pulumi/pulumi#2450](https://github.com/pulumi/pulumi/issues/2450))
 - Return an error from `pulumi stack tag` commands when using the `--local` mode.
+- Depending on a Resource will now depend on all other Resource's parented by that Resource.
+  This will help out the programming model for Component Resources as your consumers can just
+  depend on a Component and have that automatically depend on all the child Resources created
+  by that Component.
 
 ## 0.16.14 (Released January 31st, 2019)
 
