@@ -211,9 +211,10 @@ To manipulate the value of this Output, use '.apply' instead.`);
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
  */
-export function output<T>(val: Input<T>): Output<T>;
-export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
-export function output<T>(val: Input<T | undefined>): Output<T | undefined> {
+export function output<T>(val: Input<T>): Output<T>
+// export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
+// export function output<T>(val: Input<T | undefined>): Output<T | undefined>
+{
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
@@ -277,7 +278,7 @@ export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | 
 export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[T1, T2, T3]>;
 export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[T1, T2]>;
 export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
-export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
+export function all<T>(val: any): Output<any> {
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));
 
@@ -319,10 +320,11 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<T>[]): [Resource[], Promis
  * Input is a property input for a resource.  It may be a promptly available T, a promise
  * for one, or the output from a existing Resource.
  */
-export type SimpleInput<T> = T | Promise<T> | Output<T>;
+export type SimpleInput<T> = Promise<T> | Output<T> | T;
+// type primitive2 = Function | string | number | undefined | null;
 
 export type Input<T> =
-    T extends boolean ? SimpleInput<boolean> :
+    [T] extends [boolean] ? SimpleInput<boolean> :
     T extends primitive ? SimpleInput<T> :
     T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
     T extends object ? SimpleInput<InputObject<T>> :
