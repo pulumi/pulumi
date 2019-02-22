@@ -326,7 +326,7 @@ export type SimpleInput<T> = Promise<T> | Output<T> | T;
 export type Input<T> = InputIfUnion<T> | InputIfNotUnion<T>;
 
 type InputIfUnion<T> =
-    [T] extends [infer U] ? SimpleInput<U> : never;
+    [T] extends [infer U] ? SimpleInput<T> : never;
 
 type InputIfNotUnion<T> =
     // Note: we handle boolean's specially because of how TS treats `boolean` as exactly the same as
@@ -340,21 +340,21 @@ type InputIfNotUnion<T> =
     T extends object ? SimpleInput<InputObject<T>> :
     never;
 
-// interface ImageArgs {
-//     build: string | DockerBuild;
-// }
+interface ImageArgs {
+    build: string | DockerBuild;
+}
 
-// interface DockerBuild {
-//     context?: string;
-//     dockerfile?: string;
-//     args?: Record<string, string>;
-// }
+interface DockerBuild {
+    context?: string;
+    dockerfile?: string;
+    args?: Record<string, string>;
+}
 
-// declare var pathOrBuild: Input<string | DockerBuild>;
-// declare var repositoryUrl: Input<string>;
-// declare var whatever: Input<number[]>;
+declare var pathOrBuild: Input<string | DockerBuild>;
+declare var repositoryUrl: Input<string>;
+declare var whatever: Input<number[]>;
 
-// all([pathOrBuild, repositoryUrl]).apply(([a, b]) => {});
+all([pathOrBuild, repositoryUrl]).apply(([a, b]) => {});
 
 // export interface ServiceLoadBalancer {
 //     containerName: Input<string>;
