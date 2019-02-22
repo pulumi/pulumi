@@ -329,6 +329,7 @@ export type Input<T> =
     // the same as `Promise<true> | Promise<false> | ...` instead of `Promise<boolean> | ...`.  The
     // two are not compatible and can lead to cryptic errors.
     T extends boolean ? SimpleInput<boolean> :
+    T extends Function ? T :
     T extends primitive ? SimpleInput<T> :
     T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
     T extends object ? SimpleInput<InputObject<T>> :
