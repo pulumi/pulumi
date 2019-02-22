@@ -56,37 +56,6 @@ export class Output<T> {
     /* @internal */ public readonly resources: () => Set<Resource>;
 
     /**
-     * Retrieves the underlying value of this dependency.
-     *
-     * This function is only callable in code that runs in the cloud post-deployment.  At this
-     * point all Output values will be known and can be safely retrieved. During pulumi deployment
-     * or preview execution this must not be called (and will throw).  This is because doing so
-     * would allow Output values to flow into Resources while losing the data that would allow
-     * the dependency graph to be changed.
-     */
-    public readonly get: () => T;
-
-    // Statics
-
-    /**
-     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
-     * values as necessary.
-     */
-    public static create<T>(val: Input<T>): Output<T>;
-    public static create<T>(val: Input<T> | undefined): Output<T | undefined>;
-    public static create<T>(val: Input<T | undefined>): Output<T | undefined> {
-        return output<T>(<any>val);
-    }
-
-    /**
-     * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
-     * multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static isInstance<T>(obj: any): obj is Output<T> {
-        return obj && obj.__pulumiOutput ? true : false;
-    }
-
-    /**
      * Transforms the data of the output with the provided func.  The result remains a
      * Output so that dependent resources can be properly tracked.
      *
@@ -112,10 +81,38 @@ export class Output<T> {
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.
      */
-    // public apply<U>(func: (t: T) => Promise<U>): Output<U>;
-    // public apply<U>(func: (t: T) => Output<U>): Output<U>;
-    // public apply<U>(func: (t: T) => U): Output<U>;
-    public apply<U>(func: (t: T) => SimpleInput<U>): Output<U> { /* will override this in constructor */ return undefined!; }
+    public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
+
+    /**
+     * Retrieves the underlying value of this dependency.
+     *
+     * This function is only callable in code that runs in the cloud post-deployment.  At this
+     * point all Output values will be known and can be safely retrieved. During pulumi deployment
+     * or preview execution this must not be called (and will throw).  This is because doing so
+     * would allow Output values to flow into Resources while losing the data that would allow
+     * the dependency graph to be changed.
+     */
+    public readonly get: () => T;
+
+    // Statics
+
+    /**
+     * create takes any Input value and converts it into an Output, deeply unwrapping nested Input
+     * values as necessary.
+     */
+    public static create<T>(val: Input<T>): Output<Unwrap<T>>;
+    public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+    public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+        return output<T>(<any>val);
+    }
+
+    /**
+     * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance<T>(obj: any): obj is Output<T> {
+        return obj && obj.__pulumiOutput ? true : false;
+    }
 
     /* @internal */ public constructor(
             resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
@@ -132,7 +129,7 @@ export class Output<T> {
 
         this.promise = () => promise;
 
-        this.apply = <U>(func: (t: T) => SimpleInput<U>) => {
+        this.apply = <U>(func: (t: T) => Input<U>) => {
             let innerIsKnownResolve: (val: boolean) => void;
             const innerIsKnown = new Promise<boolean>(resolve => {
                 innerIsKnownResolve = resolve;
@@ -143,7 +140,7 @@ export class Output<T> {
             // not known itself, then the result we return should not be known.
             const resultIsKnown = Promise.all([isKnown, innerIsKnown]).then(([k1, k2]) => k1 && k2);
 
-            return new Output<U>(resources, <Promise<U>>promise.then(async v => {
+            return new Output<U>(resources, promise.then(async v => {
                 try {
                     if (runtime.isDryRun()) {
                         // During previews only perform the apply if the engine was able to
@@ -211,11 +208,9 @@ To manipulate the value of this Output, use '.apply' instead.`);
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
  */
-// export function output(val: Input<boolean>): Output<boolean>;
-// export function output(val: Input<boolean> | undefined): Output<boolean | undefined>;
-export function output<T>(val: Input<T>): Output<T>;
-export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
-export function output<T>(val: Input<T | undefined>): Output<T | undefined> {
+export function output<T>(val: Input<T>): Output<Unwrap<T>>;
+export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
@@ -234,8 +229,7 @@ export function output<T>(val: Input<T | undefined>): Output<T | undefined> {
         return <any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true)).apply(output);
     }
     else if (Output.isInstance(val)) {
-        const op = <Output<any>>val;
-        return <any>op.apply(output);
+        return <any>val.apply(output);
     }
     else if (val instanceof Array) {
         return <any>all(val.map(output));
@@ -270,24 +264,19 @@ function createSimpleOutput(val: any) {
  * In this example, taking a dependency on d3 means a resource will depend on all the resources of
  * d1 and d2.
  */
-// tslint:disable:max-line-length
-export function all<T>(val: Record<string, Input<T>>): Output<Record<string, T>>;
-export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7]>;
-export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[T1, T2, T3, T4, T5, T6]>;
-export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[T1, T2, T3, T4, T5]>;
-export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[T1, T2, T3, T4]>;
-export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[T1, T2, T3]>;
-export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[T1, T2]>;
-export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
-export function all<T>(val: any): Output<any> {
+// This overload is effectively the same as the next. However, it handles `tuples` properly, instead
+// of treating them as arrays.  Specifically, if you had `[Output<number>, Output<string>]` it would
+// give you `Output<[number, string]>` instead of `Output<(number | string)[]>`.
+export function all<T extends unknown[]>(xs: T | []): Output<UnwrappedObject<T>>;
+export function all<T extends object>(val: T): Output<UnwrappedObject<T>>;
+export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));
 
         const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
         const promisedArray = Promise.all(allOutputs.map(o => o.promise()));
 
-        return new Output<T[]>(new Set<Resource>(resources), promisedArray, isKnown);
+        return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown);
     } else {
         const keysAndOutputs = Object.keys(val).map(key => ({ key, value: output(val[key]) }));
         const allOutputs = keysAndOutputs.map(kvp => kvp.value);
@@ -295,13 +284,13 @@ export function all<T>(val: any): Output<any> {
         const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
         const promisedObject = getPromisedObject(keysAndOutputs);
 
-        return new Output<Record<string, T>>(new Set<Resource>(resources), promisedObject, isKnown);
+        return new Output<Record<string, Unwrap<T>>>(new Set<Resource>(resources), promisedObject, isKnown);
     }
 }
 
 async function getPromisedObject<T>(
-        keysAndOutputs: { key: string, value: Output<T> }[]): Promise<Record<string, T>> {
-    const result: Record<string, T> = {};
+        keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
+    const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await kvp.value.promise();
     }
@@ -309,7 +298,7 @@ async function getPromisedObject<T>(
     return result;
 }
 
-function getResourcesAndIsKnown<T>(allOutputs: Output<T>[]): [Resource[], Promise<boolean>] {
+function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[], Promise<boolean>] {
     const allResources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
 
     // A merged output is known if all of its inputs are known.
@@ -322,87 +311,59 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<T>[]): [Resource[], Promis
  * Input is a property input for a resource.  It may be a promptly available T, a promise
  * for one, or the output from a existing Resource.
  */
-export type Input<T> =
-    T extends Function ? T :
-    T extends boolean ? SimpleInput<boolean> :
-    T extends primitive ? SimpleInput<T> :
-    T extends Array<infer U> ? ArrayOfInputs<U> | SimpleInput<T> :
-    T extends object ? SimpleInput<InputObject<T>> : never;
-
-type SimpleInput<T> = Output<T> | Promise<T> | T;
-
-// export type Input<T> = InputIfUnion<T> | InputIfNotUnion<T>;
-
-// type InputIfUnion<T> =
-//     [T] extends [infer U] ? SimpleInput<U> : never;
-
-// type InputPrime<T> =
-//     // // Note: we handle boolean's specially because of how TS treats `boolean` as exactly the same as
-//     // // `true | false`.  If we don't, we end up expanding things out such that you get `Input<boolean>`
-//     // // the same as `Promise<true> | Promise<false> | ...` instead of `Promise<boolean> | ...`.  The
-//     // // two are not compatible and can lead to cryptic errors.
-//     // T extends boolean ? SimpleInput<boolean> :
-//     // T extends Function ? T :
-//     // T extends primitive ? SimpleInput<T> :
-//     T extends Array<infer U> ? ArrayOfInputs<U> :
-//     T extends object ? InputObject<T> :
-//     never;
-
-interface ImageArgs {
-    build: string | DockerBuild;
-}
-
-interface DockerBuild {
-    context?: string;
-    dockerfile?: string;
-    args?: Record<string, string>;
-}
-
-// declare var pathOrBuild: Input<string | DockerBuild>;
-// // pathOrBuild = output({ context: Promise.resolve("") });
-// declare var repositoryUrl: Input<string>;
-// declare var whatever: Input<number[]>;
-
-// all([repositoryUrl, whatever]);
-
-// all([pathOrBuild, repositoryUrl]).apply(([a, b]) => {});
-
-// export interface ServiceLoadBalancer {
-//     containerName: Input<string>;
-//     containerPort: Input<number>;
-//     elbName?: Input<string>;
-//     targetGroupArn?: Input<string>;
-// }
-
-// export interface ServiceLoadBalancerProvider {
-//     serviceLoadBalancer(name: string): Input<ServiceLoadBalancer>;
-// }
-
-// export interface EC2ServiceArgs {
-//     loadBalancers?: (ServiceLoadBalancer | ServiceLoadBalancerProvider)[];
-// }
-
-// declare var v: Input<EC2ServiceArgs>;
-// var v2 = output(v);
-// v2.get()
-
-
-export interface ArrayOfInputs<T> extends Array<Input<T>> { }
-export type InputObject<T> = {
-    [P in keyof T]: Input<T[P]>;
-};
-
-// interface pojo { a: boolean, b: boolean }
-// var ip2: Input<pojo> = Promise.resolve({ a: true, b: Promise.resolve(true) });
-
-// declare var bInput: Input<boolean>;
-// output(bInput);
+export type Input<T> = T | Promise<T> | Output<T>;
 
 /**
  * Inputs is a map of property name to property input, one for each resource
  * property value.
  */
 export type Inputs = Record<string, Input<any>>;
+
+/**
+ * The 'Wrap' type allows us to express the operation of taking a simple POJO type and augmenting it
+ * so that any values at any levels can be given as Promises or Outputs instead.  Note that this
+ * wrapping is 'deep'.  So, if you had:
+ *
+ *      `type X = { A: { B: { C: boolean } } }`
+ *
+ * Then `Wrap<X>` would be equivalent to:
+ *
+ *      `...    = Input<{ A: Input<{ B: Input<{ C: Input<boolean> }> }> }>`
+ *
+ * This would then allow someone to pass in values where any of the top level object, or the 'A',
+ * 'B', or 'C' properties could be any mix of normal JavaScript values, [Promise]s, or [Output]s.
+ *
+ * The primary purpose of this type is to serve as the input type to a [Resource].  [Resource]s
+ * should define a simple POJO type defining what they accept, and then take in a
+ * `WrappedObject<ThatType>` as their arg.  i.e.:
+ *
+ * ```ts
+ * interface CertificateArgs {
+ *    readonly certificateBody: string;
+ *    readonly certificateChain: string;
+ * }
+ *
+ * class Certificate extends pulumi.CustomResource {
+ *     // ...
+ *     constructor(name: string, args?: pulumi.WrappedObject<CertificateArgs>, opts?: pulumi.CustomResourceOptions);
+ * }
+ * ```
+ *
+ * This allows for a simple way to define the data that is needed, while giving maximum flexibility
+ * to the caller to pass in acceptable values.
+ */
+export type Wrap<T> =
+    T extends boolean ? Input<boolean> :
+    T extends primitive ? Input<T> :
+    T extends Array<infer U> ? Input<WrappedArray<U>> :
+    T extends object ? Input<WrappedObject<T>> :
+    never;
+
+export interface WrappedArray<T> extends Array<Wrap<T>> { }
+
+export type WrappedObject<T> = {
+    [P in keyof T]: Wrap<T[P]>;
+};
 
 /**
  * The 'Unwrap' type allows us to express the operation of taking a type, with potentially deeply

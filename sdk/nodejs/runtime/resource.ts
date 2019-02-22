@@ -329,7 +329,7 @@ function addTransitivelyDependentResources(resources: Set<Resource> | undefined,
  * Gathers explicit dependent Resources from a list of Resources (possibly Promises and/or Outputs).
  */
 async function gatherExplicitDependencies(
-    dependsOn: Input<Resource[]> | Input<Resource> | undefined): Promise<Resource[]> {
+    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<Resource[]> {
 
     if (dependsOn) {
         if (Array.isArray(dependsOn)) {

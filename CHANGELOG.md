@@ -1,4 +1,14 @@
-## 0.16.15 (Unreleased)
+## 0.16.16 (Unreleased)
+
+### Improvements
+
+- Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
+  be `undefined` will properly encode and pass along that `undefined` information.
+- Simplify how the args for a resource can be specified. Note: resource args are now simple POJO
+  types.  To indicate the same type, except with `Input`s allows for all values, use
+  `Wrap<OriginalType>`.
+
+## 0.16.15 (Released February 22nd, 2019)
 
 ### Improvements
 
