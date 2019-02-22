@@ -340,21 +340,21 @@ type InputIfNotUnion<T> =
     T extends object ? SimpleInput<InputObject<T>> :
     never;
 
-interface ImageArgs {
-    build: string | DockerBuild;
-}
+// interface ImageArgs {
+//     build: string | DockerBuild;
+// }
 
-interface DockerBuild {
-    context?: string;
-    dockerfile?: string;
-    args?: Record<string, string>;
-}
+// interface DockerBuild {
+//     context?: string;
+//     dockerfile?: string;
+//     args?: Record<string, string>;
+// }
 
-declare var pathOrBuild: Input<string | DockerBuild>;
-declare var repositoryUrl: Input<string>;
-declare var whatever: Input<number[]>;
+// declare var pathOrBuild: Input<string | DockerBuild>;
+// declare var repositoryUrl: Input<string>;
+// declare var whatever: Input<number[]>;
 
-all([pathOrBuild, repositoryUrl]).apply(([a, b]) => {});
+// all([pathOrBuild, repositoryUrl]).apply(([a, b]) => {});
 
 // export interface ServiceLoadBalancer {
 //     containerName: Input<string>;
