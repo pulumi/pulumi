@@ -215,8 +215,7 @@ export function output(val: Input<boolean>): Output<boolean>;
 export function output(val: Input<boolean> | undefined): Output<boolean | undefined>;
 export function output<T>(val: Input<T>): Output<T>;
 export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
-export function output<T>(val: Input<T | undefined>): Output<T | undefined>
-{
+export function output<T>(val: Input<T | undefined>): Output<T | undefined> {
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
@@ -326,7 +325,6 @@ export type SimpleInput<T> = Promise<T> | Output<T> | T;
 // type primitive2 = Function | string | number | undefined | null;
 
 export type Input<T> =
-    //[T] extends [boolean] ? SimpleInput<T> :
     T extends boolean ? SimpleInput<boolean> :
     T extends primitive ? SimpleInput<T> :
     T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
@@ -338,12 +336,11 @@ export type InputObject<T> = {
     [P in keyof T]: Input<T[P]>;
 };
 
-interface pojo { a: boolean, b: boolean }
-var ip2: Input<pojo> = { a: true, b: Promise.resolve(true) };
+// interface pojo { a: boolean, b: boolean }
+// var ip2: Input<pojo> = { a: true, b: Promise.resolve(true) };
 
-//declare function promise<T>(val: Input<T>): Promise<T>;
-declare var bInput: Input<boolean>;
-output(bInput);
+// declare var bInput: Input<boolean>;
+// output(bInput);
 
 /**
  * Inputs is a map of property name to property input, one for each resource
