@@ -320,6 +320,52 @@ export type Input<T> = T | Promise<T> | Output<T>;
 export type Inputs = Record<string, Input<any>>;
 
 /**
+ * The 'Wrap' type allows us to express the operation of taking a simple POJO type and augmenting it
+ * so that any values at any levels can be given as Promises or Outputs instead.  Note that this
+ * wrapping is 'deep'.  So, if you had:
+ *
+ *      `type X = { A: { B: { C: boolean } } }`
+ *
+ * Then `Wrap<X>` would be equivalent to:
+ *
+ *      `...    = Input<{ A: Input<{ B: Input<{ C: Input<boolean> }> }> }>`
+ *
+ * This would then allow someone to pass in values where any of the top level object, or the 'A',
+ * 'B', or 'C' properties could be any mix of normal JavaScript values, [Promise]s, or [Output]s.
+ *
+ * The primary purpose of this type is to serve as the input type to a [Resource].  [Resource]s
+ * should define a simple POJO type defining what they accept, and then take in a
+ * `WrappedObject<ThatType>` as their arg.  i.e.:
+ *
+ * ```ts
+ * interface CertificateArgs {
+ *    readonly certificateBody: string;
+ *    readonly certificateChain: string;
+ * }
+ *
+ * class Certificate extends pulumi.CustomResource {
+ *     // ...
+ *     constructor(name: string, args?: pulumi.WrappedObject<CertificateArgs>, opts?: pulumi.CustomResourceOptions);
+ * }
+ * ```
+ *
+ * This allows for a simple way to define the data that is needed, while giving maximum flexibility
+ * to the caller to pass in acceptable values.
+ */
+export type Wrap<T> =
+    T extends boolean ? Input<boolean> :
+    T extends primitive ? Input<T> :
+    T extends Array<infer U> ? Input<WrappedArray<U>> :
+    T extends object ? Input<WrappedObject<T>> :
+    never;
+
+export interface WrappedArray<T> extends Array<Wrap<T>> { }
+
+export type WrappedObject<T> = {
+    [P in keyof T]: Wrap<T[P]>;
+};
+
+/**
  * The 'Unwrap' type allows us to express the operation of taking a type, with potentially deeply
  * nested Promises and Outputs and to then get that same type with all the Promises and Outputs
  * replaced with their wrapped type.  Note that this Unwrapping is 'deep'.  So if you had:
