@@ -211,9 +211,11 @@ To manipulate the value of this Output, use '.apply' instead.`);
  *      var someResource = new SomeResource(name, { data: transformed ... });
  * ```
  */
-export function output<T>(val: Input<T>): Output<T>
-// export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
-// export function output<T>(val: Input<T | undefined>): Output<T | undefined>
+export function output(val: Input<boolean>): Output<boolean>;
+export function output(val: Input<boolean> | undefined): Output<boolean | undefined>;
+export function output<T>(val: Input<T>): Output<T>;
+export function output<T>(val: Input<T> | undefined): Output<T | undefined>;
+export function output<T>(val: Input<T | undefined>): Output<T | undefined>
 {
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
@@ -324,7 +326,8 @@ export type SimpleInput<T> = Promise<T> | Output<T> | T;
 // type primitive2 = Function | string | number | undefined | null;
 
 export type Input<T> =
-    [T] extends [boolean] ? SimpleInput<boolean> :
+    //[T] extends [boolean] ? SimpleInput<T> :
+    T extends boolean ? SimpleInput<boolean> :
     T extends primitive ? SimpleInput<T> :
     T extends Array<infer U> ? SimpleInput<ArrayOfInputs<U>> :
     T extends object ? SimpleInput<InputObject<T>> :
@@ -334,6 +337,13 @@ export interface ArrayOfInputs<T> extends Array<Input<T>> { }
 export type InputObject<T> = {
     [P in keyof T]: Input<T[P]>;
 };
+
+interface pojo { a: boolean, b: boolean }
+var ip2: Input<pojo> = { a: true, b: Promise.resolve(true) };
+
+//declare function promise<T>(val: Input<T>): Promise<T>;
+declare var bInput: Input<boolean>;
+output(bInput);
 
 /**
  * Inputs is a map of property name to property input, one for each resource
