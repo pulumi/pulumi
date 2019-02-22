@@ -362,8 +362,12 @@ export type Wrap<T> =
 export interface WrappedArray<T> extends Array<Wrap<T>> { }
 
 export type WrappedObject<T> = {
-    [P in keyof T]: Wrap<T[P]>;
+    [P in keyof T]: Wrap<Exclude<T[P], undefined>>;
 };
+
+// interface pojo { a?: string };
+// declare var w: WrappedObject<pojo>;
+// w.
 
 /**
  * The 'Unwrap' type allows us to express the operation of taking a type, with potentially deeply
