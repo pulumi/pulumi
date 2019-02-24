@@ -273,7 +273,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // component resource, then it will end up depending on all the children of that component
     // resource as well.  That way, a parent acts as a "logical" collection of all those children
     // and will not be considered complete until all of the children are complete as well.
-    await getResourceURNs(getTransitivelyReferencedChildResources(allDirectDependencies));
+    await getResourceURNs(getTransitivelyReferencedChildResources(allDirectDependencies, res));
 
     return {
         resolveURN: resolveURN!,
@@ -306,11 +306,32 @@ async function getResourceURNs(resources: Set<Resource>) {
  * Recursively walk the resources passed in, returning them and all resources reachable from
  * [Resource.__childResources]
  */
-function getTransitivelyReferencedChildResources(resources: Set<Resource>) {
-    // Recursively walk the dependent resources through their children, adding them to the result set.
-    const result = new Set<Resource>();
-    addTransitivelyDependentResources(resources, result);
-    return result;
+function getTransitivelyReferencedChildResources(resources: Set<Resource>, initialResource: Resource) {
+    // First, just recursively walk the dependent resources through their children, adding them to
+    // the result set.
+    const temp = new Set<Resource>();
+    addTransitivelyDependentResources(resources, temp);
+
+    // Then, remove any dependent resources we found that are actually children of this resource.
+    // Attempting to wait on them will simply cause a deadlock.  This can happen in fairly trivial
+    // circumstances where a child uses data from a parent.  For example:
+    //
+    //      const bucket = new ...
+    //      const notification = new BucketNotification(name, {
+    //          bucketId: bucket.id
+    //      }, { parent: bucket });
+    //
+    // Because notification has 'bucket' as it's parent, it will be in the child list of 'bucket'.
+    // However, it also depends on 'bucket' through the 'bucketId' property.  We don't want to then
+    // have notification dependent on itself when it looks at the children of 'bucket'.
+    const final = new Set<Resource>();
+    for (const resource of temp) {
+        if (!isAncestor(resource, initialResource)) {
+            final.add(resource);
+        }
+    }
+
+    return final;
 }
 
 function addTransitivelyDependentResources(resources: Set<Resource> | undefined, result: Set<Resource>) {
@@ -323,6 +344,18 @@ function addTransitivelyDependentResources(resources: Set<Resource> | undefined,
             }
         }
     }
+}
+
+function isAncestor(resource: Resource | undefined, potentialAncestor: Resource) {
+    while (resource) {
+        if (resource === potentialAncestor) {
+            return true;
+        }
+
+        resource = resource.__parentResource;
+    }
+
+    return false;
 }
 
 /**
