@@ -596,10 +596,18 @@ describe("rpc", () => {
                 return { urn: name, id: undefined, props: { "outprop": "qux" } };
             },
         },
+        "parent_child_dependencies": {
+            pwd: path.join(base, "021.parent_child_dependencies"),
+            program: "./index.js",
+            expectResourceCount: 2,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        if (casename !== "property_dependencies") {
+        if (casename !== "parent_child_dependencies") {
             continue;
         }
         const opts: RunCase = cases[casename];
