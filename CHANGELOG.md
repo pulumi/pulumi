@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- Fix deadlock with resource dependencies (https://github.com/pulumi/pulumi/issues/2470)
+
 ## 0.16.15 (Released February 22nd, 2019)
 
 ### Improvements
