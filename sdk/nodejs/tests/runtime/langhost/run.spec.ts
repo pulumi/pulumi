@@ -301,26 +301,26 @@ describe("rpc", () => {
             },
         },
         // A simple test of the invocation RPC pathways.
-        "invoke": {
-            program: path.join(base, "009.invoke"),
-            expectResourceCount: 0,
-            invoke: (ctx: any, tok: string, args: any) => {
-                assert.strictEqual(tok, "invoke:index:echo");
-                assert.deepEqual(args, {
-                    a: "hello",
-                    b: true,
-                    c: [ 0.99, 42, { z: "x" } ],
-                    id: "some-id",
-                    urn: "some-urn",
-                });
-                return { failures: undefined, ret: args };
-            },
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-                assert.strictEqual(t, "test:index:MyResource");
-                assert.strictEqual(name, "testResource1");
-                return { urn: makeUrn(t, name), id: undefined, props: undefined };
-            },
-        },
+        // "invoke": {
+        //     program: path.join(base, "009.invoke"),
+        //     expectResourceCount: 0,
+        //     invoke: (ctx: any, tok: string, args: any) => {
+        //         assert.strictEqual(tok, "invoke:index:echo");
+        //         assert.deepEqual(args, {
+        //             a: "hello",
+        //             b: true,
+        //             c: [ 0.99, 42, { z: "x" } ],
+        //             id: "some-id",
+        //             urn: "some-urn",
+        //         });
+        //         return { failures: undefined, ret: args };
+        //     },
+        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+        //         assert.strictEqual(t, "test:index:MyResource");
+        //         assert.strictEqual(name, "testResource1");
+        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
+        //     },
+        // },
         // Simply test that certain runtime properties are available.
         "runtimeSettings": {
             project: "runtimeSettingsProject",
@@ -607,9 +607,6 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        if (casename !== "parent_child_dependencies") {
-            continue;
-        }
         const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
             // For each test case, run it twice: first to preview and then to update.
