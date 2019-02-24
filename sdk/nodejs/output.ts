@@ -353,11 +353,19 @@ export type Inputs = Record<string, Input<any>>;
  * to the caller to pass in acceptable values.
  */
 export type Wrap<T> =
+    // These first four values are to prevent TS from distributing Wrap over a union type
+    // if we can avoid it.  i.e. if we have `T = string | number` then we want to get
+    // `Input<string | number>` not, `Input<string> | Input<number>`.  The last four values
+    // are to catch things (even for union types if the first four don't match).  i.e.
+    // if we have `T = string | Resource` then we get `Input<string> | Resource` not `never`.
     [T] extends [Resource] ? T :
-    [T] extends [boolean] ? Input<boolean> :
     [T] extends [primitive] ? Input<T> :
-    [T] extends [Array<infer U>] ? Input<WrappedArray<U>> :
+    [T] extends [Array<infer U1>] ? Input<WrappedArray<U1>> :
     [T] extends [object] ? Input<WrappedObject<T>> :
+    T extends Resource ? T :
+    T extends primitive ? Input<T> :
+    T extends Array<infer U2> ? Input<WrappedArray<U2>> :
+    T extends object ? Input<WrappedObject<T>> :
     never;
 
 export interface WrappedArray<T> extends Array<Wrap<T>> { }
@@ -365,10 +373,6 @@ export interface WrappedArray<T> extends Array<Wrap<T>> { }
 export type WrappedObject<T> = {
     [P in keyof T]: Wrap<Exclude<T[P], undefined>>;
 };
-
-// interface pojo { a?: string };
-// declare var w: WrappedObject<pojo>;
-// w.
 
 /**
  * The 'Unwrap' type allows us to express the operation of taking a type, with potentially deeply
