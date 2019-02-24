@@ -353,11 +353,11 @@ export type Inputs = Record<string, Input<any>>;
  * to the caller to pass in acceptable values.
  */
 export type Wrap<T> =
-    T extends Resource ? T :
-    T extends boolean ? Input<boolean> :
-    T extends primitive ? Input<T> :
-    T extends Array<infer U> ? Input<WrappedArray<U>> :
-    T extends object ? Input<WrappedObject<T>> :
+    [T] extends [Resource] ? T :
+    [T] extends [boolean] ? Input<boolean> :
+    [T] extends [primitive] ? Input<T> :
+    [T] extends [Array<infer U>] ? Input<WrappedArray<U>> :
+    [T] extends [object] ? Input<WrappedObject<T>> :
     never;
 
 export interface WrappedArray<T> extends Array<Wrap<T>> { }
