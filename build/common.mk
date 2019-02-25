@@ -104,6 +104,9 @@ endif
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 
+GO_TEST_FAST = go test -short -v -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
+GO_TEST = go test -v -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
+
 .PHONY: default all ensure only_build only_test build lint install test_all core
 
 # ensure that `default` is the target that is run when no arguments are passed to make

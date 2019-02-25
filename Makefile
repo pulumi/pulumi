@@ -9,13 +9,6 @@ VERSION         := $(shell scripts/get-version)
 
 TESTPARALLELISM := 10
 
-# Our travis workers are a little show and sometime the fast tests take a little longer
-ifeq ($(TRAVIS),true)
-TEST_FAST_TIMEOUT := 10m
-else
-TEST_FAST_TIMEOUT := 2m
-endif
-
 build-proto::
 	cd sdk/proto && ./generate.sh
 
@@ -32,10 +25,11 @@ lint::
 	golangci-lint run
 
 test_fast::
-	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -short -timeout $(TEST_FAST_TIMEOUT) -count=1 -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
 test_all::
-	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -count=1 -parallel ${TESTPARALLELISM} ${PROJECT_PKGS} ${EXTRA_TEST_PKGS}
+	$(GO_TEST) ${PROJECT_PKGS}
+	$(GO_TEST) ${EXTRA_TEST_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
