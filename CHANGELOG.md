@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- When `PULUMI_SKIP_UPDATE_CHECK` is set to `true`, `pulumi` will not warn if it is out of date.
+
 ## 0.16.16 (Released February 24th, 2019)
 
 ### Improvements

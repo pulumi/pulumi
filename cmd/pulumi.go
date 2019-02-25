@@ -189,6 +189,10 @@ func NewPulumiCmd() *cobra.Command {
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
 func checkForUpdate() {
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
+		return
+	}
+
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		glog.V(3).Infof("error parsing current version: %s", err)
