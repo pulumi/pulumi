@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi SDK
-SUB_PROJECTS := sdk/nodejs sdk/go
+SUB_PROJECTS := sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
@@ -32,7 +32,7 @@ lint::
 	golangci-lint run
 
 test_fast::
-	go test -short -timeout $(TEST_FAST_TIMEOUT) -count=1 -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -short -timeout $(TEST_FAST_TIMEOUT) -count=1 -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 test_all::
 	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -count=1 -parallel ${TESTPARALLELISM} ${PROJECT_PKGS} ${EXTRA_TEST_PKGS}
