@@ -2,7 +2,7 @@
 
 ### Improvements
 
-## 0.16.16 (Released February 24nd, 2019)
+## 0.16.16 (Released February 24th, 2019)
 
 ### Improvements
 
