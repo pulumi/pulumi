@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"time"
 
 	"github.com/blang/semver"
@@ -38,6 +39,10 @@ import (
 
 const (
 	windowsGOOS = "windows"
+)
+
+var (
+	enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
 )
 
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
@@ -366,28 +371,38 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	if err != nil {
 		return "", "", errors.Wrapf(err, "loading plugin list")
 	}
-	var match *PluginInfo
-	for _, cur := range plugins {
-		// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local that
-		// we can take a pointer to if this plugin is the best match yet.
-		plugin := cur
-		if plugin.Kind == kind && plugin.Name == name {
-			// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
-			// keep on searching just in case there's a newer version available.
-			var m *PluginInfo
-			if match == nil && version == nil {
-				m = &plugin // no existing match, no version spec, take it.
-			} else if match != nil &&
-				(match.Version == nil || (plugin.Version != nil && plugin.Version.GT(*match.Version))) {
-				m = &plugin // existing match, but this plugin is newer, prefer it.
-			} else if version != nil && plugin.Version != nil && plugin.Version.GTE(*version) {
-				m = &plugin // this plugin is >= the version being requested, use it.
-			}
 
-			if m != nil {
-				match = m
-				logging.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
-					kind, name, version, match.Version)
+	var match *PluginInfo
+	if !enableLegacyPluginBehavior && version != nil {
+		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
+		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
+		if err != nil {
+			return "", "", err
+		}
+		match = &candidate
+	} else {
+		for _, cur := range plugins {
+			// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local that
+			// we can take a pointer to if this plugin is the best match yet.
+			plugin := cur
+			if plugin.Kind == kind && plugin.Name == name {
+				// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
+				// keep on searching just in case there's a newer version available.
+				var m *PluginInfo
+				if match == nil && version == nil {
+					m = &plugin // no existing match, no version spec, take it.
+				} else if match != nil &&
+					(match.Version == nil || (plugin.Version != nil && plugin.Version.GT(*match.Version))) {
+					m = &plugin // existing match, but this plugin is newer, prefer it.
+				} else if version != nil && plugin.Version != nil && plugin.Version.GTE(*version) {
+					m = &plugin // this plugin is >= the version being requested, use it.
+				}
+
+				if m != nil {
+					match = m
+					logging.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
+						kind, name, version, match.Version)
+				}
 			}
 		}
 	}
@@ -407,6 +422,80 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	}
 
 	return "", "", nil
+}
+
+type sortedPluginInfo []PluginInfo
+
+func (sp sortedPluginInfo) Len() int { return len(sp) }
+func (sp sortedPluginInfo) Less(i, j int) bool {
+	iVersion := sp[i].Version
+	jVersion := sp[j].Version
+	switch {
+	case iVersion == nil && jVersion == nil:
+		return false
+	case iVersion == nil:
+		return true
+	case jVersion == nil:
+		return false
+	default:
+		return iVersion.LT(*jVersion)
+	}
+}
+func (sp sortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
+
+// SelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that sastisfies the
+// requested semver range. It returns the highest version plugin that satisfies the requested constraints, or an error
+// if no such plugin could be found.
+//
+// If there exist plugins in the plugin list that don't have a version, SelectCompatiblePlugin will select them if there
+// are no other compatible plugins available.
+func SelectCompatiblePlugin(
+	plugins []PluginInfo, kind PluginKind, name string, requested semver.Range) (PluginInfo, error) {
+	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)
+	var bestMatch PluginInfo
+	var hasMatch bool
+
+	// Before iterating over the list of plugins, sort the list of plugins by version in ascending order. This ensures
+	// that we can do a single pass over the plugin list, from lowest version to greatest version, and be confident that
+	// the best match that we find at the end is the greatest possible compatible version for the requested plugin.
+	sort.Sort(sortedPluginInfo(plugins))
+	for _, plugin := range plugins {
+		switch {
+		case plugin.Kind != kind || plugin.Name != name:
+			// Not the plugin we're looking for.
+			continue
+		case !hasMatch && plugin.Version == nil:
+			// This is the plugin we're looking for, but it doesn't have a version. We haven't seen anything better yet,
+			// so take it.
+			logging.V(7).Infof(
+				"SelectCompatiblePlugin(..., %s): best plugin %s: no version and no other candidates",
+				name, plugin.String())
+			hasMatch = true
+			bestMatch = plugin
+			continue
+		case plugin.Version == nil:
+			// This is a rare case - we've already seen a version-less plugin and we're seeing another here. Ignore this
+			// one and defer to the one we previously selected.
+			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): skipping plugin %s: no version", name, plugin.String())
+			continue
+		case requested(*plugin.Version):
+			// This plugin is compatible with the requested semver range. Save it as the best match and continue.
+			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): best plugin %s: semver match", name, plugin.String())
+			hasMatch = true
+			bestMatch = plugin
+			continue
+		default:
+			logging.V(7).Infof(
+				"SelectCompatiblePlugin(..., %s): skipping plugin %s: semver mismatch", name, plugin.String())
+		}
+	}
+
+	if !hasMatch {
+		logging.V(7).Infof("SelectCompatiblePlugin(..., %s): failed to find match", name)
+		return PluginInfo{}, errors.New("failed to locate compatible plugin")
+	}
+	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): selecting plugin '%s': best match ", name, bestMatch.String())
+	return bestMatch, nil
 }
 
 // getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
