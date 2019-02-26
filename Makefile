@@ -28,8 +28,7 @@ test_fast::
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
 test_all::
-	$(GO_TEST) ${PROJECT_PKGS}
-	$(GO_TEST) ${EXTRA_TEST_PKGS}
+	$(GO_TEST) ${PROJECT_PKGS} ${EXTRA_TEST_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
