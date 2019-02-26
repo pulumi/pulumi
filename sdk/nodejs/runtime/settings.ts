@@ -14,6 +14,7 @@
 
 import * as grpc from "grpc";
 import { RunError } from "../errors";
+import * as policy from "../policy";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
@@ -283,4 +284,19 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
             return resolve();
         });
     });
+}
+
+/** Set of policies to validate all resource operations against in the current Pulumi run. */
+const policies = new policy.TypedAdmissionPolicySet(isDryRun());
+
+export function validate(typ: string, id: string, inputs: any) {
+    policies.validate(typ, id, inputs);
+}
+
+/**
+ * Adds an admission policy to the set of policies that will be used to validate all resource
+ * operations in the current Pulumi run.
+ */
+export function addAdmissionPolicy(rule: policy.TypedAdmissionPolicy) {
+    policies.addPolicy(rule);
 }

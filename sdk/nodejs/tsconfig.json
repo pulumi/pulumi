@@ -35,6 +35,8 @@
 
         "log/index.ts",
 
+        "policy/index.ts",
+
         "runtime/index.ts",
         "runtime/closure/v8.ts",
         "runtime/closure/createClosure.ts",
