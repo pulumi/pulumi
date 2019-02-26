@@ -35,6 +35,8 @@
 
         "log/index.ts",
 
+        "policy/index.ts",
+
         "query/index.ts",
 
         "runtime/index.ts",

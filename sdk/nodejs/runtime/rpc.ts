@@ -205,6 +205,10 @@ export function resolveProperties(
  * Unknown values are encoded as a distinguished string value.
  */
 export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+export type UnknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+export function isUnknownValue(o: any): o is UnknownValue {
+    return o === unknownValue;
+}
 /**
  * specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
  */

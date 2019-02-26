@@ -14,6 +14,7 @@
 
 import * as grpc from "grpc";
 import { RunError } from "../errors";
+import * as policy from "../policy";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
@@ -94,7 +95,8 @@ export function getMonitor(): Object {
         } else {
             // Otherwise, this is an error.
             throw new RunError(
-                "Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?");
+                "Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?",
+            );
         }
     }
     return monitor!;
@@ -136,9 +138,8 @@ function loadOptions(): Options {
     const parallelOpt = process.env["PULUMI_NODEJS_PARALLEL"];
     if (parallelOpt) {
         try {
-           parallel = parseInt(parallelOpt, 10);
-        }
-        catch (err) {
+            parallel = parseInt(parallelOpt, 10);
+        } catch (err) {
             // ignore.
         }
     }
@@ -148,7 +149,7 @@ function loadOptions(): Options {
     return {
         project: process.env["PULUMI_NODEJS_PROJECT"],
         stack: process.env["PULUMI_NODEJS_STACK"],
-        dryRun: (process.env["PULUMI_NODEJS_DRY_RUN"] === "true"),
+        dryRun: process.env["PULUMI_NODEJS_DRY_RUN"] === "true",
         parallel: parallel,
         monitorAddr: process.env["PULUMI_NODEJS_MONITOR"],
         engineAddr: process.env["PULUMI_NODEJS_ENGINE"],
@@ -182,8 +183,7 @@ export function disconnectSync(): void {
     if (monitor) {
         try {
             monitor.close();
-        }
-        catch (err) {
+        } catch (err) {
             // ignore.
         }
         monitor = null;
@@ -191,8 +191,7 @@ export function disconnectSync(): void {
     if (engine) {
         try {
             engine.close();
-        }
-        catch (err) {
+        } catch (err) {
             // ignore.
         }
         engine = null;
@@ -210,7 +209,12 @@ let rpcDone: Promise<any> = Promise.resolve();
  */
 export function rpcKeepAlive(): () => void {
     let done: (() => void) | undefined = undefined;
-    const donePromise = debuggablePromise(new Promise<void>((resolve) => { done = resolve; }), "rpcKeepAlive");
+    const donePromise = debuggablePromise(
+        new Promise<void>(resolve => {
+            done = resolve;
+        }),
+        "rpcKeepAlive",
+    );
     rpcDone = rpcDone.then(() => donePromise);
     return done!;
 }
@@ -283,4 +287,14 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
             return resolve();
         });
     });
+}
+
+const policies = new policy.PolicySet();
+
+export function getPolicies() {
+    return policies;
+}
+
+export function addAdmissionPolicy(rule: policy.TypedPolicy) {
+    policies.addPolicy(rule);
 }

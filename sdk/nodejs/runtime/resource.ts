@@ -28,7 +28,7 @@ import {
     transferProperties,
     unknownValue,
 } from "./rpc";
-import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
+import { excessiveDebugOutput, getMonitor, getPolicies, getRootResource, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -125,7 +125,11 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // trace will lead directly to user code. Throwing in `runAsyncResourceOp` results in an Error
     // with a non-useful stack trace.
     const preallocError = new Error();
-    debuggablePromise(resopAsync.then(async (resop) => {
+    const checkedOp = debuggablePromise(resopAsync.then(async (resop) => {
+        getPolicies().validate(t, name, resop.serializedProps);
+        return resop;
+    }), label);
+    debuggablePromise(checkedOp.then(async (resop) => {
         log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
