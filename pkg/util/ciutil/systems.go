@@ -30,6 +30,7 @@ const (
 	Jenkins                     System = "Jenkins"
 	MagnumCI                    System = "Magnum CI"
 	MicrosoftTFS                System = "Microsoft Team Foundation Server"
+	PulumiCI                    System = "Pulumi CI"
 	Semaphore                   System = "Semaphore"
 	TaskCluster                 System = "TaskCluster"
 	TeamCity                    System = "TeamCity"

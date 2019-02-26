@@ -36,6 +36,7 @@ var detectors = map[System]detector{
 	Jenkins:                     envVarDetector{envVar: []string{"JENKINS_URL", "BUILD_ID"}},
 	MagnumCI:                    envVarDetector{envVar: []string{"MAGNUM"}},
 	MicrosoftTFS:                envVarDetector{envVar: []string{"TF_BUILD"}},
+	PulumiCI:                    envVarDetector{envVar: []string{"PULUMI_CI_SYSTEM"}},
 	Semaphore:                   envVarDetector{envVar: []string{"SEMAPHORE"}},
 	TaskCluster:                 envVarDetector{envVar: []string{"TASK_ID", "RUN_ID"}},
 	TeamCity:                    envVarDetector{envVar: []string{"TEAMCITY_VERSION"}},

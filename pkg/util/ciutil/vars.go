@@ -41,6 +41,21 @@ type Vars struct {
 // DetectVars detects and returns the CI variables for the current environment.
 func DetectVars() Vars {
 	v := Vars{Name: DetectSystem()}
+	// If CI variables have been set specifically for Pulumi in the environment,
+	// use that in preference to attempting to automatically detect the CI system.
+	// This allows Pulumi to work with any CI system with appropriate configuration,
+	// rather than requiring explicit support for each one.
+	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
+		// Override the name with the actual name in the env var.
+		v.Name = System(os.Getenv("PULUMI_CI_SYSTEM"))
+		v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
+		v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
+		v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
+		v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
+
+		// Don't proceed with automatic CI detection since we are using the PULUMI_* values.
+		return v
+	}
 	// All CI systems have a name (that's how we know we're in a CI system). After detecting one, we will
 	// try to detect some additional CI-specific metadata that the CLI will use. It's okay if we can't,
 	// we'll just have reduced functionality for our various CI integrations.
@@ -53,6 +68,7 @@ func DetectVars() Vars {
 		v.SHA = os.Getenv("CI_COMMIT_SHA")
 		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
 		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
+		v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
 	case Travis:
 		// See https://docs.travis-ci.com/user/environment-variables/.
 		v.BuildID = os.Getenv("TRAVIS_JOB_ID")
@@ -61,6 +77,7 @@ func DetectVars() Vars {
 		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
 		v.BranchName = os.Getenv("TRAVIS_BRANCH")
 		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
+		v.PRNumber = os.Getenv("TRAVIS_PULL_REQUEST")
 	case CircleCI:
 		// See: https://circleci.com/docs/2.0/env-vars/
 		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
