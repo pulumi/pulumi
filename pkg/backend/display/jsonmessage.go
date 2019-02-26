@@ -83,7 +83,7 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 	if termInfo != nil && /*jm.Stream == "" &&*/ jm.Action != "" {
 		clearLine(out, termInfo)
 		endl = "\r"
-		fmt.Fprintf(out, endl)
+		fmt.Fprintln(out, endl)
 	}
 
 	if jm.Action != "" && termInfo != nil {

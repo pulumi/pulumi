@@ -269,12 +269,12 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 			if diffErr != nil {
 				// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 				// report the message contained in the error.
-				if _, ok := diffErr.(plugin.DiffUnavailableError); ok {
-					d = plugin.DiffResult{Changes: plugin.DiffSome}
-					sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, diffErr.Error()))
-				} else {
+				if _, ok := diffErr.(plugin.DiffUnavailableError); !ok {
 					return nil, result.FromError(diffErr)
 				}
+
+				d = plugin.DiffResult{Changes: plugin.DiffSome}
+				sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, diffErr.Error()))
 			}
 			diff = d
 		}
