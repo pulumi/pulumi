@@ -114,50 +114,6 @@ export class Output<T> {
         return obj && obj.__pulumiOutput ? true : false;
     }
 
-    /**
-     * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
-     * to is asynchronously computed (and thus, this is akin to calling [toString] on a [Promise]).
-     * As such, this method only throws if called.
-     *
-     * To get the value of an Output<T> as an Output<string> consider either:
-     * 1. `o.apply(v => ``prefix${v}suffix``)` or
-     * 2. `pulumi.interpolate ``prefix${v}suffix`` `
-     *
-     * This will return an Output with the inner computed value and all resources still tracked.
-     */
-    public toString(): string {
-        const errorMessage =
-`Calling [toString] on an [Output<T>] is not supported.
-To get the value of an Output<T> as an Output<string> consider either:
-  1: o.apply(v => \`prefix\${v}suffix\`)
-  2: pulumi.interpolate \`prefix\${v}suffix\`
-This will return an Output with the inner computed value and all resources still tracked.`;
-        throw new Error(errorMessage);
-    }
-
-    /**
-     * [toJSON] on an [Output<T>] is not supported.  This is because the value an [Output] points
-     * to is asynchronously computed (and thus, this is akin to calling [toJSON] on a [Promise]).
-     * As such, this method only throws if called.
-     *
-     * To get the value of an Output as a JSON value or JSON string consider either:
-     * 1. `o.apply(v => v.toJSON())` or
-     * 2. `o.apply(v => JSON.stringify(v))`
-     *
-     * This will return an Output with the inner computed value and all resources still tracked.
-     */
-    public toJSON(): any {
-        // Note: i've mixed/matched `` and "" strings because I could not find a way to
-        // properly embed literals with `` inside another `` string.
-        const errorMessage =
-`Calling [toJSON] on an [Output<T>] is not supported.
-To get the value of an Output as a JSON value or JSON string consider either:
-  1: o.apply(v => v.toJSON())
-  2: o.apply(v => JSON.stringify(v))
-This will return an Output with the inner computed value and all resources still tracked.`;
-        throw new Error(errorMessage);
-    }
-
     /* @internal */ public constructor(
             resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
         this.isKnown = isKnown;
