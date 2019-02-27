@@ -48,7 +48,7 @@ export abstract class Resource {
     /* @internal */ private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
-        return obj && obj.__pulumiResource;
+        return obj && (<Resource>obj).__pulumiResource === true;
     }
 
     // getProvider fetches the provider for the given module member, if any.
@@ -211,7 +211,7 @@ export abstract class CustomResource extends Resource {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is CustomResource {
-        return obj && obj.__pulumiCustomResource;
+        return obj && (<CustomResource>obj).__pulumiCustomResource === true;
     }
 
     /**
@@ -263,6 +263,20 @@ export abstract class ProviderResource extends CustomResource {
  */
 export class ComponentResource extends Resource {
     /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ private readonly __pulumiComponentResource: boolean;
+
+    /**
+     * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): obj is ComponentResource {
+        return obj && (<ComponentResource>obj).__pulumiComponentResource === true;
+    }
+
+    /**
      * Creates and registers a new component resource.  [type] is the fully qualified type token and
      * [name] is the "name" part to use in creating a stable and globally unique URN for the object.
      * [opts.parent] is the optional parent for this component, and [opts.dependsOn] is an optional
@@ -289,6 +303,7 @@ export class ComponentResource extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
+        this.__pulumiComponentResource = true;
     }
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by
