@@ -1,4 +1,18 @@
-## 0.16.16 (Unreleased)
+## 0.16.18 (Unreleased)
+
+### Improvements
+
+## 0.16.17 (Released February 27th, 2019)
+
+### Improvements
+
+- Rolling back the change:
+    "Depending on a Resource will now depend on all other Resource's parented by that Resource."
+
+  Unforseen problems cropped up that caused deadlocks.  Removing this change until we can
+  have a high quality solution without these issues.
+
+## 0.16.16 (Released February 24th, 2019)
 
 ### Improvements
 
