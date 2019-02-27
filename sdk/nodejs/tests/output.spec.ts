@@ -20,53 +20,53 @@ import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
 describe("output", () => {
-    it("throws on toString in string concat", () => {
-        const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        try {
-            const str = "" + output;
-        }
-        catch (e) {
-            return;
-        }
+    // it("throws on toString in string concat", () => {
+    //     const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+    //     try {
+    //         const str = "" + output;
+    //     }
+    //     catch (e) {
+    //         return;
+    //     }
 
-        throw new Error("Should have gotten error above!");
-    });
+    //     throw new Error("Should have gotten error above!");
+    // });
 
-    it("throws on toString in normal interpolation", () => {
-        const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        try {
-            const str = `${output}`;
-        }
-        catch (e) {
-            return;
-        }
+    // it("throws on toString in normal interpolation", () => {
+    //     const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+    //     try {
+    //         const str = `${output}`;
+    //     }
+    //     catch (e) {
+    //         return;
+    //     }
 
-        throw new Error("Should have gotten error above!");
-    });
+    //     throw new Error("Should have gotten error above!");
+    // });
 
-    it("throws on JSON.stringify", () => {
-        const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        try {
-            const str = JSON.stringify(output);
-        }
-        catch (e) {
-            return;
-        }
+    // it("throws on JSON.stringify", () => {
+    //     const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+    //     try {
+    //         const str = JSON.stringify(output);
+    //     }
+    //     catch (e) {
+    //         return;
+    //     }
 
-        throw new Error("Should have gotten error above!");
-    });
+    //     throw new Error("Should have gotten error above!");
+    // });
 
-    it("throws on JSON.stringify even when nested", () => {
-        const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        try {
-            const str = JSON.stringify({ o: output });
-        }
-        catch (e) {
-            return;
-        }
+    // it("throws on JSON.stringify even when nested", () => {
+    //     const output = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
+    //     try {
+    //         const str = JSON.stringify({ o: output });
+    //     }
+    //     catch (e) {
+    //         return;
+    //     }
 
-        throw new Error("Should have gotten error above!");
-    });
+    //     throw new Error("Should have gotten error above!");
+    // });
 
     it("propagates true isKnown bit from inner Output", asyncTest(async () => {
         runtime.setIsDryRun(true);
