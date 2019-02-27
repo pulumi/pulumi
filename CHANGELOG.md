@@ -1,10 +1,12 @@
-## 0.16.17 (unreleased)
+## 0.16.17 (Released February 27th, 2019)
 
 ### Improvements
 
-- Calling [toString] or [toJSON] on an Output will now throw with a useful error message.
-  This has been a common pain point as it's easy to accidentally try to concat an Output
-  with a string, producing a bogus result, and often leading to lengthy investigations.
+- Rolling back the change:
+    "Depending on a Resource will now depend on all other Resource's parented by that Resource."
+
+  Unforseen problems cropped up that caused deadlocks.  Removing this change until we can
+  have a high quality solution without these issues.
 
 ## 0.16.16 (Released February 24th, 2019)
 
