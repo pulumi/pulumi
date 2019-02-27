@@ -166,11 +166,14 @@ export class Output<T> {
 
         this.toString = () => {
             const message =
-`Calling [toString] on an [Output<T>] is not supported
+`Calling [toString] on an [Output<T>] is not supported.
+
 To get the value of an Output<T> as an Output<string> consider either:
 1: o.apply(v => \`prefix\${v}suffix\`)
 2: pulumi.interpolate \`prefix\${v}suffix\`
-See https://pulumi.io/help/outputs for more details`;
+
+See https://pulumi.io/help/outputs for more details.
+This function may throw in a future version of @pulumi/pulumi.`;
             log.warn(message, firstResource);
             return message;
         };
@@ -178,10 +181,13 @@ See https://pulumi.io/help/outputs for more details`;
         this.toJSON = () => {
             const message =
 `Calling [toJSON] on an [Output<T>] is not supported.
+
 To get the value of an Output as a JSON value or JSON string consider either:
     1: o.apply(v => v.toJSON())
     2: o.apply(v => JSON.stringify(v))
-See https://pulumi.io/help/outputs for more details`;
+
+See https://pulumi.io/help/outputs for more details.
+This function may throw in a future version of @pulumi/pulumi.`;
             log.warn(message, firstResource);
             return message;
         };
