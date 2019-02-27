@@ -30,6 +30,20 @@ export abstract class Resource {
      /* @internal */ private readonly __pulumiResource: boolean = true;
 
     /**
+     * The parent of this Resource, if and only if it is a [ComponentResource].  This allows us to
+     * form a tree that has the following properties:
+     *
+     * 1. All non-leaf nodes are ComponentResources.
+     * 2. All leaf nodes are CustomResources.  Technically, you could have a leaf Component, but
+     *    that should be very rare, and can be thought of as a non-leaf node component with 0 leaf
+     *    CustomResources.
+     *
+     * Now, when any node has a dependency on another node, 
+     */
+     // tslint:disable-next-line:variable-name
+     /* @internal */ private readonly __parentComponentResource: ComponentResource;
+
+    /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
      * deployments.
      */
