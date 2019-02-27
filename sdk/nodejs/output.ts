@@ -126,7 +126,7 @@ export class Output<T> {
      * This will return an Output with the inner computed value and all resources still tracked.
      * See https://pulumi.io/help/outputs for more details
      */
-    public toString(): string {
+    /** @internal */ public toString(): string {
         const errorMessage =
 `Calling [toString] on an [Output<T>] is not supported
 To get the value of an Output<T> as an Output<string> consider either:
@@ -148,7 +148,7 @@ See https://pulumi.io/help/outputs for more details`;
      * This will return an Output with the inner computed value and all resources still tracked.
      * See https://pulumi.io/help/outputs for more details
      */
-    public toJSON(): any {
+    /** @internal */ public toJSON(): any {
         // Note: i've mixed/matched `` and "" strings because I could not find a way to
         // properly embed literals with `` inside another `` string.
         const errorMessage =
