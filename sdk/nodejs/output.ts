@@ -162,8 +162,10 @@ export class Output<T> {
             resourcesArray = [resources];
         }
 
-        const firstResource = resourcesArray[0];
+        this.resources = () => new Set<Resource>(resourcesArray);
+        this.promise = () => promise;
 
+        const firstResource = resourcesArray[0];
         this.toString = () => {
             const message =
 `Calling [toString] on an [Output<T>] is not supported.
@@ -191,9 +193,6 @@ This function may throw in a future version of @pulumi/pulumi.`;
             log.warn(message, firstResource);
             return message;
         };
-
-        this.resources = () => new Set<Resource>(resourcesArray);
-        this.promise = () => promise;
 
         this.apply = <U>(func: (t: T) => Input<U>) => {
             let innerIsKnownResolve: (val: boolean) => void;
