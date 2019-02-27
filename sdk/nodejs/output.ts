@@ -124,14 +124,15 @@ export class Output<T> {
      * 2. `pulumi.interpolate ``prefix${v}suffix`` `
      *
      * This will return an Output with the inner computed value and all resources still tracked.
+     * See https://pulumi.io/help/outputs for more details
      */
     public toString(): string {
         const errorMessage =
-`Calling [toString] on an [Output<T>] is not supported.
+`Calling [toString] on an [Output<T>] is not supported
 To get the value of an Output<T> as an Output<string> consider either:
   1: o.apply(v => \`prefix\${v}suffix\`)
   2: pulumi.interpolate \`prefix\${v}suffix\`
-This will return an Output with the inner computed value and all resources still tracked.`;
+See https://pulumi.io/help/outputs for more details`;
         throw new Error(errorMessage);
     }
 
@@ -145,6 +146,7 @@ This will return an Output with the inner computed value and all resources still
      * 2. `o.apply(v => JSON.stringify(v))`
      *
      * This will return an Output with the inner computed value and all resources still tracked.
+     * See https://pulumi.io/help/outputs for more details
      */
     public toJSON(): any {
         // Note: i've mixed/matched `` and "" strings because I could not find a way to
@@ -154,7 +156,7 @@ This will return an Output with the inner computed value and all resources still
 To get the value of an Output as a JSON value or JSON string consider either:
   1: o.apply(v => v.toJSON())
   2: o.apply(v => JSON.stringify(v))
-This will return an Output with the inner computed value and all resources still tracked.`;
+See https://pulumi.io/help/outputs for more details`;
         throw new Error(errorMessage);
     }
 
