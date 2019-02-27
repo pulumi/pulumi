@@ -65,7 +65,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     }
 
     const label = `resource:${name}[${t}]#...`;
-    log.debug(`Reading resource: id=${Output.isInstance(id) ? "Output<T>" : id}, t=${t}, name=${name}`);
+    log.debug(`Reading resource: id=${id}, t=${t}, name=${name}`);
 
     const monitor: any = getMonitor();
     const resopAsync = prepareResource(label, res, true, props, opts);

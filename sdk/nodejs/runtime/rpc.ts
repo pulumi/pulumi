@@ -56,15 +56,14 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
             resolveIsKnown(isKnown);
         };
 
-        const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
         (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolveValue = resolve),
-                `transferProperty(${label}, ${k}, ${propString})`),
+                `transferProperty(${label}, ${k}, ${props[k]})`),
             debuggablePromise(
                 new Promise<boolean>(resolve => resolveIsKnown = resolve),
-                `transferIsStable(${label}, ${k}, ${propString})`));
+                `transferIsStable(${label}, ${k}, ${props[k]})`));
     }
 
     return resolvers;
