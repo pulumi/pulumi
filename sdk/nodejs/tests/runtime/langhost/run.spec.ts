@@ -604,9 +604,21 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "parent_child_dependencies_2": {
+            pwd: path.join(base, "022.parent_child_dependencies_2"),
+            program: "./index.js",
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
+        // if (casename !== "parent_child_dependencies_2") {
+        //     continue;
+        // }
+
         const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
             // For each test case, run it twice: first to preview and then to update.
