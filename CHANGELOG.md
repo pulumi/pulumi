@@ -2,6 +2,10 @@
 
 ### Improvements
 
+- Calling [toString] or [toJSON] on an Output will now throw with a useful error message.
+  This has been a common pain point as it's easy to accidentally try to concat an Output
+  with a string, producing a bogus result, and often leading to lengthy investigations.
+
 ## 0.16.16 (Released February 24th, 2019)
 
 ### Improvements
