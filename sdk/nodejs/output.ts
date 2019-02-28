@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as log from "./log";
 import { Resource } from "./resource";
 import * as runtime from "./runtime";
 
@@ -94,6 +95,38 @@ export class Output<T> {
      */
     public readonly get: () => T;
 
+    /**
+     * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
+     * to is asynchronously computed (and thus, this is akin to calling [toString] on a [Promise]).
+     *
+     * Calling this will simply return useful text about the issue, and will log a warning. In a
+     * future version of `@pulumi/pulumi` this will be changed to throw an error when this occurs.
+     *
+     * To get the value of an Output<T> as an Output<string> consider either:
+     * 1. `o.apply(v => ``prefix${v}suffix``)` or
+     * 2. `pulumi.interpolate ``prefix${v}suffix`` `
+     *
+     * This will return an Output with the inner computed value and all resources still tracked. See
+     * https://pulumi.io/help/outputs for more details
+     */
+    /** @internal */ public toString: () => string;
+
+    /**
+     * [toJSON] on an [Output<T>] is not supported.  This is because the value an [Output] points
+     * to is asynchronously computed (and thus, this is akin to calling [toJSON] on a [Promise]).
+     *
+     * Calling this will simply return useful text about the issue, and will log a warning. In a
+     * future version of `@pulumi/pulumi` this will be changed to throw an error when this occurs.
+     *
+     * To get the value of an Output as a JSON value or JSON string consider either:
+     * 1. `o.apply(v => v.toJSON())` or
+     * 2. `o.apply(v => JSON.stringify(v))`
+     *
+     * This will return an Output with the inner computed value and all resources still tracked.
+     * See https://pulumi.io/help/outputs for more details
+     */
+    /** @internal */ public toJSON: () => any;
+
     // Statics
 
     /**
@@ -114,66 +147,52 @@ export class Output<T> {
         return obj && obj.__pulumiOutput ? true : false;
     }
 
-    /**
-     * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
-     * to is asynchronously computed (and thus, this is akin to calling [toString] on a [Promise]).
-     * As such, this method only throws if called.
-     *
-     * To get the value of an Output<T> as an Output<string> consider either:
-     * 1. `o.apply(v => ``prefix${v}suffix``)` or
-     * 2. `pulumi.interpolate ``prefix${v}suffix`` `
-     *
-     * This will return an Output with the inner computed value and all resources still tracked.
-     * See https://pulumi.io/help/outputs for more details
-     */
-    /** @internal */ public toString(): string {
-        const errorMessage =
-`Calling [toString] on an [Output<T>] is not supported
-To get the value of an Output<T> as an Output<string> consider either:
-  1: o.apply(v => \`prefix\${v}suffix\`)
-  2: pulumi.interpolate \`prefix\${v}suffix\`
-See https://pulumi.io/help/outputs for more details`;
-        throw new Error(errorMessage);
-    }
-
-    /**
-     * [toJSON] on an [Output<T>] is not supported.  This is because the value an [Output] points
-     * to is asynchronously computed (and thus, this is akin to calling [toJSON] on a [Promise]).
-     * As such, this method only throws if called.
-     *
-     * To get the value of an Output as a JSON value or JSON string consider either:
-     * 1. `o.apply(v => v.toJSON())` or
-     * 2. `o.apply(v => JSON.stringify(v))`
-     *
-     * This will return an Output with the inner computed value and all resources still tracked.
-     * See https://pulumi.io/help/outputs for more details
-     */
-    /** @internal */ public toJSON(): any {
-        // Note: i've mixed/matched `` and "" strings because I could not find a way to
-        // properly embed literals with `` inside another `` string.
-        const errorMessage =
-`Calling [toJSON] on an [Output<T>] is not supported.
-To get the value of an Output as a JSON value or JSON string consider either:
-  1: o.apply(v => v.toJSON())
-  2: o.apply(v => JSON.stringify(v))
-See https://pulumi.io/help/outputs for more details`;
-        throw new Error(errorMessage);
-    }
-
     /* @internal */ public constructor(
             resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
         this.isKnown = isKnown;
 
+        let resourcesArray: Resource[];
+
         // Always create a copy so that no one accidentally modifies our Resource list.
         if (Array.isArray(resources)) {
-            this.resources = () => new Set<Resource>(resources);
+            resourcesArray = resources;
         } else if (resources instanceof Set) {
-            this.resources = () => new Set<Resource>(resources);
+            resourcesArray = [...resources];
         } else {
-            this.resources = () => new Set<Resource>([resources]);
+            resourcesArray = [resources];
         }
 
+        this.resources = () => new Set<Resource>(resourcesArray);
         this.promise = () => promise;
+
+        const firstResource = resourcesArray[0];
+        this.toString = () => {
+            const message =
+`Calling [toString] on an [Output<T>] is not supported.
+
+To get the value of an Output<T> as an Output<string> consider either:
+1: o.apply(v => \`prefix\${v}suffix\`)
+2: pulumi.interpolate \`prefix\${v}suffix\`
+
+See https://pulumi.io/help/outputs for more details.
+This function may throw in a future version of @pulumi/pulumi.`;
+            log.warn(message, firstResource);
+            return message;
+        };
+
+        this.toJSON = () => {
+            const message =
+`Calling [toJSON] on an [Output<T>] is not supported.
+
+To get the value of an Output as a JSON value or JSON string consider either:
+    1: o.apply(v => v.toJSON())
+    2: o.apply(v => JSON.stringify(v))
+
+See https://pulumi.io/help/outputs for more details.
+This function may throw in a future version of @pulumi/pulumi.`;
+            log.warn(message, firstResource);
+            return message;
+        };
 
         this.apply = <U>(func: (t: T) => Input<U>) => {
             let innerIsKnownResolve: (val: boolean) => void;

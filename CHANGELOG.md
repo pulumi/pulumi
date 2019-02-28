@@ -1,13 +1,17 @@
 ## 0.16.18 (Unreleased)
 
 ### Improvements
+- Attempting to convert an [Output<T>] to a string or to JSON will now result in a warning
+  message being printed, as well as information on how to rectify the situation.  This is
+  to help with diagnosing cryptic problems that can occur when Outputs are accidentally
+  concatenated into a string in some part of the program.
 
 - Depending on a **Component** Resource will now depend on all other Resource's parented by that
   Resource. This will help out the programming model for Component Resources as your consumers can
   just depend on a Component and have that automatically depend on all the child Resources created
   by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
-  CustomResource will still only wait on that single resource being created, not any other
-  Resources that consider that CustomResource to be a parent.
+  CustomResource will still only wait on that single resource being created, not any other Resources
+  that consider that CustomResource to be a parent.
 
 ## 0.16.17 (Released February 27th, 2019)
 
