@@ -944,8 +944,7 @@ async function getOrCreateEntryAsync(
     async function serializeObjectWorkerAsync(localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
         // We're partially serializing out this object if we've been given any specific
         // property-chains to limit our serialization to.
-        const objectInfo: ObjectInfo = entry.object || { env: new Map(), isPartiallySerialized: localCapturedPropertyChains.length > 0 };
-        entry.object = objectInfo;
+        entry.object = entry.object || { env: new Map(), isPartiallySerialized: localCapturedPropertyChains.length > 0 };
 
         if (localCapturedPropertyChains.length === 0) {
             await serializeAllObjectPropertiesAsync(entry.object);
@@ -1070,8 +1069,7 @@ async function getOrCreateEntryAsync(
                 // So to properly represent that, we don't place any information about
                 // this property on the object.
                 object.env.delete(keyEntry);
-            }
-            else {
+            } else {
                 // Determine what chained property names we're accessing off of this sub-property.
                 // if we have no sub property name chain, then indicate that with an empty array
                 // so that we capture the entire object.
