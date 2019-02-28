@@ -260,13 +260,13 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
 
-    const allDirectDependencyURNs = await getCustomResourceURNs(explicitDirectDependencies);
+    const allDirectDependencyURNs = await filterToCustomResourcesAndGetURNs(explicitDirectDependencies);
     const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
     for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
         addAll(allDirectDependencies, directDependencies);
 
-        const urns = await getCustomResourceURNs(directDependencies);
+        const urns = await filterToCustomResourcesAndGetURNs(directDependencies);
         addAll(allDirectDependencyURNs, urns);
         propertyToDirectDependencyURNs.set(propertyName, urns);
     }
@@ -287,7 +287,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     //
     // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2, Cust3].
     // It will *not* include `Cust4`.
-    await getCustomResourceURNs(getTransitivelyReferencedChildResourceOfComponentResources(allDirectDependencies));
+    await filterToCustomResourcesAndGetURNs(getTransitivelyReferencedChildResourceOfComponentResources(allDirectDependencies));
 
     return {
         resolveURN: resolveURN!,
@@ -307,7 +307,7 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getCustomResourceURNs(resources: Set<Resource>) {
+async function filterToCustomResourcesAndGetURNs(resources: Set<Resource>) {
     const result = new Set<URN>();
     for (const resource of resources) {
         if (CustomResource.isInstance(resource)) {
