@@ -5028,7 +5028,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
             expectText: `exports.handler = __f0;
 
 var __defaultsForThing = {};
-var __defaultsForThing_config = {x: "x"};
+var __defaultsForThing_config = {x: "x", y: "y"};
 __defaultsForThing.config = __defaultsForThing_config;
 
 function __getX() {
@@ -5141,6 +5141,58 @@ return function () { console.log(getAll()); };
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing }
+        function getAll() { const x = getX(); return { y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #25",
+            func: function () { console.log(getAll()); },
+            expectText: `
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config }
+        function getAll() { const x = getX(); return { y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #26",
+            func: function () { console.log(getAll()); },
+            expectText: `
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config.x }
+        function getAll() { const x = getX(); return { y: defaultsForThing } }
+
+        cases.push({
+            title: "Analyze property chain #27",
+            func: function () { console.log(getAll()); },
+            expectText: `
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config.x }
+        function getAll() { const x = getX(); return { y: defaultsForThing.config } }
+
+        cases.push({
+            title: "Analyze property chain #28",
+            func: function () { console.log(getAll()); },
+            expectText: `
 `,
         });
     }
@@ -5613,7 +5665,7 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        if (test.title !== "Analyze property chain #24") {
+        if (test.title !== "Analyze property chain #22") {
             continue;
         }
 
