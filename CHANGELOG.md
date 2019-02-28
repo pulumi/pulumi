@@ -6,7 +6,8 @@
   to help with diagnosing cryptic problems that can occur when Outputs are accidentally
   concatenated into a string in some part of the program.
 
-- Depending on a **Component** Resource will now depend on all other Resource's parented by that
+- Fixes incorrect closure serialization issue (https://github.com/pulumi/pulumi/pull/2497)
+- Depending on a **Component** Resource will now depend on all other Resources parented by that
   Resource. This will help out the programming model for Component Resources as your consumers can
   just depend on a Component and have that automatically depend on all the child Resources created
   by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
