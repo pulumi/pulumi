@@ -797,10 +797,10 @@ async function getOrCreateEntryAsync(
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(obj)!;
     if (entry) {
-        // If this is an object and we've only partially serialized it out, it might be the
-        // case that we're being asked to serialize out a different set of properties than
-        // what we've serialized so far.  In that case, continue to serialization so we
-        // can make sure we have all those properties.
+        // Even though we've already serialized out this object, it might be the case
+        // that we serialized out a different set of properties than the current set
+        // we're being asked to serialize.  So we have to make sure that all these props
+        // are actually serialized.
         if (entry.object) {
             await serializeObjectAsync();
         }
