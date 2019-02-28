@@ -32,14 +32,6 @@ export interface ObjectInfo {
     // information about the properties of the object.  We store all properties of the object,
     // regardless of whether they have string or symbol names.
     env: PropertyMap;
-
-    /**
-     * True if this is an object we've only partially serialized out.  i.e if we see `a.b.c` we'll
-     * only serialize out the 'b' member of 'a', and only the 'c' member of 'b'.  However, later on
-     * we may discover that we actually want to serialize out 'a' fully.  If we see the object for
-     * 'a', and it's only a 'partial' object, then we'll go reserialize it.
-     */
-    isPartiallySerialized: boolean;
 }
 
 // Information about a javascript function.  Note that this derives from ObjectInfo as all functions
@@ -419,7 +411,6 @@ async function analyzeFunctionInfoAsync(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
-            isPartiallySerialized: false,
         };
 
         const proto = Object.getPrototypeOf(func);
@@ -810,7 +801,7 @@ async function getOrCreateEntryAsync(
         // case that we're being asked to serialize out a different set of properties than
         // what we've serialized so far.  In that case, continue to serialization so we
         // can make sure we have all those properties.
-        if (entry.object && entry.object.isPartiallySerialized) {
+        if (entry.object) {
             await serializeObjectAsync();
         }
 
@@ -944,7 +935,7 @@ async function getOrCreateEntryAsync(
     async function serializeObjectWorkerAsync(localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
         // We're partially serializing out this object if we've been given any specific
         // property-chains to limit our serialization to.
-        entry.object = entry.object || { env: new Map(), isPartiallySerialized: localCapturedPropertyChains.length > 0 };
+        entry.object = entry.object || { env: new Map() };
 
         if (localCapturedPropertyChains.length === 0) {
             await serializeAllObjectPropertiesAsync(entry.object);
@@ -957,14 +948,6 @@ async function getOrCreateEntryAsync(
     // Serializes out all the properties of this object.  Used when we can't prove that
     // only a subset of properties are used on this object.
     async function serializeAllObjectPropertiesAsync(object: ObjectInfo) {
-        if (object.isPartiallySerialized) {
-            // we previously saw this object, but only partially serialized it out. Clear out the
-            // partial work we did, and redo the work again with all the information this time
-            // around.
-            object.env.clear();
-            object.isPartiallySerialized = false;
-        }
-
         // we wanted to capture everything (including the prototype chain)
         const descriptors = await getOwnPropertyDescriptors(obj);
 

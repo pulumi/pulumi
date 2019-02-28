@@ -4801,7 +4801,7 @@ return function () { console.log(o.b()); console.log(o.b.name); };
             expectText: `exports.handler = __f0;
 
 var __o2 = {};
-var __o2_b = {c: 2, d: 3};
+var __o2_b = {d: 3, c: 2};
 __o2.b = __o2_b;
 
 function __f0() {
@@ -4970,7 +4970,7 @@ return function () { console.log(o2.b.d); console.log(o3.b.d); console.log(o2.b)
             expectText: `exports.handler = __f0;
 
 var __o2 = {};
-var __o2_b = {c: 2, d: 3};
+var __o2_b = {d: 3, c: 2};
 __o2.b = __o2_b;
 var __o3 = {};
 __o3.b = __o2_b;
