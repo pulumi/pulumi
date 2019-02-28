@@ -52,14 +52,14 @@ export class ResourceError extends Error {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiResourceError: boolean = true;
+    /* @internal */ public readonly __pulumResourceError: boolean = true;
 
     /**
      * Returns true if the given object is an instance of a ResourceError.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is ResourceError {
-        return utils.isInstance<ResourceError>(obj, "__pulumiResourceError");
+        return utils.isInstance<ResourceError>(obj, "__pulumResourceError");
     }
 
     constructor(message: string, public resource: Resource | undefined, public hideStack?: boolean) {
