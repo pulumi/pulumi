@@ -5044,10 +5044,10 @@ return function () { typescript.parseCommandLine([""]); };
 
 function 'func': tsClosureCases.js(0,0): captured
   module './bin/index.js' which indirectly referenced
-    function 'debug':(...)
-      module './bin/runtime/settings.js' which indirectly referenced
-        function 'getEngine':(...)
-          module './bin/proto/engine_grpc_pb.js' which indirectly referenced
+    function 'Output':(...)
+      module './bin/log/index.js' which indirectly referenced
+        function 'warn':(...)
+          module './bin/runtime/settings.js' which indirectly referenced
 (...)
 Function code:
 (...)
@@ -5485,7 +5485,7 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        // if (test.title !== "Output capture") {
+        // if (test.title !== "Fail to capture non-deployment module due to native code") {
         //     continue;
         // }
 

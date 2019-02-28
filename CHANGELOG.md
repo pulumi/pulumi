@@ -2,6 +2,11 @@
 
 ### Improvements
 
+- Attempting to convert an [Output<T>] to a string or to JSON will now result in a warning
+  message being printed, as well as information on how to rectify the situation.  This is
+  to help with diagnosing cryptic problems that can occur when Outputs are accidentally
+  concatenated into a string in some part of the program.
+
 ## 0.16.17 (Released February 27th, 2019)
 
 ### Improvements
