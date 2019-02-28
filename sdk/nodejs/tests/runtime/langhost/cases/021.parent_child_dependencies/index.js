@@ -9,5 +9,9 @@ class MyResource extends pulumi.CustomResource {
 	}
 }
 
-let resA = new MyResource("resA", {});
-let resB = new MyResource("resB", { parentId: resA.id }, { parent: resA });
+//            cust1
+//                \
+//                 cust2
+
+let cust1 = new MyResource("cust1", {});
+let cust2 = new MyResource("cust2", { parentId: cust1.id }, { parent: cust1 });

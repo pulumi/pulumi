@@ -17,14 +17,10 @@ class MyComponentResource extends pulumi.ComponentResource {
 
 //            comp1
 //            /   \
-//       cust1    cust2
+//        cust1   cust2
 
 let comp1 = new MyComponentResource("comp1");
+let cust1 = new MyCustomResource("cust1", { }, { parent: comp1 });
+let cust2 = new MyCustomResource("cust2", { }, { parent: comp1 });
 
-// this represents a nonsensical program where a custom resource references the urn
-// of a component.  There is no good need for the urn to be used there.  To represent
-// a component dependency, 'dependsOn' should be used instead.
-//
-// This test just documents our behavior here (which is that we deadlock).
-let cust1 = new MyCustomResource("cust1", { parentId: comp1.urn }, { parent: comp1 });
-let cust2 = new MyCustomResource("cust2", { parentId: comp1.urn }, { parent: comp1 });
+let res1 = new MyCustomResource("res1", { }, { dependsOn: comp1 });

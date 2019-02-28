@@ -612,12 +612,67 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "parent_child_dependencies_3": {
+            pwd: path.join(base, "023.parent_child_dependencies_3"),
+            program: "./index.js",
+            expectResourceCount: 1,
+            expectError: "Program exited with non-zero exit code: 1",
+        },
+        "parent_child_dependencies_4": {
+            pwd: path.join(base, "024.parent_child_dependencies_4"),
+            program: "./index.js",
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_5": {
+            pwd: path.join(base, "025.parent_child_dependencies_5"),
+            program: "./index.js",
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_6": {
+            pwd: path.join(base, "026.parent_child_dependencies_6"),
+            program: "./index.js",
+            expectResourceCount: 6,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_7": {
+            pwd: path.join(base, "026.parent_child_dependencies_7"),
+            program: "./index.js",
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_8": {
+            pwd: path.join(base, "028.parent_child_dependencies_8"),
+            program: "./index.js",
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_9": {
+            pwd: path.join(base, "029.parent_child_dependencies_9"),
+            program: "./index.js",
+            expectResourceCount: 2,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename !== "parent_child_dependencies_2") {
-        //     continue;
-        // }
+        // if (casename.indexOf("parent_child") < 0) {
+        if (casename.indexOf("parent_child_dependencies_9") < 0) {
+            continue;
+        }
 
         const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
