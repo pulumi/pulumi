@@ -58,8 +58,8 @@ export abstract class Resource {
      * will walk to the children and wait on them.  This will mean it will wait on 'c3'.  But 'c3'
      * will be waiting in the same manner on 'c2', and a cycle forms.
      *
-     * This cannot happen with ComponentResources as they do not have any data flowing into them.
-     * The only way you would be able to have a problem is if you had this very specific coding
+     * This normally does not happen with ComponentResources as they do not have any data flowing
+     * into them. The only way you would be able to have a problem is if you had this sort of coding
      * pattern:
      *
      * ```ts

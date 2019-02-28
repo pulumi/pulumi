@@ -260,42 +260,16 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
 
-    const allDirectDependencyURNs = await getOnlyCustomResourceURNs(explicitDirectDependencies);
+    const allDirectDependencyURNs = await getAllTransitivelyReferencedCustomResourceURNs(explicitDirectDependencies);
     const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
     for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
         addAll(allDirectDependencies, directDependencies);
 
-        const urns = await getOnlyCustomResourceURNs(directDependencies);
+        const urns = await getAllTransitivelyReferencedCustomResourceURNs(directDependencies);
         addAll(allDirectDependencyURNs, urns);
         propertyToDirectDependencyURNs.set(propertyName, urns);
     }
-
-    // Now, transitively walk through **Component** resources, collecting any of their
-    // child resources.  This way, a Component acts as an aggregation really of all the
-    // reachable custom resources it parents.  This walking will transitively walk through
-    // other child ComponentResources, but will stop when it hits custom resources.  in
-    // other words, if we had:
-    //
-    //              Comp1
-    //              /   \
-    //          Cust1   Comp2
-    //                  /   \
-    //              Cust2   Cust3
-    //              /
-    //          Cust4
-    //
-    // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2, Cust3].
-    // It will *not* include `Cust4`.
-
-    // To do this, first we just get the transitively reachable set of resources (not diving
-    // into custom resources).  In the above picture, if we start with 'Comp1', this will be
-    // [Comp1, Cust1, Comp2, Cust2, Cust3]
-    const transitiveResources = getTransitivelyReferencedChildResourceOfComponentResources(allDirectDependencies);
-
-    // Then we filter down and await to just the custom resources of that list.  In this case,
-    // [Cust1, Cust2, Cust3]
-    await getOnlyCustomResourceURNs(transitiveResources);
 
     return {
         resolveURN: resolveURN!,
@@ -315,8 +289,31 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getOnlyCustomResourceURNs(resources: Set<Resource>) {
-    const promises = [...resources].filter(r => CustomResource.isInstance(r)).map(r => r.urn.promise());
+async function getAllTransitivelyReferencedCustomResourceURNs(resources: Set<Resource>) {
+    // Go through 'resources', but transitively walk through **Component** resources, collecting any
+    // of their child resources.  This way, a Component acts as an aggregation really of all the
+    // reachable custom resources it parents.  This walking will transitively walk through other
+    // child ComponentResources, but will stop when it hits custom resources.  in other words, if we
+    // had:
+    //
+    //              Comp1
+    //              /   \
+    //          Cust1   Comp2
+    //                  /   \
+    //              Cust2   Cust3
+    //              /
+    //          Cust4
+    //
+    // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2, Cust3]. It
+    // will *not* include `Cust4`.
+
+    // To do this, first we just get the transitively reachable set of resources (not diving
+    // into custom resources).  In the above picture, if we start with 'Comp1', this will be
+    // [Comp1, Cust1, Comp2, Cust2, Cust3]
+    const transitivelyReachableResources = getTransitivelyReferencedChildResourcesOfComponentResources(resources);
+
+    const transitivelyReacableCustomResources =  [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
+    const promises = transitivelyReacableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
 }
@@ -325,21 +322,21 @@ async function getOnlyCustomResourceURNs(resources: Set<Resource>) {
  * Recursively walk the resources passed in, returning them and all resources reachable from
  * [Resource.__childResources] through any **Component** resources we encounter.
  */
-function getTransitivelyReferencedChildResourceOfComponentResources(resources: Set<Resource>) {
+function getTransitivelyReferencedChildResourcesOfComponentResources(resources: Set<Resource>) {
     // Recursively walk the dependent resources through their children, adding them to the result set.
     const result = new Set<Resource>();
-    addTransitivelyReferencedChildResourceOfComponentResources(resources, result);
+    addTransitivelyReferencedChildResourcesOfComponentResources(resources, result);
     return result;
 }
 
-function addTransitivelyReferencedChildResourceOfComponentResources(resources: Set<Resource> | undefined, result: Set<Resource>) {
+function addTransitivelyReferencedChildResourcesOfComponentResources(resources: Set<Resource> | undefined, result: Set<Resource>) {
     if (resources) {
         for (const resource of resources) {
             if (!result.has(resource)) {
                 result.add(resource);
 
                 if (ComponentResource.isInstance(resource)) {
-                    addTransitivelyReferencedChildResourceOfComponentResources(resource.__childResources, result);
+                    addTransitivelyReferencedChildResourcesOfComponentResources(resource.__childResources, result);
                 }
             }
         }
