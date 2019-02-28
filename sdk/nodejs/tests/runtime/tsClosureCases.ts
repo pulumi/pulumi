@@ -5065,6 +5065,42 @@ return function () { console.log(getAll()); };
     }
 
     {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getAll() { return { y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #23",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getAll() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { return { y: defaultsForThing.config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         cases.push({
             title: "Capture non-built-in module",
             func: function () { typescript.parseCommandLine([""]); },
@@ -5190,9 +5226,9 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
 }
 `,
        });
-   }
+    }
 
-   {
+    {
         deploymentOnlyModule.setConfig("test:TestingKey2", "TestingValue2");
 
         cases.push({
@@ -5275,7 +5311,7 @@ return function () { const v = new deploymentOnlyModule.Config("test").get("Test
 }
 `,
        });
-   }
+    }
 
     {
         cases.push({
@@ -5532,7 +5568,7 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        if (test.title !== "Analyze property chain #22") {
+        if (test.title !== "Analyze property chain #23") {
             continue;
         }
 
