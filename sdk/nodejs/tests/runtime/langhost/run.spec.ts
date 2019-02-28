@@ -643,9 +643,9 @@ describe("rpc", () => {
             },
         },
         "parent_child_dependencies_7": {
-            pwd: path.join(base, "026.parent_child_dependencies_7"),
+            pwd: path.join(base, "027.parent_child_dependencies_7"),
             program: "./index.js",
-            expectResourceCount: 3,
+            expectResourceCount: 10,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -670,9 +670,8 @@ describe("rpc", () => {
 
     for (const casename of Object.keys(cases)) {
         // if (casename.indexOf("parent_child") < 0) {
-        if (casename.indexOf("parent_child_dependencies_8") < 0) {
-            continue;
-        }
+        //     continue;
+        // }
 
         const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {

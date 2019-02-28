@@ -33,6 +33,6 @@ let cust3 = new MyCustomResource("cust3", { }, { parent: comp2 });
 let cust4 = new MyCustomResource("cust4", { parentId: cust2.id }, { parent: cust2 });
 
 let res1 = new MyCustomResource("res1", { }, { dependsOn: comp1 });
-// let res2 = new MyCustomResource("res2", { }, { dependsOn: comp2 });
-// let res3 = new MyCustomResource("res3", { }, { dependsOn: cust2 });
-// let res4 = new MyCustomResource("res4", { }, { dependsOn: cust4 });
+let res2 = new MyCustomResource("res2", { }, { dependsOn: comp2 });
+let res3 = new MyCustomResource("res3", { }, { dependsOn: cust2 });
+let res4 = new MyCustomResource("res4", { }, { dependsOn: cust4 });
