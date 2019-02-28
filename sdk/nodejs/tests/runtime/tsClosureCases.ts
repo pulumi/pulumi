@@ -5101,6 +5101,51 @@ return function () { console.log(getAll()); };
     }
 
     {
+        const config = { x: "x", y: "y" };
+        function getX() { return config.x }
+        function getAll() { const x = getX(); return { x, y: config.y } }
+
+        cases.push({
+            title: "Analyze property chain #24",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __config = {x: "x", y: "y"};
+
+function __getX() {
+  return (function() {
+    with({ config: __config, getX: __getX }) {
+
+return function /*getX*/() { return config.x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, config: __config, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { x, y: config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         cases.push({
             title: "Capture non-built-in module",
             func: function () { typescript.parseCommandLine([""]); },
@@ -5568,7 +5613,7 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        if (test.title !== "Analyze property chain #23") {
+        if (test.title !== "Analyze property chain #24") {
             continue;
         }
 
