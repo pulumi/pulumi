@@ -933,8 +933,6 @@ async function getOrCreateEntryAsync(
     // Returns 'true' if the caller (serializeObjectAsync) should call this again, but without any
     // property filtering.
     async function serializeObjectWorkerAsync(localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
-        // We're partially serializing out this object if we've been given any specific
-        // property-chains to limit our serialization to.
         entry.object = entry.object || { env: new Map() };
 
         if (localCapturedPropertyChains.length === 0) {
