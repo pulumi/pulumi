@@ -275,6 +275,16 @@ func HasPluginGTE(plug PluginInfo) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	// If we're not doing the legacy plugin behavior and we've been asked for a specific version, do the same plugin
+	// search that we'd do at runtime. This ensures that `pulumi plugin install` works the same way that the runtime
+	// loader does, to minimize confusion when a user has to install new plugins.
+	if !enableLegacyPluginBehavior && plug.Version != nil {
+		requestedVersion := semver.MustParseRange(plug.Version.String())
+		_, err := SelectCompatiblePlugin(plugs, plug.Kind, plug.Name, requestedVersion)
+		return err == nil, err
+	}
+
 	for _, p := range plugs {
 		if p.Name == plug.Name &&
 			p.Kind == plug.Kind &&
@@ -458,12 +468,14 @@ func SelectCompatiblePlugin(
 	// Before iterating over the list of plugins, sort the list of plugins by version in ascending order. This ensures
 	// that we can do a single pass over the plugin list, from lowest version to greatest version, and be confident that
 	// the best match that we find at the end is the greatest possible compatible version for the requested plugin.
+	//
+	// Plugins without versions are treated as having the lowest version. Ties between plugins without versions are
+	// resolved arbitrarily.
 	sort.Sort(sortedPluginInfo(plugins))
 	for _, plugin := range plugins {
 		switch {
 		case plugin.Kind != kind || plugin.Name != name:
 			// Not the plugin we're looking for.
-			continue
 		case !hasMatch && plugin.Version == nil:
 			// This is the plugin we're looking for, but it doesn't have a version. We haven't seen anything better yet,
 			// so take it.
@@ -472,18 +484,15 @@ func SelectCompatiblePlugin(
 				name, plugin.String())
 			hasMatch = true
 			bestMatch = plugin
-			continue
 		case plugin.Version == nil:
 			// This is a rare case - we've already seen a version-less plugin and we're seeing another here. Ignore this
 			// one and defer to the one we previously selected.
 			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): skipping plugin %s: no version", name, plugin.String())
-			continue
 		case requested(*plugin.Version):
 			// This plugin is compatible with the requested semver range. Save it as the best match and continue.
 			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): best plugin %s: semver match", name, plugin.String())
 			hasMatch = true
 			bestMatch = plugin
-			continue
 		default:
 			logging.V(7).Infof(
 				"SelectCompatiblePlugin(..., %s): skipping plugin %s: semver mismatch", name, plugin.String())
