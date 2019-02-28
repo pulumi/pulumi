@@ -30,18 +30,50 @@ export abstract class Resource {
      /* @internal */ private readonly __pulumiResource: boolean = true;
 
     /**
-     * The parent of this Resource, if and only if it is a [ComponentResource].  This allows us to
-     * form a tree that has the following properties:
-     *
-     * 1. All non-leaf nodes are ComponentResources.
-     * 2. All leaf nodes are CustomResources.  Technically, you could have a leaf Component, but
-     *    that should be very rare, and can be thought of as a non-leaf node component with 0 leaf
-     *    CustomResources.
-     *
-     * Now, when any node has a dependency on another node, 
+     * The optional parent of this resource.
      */
-     // tslint:disable-next-line:variable-name
-     /* @internal */ private readonly __parentComponentResource: ComponentResource;
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public readonly __parentResource: Resource | undefined;
+
+    /**
+     * The child resources of this resource.  We use these (only from a ComponentResource) to allow
+     * code to dependOn a ComponentResource and have that effectively mean that it is depending on
+     * all the CustomResource children of that component.
+     *
+     * Important!  We only walk through ComponentResources.  They're the only resources that serve
+     * as an aggregation of other primitive (i.e. custom) resources.  While a custom resource can be
+     * a parent of other resources, we don't want to ever depend on those child resource.  If we do,
+     * it's simple to end up in a situation where we end up depending on a child resource that has a
+     * data cycle dependency due to the data passed into it.
+     *
+     * An example of how this would be bad is:
+     *
+     * ```ts
+     *     var c1 = new CustomResource("c1");
+     *     var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1 });
+     *     var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
+     * ```
+     *
+     * The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on 'c1' it
+     * will walk to the children and wait on them.  This will mean it will wait on 'c3'.  But 'c3'
+     * will be waiting in the same manner on 'c2', and a cycle forms.
+     *
+     * This cannot happen with ComponentResources as they do not have any data flowing into them.
+     * The only way you would be able to have a problem is if you had this very specific coding
+     * pattern:
+     *
+     * ```ts
+     *     var c1 = new ComponentResource("c1");
+     *     var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
+     *     var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
+     * ```
+     *
+     * However, this would be pretty nonsensical as there is zero need for a custom resource to ever
+     * need to reference the urn of a component resource.  So it's acceptable if that sort of
+     * pattern failed in practice.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public __childResources: Set<Resource> | undefined;
 
     /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
@@ -102,6 +134,10 @@ export abstract class Resource {
             if (!Resource.isInstance(opts.parent)) {
                 throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
             }
+
+            this.__parentResource = opts.parent;
+            this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
+            this.__parentResource.__childResources.add(this);
 
             if (opts.protect === undefined) {
                 opts.protect = opts.parent.__protect;
