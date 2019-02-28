@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -205,6 +207,31 @@ func TestStackTagValidation(t *testing.T) {
 		assert.Contains(t, stderr, "validating stack properties:")
 		assert.Contains(t, stderr, "stack tag \"pulumi:description\" value is too long (max length 256 characters)")
 	})
+}
+
+func TestRemoveWithResourcesBlocked(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex sould not fail with no maximum length is set")
+
+	e.ImportDirectory("single_resource")
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
+	assert.Contains(t, stderr, "--force")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.

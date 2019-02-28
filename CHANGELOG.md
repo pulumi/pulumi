@@ -1,8 +1,45 @@
-## 0.16.15 (Unreleased)
+## 0.16.18 (Unreleased)
 
 ### Improvements
 
-## 0.16.14 (Released January 31th, 2019)
+- Attempting to convert an [Output<T>] to a string or to JSON will now result in a warning
+  message being printed, as well as information on how to rectify the situation.  This is
+  to help with diagnosing cryptic problems that can occur when Outputs are accidentally
+  concatenated into a string in some part of the program.
+
+- Fixes incorrect closure serialization issue (https://github.com/pulumi/pulumi/pull/2497)
+
+## 0.16.17 (Released February 27th, 2019)
+
+### Improvements
+
+- Rolling back the change:
+    "Depending on a Resource will now depend on all other Resource's parented by that Resource."
+
+  Unforseen problems cropped up that caused deadlocks.  Removing this change until we can
+  have a high quality solution without these issues.
+
+## 0.16.16 (Released February 24th, 2019)
+
+### Improvements
+
+- Fix deadlock with resource dependencies (https://github.com/pulumi/pulumi/issues/2470)
+
+## 0.16.15 (Released February 22nd, 2019)
+
+### Improvements
+
+- When trying to `stack rm` a stack managed by pulumi.com that has resources, the error message now informs you to pass `--force` if you really want to remove a stack that still has resources under management, as this would orphan these resources (fixes [pulumi/pulumi#2431](https://github.com/pulumi/pulumi/issues/2431)).
+- Enabled Python programs to delete resources in parallel (fixes [pulumi/pulumi#2382](https://github.com/pulumi/pulumi/issues/2382)). If you are using Python 2, you should upgrade to Python 3 or else you may experience problems when deleting resources.
+- Fixed an issue where Python programs would occasionally fail during preview with errors about empty IDs being passed
+  to resources. ([pulumi/pulumi#2450](https://github.com/pulumi/pulumi/issues/2450))
+- Return an error from `pulumi stack tag` commands when using the `--local` mode.
+- Depending on a Resource will now depend on all other Resource's parented by that Resource.
+  This will help out the programming model for Component Resources as your consumers can just
+  depend on a Component and have that automatically depend on all the child Resources created
+  by that Component.
+
+## 0.16.14 (Released January 31st, 2019)
 
 ### Improvements
 
@@ -27,7 +64,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 **NOTE**: As part of the above, an `Output<T>` will now appear to have more members than before in TypeScript.  This can cause incompabilities if your Pulumi application ends up referencing several different versions of `@pulumi/pulumi` (as through a newer version an `Output<T>` will appear to have these new members, and through an older version it will not).  It is recommended that you update all `@pulumi/...` dependencies to avoid this.
 
-## 0.16.13 (Released January 31th, 2019)
+## 0.16.13 (Released January 31st, 2019)
 
 ### Major Changes
 

@@ -23,11 +23,16 @@
  */
 /** @internal */
 export function isInstance<T>(obj: any, name: keyof T): obj is T {
+    return hasTrueBooleanMember(obj, name);
+}
+
+/** @internal */
+export function hasTrueBooleanMember(obj: any, memberName: string | number | symbol): boolean {
     if (obj === undefined || obj === null) {
         return false;
     }
 
-    const val = (<T>obj)[name];
+    const val = obj[memberName];
     if (typeof val !== "boolean") {
         return false;
     }

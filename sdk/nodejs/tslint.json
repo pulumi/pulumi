@@ -25,10 +25,6 @@
         "interface-name": false,
         "jsdoc-format": false,
         "label-position": true,
-        "max-line-length": [
-            true,
-            120
-        ],
         "member-access": false,
         "member-ordering": [
             true,
