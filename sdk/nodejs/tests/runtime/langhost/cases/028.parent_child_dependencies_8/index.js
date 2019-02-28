@@ -1,5 +1,3 @@
-// Test the ability to invoke provider functions via RPC.
-
 let assert = require("assert");
 let pulumi = require("../../../../../");
 
