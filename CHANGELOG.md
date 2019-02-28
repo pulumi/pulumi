@@ -109,7 +109,6 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 ### Improvements
 
 - Support for first-class providers in Python.
-- pulumi.interpolate and pulumi.concat have been added as convenient ways to combine Output values into strings.
 
 - Fix a bug where `StackReference` outputs were not updated when changes occured in the referenced stack.
 
