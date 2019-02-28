@@ -260,13 +260,13 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
 
-    const allDirectDependencyURNs = await filterToCustomResourcesAndGetURNs(explicitDirectDependencies);
+    const allDirectDependencyURNs = await getOnlyCustomResourceURNs(explicitDirectDependencies);
     const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
     for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
         addAll(allDirectDependencies, directDependencies);
 
-        const urns = await filterToCustomResourcesAndGetURNs(directDependencies);
+        const urns = await getOnlyCustomResourceURNs(directDependencies);
         addAll(allDirectDependencyURNs, urns);
         propertyToDirectDependencyURNs.set(propertyName, urns);
     }
@@ -287,7 +287,15 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     //
     // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2, Cust3].
     // It will *not* include `Cust4`.
-    await filterToCustomResourcesAndGetURNs(getTransitivelyReferencedChildResourceOfComponentResources(allDirectDependencies));
+
+    // To do this, first we just get the transitively reachable set of resources (not diving
+    // into custom resources).  In the above picture, if we start with 'Comp1', this will be
+    // [Comp1, Cust1, Comp2, Cust2, Cust3]
+    const transitiveResources = getTransitivelyReferencedChildResourceOfComponentResources(allDirectDependencies);
+
+    // Then we filter down and await to just the custom resources of that list.  In this case,
+    // [Cust1, Cust2, Cust3]
+    await getOnlyCustomResourceURNs(transitiveResources);
 
     return {
         resolveURN: resolveURN!,
@@ -307,15 +315,10 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function filterToCustomResourcesAndGetURNs(resources: Set<Resource>) {
-    const result = new Set<URN>();
-    for (const resource of resources) {
-        if (CustomResource.isInstance(resource)) {
-            result.add(await resource.urn.promise());
-        }
-    }
-
-    return result;
+async function getOnlyCustomResourceURNs(resources: Set<Resource>) {
+    const promises = [...resources].filter(r => CustomResource.isInstance(r)).map(r => r.urn.promise());
+    const urns = await Promise.all(promises);
+    return new Set<string>(urns);
 }
 
 /**
