@@ -661,7 +661,7 @@ describe("rpc", () => {
         "parent_child_dependencies_9": {
             pwd: path.join(base, "029.parent_child_dependencies_9"),
             program: "./index.js",
-            expectResourceCount: 2,
+            expectResourceCount: 3,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
