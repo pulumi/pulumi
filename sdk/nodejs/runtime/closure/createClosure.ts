@@ -18,6 +18,7 @@ import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import { Input, Output } from "../../output";
 import * as resource from "../../resource";
+import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import * as utils from "./utils";
@@ -189,18 +190,8 @@ interface ClosurePropertyDescriptor {
  * IMPORTANT: Do not change the structure of this type.  Closure serialization code takes a
  * dependency on the actual shape (including the names of properties like 'value').
  */
-class SerializedOutput<T> implements Output<T> {
-    /* @internal */ public isKnown: Promise<boolean>;
-    /* @internal */ public readonly promise: () => Promise<T>;
-    /* @internal */ public readonly resources: () => Set<resource.Resource>;
-
-    /* @internal */ public readonly toString: () => string;
-    /* @internal */ public readonly toJSON: () => any;
-
-    /* @internal */ private readonly value: T;
-
-    public constructor(value: T) {
-        this.value = value;
+class SerializedOutput<T> {
+    public constructor(private readonly value: T) {
     }
 
     public apply<U>(func: (t: T) => Input<U>): Output<U> {
@@ -394,7 +385,7 @@ async function analyzeFunctionInfoAsync(
         // process down the pipeline.
         const [error, parsedFunction] = parseFunction(functionString);
         if (error) {
-            await throwSerializationErrorAsync(func, context, error);
+            throwSerializationError(func, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
@@ -422,7 +413,7 @@ async function analyzeFunctionInfoAsync(
         // Function.prototype by default, so we don't need to do anything for them.
         if (proto !== Function.prototype &&
             !isAsyncFunction &&
-            !await isDerivedNoCaptureConstructorAsync(func)) {
+            !isDerivedNoCaptureConstructor(func)) {
 
             const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
@@ -512,7 +503,7 @@ async function analyzeFunctionInfoAsync(
                     value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
                 }
                 catch (err) {
-                    await throwSerializationErrorAsync(func, context, err.message);
+                    throwSerializationError(func, context, err.message);
                 }
 
                 const moduleName = await findNormalizedModuleNameAsync(value);
@@ -605,8 +596,8 @@ async function computeIsAsyncFunction(func: Function): Promise<boolean> {
     return func.constructor && func.constructor.name === "AsyncFunction";
 }
 
-async function throwSerializationErrorAsync(
-    func: Function, context: Context, info: string): Promise<never> {
+function throwSerializationError(
+    func: Function, context: Context, info: string) {
 
     let message = "";
 
@@ -672,7 +663,7 @@ async function throwSerializationErrorAsync(
         const moduleName = module.name;
         message += "\n";
 
-        if (await hasTruthyMemberAsync(module.value, "deploymentOnlyModule")) {
+        if (hasTrueBooleanMember(module.value, "deploymentOnlyModule")) {
             message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
         }
         else {
@@ -808,7 +799,7 @@ async function getOrCreateEntryAsync(
         return entry;
     }
 
-    if (obj instanceof Function && await hasTruthyMemberAsync(obj, "doNotCapture")) {
+    if (obj instanceof Function && hasTrueBooleanMember(obj, "doNotCapture")) {
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
@@ -831,19 +822,19 @@ async function getOrCreateEntryAsync(
     await dispatchAnyAsync();
     return entry;
 
-    async function doNotCaptureAsync(): Promise<boolean> {
+    function doNotCapture(): boolean {
         if (!serialize(obj)) {
             // caller explicitly does not want us to capture this value.
             return true;
         }
 
-        if (await hasTruthyMemberAsync(obj, "doNotCapture")) {
+        if (hasTrueBooleanMember(obj, "doNotCapture")) {
             // object has set itself as something that should not be captured.
             return true;
         }
 
         if (obj instanceof Function &&
-            await isDerivedNoCaptureConstructorAsync(obj)) {
+            isDerivedNoCaptureConstructor(obj)) {
 
             // this was a constructor that derived from something that should not be captured.
             return true;
@@ -853,7 +844,7 @@ async function getOrCreateEntryAsync(
     }
 
     async function dispatchAnyAsync(): Promise<void> {
-        if (await doNotCaptureAsync()) {
+        if (doNotCapture()) {
             // We do not want to capture this object.  Explicit set .json to undefined so
             // that we will see that the property is set and we will simply roundtrip this
             // as the 'undefined value.
@@ -1155,7 +1146,7 @@ async function getOrCreateEntryAsync(
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
-        if (await hasTruthyMemberAsync(obj, "deploymentOnlyModule") || isLocalModule) {
+        if (hasTrueBooleanMember(obj, "deploymentOnlyModule") || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
             //
             // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
@@ -1262,9 +1253,9 @@ async function isOutputAsync(obj: any): Promise<boolean> {
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
 // emit it.  We would be unable to actually hook up the "super()" call as one of the base
 // constructors was set to not be captured.
-async function isDerivedNoCaptureConstructorAsync(func: Function): Promise<boolean> {
+function isDerivedNoCaptureConstructor(func: Function): boolean {
     for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
-        if (await hasTruthyMemberAsync(current, "doNotCapture")) {
+        if (hasTrueBooleanMember(current, "doNotCapture")) {
             return true;
         }
     }
@@ -1332,14 +1323,6 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
 
     // Else, return that no global name is available for this object.
     return undefined;
-}
-
-async function hasTruthyMemberAsync(obj: any, memberName: string): Promise<boolean> {
-    if (!obj) {
-        return false;
-    }
-
-    return obj[memberName] ? true : false;
 }
 
 function createClosurePropertyDescriptor(
