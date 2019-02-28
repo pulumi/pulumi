@@ -5358,15 +5358,18 @@ return function () { typescript.parseCommandLine([""]); };
             func: function () { console.log(pulumi); },
             error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': tsClosureCases.js(0,0): captured
+function 'func':(...)
   module './bin/index.js' which indirectly referenced
-    function 'Output':(...)
-      module './bin/log/index.js' which indirectly referenced
-        function 'warn':(...)
-          module './bin/runtime/settings.js' which indirectly referenced
+    function 'output':(...)
+      function 'createSimpleOutput':(...)
+        module './bin/output.js' which indirectly referenced
+          function 'OutputImpl':(...)
+            module './bin/log/index.js' which indirectly referenced
+              function 'warn':(...)
 (...)
 Function code:
-(...)
+  function [Symbol.hasInstance]() { [native code] }
+
 Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
         });
     }
