@@ -5247,7 +5247,41 @@ return function () { console.log(getAll()); };
         cases.push({
             title: "Analyze property chain #27",
             func: function () { console.log(getAll()); },
-            expectText: `
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {x: "x", y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getX() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+
+return function /*getX*/() { return defaultsForThing.config.x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { y: defaultsForThing }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 `,
         });
     }

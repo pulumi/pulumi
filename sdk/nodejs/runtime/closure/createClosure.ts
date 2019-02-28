@@ -965,17 +965,15 @@ async function getOrCreateEntryAsync(
             // loops, put a dummy entry in the environment map.  That way, if we hit
             // this object again while recursing we won't try to generate this property.
             const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
-            if (!environment.has(keyEntry)) {
-                environment.set(keyEntry, <any>undefined);
+            environment.set(keyEntry, <any>undefined);
 
-                const propertyInfo = await createPropertyInfoAsync(descriptor);
-                const prop = await getOwnPropertyAsync(obj, descriptor);
-                const valEntry = await getOrCreateEntryAsync(
-                    prop, undefined, context, serialize, logInfo);
+            const propertyInfo = await createPropertyInfoAsync(descriptor);
+            const prop = await getOwnPropertyAsync(obj, descriptor);
+            const valEntry = await getOrCreateEntryAsync(
+                prop, undefined, context, serialize, logInfo);
 
-                // Now, replace the dummy entry with the actual one we want.
-                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
-            }
+            // Now, replace the dummy entry with the actual one we want.
+            environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
         }
 
         // If the object's __proto__ is not Object.prototype, then we have to capture what it
