@@ -7,6 +7,8 @@
   to help with diagnosing cryptic problems that can occur when Outputs are accidentally
   concatenated into a string in some part of the program.
 
+- Fixes incorrect closure serialization issue (https://github.com/pulumi/pulumi/pull/2497)
+
 ## 0.16.17 (Released February 27th, 2019)
 
 ### Improvements
