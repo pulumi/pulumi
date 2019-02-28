@@ -5801,10 +5801,10 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        if (test.title.indexOf("Analyze property chain #2") < 0) {
-        //if (test.title !== "Analyze property chain #23") {
-            continue;
-        }
+        // if (test.title.indexOf("Analyze property chain #2") < 0) {
+        // //if (test.title !== "Analyze property chain #23") {
+        //     continue;
+        // }
 
         it(test.title, asyncTest(async () => {
             // Run pre-actions.
