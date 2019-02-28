@@ -5018,6 +5018,53 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
     }
 
     {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config.x }
+        function getAll() { const x = getX(); return { x, y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #22",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {x: "x"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getX() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+
+return function /*getX*/() { return defaultsForThing.config.x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { x, y: defaultsForThing.config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         cases.push({
             title: "Capture non-built-in module",
             func: function () { typescript.parseCommandLine([""]); },
@@ -5485,9 +5532,9 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        // if (test.title !== "Fail to capture non-deployment module due to native code") {
-        //     continue;
-        // }
+        if (test.title !== "Analyze property chain #22") {
+            continue;
+        }
 
         it(test.title, asyncTest(async () => {
             // Run pre-actions.
