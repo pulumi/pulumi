@@ -159,7 +159,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
 
-        this.apply = <any>(<U>(func: (t: T) => Input<U>) => {
+        this.apply = <U>(func: (t: T) => Input<U>) => {
             let innerIsKnownResolve: (val: boolean) => void;
             const innerIsKnown = new Promise<boolean>(resolve => {
                 innerIsKnownResolve = resolve;
@@ -212,7 +212,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
                     innerIsKnownResolve(false);
                 }
             }), resultIsKnown);
-        });
+        };
 
         this.get = () => {
             throw new Error(`Cannot call '.get' during update or preview.
