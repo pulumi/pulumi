@@ -255,7 +255,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
                 // Similarly, do not respond to the 'doNotCapture' member name.  It serves a similar
                 // RTTI purpose.
                 if (typeof prop === "string") {
-                    if (prop.startsWith("__") || prop === "doNotCapture") {
+                    if (prop.startsWith("__") || prop === "doNotCapture" || prop === "deploymentOnlyModule") {
                         return undefined;
                     }
                 }
