@@ -32,6 +32,14 @@ export interface ObjectInfo {
     // information about the properties of the object.  We store all properties of the object,
     // regardless of whether they have string or symbol names.
     env: PropertyMap;
+
+    /**
+     * True if this is an object we've only partially serialized out.  i.e if we see `a.b.c` we'll
+     * only serialize out the 'b' member of 'a', and only the 'c' member of 'b'.  However, later on
+     * we may discover that we actually want to serialize out 'a' fully.  If we see the object for
+     * 'a', and it's only a 'partial' object, then we'll go reserialize it.
+     */
+    isPartiallySerialized: boolean;
 }
 
 // Information about a javascript function.  Note that this derives from ObjectInfo as all functions
@@ -346,10 +354,6 @@ async function analyzeFunctionInfoAsync(
         func: Function, context: Context,
         serialize: (o: any) => boolean, logInfo?: boolean): Promise<FunctionInfo> {
 
-    logInfo = true;
-    if (logInfo) {
-        console.log("analyzing: " + func.name);
-    }
     // logInfo = logInfo || func.name === "addHandler";
 
     const { file, line, column } = await v8.getFunctionLocationAsync(func);
@@ -406,11 +410,6 @@ async function analyzeFunctionInfoAsync(
         frame.functionLocation.isArrowFunction = parsedFunction.isArrowFunction;
 
         const capturedValues: PropertyMap = new Map();
-
-        if (logInfo) {
-            console.log("captured: " + JSON.stringify([...parsedFunction.capturedVariables.required]));
-        }
-
         await processCapturedVariablesAsync(parsedFunction.capturedVariables.required, /*throwOnFailure:*/ true);
         await processCapturedVariablesAsync(parsedFunction.capturedVariables.optional, /*throwOnFailure:*/ false);
 
@@ -420,6 +419,7 @@ async function analyzeFunctionInfoAsync(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
+            isPartiallySerialized: false,
         };
 
         const proto = Object.getPrototypeOf(func);
@@ -806,11 +806,11 @@ async function getOrCreateEntryAsync(
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(obj)!;
     if (entry) {
-        // Even though we've already serialized out this object, it might be the case
-        // that we serialized out a different set of properties than the current set
-        // we're being asked to serialize.  So we have to make sure that all these props
-        // are actually serialized.
-        if (entry.object) {
+        // If this is an object and we've only partially serialized it out, it might be the
+        // case that we're being asked to serialize out a different set of properties than
+        // what we've serialized so far.  In that case, continue to serialization so we
+        // can make sure we have all those properties.
+        if (entry.object && entry.object.isPartiallySerialized) {
             await serializeObjectAsync();
         }
 
@@ -942,40 +942,58 @@ async function getOrCreateEntryAsync(
     // Returns 'true' if the caller (serializeObjectAsync) should call this again, but without any
     // property filtering.
     async function serializeObjectWorkerAsync(localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
-        const objectInfo: ObjectInfo = entry.object || { env: new Map() };
+        // We're partially serializing out this object if we've been given any specific
+        // property-chains to limit our serialization to.
+        const objectInfo: ObjectInfo = entry.object || { env: new Map(), isPartiallySerialized: localCapturedPropertyChains.length > 0 };
         entry.object = objectInfo;
-        const environment = entry.object.env;
 
         if (localCapturedPropertyChains.length === 0) {
-            await serializeAllObjectPropertiesAsync(environment);
+            await serializeAllObjectPropertiesAsync(entry.object);
             return false;
         } else {
-            return await serializeSomeObjectPropertiesAsync(environment, localCapturedPropertyChains);
+            return await serializeSomeObjectPropertiesAsync(entry.object, localCapturedPropertyChains);
         }
     }
 
     // Serializes out all the properties of this object.  Used when we can't prove that
     // only a subset of properties are used on this object.
-    async function serializeAllObjectPropertiesAsync(environment: PropertyMap) {
+    async function serializeAllObjectPropertiesAsync(object: ObjectInfo) {
+        if (object.isPartiallySerialized) {
+            // we previously saw this object, but only partially serialized it out. Clear out the
+            // partial work we did, and redo the work again with all the information this time
+            // around.
+            object.env.clear();
+            object.isPartiallySerialized = false;
+        }
+
         // we wanted to capture everything (including the prototype chain)
         const descriptors = await getOwnPropertyDescriptors(obj);
 
         for (const descriptor of descriptors) {
-            // we're about to recurse inside this object.  In order to prever infinite
-            // loops, put a dummy entry in the environment map.  That way, if we hit
-            // this object again while recursing we won't try to generate this property.
             const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
-            if (!environment.has(keyEntry)) {
-                environment.set(keyEntry, <any>undefined);
 
-                const propertyInfo = await createPropertyInfoAsync(descriptor);
-                const prop = await getOwnPropertyAsync(obj, descriptor);
-                const valEntry = await getOrCreateEntryAsync(
-                    prop, undefined, context, serialize, logInfo);
-
-                // Now, replace the dummy entry with the actual one we want.
-                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+            // We're about to recurse inside this object.  In order to prevent infinite loops, put a
+            // dummy entry in the environment map.  That way, if we hit this object again while
+            // recursing we won't try to generate this property.
+            //
+            // Note: we only stop recursing if we hit exactly our sentinel key (i.e. we're self
+            // recursive).  We *do* want to recurse through the object again if we see it through
+            // non-recursive paths.  That's because we might be hitting this object through one
+            // prop-name-path, but we created it the first time through another prop-name path.
+            //
+            // By processing the object again, we will add the different members we need.
+            if (object.env.has(keyEntry) && object.env.get(keyEntry) === undefined) {
+                continue;
             }
+            object.env.set(keyEntry, <any>undefined);
+
+            const propertyInfo = await createPropertyInfoAsync(descriptor);
+            const prop = await getOwnPropertyAsync(obj, descriptor);
+            const valEntry = await getOrCreateEntryAsync(
+                prop, undefined, context, serialize, logInfo);
+
+            // Now, replace the dummy entry with the actual one we want.
+            object.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
         }
 
         // If the object's __proto__ is not Object.prototype, then we have to capture what it
@@ -983,10 +1001,10 @@ async function getOrCreateEntryAsync(
         // things up properly.
         //
         // We don't need to capture the prototype if the user is not capturing 'this' either.
-        if (!entry.object!.proto) {
+        if (!object.proto) {
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
-                entry.object!.proto = await getOrCreateEntryAsync(
+                object.proto = await getOrCreateEntryAsync(
                     proto, undefined, context, serialize, logInfo);
             }
         }
@@ -995,7 +1013,7 @@ async function getOrCreateEntryAsync(
     // Serializes out only the subset of properties of this object that we have seen used
     // and have recorded in localCapturedPropertyChains
     async function serializeSomeObjectPropertiesAsync(
-            environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
+            object: ObjectInfo, localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
 
         // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
@@ -1026,69 +1044,66 @@ async function getOrCreateEntryAsync(
             // Now, make an entry just for this name.
             const keyEntry = await getOrCreateNameEntryAsync(propName, undefined, context, serialize, logInfo);
 
+            // We're about to recurse inside this object.  In order to prevent infinite loops, put a
+            // dummy entry in the environment map.  That way, if we hit this object again while
+            // recursing we won't try to generate this property.
+            //
+            // Note: we only stop recursing if we hit exactly our sentinel key (i.e. we're self
+            // recursive).  We *do* want to recurse through the object again if we see it through
+            // non-recursive paths.  That's because we might be hitting this object through one
+            // prop-name-path, but we created it the first time through another prop-name path.
+            //
+            // By processing the object again, we will add the different members we need.
+            if (object.env.has(keyEntry) && object.env.get(keyEntry) === undefined) {
+                continue;
+            }
+            object.env.set(keyEntry, <any>undefined);
+
             const objPropValue = await getPropertyAsync(obj, propName);
             const propertyInfo = await getPropertyInfoAsync(obj, propName);
-
             if (!propertyInfo) {
                 if (objPropValue !== undefined) {
                     throw new Error("Could not find property info for real property on object: " + propName);
                 }
 
-                // User code referenced a property not actually on the object at all. So to properly
-                // represent that, we don't place any information about this property on the object.
-                environment.delete(keyEntry);
-
-                // Now just move onto the next property referenced.
-                continue;
+                // User code referenced a property not actually on the object at all.
+                // So to properly represent that, we don't place any information about
+                // this property on the object.
+                object.env.delete(keyEntry);
             }
+            else {
+                // Determine what chained property names we're accessing off of this sub-property.
+                // if we have no sub property name chain, then indicate that with an empty array
+                // so that we capture the entire object.
+                //
+                // i.e.: if we started with a.b.c.d, and we've finally gotten to the point where
+                // we're serializing out the 'd' property, then we need to serialize it out fully
+                // since there are no more accesses off of it.
+                let nestedPropChains = propChains.map(chain => ({ infos: chain.infos.slice(1) }));
+                if (nestedPropChains.some(chain => chain.infos.length === 0)) {
+                    nestedPropChains = [];
+                }
 
-            // we're trying to process the 'bar' part in 'foo.bar.xxx'.  However, we may have
-            // already processed that part in the past.  For example, say that one function referenced
-            //
-            //      foo.bar.aaa
-            //
-            // Then it might have added the 'bar' property, and only added the 'aaa' subproperty off
-            // of that.  Now that we're hitting it again through 'foo.bar.xxx', we still need to
-            // ensure it has the 'xxx' submember.
-            //
-            // So we proceed, even if we already had an entry for 'bar' in our environment map.
+                // Note: objPropValue can be undefined here.  That's the case where the
+                // object does have the property, but the property is just set to the
+                // undefined value.
+                const valEntry = await getOrCreateEntryAsync(
+                    objPropValue, nestedPropChains, context, serialize, logInfo);
 
-            // we're about to recurse inside this object.  In order to prevent infinite
-            // loops, put a dummy entry in the environment map.  That way, if we hit
-            // this object again while recursing we won't try to generate this property.
-            environment.set(keyEntry, <any>undefined);
+                const infos = propChains.map(chain => chain.infos[0]);
+                if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
+                    // the referenced function captured 'this'.  Have to serialize out
+                    // this entire object.  Undo the work we did to just serialize out a
+                    // few properties.
+                    object.env.clear();
 
-            // Determine what chained property names we're accessing off of this sub-property.
-            // if we have no sub property name chain, then indicate that with an empty array
-            // so that we capture the entire object.
-            //
-            // i.e.: if we started with a.b.c.d, and we've finally gotten to the point where
-            // we're serializing out the 'd' property, then we need to serialize it out fully
-            // since there are no more accesses off of it.
-            let nestedPropChains = propChains.map(chain => ({ infos: chain.infos.slice(1) }));
-            if (nestedPropChains.some(chain => chain.infos.length === 0)) {
-                nestedPropChains = [];
+                    // Signal our caller to serialize the entire object.
+                    return true;
+                }
+
+                // Now, replace the dummy entry with the actual one we want.
+                object.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
             }
-
-            // Note: objPropValue can be undefined here.  That's the case where the
-            // object does have the property, but the property is just set to the
-            // undefined value.
-            const valEntry = await getOrCreateEntryAsync(
-                objPropValue, nestedPropChains, context, serialize, logInfo);
-
-            const infos = propChains.map(chain => chain.infos[0]);
-            if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
-                // the referenced function captured 'this'.  Have to serialize out
-                // this entire object.  Undo the work we did to just serialize out a
-                // few properties.
-                environment.clear();
-
-                // Signal our caller to serialize the entire object.
-                return true;
-            }
-
-            // Now, replace the dummy entry with the actual one we want.
-            environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
         }
 
         return false;
