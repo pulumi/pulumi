@@ -1,5 +1,12 @@
 ## 0.16.18 (Unreleased)
 
+- Fix an issue where the Pulumi CLI would load the newest plugin for a resource provider instead of the version that was
+  requested, which could result in the Pulumi CLI loading a resource provider plugin that is incompatible with the
+  program. This has the potential to disrupt users that previously had working configurations; if you are experiencing
+  problems after upgrading to 0.16.17, you can opt-in to the legacy plugin load behavior by setting the environnment
+  variable `PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH=1`. You can also install plugins that are missing with the command
+  `pulumi plugin install resource <name> <version> --exact`.
+
 ### Improvements
 
 - Attempting to convert an [Output<T>] to a string or to JSON will now result in a warning
