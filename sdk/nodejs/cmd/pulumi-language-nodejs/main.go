@@ -183,7 +183,8 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 			}
 
 			if version.Major != firstVersion.Major || version.Minor != firstVersion.Minor {
-				fmt.Fprintf(os.Stderr, `Found incompatible versions of @pulumi/pulumi.  Differing major or minor versions are not supported.
+				fmt.Fprintf(os.Stderr,
+					`Found incompatible versions of @pulumi/pulumi.  Differing major or minor versions are not supported.
   Version %s referenced at %s
   Version %s referenced at %s
 `, firstVersion, firstPath, version, path)
@@ -201,7 +202,10 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 }
 
 // getPluginsFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
-func getPluginsFromDir(dir string, pulumiPackagePathToVersionMap map[string]semver.Version, inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
+func getPluginsFromDir(
+	dir string, pulumiPackagePathToVersionMap map[string]semver.Version,
+	inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
+
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading plugin dir %s", dir)
@@ -221,7 +225,8 @@ func getPluginsFromDir(dir string, pulumiPackagePathToVersionMap map[string]semv
 		}
 		if file.IsDir() {
 			// if a directory, recurse.
-			more, err := getPluginsFromDir(curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
+			more, err := getPluginsFromDir(
+				curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
 				continue
@@ -244,7 +249,8 @@ func getPluginsFromDir(dir string, pulumiPackagePathToVersionMap map[string]semv
 			if info.Name == "@pulumi/pulumi" {
 				version, err := semver.NewVersion(info.Version)
 				if err != nil {
-					allErrors = multierror.Append(allErrors, errors.Wrapf(err, "Could not understand version %s in '%s'", info.Version, curr))
+					allErrors = multierror.Append(
+						allErrors, errors.Wrapf(err, "Could not understand version %s in '%s'", info.Version, curr))
 					continue
 				}
 
