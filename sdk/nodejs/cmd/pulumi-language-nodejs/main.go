@@ -195,7 +195,6 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	if err != nil {
 		glog.V(3).Infof("one or more errors while discovering plugins: %s", err)
 	}
-
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: plugins,
 	}, nil
