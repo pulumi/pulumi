@@ -52,6 +52,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
+
+	"github.com/coreos/go-semver/semver"
 )
 
 const (
@@ -157,21 +159,50 @@ func newLanguageHost(nodePath, runPath, engineAddress,
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	// To get the plugins required by a program, find all node_modules/ packages that contain { "pulumi": true }
-	// inside of their package.json files.  We begin this search in the same directory that contains the project.
-	// It's possible that a developer would do a `require("../../elsewhere")` and that we'd miss this as a
-	// dependency, however the solution for that is simple: install the package in the project root.
-	plugins, err := getPluginsFromDir(req.GetProgram(), false)
+	// To get the plugins required by a program, find all node_modules/ packages that contain {
+	// "pulumi": true } inside of their package.json files.  We begin this search in the same
+	// directory that contains the project. It's possible that a developer would do a
+	// `require("../../elsewhere")` and that we'd miss this as a dependency, however the solution
+	// for that is simple: install the package in the project root.
+
+	// Keep track of the versions of @pulumi/pulumi that are pulled in.  If they differ on
+	// minor version, we will issue a warning to the user.
+	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
+	plugins, err := getPluginsFromDir(req.GetProgram(), pulumiPackagePathToVersionMap, false /*inNodeModules*/)
+
+	if err == nil {
+		first := true
+		var firstPath string
+		var firstVersion semver.Version
+		for path, version := range pulumiPackagePathToVersionMap {
+			if first {
+				first = false
+				firstPath = path
+				firstVersion = version
+				continue
+			}
+
+			if version.Major != firstVersion.Major || version.Minor != firstVersion.Minor {
+				fmt.Fprintf(os.Stderr, `Found incompatible versions of @pulumi/pulumi.  Differing major or minor versions are not supported.
+  Version %s referenced at %s
+  Version %s referenced at %s
+`, firstVersion, firstPath, version, path)
+				break
+			}
+		}
+	}
+
 	if err != nil {
 		glog.V(3).Infof("one or more errors while discovering plugins: %s", err)
 	}
+
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: plugins,
 	}, nil
 }
 
 // getPluginsFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
-func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
+func getPluginsFromDir(dir string, pulumiPackagePathToVersionMap map[string]semver.Version, inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading plugin dir %s", dir)
@@ -191,7 +222,7 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 		}
 		if file.IsDir() {
 			// if a directory, recurse.
-			more, err := getPluginsFromDir(curr, inNodeModules || filepath.Base(dir) == "node_modules")
+			more, err := getPluginsFromDir(curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
 				continue
@@ -204,7 +235,24 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "reading package.json %s", curr))
 				continue
 			}
-			ok, name, version, err := getPackageInfo(b)
+
+			var info packageJSON
+			if err := json.Unmarshal(b, &info); err != nil {
+				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "unmarshaling package.json %s", curr))
+				continue
+			}
+
+			if info.Name == "@pulumi/pulumi" {
+				version, err := semver.NewVersion(info.Version)
+				if err != nil {
+					allErrors = multierror.Append(allErrors, errors.Wrapf(err, "Could not understand version %s in '%s'", info.Version, curr))
+					continue
+				}
+
+				pulumiPackagePathToVersionMap[curr] = *version
+			}
+
+			ok, name, version, err := getPackageInfo(info)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "unmarshaling package.json %s", curr))
 			} else if ok {
@@ -230,12 +278,7 @@ type packageJSON struct {
 
 // getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
 // resource provider plugin.  If it does, two strings are returned, the plugin name, and its semantic version.
-func getPackageInfo(b []byte) (bool, string, string, error) {
-	var info packageJSON
-	if err := json.Unmarshal(b, &info); err != nil {
-		return false, "", "", err
-	}
-
+func getPackageInfo(info packageJSON) (bool, string, string, error) {
 	if info.Pulumi.Resource {
 		name, err := getPluginName(info)
 		if err != nil {

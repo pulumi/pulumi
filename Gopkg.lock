@@ -90,6 +90,14 @@
   revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
 
 [[projects]]
+  digest = "1:3c3f68ebab415344aef64363d23471e953a4715645115604aaf57923ae904f5e"
+  name = "github.com/coreos/go-semver"
+  packages = ["semver"]
+  pruneopts = ""
+  revision = "8ab6407b697782a06568d4b7f1db25550ec2e4c6"
+  version = "v0.2.0"
+
+[[projects]]
   digest = "1:982e2547680f9fd2212c6443ab73ea84eef40ee1cdcecb61d997de838445214c"
   name = "github.com/cpuguy83/go-md2man"
   packages = ["md2man"]
@@ -727,6 +735,7 @@
     "github.com/aws/aws-sdk-go/service/s3",
     "github.com/blang/semver",
     "github.com/cheggaaa/pb",
+    "github.com/coreos/go-semver/semver",
     "github.com/davecgh/go-spew/spew",
     "github.com/djherbis/times",
     "github.com/docker/docker/api/types/time",
