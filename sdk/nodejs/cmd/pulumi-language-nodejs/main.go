@@ -53,7 +53,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/blang/semver"
 )
 
 const (
@@ -247,14 +247,14 @@ func getPluginsFromDir(
 			}
 
 			if info.Name == "@pulumi/pulumi" {
-				version, err := semver.NewVersion(info.Version)
+				version, err := semver.Parse(info.Version)
 				if err != nil {
 					allErrors = multierror.Append(
 						allErrors, errors.Wrapf(err, "Could not understand version %s in '%s'", info.Version, curr))
 					continue
 				}
 
-				pulumiPackagePathToVersionMap[curr] = *version
+				pulumiPackagePathToVersionMap[curr] = version
 			}
 
 			ok, name, version, err := getPackageInfo(info)
