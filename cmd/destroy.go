@@ -51,11 +51,10 @@ func newDestroyCmd() *cobra.Command {
 		Long: "Destroy an existing stack and its resources\n" +
 			"\n" +
 			"This command deletes an entire existing stack by name.  The current state is\n" +
-			"loaded from the associated snapshot file in the workspace.  After running to completion,\n" +
+			"loaded from the associated state file in the workspace.  After running to completion,\n" +
 			"all of this stack's resources and associated state will be gone.\n" +
 			"\n" +
-			"Warning: although old snapshots can be used to recreate a stack, this command\n" +
-			"is generally irreversible and should be used with great care.",
+			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			interactive := cmdutil.Interactive()
