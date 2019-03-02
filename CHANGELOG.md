@@ -16,6 +16,12 @@
 
 - Fixes incorrect closure serialization issue (https://github.com/pulumi/pulumi/pull/2497)
 
+- `pulumi` will now check that all versions of `@pulumi/pulumi` are compatible in your node_modules
+  folder, and will issue a warning message if not.  To be compatible, the versions of
+  `@pulumi/pulumi` must agree on their major and minor versions.  Running incompatible versions is
+  not something that will be blocked, but it is discouraged as it may lead to subtle problems if one
+  version of `@pulumi/pulumi` is loaded and passes objects to/from an incompatible version.
+
 ## 0.16.17 (Released February 27th, 2019)
 
 ### Improvements
