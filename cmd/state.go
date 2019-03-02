@@ -40,7 +40,7 @@ func newStateCmd() *cobra.Command {
 		Short: "Edit the current stack's state",
 		Long: `Edit the current stack's state
 
-Subcommands of this command can be used to surgically edit parts of a stack's deployment state. These can be useful when
+Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
 troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
 		Args: cmdutil.NoArgs,
 	}

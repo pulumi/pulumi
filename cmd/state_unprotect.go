@@ -35,7 +35,7 @@ func newStateUnprotectCommand() *cobra.Command {
 	var stack string
 
 	cmd := &cobra.Command{
-		Use:   "unprotect [resource URN]",
+		Use:   "unprotect <resource URN>",
 		Short: "Unprotect resources in a stack's state",
 		Long: `Unprotect resource in a stack's state
 
