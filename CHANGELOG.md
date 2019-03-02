@@ -1,4 +1,8 @@
-## 0.16.18 (Unreleased)
+## 0.16.19 (Unreleased)
+
+### Improvements
+
+## 0.16.18 (Released March 1, 2019)
 
 - Fix an issue where the Pulumi CLI would load the newest plugin for a resource provider instead of the version that was
   requested, which could result in the Pulumi CLI loading a resource provider plugin that is incompatible with the
