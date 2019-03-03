@@ -1,4 +1,48 @@
-## 0.16.15 (Unreleased)
+## 0.16.19 (Unreleased)
+
+### Improvements
+
+## 0.16.18 (Released March 1, 2019)
+
+- Fix an issue where the Pulumi CLI would load the newest plugin for a resource provider instead of the version that was
+  requested, which could result in the Pulumi CLI loading a resource provider plugin that is incompatible with the
+  program. This has the potential to disrupt users that previously had working configurations; if you are experiencing
+  problems after upgrading to 0.16.17, you can opt-in to the legacy plugin load behavior by setting the environnment
+  variable `PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH=1`. You can also install plugins that are missing with the command
+  `pulumi plugin install resource <name> <version> --exact`.
+
+### Improvements
+
+- Attempting to convert an [Output<T>] to a string or to JSON will now result in a warning
+  message being printed, as well as information on how to rectify the situation.  This is
+  to help with diagnosing cryptic problems that can occur when Outputs are accidentally
+  concatenated into a string in some part of the program.
+
+- Fixes incorrect closure serialization issue (https://github.com/pulumi/pulumi/pull/2497)
+
+- `pulumi` will now check that all versions of `@pulumi/pulumi` are compatible in your node_modules
+  folder, and will issue a warning message if not.  To be compatible, the versions of
+  `@pulumi/pulumi` must agree on their major and minor versions.  Running incompatible versions is
+  not something that will be blocked, but it is discouraged as it may lead to subtle problems if one
+  version of `@pulumi/pulumi` is loaded and passes objects to/from an incompatible version.
+
+## 0.16.17 (Released February 27th, 2019)
+
+### Improvements
+
+- Rolling back the change:
+    "Depending on a Resource will now depend on all other Resource's parented by that Resource."
+
+  Unforseen problems cropped up that caused deadlocks.  Removing this change until we can
+  have a high quality solution without these issues.
+
+## 0.16.16 (Released February 24th, 2019)
+
+### Improvements
+
+- Fix deadlock with resource dependencies (https://github.com/pulumi/pulumi/issues/2470)
+
+## 0.16.15 (Released February 22nd, 2019)
 
 ### Improvements
 
@@ -6,6 +50,11 @@
 - Enabled Python programs to delete resources in parallel (fixes [pulumi/pulumi#2382](https://github.com/pulumi/pulumi/issues/2382)). If you are using Python 2, you should upgrade to Python 3 or else you may experience problems when deleting resources.
 - Fixed an issue where Python programs would occasionally fail during preview with errors about empty IDs being passed
   to resources. ([pulumi/pulumi#2450](https://github.com/pulumi/pulumi/issues/2450))
+- Return an error from `pulumi stack tag` commands when using the `--local` mode.
+- Depending on a Resource will now depend on all other Resource's parented by that Resource.
+  This will help out the programming model for Component Resources as your consumers can just
+  depend on a Component and have that automatically depend on all the child Resources created
+  by that Component.
 
 ## 0.16.14 (Released January 31st, 2019)
 

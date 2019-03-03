@@ -99,10 +99,9 @@ function log(
         ? resource.urn.promise()
         : Promise.resolve("");
 
-    lastLog = Promise.all([lastLog, urnPromise]).then(arr => {
+    lastLog = Promise.all([lastLog, urnPromise]).then(([_, urn]) => {
         return new Promise((resolve, reject) => {
             try {
-                const urn = arr[1];
                 const req = new engproto.LogRequest();
                 req.setSeverity(sev);
                 req.setMessage(msg);

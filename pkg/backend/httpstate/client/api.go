@@ -40,6 +40,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/version"
 )
 
+const (
+	apiRequestLogLevel       = 10 // log level for logging API requests and responses
+	apiRequestDetailLogLevel = 11 // log level for logging extra details about API requests and responses
+)
+
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
 type StackIdentifier struct {
 	Owner   string
@@ -119,7 +124,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		//
 		// If this becomes a performance bottleneck, we may want to consider marshaling json directly to this
 		// gzip.Writer instead of marshaling to a byte array and compressing it to another buffer.
-		logging.V(7).Infoln("compressing payload using gzip")
+		logging.V(apiRequestDetailLogLevel).Infoln("compressing payload using gzip")
 		var buf bytes.Buffer
 		writer := gzip.NewWriter(&buf)
 		defer contract.IgnoreClose(writer)
@@ -132,7 +137,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 			return "", nil, errors.Wrapf(err, "flushing compressed payload")
 		}
 
-		logging.V(7).Infof("gzip compression ratio: %f, original size: %d bytes",
+		logging.V(apiRequestDetailLogLevel).Infof("gzip compression ratio: %f, original size: %d bytes",
 			float64(len(body))/float64(len(buf.Bytes())), len(body))
 		bodyReader = &buf
 	} else {
@@ -184,9 +189,10 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
-	logging.V(7).Infof("Making Pulumi API call: %s", url)
-	if logging.V(9) {
-		logging.V(9).Infof("Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
+	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
+	if logging.V(apiRequestDetailLogLevel) {
+		logging.V(apiRequestDetailLogLevel).Infof(
+			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
 	var resp *http.Response
@@ -199,7 +205,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
-	logging.V(7).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
+	logging.V(apiRequestLogLevel).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
 
 	requestSpan.SetTag("responseCode", resp.Status)
 
@@ -276,8 +282,8 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 	if err != nil {
 		return errors.Wrapf(err, "reading response from API")
 	}
-	if logging.V(9) {
-		logging.V(7).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
+	if logging.V(apiRequestDetailLogLevel) {
+		logging.V(apiRequestDetailLogLevel).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
 	}
 
 	if respObj != nil {
@@ -309,7 +315,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 		// The HTTP/1.1 spec recommends we treat x-gzip as an alias of gzip.
 		fallthrough
 	case "gzip":
-		logging.V(7).Infoln("decompressing gzipped response from service")
+		logging.V(apiRequestDetailLogLevel).Infoln("decompressing gzipped response from service")
 		reader, err := gzip.NewReader(resp.Body)
 		defer contract.IgnoreClose(reader)
 		if err != nil {
