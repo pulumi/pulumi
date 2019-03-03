@@ -29,8 +29,8 @@ import (
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	_ "gocloud.dev/blob/gcsblob"   // driver for s3://
-	_ "gocloud.dev/blob/s3blob"    // driver for gs://
+	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
+	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 
 	"github.com/pkg/errors"
 
@@ -51,8 +51,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// localBackendURL is fake URL scheme we use to signal we want to use the local backend vs a cloud one.
-const localBackendURLPrefix = "file://"
+// supportedSchemes are the fake URL schemes that are used to signal which blob storage to use when not using http state.
+var supportedSchemes = []string{
+	"azblob://",
+	"file://",
+	"gs://",
+	"s3://",
+}
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -79,13 +84,7 @@ func (r localBackendReference) Name() tokens.QName {
 	return r.name
 }
 
-func IsLocalBackendURL(url string) bool {
-	supportedSchemes := []string{
-		"azblob://",
-		"file://",
-		"gs://",
-		"s3://",
-	}
+func IsFileStateBackendURL(url string) bool {
 	for _, scheme := range supportedSchemes {
 		if strings.HasPrefix(url, scheme) {
 			return true
@@ -95,8 +94,8 @@ func IsLocalBackendURL(url string) bool {
 }
 
 func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
-	if !IsLocalBackendURL(url) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
+	if !IsFileStateBackendURL(url) {
+		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of %s", url, strings.Join(supportedSchemes, ", "))
 	}
 
 	if strings.HasPrefix(url, "file://") {
