@@ -18,6 +18,7 @@ import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import { Input, Output } from "../../output";
 import * as resource from "../../resource";
+import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import * as utils from "./utils";
@@ -189,14 +190,8 @@ interface ClosurePropertyDescriptor {
  * IMPORTANT: Do not change the structure of this type.  Closure serialization code takes a
  * dependency on the actual shape (including the names of properties like 'value').
  */
-class SerializedOutput<T> implements Output<T> {
-    /* @internal */ public isKnown: Promise<boolean>;
-    /* @internal */ public readonly promise: () => Promise<T>;
-    /* @internal */ public readonly resources: () => Set<resource.Resource>;
-    /* @internal */ private readonly value: T;
-
-    public constructor(value: T) {
-        this.value = value;
+class SerializedOutput<T> {
+    public constructor(private readonly value: T) {
     }
 
     public apply<U>(func: (t: T) => Input<U>): Output<U> {
@@ -390,7 +385,7 @@ async function analyzeFunctionInfoAsync(
         // process down the pipeline.
         const [error, parsedFunction] = parseFunction(functionString);
         if (error) {
-            await throwSerializationErrorAsync(func, context, error);
+            throwSerializationError(func, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
@@ -418,7 +413,7 @@ async function analyzeFunctionInfoAsync(
         // Function.prototype by default, so we don't need to do anything for them.
         if (proto !== Function.prototype &&
             !isAsyncFunction &&
-            !await isDerivedNoCaptureConstructorAsync(func)) {
+            !isDerivedNoCaptureConstructor(func)) {
 
             const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
@@ -508,7 +503,7 @@ async function analyzeFunctionInfoAsync(
                     value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
                 }
                 catch (err) {
-                    await throwSerializationErrorAsync(func, context, err.message);
+                    throwSerializationError(func, context, err.message);
                 }
 
                 const moduleName = await findNormalizedModuleNameAsync(value);
@@ -601,8 +596,8 @@ async function computeIsAsyncFunction(func: Function): Promise<boolean> {
     return func.constructor && func.constructor.name === "AsyncFunction";
 }
 
-async function throwSerializationErrorAsync(
-    func: Function, context: Context, info: string): Promise<never> {
+function throwSerializationError(
+    func: Function, context: Context, info: string) {
 
     let message = "";
 
@@ -668,7 +663,7 @@ async function throwSerializationErrorAsync(
         const moduleName = module.name;
         message += "\n";
 
-        if (await hasTruthyMemberAsync(module.value, "deploymentOnlyModule")) {
+        if (hasTrueBooleanMember(module.value, "deploymentOnlyModule")) {
             message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
         }
         else {
@@ -804,7 +799,7 @@ async function getOrCreateEntryAsync(
         return entry;
     }
 
-    if (obj instanceof Function && await hasTruthyMemberAsync(obj, "doNotCapture")) {
+    if (obj instanceof Function && hasTrueBooleanMember(obj, "doNotCapture")) {
         // If we get a function we're not supposed to capture, then actually just serialize
         // out a function that will throw at runtime so the user can understand the problem
         // better.
@@ -827,19 +822,19 @@ async function getOrCreateEntryAsync(
     await dispatchAnyAsync();
     return entry;
 
-    async function doNotCaptureAsync(): Promise<boolean> {
+    function doNotCapture(): boolean {
         if (!serialize(obj)) {
             // caller explicitly does not want us to capture this value.
             return true;
         }
 
-        if (await hasTruthyMemberAsync(obj, "doNotCapture")) {
+        if (hasTrueBooleanMember(obj, "doNotCapture")) {
             // object has set itself as something that should not be captured.
             return true;
         }
 
         if (obj instanceof Function &&
-            await isDerivedNoCaptureConstructorAsync(obj)) {
+            isDerivedNoCaptureConstructor(obj)) {
 
             // this was a constructor that derived from something that should not be captured.
             return true;
@@ -849,7 +844,7 @@ async function getOrCreateEntryAsync(
     }
 
     async function dispatchAnyAsync(): Promise<void> {
-        if (await doNotCaptureAsync()) {
+        if (doNotCapture()) {
             // We do not want to capture this object.  Explicit set .json to undefined so
             // that we will see that the property is set and we will simply roundtrip this
             // as the 'undefined value.
@@ -929,40 +924,47 @@ async function getOrCreateEntryAsync(
     // Returns 'true' if the caller (serializeObjectAsync) should call this again, but without any
     // property filtering.
     async function serializeObjectWorkerAsync(localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
-        const objectInfo: ObjectInfo = entry.object || { env: new Map() };
-        entry.object = objectInfo;
-        const environment = entry.object.env;
+        entry.object = entry.object || { env: new Map() };
 
         if (localCapturedPropertyChains.length === 0) {
-            await serializeAllObjectPropertiesAsync(environment);
+            await serializeAllObjectPropertiesAsync(entry.object);
             return false;
         } else {
-            return await serializeSomeObjectPropertiesAsync(environment, localCapturedPropertyChains);
+            return await serializeSomeObjectPropertiesAsync(entry.object, localCapturedPropertyChains);
         }
     }
 
     // Serializes out all the properties of this object.  Used when we can't prove that
     // only a subset of properties are used on this object.
-    async function serializeAllObjectPropertiesAsync(environment: PropertyMap) {
+    async function serializeAllObjectPropertiesAsync(object: ObjectInfo) {
         // we wanted to capture everything (including the prototype chain)
         const descriptors = await getOwnPropertyDescriptors(obj);
 
         for (const descriptor of descriptors) {
-            // we're about to recurse inside this object.  In order to prever infinite
-            // loops, put a dummy entry in the environment map.  That way, if we hit
-            // this object again while recursing we won't try to generate this property.
             const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
-            if (!environment.has(keyEntry)) {
-                environment.set(keyEntry, <any>undefined);
 
-                const propertyInfo = await createPropertyInfoAsync(descriptor);
-                const prop = await getOwnPropertyAsync(obj, descriptor);
-                const valEntry = await getOrCreateEntryAsync(
-                    prop, undefined, context, serialize, logInfo);
-
-                // Now, replace the dummy entry with the actual one we want.
-                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+            // We're about to recurse inside this object.  In order to prevent infinite loops, put a
+            // dummy entry in the environment map.  That way, if we hit this object again while
+            // recursing we won't try to generate this property.
+            //
+            // Note: we only stop recursing if we hit exactly our sentinel key (i.e. we're self
+            // recursive).  We *do* want to recurse through the object again if we see it through
+            // non-recursive paths.  That's because we might be hitting this object through one
+            // prop-name-path, but we created it the first time through another prop-name path.
+            //
+            // By processing the object again, we will add the different members we need.
+            if (object.env.has(keyEntry) && object.env.get(keyEntry) === undefined) {
+                continue;
             }
+            object.env.set(keyEntry, <any>undefined);
+
+            const propertyInfo = await createPropertyInfoAsync(descriptor);
+            const prop = await getOwnPropertyAsync(obj, descriptor);
+            const valEntry = await getOrCreateEntryAsync(
+                prop, undefined, context, serialize, logInfo);
+
+            // Now, replace the dummy entry with the actual one we want.
+            object.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
         }
 
         // If the object's __proto__ is not Object.prototype, then we have to capture what it
@@ -970,10 +972,10 @@ async function getOrCreateEntryAsync(
         // things up properly.
         //
         // We don't need to capture the prototype if the user is not capturing 'this' either.
-        if (!entry.object!.proto) {
+        if (!object.proto) {
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
-                entry.object!.proto = await getOrCreateEntryAsync(
+                object.proto = await getOrCreateEntryAsync(
                     proto, undefined, context, serialize, logInfo);
             }
         }
@@ -982,7 +984,7 @@ async function getOrCreateEntryAsync(
     // Serializes out only the subset of properties of this object that we have seen used
     // and have recorded in localCapturedPropertyChains
     async function serializeSomeObjectPropertiesAsync(
-            environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
+            object: ObjectInfo, localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
 
         // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
@@ -1013,16 +1015,22 @@ async function getOrCreateEntryAsync(
             // Now, make an entry just for this name.
             const keyEntry = await getOrCreateNameEntryAsync(propName, undefined, context, serialize, logInfo);
 
-            if (environment.has(keyEntry)) {
+            // We're about to recurse inside this object.  In order to prevent infinite loops, put a
+            // dummy entry in the environment map.  That way, if we hit this object again while
+            // recursing we won't try to generate this property.
+            //
+            // Note: we only stop recursing if we hit exactly our sentinel key (i.e. we're self
+            // recursive).  We *do* want to recurse through the object again if we see it through
+            // non-recursive paths.  That's because we might be hitting this object through one
+            // prop-name-path, but we created it the first time through another prop-name path.
+            //
+            // By processing the object again, we will add the different members we need.
+            if (object.env.has(keyEntry) && object.env.get(keyEntry) === undefined) {
                 continue;
             }
+            object.env.set(keyEntry, <any>undefined);
 
-            // we're about to recurse inside this object.  In order to prevent infinite
-            // loops, put a dummy entry in the environment map.  That way, if we hit
-            // this object again while recursing we won't try to generate this property.
-            environment.set(keyEntry, <any>undefined);
             const objPropValue = await getPropertyAsync(obj, propName);
-
             const propertyInfo = await getPropertyInfoAsync(obj, propName);
             if (!propertyInfo) {
                 if (objPropValue !== undefined) {
@@ -1032,7 +1040,7 @@ async function getOrCreateEntryAsync(
                 // User code referenced a property not actually on the object at all.
                 // So to properly represent that, we don't place any information about
                 // this property on the object.
-                environment.delete(keyEntry);
+                object.env.delete(keyEntry);
             } else {
                 // Determine what chained property names we're accessing off of this sub-property.
                 // if we have no sub property name chain, then indicate that with an empty array
@@ -1057,14 +1065,14 @@ async function getOrCreateEntryAsync(
                     // the referenced function captured 'this'.  Have to serialize out
                     // this entire object.  Undo the work we did to just serialize out a
                     // few properties.
-                    environment.clear();
+                    object.env.clear();
 
                     // Signal our caller to serialize the entire object.
                     return true;
                 }
 
                 // Now, replace the dummy entry with the actual one we want.
-                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+                object.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
             }
         }
 
@@ -1138,7 +1146,7 @@ async function getOrCreateEntryAsync(
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
 
-        if (await hasTruthyMemberAsync(obj, "deploymentOnlyModule") || isLocalModule) {
+        if (hasTrueBooleanMember(obj, "deploymentOnlyModule") || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
             //
             // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
@@ -1245,9 +1253,9 @@ async function isOutputAsync(obj: any): Promise<boolean> {
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
 // emit it.  We would be unable to actually hook up the "super()" call as one of the base
 // constructors was set to not be captured.
-async function isDerivedNoCaptureConstructorAsync(func: Function): Promise<boolean> {
+function isDerivedNoCaptureConstructor(func: Function): boolean {
     for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
-        if (await hasTruthyMemberAsync(current, "doNotCapture")) {
+        if (hasTrueBooleanMember(current, "doNotCapture")) {
             return true;
         }
     }
@@ -1315,14 +1323,6 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
 
     // Else, return that no global name is available for this object.
     return undefined;
-}
-
-async function hasTruthyMemberAsync(obj: any, memberName: string): Promise<boolean> {
-    if (!obj) {
-        return false;
-    }
-
-    return obj[memberName] ? true : false;
 }
 
 function createClosurePropertyDescriptor(

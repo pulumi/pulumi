@@ -23,6 +23,7 @@
         "output.ts",
         "resource.ts",
         "stackReference.ts",
+        "utils.ts",
         "version.ts",
 
         "asset/index.ts",

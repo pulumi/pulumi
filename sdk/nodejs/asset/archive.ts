@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as utils from "../utils";
 import { Asset } from "./asset";
 
 /**
@@ -22,14 +23,14 @@ export abstract class Archive {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumiArchive: boolean = true;
+    /* @internal */ public readonly __pulumiArchive: boolean = true;
 
     /**
      * Returns true if the given object is an instance of an Archive.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is Archive {
-        return obj && obj.__pulumiArchive;
+        return utils.isInstance<Archive>(obj, "__pulumiArchive");
     }
 }
 
