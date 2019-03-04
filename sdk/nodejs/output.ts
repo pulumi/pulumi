@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as log from "./log";
 import { Resource } from "./resource";
 import * as runtime from "./runtime";
+import * as utils from "./utils";
 
 /**
  * Output helps encode the relationship between Resources in a Pulumi application. Specifically an
@@ -30,7 +30,7 @@ export class Output<T> {
      * This is internal instead of being truly private, to support mixins and our serialization model.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiOutput?: boolean = true;
+    /* @internal */ public readonly __pulumiOutput: boolean = true;
 
     /**
      * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
@@ -39,7 +39,7 @@ export class Output<T> {
      * may not expect an undefined value.  So, instead, we just transition to another Output
      * value that itself knows it should not perform .apply calls.
      */
-    /* @internal */ public isKnown: Promise<boolean>;
+    /* @internal */ public readonly isKnown: Promise<boolean>;
 
     /**
      * Method that actually produces the concrete value of this output, as well as the total
@@ -144,7 +144,7 @@ export class Output<T> {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance<T>(obj: any): obj is Output<T> {
-        return obj && obj.__pulumiOutput ? true : false;
+        return utils.isInstance(obj, "__pulumiOutput");
     }
 
     /* @internal */ public constructor(
@@ -176,7 +176,6 @@ To get the value of an Output<T> as an Output<string> consider either:
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
-            log.warn(message, firstResource);
             return message;
         };
 
@@ -190,7 +189,6 @@ To get the value of an Output as a JSON value or JSON string consider either:
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
-            log.warn(message, firstResource);
             return message;
         };
 

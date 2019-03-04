@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import { ResourceError, RunError } from "./errors";
-import { all, Input, Inputs, Output } from "./output";
+import { Input, Inputs, Output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import * as utils from "./utils";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -27,7 +28,7 @@ export abstract class Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
      // tslint:disable-next-line:variable-name
-     /* @internal */ private readonly __pulumiResource: boolean = true;
+     /* @internal */ public readonly __pulumiResource: boolean = true;
 
     /**
      * The optional parent of this resource.
@@ -94,7 +95,7 @@ export abstract class Resource {
     /* @internal */ private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
-        return obj && (<Resource>obj).__pulumiResource === true;
+        return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
     // getProvider fetches the provider for the given module member, if any.
@@ -248,7 +249,7 @@ export abstract class CustomResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumiCustomResource: boolean = true;
+    /* @internal */ public readonly __pulumiCustomResource: boolean = true;
 
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
@@ -261,7 +262,7 @@ export abstract class CustomResource extends Resource {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is CustomResource {
-        return obj && (<CustomResource>obj).__pulumiCustomResource === true;
+        return utils.isInstance<CustomResource>(obj, "__pulumiCustomResource");
     }
 
     /**
@@ -316,14 +317,14 @@ export class ComponentResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumiComponentResource: boolean;
+    /* @internal */ public readonly __pulumiComponentResource: boolean;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is ComponentResource {
-        return obj && (<ComponentResource>obj).__pulumiComponentResource === true;
+        return utils.isInstance<ComponentResource>(obj, "__pulumiComponentResource");
     }
 
     /**
