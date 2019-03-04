@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as log from "./log";
 import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
@@ -177,7 +176,6 @@ To get the value of an Output<T> as an Output<string> consider either:
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
-            log.warn(message, firstResource);
             return message;
         };
 
@@ -191,7 +189,6 @@ To get the value of an Output as a JSON value or JSON string consider either:
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
-            log.warn(message, firstResource);
             return message;
         };
 
