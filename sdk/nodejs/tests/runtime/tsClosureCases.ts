@@ -5360,12 +5360,10 @@ return function () { typescript.parseCommandLine([""]); };
 
 function 'func':(...)
   module './bin/index.js' which indirectly referenced
-    function 'output':(...)
-      function 'createSimpleOutput':(...)
-        module './bin/output.js' which indirectly referenced
-          function 'OutputImpl':(...)
-            module './bin/log/index.js' which indirectly referenced
-              function 'warn':(...)
+    function 'debug':(...)
+      module './bin/runtime/settings.js' which indirectly referenced
+        function 'getEngine':(...)
+          module './bin/proto/engine_grpc_pb.js' which indirectly referenced
 (...)
 Function code:
   function [Symbol.hasInstance]() { [native code] }
