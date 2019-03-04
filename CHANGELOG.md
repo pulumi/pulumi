@@ -1,10 +1,17 @@
-## 0.16.19 (Unreleased)
+## 0.17.0 (Unreleased)
 
 ### Improvements
 
-- Depending on a ComponentResource will now depend on all other Resource's parented by that Resource.
-  This will help out the programming model for Component Resources as your consumers can just
-  depend on a Component instead of having to know to depend on all its children.
+- `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
+
+- Depending on a **Component** Resource will now depend on all other Resources parented by that
+  Resource. This will help out the programming model for Component Resources as your consumers can
+  just depend on a Component and have that automatically depend on all the child Resources created
+  by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
+  CustomResource will still only wait on that single resource being created, not any other Resources
+  that consider that CustomResource to be a parent.
+
+- Calling `toString` or `toJSON` on an `Output<T>` will now log a warning.
 
 ## 0.16.18 (Released March 1, 2019)
 
@@ -22,12 +29,6 @@
   concatenated into a string in some part of the program.
 
 - Fixes incorrect closure serialization issue (https://github.com/pulumi/pulumi/pull/2497)
-- Depending on a **Component** Resource will now depend on all other Resources parented by that
-  Resource. This will help out the programming model for Component Resources as your consumers can
-  just depend on a Component and have that automatically depend on all the child Resources created
-  by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
-  CustomResource will still only wait on that single resource being created, not any other Resources
-  that consider that CustomResource to be a parent.
 
 - `pulumi` will now check that all versions of `@pulumi/pulumi` are compatible in your node_modules
   folder, and will issue a warning message if not.  To be compatible, the versions of
@@ -86,9 +87,6 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 ### Improvements
 
 - Individual resources may now be explicitly marked as requiring delete-before-replace behavior. This can be used e.g. to handle explicitly-named resources that may not be able to be replaced in the usual manner.
-- `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
-
-**NOTE**: As part of the above, an `Output<T>` will now appear to have more members than before in TypeScript.  This can cause incompabilities if your Pulumi application ends up referencing several different versions of `@pulumi/pulumi` (as through a newer version an `Output<T>` will appear to have these new members, and through an older version it will not).  It is recommended that you update all `@pulumi/...` dependencies to avoid this.
 
 ## 0.16.13 (Released January 31st, 2019)
 
