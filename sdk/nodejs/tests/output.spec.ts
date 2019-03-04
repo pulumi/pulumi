@@ -128,4 +128,45 @@ describe("output", () => {
             assert.equal(await result.promise(), "http://a:80/");
         }));
     });
+
+    describe("lifted operations", () => {
+        it("lifts properties from inner object", asyncTest(async () => {
+            const output1 = output({ a: 1, b: true, c: "str", d: [2], e: { f: 3 }, g: undefined, h: null });
+
+            assert.equal(await output1.a.promise(), 1);
+            assert.equal(await output1.b.promise(), true);
+            assert.equal(await output1.c.promise(), "str");
+
+            // Can lift both outer arrays as well as array accesses
+            assert.deepEqual(await output1.d.promise(), [2]);
+            assert.equal(await output1.d[0].promise(), 2);
+
+            // Can lift nested objects as well as their properties.
+            assert.deepEqual(await output1.e.promise(), { f: 3 });
+            assert.equal(await output1.e.f.promise(), 3);
+
+            assert.strictEqual(await output1.g.promise(), undefined);
+            assert.strictEqual(await output1.h.promise(), null);
+
+            // Unspecified things can be lifted, but produce 'undefined'.
+            assert.notEqual((<any>output1).z, undefined);
+            assert.equal(await (<any>output1).z.promise(), undefined);
+        }));
+
+        it("prefers Output members over lifted members", asyncTest(async () => {
+            const output1 = output({ apply: 1, promise: 2 });
+            assert.ok(output1.apply instanceof Function);
+            assert.ok(output1.isKnown instanceof Promise);
+        }));
+
+        it("does not lift symbols", asyncTest(async () => {
+            const output1 = output({ apply: 1, promise: 2 });
+            assert.strictEqual((<any>output1)[Symbol.toPrimitive], undefined);
+        }));
+
+        it("does not lift __ properties", asyncTest(async () => {
+            const output1 = output({ a: 1, b: 2 });
+            assert.strictEqual((<any>output1).__pulumiResource, undefined);
+        }));
+    });
 });
