@@ -2,6 +2,10 @@
 
 ### Improvements
 
+- Depending on a ComponentResource will now depend on all other Resource's parented by that Resource.
+  This will help out the programming model for Component Resources as your consumers can just
+  depend on a Component instead of having to know to depend on all its children.
+
 ## 0.16.18 (Released March 1, 2019)
 
 - Fix an issue where the Pulumi CLI would load the newest plugin for a resource provider instead of the version that was
