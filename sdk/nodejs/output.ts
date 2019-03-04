@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as log from "./log";
 import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
