@@ -11,9 +11,6 @@
   CustomResource will still only wait on that single resource being created, not any other Resources
   that consider that CustomResource to be a parent.
 
-- Calling `toString` or `toJSON` on an `Output<T>` will now log a warning.
-
-
 ## 0.16.18 (Released March 1, 2019)
 
 - Fix an issue where the Pulumi CLI would load the newest plugin for a resource provider instead of the version that was
