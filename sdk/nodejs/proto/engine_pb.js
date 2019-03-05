@@ -12,7 +12,6 @@ var goog = jspb;
 var proto = { pulumirpc: {} }, global = proto;
 
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
-var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.exportSymbol('proto.pulumirpc.GetRootResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.GetRootResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.LogRequest', null, global);
