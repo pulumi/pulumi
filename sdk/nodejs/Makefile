@@ -42,7 +42,7 @@ install_plugin::
 install:: install_package install_plugin
 
 instanbul_tests::
-	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/closureLoader.spec.js'
 	istanbul report text-summary
 	istanbul report text
 
