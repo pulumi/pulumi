@@ -47,7 +47,7 @@ func newPreviewCmd() *cobra.Command {
 		Long: "Show a preview of updates a stack's resources.\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
-			"represented by an existing snapshot file. The new desired state is computed by running\n" +
+			"represented by an existing state file. The new desired state is computed by running\n" +
 			"a Pulumi program, and extracting all resource allocations from its resulting object graph.\n" +
 			"These allocations are then compared against the existing state to determine what\n" +
 			"operations must take place to achieve the desired state. No changes to the stack will\n" +
