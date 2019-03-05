@@ -647,7 +647,6 @@ export type LiftedArray<T> = {
     readonly [n: number]: Output<T>;
 };
 
-
 /**
  * [concat] takes a sequence of [Inputs], stringifies each, and concatenates all values into one
  * final string.  Individual inputs can be any sort of [Input] value.  i.e. they can be [Promise]s,
