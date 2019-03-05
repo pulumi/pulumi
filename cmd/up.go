@@ -269,10 +269,11 @@ func newUpCmd() *cobra.Command {
 			"\n" +
 			"This command creates or updates resources in a stack. The new desired goal state for the target stack\n" +
 			"is computed by running the current Pulumi program and observing all resource allocations to produce a\n" +
-			"resource graph. This goal state is then compared against the existing state to determine what create,\n" +
-			"read, update, and/or delete operations must take place to achieve the desired goal state, in the most\n" +
-			"minimally disruptive way. This command records a full transactional snapshot of the stack's new state\n" +
-			"afterwards so that the stack may be updated incrementally again later on.\n" +
+			"resource graph. This goal state is then compared against the existing state, as recorded in the\n" +
+			"snapshot taken during the last `pulumi up` command, to determine what create,read, update, and/or \n" +
+			"delete operations must take place to achieve the desired goal state, in the least disruptive way.\n" +
+			"This command records a full transactional snapshot of the stack's new state afterwards in the\n" +
+			"workspace backend so that the stack may be updated incrementally again later on.\n" +
 			"\n" +
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
