@@ -48,7 +48,7 @@ func newRefreshCmd() *cobra.Command {
 		Short: "Refresh the resources in a stack",
 		Long: "Refresh the resources in a stack.\n" +
 			"\n" +
-			"This command resets the 'Pulumi.<stack name>.yaml' file to match the snapshot copy from the last\n" +
+			"This command resets the 'Pulumi.<stack name>.yaml' file to match the state snapshot copy from the last\n" +
 			"'pulumi up' command.\n" +
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
