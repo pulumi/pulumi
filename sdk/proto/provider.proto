@@ -60,6 +60,7 @@ service ResourceProvider {
 
 message ConfigureRequest {
     map<string, string> variables = 1; // a map of configuration keys to values.
+    google.protobuf.Struct args = 2;   // the input properties for the provider. Only filled in for newer providers.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.

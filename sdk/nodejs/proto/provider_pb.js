@@ -80,7 +80,8 @@ proto.pulumirpc.ConfigureRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    variablesMap: (f = msg.getVariablesMap()) ? f.toObject(includeInstance, undefined) : []
+    variablesMap: (f = msg.getVariablesMap()) ? f.toObject(includeInstance, undefined) : [],
+    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -123,6 +124,11 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
          });
       break;
+    case 2:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setArgs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -156,6 +162,14 @@ proto.pulumirpc.ConfigureRequest.serializeBinaryToWriter = function(message, wri
   if (f && f.getLength() > 0) {
     f.serializeBinary(1, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
+  f = message.getArgs();
+  if (f != null) {
+    writer.writeMessage(
+      2,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
 };
 
 
@@ -174,6 +188,36 @@ proto.pulumirpc.ConfigureRequest.prototype.getVariablesMap = function(opt_noLazy
 
 proto.pulumirpc.ConfigureRequest.prototype.clearVariablesMap = function() {
   this.getVariablesMap().clear();
+};
+
+
+/**
+ * optional google.protobuf.Struct args = 2;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getArgs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.ConfigureRequest.prototype.setArgs = function(value) {
+  jspb.Message.setWrapperField(this, 2, value);
+};
+
+
+proto.pulumirpc.ConfigureRequest.prototype.clearArgs = function() {
+  this.setArgs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.hasArgs = function() {
+  return jspb.Message.getField(this, 2) != null;
 };
 
 
