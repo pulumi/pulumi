@@ -19,6 +19,25 @@ import { Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
+interface Widget {
+    type: string;  // metric | text
+    x?: number;
+    y?: number;
+    properties: Object;
+}
+
+// This ensures that the optionality of 'x' and 'y' are preserved when describing an Output<Widget>.
+// Subtle changes in the definitions of Lifted<T> can make TS think these are required, which can
+// break downstream consumers.
+function mustCompile(): Output<Widget> {
+    return output({
+        type: "foo",
+        properties: {
+            whatever: 1,
+        }
+    })
+}
+
 describe("output", () => {
     it("propagates true isKnown bit from inner Output", asyncTest(async () => {
         runtime.setIsDryRun(true);
