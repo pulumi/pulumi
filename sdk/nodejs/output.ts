@@ -633,7 +633,7 @@ type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? nev
 
 // Lift up all the non-function properties, and make them non-optional.
 export type LiftedObject<T> = {
-    [P in NonFunctionPropertyNames<T>]-?: Output<T[P]>;
+    [P in NonFunctionPropertyNames<T>]: Output<T[P]>;
 };
 
 export type LiftedArray<T> = {
