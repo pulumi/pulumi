@@ -17,6 +17,16 @@ class ResourceProviderStub(object):
     Args:
       channel: A grpc.Channel.
     """
+    self.CheckConfig = channel.unary_unary(
+        '/pulumirpc.ResourceProvider/CheckConfig',
+        request_serializer=provider__pb2.CheckRequest.SerializeToString,
+        response_deserializer=provider__pb2.CheckResponse.FromString,
+        )
+    self.DiffConfig = channel.unary_unary(
+        '/pulumirpc.ResourceProvider/DiffConfig',
+        request_serializer=provider__pb2.DiffRequest.SerializeToString,
+        response_deserializer=provider__pb2.DiffResponse.FromString,
+        )
     self.Configure = channel.unary_unary(
         '/pulumirpc.ResourceProvider/Configure',
         request_serializer=provider__pb2.ConfigureRequest.SerializeToString,
@@ -73,6 +83,20 @@ class ResourceProviderServicer(object):
   """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
   within a single package.  It is driven by the overall planning engine in response to resource diffs.
   """
+
+  def CheckConfig(self, request, context):
+    """CheckConfig validates the configuration for this resource provider.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def DiffConfig(self, request, context):
+    """DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
 
   def Configure(self, request, context):
     """Configure configures the resource provider with "globals" that control its behavior.
@@ -153,6 +177,16 @@ class ResourceProviderServicer(object):
 
 def add_ResourceProviderServicer_to_server(servicer, server):
   rpc_method_handlers = {
+      'CheckConfig': grpc.unary_unary_rpc_method_handler(
+          servicer.CheckConfig,
+          request_deserializer=provider__pb2.CheckRequest.FromString,
+          response_serializer=provider__pb2.CheckResponse.SerializeToString,
+      ),
+      'DiffConfig': grpc.unary_unary_rpc_method_handler(
+          servicer.DiffConfig,
+          request_deserializer=provider__pb2.DiffRequest.FromString,
+          response_serializer=provider__pb2.DiffResponse.SerializeToString,
+      ),
       'Configure': grpc.unary_unary_rpc_method_handler(
           servicer.Configure,
           request_deserializer=provider__pb2.ConfigureRequest.FromString,

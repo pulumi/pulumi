@@ -202,6 +202,30 @@ function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 var ResourceProviderService = exports.ResourceProviderService = {
+  // CheckConfig validates the configuration for this resource provider.
+  checkConfig: {
+    path: '/pulumirpc.ResourceProvider/CheckConfig',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.CheckRequest,
+    responseType: provider_pb.CheckResponse,
+    requestSerialize: serialize_pulumirpc_CheckRequest,
+    requestDeserialize: deserialize_pulumirpc_CheckRequest,
+    responseSerialize: serialize_pulumirpc_CheckResponse,
+    responseDeserialize: deserialize_pulumirpc_CheckResponse,
+  },
+  // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+  diffConfig: {
+    path: '/pulumirpc.ResourceProvider/DiffConfig',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.DiffRequest,
+    responseType: provider_pb.DiffResponse,
+    requestSerialize: serialize_pulumirpc_DiffRequest,
+    requestDeserialize: deserialize_pulumirpc_DiffRequest,
+    responseSerialize: serialize_pulumirpc_DiffResponse,
+    responseDeserialize: deserialize_pulumirpc_DiffResponse,
+  },
   // Configure configures the resource provider with "globals" that control its behavior.
   configure: {
     path: '/pulumirpc.ResourceProvider/Configure',

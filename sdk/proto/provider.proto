@@ -23,10 +23,16 @@ package pulumirpc;
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
+    // CheckConfig validates the configuration for this resource provider.
+    rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
+    // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+    rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
     // Configure configures the resource provider with "globals" that control its behavior.
     rpc Configure(ConfigureRequest) returns (google.protobuf.Empty) {}
+
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
+
     // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
     // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
     // inputs returned by a call to Check should preserve the original representation of the properties as present in
@@ -45,6 +51,7 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+
     // Cancel signals the provider to abort all outstanding resource operations.
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
@@ -53,6 +60,7 @@ service ResourceProvider {
 
 message ConfigureRequest {
     map<string, string> variables = 1; // a map of configuration keys to values.
+    google.protobuf.Struct args = 2;   // the input properties for the provider. Only filled in for newer providers.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
@@ -103,7 +111,8 @@ message DiffResponse {
     repeated string replaces = 1; // if this update requires a replacement, the set of properties triggering it.
     repeated string stables = 2;  // an optional list of properties that will not ever change.
     bool deleteBeforeReplace = 3; // if true, this resource must be deleted before replacing it.
-    DiffChanges changes = 4;   // if true, this diff represents an actual difference and thus requires an update.
+    DiffChanges changes = 4;      // if true, this diff represents an actual difference and thus requires an update.
+    repeated string diffs = 5;    // a list of the properties that changed.
 
     enum DiffChanges {
         DIFF_UNKNOWN = 0; // unknown whether there are changes or not (legacy behavior).
@@ -133,6 +142,7 @@ message ReadRequest {
 message ReadResponse {
     string id = 1;                         // the ID of the resource read back (or empty if missing).
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
+    google.protobuf.Struct inputs = 3;     // the inputs for this resource that would be returned from Check.
 }
 
 message UpdateRequest {
@@ -160,4 +170,5 @@ message ErrorResourceInitFailed {
     string id = 1;                         // the ID of the created resource.
     google.protobuf.Struct properties = 2; // any properties that were computed during updating.
     repeated string reasons = 3;           // error messages associated with initialization failure.
+    google.protobuf.Struct inputs = 4;     // the current inputs to this resource (only applicable for Read)
 }
