@@ -631,10 +631,56 @@ export type Lifted<T> =
 // The set of property names in T that are *not* functions.
 type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
 
-// Lift up all the non-function properties, and make them non-optional.
-export type LiftedObject<T> = {
+type RequiredKeys<T> = { [K in keyof T]-?: ({} extends { [P in K]: T[K] } ? never : K) }[keyof T];
+type OptionalKeys<T> = { [K in keyof T]-?: ({} extends { [P in K]: T[K] } ? K : never) }[keyof T];
+
+// Lift up all the non-function properties.  If it was optional before, keep it optional after.
+// If it's require before, keep it required afterwards.
+export type LiftedObject<T> = LiftRequired<Pick<T, RequiredKeys<T>>> & LiftOptional<Pick<T, OptionalKeys<T>>>;
+export type LiftRequired<T> = {
     [P in NonFunctionPropertyNames<T>]: Output<T[P]>;
 };
+
+export type LiftOptional<T> = {
+    [P in NonFunctionPropertyNames<T>]?: Output<T[P]>;
+};
+
+interface Widget {
+    // The type of widget.
+    // Valid Values: metric | text
+    type: string;  // metric | text
+    // The horizontal position of the widget on the 24-column dashboard grid. The default is the
+    // next available position.
+    // Valid Values: 0–23
+    x?: number;
+    // The vertical position of the widget on the 24-column dashboard grid. The default is the next
+    // available position.
+    // Valid Values: Any integer, 0 or higher.
+    y?: number;
+
+    // The detailed properties of the widget, which differ depending on the widget type.
+    // The schema for "metric" type widget properties can be found here:
+    // tslint:disable-next-line
+    // https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Dashboard-Body-Structure.html#CloudWatch-Dashboard-Properties-Metrics-Array-Format
+    properties: Record<string, any>;
+}
+
+declare var x: Output<Widget>;
+var y = x.x;
+
+
+function clusterThroughput(cluster: Output<string>): Output<Widget> {
+
+
+    var v = output({
+            type: "metric",
+            properties: {
+                view: "timeSeries",
+            },
+        });
+
+    return v;
+}
 
 export type LiftedArray<T> = {
     /**
