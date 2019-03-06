@@ -14,6 +14,19 @@ are compatible.  i.e. keep everything on 0.16.x until you are ready to move ever
 ### Improvements
 
 - `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
+For example:
+
+```ts
+interface Widget { text: string, x: number, y: number };
+var v: Output<Widget>;
+
+var widgetX = v.x;
+// `widgetX` has the type Output<number>.
+// This is equivalent to writing `v.apply(w => w.x)`
+```
+
+Note: this 'lifting' only occurs for POJO values.  It does not happen for `Output<Resource>`s.
+Similarly, this only happens for properties.  Functions are not lifted.
 
 - Depending on a **Component** Resource will now depend on all other Resources parented by that
   Resource. This will help out the programming model for Component Resources as your consumers can
