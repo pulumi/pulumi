@@ -371,6 +371,7 @@ func isBrewInstall(exe string) (bool, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	brewPrefixCmd.Stdout = &stdout
+	brewPrefixCmd.Stderr = &stderr
 	if err = brewPrefixCmd.Run(); err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
 			ee.Stderr = stderr.Bytes()
