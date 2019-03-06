@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- Show `brew upgrade pulumi` as the upgrade message when the currently running `pulumi` executable
+  is running on macOS from the brew install directory.
+
 ## 0.17.1 (Released March 6, 2019)
 
 ### Improvements
