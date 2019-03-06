@@ -81,6 +81,8 @@ type StepEventMetadata struct {
 
 	// Keys causing a replacement (only applicable for "create" and "replace" Ops).
 	Keys []string `json:"keys,omitempty"`
+	// Keys that changed with this step.
+	Diffs []string `json:"diffs"`
 	// Logical is set if the step is a logical operation in the program.
 	Logical bool `json:"logical"`
 	// Provider actually performing the step.
