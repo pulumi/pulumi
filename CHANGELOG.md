@@ -1,6 +1,12 @@
-## 0.17.1 (unreleased)
+## 0.17.2 (unreleased)
 
 ### Improvements
+
+## 0.17.1 (Released March 6, 2019)
+
+### Improvements
+
+- Slight tweak to `Output.apply` signature to help TypeScript infer types better.
 
 ## 0.17.0 (Released March 5, 2019)
 
