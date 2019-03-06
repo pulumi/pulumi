@@ -1,4 +1,15 @@
-## 0.17.0 (Unreleased)
+## 0.17.1 (unreleased)
+
+### Improvements
+
+## 0.17.0 (Released March 5, 2019)
+
+This update includes several changes to core `@pulumi/pulumi` constructs that will not play nicely
+in side-by-side applications that pull in prior versions of this package.  As such, we are rev'ing
+the minor version of the package from 0.16 to 0.17.  Recent version of `pulumi` will now detect,
+and warn, if different versions of `@pulumi/pulumi` are loaded into the same application.  If you
+encounter this warning, it is recommended you move to versions of the `@pulumi/...` packages that
+are compatible.  i.e. keep everything on 0.16.x until you are ready to move everything to 0.17.x.
 
 ### Improvements
 
