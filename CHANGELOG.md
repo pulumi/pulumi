@@ -32,6 +32,7 @@ are compatible.  i.e. keep everything on 0.16.x until you are ready to move ever
   `pulumi plugin install resource <name> <version> --exact`.
 
 ### Improvements
+
 - Attempting to convert an [Output<T>] to a string or to JSON will now result in a warning
   message being printed, as well as information on how to rectify the situation.  This is
   to help with diagnosing cryptic problems that can occur when Outputs are accidentally
