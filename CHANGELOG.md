@@ -1,6 +1,26 @@
-## 0.16.19 (Unreleased)
+## 0.17.1 (unreleased)
 
 ### Improvements
+
+## 0.17.0 (Released March 5, 2019)
+
+This update includes several changes to core `@pulumi/pulumi` constructs that will not play nicely
+in side-by-side applications that pull in prior versions of this package.  As such, we are rev'ing
+the minor version of the package from 0.16 to 0.17.  Recent version of `pulumi` will now detect,
+and warn, if different versions of `@pulumi/pulumi` are loaded into the same application.  If you
+encounter this warning, it is recommended you move to versions of the `@pulumi/...` packages that
+are compatible.  i.e. keep everything on 0.16.x until you are ready to move everything to 0.17.x.
+
+### Improvements
+
+- `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
+
+- Depending on a **Component** Resource will now depend on all other Resources parented by that
+  Resource. This will help out the programming model for Component Resources as your consumers can
+  just depend on a Component and have that automatically depend on all the child Resources created
+  by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
+  CustomResource will still only wait on that single resource being created, not any other Resources
+  that consider that CustomResource to be a parent.
 
 ## 0.16.18 (Released March 1, 2019)
 

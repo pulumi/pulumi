@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as log from "./log";
 import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
@@ -23,7 +24,7 @@ import * as utils from "./utils";
  * value as well as the Resource the value came from.  This allows for a precise 'Resource
  * dependency graph' to be created, which properly tracks the relationship between resources.
  */
-export class Output<T> {
+class OutputImpl<T> implements OutputInstance<T> {
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
@@ -56,43 +57,7 @@ export class Output<T> {
      */
     /* @internal */ public readonly resources: () => Set<Resource>;
 
-    /**
-     * Transforms the data of the output with the provided func.  The result remains a
-     * Output so that dependent resources can be properly tracked.
-     *
-     * 'func' is not allowed to make resources.
-     *
-     * 'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
-     * and you want to get a transitive dependency of it.  i.e.
-     *
-     * ```ts
-     * var d1: Output<SomeVal>;
-     * var d2 = d1.apply(v => v.x.y.OtherOutput); // getting an output off of 'v'.
-     * ```
-     *
-     * In this example, taking a dependency on d2 means a resource will depend on all the resources
-     * of d1.  It will *not* depend on the resources of v.x.y.OtherDep.
-     *
-     * Importantly, the Resources that d2 feels like it will depend on are the same resources as d1.
-     * If you need have multiple Outputs and a single Output is needed that combines both
-     * set of resources, then 'pulumi.all' should be used instead.
-     *
-     * This function will only be called execution of a 'pulumi update' request.  It will not run
-     * during 'pulumi preview' (as the values of resources are of course not known then). It is not
-     * available for functions that end up executing in the cloud during runtime.  To get the value
-     * of the Output during cloud runtime execution, use `get()`.
-     */
     public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
-
-    /**
-     * Retrieves the underlying value of this dependency.
-     *
-     * This function is only callable in code that runs in the cloud post-deployment.  At this
-     * point all Output values will be known and can be safely retrieved. During pulumi deployment
-     * or preview execution this must not be called (and will throw).  This is because doing so
-     * would allow Output values to flow into Resources while losing the data that would allow
-     * the dependency graph to be changed.
-     */
     public readonly get: () => T;
 
     /**
@@ -251,6 +216,70 @@ This function may throw in a future version of @pulumi/pulumi.`;
             throw new Error(`Cannot call '.get' during update or preview.
 To manipulate the value of this Output, use '.apply' instead.`);
         };
+
+        return new Proxy(this, {
+            get: (obj, prop: keyof T) => {
+                // Recreate the prototype walk to ensure we find any actual members defined directly
+                // on `Output<T>`.
+                for (let o = obj; o; o = Object.getPrototypeOf(o)) {
+                    if (o.hasOwnProperty(prop)) {
+                        return (<any>o)[prop];
+                    }
+                }
+
+                // Always explicitly fail on a member called 'then'.  It is used by other systems to
+                // determine if this is a Promise, and we do not want to indicate that that's what
+                // we are.
+                if (prop === "then") {
+                    return undefined;
+                }
+
+                // Do not lift members that start with __.  Technically, if all libraries were
+                // using this version of pulumi/pulumi we would not need this.  However, this is
+                // so that downstream consumers can use this version of pulumi/pulumi while also
+                // passing these new Outputs to older versions of pulumi/pulumi.  The reason this
+                // can be a problem is that older versions do an RTTI check that simply asks questions
+                // like:
+                //
+                //      Is there a member on this object called '__pulumiResource'
+                //
+                // If we automatically lift such a member (even if it eventually points to 'undefined'),
+                // then those RTTI checks will succeed.
+                //
+                // Note: this should be safe to not lift as, in general, properties with this prefix
+                // are not at all common (and in general are used to represent private things anyway
+                // that likely should not be exposed).
+                //
+                // Similarly, do not respond to the 'doNotCapture' member name.  It serves a similar
+                // RTTI purpose.
+                if (typeof prop === "string") {
+                    if (prop.startsWith("__") || prop === "doNotCapture" || prop === "deploymentOnlyModule") {
+                        return undefined;
+                    }
+                }
+
+                // Fail out if we are being accessed using a symbol.  Many APIs will access with a
+                // well known symbol (like 'Symbol.toPrimitive') to check for the presence of something.
+                // They will only check for the existence of that member, and we don't want to make it
+                // appear that have those.
+                //
+                // Another way of putting this is that we only forward 'string/number' members to our
+                // underlying value.
+                if (typeof prop === "symbol") {
+                    return undefined;
+                }
+
+                // Else for *any other* property lookup, succeed the lookup and return a lifted
+                // `apply` on the underlying `Output`.
+                return obj.apply(ob => {
+                    if (ob === undefined || ob === null) {
+                        return undefined;
+                    }
+
+                    return ob[prop];
+                });
+            },
+        });
     }
 }
 
@@ -376,14 +405,15 @@ function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[]
 }
 
 /**
- * Input is a property input for a resource.  It may be a promptly available T, a promise
- * for one, or the output from a existing Resource.
+ * [Input] is a property input for a resource.  It may be a promptly available T, a promise for one,
+ * or the output from a existing Resource.
  */
-export type Input<T> = T | Promise<T> | Output<T>;
+// Note: we accept an OutputInstance (and not an Output) here to be *more* flexible in terms of
+// what an Input is.  OutputInstance has *less* members than Output (because it doesn't lift anything).
+export type Input<T> = T | Promise<T> | OutputInstance<T>;
 
 /**
- * Inputs is a map of property name to property input, one for each resource
- * property value.
+ * [Inputs] is a map of property name to property input, one for each resource property value.
  */
 export type Inputs = Record<string, Input<any>>;
 
@@ -416,7 +446,7 @@ export type Unwrap<T> =
     // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
     // 3. Otherwise, we have a basic type.  Just unwrap that.
     T extends Promise<infer U1> ? UnwrapSimple<U1> :
-    T extends Output<infer U2> ? UnwrapSimple<U2> :
+    T extends OutputInstance<infer U2> ? UnwrapSimple<U2> :
     UnwrapSimple<T>;
 
 type primitive = Function | string | number | boolean | undefined | null;
@@ -443,6 +473,178 @@ export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 
 export type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;
+};
+
+/**
+ * Instance side of the [Output<T>] type.  Exposes the deployment-time and run-time mechanisms
+ * for working with the underlying value of an [Output<T>].
+ */
+export interface OutputInstance<T> {
+    /* @internal */ readonly isKnown: Promise<boolean>;
+    /* @internal */ promise(): Promise<T>;
+    /* @internal */ resources(): Set<Resource>;
+
+    /**
+     * Transforms the data of the output with the provided func.  The result remains a
+     * Output so that dependent resources can be properly tracked.
+     *
+     * 'func' is not allowed to make resources.
+     *
+     * 'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
+     * and you want to get a transitive dependency of it.  i.e.
+     *
+     * ```ts
+     * var d1: Output<SomeVal>;
+     * var d2 = d1.apply(v => v.x.y.OtherOutput); // getting an output off of 'v'.
+     * ```
+     *
+     * In this example, taking a dependency on d2 means a resource will depend on all the resources
+     * of d1.  It will *not* depend on the resources of v.x.y.OtherDep.
+     *
+     * Importantly, the Resources that d2 feels like it will depend on are the same resources as d1.
+     * If you need have multiple Outputs and a single Output is needed that combines both
+     * set of resources, then 'pulumi.all' should be used instead.
+     *
+     * This function will only be called execution of a 'pulumi update' request.  It will not run
+     * during 'pulumi preview' (as the values of resources are of course not known then). It is not
+     * available for functions that end up executing in the cloud during runtime.  To get the value
+     * of the Output during cloud runtime execution, use `get()`.
+     */
+    apply<U>(func: (t: T) => Input<U>): Output<U>;
+
+    /**
+     * Retrieves the underlying value of this dependency.
+     *
+     * This function is only callable in code that runs in the cloud post-deployment.  At this
+     * point all Output values will be known and can be safely retrieved. During pulumi deployment
+     * or preview execution this must not be called (and will throw).  This is because doing so
+     * would allow Output values to flow into Resources while losing the data that would allow
+     * the dependency graph to be changed.
+     */
+    get(): T;
+}
+
+/**
+ * Static side of the [Output<T>] type.  Can be used to [create] Outputs as well as test
+ * arbitrary values to see if they are [Output]s.
+ */
+export interface OutputConstructor {
+    create<T>(val: Input<T>): Output<Unwrap<T>>;
+    create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+
+    isInstance<T>(obj: any): obj is Output<T>;
+
+    /* @internal */ new<T>(
+            resources: Set<Resource> | Resource[] | Resource,
+            promise: Promise<T>,
+            isKnown: Promise<boolean>): Output<T>;
+}
+
+/**
+ * [Output] helps encode the relationship between Resources in a Pulumi application. Specifically an
+ * [Output] holds onto a piece of Data and the Resource it was generated from. An [Output] value can
+ * then be provided when constructing new Resources, allowing that new Resource to know both the
+ * value as well as the Resource the value came from.  This allows for a precise 'Resource
+ * dependency graph' to be created, which properly tracks the relationship between resources.
+ *
+ * An [Output] is used in a Pulumi program differently depending on if the application is executing
+ * at 'deployment time' (i.e. when actually running the 'pulumi' executable), or at 'run time' (i.e.
+ * a piece of code running in some Cloud).
+ *
+ * At 'deployment time', the correct way to work with the underlying value is to call
+ * [Output.apply(func)].  This allows the value to be accessed and manipulated, while still
+ * resulting in an [Output] that is keeping track of [Resource]s appropriately.  At deployment time
+ * the underlying value may or may not exist (for example, if a preview is being performed).  In
+ * this case, the 'func' callback will not be executed, and calling [.apply] will immediately return
+ * an [Output] that points to the [undefined] value.  During a normal [update] though, the 'func'
+ * callbacks should always be executed.
+ *
+ * At 'run time', the correct way to work with the underlying value is to simply call [Output.get]
+ * which will be promptly return the entire value.  This will be a simple JavaScript object that can
+ * be manipulated as necessary.
+ *
+ * To ease with using [Output]s at 'deployment time', pulumi will 'lift' simple data properties of
+ * an underlying value to the [Output] itself.  For example:
+ *
+ * ```ts
+ *      const o: Output<{ name: string, age: number, orders: Order[] }> = ...;
+ *      const name : Output<string> = o.name;
+ *      const age  : Output<number> = o.age;
+ *      const first: Output<Order>  = o.orders[0];
+ * ```
+ *
+ * Instead of having to write:
+ *
+ * ```ts
+ *      const o: Output<{ name: string, age: number, orders: Order[] }> = ...;
+ *      const name : Output<string> = o.apply(v => v.name);
+ *      const age  : Output<number> = o.apply(v => v.age);
+ *      const first: Output<Order> = o.apply(v => v.orders[0]);
+ * ```
+ */
+export type Output<T> = OutputInstance<T> & Lifted<T>;
+// tslint:disable-next-line:variable-name
+export const Output: OutputConstructor = <any>OutputImpl;
+
+/**
+ * The [Lifted] type allows us to express the operation of taking a type, with potentially deeply
+ * nested objects and arrays and to then get a type with the same properties, except whose property
+ * types are now [Output]s of the original property type.
+ *
+ * For example:
+ *
+ *
+ *      `type X = { A: string, B: { c: boolean } }`
+ *
+ * Then `Lifted<X>` would be equivalent to:
+ *
+ *      `...    = { A: Output<string>, B: Output<{ C: Output<boolean> }> }`
+ *
+ * [Lifted] is somewhat the opposite of [Unwrap].  It's primary purpose is to allow an instance of
+ * [Output<SomeType>] to provide simple access to the properties of [SomeType] directly on the instance
+ * itself (instead of haveing to use [.apply]).
+ *
+ * This lifting only happens through simple pojo objects and arrays.  Functions, for example, are not
+ * lifted.  So you cannot do:
+ *
+ * ```ts
+ *      const o: Output<string> = ...;
+ *      const c: Output<number> = o.charCodeAt(0);
+ * ```
+ *
+ * Instead, you still need to write;
+ *
+ * ```ts
+ *      const o: Output<string> = ...;
+ *      const c: Output<number> = o.apply(v => v.charCodeAt(0));
+ * ```
+ */
+export type Lifted<T> =
+    // Output<T> is an intersection type with 'Lifted<T>'.  So, when we don't want to add any
+    // members to Output<T>, we just return `{}` which will leave it untouched.
+    T extends Resource ? {} :
+    // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
+    T extends string ? LiftedObject<String, NonFunctionPropertyNames<String>> :
+    T extends Array<infer U> ? LiftedArray<U> :
+    LiftedObject<T, NonFunctionPropertyNames<T>>;
+
+// The set of property names in T that are *not* functions.
+type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
+
+// Lift up all the non-function properties.  If it was optional before, keep it optional after.
+// If it's require before, keep it required afterwards.
+export type LiftedObject<T, K extends keyof T> = {
+    [P in K]: Output<T[P]>
+};
+
+export type LiftedArray<T> = {
+    /**
+      * Gets the length of the array. This is a number one higher than the highest element defined
+      * in an array.
+      */
+    readonly length: Output<number>;
+
+    readonly [n: number]: Output<T>;
 };
 
 /**
