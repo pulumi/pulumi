@@ -196,9 +196,9 @@ func GetResourcePropertiesDetails(
 			printObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
 	} else if len(new.Outputs) > 0 {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, debug)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, debug)
 	}
 
 	return b.String()
@@ -444,12 +444,12 @@ func shortHash(hash string) string {
 }
 
 func printOldNewDiffs(
-	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
+	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op deploy.StepOp, summary bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, planning, indent, summary, debug)
+		printObjectDiff(b, *diff, include, planning, indent, summary, debug)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -457,13 +457,27 @@ func printOldNewDiffs(
 	}
 }
 
-func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
+func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, debug bool) {
 
 	contract.Assert(indent > 0)
 
-	// Compute the maximum with of property keys so we can justify everything.
+	// Compute the maximum with of property keys so we can justify everything. If an include set was given, filter out
+	// any properties that are not in the set.
 	keys := diff.Keys()
+	if include != nil {
+		includeSet := make(map[resource.PropertyKey]bool)
+		for _, k := range include {
+			includeSet[k] = true
+		}
+		var filteredKeys []resource.PropertyKey
+		for _, k := range keys {
+			if includeSet[k] {
+				filteredKeys = append(filteredKeys, k)
+			}
+		}
+		keys = filteredKeys
+	}
 	maxkey := maxKey(keys)
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
@@ -525,7 +539,7 @@ func printPropertyValueDiff(
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, planning, indent+1, summary, debug)
+		printObjectDiff(b, *diff.Object, nil, planning, indent+1, summary, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)

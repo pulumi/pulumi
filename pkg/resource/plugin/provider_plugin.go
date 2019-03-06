@@ -298,14 +298,21 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
+	var diffs []resource.PropertyKey
+	for _, diff := range resp.GetDiffs() {
+		diffs = append(diffs, resource.PropertyKey(diff))
+	}
+
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
-	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v",
-		label, changes, replaces, stables, deleteBeforeReplace)
+	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v",
+		label, changes, replaces, stables, deleteBeforeReplace, diffs)
+
 	return DiffResult{
 		Changes:             DiffChanges(changes),
 		ReplaceKeys:         replaces,
 		StableKeys:          stables,
+		ChangedKeys:         diffs,
 		DeleteBeforeReplace: deleteBeforeReplace,
 	}, nil
 }
