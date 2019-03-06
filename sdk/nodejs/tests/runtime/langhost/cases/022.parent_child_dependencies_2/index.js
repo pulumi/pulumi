@@ -1,5 +1,3 @@
-// Test the ability to invoke provider functions via RPC.
-
 let assert = require("assert");
 let pulumi = require("../../../../../");
 
@@ -9,6 +7,10 @@ class MyResource extends pulumi.CustomResource {
 	}
 }
 
-let resA = new MyResource("resA");
-let resB = new MyResource("resB", { parentId: resA.id }, { parent: resA });
-let resC = new MyResource("resC", { parentId: resA.id }, { parent: resA });
+//            cust1
+//            /   \
+//       cust2    cust3
+
+let cust1 = new MyResource("cust1");
+let cust2 = new MyResource("cust2", { parentId: cust1.id }, { parent: cust1 });
+let cust3 = new MyResource("cust3", { parentId: cust1.id }, { parent: cust1 });
