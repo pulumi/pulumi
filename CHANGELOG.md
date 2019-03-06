@@ -1,9 +1,15 @@
-## 0.17.1 (unreleased)
+## 0.17.2 (unreleased)
 
 ### Improvements
 
 - Show `brew upgrade pulumi` as the upgrade message when the currently running `pulumi` executable
   is running on macOS from the brew install directory.
+
+## 0.17.1 (Released March 6, 2019)
+
+### Improvements
+
+- Slight tweak to `Output.apply` signature to help TypeScript infer types better.
 
 ## 0.17.0 (Released March 5, 2019)
 
@@ -124,7 +130,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 ### Improvements
 
-- Issue a more perscriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
+- Issue a more prescriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
 
 ## 0.16.12 (Released January 25th, 2019)
 
