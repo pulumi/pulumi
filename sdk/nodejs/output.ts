@@ -510,7 +510,9 @@ export interface OutputInstance<T> {
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.
      */
-    apply<U>(func: (t: T) => Input<U>): Output<U>;
+    apply<U>(func: (t: T) => Promise<U>): Output<U>;
+    apply<U>(func: (t: T) => OutputInstance<U>): Output<U>;
+    apply<U>(func: (t: T) => U): Output<U>;
 
     /**
      * Retrieves the underlying value of this dependency.
