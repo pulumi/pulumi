@@ -1,9 +1,91 @@
-## 0.16.16 (Unreleased)
+## 0.17.2 (unreleased)
 
 ### Improvements
 
 - Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
   be `undefined` will properly encode and pass along that `undefined` information.
+
+- Show `brew upgrade pulumi` as the upgrade message when the currently running `pulumi` executable
+  is running on macOS from the brew install directory.
+
+## 0.17.1 (Released March 6, 2019)
+
+### Improvements
+
+- Slight tweak to `Output.apply` signature to help TypeScript infer types better.
+
+## 0.17.0 (Released March 5, 2019)
+
+This update includes several changes to core `@pulumi/pulumi` constructs that will not play nicely
+in side-by-side applications that pull in prior versions of this package.  As such, we are rev'ing
+the minor version of the package from 0.16 to 0.17.  Recent version of `pulumi` will now detect,
+and warn, if different versions of `@pulumi/pulumi` are loaded into the same application.  If you
+encounter this warning, it is recommended you move to versions of the `@pulumi/...` packages that
+are compatible.  i.e. keep everything on 0.16.x until you are ready to move everything to 0.17.x.
+
+### Improvements
+
+- `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
+For example:
+
+```ts
+interface Widget { text: string, x: number, y: number };
+var v: Output<Widget>;
+
+var widgetX = v.x;
+// `widgetX` has the type Output<number>.
+// This is equivalent to writing `v.apply(w => w.x)`
+```
+
+Note: this 'lifting' only occurs for POJO values.  It does not happen for `Output<Resource>`s.
+Similarly, this only happens for properties.  Functions are not lifted.
+
+- Depending on a **Component** Resource will now depend on all other Resources parented by that
+  Resource. This will help out the programming model for Component Resources as your consumers can
+  just depend on a Component and have that automatically depend on all the child Resources created
+  by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
+  CustomResource will still only wait on that single resource being created, not any other Resources
+  that consider that CustomResource to be a parent.
+
+## 0.16.18 (Released March 1, 2019)
+
+- Fix an issue where the Pulumi CLI would load the newest plugin for a resource provider instead of the version that was
+  requested, which could result in the Pulumi CLI loading a resource provider plugin that is incompatible with the
+  program. This has the potential to disrupt users that previously had working configurations; if you are experiencing
+  problems after upgrading to 0.16.17, you can opt-in to the legacy plugin load behavior by setting the environnment
+  variable `PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH=1`. You can also install plugins that are missing with the command
+  `pulumi plugin install resource <name> <version> --exact`.
+
+### Improvements
+
+- Attempting to convert an [Output<T>] to a string or to JSON will now result in a warning
+  message being printed, as well as information on how to rectify the situation.  This is
+  to help with diagnosing cryptic problems that can occur when Outputs are accidentally
+  concatenated into a string in some part of the program.
+
+- Fixes incorrect closure serialization issue (https://github.com/pulumi/pulumi/pull/2497)
+
+- `pulumi` will now check that all versions of `@pulumi/pulumi` are compatible in your node_modules
+  folder, and will issue a warning message if not.  To be compatible, the versions of
+  `@pulumi/pulumi` must agree on their major and minor versions.  Running incompatible versions is
+  not something that will be blocked, but it is discouraged as it may lead to subtle problems if one
+  version of `@pulumi/pulumi` is loaded and passes objects to/from an incompatible version.
+
+## 0.16.17 (Released February 27th, 2019)
+
+### Improvements
+
+- Rolling back the change:
+    "Depending on a Resource will now depend on all other Resource's parented by that Resource."
+
+  Unforseen problems cropped up that caused deadlocks.  Removing this change until we can
+  have a high quality solution without these issues.
+
+## 0.16.16 (Released February 24th, 2019)
+
+### Improvements
+
+- Fix deadlock with resource dependencies (https://github.com/pulumi/pulumi/issues/2470)
 
 ## 0.16.15 (Released February 22nd, 2019)
 
@@ -51,7 +133,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 ### Improvements
 
-- Issue a more perscriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
+- Issue a more prescriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
 
 ## 0.16.12 (Released January 25th, 2019)
 

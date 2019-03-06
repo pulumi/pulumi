@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -324,6 +325,14 @@ func getUpgradeCommand() string {
 		return ""
 	}
 
+	isBrew, err := isBrewInstall(exe)
+	if err != nil {
+		glog.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+	}
+	if isBrew {
+		return "$ brew upgrade pulumi"
+	}
+
 	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, ".pulumi", "bin") {
 		return ""
 	}
@@ -340,6 +349,47 @@ func getUpgradeCommand() string {
 
 	return "> " + powershellCmd + ` -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ` +
 		`((New-Object System.Net.WebClient).DownloadString('https://get.pulumi.com/install.ps1'))"`
+}
+
+// isBrewInstall returns true if the current running executable is running on macOS and was installed with brew.
+func isBrewInstall(exe string) (bool, error) {
+	if runtime.GOOS != "darwin" {
+		return false, nil
+	}
+
+	exePath, err := filepath.EvalSymlinks(exe)
+	if err != nil {
+		return false, err
+	}
+
+	brewBin, err := exec.LookPath("brew")
+	if err != nil {
+		return false, err
+	}
+
+	brewPrefixCmd := exec.Command(brewBin, "--prefix", "pulumi")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	brewPrefixCmd.Stdout = &stdout
+	if err = brewPrefixCmd.Run(); err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			ee.Stderr = stderr.Bytes()
+		}
+		return false, errors.Wrapf(err, "'brew --prefix pulumi' failed")
+	}
+
+	brewPrefixCmdOutput := strings.TrimSpace(stdout.String())
+	if brewPrefixCmdOutput == "" {
+		return false, errors.New("trimmed output from 'brew --prefix pulumi' is empty")
+	}
+
+	brewPrefixPath, err := filepath.EvalSymlinks(brewPrefixCmdOutput)
+	if err != nil {
+		return false, err
+	}
+
+	brewPrefixExePath := filepath.Join(brewPrefixPath, "bin", "pulumi")
+	return exePath == brewPrefixExePath, nil
 }
 
 func isDevVersion(s semver.Version) bool {

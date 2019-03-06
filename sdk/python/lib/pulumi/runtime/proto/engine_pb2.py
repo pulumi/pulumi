@@ -14,7 +14,6 @@ _sym_db = _symbol_database.Default()
 
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -22,9 +21,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pulumirpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0c\x65ngine.proto\x12\tpulumirpc\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"y\n\nLogRequest\x12(\n\x08severity\x18\x01 \x01(\x0e\x32\x16.pulumirpc.LogSeverity\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x10\n\x08streamId\x18\x04 \x01(\x05\x12\x11\n\tephemeral\x18\x05 \x01(\x08\"\x18\n\x16GetRootResourceRequest\"&\n\x17GetRootResourceResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\"%\n\x16SetRootResourceRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\"\x19\n\x17SetRootResourceResponse*:\n\x0bLogSeverity\x12\t\n\x05\x44\x45\x42UG\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\x0b\n\x07WARNING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x32\xf8\x01\n\x06\x45ngine\x12\x36\n\x03Log\x12\x15.pulumirpc.LogRequest\x1a\x16.google.protobuf.Empty\"\x00\x12Z\n\x0fGetRootResource\x12!.pulumirpc.GetRootResourceRequest\x1a\".pulumirpc.GetRootResourceResponse\"\x00\x12Z\n\x0fSetRootResource\x12!.pulumirpc.SetRootResourceRequest\x1a\".pulumirpc.SetRootResourceResponse\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0c\x65ngine.proto\x12\tpulumirpc\x1a\x1bgoogle/protobuf/empty.proto\"y\n\nLogRequest\x12(\n\x08severity\x18\x01 \x01(\x0e\x32\x16.pulumirpc.LogSeverity\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x10\n\x08streamId\x18\x04 \x01(\x05\x12\x11\n\tephemeral\x18\x05 \x01(\x08\"\x18\n\x16GetRootResourceRequest\"&\n\x17GetRootResourceResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\"%\n\x16SetRootResourceRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\"\x19\n\x17SetRootResourceResponse*:\n\x0bLogSeverity\x12\t\n\x05\x44\x45\x42UG\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\x0b\n\x07WARNING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x32\xf8\x01\n\x06\x45ngine\x12\x36\n\x03Log\x12\x15.pulumirpc.LogRequest\x1a\x16.google.protobuf.Empty\"\x00\x12Z\n\x0fGetRootResource\x12!.pulumirpc.GetRootResourceRequest\x1a\".pulumirpc.GetRootResourceResponse\"\x00\x12Z\n\x0fSetRootResource\x12!.pulumirpc.SetRootResourceRequest\x1a\".pulumirpc.SetRootResourceResponse\"\x00\x62\x06proto3')
   ,
-  dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
+  dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
 _LOGSEVERITY = _descriptor.EnumDescriptor(
   name='LogSeverity',
@@ -51,8 +50,8 @@ _LOGSEVERITY = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=341,
-  serialized_end=399,
+  serialized_start=311,
+  serialized_end=369,
 )
 _sym_db.RegisterEnumDescriptor(_LOGSEVERITY)
 
@@ -118,8 +117,8 @@ _LOGREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=86,
-  serialized_end=207,
+  serialized_start=56,
+  serialized_end=177,
 )
 
 
@@ -142,8 +141,8 @@ _GETROOTRESOURCEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=209,
-  serialized_end=233,
+  serialized_start=179,
+  serialized_end=203,
 )
 
 
@@ -173,8 +172,8 @@ _GETROOTRESOURCERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=235,
-  serialized_end=273,
+  serialized_start=205,
+  serialized_end=243,
 )
 
 
@@ -204,8 +203,8 @@ _SETROOTRESOURCEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=275,
-  serialized_end=312,
+  serialized_start=245,
+  serialized_end=282,
 )
 
 
@@ -228,8 +227,8 @@ _SETROOTRESOURCERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=314,
-  serialized_end=339,
+  serialized_start=284,
+  serialized_end=309,
 )
 
 _LOGREQUEST.fields_by_name['severity'].enum_type = _LOGSEVERITY
@@ -284,8 +283,8 @@ _ENGINE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=402,
-  serialized_end=650,
+  serialized_start=372,
+  serialized_end=620,
   methods=[
   _descriptor.MethodDescriptor(
     name='Log',

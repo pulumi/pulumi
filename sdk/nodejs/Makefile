@@ -41,11 +41,16 @@ install_plugin::
 
 install:: install_package install_plugin
 
-test_fast::
+instanbul_tests::
 	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
-	go test -count=1 -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+
+test_fast:: instanbul_tests
+	$(GO_TEST_FAST) ${PROJECT_PKGS}
+
+test_all:: instanbul_tests
+	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}

@@ -15,7 +15,7 @@
 import * as grpc from "grpc";
 import * as log from "../log";
 import { Input, Inputs, Output } from "../output";
-import { CustomResourceOptions, ID, Resource, ResourceOptions, URN } from "../resource";
+import { ComponentResource, CustomResource, CustomResourceOptions, ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 import {
@@ -47,10 +47,12 @@ interface ResourceResolverOperation {
     providerRef: string | undefined;
     // All serialized properties, fully awaited, serialized, and ready to go.
     serializedProps: Record<string, any>;
-    // A set of URNs that this resource is directly dependent upon.
+    // A set of URNs that this resource is directly dependent upon.  These will all be URNs of
+    // custom resources, not component resources.
     allDirectDependencyURNs: Set<URN>;
-    // Set of URNs that this resource is directly dependent upon, keyed by the property that
-    // causes the dependency.  All urns in this map must exist in [allDirectDependencyURNs]
+    // Set of URNs that this resource is directly dependent upon, keyed by the property that causes
+    // the dependency.  All urns in this map must exist in [allDirectDependencyURNs].  These will
+    // all be URNs of custom resources, not component resources.
     propertyToDirectDependencyURNs: Map<string, Set<URN>>;
 }
 
@@ -65,7 +67,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     }
 
     const label = `resource:${name}[${t}]#...`;
-    log.debug(`Reading resource: id=${id}, t=${t}, name=${name}`);
+    log.debug(`Reading resource: id=${Output.isInstance(id) ? "Output<T>" : id}, t=${t}, name=${name}`);
 
     const monitor: any = getMonitor();
     const resopAsync = prepareResource(label, res, true, props, opts);
@@ -258,22 +260,16 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
 
-    const allDirectDependencyURNs = await getResourceURNs(explicitDirectDependencies);
+    const allDirectDependencyURNs = await getAllTransitivelyReferencedCustomResourceURNs(explicitDirectDependencies);
     const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
     for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
         addAll(allDirectDependencies, directDependencies);
 
-        const urns = await getResourceURNs(directDependencies);
+        const urns = await getAllTransitivelyReferencedCustomResourceURNs(directDependencies);
         addAll(allDirectDependencyURNs, urns);
         propertyToDirectDependencyURNs.set(propertyName, urns);
     }
-
-    // Now await all dependencies transitively.  i.e. if one resource depends on some other
-    // component resource, then it will end up depending on all the children of that component
-    // resource as well.  That way, a parent acts as a "logical" collection of all those children
-    // and will not be considered complete until all of the children are complete as well.
-    await getResourceURNs(getTransitivelyReferencedChildResources(allDirectDependencies));
 
     return {
         resolveURN: resolveURN!,
@@ -293,33 +289,55 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getResourceURNs(resources: Set<Resource>) {
-    const result = new Set<URN>();
-    for (const resource of resources) {
-        result.add(await resource.urn.promise());
-    }
+async function getAllTransitivelyReferencedCustomResourceURNs(resources: Set<Resource>) {
+    // Go through 'resources', but transitively walk through **Component** resources, collecting any
+    // of their child resources.  This way, a Component acts as an aggregation really of all the
+    // reachable custom resources it parents.  This walking will transitively walk through other
+    // child ComponentResources, but will stop when it hits custom resources.  in other words, if we
+    // had:
+    //
+    //              Comp1
+    //              /   \
+    //          Cust1   Comp2
+    //                  /   \
+    //              Cust2   Cust3
+    //              /
+    //          Cust4
+    //
+    // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2, Cust3]. It
+    // will *not* include `Cust4`.
 
-    return result;
+    // To do this, first we just get the transitively reachable set of resources (not diving
+    // into custom resources).  In the above picture, if we start with 'Comp1', this will be
+    // [Comp1, Cust1, Comp2, Cust2, Cust3]
+    const transitivelyReachableResources = getTransitivelyReferencedChildResourcesOfComponentResources(resources);
+
+    const transitivelyReacableCustomResources =  [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
+    const promises = transitivelyReacableCustomResources.map(r => r.urn.promise());
+    const urns = await Promise.all(promises);
+    return new Set<string>(urns);
 }
 
 /**
  * Recursively walk the resources passed in, returning them and all resources reachable from
- * [Resource.__childResources]
+ * [Resource.__childResources] through any **Component** resources we encounter.
  */
-function getTransitivelyReferencedChildResources(resources: Set<Resource>) {
+function getTransitivelyReferencedChildResourcesOfComponentResources(resources: Set<Resource>) {
     // Recursively walk the dependent resources through their children, adding them to the result set.
     const result = new Set<Resource>();
-    addTransitivelyDependentResources(resources, result);
+    addTransitivelyReferencedChildResourcesOfComponentResources(resources, result);
     return result;
 }
 
-function addTransitivelyDependentResources(resources: Set<Resource> | undefined, result: Set<Resource>) {
+function addTransitivelyReferencedChildResourcesOfComponentResources(resources: Set<Resource> | undefined, result: Set<Resource>) {
     if (resources) {
         for (const resource of resources) {
             if (!result.has(resource)) {
                 result.add(resource);
 
-                addTransitivelyDependentResources(resource.__childResources, result);
+                if (ComponentResource.isInstance(resource)) {
+                    addTransitivelyReferencedChildResourcesOfComponentResources(resource.__childResources, result);
+                }
             }
         }
     }
