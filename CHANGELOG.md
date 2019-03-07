@@ -2,6 +2,11 @@
 
 ### Improvements
 
+- Show `brew upgrade pulumi` as the upgrade message when the currently running `pulumi` executable
+  is running on macOS from the brew install directory.
+- Resource diffs that are rendered to the console are now filtered to properties that have semantically-meaningful
+  changes where possible.
+
 ## 0.17.1 (Released March 6, 2019)
 
 ### Improvements

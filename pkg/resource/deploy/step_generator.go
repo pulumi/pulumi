@@ -89,7 +89,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, *re
 		sg.replaces[urn] = true
 		return []Step{
 			NewReadReplacementStep(sg.plan, event, old, newState),
-			NewReplaceStep(sg.plan, old, newState, nil, true),
+			NewReplaceStep(sg.plan, old, newState, nil, nil, true),
 		}, nil
 	}
 
@@ -222,8 +222,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 		sg.replaces[urn] = true
 		keys := sg.dependentReplaceKeys[urn]
 		return []Step{
-			NewReplaceStep(sg.plan, old, new, nil, false),
-			NewCreateReplacementStep(sg.plan, event, old, new, keys, false),
+			NewReplaceStep(sg.plan, old, new, nil, nil, false),
+			NewCreateReplacementStep(sg.plan, event, old, new, keys, nil, false),
 		}, nil
 	}
 
@@ -243,8 +243,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 		}
 
 		return []Step{
-			NewCreateReplacementStep(sg.plan, event, old, new, nil, true),
-			NewReplaceStep(sg.plan, old, new, nil, true),
+			NewCreateReplacementStep(sg.plan, event, old, new, nil, nil, true),
+			NewReplaceStep(sg.plan, old, new, nil, nil, true),
 		}, nil
 	}
 
@@ -363,14 +363,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 
 					return append(steps,
 						NewDeleteReplacementStep(sg.plan, old, true),
-						NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, false),
-						NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, false),
+						NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, false),
+						NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, false),
 					), nil
 				}
 
 				return []Step{
-					NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, true),
-					NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, true),
+					NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, true),
+					NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, true),
 					// note that the delete step is generated "later" on, after all creates/updates finish.
 				}, nil
 			}
@@ -380,14 +380,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, *re
 			if logging.V(7) {
 				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 			}
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, nil
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys)}, nil
 		}
 
 		// If resource was unchanged, but there were initialization errors, generate an empty update
 		// step to attempt to "continue" awaiting initialization.
 		if len(old.InitErrors) > 0 {
 			sg.updates[urn] = true
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys)}, nil
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.

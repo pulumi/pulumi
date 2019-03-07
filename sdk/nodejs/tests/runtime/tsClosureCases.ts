@@ -5363,7 +5363,7 @@ function 'func':(...)
     function 'debug':(...)
 (...)
 Function code:
-  function [Symbol.hasInstance]() { [native code] }
+  function (...)() { [native code] }
 
 Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
         });
