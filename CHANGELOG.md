@@ -8,6 +8,8 @@
   changes where possible.
 - `pulumi new` no longer runs an initial deployment after a project is generated for nodejs projects.
   Instead, instructions are printed indicating that `pulumi up` can be used to deploy the project.
+- Differences between the state of a refreshed resource and the state described in a Pulumi program are now properly
+  detected when using newer providers.
 
 ## 0.17.1 (Released March 6, 2019)
 

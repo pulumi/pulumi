@@ -581,7 +581,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			}
 		}
 
-		s.new.Outputs = result
+		s.new.Outputs = result.Outputs
 	}
 
 	// If we were asked to replace an existing, non-External resource, pend the
@@ -669,9 +669,16 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			initErrors = initErr.Reasons
 		}
 	}
+	outputs := refreshed.Outputs
 
-	if refreshed != nil {
-		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, s.old.Inputs, refreshed,
+	// If the provider specified new inputs for this resource, pick them up now. Otherwise, retain the current inputs.
+	inputs := s.old.Inputs
+	if refreshed.Inputs != nil {
+		inputs = refreshed.Inputs
+	}
+
+	if outputs != nil {
+		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement)
 	} else {

@@ -46,7 +46,7 @@ type Provider struct {
 	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap) (resource.Status, error)
 
 	ReadF func(urn resource.URN, id resource.ID,
-		props resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
+		props resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 
@@ -135,9 +135,12 @@ func (prov *Provider) Delete(urn resource.URN,
 }
 
 func (prov *Provider) Read(urn resource.URN, id resource.ID,
-	props resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	props resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 	if prov.ReadF == nil {
-		return resource.PropertyMap{}, resource.StatusUnknown, nil
+		return plugin.ReadResult{
+			Outputs: resource.PropertyMap{},
+			Inputs:  resource.PropertyMap{},
+		}, resource.StatusUnknown, nil
 	}
 	return prov.ReadF(urn, id, props)
 }

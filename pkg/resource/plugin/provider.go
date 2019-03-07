@@ -58,7 +58,7 @@ type Provider interface {
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
 	Read(urn resource.URN, id resource.ID,
-		props resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
+		props resource.PropertyMap) (ReadResult, resource.Status, error)
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
@@ -122,4 +122,9 @@ func DiffUnavailable(reason string) DiffUnavailableError {
 // Error returns the error message for this DiffUnavailableError.
 func (e DiffUnavailableError) Error() string {
 	return e.reason
+}
+
+type ReadResult struct {
+	Inputs  resource.PropertyMap
+	Outputs resource.PropertyMap
 }

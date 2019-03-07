@@ -291,7 +291,7 @@ func GetResourceOutputsPropertiesString(
 		// Print this property if it is printable and either ins doesn't have it or it's different.
 		if outputDiff != nil || shouldPrintPropertyValue(out, true) {
 			print := true
-			if in, has := ins[k]; has {
+			if in, has := ins[k]; has && !refresh {
 				print = (out.Diff(in) != nil)
 			}
 

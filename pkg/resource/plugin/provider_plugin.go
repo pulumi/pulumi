@@ -349,7 +349,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		Properties: mprops,
 	})
 	if err != nil {
-		resourceStatus, id, liveObject, resourceError = parseError(err)
+		resourceStatus, id, liveObject, _, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -381,9 +381,9 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource id, but may also include some properties.
-func (p *provider) Read(
-	urn resource.URN, id resource.ID, props resource.PropertyMap,
-) (resource.PropertyMap, resource.Status, error) {
+func (p *provider) Read(urn resource.URN, id resource.ID,
+	props resource.PropertyMap) (ReadResult, resource.Status, error) {
+
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 
@@ -393,23 +393,27 @@ func (p *provider) Read(
 	// Get the RPC client and ensure it's configured.
 	client, err := p.getClient()
 	if err != nil {
-		return nil, resource.StatusUnknown, err
+		return ReadResult{}, resource.StatusUnknown, err
 	}
 
 	// If the provider is not fully configured, return an empty bag.
 	if !p.cfgknown {
-		return resource.PropertyMap{}, resource.StatusUnknown, nil
+		return ReadResult{
+			Outputs: resource.PropertyMap{},
+			Inputs:  resource.PropertyMap{},
+		}, resource.StatusUnknown, nil
 	}
 
 	// Marshal the input state so we can perform the RPC.
 	marshaled, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
 	if err != nil {
-		return nil, resource.StatusUnknown, err
+		return ReadResult{}, resource.StatusUnknown, err
 	}
 
 	// Now issue the read request over RPC, blocking until it finished.
 	var readID resource.ID
 	var liveObject *_struct.Struct
+	var liveInputs *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Read(p.ctx.Request(), &pulumirpc.ReadRequest{
@@ -418,35 +422,48 @@ func (p *provider) Read(
 		Properties: marshaled,
 	})
 	if err != nil {
-		resourceStatus, readID, liveObject, resourceError = parseError(err)
+		resourceStatus, readID, liveObject, liveInputs, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, err)
 
 		if resourceStatus != resource.StatusPartialFailure {
-			return nil, resourceStatus, resourceError
+			return ReadResult{}, resourceStatus, resourceError
 		}
 		// Else it's a `StatusPartialFailure`.
 	} else {
 		readID = resource.ID(resp.GetId())
 		liveObject = resp.GetProperties()
+		liveInputs = resp.GetInputs()
 	}
 
 	// If the resource was missing, simply return a nil property map.
 	if string(readID) == "" {
-		return nil, resourceStatus, nil
+		return ReadResult{}, resourceStatus, nil
 	} else if readID != id {
-		return nil, resourceStatus, errors.Errorf(
+		return ReadResult{}, resourceStatus, errors.Errorf(
 			"reading resource %s yielded an unexpected ID; expected %s, got %s", urn, id, readID)
 	}
 
 	// Finally, unmarshal the resulting state properties and return them.
-	results, err := UnmarshalProperties(liveObject, MarshalOptions{
+	state, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
-		return nil, resourceStatus, err
+		return ReadResult{}, resourceStatus, err
 	}
 
-	logging.V(7).Infof("%s success; #outs=%d", label, len(results))
-	return results, resourceStatus, resourceError
+	var inputs resource.PropertyMap
+	if liveInputs != nil {
+		inputs, err = UnmarshalProperties(liveInputs, MarshalOptions{
+			Label: label + ".inputs", RejectUnknowns: true})
+		if err != nil {
+			return ReadResult{}, resourceStatus, err
+		}
+	}
+
+	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(state), len(inputs))
+	return ReadResult{
+		Outputs: state,
+		Inputs:  inputs,
+	}, resourceStatus, resourceError
 }
 
 // Update updates an existing resource with new values.
@@ -489,7 +506,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		resourceStatus, _, liveObject, resourceError = parseError(err)
+		resourceStatus, _, liveObject, _, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -706,8 +723,9 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 // object was created, but app code is continually crashing and the resource never achieves
 // liveness).
 func parseError(err error) (
-	resourceStatus resource.Status, id resource.ID, liveObject *_struct.Struct, resourceErr error,
+	resourceStatus resource.Status, id resource.ID, liveInputs, liveObject *_struct.Struct, resourceErr error,
 ) {
+
 	var responseErr *rpcerror.Error
 	resourceStatus, responseErr = resourceStateAndError(err)
 	contract.Assert(responseErr != nil)
@@ -719,13 +737,14 @@ func parseError(err error) (
 		if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
 			id = resource.ID(initErr.GetId())
 			liveObject = initErr.GetProperties()
+			liveInputs = initErr.GetInputs()
 			resourceStatus = resource.StatusPartialFailure
 			resourceErr = &InitError{Reasons: initErr.Reasons}
 			break
 		}
 	}
 
-	return resourceStatus, id, liveObject, resourceErr
+	return resourceStatus, id, liveObject, liveInputs, resourceErr
 }
 
 // InitError represents a failure to initialize a resource, i.e., the resource has been successfully
