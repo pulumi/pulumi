@@ -316,6 +316,10 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 	for i, v := range md.Keys {
 		keys[i] = string(v)
 	}
+	var diffs []string
+	for _, v := range md.Diffs {
+		diffs = append(diffs, string(v))
+	}
 
 	return apitype.StepEventMetadata{
 		Op:   string(md.Op),
@@ -327,6 +331,7 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 		Res: convertStepEventStateMetadata(md.Res),
 
 		Keys:     keys,
+		Diffs:    diffs,
 		Logical:  md.Logical,
 		Provider: md.Provider,
 	}
