@@ -218,7 +218,7 @@ func printObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
-	// Compute the maximum with of property keys so we can justify everything.
+	// Compute the maximum width of property keys so we can justify everything.
 	keys := props.StableKeys()
 	maxkey := maxKey(keys)
 
@@ -462,7 +462,7 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 
 	contract.Assert(indent > 0)
 
-	// Compute the maximum with of property keys so we can justify everything. If an include set was given, filter out
+	// Compute the maximum width of property keys so we can justify everything. If an include set was given, filter out
 	// any properties that are not in the set.
 	keys := diff.Keys()
 	if include != nil {
