@@ -6,6 +6,8 @@
   is running on macOS from the brew install directory.
 - Resource diffs that are rendered to the console are now filtered to properties that have semantically-meaningful
   changes where possible.
+- `pulumi new` no longer runs an initial deployment after a project is generated for nodejs projects.
+  Instead, instructions are printed indicating that `pulumi up` can be used to deploy the project.
 
 ## 0.17.1 (Released March 6, 2019)
 
