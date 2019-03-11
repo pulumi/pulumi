@@ -15,9 +15,13 @@
 package edit
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -87,4 +91,62 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 	}
 
 	return resources
+}
+
+// RenameStack changes the `stackName` component of every URN in a snapshot. In addition, it rewrites the name of
+// the root Stack resource itself.
+func RenameStack(snap *deploy.Snapshot, newName tokens.QName) error {
+	rewriteUrn := func(u resource.URN) resource.URN {
+		// The pulumi:pulumi:Stack resource's name component is of the form `<project>-<stack>` so we want
+		// to rename the name portion as well.
+		if u.QualifiedType() == "pulumi:pulumi:Stack" {
+			return resource.NewURN(newName, u.Project(), "", u.QualifiedType(), tokens.QName(u.Project())+"-"+newName)
+		}
+
+		return resource.NewURN(newName, u.Project(), "", u.QualifiedType(), u.Name())
+	}
+
+	rewriteState := func(res *resource.State) {
+		contract.Assert(res != nil)
+
+		res.URN = rewriteUrn(res.URN)
+
+		if res.Parent != "" {
+			res.Parent = rewriteUrn(res.Parent)
+		}
+
+		for depIdx, dep := range res.Dependencies {
+			res.Dependencies[depIdx] = rewriteUrn(dep)
+		}
+
+		for _, propDeps := range res.PropertyDependencies {
+			for depIdx, dep := range propDeps {
+				propDeps[depIdx] = rewriteUrn(dep)
+			}
+		}
+
+		if res.Provider != "" {
+			providerRef, err := providers.ParseReference(res.Provider)
+			contract.AssertNoErrorf(err, "failed to parse provider reference from validated checkpoint")
+
+			providerRef, err = providers.NewReference(rewriteUrn(providerRef.URN()), providerRef.ID())
+			contract.AssertNoErrorf(err, "failed to generate provider reference from valid reference")
+
+			res.Provider = providerRef.String()
+		}
+	}
+
+	if err := snap.VerifyIntegrity(); err != nil {
+		return errors.Wrap(err, "checkpoint is invalid")
+	}
+
+	for _, res := range snap.Resources {
+		rewriteState(res)
+	}
+
+	for _, ops := range snap.PendingOperations {
+		rewriteState(ops.Resource)
+	}
+
+	return nil
 }
