@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi-service/cmd/service/auth"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -47,13 +48,14 @@ type tokenSource struct {
 	done     chan bool
 }
 
-func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
-	duration time.Duration) (*tokenSource, error) {
+func newTokenSource(
+	ctx context.Context, token string, backend *cloudBackend,
+	update client.UpdateIdentifier, duration time.Duration) (*tokenSource, error) {
 
 	// Perform an initial lease renewal.
-	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
-	if err != nil {
-		return nil, err
+	latestToken, renewErr := backend.client.RenewUpdateLease(ctx, update, token, duration)
+	if renewErr != nil {
+		return nil, renewErr
 	}
 
 	requests, done := make(chan tokenRequest), make(chan bool)
@@ -64,24 +66,37 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 
 		for {
 			select {
+			// Whenever we get a tick, make the request to renew the update lease.
+			// Overwrites latestToken and renewErr.
 			case <-ticker.C:
-				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
-				if err != nil {
+				latestToken, renewErr = backend.client.RenewUpdateLease(ctx, update, token, duration)
+				if renewErr != nil {
+					latestToken = ""
 					ticker.Stop()
-				} else {
-					token = newToken
 				}
 
+			// When there is a request for the update token, return the latest update token value.
 			case c, ok := <-requests:
 				if !ok {
 					close(done)
 					return
 				}
 
-				resp := tokenResponse{err: err}
-				if err == nil {
-					resp.token = token
+				resp := tokenResponse{
+					token: latestToken,
+					err:   renewErr,
 				}
+
+				// Check that the token is valid before returning to the caller, since we want to
+				// fail fast if the token has expired. This can happen if the computer was put to
+				// sleep and a lease token was requested before the ticker could try to renew it.
+				token, parseErr := auth.ParseUpdateToken(latestToken)
+				if parseErr != nil {
+					resp = tokenResponse{err: errors.Wrap(parseErr, "parsing last update token")}
+				} else if !token.Verify(update.UpdateID) {
+					resp = tokenResponse{err: errors.New("update lease token is no longer valid")}
+				}
+
 				c <- resp
 			}
 		}
