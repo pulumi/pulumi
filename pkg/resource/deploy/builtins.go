@@ -127,7 +127,7 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 }
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
-	state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
@@ -137,7 +137,7 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}
 
 	return plugin.ReadResult{
-		Inputs:  state,
+		Inputs:  inputs,
 		Outputs: outputs,
 	}, resource.StatusOK, nil
 }

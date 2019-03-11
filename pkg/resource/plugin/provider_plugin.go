@@ -382,13 +382,13 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource id, but may also include some properties.
 func (p *provider) Read(urn resource.URN, id resource.ID,
-	props resource.PropertyMap) (ReadResult, resource.Status, error) {
+	inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
 
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
-	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
+	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(inputs), len(state))
 
 	// Get the RPC client and ensure it's configured.
 	client, err := p.getClient()
@@ -404,8 +404,16 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		}, resource.StatusUnknown, nil
 	}
 
-	// Marshal the input state so we can perform the RPC.
-	marshaled, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
+	// Marshal the resource inputs and state so we can perform the RPC.
+	var minputs *_struct.Struct
+	if inputs != nil {
+		m, err := MarshalProperties(inputs, MarshalOptions{Label: label, ElideAssetContents: true})
+		if err != nil {
+			return ReadResult{}, resource.StatusUnknown, err
+		}
+		minputs = m
+	}
+	mstate, err := MarshalProperties(state, MarshalOptions{Label: label, ElideAssetContents: true})
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
 	}
@@ -419,7 +427,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	resp, err := client.Read(p.ctx.Request(), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
-		Properties: marshaled,
+		Properties: mstate,
+		Inputs:     minputs,
 	})
 	if err != nil {
 		resourceStatus, readID, liveObject, liveInputs, resourceError = parseError(err)
@@ -444,25 +453,25 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	}
 
 	// Finally, unmarshal the resulting state properties and return them.
-	state, err := UnmarshalProperties(liveObject, MarshalOptions{
+	newState, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
 		return ReadResult{}, resourceStatus, err
 	}
 
-	var inputs resource.PropertyMap
+	var newInputs resource.PropertyMap
 	if liveInputs != nil {
-		inputs, err = UnmarshalProperties(liveInputs, MarshalOptions{
+		newInputs, err = UnmarshalProperties(liveInputs, MarshalOptions{
 			Label: label + ".inputs", RejectUnknowns: true})
 		if err != nil {
 			return ReadResult{}, resourceStatus, err
 		}
 	}
 
-	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(state), len(inputs))
+	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResult{
-		Outputs: state,
-		Inputs:  inputs,
+		Outputs: newState,
+		Inputs:  newInputs,
 	}, resourceStatus, resourceError
 }
 

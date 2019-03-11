@@ -58,7 +58,7 @@ type Provider interface {
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
 	Read(urn resource.URN, id resource.ID,
-		props resource.PropertyMap) (ReadResult, resource.Status, error)
+		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)

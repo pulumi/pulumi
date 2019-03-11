@@ -114,7 +114,7 @@ func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Read(urn resource.URN, id resource.ID,
-	props resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
 }
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
