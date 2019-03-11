@@ -2582,7 +2582,8 @@ proto.pulumirpc.ReadRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -2632,6 +2633,11 @@ proto.pulumirpc.ReadRequest.deserializeBinaryFromReader = function(msg, reader) 
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 4:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setInputs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2679,6 +2685,14 @@ proto.pulumirpc.ReadRequest.serializeBinaryToWriter = function(message, writer) 
   if (f != null) {
     writer.writeMessage(
       3,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getInputs();
+  if (f != null) {
+    writer.writeMessage(
+      4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -2743,6 +2757,36 @@ proto.pulumirpc.ReadRequest.prototype.clearProperties = function() {
  */
 proto.pulumirpc.ReadRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional google.protobuf.Struct inputs = 4;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ReadRequest.prototype.getInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.ReadRequest.prototype.setInputs = function(value) {
+  jspb.Message.setWrapperField(this, 4, value);
+};
+
+
+proto.pulumirpc.ReadRequest.prototype.clearInputs = function() {
+  this.setInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.ReadRequest.prototype.hasInputs = function() {
+  return jspb.Message.getField(this, 4) != null;
 };
 
 

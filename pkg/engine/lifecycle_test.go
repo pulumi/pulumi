@@ -1265,17 +1265,17 @@ func TestRefreshInitFailure(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(
-					urn resource.URN, id resource.ID, props resource.PropertyMap,
-				) (resource.PropertyMap, resource.Status, error) {
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					if refreshShouldFail && urn == resURN {
 						err := &plugin.InitError{
 							Reasons: []string{"Refresh reports continued to fail to initialize"},
 						}
-						return resource.PropertyMap{}, resource.StatusPartialFailure, err
+						return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusPartialFailure, err
 					} else if urn == res2URN {
-						return res2Outputs, resource.StatusOK, nil
+						return plugin.ReadResult{Outputs: res2Outputs}, resource.StatusOK, nil
 					}
-					return resource.PropertyMap{}, resource.StatusOK, nil
+					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
 				},
 			}, nil
 		}),
@@ -1462,11 +1462,11 @@ func TestRefreshWithDelete(t *testing.T) {
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{
 						ReadF: func(
-							urn resource.URN, id resource.ID, props resource.PropertyMap,
-						) (resource.PropertyMap, resource.Status, error) {
+							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+						) (plugin.ReadResult, resource.Status, error) {
 							// This thing doesn't exist. Returning nil from Read should trigger
 							// the engine to delete it from the snapshot.
-							return nil, resource.StatusOK, nil
+							return plugin.ReadResult{}, resource.StatusOK, nil
 						},
 					}, nil
 				}),
@@ -1535,14 +1535,14 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 					switch id {
 					case "0", "4":
 						// We want to delete resources A::0 and A::4.
-						return nil, resource.StatusOK, nil
+						return plugin.ReadResult{}, resource.StatusOK, nil
 					default:
-						return state, resource.StatusOK, nil
+						return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 					}
 				},
 			}, nil
@@ -1619,18 +1619,21 @@ func TestRefreshBasics(t *testing.T) {
 		newResource(urnC, "5", true, urnA, urnB),
 	}
 
-	newStates := map[resource.ID]resource.PropertyMap{
+	newStates := map[resource.ID]plugin.ReadResult{
 		// A::0 and A::3 will have no changes.
-		"0": {},
-		"3": {},
+		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
+		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
-		// B::1 and A::4 will have changes.
-		"1": {"foo": resource.NewStringProperty("bar")},
-		"4": {"baz": resource.NewStringProperty("qux")},
+		// B::1 and A::4 will have changes. The latter will also have input changes.
+		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"4": {
+			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
+			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
+		},
 
 		// C::2 and C::5 will be deleted.
-		"2": nil,
-		"5": nil,
+		"2": {},
+		"5": {},
 	}
 
 	old := &deploy.Snapshot{
@@ -1641,7 +1644,7 @@ func TestRefreshBasics(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 					new, hasNewState := newStates[id]
 					assert.True(t, hasNewState)
@@ -1669,21 +1672,22 @@ func TestRefreshBasics(t *testing.T) {
 				}
 
 				expected, new := newStates[old.ID], entry.Step.New()
-				if expected == nil {
+				if expected.Outputs == nil {
 					// If the resource was deleted, we want the result op to be an OpDelete.
 					assert.Nil(t, new)
 					assert.Equal(t, deploy.OpDelete, resultOp)
 				} else {
 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
 					// an OpSame.
-					if reflect.DeepEqual(old.Outputs, expected) {
+					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
 					}
 
-					// Only the outputs should have changed (if anything changed).
-					old.Outputs = expected
+					// Only the inputs and outputs should have changed (if anything changed).
+					old.Inputs = expected.Inputs
+					old.Outputs = expected.Outputs
 					assert.Equal(t, old, new)
 				}
 			}
@@ -1711,9 +1715,10 @@ func TestRefreshBasics(t *testing.T) {
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
 		assert.NoError(t, err)
 
-		// The new resources should be equal to the old resources + the new outputs.
+		// The new resources should be equal to the old resources + the new inputs and outputs.
 		old := oldResources[int(idx)]
-		old.Outputs = expected
+		old.Inputs = expected.Inputs
+		old.Outputs = expected.Outputs
 		assert.Equal(t, old, r)
 	}
 }
@@ -1772,14 +1777,14 @@ func TestCanceledRefresh(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 					refreshes <- id
 					<-cancelled
 
 					new, hasNewState := newStates[id]
 					assert.True(t, hasNewState)
-					return new, resource.StatusOK, nil
+					return plugin.ReadResult{Outputs: new}, resource.StatusOK, nil
 				},
 				CancelF: func() error {
 					close(cancelled)

@@ -288,10 +288,13 @@ func GetResourceOutputsPropertiesString(
 	for _, k := range keys {
 		out := outs[k]
 
-		// Print this property if it is printable and either ins doesn't have it or it's different.
+		// Print this property if it is printable and if any of the following are true:
+		// - a property with the same key is not present in the inputs
+		// - the property that is present in the inputs is different
+		// - we are doing a refresh, in which case we always want to show state differences
 		if outputDiff != nil || shouldPrintPropertyValue(out, true) {
 			print := true
-			if in, has := ins[k]; has {
+			if in, has := ins[k]; has && !refresh {
 				print = (out.Diff(in) != nil)
 			}
 
