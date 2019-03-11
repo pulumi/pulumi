@@ -124,7 +124,12 @@ func (e DiffUnavailableError) Error() string {
 	return e.reason
 }
 
+// ReadResult is the result of a call to Read.
 type ReadResult struct {
-	Inputs  resource.PropertyMap
+	// Inputs contains the new inputs for the resource, if any. If this field is nil, the provider does not support
+	// returning inputs from a call to Read and the old inputs (if any) should be preserved.
+	Inputs resource.PropertyMap
+	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
+	// exist.
 	Outputs resource.PropertyMap
 }
