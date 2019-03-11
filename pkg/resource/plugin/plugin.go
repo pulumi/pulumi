@@ -16,7 +16,6 @@ package plugin
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -38,32 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
-
-// MissingError is returned if a plugin is missing.
-type MissingError struct {
-	// Info contains information about the plugin that was not found.
-	Info workspace.PluginInfo
-}
-
-// NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(info workspace.PluginInfo) error {
-	return &MissingError{
-		Info: info,
-	}
-}
-
-func (err *MissingError) Error() string {
-	if err.Info.Version != nil {
-		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
-			err.Info.Kind, err.Info.Name, err.Info.Version)
-	}
-
-	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
-		err.Info.Kind, err.Info.String())
-}
 
 type plugin struct {
 	stdoutDone <-chan bool

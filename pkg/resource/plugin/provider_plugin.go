@@ -54,7 +54,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, NewMissingError(workspace.PluginInfo{
+		return nil, workspace.NewMissingError(workspace.PluginInfo{
 			Kind:    workspace.ResourcePlugin,
 			Name:    string(pkg),
 			Version: version,
