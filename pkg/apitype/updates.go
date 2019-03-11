@@ -210,3 +210,8 @@ type AppendUpdateLogEntryRequest struct {
 	Kind   string                 `json:"kind"`
 	Fields map[string]interface{} `json:"fields"`
 }
+
+// StackRenameRequest is the shape of the request to change an existing stack's name.
+type StackRenameRequest struct {
+	NewName string `json:"newName"`
+}
