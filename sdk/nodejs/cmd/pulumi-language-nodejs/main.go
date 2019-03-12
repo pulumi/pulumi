@@ -367,9 +367,16 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		contract.IgnoreError(os.Stdout.Sync())
 		contract.IgnoreError(os.Stderr.Sync())
 		if exiterr, ok := err.(*exec.ExitError); ok {
-			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
-			// errors will trigger this.  So, the error message should look as nice as possible.
+			// If the program ran, but exited with a non-zero error code.  This will happen often,
+			// since user errors will trigger this.  So, the error message should look as nice as
+			// possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				// 32 is the special exit code that means "we already logged all messages with the
+				// user, no need to report anything else.
+				if status.ExitStatus() == 32 {
+					return &pulumirpc.RunResponse{Error: "A97455BA-8A80-42A5-8639-53CD49E88D75"}, nil
+				}
+
 				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
 			} else {
 				err = errors.Wrapf(exiterr, "Program exited unexpectedly")

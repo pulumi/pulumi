@@ -55,5 +55,9 @@ message RunRequest {
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
 message RunResponse {
-    string error = 1; // an unhandled error if any occurred.
+    // An unhandled error if any occurred.
+    string error = 1;
+
+    // An error happened.  And it was reported to the user.  Work should stop 
+    bool doNotContinue = 2;
 }

@@ -154,6 +154,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	case err := <-iter.finChan:
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
+		fmt.Printf("evalSourceIterator.next.  got error and returned it: %v\n", err)
 		iter.done = true
 		if err != nil {
 			logging.V(5).Infof("EvalSourceIterator ended with an error: %v", err)
@@ -198,6 +199,12 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				DryRun:         iter.src.dryRun,
 				Parallel:       opts.Parallel,
 			})
+
+			if err == nil && progerr == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
+				fmt.Printf("source_eval.forkRun: saw cancel and returned it\n")
+				return errors.Errorf(progerr)
+			}
+
 			if err == nil && progerr != "" {
 				// If the program had an unhandled error; propagate it to the caller.
 				err = errors.Errorf("an unhandled error occurred: %v", progerr)

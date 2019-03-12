@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -141,6 +142,12 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				logging.V(4).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Error)
 
 				if event.Error != nil {
+					fmt.Printf("planeexecuter.Execute got error: %v\n", event.Error)
+					if event.Error.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
+						cancel()
+						return false, event.Error
+					}
+
 					pe.reportError("", event.Error)
 					cancel()
 					return false, event.Error
@@ -188,6 +195,10 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 	pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
+
+	if err != nil && err.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
+		return err
+	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
 	if err != nil || pe.stepExec.Errored() {

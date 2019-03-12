@@ -303,7 +303,11 @@ func newUpCmd() *cobra.Command {
 				return upTemplateNameOrURL(args[0], opts)
 			}
 
-			return upWorkingDirectory(opts)
+			result := upWorkingDirectory(opts)
+			if result.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
+				return nil
+			}
+			return result
 		}),
 	}
 

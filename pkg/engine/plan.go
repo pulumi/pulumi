@@ -16,6 +16,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 
@@ -248,6 +249,12 @@ func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPlanActions(result.Options)
 	if err := result.Walk(ctx, actions, true); err != nil {
+		fmt.Printf("Got this error: %v\n", err.Error())
+		fmt.Printf("Got this error: %v\n", err.Error())
+		if err.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
+			return nil, err
+		}
+
 		return nil, errors.New("an error occurred while advancing the preview")
 	}
 
