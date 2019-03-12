@@ -109,11 +109,13 @@ function main(args: string[]): void {
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {
-        require("./run").run(argv, () => {
+        const promise: Promise<void> = require("./run").run(argv, () => {
             programRunning = true;
-        }).finally(() =>  {
-            programRunning = false;
         });
+
+        // .finally is not available.  So we call into .then with the same value for both
+        // resolved and rejected.
+        promise.then(() => { programRunning = false; }, () => { programRunning = false; });
     });
 }
 
