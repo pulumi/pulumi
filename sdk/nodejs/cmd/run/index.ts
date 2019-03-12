@@ -109,11 +109,17 @@ function main(args: string[]): void {
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {
-        require("./run").run(argv, () => {
+        const promise: Promise<void> = require("./run").run(argv, () => {
             programRunning = true;
-        }).then(() =>  {
-            programRunning = false;
         });
+
+        // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
+        // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.
+        //
+        // Note: we only do this in the 'resolved' arg of '.then' (not the 'rejected' arg).  If the users code throws
+        // an exception, this promise will get rejected, and we don't want touch or otherwise intercept the exception
+        // or change the programRunning state here at all.
+        promise.then(() => { programRunning = false; });
     });
 }
 
