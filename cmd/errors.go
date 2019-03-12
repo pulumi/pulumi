@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/util/result"
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -12,6 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 func PrintEngineResult(res *result.Result) error {

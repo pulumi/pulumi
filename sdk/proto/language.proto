@@ -58,6 +58,8 @@ message RunResponse {
     // An unhandled error if any occurred.
     string error = 1;
 
-    // An error happened.  And it was reported to the user.  Work should stop 
-    bool doNotContinue = 2;
+    // An error happened.  And it was reported to the user.  Work should stop immediately
+    // with nothing further to print to the user.  This corresponds to a "result.Bail()"
+    // value in the 'go' layer.
+    bool bail = 2;
 }
