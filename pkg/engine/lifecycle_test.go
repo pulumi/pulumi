@@ -267,8 +267,10 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
 
-func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Project, target deploy.Target,
-	opts UpdateOptions, dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, *result.Result) {
+func (op TestOp) RunWithContext(
+	callerCtx context.Context, project workspace.Project,
+	target deploy.Target, opts UpdateOptions, dryRun bool,
+	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, *result.Result) {
 
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
