@@ -727,10 +727,17 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "run_error": {
+            program: path.join(base, "040.run_error"),
+            expectResourceCount: 0,
+            // We should get the error message saying that a message was reported and the
+            // host should bail.
+            expectError: "A97455BA-8A80-42A5-8639-53CD49E88D75",
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("parent_child_dependencies") < 0) {
+        // if (casename.indexOf("run_error") < 0) {
         //     continue;
         // }
 
