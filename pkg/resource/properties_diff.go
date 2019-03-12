@@ -116,20 +116,36 @@ func (diff *ArrayDiff) Len() int {
 	return len
 }
 
+// IgnoreKeyFunc is the callback type for Diff's ignore option.
+type IgnoreKeyFunc func(key PropertyKey) bool
+
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
-func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
+func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
 	adds := make(PropertyMap)
 	deletes := make(PropertyMap)
 	sames := make(PropertyMap)
 	updates := make(map[PropertyKey]ValueDiff)
 
+	ignore := func(key PropertyKey) bool {
+		for _, ikf := range ignoreKeys {
+			if ikf(key) {
+				return true
+			}
+		}
+		return false
+	}
+
 	// First find any updates or deletes.
 	for k, old := range props {
+		if ignore(k) {
+			continue
+		}
+
 		if new, has := other[k]; has {
 			// If a new exists, use it; for output properties, however, ignore differences.
 			if new.IsOutput() {
 				sames[k] = old
-			} else if diff := old.Diff(new); diff != nil {
+			} else if diff := old.Diff(new, ignoreKeys...); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {
@@ -148,6 +164,10 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 
 	// Next find any additions not in the old map.
 	for k, new := range other {
+		if ignore(k) {
+			continue
+		}
+
 		if _, has := props[k]; !has && new.HasValue() {
 			adds[k] = new
 		}
@@ -166,7 +186,7 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 }
 
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
-func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
+func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *ValueDiff {
 	if v.IsArray() && other.IsArray() {
 		old := v.ArrayValue()
 		new := other.ArrayValue()
@@ -208,7 +228,7 @@ func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 	if v.IsObject() && other.IsObject() {
 		old := v.ObjectValue()
 		new := other.ObjectValue()
-		if diff := old.Diff(new); diff != nil {
+		if diff := old.Diff(new, ignoreKeys...); diff != nil {
 			return &ValueDiff{
 				Old:    v,
 				New:    other,

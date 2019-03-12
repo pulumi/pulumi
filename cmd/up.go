@@ -220,7 +220,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Install dependencies.
-		if err = installDependencies("Installing dependencies..."); err != nil {
+		if err = installDependencies(); err != nil {
 			return err
 		}
 

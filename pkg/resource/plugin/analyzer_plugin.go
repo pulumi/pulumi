@@ -47,7 +47,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	} else if path == "" {
-		return nil, NewMissingError(workspace.PluginInfo{
+		return nil, workspace.NewMissingError(workspace.PluginInfo{
 			Kind: workspace.AnalyzerPlugin,
 			Name: string(name),
 		})

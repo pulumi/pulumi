@@ -49,7 +49,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, NewMissingError(workspace.PluginInfo{
+		return nil, workspace.NewMissingError(workspace.PluginInfo{
 			Kind: workspace.LanguagePlugin,
 			Name: runtime,
 		})

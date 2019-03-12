@@ -31,6 +31,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
+// users.
+func IsInternalPropertyKey(key resource.PropertyKey) bool {
+	return strings.HasPrefix(string(key), "__")
+}
+
 // GetIndent computes a step's parent indentation.
 func GetIndent(step StepEventMetadata, seen map[resource.URN]StepEventMetadata) int {
 	indent := 0
@@ -224,7 +230,7 @@ func printObject(
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		if v := props[k]; shouldPrintPropertyValue(v, planning) {
+		if v := props[k]; !IsInternalPropertyKey(k) && shouldPrintPropertyValue(v, planning) {
 			printPropertyTitle(b, string(k), maxkey, indent, op, prefix)
 			printPropertyValue(b, v, planning, indent, op, prefix, debug)
 		}
@@ -273,7 +279,7 @@ func GetResourceOutputsPropertiesString(
 	// the new outputs, we want to print the diffs.
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
-		outputDiff = step.Old.Outputs.Diff(outs)
+		outputDiff = step.Old.Outputs.Diff(outs, IsInternalPropertyKey)
 	}
 
 	var keys []resource.PropertyKey
@@ -288,11 +294,14 @@ func GetResourceOutputsPropertiesString(
 	for _, k := range keys {
 		out := outs[k]
 
-		// Print this property if it is printable and either ins doesn't have it or it's different.
-		if outputDiff != nil || shouldPrintPropertyValue(out, true) {
+		// Print this property if it is printable and if any of the following are true:
+		// - a property with the same key is not present in the inputs
+		// - the property that is present in the inputs is different
+		// - we are doing a refresh, in which case we always want to show state differences
+		if outputDiff != nil || (!IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
 			print := true
-			if in, has := ins[k]; has {
-				print = (out.Diff(in) != nil)
+			if in, has := ins[k]; has && !refresh {
+				print = (out.Diff(in, IsInternalPropertyKey) != nil)
 			}
 
 			if print {
@@ -448,7 +457,7 @@ func printOldNewDiffs(
 	planning bool, indent int, op deploy.StepOp, summary bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
-	if diff := olds.Diff(news); diff != nil {
+	if diff := olds.Diff(news, IsInternalPropertyKey); diff != nil {
 		printObjectDiff(b, *diff, include, planning, indent, summary, debug)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
