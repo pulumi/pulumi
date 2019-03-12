@@ -732,8 +732,11 @@ func (b *cloudBackend) createAndStartUpdate(
 }
 
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
-func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, opts backend.ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, *result.Result) {
+func (b *cloudBackend) apply(
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
+	op backend.UpdateOperation, opts backend.ApplierOptions,
+	events chan<- engine.Event) (engine.ResourceChanges, *result.Result) {
+
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(

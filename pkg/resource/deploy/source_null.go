@@ -34,7 +34,9 @@ func (src *nullSource) Close() error                { return nil }
 func (src *nullSource) Project() tokens.PackageName { return "" }
 func (src *nullSource) Info() interface{}           { return nil }
 
-func (src *nullSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
+func (src *nullSource) Iterate(
+	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
+
 	contract.Ignore(ctx)
 	return &nullSourceIterator{}, nil
 }

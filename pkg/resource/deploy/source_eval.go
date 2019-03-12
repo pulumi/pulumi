@@ -84,7 +84,9 @@ func (src *evalSource) Stack() tokens.QName {
 func (src *evalSource) Info() interface{} { return src.runinfo }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
+func (src *evalSource) Iterate(
+	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
+
 	contract.Ignore(ctx) // TODO[pulumi/pulumi#1714]
 
 	// First, fire up a resource monitor that will watch for and record resource creation.

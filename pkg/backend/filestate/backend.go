@@ -277,8 +277,11 @@ func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
-func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, opts backend.ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, *result.Result) {
+func (b *localBackend) apply(
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
+	op backend.UpdateOperation, opts backend.ApplierOptions,
+	events chan<- engine.Event) (engine.ResourceChanges, *result.Result) {
+
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
 
