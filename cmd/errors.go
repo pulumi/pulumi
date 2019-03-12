@@ -14,22 +14,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
+// PrintEngineResult optionally provides a place for the CLI to provide human-friendly error
+// messages for messages that can happen during normal engine operation.
 func PrintEngineResult(res *result.Result) error {
-	// If we had no actual result, or the result was a request to 'Bail', then we have
-	// nothing to actually print to the user.
+	// If we had no actual result, or the result was a request to 'Bail', then we have nothing to
+	// actually print to the user.
 	if res == nil || res.Error() == nil {
 		return nil
 	}
 
-	return PrintEngineError(res.Error())
-}
-
-// PrintEngineError optionally provides a place for the CLI to provide human-friendly error
-// messages for messages that can happen during normal engine operation.
-func PrintEngineError(err error) error {
-	if err == nil {
-		return nil
-	}
+	err := res.Error()
 
 	switch e := err.(type) {
 	case deploy.PlanPendingOperationsError:
