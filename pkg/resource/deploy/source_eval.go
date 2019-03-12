@@ -159,7 +159,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, *result.Result) {
 		// that the language runtime has exited and so calling Close on the plugin is fine.
 		// fmt.Printf("evalSourceIterator.next.  got error and returned it: %v\n", err)
 		iter.done = true
-		if res.Error() != nil {
+		if res != nil && res.Error() != nil {
 			logging.V(5).Infof("EvalSourceIterator ended with an error: %v", res.Error())
 		}
 		return nil, res
