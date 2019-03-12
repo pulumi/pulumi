@@ -1238,3 +1238,7 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 
 	return backend.NewBackendClient(c.backend).GetStackOutputs(ctx, name)
 }
+
+func (c httpstateBackendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
+	return c.backend.DownloadPlugin(ctx, plug, false, display.Options{})
+}

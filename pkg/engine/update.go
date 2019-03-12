@@ -95,28 +95,55 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 }
 
 func newUpdateSource(
-	opts planOptions, proj *workspace.Project, pwd, main string,
+	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
-	// Figure out which plugins to load by inspecting the program contents.
-	plugins, err := plugctx.Host.GetRequiredPlugins(plugin.ProgInfo{
+	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
+	//
+	// There are two places that we need to look for plugins:
+	//   1. The language host, which reports to us the set of plugins that the program that's about to execute
+	//      needs in order to create new resources. This is purely advisory by the language host and not all
+	//      languages implement this (notably Python).
+	//   2. The snapshot. The snapshot contains plugins in two locations: first, in the manifest, all plugins
+	//      that were loaded are recorded. Second, all first class providers record the version of the plugin
+	//      to which they are bound.
+	//
+	// In order to get a complete view of the set of plugins that we need for an update, we must consult both
+	// sources and merge their results into a list of plugins.
+	languagePlugins, err := gatherPluginsFromProgram(plugctx, plugin.ProgInfo{
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
-	}, plugin.AllPlugins)
+	})
 	if err != nil {
 		return nil, err
 	}
+	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	if err != nil {
+		return nil, err
+	}
+	allPlugins := languagePlugins.Union(snapshotPlugins)
 
-	// Now ensure that we have loaded up any plugins that the program will need in advance.
+	// If there are any plugins that are not available, we can attempt to install them here. This only works when using
+	// the http backend, since the local backend is not capable of installing plugins on its own.
+	//
+	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
+	// with an error message indicating exactly what plugins are missing.
+	if err := ensurePluginsAreInstalled(client, allPlugins); err != nil {
+		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
+	}
+
+	// Once we've installed all of the plugins we need, make sure that all analyzers and language plugins are
+	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
+	// need to be loaded here.
 	const kinds = plugin.AnalyzerPlugins | plugin.LanguagePlugins
-	if err = plugctx.Host.EnsurePlugins(plugins, kinds); err != nil {
+	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
 		return nil, err
 	}
 
 	// Collect the version information for default providers.
 	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
-	for _, p := range plugins {
+	for _, p := range allPlugins.Values() {
 		if p.Kind != workspace.ResourcePlugin {
 			continue
 		}
