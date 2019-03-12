@@ -117,7 +117,7 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     return process.exit(1);
 }
 
-export function run(argv: minimist.ParsedArgs, programStarted: () => void): void {
+export function run(argv: minimist.ParsedArgs, programStarted: () => void) {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -198,7 +198,7 @@ export function run(argv: minimist.ParsedArgs, programStarted: () => void): void
     programStarted();
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    runtime.runInPulumiStack(() => {
+    return runtime.runInPulumiStack(() => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
