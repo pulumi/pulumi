@@ -16,7 +16,6 @@ package deploy
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -54,7 +53,7 @@ func (pe *planExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview bool) error {
+func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview bool) *result.Result {
 	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context is cancelled. We do
 	// not hang this off of the context we create below because we do not want the failure of a single step to cause
 	// other steps to fail.
@@ -76,7 +75,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
 	if opts.Refresh {
 		if err := pe.refresh(callerCtx, opts, preview); err != nil {
-			return err
+			return result.FromError(err)
 		}
 		if opts.RefreshOnly {
 			return nil
@@ -84,17 +83,17 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	}
 
 	// Begin iterating the source.
-	src, err := pe.plan.source.Iterate(callerCtx, opts, pe.plan)
-	if err != nil {
-		return err
+	src, res := pe.plan.source.Iterate(callerCtx, opts, pe.plan)
+	if res != nil {
+		return res
 	}
 
 	// Set up a step generator for this plan.
 	pe.stepGen = newStepGenerator(pe.plan, opts)
 
 	// Retire any pending deletes that are currently present in this plan.
-	if err = pe.retirePendingDeletes(callerCtx, opts, preview); err != nil {
-		return err
+	if err := pe.retirePendingDeletes(callerCtx, opts, preview); err != nil {
+		return result.FromError(err)
 	}
 
 	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
@@ -107,8 +106,8 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
-		Event SourceEvent
-		Error error
+		Event  SourceEvent
+		Result *result.Result
 	}
 	incomingEvents := make(chan nextEvent)
 	go func() {
@@ -134,23 +133,19 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	canceled, err := func() (bool, error) {
+	canceled, res := func() (bool, *result.Result) {
 		logging.V(4).Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
 			select {
 			case event := <-incomingEvents:
-				logging.V(4).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Error)
+				logging.V(4).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Result)
 
-				if event.Error != nil {
-					fmt.Printf("planeexecuter.Execute got error: %v\n", event.Error)
-					if event.Error.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
-						cancel()
-						return false, event.Error
-					}
-
-					pe.reportError("", event.Error)
+				if event.Result != nil {
 					cancel()
-					return false, event.Error
+					if event.Result.Error() != nil {
+						pe.reportError("", event.Result.Error())
+					}
+					return false, event.Result
 				}
 
 				if event.Event == nil {
@@ -181,7 +176,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
 					cancel()
-					return false, result.TODO()
+					return false, result.FromError(result.TODO())
 				}
 			case <-ctx.Done():
 				logging.V(4).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
@@ -196,8 +191,13 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
 
-	if err != nil && err.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
-		return err
+	if res != nil && res.Error() == nil {
+		return res
+	}
+
+	var err error
+	if res != nil {
+		err = res.Error()
 	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
@@ -206,7 +206,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	} else if canceled {
 		err = execError("canceled", preview)
 	}
-	return err
+	return result.WrapIfNonNil(err)
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs

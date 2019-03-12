@@ -99,17 +99,18 @@ func newDestroyCmd() *cobra.Command {
 				Refresh:   refresh,
 			}
 
-			_, err = s.Destroy(commandContext(), backend.UpdateOperation{
+			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
 				Proj:   proj,
 				Root:   root,
 				M:      m,
 				Opts:   opts,
 				Scopes: cancellationScopes,
 			})
-			if err == context.Canceled {
+			if res != nil && res.Error() == context.Canceled {
 				return errors.New("destroy cancelled")
 			}
-			return PrintEngineError(err)
+
+			return PrintEngineResult(res)
 		}),
 	}
 

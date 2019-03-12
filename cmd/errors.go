@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -12,6 +13,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+func PrintEngineResult(res *result.Result) error {
+	if res == nil || res.Error() == nil {
+		return nil
+	}
+
+	return PrintEngineError(res.Error())
+}
 
 // PrintEngineError optionally provides a place for the CLI to provide human-friendly error
 // messages for messages that can happen during normal engine operation.

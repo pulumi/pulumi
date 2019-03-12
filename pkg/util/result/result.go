@@ -71,9 +71,18 @@ func FromError(err error) *Result {
 	return &Result{err: err}
 }
 
+// WrapIfNonNil returns a non-nil Result if [err] is non-nil.  Otherwise it returns nil.
+func WrapIfNonNil(err error) *Result {
+	if err == nil {
+		return nil
+	}
+
+	return FromError(err)
+}
+
 // TODO returns an error that can be used in places that have not yet been
 // adapted to use Results.  Their use is intended to be temporary until Results
 // are plumbed throughout the Pulumi codebase.
 func TODO() error {
-	return errors.New("bailng due to error")
+	return errors.New("bailing due to error")
 }

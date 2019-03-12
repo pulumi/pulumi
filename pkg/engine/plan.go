@@ -16,7 +16,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -201,11 +201,11 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) error {
+func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) *result.Result {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	done := make(chan bool)
-	var err error
+	var walkResult *result.Result
 	go func() {
 		opts := deploy.Options{
 			Events:            events,
@@ -214,7 +214,7 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 			RefreshOnly:       res.Options.isRefresh,
 			TrustDependencies: res.Options.trustDependencies,
 		}
-		err = res.Plan.Execute(ctx, opts, preview)
+		walkResult = res.Plan.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -231,10 +231,10 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 
 	select {
 	case <-cancelCtx.Cancel.Terminated():
-		return cancelCtx.Cancel.TerminateErr()
+		return result.WrapIfNonNil(cancelCtx.Cancel.TerminateErr())
 
 	case <-done:
-		return err
+		return walkResult
 	}
 }
 
@@ -243,24 +243,22 @@ func (res *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, error) {
-	result.Options.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
+func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChanges, *result.Result) {
+	planResult.Options.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
-	actions := newPlanActions(result.Options)
-	if err := result.Walk(ctx, actions, true); err != nil {
-		fmt.Printf("Got this error: %v\n", err.Error())
-		fmt.Printf("Got this error: %v\n", err.Error())
-		if err.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
-			return nil, err
+	actions := newPlanActions(planResult.Options)
+	if res := planResult.Walk(ctx, actions, true); res != nil {
+		if res.Error() == nil {
+			return nil, res
 		}
 
-		return nil, errors.New("an error occurred while advancing the preview")
+		return nil, result.Error("an error occurred while advancing the preview")
 	}
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
-	result.Options.Events.previewSummaryEvent(changes)
+	planResult.Options.Events.previewSummaryEvent(changes)
 	return changes, nil
 }
 

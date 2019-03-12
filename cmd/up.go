@@ -97,23 +97,27 @@ func newUpCmd() *cobra.Command {
 			Refresh:   refresh,
 		}
 
-		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
 			M:      m,
 			Opts:   opts,
 			Scopes: cancellationScopes,
 		})
-		switch {
-		case err == context.Canceled:
+
+		if res != nil && res.Error() == context.Canceled {
 			return errors.New("update cancelled")
-		case err != nil:
-			return PrintEngineError(err)
-		case expectNop && changes != nil && changes.HasChanges():
-			return errors.New("error: no changes were expected but changes occurred")
-		default:
-			return nil
 		}
+
+		if res != nil {
+			return PrintEngineResult(res)
+		}
+
+		if expectNop && changes != nil && changes.HasChanges() {
+			return errors.New("error: no changes were expected but changes occurred")
+		}
+
+		return nil
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
@@ -241,23 +245,27 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
 			M:      m,
 			Opts:   opts,
 			Scopes: cancellationScopes,
 		})
-		switch {
-		case err == context.Canceled:
+
+		if res != nil && res.Error() == context.Canceled {
 			return errors.New("update cancelled")
-		case err != nil:
-			return PrintEngineError(err)
-		case expectNop && changes != nil && changes.HasChanges():
-			return errors.New("error: no changes were expected but changes occurred")
-		default:
-			return nil
 		}
+
+		if res != nil {
+			return PrintEngineResult(res)
+		}
+
+		if expectNop && changes != nil && changes.HasChanges() {
+			return errors.New("error: no changes were expected but changes occurred")
+		}
+
+		return nil
 	}
 
 	var cmd = &cobra.Command{
@@ -303,11 +311,7 @@ func newUpCmd() *cobra.Command {
 				return upTemplateNameOrURL(args[0], opts)
 			}
 
-			result := upWorkingDirectory(opts)
-			if result.Error() == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
-				return nil
-			}
-			return result
+			return upWorkingDirectory(opts)
 		}),
 	}
 

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -83,7 +84,7 @@ func (src *evalSource) Stack() tokens.QName {
 func (src *evalSource) Info() interface{} { return src.runinfo }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {
+func (src *evalSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
 	contract.Ignore(ctx) // TODO[pulumi/pulumi#1714]
 
 	// First, fire up a resource monitor that will watch for and record resource creation.
@@ -92,7 +93,7 @@ func (src *evalSource) Iterate(ctx context.Context, opts Options, providers Prov
 	regReadChan := make(chan *readResourceEvent)
 	mon, err := newResourceMonitor(src, providers, regChan, regOutChan, regReadChan)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start resource monitor")
+		return nil, result.FromError(errors.Wrap(err, "failed to start resource monitor"))
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
@@ -102,7 +103,7 @@ func (src *evalSource) Iterate(ctx context.Context, opts Options, providers Prov
 		regChan:     regChan,
 		regOutChan:  regOutChan,
 		regReadChan: regReadChan,
-		finChan:     make(chan error),
+		finChan:     make(chan *result.Result),
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -119,7 +120,7 @@ type evalSourceIterator struct {
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
-	finChan     chan error                         // the channel that communicates completion.
+	finChan     chan *result.Result                // the channel that communicates completion.
 	done        bool                               // set to true when the evaluation is done.
 }
 
@@ -128,7 +129,7 @@ func (iter *evalSourceIterator) Close() error {
 	return iter.mon.Cancel()
 }
 
-func (iter *evalSourceIterator) Next() (SourceEvent, error) {
+func (iter *evalSourceIterator) Next() (SourceEvent, *result.Result) {
 	// If we are done, quit.
 	if iter.done {
 		return nil, nil
@@ -151,15 +152,15 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		contract.Assert(read != nil)
 		logging.V(5).Infoln("EvalSourceIterator produced a read")
 		return read, nil
-	case err := <-iter.finChan:
+	case res := <-iter.finChan:
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
-		fmt.Printf("evalSourceIterator.next.  got error and returned it: %v\n", err)
+		// fmt.Printf("evalSourceIterator.next.  got error and returned it: %v\n", err)
 		iter.done = true
-		if err != nil {
-			logging.V(5).Infof("EvalSourceIterator ended with an error: %v", err)
+		if res.Error() != nil {
+			logging.V(5).Infof("EvalSourceIterator ended with an error: %v", res.Error())
 		}
-		return nil, err
+		return nil, res
 	}
 }
 
@@ -169,11 +170,11 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
 		// Next, launch the language plugin.
-		run := func() error {
+		run := func() *result.Result {
 			rt := iter.src.runinfo.Proj.Runtime.Name()
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
 			if err != nil {
-				return errors.Wrapf(err, "failed to launch language host %s", rt)
+				return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
 			}
 			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
@@ -183,7 +184,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 			// Decrypt the configuration.
 			config, err := iter.src.runinfo.Target.Config.Decrypt(iter.src.runinfo.Target.Decrypter)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			// Now run the actual program.
@@ -201,15 +202,14 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 			})
 
 			if err == nil && progerr == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
-				fmt.Printf("source_eval.forkRun: saw cancel and returned it\n")
-				return errors.Errorf(progerr)
+				return result.Bail()
 			}
 
 			if err == nil && progerr != "" {
 				// If the program had an unhandled error; propagate it to the caller.
 				err = errors.Errorf("an unhandled error occurred: %v", progerr)
 			}
-			return err
+			return result.WrapIfNonNil(err)
 		}
 
 		// Communicate the error, if it exists, or nil if the program exited cleanly.

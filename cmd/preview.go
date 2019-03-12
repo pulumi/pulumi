@@ -90,21 +90,23 @@ func newPreviewCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			changes, err := s.Preview(commandContext(), backend.UpdateOperation{
+			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
 				Proj:   proj,
 				Root:   root,
 				M:      m,
 				Opts:   opts,
 				Scopes: cancellationScopes,
 			})
-			switch {
-			case err != nil:
-				return PrintEngineError(err)
-			case expectNop && changes != nil && changes.HasChanges():
-				return errors.New("error: no changes were expected but changes were proposed")
-			default:
-				return nil
+
+			if res != nil {
+				return PrintEngineResult(res)
 			}
+
+			if expectNop && changes != nil && changes.HasChanges() {
+				return errors.New("error: no changes were expected but changes were proposed")
+			}
+
+			return nil
 		}),
 	}
 

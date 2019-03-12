@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // NewErrorSource creates a source that panics if it is iterated. This is used by the engine to guard against unexpected
@@ -36,6 +37,6 @@ func (src *errorSource) Close() error                { return nil }
 func (src *errorSource) Project() tokens.PackageName { return src.project }
 func (src *errorSource) Info() interface{}           { return nil }
 
-func (src *errorSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {
+func (src *errorSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
 	panic("internal error: unexpected call to errorSource.Iterate")
 }

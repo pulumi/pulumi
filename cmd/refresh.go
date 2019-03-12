@@ -99,23 +99,27 @@ func newRefreshCmd() *cobra.Command {
 				Debug:     debug,
 			}
 
-			changes, err := s.Refresh(commandContext(), backend.UpdateOperation{
+			changes, res := s.Refresh(commandContext(), backend.UpdateOperation{
 				Proj:   proj,
 				Root:   root,
 				M:      m,
 				Opts:   opts,
 				Scopes: cancellationScopes,
 			})
-			switch {
-			case err == context.Canceled:
+
+			if res != nil && res.Error() == context.Canceled {
 				return errors.New("refresh cancelled")
-			case err != nil:
-				return PrintEngineError(err)
-			case expectNop && changes != nil && changes.HasChanges():
-				return errors.New("error: no changes were expected but changes occurred")
-			default:
-				return nil
 			}
+
+			if res != nil {
+				return PrintEngineResult(res)
+			}
+
+			if expectNop && changes != nil && changes.HasChanges() {
+				return errors.New("error: no changes were expected but changes occurred")
+			}
+
+			return nil
 		}),
 	}
 
