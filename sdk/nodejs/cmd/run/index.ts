@@ -25,6 +25,9 @@ const uncaughtHandler = (err: Error) => {
         console.error(err.stack || err.message);
     }
 
+    // Don't actually reference RunError.isInstance here.  We don't want to actually end up doing
+    // any sort of module either prior to the creation, or during the execution, of this error
+    // handler.
     allErrorsAreRunErrors = allErrorsAreRunErrors && (<any>err).__pulumiRunError === true;
 };
 process.on("uncaughtException", uncaughtHandler);
