@@ -111,8 +111,9 @@ function main(args: string[]): void {
     v8Hooks.isInitializedAsync().then(() => {
         require("./run").run(argv, () => {
             programRunning = true;
+        }).then(() =>  {
+            programRunning = false;
         });
-        programRunning = false;
     });
 }
 
