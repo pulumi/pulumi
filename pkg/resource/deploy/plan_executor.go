@@ -141,10 +141,10 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				logging.V(4).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Result)
 
 				if event.Result != nil {
-					cancel()
 					if event.Result.Error() != nil {
 						pe.reportError("", event.Result.Error())
 					}
+					cancel()
 					return false, event.Result
 				}
 
