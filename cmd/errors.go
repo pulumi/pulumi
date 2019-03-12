@@ -15,6 +15,8 @@ import (
 )
 
 func PrintEngineResult(res *result.Result) error {
+	// If we had no actual result, or the result was a request to 'Bail', then we have
+	// nothing to actually print to the user.
 	if res == nil || res.Error() == nil {
 		return nil
 	}
