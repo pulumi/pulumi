@@ -178,8 +178,8 @@ type planResult struct {
 
 // Chdir changes the directory so that all operations from now on are relative to the project we are working with.
 // It returns a function that, when run, restores the old working directory.
-func (res *planResult) Chdir() (func(), error) {
-	pwd := res.Plugctx.Pwd
+func (planResult *planResult) Chdir() (func(), error) {
+	pwd := planResult.Plugctx.Pwd
 	if pwd == "" {
 		return func() {}, nil
 	}
@@ -200,7 +200,7 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) error {
+func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	done := make(chan bool)
@@ -208,12 +208,12 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 	go func() {
 		opts := deploy.Options{
 			Events:            events,
-			Parallel:          res.Options.Parallel,
-			Refresh:           res.Options.Refresh,
-			RefreshOnly:       res.Options.isRefresh,
-			TrustDependencies: res.Options.trustDependencies,
+			Parallel:          planResult.Options.Parallel,
+			Refresh:           planResult.Options.Refresh,
+			RefreshOnly:       planResult.Options.isRefresh,
+			TrustDependencies: planResult.Options.trustDependencies,
 		}
-		err = res.Plan.Execute(ctx, opts, preview)
+		err = planResult.Plan.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -237,23 +237,23 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 	}
 }
 
-func (res *planResult) Close() error {
-	return res.Plugctx.Close()
+func (planResult *planResult) Close() error {
+	return planResult.Plugctx.Close()
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, error) {
-	result.Options.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
+func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChanges, error) {
+	planResult.Options.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
-	actions := newPlanActions(result.Options)
-	if err := result.Walk(ctx, actions, true); err != nil {
+	actions := newPlanActions(planResult.Options)
+	if err := planResult.Walk(ctx, actions, true); err != nil {
 		return nil, errors.New("an error occurred while advancing the preview")
 	}
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
-	result.Options.Events.previewSummaryEvent(changes)
+	planResult.Options.Events.previewSummaryEvent(changes)
 	return changes, nil
 }
 

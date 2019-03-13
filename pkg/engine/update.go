@@ -134,17 +134,17 @@ func newUpdateSource(
 }
 
 func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
-	result, err := plan(ctx, info, opts, dryRun)
+	planResult, err := plan(ctx, info, opts, dryRun)
 	if err != nil {
 		return nil, err
 	}
 
 	var resourceChanges ResourceChanges
-	if result != nil {
-		defer contract.IgnoreClose(result)
+	if planResult != nil {
+		defer contract.IgnoreClose(planResult)
 
 		// Make the current working directory the same as the program's, and restore it upon exit.
-		done, chErr := result.Chdir()
+		done, chErr := planResult.Chdir()
 		if chErr != nil {
 			return nil, chErr
 		}
@@ -152,16 +152,16 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, err = printPlan(ctx, result, dryRun)
+			resourceChanges, err = printPlan(ctx, planResult, dryRun)
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
-			opts.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
+			opts.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
 
-			err = result.Walk(ctx, actions, false)
+			err = planResult.Walk(ctx, actions, false)
 			resourceChanges = ResourceChanges(actions.Ops)
 
 			if len(resourceChanges) != 0 {
