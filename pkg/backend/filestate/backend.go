@@ -357,9 +357,9 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	close(displayEvents)
 
 	// Save update results.
-	result := backend.SucceededResult
+	backendUpdateResult := backend.SucceededResult
 	if updateErr != nil {
-		result = backend.FailedResult
+		backendUpdateResult = backend.FailedResult
 	}
 	info := backend.UpdateInfo{
 		Kind:        kind,
@@ -367,7 +367,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 		Config:      update.GetTarget().Config,
-		Result:      result,
+		Result:      backendUpdateResult,
 		EndTime:     end,
 		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doesn't need to
 		//     rudely assume it knows where the checkpoint file is on disk as it makes a copy of it.  This isn't
