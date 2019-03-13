@@ -14,7 +14,10 @@
 
 package result
 
-import "github.com/pkg/errors"
+import (
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+)
 
 // Result represents the result of a computation that can fail. The Result type
 // revolves around two notions of failure:
@@ -45,6 +48,7 @@ type Result struct {
 }
 
 func (r *Result) Error() error { return r.err }
+func (r *Result) IsBail() bool { return r.err == nil }
 
 // Bail produces a Result that represents a computation that failed to complete
 // successfully but is not a bug in Pulumi.
@@ -76,4 +80,48 @@ func FromError(err error) *Result {
 // are plumbed throughout the Pulumi codebase.
 func TODO() error {
 	return errors.New("bailng due to error")
+}
+
+// Merge combines two results into one final result.  It properly respects all three forms of Result
+// (i.e. nil/bail/error) for both results, and combines all sensibly into a final form that represents
+// the information of both.
+func Merge(res1 *Result, res2 *Result) *Result {
+	// If both are nil, then there's no problem.  Return 'nil' to properly convey that outwards.
+	if res1 == nil && res2 == nil {
+		return nil
+	}
+
+	// Otherwise, if one is nil, and the other is not, then the non-nil takes precedence.
+	// i.e. an actual error (or bail) takes precedence
+	if res1 == nil {
+		return res2
+	}
+
+	if res2 == nil {
+		return res1
+	}
+
+	// If both results have asked to bail, then just bail.  That properly respects both requests.
+	if res1.IsBail() && res2.IsBail() {
+		return Bail()
+	}
+
+	// We have two non-nil results and one, or both, of the results indicate an error.
+
+	// If we have a request to Bail and a request to error then the request to error takes
+	// precedence. The concept of bailing is that we've printed an error already and should just
+	// quickly finish the entire pulumi execution.  However, for an error, we are indicating a bug
+	// happened, and that we haven't printed it, and that it should print at the end.  So we need
+	// to respect the error form here and pass it all the way back.
+
+	if res1.IsBail() {
+		return res2
+	}
+
+	if res2.IsBail() {
+		return res1
+	}
+
+	// Both results are errors.  Combine them into one joint error and return that.
+	return FromError(multierror.Append(res1.err, res2.err))
 }
