@@ -362,7 +362,7 @@ func (b *localBackend) apply(
 
 	// Save update results.
 	backendUpdateResult := backend.SucceededResult
-	if updateErr != nil {
+	if updateRes != nil {
 		backendUpdateResult = backend.FailedResult
 	}
 	info := backend.UpdateInfo{
