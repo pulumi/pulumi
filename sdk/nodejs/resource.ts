@@ -280,7 +280,7 @@ export abstract class CustomResource extends Resource {
      */
     constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}) {
         if ((<ComponentResourceOptions>opts).providers) {
-            throw new ResourceError("Do not supply 'providers' option to a CustomResource. Did you mean 'providers' instead?", opts.parent);
+            throw new ResourceError("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", opts.parent);
         }
 
         super(t, name, true, props, opts);
