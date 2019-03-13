@@ -70,8 +70,16 @@ func Error(msg string) *Result {
 	return FromError(err)
 }
 
-// FromError produces a Result that wraps an internal Pulumi error.
+// FromError produces a Result that wraps an internal Pulumi error.  Do not call this with a 'nil'
+// error.  A 'nil' error means that there was no problem, and in that case a 'nil' result should be
+// used instead.
 func FromError(err error) *Result {
+	if err == nil {
+		panic("FromError should not be called with a nil-error.  " +
+			"If there is no error, then a nil result should be returned.  " +
+			"Caller should check for this first.")
+	}
+
 	return &Result{err: err}
 }
 
@@ -79,7 +87,7 @@ func FromError(err error) *Result {
 // adapted to use Results.  Their use is intended to be temporary until Results
 // are plumbed throughout the Pulumi codebase.
 func TODO() error {
-	return errors.New("bailng due to error")
+	return errors.New("bailing due to error")
 }
 
 // Merge combines two results into one final result.  It properly respects all three forms of Result
