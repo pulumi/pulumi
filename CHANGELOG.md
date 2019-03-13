@@ -11,6 +11,8 @@
 - Differences between the state of a refreshed resource and the state described in a Pulumi program are now properly
   detected when using newer providers.
 - Differences between a resource's provider-internal properties are no longer displayed in the CLI.
+- Adds admission policies.
+- Adds CloudQuery.
 
 ## 0.17.1 (Released March 6, 2019)
 
