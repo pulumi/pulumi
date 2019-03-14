@@ -11,6 +11,8 @@
 - Differences between the state of a refreshed resource and the state described in a Pulumi program are now properly
   detected when using newer providers.
 - Differences between a resource's provider-internal properties are no longer displayed in the CLI.
+- Pulumi will now install missing plugins on startup. Previously, Pulumi would error if a required plugin was not
+  present and a bug in the Pulumi CLI made it common for users using Pulumi in their continuous integration setup to have problems with missing plugins. Starting with 0.17.2, if Pulumi detects that required plugins are missing, it will make an attempt to install the missing plugins before proceeding with the update.
 
 ## 0.17.1 (Released March 6, 2019)
 
