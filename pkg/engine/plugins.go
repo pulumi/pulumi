@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -125,6 +126,10 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
 func ensurePluginsAreInstalled(client deploy.BackendClient, plugins pluginSet) error {
+	if client == nil {
+		logging.V(preparePluginLog).Infoln("ensurePluginsAreInstalled(): skipping due to nil client")
+		return nil
+	}
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
@@ -161,6 +166,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 
 // installPlugin installs a plugin from the given backend client.
 func installPlugin(client deploy.BackendClient, plugin workspace.PluginInfo) error {
+	contract.Assert(client != nil)
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 	if plugin.Kind == workspace.LanguagePlugin {
 		logging.V(preparePluginLog).Infof(

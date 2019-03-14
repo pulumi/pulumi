@@ -18,9 +18,10 @@ import (
 	"context"
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // BackendClient provides a simple implementation of deploy.BackendClient that defers to a function value.
@@ -33,7 +34,7 @@ func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	return b.GetStackOutputsF(ctx, name)
 }
 
-// DownloadPlugin o ptionally downloads a plugin corresponding to the requested plugin info.
+// DownloadPlugin optionally downloads a plugin corresponding to the requested plugin info.
 func (b *BackendClient) DownloadPlugin(ctx context.Context, plugin workspace.PluginInfo) (io.ReadCloser, error) {
-	return nil, nil
+	return nil, errors.New("don't download plugins during unit tests")
 }
