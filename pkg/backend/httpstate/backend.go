@@ -591,6 +591,15 @@ func (b *cloudBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 	return b.client.DeleteStack(ctx, stack, force)
 }
 
+func (b *cloudBackend) RenameStack(ctx context.Context, stackRef backend.StackReference, newName tokens.QName) error {
+	stack, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return err
+	}
+
+	return b.client.RenameStack(ctx, stack, string(newName))
+}
+
 // cloudCrypter is an encrypter/decrypter that uses the Pulumi cloud to encrypt/decrypt a stack's secrets.
 type cloudCrypter struct {
 	backend *cloudBackend

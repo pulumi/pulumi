@@ -96,6 +96,8 @@ type Backend interface {
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error)
 
+	RenameStack(ctx context.Context, stackRef StackReference, newName tokens.QName) error
+
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 

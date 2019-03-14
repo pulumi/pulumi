@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/pulumi/pulumi/pkg/tokens"
+
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -50,6 +52,8 @@ type Stack interface {
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
+	// rename this stack.
+	Rename(ctx context.Context, newName tokens.QName) error
 	// list log entries for this stack.
 	GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
@@ -61,6 +65,10 @@ type Stack interface {
 // RemoveStack returns the stack, or returns an error if it cannot.
 func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
 	return s.Backend().RemoveStack(ctx, s.Ref(), force)
+}
+
+func RenameStack(ctx context.Context, s Stack, newName tokens.QName) error {
+	return s.Backend().RenameStack(ctx, s.Ref(), newName)
 }
 
 // PreviewStack previews changes to this stack.
