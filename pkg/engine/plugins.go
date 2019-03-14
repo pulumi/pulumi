@@ -139,16 +139,12 @@ func ensurePluginsAreInstalled(client deploy.BackendClient, plugins pluginSet) e
 		}
 
 		// Launch an install task asynchronously and add it to the current error group.
-		//
-		// To avoid closing over a loop induction variable by reference, we instruct the Go compiler to make a copy of
-		// plug here by calling a function with plug as the first argument.
-		installTasks.Go(func(plug workspace.PluginInfo) func() error {
-			return func() error {
-				logging.V(preparePluginLog).Infof(
-					"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", plug.Name, plug.Version)
-				return installPlugin(client, plug)
-			}
-		}(plug))
+		info := plug // don't close over the loop induction variable
+		installTasks.Go(func() error {
+			logging.V(preparePluginLog).Infof(
+				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
+			return installPlugin(client, info)
+		})
 	}
 
 	err := installTasks.Wait()
