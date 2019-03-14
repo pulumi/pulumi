@@ -33,31 +33,29 @@ const (
 )
 
 // pluginSet represents a set of plugins.
-type pluginSet struct {
-	plugins map[string]workspace.PluginInfo
-}
+type pluginSet map[string]workspace.PluginInfo
 
 // Add adds a plugin to this plugin set.
-func (p *pluginSet) Add(plug workspace.PluginInfo) {
-	p.plugins[plug.String()] = plug
+func (p pluginSet) Add(plug workspace.PluginInfo) {
+	p[plug.String()] = plug
 }
 
 // Union returns the union of this pluginSet with another pluginSet.
-func (p *pluginSet) Union(other pluginSet) pluginSet {
+func (p pluginSet) Union(other pluginSet) pluginSet {
 	newSet := newPluginSet()
-	for _, value := range p.plugins {
+	for _, value := range p {
 		newSet.Add(value)
 	}
-	for _, value := range other.plugins {
+	for _, value := range other {
 		newSet.Add(value)
 	}
 	return newSet
 }
 
 // Values returns a slice of all of the plugins contained within this set.
-func (p *pluginSet) Values() []workspace.PluginInfo {
+func (p pluginSet) Values() []workspace.PluginInfo {
 	var plugins []workspace.PluginInfo
-	for _, value := range p.plugins {
+	for _, value := range p {
 		plugins = append(plugins, value)
 	}
 	return plugins
@@ -65,7 +63,7 @@ func (p *pluginSet) Values() []workspace.PluginInfo {
 
 // newPluginSet creates a new empty pluginSet.
 func newPluginSet() pluginSet {
-	return pluginSet{make(map[string]workspace.PluginInfo)}
+	return make(map[string]workspace.PluginInfo)
 }
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
