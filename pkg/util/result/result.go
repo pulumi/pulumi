@@ -94,7 +94,6 @@ func TODO() error {
 // (i.e. nil/bail/error) for both results, and combines all sensibly into a final form that represents
 // the information of both.
 func Merge(res1 *Result, res2 *Result) *Result {
-
 	switch {
 	// If both are nil, then there's no problem.  Return 'nil' to properly convey that outwards.
 	case res1 == nil && res2 == nil:
