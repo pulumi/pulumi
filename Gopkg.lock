@@ -735,7 +735,6 @@
     "github.com/aws/aws-sdk-go/service/s3",
     "github.com/blang/semver",
     "github.com/cheggaaa/pb",
-    "github.com/davecgh/go-spew/spew",
     "github.com/djherbis/times",
     "github.com/docker/docker/api/types/time",
     "github.com/docker/docker/pkg/term",
