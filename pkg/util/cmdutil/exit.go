@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // DetailedError extracts a detailed error message, including stack trace, if there is one.
@@ -83,20 +84,48 @@ func runPostCommandHooks(c *cobra.Command, args []string) error {
 	return nil
 }
 
-// RunFunc wraps an error-returning run func with standard Pulumi error handling.  All Pulumi commands should wrap
-// themselves in this to ensure consistent and appropriate error behavior.  In particular, we want to avoid any calls to
-// os.Exit in the middle of a callstack which might prohibit reaping of child processes, resources, etc.  And we wish to
-// avoid the default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly prints usage.
+// RunFunc wraps an error-returning run func with standard Pulumi error handling.  All Pulumi
+// commands should wrap themselves in this or [RunResultFunc] to ensure consistent and appropriate
+// error behavior.  In particular, we want to avoid any calls to os.Exit in the middle of a
+// callstack which might prohibit reaping of child processes, resources, etc.  And we wish to avoid
+// the default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly
+// prints usage.
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
-	return func(cmd *cobra.Command, args []string) {
+	return RunResultFunc(func(cmd *cobra.Command, args []string) *result.Result {
 		if err := run(cmd, args); err != nil {
+			return result.FromError(err)
+		}
+
+		return nil
+	})
+}
+
+// RunResultFunc wraps an Result-returning run func with standard Pulumi error handling.  All Pulumi
+// commands should wrap themselves in this or [RunFunc] to ensure consistent and appropriate error
+// behavior.  In particular, we want to avoid any calls to os.Exit in the middle of a callstack
+// which might prohibit reaping of child processes, resources, etc.  And we wish to avoid the
+// default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly prints
+// usage.
+func RunResultFunc(run func(cmd *cobra.Command, args []string) *result.Result) func(*cobra.Command, []string) {
+	return func(cmd *cobra.Command, args []string) {
+		if res := run(cmd, args); res != nil {
 			// Sadly, the fact that we hard-exit below means that it's up to us to replicate the Cobra post-run
 			// behavior here.
 			if postRunErr := runPostCommandHooks(cmd, args); postRunErr != nil {
-				err = multierror.Append(err, postRunErr)
+				res = result.Merge(res, result.FromError(postRunErr))
+			}
+
+			// If we were asked to bail, that means we already printed out a message.  We just need
+			// to quit at this point (with an error code so no one thinks we succeeded).  Bailing
+			// always indicates a failure, just one we don't need to print a message for.
+			if res.IsBail() {
+				os.Exit(-1)
+				return
 			}
 
 			// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug logging it.
+			err := res.Error()
+
 			var msg string
 			if logging.LogToStderr {
 				msg = DetailedError(err)
