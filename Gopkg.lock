@@ -550,6 +550,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:0142c968b74c157abbb0220c05fa2bdde8a3a4509d6134b35ef75d5b58afb721"
+  name = "golang.org/x/sync"
+  packages = ["errgroup"]
+  pruneopts = ""
+  revision = "e225da77a7e68af35c70ccbf71af2b83e6acac3c"
+
+[[projects]]
+  branch = "master"
   digest = "1:57be0ee99ef4b53bbe8570e176f11f7c23c33d38d388079a2c1aeb3ba197b7ed"
   name = "golang.org/x/sys"
   packages = [
@@ -727,7 +735,6 @@
     "github.com/aws/aws-sdk-go/service/s3",
     "github.com/blang/semver",
     "github.com/cheggaaa/pb",
-    "github.com/davecgh/go-spew/spew",
     "github.com/djherbis/times",
     "github.com/docker/docker/api/types/time",
     "github.com/docker/docker/pkg/term",
@@ -762,6 +769,7 @@
     "golang.org/x/crypto/ssh/terminal",
     "golang.org/x/net/context",
     "golang.org/x/net/http2",
+    "golang.org/x/sync/errgroup",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/connectivity",

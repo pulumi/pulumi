@@ -30,9 +30,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// getProviderVersion fetches and parses a provider version from the given property map. If the version property is not
+// GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
 // present, this function returns nil.
-func getProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
+func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 	versionProp, ok := inputs["version"]
 	if !ok {
 		return nil, nil
@@ -111,10 +111,10 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
 			return nil, errors.Errorf("duplicate provider found in old state: '%v'", ref)
 		}
 
-		providerPkg := getProviderPackage(urn.Type())
+		providerPkg := GetProviderPackage(urn.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
-		version, err := getProviderVersion(res.Inputs)
+		version, err := GetProviderVersion(res.Inputs)
 		if err != nil {
 			return nil, errors.Errorf("could not parse version for %v provider '%v': %v", providerPkg, urn, err)
 		}
@@ -218,11 +218,11 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
 	// Parse the version from the provider properties and load the provider.
-	version, err := getProviderVersion(news)
+	version, err := GetProviderVersion(news)
 	if err != nil {
 		return nil, []plugin.CheckFailure{{Property: "version", Reason: err.Error()}}, nil
 	}
-	provider, err := loadProvider(getProviderPackage(urn.Type()), version, r.host, r.builtins)
+	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, r.host, r.builtins)
 	if err != nil {
 		return nil, nil, err
 	}

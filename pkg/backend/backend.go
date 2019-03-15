@@ -18,6 +18,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/pkg/errors"
@@ -221,4 +222,8 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 		return resource.PropertyMap{}, nil
 	}
 	return res.Outputs, nil
+}
+
+func (c *backendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
+	return nil, errors.New("downloading plugins at runtime not available when using local backend")
 }
