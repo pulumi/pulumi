@@ -3,7 +3,7 @@
     "version": "${VERSION}",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
-    "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
+    "repository": "https://github.com/pulumi/pulumi/tree/master/sdk/nodejs",
     "dependencies": {
         "google-protobuf": "^3.5.0",
         "grpc": "^1.12.2",
