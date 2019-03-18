@@ -710,5 +710,8 @@ export function interpolate(literals: TemplateStringsArray, ...placeholders: Inp
         return result;
     });
 
-    return new Output<string>(allResources, val, Promise.resolve(true));
+    // We mark the resultant Output we return as 'isKnown=true', regardless of what the component
+    // Output values are.  We consider this value known-enough because we have the information from
+    // the actual literal sections that we want to still be able to show the user during preview.
+    return new Output(allResources, val, Promise.resolve(true));
 }
