@@ -677,17 +677,38 @@ export function concat(...params: Input<any>[]): Output<string> {
  * [Promise]s, [Output]s, or just plain JavaScript values.
  */
 export function interpolate(literals: TemplateStringsArray, ...placeholders: Input<any>[]): Output<string> {
-    return output(placeholders).apply(unwrapped => {
+    const outputs = placeholders.map(i => output(i));
+    const allResources = new Set<Resource>();
+
+    for (const op of outputs) {
+        for (const res of op.resources()) {
+            allResources.add(res);
+        }
+    }
+
+    const valuesAndIsKnowns = outputs.map(o => Promise.all([o.promise(), o.isKnown]));
+
+    const val = Promise.all(valuesAndIsKnowns).then(unwrapped => {
         let result = "";
 
         // interleave the literals with the placeholders
         for (let i = 0; i < unwrapped.length; i++) {
+            const value = unwrapped[i][0];
+            const isKnown = unwrapped[i][1];
+
             result += literals[i];
-            result += unwrapped[i];
+
+            // If the value is known, just concat into the string.  If it isn't known,
+            // then just add "<computed>".  This helps ensure we build a string that
+            // contains a lot of helpful structure for the user, while still indicating
+            // the sections that aren't known during preview.
+            result += value !== undefined || isKnown ? value : "<computed>";
         }
 
         // add the last literal
         result += literals[literals.length - 1];
         return result;
     });
+
+    return new Output<string>(allResources, val, Promise.resolve(true));
 }
