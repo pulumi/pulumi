@@ -203,10 +203,6 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				Parallel:       opts.Parallel,
 			})
 
-			if err == nil && progerr == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
-				return result.Bail()
-			}
-
 			if err == nil && progerr != "" {
 				// If the program had an unhandled error; propagate it to the caller.
 				err = errors.Errorf("an unhandled error occurred: %v", progerr)

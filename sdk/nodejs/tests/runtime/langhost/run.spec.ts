@@ -730,9 +730,7 @@ describe("rpc", () => {
         "run_error": {
             program: path.join(base, "040.run_error"),
             expectResourceCount: 0,
-            // We should get the error message saying that a message was reported and the
-            // host should bail.
-            expectError: "A97455BA-8A80-42A5-8639-53CD49E88D75",
+            expectError: "Program exited with non-zero exit code: 1",
         },
     };
 

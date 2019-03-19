@@ -13,35 +13,23 @@
 // limitations under the License.
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these events cause us to
-// exit with a non-zero code. It is critically important that we do this early: if we do not, unhandled rejections in
+// exit with a non-zero code. It is criticially important that we do this early: if we do not, unhandled rejections in
 // particular may cause us to exit with a 0 exit code, which will trick the engine into thinking that the program ran
 // successfully. This can cause the engine to decide to delete all of a stack's resources.
 let uncaught: Error | undefined;
 let programRunning = false;
-let allErrorsAreRunErrors = true;
 const uncaughtHandler = (err: Error) => {
     uncaught = err;
     if (!programRunning) {
         console.error(err.stack || err.message);
     }
-
-    // Don't actually reference RunError.isInstance here.  We don't want to actually end up doing
-    // any sort of module either prior to the creation, or during the execution, of this error
-    // handler.
-    allErrorsAreRunErrors = allErrorsAreRunErrors && (<any>err).__pulumiRunError === true;
 };
 process.on("uncaughtException", uncaughtHandler);
 process.on("unhandledRejection", uncaughtHandler);
 process.on("exit", (code: number) => {
-    // If we don't already have an exit code, and we had an unhandled error, exit with a
-    // non-success.  Also keep track if all we heard about were RunErrors.  If so, we end with a
-    // different error code so that we can avoid printing extra messages to the user about the
-    // process exiting.
-    //
-    // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
-    // nodejs here: https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+    // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
     if (code === 0 && uncaught) {
-        process.exitCode = allErrorsAreRunErrors ? 32 : 1;
+        process.exitCode = 1;
     }
 });
 
