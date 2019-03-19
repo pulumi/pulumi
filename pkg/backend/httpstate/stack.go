@@ -132,19 +132,19 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) error {
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
-func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.DestroyStack(ctx, s, op)
 }
 

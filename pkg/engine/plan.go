@@ -201,11 +201,11 @@ func (planResult *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) *result.Result {
+func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) result.Result {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	done := make(chan bool)
-	var walkResult *result.Result
+	var walkResult result.Result
 	go func() {
 		opts := deploy.Options{
 			Events:            events,
@@ -243,7 +243,7 @@ func (planResult *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChanges, *result.Result) {
+func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChanges, result.Result) {
 	planResult.Options.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.

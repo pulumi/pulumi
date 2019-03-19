@@ -648,7 +648,7 @@ func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
 		return nil, result.FromError(err)
@@ -664,7 +664,7 @@ func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
 		return nil, result.FromError(err)
@@ -673,7 +673,7 @@ func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReferen
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
 		return nil, result.FromError(err)
@@ -682,7 +682,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
 		return nil, result.FromError(err)
@@ -744,7 +744,7 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (engine.ResourceChanges, *result.Result) {
+	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
 
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
@@ -782,7 +782,7 @@ func (b *cloudBackend) apply(
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, *result.Result) {
+	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
@@ -832,7 +832,7 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	var changes engine.ResourceChanges
-	var res *result.Result
+	var res result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
 		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)

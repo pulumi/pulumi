@@ -38,7 +38,7 @@ func (src *fixedSource) Project() tokens.PackageName { return src.ctx }
 func (src *fixedSource) Info() interface{}           { return nil }
 
 func (src *fixedSource) Iterate(
-	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
+	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {
 
 	contract.Ignore(ctx) // TODO[pulumi/pulumi#1714]
 	return &fixedSourceIterator{
@@ -57,7 +57,7 @@ func (iter *fixedSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *fixedSourceIterator) Next() (SourceEvent, *result.Result) {
+func (iter *fixedSourceIterator) Next() (SourceEvent, result.Result) {
 	iter.current++
 	if iter.current >= len(iter.src.steps) {
 		return nil, nil

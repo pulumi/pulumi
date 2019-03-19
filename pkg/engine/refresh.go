@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, *result.Result) {
+func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 

@@ -70,7 +70,7 @@ func (changes ResourceChanges) HasChanges() bool {
 	return c > 0
 }
 
-func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, *result.Result) {
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
@@ -161,14 +161,14 @@ func newUpdateSource(
 	}, defaultProviderVersions, dryRun), nil
 }
 
-func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, *result.Result) {
+func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, result.Result) {
 	planResult, err := plan(ctx, info, opts, dryRun)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
 
 	var resourceChanges ResourceChanges
-	var res *result.Result
+	var res result.Result
 	if planResult != nil {
 		defer contract.IgnoreClose(planResult)
 

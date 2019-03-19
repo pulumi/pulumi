@@ -257,12 +257,12 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 	return &u.target
 }
 
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, *result.Result)
+type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, result.Result)
 type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal,
-	events []Event, res *result.Result) *result.Result
+	events []Event, res result.Result) result.Result
 
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, *result.Result) {
+	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
 
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
@@ -270,7 +270,7 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 func (op TestOp) RunWithContext(
 	callerCtx context.Context, project workspace.Project,
 	target deploy.Target, opts UpdateOptions, dryRun bool,
-	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, *result.Result) {
+	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
 
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
@@ -396,7 +396,7 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 	}
 }
 
-func assertIsErrorOrBailResult(t *testing.T, res *result.Result) {
+func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
 	assert.NotNil(t, res)
 }
 
@@ -419,7 +419,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 			assert.Nil(t, res)
 		}
 
-		var res *result.Result
+		var res result.Result
 		target := p.GetTarget(snap)
 		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
@@ -451,7 +451,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res *result.Result) *result.Result {
+				_ []Event, res result.Result) result.Result {
 
 				// Should see only creates.
 				for _, entry := range j.Entries {
@@ -465,7 +465,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res *result.Result) *result.Result {
+				_ []Event, res result.Result) result.Result {
 
 				// Should see only refresh-sames.
 				for _, entry := range j.Entries {
@@ -480,7 +480,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res *result.Result) *result.Result {
+				_ []Event, res result.Result) result.Result {
 
 				// Should see only sames.
 				for _, entry := range j.Entries {
@@ -494,7 +494,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res *result.Result) *result.Result {
+				_ []Event, res result.Result) result.Result {
 
 				// Should see only referesh-sames.
 				for _, entry := range j.Entries {
@@ -509,7 +509,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Destroy,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res *result.Result) *result.Result {
+				_ []Event, res result.Result) result.Result {
 
 				// Should see only deletes.
 				for _, entry := range j.Entries {
@@ -528,7 +528,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res *result.Result) *result.Result {
+				_ []Event, res result.Result) result.Result {
 
 				assert.Len(t, j.Entries, 0)
 				assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
@@ -643,7 +643,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 
 	isRefresh := false
 	validate := func(project workspace.Project, target deploy.Target, j *Journal,
-		_ []Event, res *result.Result) *result.Result {
+		_ []Event, res result.Result) result.Result {
 
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
@@ -677,7 +677,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			_ []Event, res *result.Result) *result.Result {
+			_ []Event, res result.Result) result.Result {
 
 			// Should see two deletes:  the default provider should be injected into the old state before the update
 			// runs.
@@ -746,7 +746,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			_ []Event, res *result.Result) *result.Result {
+			_ []Event, res result.Result) result.Result {
 
 			provURN := p.NewProviderURN("pkgA", "default", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -836,7 +836,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			_ []Event, res *result.Result) *result.Result {
+			_ []Event, res result.Result) result.Result {
 
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -925,7 +925,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			_ []Event, res *result.Result) *result.Result {
+			_ []Event, res result.Result) result.Result {
 
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -1014,7 +1014,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ *Journal,
-			events []Event, res *result.Result) *result.Result {
+			events []Event, res result.Result) result.Result {
 
 			found := false
 			for _, e := range events {
@@ -1076,7 +1076,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal,
-			_ []Event, res *result.Result) *result.Result {
+			_ []Event, res result.Result) result.Result {
 
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
@@ -1150,7 +1150,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal,
-			_ []Event, res *result.Result) *result.Result {
+			_ []Event, res result.Result) result.Result {
 
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
@@ -1419,7 +1419,7 @@ func TestCheckFailureRecord(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				evts []Event, res *result.Result) *result.Result {
+				evts []Event, res result.Result) result.Result {
 
 				sawFailure := false
 				for _, evt := range evts {
@@ -1469,7 +1469,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				evts []Event, res *result.Result) *result.Result {
+				evts []Event, res result.Result) result.Result {
 
 				sawFailure := false
 				for _, evt := range evts {
@@ -1699,7 +1699,7 @@ func TestRefreshBasics(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			_ []Event, res *result.Result) *result.Result {
+			_ []Event, res result.Result) result.Result {
 
 			// Should see only refreshes.
 			for _, entry := range j.Entries {
@@ -1844,7 +1844,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 	project, target := p.GetProject(), p.GetTarget(old)
 	validate := func(project workspace.Project, target deploy.Target, j *Journal,
-		_ []Event, res *result.Result) *result.Result {
+		_ []Event, res result.Result) result.Result {
 
 		for _, entry := range j.Entries {
 			assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -1940,7 +1940,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				evts []Event, res *result.Result) *result.Result {
+				evts []Event, res result.Result) result.Result {
 
 				assertIsErrorOrBailResult(t, res)
 				sawExitCode := false
@@ -1997,7 +1997,7 @@ func TestBrokenDecrypter(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				evts []Event, res *result.Result) *result.Result {
+				evts []Event, res result.Result) result.Result {
 
 				assertIsErrorOrBailResult(t, res)
 				decryptErr := res.Error().(DecryptError)
@@ -2229,7 +2229,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 		ExpectFailure: true,
 		SkipPreview:   true,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			evts []Event, res *result.Result) *result.Result {
+			evts []Event, res result.Result) result.Result {
 
 			assertIsErrorOrBailResult(t, res)
 			for _, entry := range j.Entries {
@@ -2335,7 +2335,7 @@ func TestStackReference(t *testing.T) {
 		Op:          Update,
 		SkipPreview: true,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			evts []Event, res *result.Result) *result.Result {
+			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
 			for _, entry := range j.Entries {
@@ -2637,7 +2637,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		ExpectFailure: false,
 		SkipPreview:   true,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			evts []Event, res *result.Result) *result.Result {
+			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
 
@@ -2794,7 +2794,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			evts []Event, res *result.Result) *result.Result {
+			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
 
@@ -2818,7 +2818,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			evts []Event, res *result.Result) *result.Result {
+			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
 
@@ -2843,7 +2843,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			evts []Event, res *result.Result) *result.Result {
+			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
 
@@ -2867,7 +2867,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			evts []Event, res *result.Result) *result.Result {
+			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
 
