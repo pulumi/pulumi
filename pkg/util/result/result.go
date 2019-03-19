@@ -19,19 +19,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Result represents the result of a computation that can fail. The Result type
-// revolves around two notions of failure:
+// Result represents the result of a computation that can fail. The Result type revolves around two
+// notions of failure:
 //
-// 1. Computations can fail, but they can fail gracefully. Computations that
-// fail gracefully do so by logging a diagnostic and returning a non-nil "bail"
-// result.
+// 1. Computations can fail, but they can fail gracefully. Computations that fail gracefully do so
+// by logging a diagnostic and returning a non-nil "bail" result.
 //
-// 2. Computations can fail due to bugs in Pulumi. Computations that fail in
-// this manner do so by constructing a Result using the `Error`, `Errorf`, or
-// `FromError` constructor functions.
+// 2. Computations can fail due to bugs in Pulumi. Computations that fail in this manner do so by
+// constructing a Result using the `Error`, `Errorf`, or `FromError` constructor functions.
 //
-// Result is best used as a pointer type so that it can be nullable. A function
-// returning a pointer Result has the following semantics:
+// Result is an interface so that it can be nullable. A function returning a pointer Result has the
+// following semantics:
 //
 //  * If the result is `nil`, the caller should proceed. The callee believes
 //  that the overarching plan can still continue, even if it logged
@@ -40,9 +38,8 @@ import (
 //  * If the result is non-nil, the caller should not proceed.  Most often, the
 //  caller should return this Result to its caller.
 //
-// At the highest level, when a function wishes to return only an `error`, the
-// `Error` member function can be used to turn a nullable `Result` into an
-// `error`.
+// At the highest level, when a function wishes to return only an `error`, the `Error` member
+// function can be used to turn a nullable `Result` into an `error`.
 type Result interface {
 	Error() error
 	IsBail() bool
