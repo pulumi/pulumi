@@ -52,7 +52,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}, dryRun)
 }
 
-func newRefreshSource(opts planOptions, proj *workspace.Project, pwd, main string,
+func newRefreshSource(client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
 	// Just return an error source. Refresh doesn't use its source.

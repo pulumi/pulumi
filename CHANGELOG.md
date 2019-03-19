@@ -1,4 +1,10 @@
-## 0.17.2 (unreleased)
+## 0.17.3 (Unreleased)
+
+### Improvements
+
+- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi update` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi update` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
+
+## 0.17.2 (Released March 15, 2019)
 
 ### Improvements
 
@@ -11,6 +17,8 @@
 - Differences between the state of a refreshed resource and the state described in a Pulumi program are now properly
   detected when using newer providers.
 - Differences between a resource's provider-internal properties are no longer displayed in the CLI.
+- Pulumi will now install missing plugins on startup. Previously, Pulumi would error if a required plugin was not
+  present and a bug in the Pulumi CLI made it common for users using Pulumi in their continuous integration setup to have problems with missing plugins. Starting with 0.17.2, if Pulumi detects that required plugins are missing, it will make an attempt to install the missing plugins before proceeding with the update.
 
 ## 0.17.1 (Released March 6, 2019)
 

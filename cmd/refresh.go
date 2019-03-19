@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 func newRefreshCmd() *cobra.Command {
@@ -56,7 +57,7 @@ func newRefreshCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) *result.Result {
 			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
@@ -64,7 +65,7 @@ func newRefreshCmd() *cobra.Command {
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			opts.Display = display.Options{
@@ -80,17 +81,17 @@ func newRefreshCmd() *cobra.Command {
 
 			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			proj, root, err := readProject()
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			m, err := getUpdateMetadata(message, root)
 			if err != nil {
-				return errors.Wrap(err, "gathering environment metadata")
+				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -108,7 +109,7 @@ func newRefreshCmd() *cobra.Command {
 			})
 
 			if res != nil && res.Error() == context.Canceled {
-				return errors.New("refresh cancelled")
+				return  result.FromError(errors.New("refresh cancelled"))
 			}
 
 			if res != nil {
@@ -116,7 +117,7 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			if expectNop && changes != nil && changes.HasChanges() {
-				return errors.New("error: no changes were expected but changes occurred")
+				return  result.FromError(errors.New("error: no changes were expected but changes occurred"))
 			}
 
 			return nil

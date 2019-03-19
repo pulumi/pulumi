@@ -162,17 +162,12 @@ Please head on over to [the project website](https://pulumi.io) for much more in
 | -- | -------- | ------ | ------- |
 | <img src="https://www.pulumi.com/assets/logos/tech/logo-js.png" height=38 /> | [JavaScript](./sdk/nodejs) | Stable | Node.js 6.x-10.x |
 | <img src="https://www.pulumi.com/assets/logos/tech/logo-ts.png" height=38 /> | [TypeScript](./sdk/nodejs) | Stable | Node.js 6.x-10.x |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python) | Preview | Python 2.7 |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python) | Preview | Python 3.6 |
 | <img src="https://www.pulumi.com/assets/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go) | Preview | Go 1.x |
 
 ### Clouds
 
-|    | Cloud | Status | Docs |
-| -- | ----- | ------ | ---- |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-aws.png" height=38 /> | [Amazon Web Services](https://github.com/pulumi/pulumi-aws) | Stable | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws/) |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-azure.png" height=38 /> | [Microsoft Azure](https://github.com/pulumi/pulumi-azure) | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/azure/) |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-gd.png" height=38 /> | [Google Cloud Platform](https://github.com/pulumi/pulumi-gcp) | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/gcp/) |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-kubernetes.png" height=38 /> | [Kubernetes](https://github.com/pulumi/pulumi-kubernetes) | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/kubernetes/) |
+See [Supported Clouds](https://pulumi.io/reference/clouds.html) for the full list of supported cloud and infrastructure providers.
 
 ### Libraries
 

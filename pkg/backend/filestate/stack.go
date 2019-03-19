@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/tokens"
+
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -61,6 +63,10 @@ func (s *localStack) Path() string                                           { r
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
+}
+
+func (s *localStack) Rename(ctx context.Context, newName tokens.QName) error {
+	return backend.RenameStack(ctx, s, newName)
 }
 
 func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {

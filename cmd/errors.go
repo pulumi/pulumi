@@ -16,11 +16,11 @@ import (
 
 // PrintEngineResult optionally provides a place for the CLI to provide human-friendly error
 // messages for messages that can happen during normal engine operation.
-func PrintEngineResult(res *result.Result) error {
+func PrintEngineResult(res *result.Result) *result.Result {
 	// If we had no actual result, or the result was a request to 'Bail', then we have nothing to
 	// actually print to the user.
-	if res == nil || res.Error() == nil {
-		return nil
+	if res == nil || res.IsBail() {
+		return res
 	}
 
 	err := res.Error()
@@ -28,12 +28,15 @@ func PrintEngineResult(res *result.Result) error {
 	switch e := err.(type) {
 	case deploy.PlanPendingOperationsError:
 		printPendingOperationsError(e)
-		return fmt.Errorf("refusing to proceed")
+		// We have printed the error already.  Should just bail at this point.
+		return result.Bail()
 	case engine.DecryptError:
 		printDecryptError(e)
-		return fmt.Errorf("refusing to proceed")
+		// We have printed the error already.  Should just bail at this point.
+		return result.Bail()
 	default:
-		return err
+		// Caller will handle printing of this true error in a generalized fashion.
+		return res
 	}
 }
 
@@ -56,7 +59,9 @@ For example, if you are using AWS, you can confirm using the AWS Console.
 Once you have confirmed the status of the interrupted operations, you can repair your stack
 using 'pulumi stack export' to export your stack to a file. For each operation that succeeded,
 remove that operation from the "pending_operations" section of the file. Once this is complete,
-use 'pulumi stack import' to import the repaired stack.`)
+use 'pulumi stack import' to import the repaired stack.
+
+refusing to proceed`)
 	contract.IgnoreError(writer.Flush())
 
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
@@ -71,7 +76,9 @@ This can occur when a secret is copied from one stack to another. Encryption of 
 it is not possible to share an encrypted configuration value across stacks.
 
 You can re-encrypt your configuration buy running 'pulumi config set %s [value] --secret' with your
-new stack selected.`, e.Key)
+new stack selected.
+
+refusing to proceed`, e.Key)
 	contract.IgnoreError(writer.Flush())
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
 }

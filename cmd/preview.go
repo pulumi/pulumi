@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 func newPreviewCmd() *cobra.Command {
@@ -56,7 +57,7 @@ func newPreviewCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) *result.Result {
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					Analyzers: analyzers,
@@ -77,17 +78,17 @@ func newPreviewCmd() *cobra.Command {
 
 			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			proj, root, err := readProject()
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			m, err := getUpdateMetadata("", root)
 			if err != nil {
-				return errors.Wrap(err, "gathering environment metadata")
+				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
 
 			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
@@ -103,7 +104,7 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			if expectNop && changes != nil && changes.HasChanges() {
-				return errors.New("error: no changes were expected but changes were proposed")
+				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
 			}
 
 			return nil

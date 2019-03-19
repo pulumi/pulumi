@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -213,6 +214,41 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	return false, b.removeStack(stackName)
+}
+
+func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackReference, newName tokens.QName) error {
+	stackName := stackRef.Name()
+	cfg, snap, _, err := b.getStack(stackName)
+	if err != nil {
+		return err
+	}
+
+	// Ensure the destination stack does not already exist.
+	_, err = os.Stat(b.stackPath(newName))
+	if err == nil {
+		return errors.Errorf("a stack named %s already exists", newName)
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Rewrite the checkpoint and save it with the new name.
+	if err = edit.RenameStack(snap, newName); err != nil {
+		return err
+	}
+
+	if _, err = b.saveStack(newName, cfg, snap); err != nil {
+		return err
+	}
+
+	// To remove the old stack, just make a backup of the file and don't write out anything new.
+	file := b.stackPath(stackName)
+	backupTarget(file)
+
+	// And move the history over as well.
+	oldHistoryDir := b.historyDirectory(stackName)
+	newHistoryDir := b.historyDirectory(newName)
+
+	return os.Rename(oldHistoryDir, newHistoryDir)
 }
 
 func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {

@@ -16,7 +16,10 @@ package deploy
 
 import (
 	"context"
+	"io"
 	"math"
+
+	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -36,6 +39,8 @@ import (
 type BackendClient interface {
 	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
+
+	DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error)
 }
 
 // Options controls the planning and deployment process.

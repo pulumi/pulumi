@@ -18,6 +18,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/pkg/errors"
@@ -95,6 +96,8 @@ type Backend interface {
 	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error)
+
+	RenameStack(ctx context.Context, stackRef StackReference, newName tokens.QName) error
 
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
@@ -222,4 +225,8 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 		return resource.PropertyMap{}, nil
 	}
 	return res.Outputs, nil
+}
+
+func (c *backendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
+	return nil, errors.New("downloading plugins at runtime not available when using local backend")
 }

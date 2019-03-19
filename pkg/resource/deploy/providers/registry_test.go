@@ -279,9 +279,9 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		assert.True(t, p.(*testProvider).configured)
 
-		assert.Equal(t, getProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 
-		ver, err := getProviderVersion(old.Inputs)
+		ver, err := GetProviderVersion(old.Inputs)
 		assert.NoError(t, err)
 		if ver != nil {
 			info, err := p.GetPluginInfo()
@@ -402,7 +402,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 		assert.NotNil(t, p)
 
-		assert.Equal(t, getProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 	}
 
 	// Create a new provider for each package.
@@ -541,7 +541,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 		assert.NotNil(t, p)
 
-		assert.Equal(t, getProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 	}
 
 	// Create a new provider for each package.

@@ -103,25 +103,21 @@ func TODO() error {
 // (i.e. nil/bail/error) for both results, and combines all sensibly into a final form that represents
 // the information of both.
 func Merge(res1 *Result, res2 *Result) *Result {
+	switch {
 	// If both are nil, then there's no problem.  Return 'nil' to properly convey that outwards.
-	if res1 == nil && res2 == nil {
+	case res1 == nil && res2 == nil:
 		return nil
-	}
 
 	// Otherwise, if one is nil, and the other is not, then the non-nil takes precedence.
 	// i.e. an actual error (or bail) takes precedence
-	if res1 == nil {
+	case res1 == nil:
 		return res2
-	}
-
-	if res2 == nil {
+	case res2 == nil:
 		return res1
-	}
 
 	// If both results have asked to bail, then just bail.  That properly respects both requests.
-	if res1.IsBail() && res2.IsBail() {
+	case res1.IsBail() && res2.IsBail():
 		return Bail()
-	}
 
 	// We have two non-nil results and one, or both, of the results indicate an error.
 
@@ -130,15 +126,13 @@ func Merge(res1 *Result, res2 *Result) *Result {
 	// quickly finish the entire pulumi execution.  However, for an error, we are indicating a bug
 	// happened, and that we haven't printed it, and that it should print at the end.  So we need
 	// to respect the error form here and pass it all the way back.
-
-	if res1.IsBail() {
+	case res1.IsBail():
 		return res2
-	}
-
-	if res2.IsBail() {
+	case res2.IsBail():
 		return res1
-	}
 
 	// Both results are errors.  Combine them into one joint error and return that.
-	return FromError(multierror.Append(res1.err, res2.err))
+	default:
+		return FromError(multierror.Append(res1.err, res2.err))
+	}
 }
