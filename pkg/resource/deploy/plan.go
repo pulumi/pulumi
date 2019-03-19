@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // BackendClient provides an interface for retrieving information about other stacks.
@@ -295,7 +296,7 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) error {
+func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) result.Result {
 	planExec := &planExecutor{plan: p}
 	return planExec.Execute(ctx, opts, preview)
 }

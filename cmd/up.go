@@ -98,7 +98,7 @@ func newUpCmd() *cobra.Command {
 			Refresh:   refresh,
 		}
 
-		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
 			M:      m,
@@ -106,10 +106,10 @@ func newUpCmd() *cobra.Command {
 			Scopes: cancellationScopes,
 		})
 		switch {
-		case err == context.Canceled:
+		case res != nil && res.Error() == context.Canceled:
 			return result.FromError(errors.New("update cancelled"))
-		case err != nil:
-			return PrintEngineError(err)
+		case res != nil:
+			return PrintEngineResult(res)
 		case expectNop && changes != nil && changes.HasChanges():
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 		default:
@@ -242,7 +242,7 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
 			M:      m,
@@ -250,10 +250,10 @@ func newUpCmd() *cobra.Command {
 			Scopes: cancellationScopes,
 		})
 		switch {
-		case err == context.Canceled:
+		case res != nil && res.Error() == context.Canceled:
 			return result.FromError(errors.New("update cancelled"))
-		case err != nil:
-			return PrintEngineError(err)
+		case res != nil:
+			return PrintEngineResult(res)
 		case expectNop && changes != nil && changes.HasChanges():
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 		default:

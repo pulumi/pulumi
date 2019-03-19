@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -69,7 +70,7 @@ func (changes ResourceChanges) HasChanges() bool {
 	return c > 0
 }
 
-func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
@@ -77,13 +78,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 
 	info, err := newPlanContext(u, "update", ctx.ParentSpan)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
@@ -160,26 +161,27 @@ func newUpdateSource(
 	}, defaultProviderVersions, dryRun), nil
 }
 
-func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
+func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, result.Result) {
 	planResult, err := plan(ctx, info, opts, dryRun)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 
 	var resourceChanges ResourceChanges
+	var res result.Result
 	if planResult != nil {
 		defer contract.IgnoreClose(planResult)
 
 		// Make the current working directory the same as the program's, and restore it upon exit.
 		done, chErr := planResult.Chdir()
 		if chErr != nil {
-			return nil, chErr
+			return nil, result.FromError(chErr)
 		}
 		defer done()
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, err = printPlan(ctx, planResult, dryRun)
+			resourceChanges, res = printPlan(ctx, planResult, dryRun)
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			opts.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
@@ -188,7 +190,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
 
-			err = planResult.Walk(ctx, actions, false)
+			res = planResult.Walk(ctx, actions, false)
 			resourceChanges = ResourceChanges(actions.Ops)
 
 			if len(resourceChanges) != 0 {
@@ -197,7 +199,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			}
 		}
 	}
-	return resourceChanges, err
+	return resourceChanges, res
 }
 
 // pluginActions listens for plugin events and persists the set of loaded plugins

@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -42,13 +43,13 @@ type Stack interface {
 	Backend() Backend                                       // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
+	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update this stack.
-	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
+	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Refresh this stack's state from the cloud provider.
-	Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
+	Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy this stack's resources.
-	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, error)
+	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
@@ -72,22 +73,22 @@ func RenameStack(ctx context.Context, s Stack, newName tokens.QName) error {
 }
 
 // PreviewStack previews changes to this stack.
-func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return s.Backend().Preview(ctx, s.Ref(), op)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return s.Backend().Update(ctx, s.Ref(), op)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return s.Backend().Refresh(ctx, s.Ref(), op)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, error) {
+func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return s.Backend().Destroy(ctx, s.Ref(), op)
 }
 

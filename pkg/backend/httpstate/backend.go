@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"github.com/cheggaaa/pb"
-	"github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
@@ -54,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -647,10 +647,10 @@ func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
@@ -663,28 +663,28 @@ func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
@@ -740,8 +740,11 @@ func (b *cloudBackend) createAndStartUpdate(
 }
 
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
-func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, opts backend.ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error) {
+func (b *cloudBackend) apply(
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
+	op backend.UpdateOperation, opts backend.ApplierOptions,
+	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
+
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 	fmt.Printf(op.Opts.Display.Color.Colorize(
@@ -750,7 +753,7 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Create an update object to persist results.
 	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 
 	if opts.ShowLink {
@@ -778,12 +781,12 @@ func (b *cloudBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, error) {
+	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
@@ -828,15 +831,16 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	var changes engine.ResourceChanges
+	var res result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
-		changes, err = engine.Update(u, engineCtx, op.Opts.Engine, true)
+		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, err = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.RefreshUpdate:
-		changes, err = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
-		changes, err = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		changes, res = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
@@ -854,15 +858,15 @@ func (b *cloudBackend) runEngineAction(
 
 	// Mark the update as complete.
 	status := apitype.UpdateStatusSucceeded
-	if err != nil {
+	if res != nil {
 		status = apitype.UpdateStatusFailed
 	}
 	completeErr := u.Complete(status)
 	if completeErr != nil {
-		err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
+		res = result.Merge(res, result.FromError(errors.Wrap(completeErr, "failed to complete update")))
 	}
 
-	return changes, err
+	return changes, res
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

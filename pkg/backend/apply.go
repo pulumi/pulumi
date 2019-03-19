@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // ApplierOptions is a bag of configuration settings for an Applier.
@@ -43,7 +44,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error)
+	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -77,7 +78,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, error) {
+	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -109,10 +110,10 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: false,
 	}
 
-	changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
-	if err != nil {
+	changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
+	if res != nil {
 		close(eventsChannel)
-		return changes, err
+		return changes, res
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
@@ -122,9 +123,9 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	err = confirmBeforeUpdating(kind, stack, events, op.Opts)
+	err := confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
-	return changes, err
+	return changes, result.WrapIfNonNil(err)
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
@@ -187,13 +188,13 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, error) {
+	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
-		changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
-		if err != nil || kind == apitype.PreviewUpdate {
-			return changes, err
+		changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		if res != nil || kind == apitype.PreviewUpdate {
+			return changes, res
 		}
 	}
 

@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -269,11 +270,11 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 }
 
 func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	// Get the stack.
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
@@ -285,35 +286,38 @@ func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, error) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
-func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, opts backend.ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error) {
+func (b *localBackend) apply(
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
+	op backend.UpdateOperation, opts backend.ApplierOptions,
+	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
+
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
 
@@ -325,7 +329,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Start the update.
 	update, err := b.newUpdate(stackName, op.Proj, op.Root)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 
 	// Spawn a display loop to show events on the CLI.
@@ -367,16 +371,16 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 	// Perform the update
 	start := time.Now().Unix()
 	var changes engine.ResourceChanges
-	var updateErr error
+	var updateRes result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
-		changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
+		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.RefreshUpdate:
-		changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
-		changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		changes, updateRes = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
@@ -394,7 +398,7 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 
 	// Save update results.
 	backendUpdateResult := backend.SucceededResult
-	if updateErr != nil {
+	if updateRes != nil {
 		backendUpdateResult = backend.FailedResult
 	}
 	info := backend.UpdateInfo{
@@ -418,18 +422,18 @@ func (b *localBackend) apply(ctx context.Context, kind apitype.UpdateKind, stack
 		backupErr = b.backupStack(stackName)
 	}
 
-	if updateErr != nil {
+	if updateRes != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return changes, updateErr
+		return changes, updateRes
 	}
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return changes, errors.Wrap(saveErr, "saving update info")
+		return changes, result.FromError(errors.Wrap(saveErr, "saving update info"))
 	}
 
 	if backupErr != nil {
-		return changes, errors.Wrap(backupErr, "saving backup")
+		return changes, result.FromError(errors.Wrap(backupErr, "saving backup"))
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.

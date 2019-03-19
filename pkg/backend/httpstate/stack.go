@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
@@ -131,19 +132,19 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) error {
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
-func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, error) {
+func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.DestroyStack(ctx, s, op)
 }
 
