@@ -105,7 +105,6 @@ func newUpCmd() *cobra.Command {
 			Opts:   opts,
 			Scopes: cancellationScopes,
 		})
-
 		switch {
 		case res != nil && res.Error() == context.Canceled:
 			return result.FromError(errors.New("update cancelled"))
