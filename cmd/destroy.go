@@ -110,7 +110,6 @@ func newDestroyCmd() *cobra.Command {
 			if res != nil && res.Error() == context.Canceled {
 				return result.FromError(errors.New("destroy cancelled"))
 			}
-
 			return PrintEngineResult(res)
 		}),
 	}
