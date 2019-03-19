@@ -145,7 +145,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError("", event.Result.Error())
 					}
 					cancel()
-					return false, event.Result
+
+					// We reported any errors above.  So we can just bail now.
+					return false, result.Bail()
 				}
 
 				if event.Event == nil {
