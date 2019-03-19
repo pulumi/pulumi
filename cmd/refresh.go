@@ -57,7 +57,7 @@ func newRefreshCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.IResult {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.

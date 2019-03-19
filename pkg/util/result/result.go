@@ -43,7 +43,7 @@ import (
 // At the highest level, when a function wishes to return only an `error`, the
 // `Error` member function can be used to turn a nullable `Result` into an
 // `error`.
-type IResult interface {
+type Result interface {
 	Error() error
 	IsBail() bool
 }
@@ -57,20 +57,20 @@ func (r *simpleResult) IsBail() bool { return r.err == nil }
 
 // Bail produces a Result that represents a computation that failed to complete
 // successfully but is not a bug in Pulumi.
-func Bail() IResult {
+func Bail() Result {
 	return &simpleResult{err: nil}
 }
 
 // Errorf produces a Result that represents an internal Pulumi error,
 // constructed from the given format string and arguments.
-func Errorf(msg string, args ...interface{}) IResult {
+func Errorf(msg string, args ...interface{}) Result {
 	err := errors.Errorf(msg, args...)
 	return FromError(err)
 }
 
 // Error produces a Result that represents an internal Pulumi error,
 // constructed from the given message.
-func Error(msg string) IResult {
+func Error(msg string) Result {
 	err := errors.New(msg)
 	return FromError(err)
 }
@@ -78,7 +78,7 @@ func Error(msg string) IResult {
 // FromError produces a Result that wraps an internal Pulumi error.  Do not call this with a 'nil'
 // error.  A 'nil' error means that there was no problem, and in that case a 'nil' result should be
 // used instead.
-func FromError(err error) IResult {
+func FromError(err error) Result {
 	if err == nil {
 		panic("FromError should not be called with a nil-error.  " +
 			"If there is no error, then a nil result should be returned.  " +
@@ -98,7 +98,7 @@ func TODO() error {
 // Merge combines two results into one final result.  It properly respects all three forms of Result
 // (i.e. nil/bail/error) for both results, and combines all sensibly into a final form that represents
 // the information of both.
-func Merge(res1 IResult, res2 IResult) IResult {
+func Merge(res1 Result, res2 Result) Result {
 	switch {
 	// If both are nil, then there's no problem.  Return 'nil' to properly convey that outwards.
 	case res1 == nil && res2 == nil:

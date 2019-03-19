@@ -51,7 +51,7 @@ type stepGenerator struct {
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
-func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, result.IResult) {
+func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, result.Result) {
 	urn := sg.plan.generateURN(event.Parent(), event.Type(), event.Name())
 	newState := resource.NewState(event.Type(),
 		urn,
@@ -109,7 +109,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 // If the given resource is a custom resource, the step generator will invoke Diff
 // and Check on the provider associated with that resource. If those fail, an error
 // is returned.
-func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, result.IResult) {
+func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
