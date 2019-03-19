@@ -89,7 +89,7 @@ func FromError(err error) Result {
 }
 
 // WrapIfNonNil returns a non-nil Result if [err] is non-nil.  Otherwise it returns nil.
-func WrapIfNonNil(err error) *Result {
+func WrapIfNonNil(err error) Result {
 	if err == nil {
 		return nil
 	}
