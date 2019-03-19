@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"github.com/cheggaaa/pb"
-	"github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
