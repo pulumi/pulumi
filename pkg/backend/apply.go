@@ -35,9 +35,9 @@ import (
 
 // ApplierOptions is a bag of configuration settings for an Applier.
 type ApplierOptions struct {
-	// DryRun indiciates if the update should not change any resource state and instead just preview changes.
+	// DryRun indicates if the update should not change any resource state and instead just preview changes.
 	DryRun bool
-	// ShowLink indiciates if a link to the update persisted result should be displayed.
+	// ShowLink indicates if a link to the update persisted result should be displayed.
 	ShowLink bool
 }
 
