@@ -249,7 +249,7 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChang
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPlanActions(planResult.Options)
 	if res := planResult.Walk(ctx, actions, true); res != nil {
-		if res.Error() == nil {
+		if res.IsBail() {
 			return nil, res
 		}
 

@@ -141,7 +141,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				logging.V(4).Infof("planExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil, event.Result)
 
 				if event.Result != nil {
-					if event.Result.Error() != nil {
+					if !event.Result.IsBail() {
 						pe.reportError("", event.Result.Error())
 					}
 					cancel()
@@ -191,7 +191,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
 
-	if res != nil && res.Error() == nil {
+	if res != nil && res.IsBail() {
 		return res
 	}
 
