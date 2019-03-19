@@ -91,7 +91,7 @@ func runPostCommandHooks(c *cobra.Command, args []string) error {
 // the default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly
 // prints usage.
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
-	return RunResultFunc(func(cmd *cobra.Command, args []string) *result.Result {
+	return RunResultFunc(func(cmd *cobra.Command, args []string) result.IResult {
 		if err := run(cmd, args); err != nil {
 			return result.FromError(err)
 		}
@@ -106,7 +106,7 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 // which might prohibit reaping of child processes, resources, etc.  And we wish to avoid the
 // default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly prints
 // usage.
-func RunResultFunc(run func(cmd *cobra.Command, args []string) *result.Result) func(*cobra.Command, []string) {
+func RunResultFunc(run func(cmd *cobra.Command, args []string) result.IResult) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		if res := run(cmd, args); res != nil {
 			// Sadly, the fact that we hard-exit below means that it's up to us to replicate the Cobra post-run

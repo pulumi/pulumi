@@ -43,29 +43,34 @@ import (
 // At the highest level, when a function wishes to return only an `error`, the
 // `Error` member function can be used to turn a nullable `Result` into an
 // `error`.
-type Result struct {
+type IResult interface {
+	Error() error
+	IsBail() bool
+}
+
+type simpleResult struct {
 	err error
 }
 
-func (r *Result) Error() error { return r.err }
-func (r *Result) IsBail() bool { return r.err == nil }
+func (r *simpleResult) Error() error { return r.err }
+func (r *simpleResult) IsBail() bool { return r.err == nil }
 
 // Bail produces a Result that represents a computation that failed to complete
 // successfully but is not a bug in Pulumi.
-func Bail() *Result {
-	return &Result{err: nil}
+func Bail() IResult {
+	return &simpleResult{err: nil}
 }
 
 // Errorf produces a Result that represents an internal Pulumi error,
 // constructed from the given format string and arguments.
-func Errorf(msg string, args ...interface{}) *Result {
+func Errorf(msg string, args ...interface{}) IResult {
 	err := errors.Errorf(msg, args...)
 	return FromError(err)
 }
 
 // Error produces a Result that represents an internal Pulumi error,
 // constructed from the given message.
-func Error(msg string) *Result {
+func Error(msg string) IResult {
 	err := errors.New(msg)
 	return FromError(err)
 }
@@ -73,14 +78,14 @@ func Error(msg string) *Result {
 // FromError produces a Result that wraps an internal Pulumi error.  Do not call this with a 'nil'
 // error.  A 'nil' error means that there was no problem, and in that case a 'nil' result should be
 // used instead.
-func FromError(err error) *Result {
+func FromError(err error) IResult {
 	if err == nil {
 		panic("FromError should not be called with a nil-error.  " +
 			"If there is no error, then a nil result should be returned.  " +
 			"Caller should check for this first.")
 	}
 
-	return &Result{err: err}
+	return &simpleResult{err: err}
 }
 
 // TODO returns an error that can be used in places that have not yet been
@@ -93,7 +98,7 @@ func TODO() error {
 // Merge combines two results into one final result.  It properly respects all three forms of Result
 // (i.e. nil/bail/error) for both results, and combines all sensibly into a final form that represents
 // the information of both.
-func Merge(res1 *Result, res2 *Result) *Result {
+func Merge(res1 IResult, res2 IResult) IResult {
 	switch {
 	// If both are nil, then there's no problem.  Return 'nil' to properly convey that outwards.
 	case res1 == nil && res2 == nil:
@@ -124,6 +129,6 @@ func Merge(res1 *Result, res2 *Result) *Result {
 
 	// Both results are errors.  Combine them into one joint error and return that.
 	default:
-		return FromError(multierror.Append(res1.err, res2.err))
+		return FromError(multierror.Append(res1.Error(), res2.Error()))
 	}
 }

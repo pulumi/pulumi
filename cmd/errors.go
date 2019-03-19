@@ -16,7 +16,7 @@ import (
 
 // PrintEngineError optionally provides a place for the CLI to provide human-friendly error
 // messages for messages that can happen during normal engine operation.
-func PrintEngineError(err error) *result.Result {
+func PrintEngineError(err error) result.IResult {
 	if err == nil {
 		return nil
 	}
