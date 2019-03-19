@@ -863,7 +863,7 @@ func (b *cloudBackend) runEngineAction(
 	}
 	completeErr := u.Complete(status)
 	if completeErr != nil {
-		res = result.Merge(res, result.FromError(completeErr))
+		res = result.Merge(res, result.FromError(errors.Wrap(completeErr, "failed to complete update")))
 	}
 
 	return changes, res
