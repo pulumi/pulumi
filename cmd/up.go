@@ -63,7 +63,7 @@ func newUpCmd() *cobra.Command {
 	var yes bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
-	upWorkingDirectory := func(opts backend.UpdateOptions) *result.Result {
+	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
 		s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 		if err != nil {
 			return result.FromError(err)
@@ -118,7 +118,7 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) *result.Result {
+	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) result.Result {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false)
 		if err != nil {
@@ -278,7 +278,7 @@ func newUpCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) *result.Result {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
