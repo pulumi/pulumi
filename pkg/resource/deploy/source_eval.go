@@ -122,7 +122,7 @@ type evalSourceIterator struct {
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
-	finChan     chan result.Result                // the channel that communicates completion.
+	finChan     chan result.Result                 // the channel that communicates completion.
 	done        bool                               // set to true when the evaluation is done.
 }
 
@@ -159,8 +159,12 @@ func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
 		// that the language runtime has exited and so calling Close on the plugin is fine.
 		// fmt.Printf("evalSourceIterator.next.  got error and returned it: %v\n", err)
 		iter.done = true
-		if res != nil && !res.IsBail() {
-			logging.V(5).Infof("EvalSourceIterator ended with an error: %v", res.Error())
+		if res != nil {
+			if res.IsBail() {
+				logging.V(5).Infof("EvalSourceIterator ended with bail.")
+			} else {
+				logging.V(5).Infof("EvalSourceIterator ended with an error: %v", res.Error())
+			}
 		}
 		return nil, res
 	}
