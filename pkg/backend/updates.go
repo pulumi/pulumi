@@ -47,7 +47,7 @@ const (
 	GitHead = "git.head"
 	// GitHeadName is the name of the HEAD ref. e.g. "refs/heads/master" or "refs/tags/v1.0.0".
 	GitHeadName = "git.headName"
-	// GitDirty ("true", "false") indiciates if there are any unstaged or modified files in the local repo.
+	// GitDirty ("true", "false") indicates if there are any unstaged or modified files in the local repo.
 	GitDirty = "git.dirty"
 
 	// GitCommitter is the name of the person who committed the commit at HEAD.
