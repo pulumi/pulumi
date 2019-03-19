@@ -106,19 +106,16 @@ func newUpCmd() *cobra.Command {
 			Scopes: cancellationScopes,
 		})
 
-		if res != nil && res.Error() == context.Canceled {
+		switch {
+		case res != nil && res.Error() == context.Canceled:
 			return result.FromError(errors.New("update cancelled"))
-		}
-
-		if res != nil {
+		case res != nil:
 			return PrintEngineResult(res)
-		}
-
-		if expectNop && changes != nil && changes.HasChanges() {
+		case expectNop && changes != nil && changes.HasChanges():
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
+		default:
+			return nil
 		}
-
-		return nil
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
@@ -254,19 +251,16 @@ func newUpCmd() *cobra.Command {
 			Scopes: cancellationScopes,
 		})
 
-		if res != nil && res.Error() == context.Canceled {
+		switch {
+		case res != nil && res.Error() == context.Canceled:
 			return result.FromError(errors.New("update cancelled"))
-		}
-
-		if res != nil {
+		case res != nil:
 			return PrintEngineResult(res)
-		}
-
-		if expectNop && changes != nil && changes.HasChanges() {
+		case expectNop && changes != nil && changes.HasChanges():
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
+		default:
+			return nil
 		}
-
-		return nil
 	}
 
 	var cmd = &cobra.Command{
