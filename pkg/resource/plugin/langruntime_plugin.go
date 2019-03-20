@@ -127,10 +127,11 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 
 }
 
-// Run executes a program in the language runtime for planning or deployment purposes.  If info.DryRun is true,
-// the code must not assume that side-effects or final values resulting from resource deployments are actually
-// available.  If it is false, on the other hand, a real deployment is occurring and it may safely depend on these.
-func (h *langhost) Run(info RunInfo) (string, error) {
+// Run executes a program in the language runtime for planning or deployment purposes.  If
+// info.DryRun is true, the code must not assume that side-effects or final values resulting from
+// resource deployments are actually available.  If it is false, on the other hand, a real
+// deployment is occurring and it may safely depend on these.
+func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	config := make(map[string]string)
@@ -152,13 +153,14 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
 			h.runtime, info.Pwd, info.Program, info.DryRun, rpcError)
-		return "", rpcError
+		return "", false, rpcError
 	}
 
 	progerr := resp.GetError()
+	bail := resp.GetBail()
 	logging.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
 		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
-	return progerr, nil
+	return progerr, bail, nil
 }
 
 // GetPluginInfo returns this plugin's information.

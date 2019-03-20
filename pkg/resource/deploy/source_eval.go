@@ -193,8 +193,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 			}
 
 			// Now run the actual program.
-			var progerr string
-			progerr, err = langhost.Run(plugin.RunInfo{
+			progerr, bail, err := langhost.Run(plugin.RunInfo{
 				MonitorAddress: iter.mon.Address(),
 				Stack:          string(iter.src.runinfo.Target.Name),
 				Project:        string(iter.src.runinfo.Proj.Name),
@@ -205,6 +204,12 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				DryRun:         iter.src.dryRun,
 				Parallel:       opts.Parallel,
 			})
+
+			// Check if we were asked to Bail.  This a special random constant used for that
+			// purpose.
+			if err == nil && bail {
+				return result.Bail()
+			}
 
 			if err == nil && progerr != "" {
 				// If the program had an unhandled error; propagate it to the caller.
