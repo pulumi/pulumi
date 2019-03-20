@@ -206,6 +206,8 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				Parallel:       opts.Parallel,
 			})
 
+			// Check if we were asked to Bail.  This a special random constant used for that
+			// purpose.
 			if err == nil && progerr == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
 				return result.Bail()
 			}
