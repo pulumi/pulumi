@@ -112,9 +112,9 @@ func newUpCmd() *cobra.Command {
 			return PrintEngineResult(res)
 		case expectNop && changes != nil && changes.HasChanges():
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
+		default:
+			return nil
 		}
-
-		return nil
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
@@ -256,9 +256,9 @@ func newUpCmd() *cobra.Command {
 			return PrintEngineResult(res)
 		case expectNop && changes != nil && changes.HasChanges():
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
+		default:
+			return nil
 		}
-
-		return nil
 	}
 
 	var cmd = &cobra.Command{
