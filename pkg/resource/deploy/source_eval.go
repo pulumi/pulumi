@@ -157,7 +157,6 @@ func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
 	case res := <-iter.finChan:
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
-		// fmt.Printf("evalSourceIterator.next.  got error and returned it: %v\n", err)
 		iter.done = true
 		if res != nil {
 			if res.IsBail() {
