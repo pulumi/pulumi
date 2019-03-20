@@ -270,7 +270,7 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 }
 
 func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	// Get the stack.
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
@@ -286,7 +286,7 @@ func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, result.FromError(err)
@@ -295,7 +295,7 @@ func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReferen
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, result.FromError(err)
@@ -304,7 +304,7 @@ func (b *localBackend) Refresh(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, result.FromError(err)
@@ -316,7 +316,7 @@ func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (engine.ResourceChanges, *result.Result) {
+	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -371,7 +371,7 @@ func (b *localBackend) apply(
 	// Perform the update
 	start := time.Now().Unix()
 	var changes engine.ResourceChanges
-	var updateRes *result.Result
+	var updateRes result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
 		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)

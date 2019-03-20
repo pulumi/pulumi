@@ -38,7 +38,7 @@ func (src *errorSource) Project() tokens.PackageName { return src.project }
 func (src *errorSource) Info() interface{}           { return nil }
 
 func (src *errorSource) Iterate(
-	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
+	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {
 
 	panic("internal error: unexpected call to errorSource.Iterate")
 }

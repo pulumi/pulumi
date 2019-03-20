@@ -16,7 +16,7 @@ import (
 
 // PrintEngineResult optionally provides a place for the CLI to provide human-friendly error
 // messages for messages that can happen during normal engine operation.
-func PrintEngineResult(res *result.Result) *result.Result {
+func PrintEngineResult(res result.Result) result.Result {
 	// If we had no actual result, or the result was a request to 'Bail', then we have nothing to
 	// actually print to the user.
 	if res == nil || res.IsBail() {

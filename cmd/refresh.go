@@ -57,7 +57,7 @@ func newRefreshCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) *result.Result {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
@@ -108,16 +108,19 @@ func newRefreshCmd() *cobra.Command {
 				Scopes: cancellationScopes,
 			})
 
-			if res != nil && res.Error() == context.Canceled {
-				return  result.FromError(errors.New("refresh cancelled"))
-			}
-
-			if res != nil {
+			switch {
+			case res != nil && res.Error() == context.Canceled:
+				return result.FromError(errors.New("refresh cancelled"))
+			case res != nil:
 				return PrintEngineResult(res)
+			case expectNop && changes != nil && changes.HasChanges():
+				return result.FromError(errors.New("error: no changes were expected but changes occurred"))
+			default:
+				return nil
 			}
 
 			if expectNop && changes != nil && changes.HasChanges() {
-				return  result.FromError(errors.New("error: no changes were expected but changes occurred"))
+				return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 			}
 
 			return nil

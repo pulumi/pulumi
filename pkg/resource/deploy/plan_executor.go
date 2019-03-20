@@ -53,7 +53,7 @@ func (pe *planExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview bool) *result.Result {
+func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview bool) result.Result {
 	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context is cancelled. We do
 	// not hang this off of the context we create below because we do not want the failure of a single step to cause
 	// other steps to fail.
@@ -107,7 +107,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
 		Event  SourceEvent
-		Result *result.Result
+		Result result.Result
 	}
 	incomingEvents := make(chan nextEvent)
 	go func() {
@@ -133,7 +133,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
-	canceled, res := func() (bool, *result.Result) {
+	canceled, res := func() (bool, result.Result) {
 		logging.V(4).Infof("planExecutor.Execute(...): waiting for incoming events")
 		for {
 			select {
@@ -145,7 +145,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError("", event.Result.Error())
 					}
 					cancel()
-					return false, event.Result
+
+					// We reported any errors above.  So we can just bail now.
+					return false, result.Bail()
 				}
 
 				if event.Event == nil {
@@ -176,7 +178,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
 					}
 					cancel()
-					return false, result.FromError(result.TODO())
+					return false, result.Bail()
 				}
 			case <-ctx.Done():
 				logging.V(4).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
@@ -211,11 +213,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) *result.Result {
+func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
-	var res *result.Result
+	var res result.Result
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")

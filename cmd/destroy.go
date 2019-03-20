@@ -57,7 +57,7 @@ func newDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) *result.Result {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
@@ -110,7 +110,6 @@ func newDestroyCmd() *cobra.Command {
 			if res != nil && res.Error() == context.Canceled {
 				return result.FromError(errors.New("destroy cancelled"))
 			}
-
 			return PrintEngineResult(res)
 		}),
 	}

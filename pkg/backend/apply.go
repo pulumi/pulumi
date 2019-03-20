@@ -44,7 +44,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, *result.Result)
+	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -78,7 +78,11 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
+<<<<<<< HEAD
 	op UpdateOperation, apply Applier) (engine.ResourceChanges, *result.Result) {
+=======
+	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
+>>>>>>> origin/master
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -188,7 +192,11 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
+<<<<<<< HEAD
 	op UpdateOperation, apply Applier) (engine.ResourceChanges, *result.Result) {
+=======
+	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
+>>>>>>> origin/master
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {

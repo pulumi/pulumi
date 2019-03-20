@@ -69,19 +69,19 @@ func (s *localStack) Rename(ctx context.Context, newName tokens.QName) error {
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
-func (s *localStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *localStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, *result.Result) {
+func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.DestroyStack(ctx, s, op)
 }
 

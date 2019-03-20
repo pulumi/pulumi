@@ -103,13 +103,13 @@ type Backend interface {
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, *result.Result)
+	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, *result.Result)
+	Update(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, *result.Result)
+	Refresh(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, *result.Result)
+	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).

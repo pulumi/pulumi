@@ -41,7 +41,7 @@ type Source interface {
 	Info() interface{}
 
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
-	Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result)
+	Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result)
 }
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
@@ -49,7 +49,7 @@ type SourceIterator interface {
 	io.Closer
 
 	// Next returns the next event from the source.
-	Next() (SourceEvent, *result.Result)
+	Next() (SourceEvent, result.Result)
 }
 
 // SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source

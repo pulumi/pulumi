@@ -85,7 +85,7 @@ func (src *evalSource) Info() interface{} { return src.runinfo }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(
-	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, *result.Result) {
+	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {
 
 	contract.Ignore(ctx) // TODO[pulumi/pulumi#1714]
 
@@ -105,7 +105,7 @@ func (src *evalSource) Iterate(
 		regChan:     regChan,
 		regOutChan:  regOutChan,
 		regReadChan: regReadChan,
-		finChan:     make(chan *result.Result),
+		finChan:     make(chan result.Result),
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -122,7 +122,7 @@ type evalSourceIterator struct {
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
-	finChan     chan *result.Result                // the channel that communicates completion.
+	finChan     chan result.Result                 // the channel that communicates completion.
 	done        bool                               // set to true when the evaluation is done.
 }
 
@@ -131,7 +131,7 @@ func (iter *evalSourceIterator) Close() error {
 	return iter.mon.Cancel()
 }
 
-func (iter *evalSourceIterator) Next() (SourceEvent, *result.Result) {
+func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
 	// If we are done, quit.
 	if iter.done {
 		return nil, nil
@@ -159,8 +159,12 @@ func (iter *evalSourceIterator) Next() (SourceEvent, *result.Result) {
 		// that the language runtime has exited and so calling Close on the plugin is fine.
 		// fmt.Printf("evalSourceIterator.next.  got error and returned it: %v\n", err)
 		iter.done = true
-		if res != nil && !res.IsBail() {
-			logging.V(5).Infof("EvalSourceIterator ended with an error: %v", res.Error())
+		if res != nil {
+			if res.IsBail() {
+				logging.V(5).Infof("EvalSourceIterator ended with bail.")
+			} else {
+				logging.V(5).Infof("EvalSourceIterator ended with an error: %v", res.Error())
+			}
 		}
 		return nil, res
 	}
@@ -172,7 +176,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
 		// Next, launch the language plugin.
-		run := func() *result.Result {
+		run := func() result.Result {
 			rt := iter.src.runinfo.Proj.Runtime.Name()
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
 			if err != nil {
