@@ -193,8 +193,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 			}
 
 			// Now run the actual program.
-			var progerr string
-			progerr, bail, err = langhost.Run(plugin.RunInfo{
+			progerr, bail, err := langhost.Run(plugin.RunInfo{
 				MonitorAddress: iter.mon.Address(),
 				Stack:          string(iter.src.runinfo.Target.Name),
 				Project:        string(iter.src.runinfo.Proj.Name),
