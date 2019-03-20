@@ -49,13 +49,14 @@ export class Config {
      * @param key The key to lookup.
      * @param opts An options bag to constrain legal values.
      */
-    public get(key: string, opts?: StringConfigOptions): string | undefined {
-        const v = getConfig(this.fullKey(key));
+    public get<K extends string = string>(key: string, opts?: StringConfigOptions<K>): K | undefined {
+        const v: string | undefined = getConfig(this.fullKey(key));
         if (v === undefined) {
             return undefined;
         }
         if (opts) {
-            if (opts.allowedValues !== undefined && opts.allowedValues.indexOf(v) === -1) {
+            // SAFETY: if allowedValues != null, verifying v ∈ K[]
+            if (opts.allowedValues !== undefined && opts.allowedValues.indexOf(v as any) === -1) {
                 throw new ConfigEnumError(this.fullKey(key), v, opts.allowedValues);
             } else if (opts.minLength !== undefined && v.length < opts.minLength) {
                 throw new ConfigRangeError(this.fullKey(key), v, opts.minLength, undefined);
@@ -71,7 +72,10 @@ export class Config {
                 }
             }
         }
-        return v;
+        // SAFETY:
+        // allowedValues != null ⇒ v ∈ K[]
+        // allowedValues == null ⇒ K = string & v : string
+        return v as K;
     }
 
     /**
@@ -143,8 +147,8 @@ export class Config {
      * @param key The key to lookup.
      * @param opts An options bag to constrain legal values.
      */
-    public require(key: string, opts?: StringConfigOptions): string {
-        const v: string | undefined = this.get(key, opts);
+    public require<K extends string = string>(key: string, opts?: StringConfigOptions<K>): K {
+        const v: K | undefined = this.get(key, opts);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
         }
@@ -207,11 +211,11 @@ export class Config {
 /**
  * StringConfigOptions may be used to constrain the set of legal values a string config value may contain.
  */
-interface StringConfigOptions {
+interface StringConfigOptions<K extends string = string> {
     /**
      * The legal enum values. If it does not match, a ConfigEnumError is thrown.
      */
-    allowedValues?: string[];
+    allowedValues?: K[];
     /**
      * The minimum string length. If the string is not this long, a ConfigRangeError is thrown.
      */
