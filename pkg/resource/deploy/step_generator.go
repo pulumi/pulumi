@@ -180,7 +180,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		if err != nil {
 			return nil, result.FromError(err)
 		} else if analyzer == nil {
-			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
+			sg.plan.ctx.Diag.Errorf(diag.GetAnalyzerCouldNotBeLoadedError(urn), a)
+			return nil, result.Bail()
 		}
 		var failures []plugin.AnalyzeFailure
 		failures, err = analyzer.Analyze(new.Type, inputs)

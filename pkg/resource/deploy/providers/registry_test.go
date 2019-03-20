@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -78,7 +79,7 @@ type testProvider struct {
 	version     semver.Version
 	configured  bool
 	checkConfig func(resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	diffConfig  func(resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
+	diffConfig  func(resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, result.Result)
 	config      func(resource.PropertyMap) error
 }
 
@@ -95,7 +96,7 @@ func (prov *testProvider) CheckConfig(olds,
 	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.checkConfig(olds, news)
 }
-func (prov *testProvider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+func (prov *testProvider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 	return prov.diffConfig(olds, news)
 }
 func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
@@ -118,8 +119,8 @@ func (prov *testProvider) Read(urn resource.URN, id resource.ID,
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
 }
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
-	return plugin.DiffResult{}, errors.New("unsupported")
+	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, result.Result) {
+	return plugin.DiffResult{}, result.FromError(errors.New("unsupported"))
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
@@ -205,7 +206,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 			checkConfig: func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				return news, nil, nil
 			},
-			diffConfig: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+			diffConfig: func(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 				return plugin.DiffResult{}, nil
 			},
 			config: config,
@@ -458,8 +459,8 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false)
-		assert.NoError(t, err)
+		diff, res := r.Diff(urn, id, olds, news, false)
+		assert.Nil(t, res)
 		assert.Equal(t, plugin.DiffResult{}, diff)
 
 		// The old provider should still be registered.
@@ -515,7 +516,7 @@ func TestCRUDPreview(t *testing.T) {
 				checkConfig: func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
-				diffConfig: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				diffConfig: func(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 					// Always reuquire replacement.
 					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
 				},
@@ -584,8 +585,8 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false)
-		assert.NoError(t, err)
+		diff, res := r.Diff(urn, id, olds, news, false)
+		assert.Nil(t, res)
 		assert.Equal(t, plugin.DiffResult{}, diff)
 
 		// The new provider should be registered.
@@ -617,8 +618,8 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false)
-		assert.NoError(t, err)
+		diff, res := r.Diff(urn, id, olds, news, false)
+		assert.Nil(t, res)
 		assert.True(t, diff.Replace())
 
 		// The new provider should be not be registered; the registered provider should still be the original.

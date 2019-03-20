@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -33,12 +34,12 @@ type Provider struct {
 	configured bool
 
 	CheckConfigF func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	DiffConfigF  func(olds, news resource.PropertyMap) (plugin.DiffResult, error)
+	DiffConfigF  func(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result)
 	ConfigureF   func(news resource.PropertyMap) error
 
 	CheckF func(urn resource.URN,
 		olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	DiffF   func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error)
+	DiffF   func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, result.Result)
 	CreateF func(urn resource.URN,
 		inputs resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	UpdateF func(urn resource.URN, id resource.ID,
@@ -82,7 +83,7 @@ func (prov *Provider) CheckConfig(olds,
 	}
 	return prov.CheckConfigF(olds, news)
 }
-func (prov *Provider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+func (prov *Provider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 	if prov.DiffConfigF == nil {
 		return plugin.DiffResult{}, nil
 	}
@@ -113,7 +114,7 @@ func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap) (reso
 	return prov.CreateF(urn, props)
 }
 func (prov *Provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, result.Result) {
 	if prov.DiffF == nil {
 		return plugin.DiffResult{}, nil
 	}

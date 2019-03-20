@@ -66,3 +66,7 @@ func GetConfigurationUnknownError(urn resource.URN) *Diag {
 		"This preview may not correctly represent the changes that will be applied during an update."
 	return newError(urn, 2008, message)
 }
+
+func GetAnalyzerCouldNotBeLoadedError(urn resource.URN) *Diag {
+	return newError(urn, 2009, "analyzer '%v' could not be loaded from your $PATH")
+}

@@ -707,7 +707,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -785,7 +785,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -874,7 +874,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -984,9 +984,9 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 
-					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
+					return plugin.DiffResult{}, result.FromError(plugin.DiffUnavailable("diff unavailable"))
 				},
 			}, nil
 		}),
@@ -2193,7 +2193,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 					}, nil
@@ -2585,7 +2585,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -2595,7 +2595,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
@@ -2741,7 +2741,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
