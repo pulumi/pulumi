@@ -11,6 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -45,8 +46,7 @@ func (p *builtinProvider) CheckConfig(olds,
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
-
+func (p *builtinProvider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
@@ -81,8 +81,9 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 	return inputs, nil, nil
 }
 
-func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
-	allowUnknowns bool) (plugin.DiffResult, error) {
+func (p *builtinProvider) Diff(
+	urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
+	allowUnknowns bool) (plugin.DiffResult, result.Result) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 

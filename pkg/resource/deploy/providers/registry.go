@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -191,9 +192,9 @@ func (r *Registry) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (r *Registry) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+func (r *Registry) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, result.Result) {
 	contract.Fail()
-	return plugin.DiffResult{}, errors.New("the provider registry is not configurable")
+	return plugin.DiffResult{}, result.FromError(errors.New("the provider registry is not configurable"))
 }
 
 func (r *Registry) Configure(props resource.PropertyMap) error {
@@ -256,8 +257,9 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 
 // Diff diffs the configuration of the indicated provider. The provider corresponding to the given URN must have
 // previously been loaded by a call to Check.
-func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-	allowUnknowns bool) (plugin.DiffResult, error) {
+func (r *Registry) Diff(
+	urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+	allowUnknowns bool) (plugin.DiffResult, result.Result) {
 
 	contract.Require(id != "", "id")
 
@@ -274,17 +276,17 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 		provider, ok = r.GetProvider(mustNewReference(urn, id))
 		contract.Assertf(ok, "Provider must have been registered by NewRegistry for DBR Diff (%v::%v)", urn, id)
 
-		diff, err := provider.DiffConfig(olds, news)
-		if err != nil {
-			return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
+		diff, res := provider.DiffConfig(olds, news)
+		if res != nil {
+			return plugin.DiffResult{Changes: plugin.DiffUnknown}, res
 		}
 		return diff, nil
 	}
 
 	// Diff the properties.
-	diff, err := provider.DiffConfig(olds, news)
-	if err != nil {
-		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
+	diff, res := provider.DiffConfig(olds, news)
+	if res != nil {
+		return plugin.DiffResult{Changes: plugin.DiffUnknown}, res
 	}
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.

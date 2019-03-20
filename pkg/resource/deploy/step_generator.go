@@ -265,15 +265,20 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			diff = plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}
 		} else {
 			// Determine whether the change resulted in a diff.
-			d, diffErr := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
-			if diffErr != nil {
+			d, diffRes := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
+			if diffRes != nil {
+				if diffRes.IsBail() {
+					return nil, diffRes
+				}
+
 				// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 				// report the message contained in the error.
+				diffErr := diffRes.Error()
 				if _, ok := diffErr.(plugin.DiffUnavailableError); ok {
 					d = plugin.DiffResult{Changes: plugin.DiffSome}
 					sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, diffErr.Error()))
 				} else {
-					return nil, result.FromError(diffErr)
+					return nil, res
 				}
 			}
 			diff = d
@@ -569,8 +574,9 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 }
 
 // diff returns a DiffResult for the given resource.
-func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
+func (sg *stepGenerator) diff(
+	urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, result.Result) {
 
 	// Workaround #1251: unexpected replaces.
 	//
@@ -591,9 +597,9 @@ func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOu
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns)
-	if err != nil {
-		return diff, err
+	diff, res := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns)
+	if res != nil {
+		return diff, res
 	}
 	if diff.Changes == plugin.DiffUnknown {
 		diff.Changes = plugin.DiffSome
@@ -722,9 +728,9 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assert(prov != nil)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
-		if err != nil {
-			return false, nil, result.FromError(err)
+		diff, res := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
+		if res != nil {
+			return false, nil, res
 		}
 		return diff.Replace(), diff.ReplaceKeys, nil
 	}

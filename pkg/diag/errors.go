@@ -60,3 +60,9 @@ func GetBadProviderError(urn resource.URN) *Diag {
 func GetUnknownProviderError(urn resource.URN) *Diag {
 	return newError(urn, 2007, "unknown provider '%v' for resource '%v'")
 }
+
+func GetConfigurationUnknownError(urn resource.URN) *Diag {
+	const message = "The provider for this resource has inputs that are not known during preview.\n" +
+		"This preview may not correctly represent the changes that will be applied during an update."
+	return newError(urn, 2008, message)
+}

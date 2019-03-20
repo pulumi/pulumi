@@ -25,10 +25,12 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -104,7 +106,7 @@ func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, error) {
+func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, result.Result) {
 	// There are two interesting scenarios with the present gRPC interface:
 	// 1. Configuration differences in which all properties are known
 	// 2. Configuration differences in which some new property is unknown.
@@ -241,8 +243,10 @@ func (p *provider) Check(urn resource.URN,
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (DiffResult, error) {
+func (p *provider) Diff(
+	urn resource.URN, id resource.ID,
+	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (DiffResult, result.Result) {
+
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -254,7 +258,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	// Get the RPC client and ensure it's configured.
 	client, err := p.getClient()
 	if err != nil {
-		return DiffResult{}, err
+		return DiffResult{}, result.FromError(err)
 	}
 
 	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
@@ -262,20 +266,20 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	// Instead, indicate that the diff is unavailable and write a message
 	if !p.cfgknown {
 		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
-		const message = "The provider for this resource has inputs that are not known during preview.\n" +
-			"This preview may not correctly represent the changes that will be applied during an update."
-		return DiffResult{}, DiffUnavailable(message)
+
+		p.ctx.Diag.Errorf(diag.GetConfigurationUnknownError(urn))
+		return DiffResult{}, result.Bail()
 	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
 	if err != nil {
-		return DiffResult{}, err
+		return DiffResult{}, result.FromError(err)
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
 		KeepUnknowns: allowUnknowns})
 	if err != nil {
-		return DiffResult{}, err
+		return DiffResult{}, result.FromError(err)
 	}
 
 	resp, err := client.Diff(p.ctx.Request(), &pulumirpc.DiffRequest{
@@ -287,7 +291,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
-		return DiffResult{}, rpcError
+		return DiffResult{}, result.FromError(rpcError)
 	}
 
 	var replaces []resource.PropertyKey

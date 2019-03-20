@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -41,7 +42,7 @@ type Provider interface {
 	// CheckConfig validates the configuration for this resource provider.
 	CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-	DiffConfig(olds, news resource.PropertyMap) (DiffResult, error)
+	DiffConfig(olds, news resource.PropertyMap) (DiffResult, result.Result)
 	// Configure configures the resource provider with "globals" that control its behavior.
 	Configure(inputs resource.PropertyMap) error
 
@@ -51,7 +52,7 @@ type Provider interface {
 		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
 	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
-		allowUnknowns bool) (DiffResult, error)
+		allowUnknowns bool) (DiffResult, result.Result)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
 	Create(urn resource.URN, news resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
