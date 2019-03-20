@@ -194,7 +194,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 
 			// Now run the actual program.
 			var progerr string
-			progerr, err = langhost.Run(plugin.RunInfo{
+			progerr, bail, err = langhost.Run(plugin.RunInfo{
 				MonitorAddress: iter.mon.Address(),
 				Stack:          string(iter.src.runinfo.Target.Name),
 				Project:        string(iter.src.runinfo.Proj.Name),
@@ -208,7 +208,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 
 			// Check if we were asked to Bail.  This a special random constant used for that
 			// purpose.
-			if err == nil && progerr == "A97455BA-8A80-42A5-8639-53CD49E88D75" {
+			if err == nil && bail {
 				return result.Bail()
 			}
 
