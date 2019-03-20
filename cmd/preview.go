@@ -104,9 +104,9 @@ func newPreviewCmd() *cobra.Command {
 				return PrintEngineResult(res)
 			case expectNop && changes != nil && changes.HasChanges():
 				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
+			default:
+				return nil
 			}
-
-			return nil
 		}),
 	}
 
