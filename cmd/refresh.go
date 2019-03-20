@@ -118,12 +118,6 @@ func newRefreshCmd() *cobra.Command {
 			default:
 				return nil
 			}
-
-			if expectNop && changes != nil && changes.HasChanges() {
-				return result.FromError(errors.New("error: no changes were expected but changes occurred"))
-			}
-
-			return nil
 		}),
 	}
 
