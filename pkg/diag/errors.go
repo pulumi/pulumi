@@ -70,3 +70,11 @@ func GetConfigurationUnknownError(urn resource.URN) *Diag {
 func GetAnalyzerCouldNotBeLoadedError(urn resource.URN) *Diag {
 	return newError(urn, 2009, "analyzer '%v' could not be loaded from your $PATH")
 }
+
+func GetConfirmationCancelledError() *Diag {
+	return newError("", 2010, "confirmation cancelled, not proceeding with the %s")
+}
+
+func GetConfirmationDeclinedError() *Diag {
+	return newError("", 2011, "confirmation declined, not proceeding with the %s")
+}

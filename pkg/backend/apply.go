@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -77,7 +78,7 @@ const (
 	details response = "details"
 )
 
-func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
+func PreviewThenPrompt(sink diag.Sink, ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -123,14 +124,16 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	err := confirmBeforeUpdating(kind, stack, events, op.Opts)
+	res = confirmBeforeUpdating(sink, kind, stack, events, op.Opts)
 	close(eventsChannel)
-	return changes, result.WrapIfNonNil(err)
+	return changes, res
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
-func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, opts UpdateOptions) error {
+func confirmBeforeUpdating(
+	sink diag.Sink, kind apitype.UpdateKind, stack Stack,
+	events []engine.Event, opts UpdateOptions) result.Result {
+
 	for {
 		var response string
 
@@ -167,11 +170,13 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			Options: choices,
 			Default: string(no),
 		}, &response, nil); err != nil {
-			return errors.Wrapf(err, "confirmation cancelled, not proceeding with the %s", kind)
+			sink.Errorf(diag.GetConfirmationCancelledError(), kind)
+			return result.Bail()
 		}
 
 		if response == string(no) {
-			return errors.Errorf("confirmation declined, not proceeding with the %s", kind)
+			sink.Errorf(diag.GetConfirmationDeclinedError(), kind)
+			return result.Bail()
 		}
 
 		if response == string(yes) {
