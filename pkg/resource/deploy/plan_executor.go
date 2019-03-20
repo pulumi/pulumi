@@ -38,12 +38,13 @@ type planExecutor struct {
 }
 
 // execError creates an error appropriate for returning from planExecutor.Execute.
-func execError(message string, preview bool) error {
+func (pe *planExecutor) reportExecResult(message string, preview bool) {
 	kind := "update"
 	if preview {
 		kind = "preview"
 	}
-	return errors.New(kind + " " + message)
+
+	pe.reportError("", errors.New(kind+" "+message))
 }
 
 // reportError reports a single error to the executor's diag stream with the indicated URN for context.
@@ -74,8 +75,8 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
 	if opts.Refresh {
-		if err := pe.refresh(callerCtx, opts, preview); err != nil {
-			return result.FromError(err)
+		if res := pe.refresh(callerCtx, opts, preview); res != nil {
+			return res
 		}
 		if opts.RefreshOnly {
 			return nil
@@ -92,8 +93,8 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	pe.stepGen = newStepGenerator(pe.plan, opts)
 
 	// Retire any pending deletes that are currently present in this plan.
-	if err := pe.retirePendingDeletes(callerCtx, opts, preview); err != nil {
-		return result.FromError(err)
+	if res := pe.retirePendingDeletes(callerCtx, opts, preview); res != nil {
+		return res
 	}
 
 	// Derive a cancellable context for this plan. We will only cancel this context if some piece of the plan's
@@ -197,18 +198,18 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		return res
 	}
 
-	var err error
-	if res != nil {
-		err = res.Error()
+	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
+	if res != nil || pe.stepExec.Errored() {
+		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
+		// we be doing a merge here?
+		pe.reportExecResult("failed", preview)
+		return result.Bail()
+	} else if canceled {
+		pe.reportExecResult("canceled", preview)
+		return result.Bail()
 	}
 
-	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if err != nil || pe.stepExec.Errored() {
-		err = execError("failed", preview)
-	} else if canceled {
-		err = execError("canceled", preview)
-	}
-	return result.WrapIfNonNil(err)
+	return res
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
@@ -243,7 +244,7 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
 // ensures that the engine never sees any resources that are pending deletion from a previous plan.
 //
 // retirePendingDeletes re-uses the plan executor's step generator but uses its own step executor.
-func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Options, preview bool) error {
+func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Options, preview bool) result.Result {
 	contract.Require(pe.stepGen != nil, "pe.stepGen != nil")
 	steps := pe.stepGen.GeneratePendingDeletes()
 	if len(steps) == 0 {
@@ -273,15 +274,17 @@ func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Opt
 	// cancelled.
 	canceled := callerCtx.Err() != nil
 	if stepExec.Errored() {
-		return execError("failed", preview)
+		pe.reportExecResult("failed", preview)
+		return result.Bail()
 	} else if canceled {
-		return execError("canceled", preview)
+		pe.reportExecResult("canceled", preview)
+		return result.Bail()
 	}
 	return nil
 }
 
 // refresh refreshes the state of the base checkpoint file for the current plan in memory.
-func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview bool) error {
+func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview bool) result.Result {
 	prev := pe.plan.prev
 	if prev == nil || len(prev.Resources) == 0 {
 		return nil
@@ -364,9 +367,11 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	canceled := callerCtx.Err() != nil
 
 	if stepExec.Errored() {
-		return execError("failed", preview)
+		pe.reportExecResult("failed", preview)
+		return result.Bail()
 	} else if canceled {
-		return execError("canceled", preview)
+		pe.reportExecResult("canceled", preview)
+		return result.Bail()
 	}
 	return nil
 }
