@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
@@ -137,9 +138,9 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false)
 
 	// Fetch the provider for this resource.
-	prov, res := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
-	if res != nil {
-		return nil, res
+	prov, err := sg.getResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
+	if err != nil {
+		return nil, result.FromError(err)
 	}
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
@@ -152,7 +153,6 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	wasExternal := hasOld && old.External
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
-	var err error
 	if prov != nil {
 		var failures []plugin.CheckFailure
 
@@ -334,9 +334,9 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 					// trustworthy, which is interpreted by the DependencyGraph type.
 					var steps []Step
 					if sg.opts.TrustDependencies {
-						toReplace, res := sg.calculateDependentReplacements(old)
-						if res != nil {
-							return nil, res
+						toReplace, err := sg.calculateDependentReplacements(old)
+						if err != nil {
+							return nil, result.FromError(err)
 						}
 
 						// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
@@ -620,8 +620,8 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 	return true
 }
 
-func (sg *stepGenerator) loadResourceProvider(
-	urn resource.URN, custom bool, provider string, typ tokens.Type) (plugin.Provider, result.Result) {
+func (sg *stepGenerator) getResourceProvider(
+	urn resource.URN, custom bool, provider string, typ tokens.Type) (plugin.Provider, error) {
 
 	// If this is not a custom resource, then it has no provider by definition.
 	if !custom {
@@ -637,13 +637,11 @@ func (sg *stepGenerator) loadResourceProvider(
 	contract.Assert(provider != "")
 	ref, refErr := providers.ParseReference(provider)
 	if refErr != nil {
-		sg.plan.Diag().Errorf(diag.GetBadProviderError(urn), provider, urn, refErr)
-		return nil, result.Bail()
+		return nil, errors.Errorf("bad provider reference '%v' for resource '%v': %v", provider, urn, refErr)
 	}
 	p, ok := sg.plan.GetProvider(ref)
 	if !ok {
-		sg.plan.Diag().Errorf(diag.GetUnknownProviderError(urn), provider, urn, refErr)
-		return nil, result.Bail()
+		return nil, errors.Errorf("unknown provider '%v' for resource '%v'", ref, urn)
 	}
 	return p, nil
 }
@@ -653,7 +651,7 @@ type dependentReplace struct {
 	keys []resource.PropertyKey
 }
 
-func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]dependentReplace, result.Result) {
+func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]dependentReplace, error) {
 	// We need to compute the set of resources that may be replaced by a change to the resource under consideration.
 	// We do this by taking the complete set of transitive dependents on the resource under consideration and
 	// removing any resources that would not be replaced by changes to their dependencies. We determine whether or not
@@ -677,7 +675,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	var toReplace []dependentReplace
 	replaceSet := map[resource.URN]bool{root.URN: true}
 
-	requiresReplacement := func(r *resource.State) (bool, []resource.PropertyKey, result.Result) {
+	requiresReplacement := func(r *resource.State) (bool, []resource.PropertyKey, error) {
 		// Neither component nor external resources require replacement.
 		if !r.Custom || r.External {
 			return false, nil, nil
@@ -687,7 +685,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		if r.Provider != "" {
 			ref, err := providers.ParseReference(r.Provider)
 			if err != nil {
-				return false, nil, result.FromError(err)
+				return false, nil, err
 			}
 			if replaceSet[ref.URN()] {
 				return true, nil, nil
@@ -715,25 +713,25 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 		// Otherwise, fetch the resource's provider. Since we have filtered out component resources, this resource must
 		// have a provider.
-		prov, res := sg.loadResourceProvider(r.URN, r.Custom, r.Provider, r.Type)
-		if res != nil {
-			return false, nil, res
+		prov, err := sg.getResourceProvider(r.URN, r.Custom, r.Provider, r.Type)
+		if err != nil {
+			return false, nil, err
 		}
 		contract.Assert(prov != nil)
 
 		// Call the provider's `Diff` method and return.
 		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
 		if err != nil {
-			return false, nil, result.FromError(err)
+			return false, nil, err
 		}
 		return diff.Replace(), diff.ReplaceKeys, nil
 	}
 
 	// Walk the root resource's dependents in order and build up the set of resources that require replacement.
 	for _, d := range sg.plan.depGraph.DependingOn(root) {
-		replace, keys, res := requiresReplacement(d)
-		if res != nil {
-			return nil, res
+		replace, keys, err := requiresReplacement(d)
+		if err != nil {
+			return nil, err
 		}
 		if replace {
 			toReplace, replaceSet[d.URN] = append(toReplace, dependentReplace{res: d, keys: keys}), true

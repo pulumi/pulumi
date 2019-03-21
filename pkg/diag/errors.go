@@ -52,11 +52,3 @@ func GetAnalyzeResourceFailureError(urn resource.URN) *Diag {
 func GetPreviewFailedError(urn resource.URN) *Diag {
 	return newError(urn, 2005, "Preview failed: %v")
 }
-
-func GetBadProviderError(urn resource.URN) *Diag {
-	return newError(urn, 2006, "bad provider reference '%v' for resource '%v': %v")
-}
-
-func GetUnknownProviderError(urn resource.URN) *Diag {
-	return newError(urn, 2007, "unknown provider '%v' for resource '%v'")
-}
