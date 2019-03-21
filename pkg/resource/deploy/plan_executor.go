@@ -37,7 +37,7 @@ type planExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this plan
 }
 
-// execError creates an error appropriate for returning from planExecutor.Execute.
+// reportExecResult issues an appropriate diagnostic depending on went wrong.
 func (pe *planExecutor) reportExecResult(message string, preview bool) {
 	kind := "update"
 	if preview {
