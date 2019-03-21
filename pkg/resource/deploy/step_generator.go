@@ -137,7 +137,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false)
 
 	// Fetch the provider for this resource.
-	prov, res := sg.getResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
+	prov, res := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
 	if res != nil {
 		return nil, res
 	}
@@ -627,7 +627,7 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 	return true
 }
 
-func (sg *stepGenerator) getResourceProvider(
+func (sg *stepGenerator) loadResourceProvider(
 	urn resource.URN, custom bool, provider string, typ tokens.Type) (plugin.Provider, result.Result) {
 
 	// If this is not a custom resource, then it has no provider by definition.
@@ -722,7 +722,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 		// Otherwise, fetch the resource's provider. Since we have filtered out component resources, this resource must
 		// have a provider.
-		prov, res := sg.getResourceProvider(r.URN, r.Custom, r.Provider, r.Type)
+		prov, res := sg.loadResourceProvider(r.URN, r.Custom, r.Provider, r.Type)
 		if res != nil {
 			return false, nil, res
 		}
