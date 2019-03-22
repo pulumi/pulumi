@@ -18,7 +18,8 @@ lint::
 
 build_package::
 	./node_modules/.bin/tsc
-	cp tests/runtime/jsClosureCases.js bin/tests/runtime
+	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
+	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp README.md ../../LICENSE package.json ./dist/* bin/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}

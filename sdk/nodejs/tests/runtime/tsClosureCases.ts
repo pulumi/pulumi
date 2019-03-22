@@ -21,6 +21,7 @@ import * as pulumi from "../../index";
 import { output } from "../../output";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as typescript from "typescript";
+import * as semver from "semver";
 
 import * as deploymentOnlyModule from "./deploymentOnlyModule";
 
@@ -5785,9 +5786,13 @@ return function () { console.log(regex); foo(); };
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
     // function.
-    const version = Number(process.version.match(/^v(\d+)\.\d+/)![1]);
-    if (version >= 8) {
-        const jsCases = require("./jsClosureCases");
+    if (semver.gte(process.version, "8.0.0")) {
+        const jsCases = require("./jsClosureCases_8");
+        cases.push(...jsCases.cases);
+    }
+
+    if (semver.gte(process.version, "10.4.0")) {
+        const jsCases = require("./jsClosureCases_10_4");
         cases.push(...jsCases.cases);
     }
 
