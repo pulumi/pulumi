@@ -861,6 +861,10 @@ async function getOrCreateEntryAsync(
             entry.json = obj;
             return;
         }
+        else if (typeof obj === "bigint") {
+            entry.expr = `${obj}n`;
+            return;
+        }
         else if (obj instanceof RegExp) {
             entry.regexp = obj;
             return;
