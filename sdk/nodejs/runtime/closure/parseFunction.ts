@@ -185,6 +185,9 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     //      i.e. an arrow function.  Harder to figure out as we have to look further ahead (weakly)
     //      for the `=>` portion.
 
+    if (tryParseAsArrowFunction(funcString)) {
+        return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
+    }
 
     // Using indexOf("{") is mostly acceptable here.  This is purely to see if we're a class or
     // a function with a body.  If we do *not* find a curly *at all*, then this really could
@@ -209,13 +212,12 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         // class constructor function.  We want to get the actual constructor
         // in the class definition (synthesizing an empty one if one does not)
         // exist.
-        const file = ts.createSourceFile("", funcString, ts.ScriptTarget.Latest);
-        const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
-        if (diagnostics.length) {
-            return [`the class could not be parsed: ${diagnostics[0].messageText}`, <any>undefined];
+        const [file, firstDiagnostic] = tryCreateSourceFile(funcString);
+        if (firstDiagnostic) {
+            return [`the class could not be parsed: ${firstDiagnostic}`, <any>undefined];
         }
 
-        const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
+        const classDecl = <ts.ClassDeclaration>file!.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
             return [`the class form was not understood:\n${funcString}`, <any>undefined];
         }
@@ -274,6 +276,29 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     // "function foo() { }"
     // this also does the right thing for functions with computed names.
     return makeFunctionDeclaration(funcString, isAsync, /*isFunctionDeclaration: */ false);
+}
+
+function tryParseAsArrowFunction(toParse: string): boolean {
+    const [file] = tryCreateSourceFile(toParse);
+    if (!file) {
+        return false;
+    }
+
+    if (file.statements.length !== 1) {
+        return false;
+    }
+
+    const firstStatement = file.statements[0];
+    if (!ts.isExpressionStatement(firstStatement)) {
+        return false;
+    }
+
+    const expression = firstStatement.expression;
+    if (!ts.isArrowFunction(expression)) {
+        return false;
+    }
+
+    return true;
 }
 
 function makeFunctionDeclaration(
@@ -342,14 +367,24 @@ function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.S
     // (it's missing a name).  But it's totally legal as "(function () { })".
     const toParse = "(" + funcstr + ")";
 
-    const file = ts.createSourceFile(
-        "", toParse, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
-    if (diagnostics.length) {
-        return [`the function could not be parsed: ${diagnostics[0].messageText}`, null];
+    const [file, firstDiagnostic] = tryCreateSourceFile(toParse);
+    if (firstDiagnostic) {
+        return [`the function could not be parsed: ${firstDiagnostic}`, null];
     }
 
-    return ["", file];
+    return ["", file!];
+}
+
+function tryCreateSourceFile(toParse: string): [ts.SourceFile | undefined, string | undefined] {
+    const file = ts.createSourceFile(
+        "", toParse, ts.ScriptTarget.Latest, /*setParentNodes:*/ true, ts.ScriptKind.TS);
+
+    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
+    if (diagnostics.length) {
+        return [undefined, `${diagnostics[0].messageText}`];
+    }
+
+    return [file, undefined];
 }
 
 function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
