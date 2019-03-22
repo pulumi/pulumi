@@ -223,25 +223,13 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
 
 function tryParseAsArrowFunction(toParse: string): boolean {
     const [file] = tryCreateSourceFile(toParse);
-    if (!file) {
-        return false;
-    }
-
-    if (file.statements.length !== 1) {
+    if (!file || file.statements.length !== 1) {
         return false;
     }
 
     const firstStatement = file.statements[0];
-    if (!ts.isExpressionStatement(firstStatement)) {
-        return false;
-    }
-
-    const expression = firstStatement.expression;
-    if (!ts.isArrowFunction(expression)) {
-        return false;
-    }
-
-    return true;
+    return ts.isExpressionStatement(firstStatement) &&
+           ts.isArrowFunction(firstStatement.expression);
 }
 
 function makeFunctionDeclaration(
