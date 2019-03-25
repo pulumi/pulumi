@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/util/result"
+
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -109,7 +111,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 }
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
-func runStateEdit(stackName string, urn resource.URN, operation edit.OperationFunc) error {
+func runStateEdit(stackName string, urn resource.URN, operation edit.OperationFunc) result.Result {
 	return runTotalStateEdit(stackName, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
@@ -122,17 +124,18 @@ func runStateEdit(stackName string, urn resource.URN, operation edit.OperationFu
 
 // runTotalStateEdit runs a snapshot-mutating function on the entirity of the given stack's snapshot. Before mutating
 // the snapshot, the user is prompted for confirmation if the current session is interactive.
-func runTotalStateEdit(stackName string, operation func(opts display.Options, snap *deploy.Snapshot) error) error {
+func runTotalStateEdit(stackName string,
+	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
 	s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
 	if err != nil {
-		return err
+		return result.FromError(err)
 	}
 	snap, err := s.Snapshot(commandContext())
 	if err != nil {
-		return err
+		return result.FromError(err)
 	}
 
 	if cmdutil.Interactive() {
@@ -145,7 +148,8 @@ func runTotalStateEdit(stackName string, operation func(opts display.Options, sn
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, nil); err != nil || !confirm {
-			return errors.New("confirmation declined")
+			fmt.Println("confirmation declined")
+			return result.Bail()
 		}
 	}
 
@@ -154,7 +158,7 @@ func runTotalStateEdit(stackName string, operation func(opts display.Options, sn
 	// before we mutated it, we'll assert that we didn't make it invalid by mutating it.
 	stackIsAlreadyHosed := snap.VerifyIntegrity() != nil
 	if err = operation(opts, snap); err != nil {
-		return err
+		return result.FromError(err)
 	}
 
 	// If the stack is already broken, don't bother verifying the integrity here.
@@ -165,11 +169,11 @@ func runTotalStateEdit(stackName string, operation func(opts display.Options, sn
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
 	bytes, err := json.Marshal(stack.SerializeDeployment(snap))
 	if err != nil {
-		return err
+		return result.FromError(err)
 	}
 	dep := apitype.UntypedDeployment{
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	}
-	return s.ImportDeployment(commandContext(), &dep)
+	return result.WrapIfNonNil(s.ImportDeployment(commandContext(), &dep))
 }
