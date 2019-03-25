@@ -17,7 +17,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/util/result"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
@@ -41,11 +42,11 @@ func newCancelCmd() *cobra.Command {
 			"\n" +
 			"After this command completes successfully, the stack will be ready for further\n" +
 			"updates.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
 				if stack != "" {
-					return errors.New("only one of --stack or argument stack name may be specified, not both")
+					return result.Error("only one of --stack or argument stack name may be specified, not both")
 				}
 
 				stack = args[0]
@@ -57,25 +58,26 @@ func newCancelCmd() *cobra.Command {
 
 			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			// Ensure that we are targeting the Pulumi cloud.
 			backend, ok := s.Backend().(httpstate.Backend)
 			if !ok {
-				return errors.New("the `cancel` command is not supported for local stacks")
+				return result.Error("the `cancel` command is not supported for local stacks")
 			}
 
 			// Ensure the user really wants to do this.
 			stackName := string(s.Ref().Name())
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
 			if !yes && !confirmPrompt(prompt, stackName, opts) {
-				return errors.New("confirmation declined")
+				fmt.Println("confirmation declined")
+				return result.Bail()
 			}
 
 			// Cancel the update.
 			if err := backend.CancelCurrentUpdate(commandContext(), s.Ref()); err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			msg := fmt.Sprintf(

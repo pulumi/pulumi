@@ -1,9 +1,10 @@
 ## 0.17.4 (Unreleased)
 
-## 0.17.3 (Released March 26, 2019)
+## Improvements
 
-- Add support for serializing JavaScript function that capture [BigInts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt).
-- Support serializing arrow-functions with deconstructed parameters.
+- Don't print the `error:` prefix when Pulumi exists because of a declined confirmation prompt (fixes [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/2070))
+
+## 0.17.3 (Released March 26, 2019)
 
 ### Improvements
 
@@ -12,7 +13,8 @@
 - A bug in the previous version of the Pulumi CLI occasionally caused the Pulumi Engine to load the incorrect resource
   plugin when processing an update. This bug has been fixed in 0.17.3 by performing a deterministic selection of the
   best set of plugins available to the engine before starting up. See
-  [pulumi/pulumi#2579](https://github.com/pulumi/pulumi/issues/2579) for discussion on this issue.
+- Add support for serializing JavaScript function that capture [BigInts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt).
+- Support serializing arrow-functions with deconstructed parameters.
 
 ## 0.17.2 (Released March 15, 2019)
 

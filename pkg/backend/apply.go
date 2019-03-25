@@ -123,14 +123,14 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	err := confirmBeforeUpdating(kind, stack, events, op.Opts)
+	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
-	return changes, result.WrapIfNonNil(err)
+	return changes, res
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, opts UpdateOptions) error {
+	events []engine.Event, opts UpdateOptions) result.Result {
 	for {
 		var response string
 
@@ -167,11 +167,12 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			Options: choices,
 			Default: string(no),
 		}, &response, nil); err != nil {
-			return errors.Wrapf(err, "confirmation cancelled, not proceeding with the %s", kind)
+			return result.FromError(errors.Wrapf(err, "confirmation cancelled, not proceeding with the %s", kind))
 		}
 
 		if response == string(no) {
-			return errors.Errorf("confirmation declined, not proceeding with the %s", kind)
+			fmt.Printf("confirmation declined, not proceeding with the %s\n", kind)
+			return result.Bail()
 		}
 
 		if response == string(yes) {
