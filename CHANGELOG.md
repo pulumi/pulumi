@@ -3,6 +3,8 @@
 ## Improvements
 
 - Don't print the `error:` prefix when Pulumi exists because of a declined confirmation prompt (fixes [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/2070))
+- Fix issue where `Outputs` produced by `pulumi.interpolate` might have values which could
+  cause validation errors due to them containing the text `<computed>` during previews.
 
 ## 0.17.3 (Released March 26, 2019)
 
