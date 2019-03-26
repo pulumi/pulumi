@@ -18,13 +18,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blang/semver"
-
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -143,13 +140,7 @@ func newUpdateSource(
 	}
 
 	// Collect the version information for default providers.
-	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
-	for _, p := range allPlugins.Values() {
-		if p.Kind != workspace.ResourcePlugin {
-			continue
-		}
-		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
-	}
+	defaultProviderVersions := computeDefaultProviderPlugins(languagePlugins, allPlugins)
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.

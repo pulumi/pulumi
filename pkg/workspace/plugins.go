@@ -462,10 +462,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	return "", "", nil
 }
 
-type sortedPluginInfo []PluginInfo
+// SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
+type SortedPluginInfo []PluginInfo
 
-func (sp sortedPluginInfo) Len() int { return len(sp) }
-func (sp sortedPluginInfo) Less(i, j int) bool {
+func (sp SortedPluginInfo) Len() int { return len(sp) }
+func (sp SortedPluginInfo) Less(i, j int) bool {
 	iVersion := sp[i].Version
 	jVersion := sp[j].Version
 	switch {
@@ -479,7 +480,7 @@ func (sp sortedPluginInfo) Less(i, j int) bool {
 		return iVersion.LT(*jVersion)
 	}
 }
-func (sp sortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
+func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
 // SelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that sastisfies the
 // requested semver range. It returns the highest version plugin that satisfies the requested constraints, or an error
@@ -499,7 +500,7 @@ func SelectCompatiblePlugin(
 	//
 	// Plugins without versions are treated as having the lowest version. Ties between plugins without versions are
 	// resolved arbitrarily.
-	sort.Sort(sortedPluginInfo(plugins))
+	sort.Sort(SortedPluginInfo(plugins))
 	for _, plugin := range plugins {
 		switch {
 		case plugin.Kind != kind || plugin.Name != name:
