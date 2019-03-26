@@ -109,6 +109,10 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 
 func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	languagePlugins := newPluginSet()
+	languagePlugins.Add(workspace.PluginInfo{
+		Name: "python",
+		Kind: workspace.LanguagePlugin,
+	})
 	snapshotPlugins := newPluginSet()
 	snapshotPlugins.Add(workspace.PluginInfo{
 		Name:    "aws",

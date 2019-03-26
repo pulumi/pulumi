@@ -212,10 +212,17 @@ func installPlugin(client deploy.BackendClient, plugin workspace.PluginInfo) err
 func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]*semver.Version {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host is the empty set, fall back to using the list of all plugins instead.
+	languageReportedProviderPlugins := false
+	for _, plug := range languagePlugins.Values() {
+		if plug.Kind == workspace.ResourcePlugin {
+			languageReportedProviderPlugins = true
+		}
+	}
+
 	sourceSet := languagePlugins
-	if sourceSet.Empty() {
+	if !languageReportedProviderPlugins {
 		logging.V(preparePluginLog).Infoln(
-			"computeDefaultProviderPlugins(): language host reported empty set of plugins, using all plugins")
+			"computeDefaultProviderPlugins(): language host reported empty set of provider plugins, using all plugins")
 		sourceSet = allPlugins
 	}
 
@@ -233,11 +240,11 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 	sourcePlugins := sourceSet.Values()
 	sort.Sort(workspace.SortedPluginInfo(sourcePlugins))
 	for _, p := range sourcePlugins {
-		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
 		if p.Kind != workspace.ResourcePlugin {
 			continue
 		}
 
+		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
 		if seenVersion, has := defaultProviderVersions[tokens.Package(p.Name)]; has {
 			if seenVersion == nil {
 				logging.V(preparePluginLog).Infof(
