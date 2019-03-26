@@ -146,16 +146,6 @@ describe("output", () => {
             const result = interpolate `http://${output("a")}:${80}/`;
             assert.equal(await result.promise(), "http://a:80/");
         }));
-
-        it ("places <computed> for unknown outputs", asyncTest(async () => {
-            const result = interpolate `http://${new Output([], Promise.resolve(undefined), Promise.resolve(false))}:${80}/`;
-            assert.equal(await result.promise(), "http://<computed>:80/");
-        }));
-
-        it ("places 'undefined' for undefined outputs", asyncTest(async () => {
-            const result = interpolate `http://${new Output([], Promise.resolve(undefined), Promise.resolve(true))}:${80}/`;
-            assert.equal(await result.promise(), "http://undefined:80/");
-        }));
     });
 
     describe("lifted operations", () => {
