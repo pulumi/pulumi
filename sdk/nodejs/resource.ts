@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import { ResourceError, RunError } from "./errors";
-import { all, Input, Inputs, Output } from "./output";
+import { Input, Inputs, Output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import * as utils from "./utils";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -27,14 +28,7 @@ export abstract class Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
      // tslint:disable-next-line:variable-name
-     /* @internal */ private readonly __pulumiResource: boolean = true;
-
-    /**
-     * urn is the stable logical URN used to distinctly address a resource, both before and after
-     * deployments.
-     */
-    public readonly urn: Output<URN>;
-
+     /* @internal */ public readonly __pulumiResource: boolean = true;
 
     /**
      * The optional parent of this resource.
@@ -43,12 +37,50 @@ export abstract class Resource {
     /* @internal */ public readonly __parentResource: Resource | undefined;
 
     /**
-     * The child resources of this resource.  Used so that if any resource wants to wait on this
-     * resource being complete, they will logically wait on all our child resources being complete
-     * as well.
+     * The child resources of this resource.  We use these (only from a ComponentResource) to allow
+     * code to dependOn a ComponentResource and have that effectively mean that it is depending on
+     * all the CustomResource children of that component.
+     *
+     * Important!  We only walk through ComponentResources.  They're the only resources that serve
+     * as an aggregation of other primitive (i.e. custom) resources.  While a custom resource can be
+     * a parent of other resources, we don't want to ever depend on those child resource.  If we do,
+     * it's simple to end up in a situation where we end up depending on a child resource that has a
+     * data cycle dependency due to the data passed into it.
+     *
+     * An example of how this would be bad is:
+     *
+     * ```ts
+     *     var c1 = new CustomResource("c1");
+     *     var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1 });
+     *     var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
+     * ```
+     *
+     * The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on 'c1' it
+     * will walk to the children and wait on them.  This will mean it will wait on 'c3'.  But 'c3'
+     * will be waiting in the same manner on 'c2', and a cycle forms.
+     *
+     * This normally does not happen with ComponentResources as they do not have any data flowing
+     * into them. The only way you would be able to have a problem is if you had this sort of coding
+     * pattern:
+     *
+     * ```ts
+     *     var c1 = new ComponentResource("c1");
+     *     var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
+     *     var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
+     * ```
+     *
+     * However, this would be pretty nonsensical as there is zero need for a custom resource to ever
+     * need to reference the urn of a component resource.  So it's acceptable if that sort of
+     * pattern failed in practice.
      */
     // tslint:disable-next-line:variable-name
     /* @internal */ public __childResources: Set<Resource> | undefined;
+
+    /**
+     * urn is the stable logical URN used to distinctly address a resource, both before and after
+     * deployments.
+     */
+    public readonly urn: Output<URN>;
 
     /**
      * When set to true, protect ensures this resource cannot be deleted.
@@ -63,7 +95,7 @@ export abstract class Resource {
     /* @internal */ private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
-        return obj && obj.__pulumiResource;
+        return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
     // getProvider fetches the provider for the given module member, if any.
@@ -90,6 +122,10 @@ export abstract class Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
+        if (opts.parent && !Resource.isInstance(opts.parent)) {
+            throw new Error(`Resource parent is not a valid Resource: ${opts.parent}`);
+        }
+
         if (!t) {
             throw new ResourceError("Missing resource type argument", opts.parent);
         }
@@ -100,10 +136,6 @@ export abstract class Resource {
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
-            if (!Resource.isInstance(opts.parent)) {
-                throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
-            }
-
             this.__parentResource = opts.parent;
             this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
             this.__parentResource.__childResources.add(this);
@@ -217,7 +249,7 @@ export abstract class CustomResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __pulumiCustomResource: boolean = true;
+    /* @internal */ public readonly __pulumiCustomResource: boolean;
 
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
@@ -230,7 +262,7 @@ export abstract class CustomResource extends Resource {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is CustomResource {
-        return obj && obj.__pulumiCustomResource;
+        return utils.isInstance<CustomResource>(obj, "__pulumiCustomResource");
     }
 
     /**
@@ -246,8 +278,13 @@ export abstract class CustomResource extends Resource {
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, props?: Inputs, opts?: CustomResourceOptions) {
+    constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}) {
+        if ((<ComponentResourceOptions>opts).providers) {
+            throw new ResourceError("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", opts.parent);
+        }
+
         super(t, name, true, props, opts);
+        this.__pulumiCustomResource = true;
     }
 }
 
@@ -267,10 +304,6 @@ export abstract class ProviderResource extends CustomResource {
      * @param opts A bag of options that control this provider's behavior.
      */
     constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
-        if ((<any>opts).provider !== undefined) {
-            throw new ResourceError("Explicit providers may not be used with provider resources", opts.parent);
-        }
-
         super(`pulumi:providers:${pkg}`, name, props, opts);
     }
 }
@@ -281,6 +314,20 @@ export abstract class ProviderResource extends CustomResource {
  * operations for provisioning.
  */
 export class ComponentResource extends Resource {
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public readonly __pulumiComponentResource: boolean;
+
+    /**
+     * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): obj is ComponentResource {
+        return utils.isInstance<ComponentResource>(obj, "__pulumiComponentResource");
+    }
+
     /**
      * Creates and registers a new component resource.  [type] is the fully qualified type token and
      * [name] is the "name" part to use in creating a stable and globally unique URN for the object.
@@ -295,8 +342,8 @@ export class ComponentResource extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
-        if ((<any>opts).provider !== undefined) {
-            throw new ResourceError("Explicit providers may not be used with component resources", opts.parent);
+        if ((<CustomResourceOptions>opts).provider) {
+            throw new ResourceError("Do not supply 'provider' option to a ComponentResource. Did you mean 'providers' instead?", opts.parent);
         }
 
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
@@ -308,6 +355,7 @@ export class ComponentResource extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
+        this.__pulumiComponentResource = true;
     }
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by

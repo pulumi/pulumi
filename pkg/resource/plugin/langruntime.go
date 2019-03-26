@@ -28,10 +28,14 @@ type LanguageRuntime interface {
 	io.Closer
 	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error)
-	// Run executes a program in the language runtime for planning or deployment purposes.  If info.DryRun is true,
-	// the code must not assume that side-effects or final values resulting from resource deployments are actually
-	// available.  If it is false, on the other hand, a real deployment is occurring and it may safely depend on these.
-	Run(info RunInfo) (string, error)
+	// Run executes a program in the language runtime for planning or deployment purposes.  If
+	// info.DryRun is true, the code must not assume that side-effects or final values resulting
+	// from resource deployments are actually available.  If it is false, on the other hand, a real
+	// deployment is occurring and it may safely depend on these.
+	//
+	// Returns a triple of "error message", "bail", or real "error".  If "bail", the caller should
+	// return result.Bail immediately and not print any further messages to the user.
+	Run(info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 }

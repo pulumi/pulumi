@@ -18,7 +18,8 @@ lint::
 
 build_package::
 	./node_modules/.bin/tsc
-	cp tests/runtime/jsClosureCases.js bin/tests/runtime
+	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
+	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp README.md ../../LICENSE package.json ./dist/* bin/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
@@ -41,11 +42,16 @@ install_plugin::
 
 install:: install_package install_plugin
 
-test_fast::
+instanbul_tests::
 	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
-	go test -count=1 -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+
+test_fast:: instanbul_tests
+	$(GO_TEST_FAST) ${PROJECT_PKGS}
+
+test_all:: instanbul_tests
+	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}

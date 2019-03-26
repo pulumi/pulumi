@@ -21,6 +21,7 @@ import * as pulumi from "../../index";
 import { output } from "../../output";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as typescript from "typescript";
+import * as semver from "semver";
 
 import * as deploymentOnlyModule from "./deploymentOnlyModule";
 
@@ -5018,6 +5019,322 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
     }
 
     {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config.x }
+        function getAll() { const x = getX(); return { x, y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #22",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {x: "x", y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getX() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+
+return function /*getX*/() { return defaultsForThing.config.x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { x, y: defaultsForThing.config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getAll() { return { y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #23",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getAll() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { return { y: defaultsForThing.config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const config = { x: "x", y: "y" };
+        function getX() { return config.x }
+        function getAll() { const x = getX(); return { x, y: config.y } }
+
+        cases.push({
+            title: "Analyze property chain #24",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __config = {x: "x", y: "y"};
+
+function __getX() {
+  return (function() {
+    with({ config: __config, getX: __getX }) {
+
+return function /*getX*/() { return config.x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, config: __config, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { x, y: config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing }
+        function getAll() { const x = getX(); return { y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #25",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {x: "x", y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getX() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+
+return function /*getX*/() { return defaultsForThing; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config }
+        function getAll() { const x = getX(); return { y: defaultsForThing.config.y } }
+
+        cases.push({
+            title: "Analyze property chain #26",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {x: "x", y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getX() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+
+return function /*getX*/() { return defaultsForThing.config; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config.x }
+        function getAll() { const x = getX(); return { y: defaultsForThing } }
+
+        cases.push({
+            title: "Analyze property chain #27",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {x: "x", y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getX() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+
+return function /*getX*/() { return defaultsForThing.config.x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { y: defaultsForThing }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const defaultsForThing = { config: { x: "x", y: "y" } };
+        function getX() { return defaultsForThing.config.x }
+        function getAll() { const x = getX(); return { y: defaultsForThing.config } }
+
+        cases.push({
+            title: "Analyze property chain #28",
+            func: function () { console.log(getAll()); },
+            expectText: `exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {x: "x", y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getX() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+
+return function /*getX*/() { return defaultsForThing.config.x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getAll() {
+  return (function() {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+
+return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.config }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         cases.push({
             title: "Capture non-built-in module",
             func: function () { typescript.parseCommandLine([""]); },
@@ -5042,15 +5359,13 @@ return function () { typescript.parseCommandLine([""]); };
             func: function () { console.log(pulumi); },
             error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func': tsClosureCases.js(0,0): captured
+function 'func':(...)
   module './bin/index.js' which indirectly referenced
     function 'debug':(...)
-      module './bin/runtime/settings.js' which indirectly referenced
-        function 'getEngine':(...)
-          module './bin/proto/engine_grpc_pb.js' which indirectly referenced
 (...)
 Function code:
-(...)
+  function (...)() { [native code] }
+
 Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
         });
     }
@@ -5143,9 +5458,9 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
 }
 `,
        });
-   }
+    }
 
-   {
+    {
         deploymentOnlyModule.setConfig("test:TestingKey2", "TestingValue2");
 
         cases.push({
@@ -5228,7 +5543,7 @@ return function () { const v = new deploymentOnlyModule.Config("test").get("Test
 }
 `,
        });
-   }
+    }
 
     {
         cases.push({
@@ -5363,6 +5678,96 @@ return function /*f*/({ whatever }) { };
 `,
     });
 
+    cases.push({
+        title: "Deconstructing async function",
+        // @ts-ignore
+        func: async function f({ whatever }) { },
+        expectText: `exports.handler = __f;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f() {
+  return (function() {
+    with({ __awaiter: __f0, f: __f }) {
+
+return function /*f*/({ whatever }) {
+            return __awaiter(this, void 0, void 0, function* () { });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
+    cases.push({
+        title: "Deconstructing arrow function",
+        // @ts-ignore
+        func: ({ whatever }) => { },
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return ({ whatever }) => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
+    cases.push({
+        title: "Deconstructing async arrow function",
+        // @ts-ignore
+        func: async ({ whatever }) => { },
+        expectText: `exports.handler = __f0;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return ({ whatever }) => __awaiter(this, void 0, void 0, function* () { });
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
     {
         const regex = /(abc)[\(123-456]\\a\b\z/gi;
 
@@ -5471,9 +5876,13 @@ return function () { console.log(regex); foo(); };
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
     // function.
-    const version = Number(process.version.match(/^v(\d+)\.\d+/)![1]);
-    if (version >= 8) {
-        const jsCases = require("./jsClosureCases");
+    if (semver.gte(process.version, "8.0.0")) {
+        const jsCases = require("./jsClosureCases_8");
+        cases.push(...jsCases.cases);
+    }
+
+    if (semver.gte(process.version, "10.4.0")) {
+        const jsCases = require("./jsClosureCases_10_4");
         cases.push(...jsCases.cases);
     }
 
@@ -5485,7 +5894,8 @@ return function () { console.log(regex); foo(); };
             return;
         }
 
-        // if (test.title !== "Output capture") {
+        // if (test.title.indexOf("Analyze property chain #2") < 0) {
+        // //if (test.title !== "Analyze property chain #23") {
         //     continue;
         // }
 

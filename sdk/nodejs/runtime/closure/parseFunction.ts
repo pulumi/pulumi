@@ -140,66 +140,27 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         return [`it was a native code function.`, <any>undefined];
     }
 
-    // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
-    // This will make it so that we can correctly handle 'this' properly depending on if that should
-    // be treated as the lexical capture of 'this' or hte non-lexical 'this'.
-    //
-    // It might seem like we could just look at the first character of the string to see if it is a
-    // '('.  However, that's insufficient due to how v8 generates strings for some functions.
-    // Specifically we have to consider the following cases.
-    //
-    //      (...) { }       // i.e. a function with a *computed* property name.
-    //      (...) => { }    // lambda with a block body
-    //      (...) => expr   // lambda with an expression body.
-    //
-    // First we check if we have a open curly or not.  If we don't, then we're in the last case. We
-    // confirm that we have a => (throwing if we don't).
-    //
-    // If we do have an open curly, then we're in one of the top two cases.  To determine which we
-    // trim things up to the open curly, leaving us with either:
-    //
-    //      (...) {
-    //      (...) => {
-    //
-    // We then see if we have an => or not.  if we do, it's a lambda.  If we don't, it's a function
-    // with a computed name.
-
-    // Note: Using indexOf is problematic here as we can be thrown off by random code in the func
-    // string (for example comments).  When using indexOf, a justification should be given as to
-    // why this approach is more often correct than not.
-
     // There are three general forms of node toString'ed Functions we're trying to find out here.
     //
-    // 1. `class Foo { ... }`
+    // 1. `[mods] (...) => ...
+    //
+    //      i.e. an arrow function.  We need to ensure that arrow-functions stay arrow-functions,
+    //      and non-arrow-functions end up looking like normal `function` functions. This will make
+    //      it so that we can correctly handle 'this' properly depending on if that should be
+    //      treated as the lexical capture of 'this' or the non-lexical 'this'.
+    //
+    // 2. `class Foo { ... }`
     //
     //      i.e. node uses the entire string of a class when toString'ing the constructor function
     //      for it.
     //
-    // 2. `[mods] function ...
+    // 3. `[mods] function ...
     //
     //      i.e. a normal function (maybe async, maybe a get/set function, but def not an arrow
     //      function)
-    //
-    // 3. `[mods] (...) => ...
-    //
-    //      i.e. an arrow function.  Harder to figure out as we have to look further ahead (weakly)
-    //      for the `=>` portion.
 
-
-    // Using indexOf("{") is mostly acceptable here.  This is purely to see if we're a class or
-    // a function with a body.  If we do *not* find a curly *at all*, then this really could
-    // only be a lambda, and that's what this block is trying to check for.  If we do find an
-    // open curly, we attempt to figure out what sort of entity we are below.
-    const openCurlyIndex = funcString.indexOf("{");
-    if (openCurlyIndex < 0) {
-        // No block body.  Can happen if this is an arrow function with an expression body.
-        const arrowIndex = funcString.indexOf("=>");
-        if (arrowIndex >= 0) {
-            // (...) => expr
-            return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
-        }
-
-        return [`the function form was not understood.`, <any>undefined];
+    if (tryParseAsArrowFunction(funcString)) {
+        return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
     }
 
     // First check to see if this startsWith 'class'.  If so, this is definitely a class.  This
@@ -209,13 +170,12 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         // class constructor function.  We want to get the actual constructor
         // in the class definition (synthesizing an empty one if one does not)
         // exist.
-        const file = ts.createSourceFile("", funcString, ts.ScriptTarget.Latest);
-        const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
-        if (diagnostics.length) {
-            return [`the class could not be parsed: ${diagnostics[0].messageText}`, <any>undefined];
+        const [file, firstDiagnostic] = tryCreateSourceFile(funcString);
+        if (firstDiagnostic) {
+            return [`the class could not be parsed: ${firstDiagnostic}`, <any>undefined];
         }
 
-        const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
+        const classDecl = <ts.ClassDeclaration>file!.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
             return [`the class form was not understood:\n${funcString}`, <any>undefined];
         }
@@ -232,21 +192,6 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
 
         const constructorCode = funcString.substring(constructor.getStart(file, /*includeJsDocComment*/ false), constructor.end).trim();
         return makeFunctionDeclaration(constructorCode, /*isAsync:*/ false, /*isFunctionDeclaration: */ false);
-    }
-
-    // Note: this check is pretty weak.  It is only checking if `=>` appears some place within the
-    // part of the code we consider the signature.  It's possible (though unlikely) for this check
-    // to be wrong.  For example, if the user wrote:
-    //
-    //      function F() /* a => b */ { }
-    //
-    // Then this would be treated as an arrow-function, even though it's a normal function.  However
-    // the likelihood of a comment including `=>` *and* preceding the opening `{` is low enough that
-    // we accept this as a good-enough heuristic.
-    const signature = funcString.substr(0, openCurlyIndex);
-    if (signature.indexOf("=>") >= 0) {
-        // (...) => { ... }
-        return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
     }
 
     let isAsync = false;
@@ -274,6 +219,17 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     // "function foo() { }"
     // this also does the right thing for functions with computed names.
     return makeFunctionDeclaration(funcString, isAsync, /*isFunctionDeclaration: */ false);
+}
+
+function tryParseAsArrowFunction(toParse: string): boolean {
+    const [file] = tryCreateSourceFile(toParse);
+    if (!file || file.statements.length !== 1) {
+        return false;
+    }
+
+    const firstStatement = file.statements[0];
+    return ts.isExpressionStatement(firstStatement) &&
+           ts.isArrowFunction(firstStatement.expression);
 }
 
 function makeFunctionDeclaration(
@@ -342,14 +298,24 @@ function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.S
     // (it's missing a name).  But it's totally legal as "(function () { })".
     const toParse = "(" + funcstr + ")";
 
-    const file = ts.createSourceFile(
-        "", toParse, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
-    if (diagnostics.length) {
-        return [`the function could not be parsed: ${diagnostics[0].messageText}`, null];
+    const [file, firstDiagnostic] = tryCreateSourceFile(toParse);
+    if (firstDiagnostic) {
+        return [`the function could not be parsed: ${firstDiagnostic}`, null];
     }
 
-    return ["", file];
+    return ["", file!];
+}
+
+function tryCreateSourceFile(toParse: string): [ts.SourceFile | undefined, string | undefined] {
+    const file = ts.createSourceFile(
+        "", toParse, ts.ScriptTarget.Latest, /*setParentNodes:*/ true, ts.ScriptKind.TS);
+
+    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
+    if (diagnostics.length) {
+        return [undefined, `${diagnostics[0].messageText}`];
+    }
+
+    return [file, undefined];
 }
 
 function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {

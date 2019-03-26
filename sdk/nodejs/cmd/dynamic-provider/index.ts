@@ -108,6 +108,10 @@ async function checkRPC(call: any, callback: any): Promise<void> {
     }
 }
 
+function checkConfigRPC(call: any, callback: any): void {
+    callback(undefined, new emptyproto.Empty());
+}
+
 async function diffRPC(call: any, callback: any): Promise<void> {
     try {
         const req: any = call.request;
@@ -148,6 +152,10 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
+}
+
+function diffConfigRPC(call: any, callback: any): void {
+    callback(undefined, new emptyproto.Empty());
 }
 
 async function createRPC(call: any, callback: any): Promise<void> {
@@ -302,7 +310,9 @@ export function main(args: string[]): void {
         configure: configureRPC,
         invoke: invokeRPC,
         check: checkRPC,
+        checkConfig: checkConfigRPC,
         diff: diffRPC,
+        diffConfig: diffConfigRPC,
         create: createRPC,
         read: readRPC,
         update: updateRPC,

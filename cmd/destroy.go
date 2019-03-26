@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -51,13 +52,12 @@ func newDestroyCmd() *cobra.Command {
 		Long: "Destroy an existing stack and its resources\n" +
 			"\n" +
 			"This command deletes an entire existing stack by name.  The current state is\n" +
-			"loaded from the associated snapshot file in the workspace.  After running to completion,\n" +
+			"loaded from the associated state file in the workspace.  After running to completion,\n" +
 			"all of this stack's resources and associated state will be gone.\n" +
 			"\n" +
-			"Warning: although old snapshots can be used to recreate a stack, this command\n" +
-			"is generally irreversible and should be used with great care.",
+			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
@@ -65,7 +65,7 @@ func newDestroyCmd() *cobra.Command {
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			opts.Display = display.Options{
@@ -81,16 +81,16 @@ func newDestroyCmd() *cobra.Command {
 
 			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 			proj, root, err := readProject()
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			m, err := getUpdateMetadata(message, root)
 			if err != nil {
-				return errors.Wrap(err, "gathering environment metadata")
+				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -100,17 +100,17 @@ func newDestroyCmd() *cobra.Command {
 				Refresh:   refresh,
 			}
 
-			_, err = s.Destroy(commandContext(), backend.UpdateOperation{
+			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
 				Proj:   proj,
 				Root:   root,
 				M:      m,
 				Opts:   opts,
 				Scopes: cancellationScopes,
 			})
-			if err == context.Canceled {
-				return errors.New("destroy cancelled")
+			if res != nil && res.Error() == context.Canceled {
+				return result.FromError(errors.New("destroy cancelled"))
 			}
-			return PrintEngineError(err)
+			return PrintEngineResult(res)
 		}),
 	}
 

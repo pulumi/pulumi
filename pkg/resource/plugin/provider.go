@@ -58,7 +58,7 @@ type Provider interface {
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
 	Read(urn resource.URN, id resource.ID,
-		props resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
+		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
@@ -100,6 +100,7 @@ type DiffResult struct {
 	Changes             DiffChanges            // true if this diff represents a changed resource.
 	ReplaceKeys         []resource.PropertyKey // an optional list of replacement keys.
 	StableKeys          []resource.PropertyKey // an optional list of property keys that are stable.
+	ChangedKeys         []resource.PropertyKey // an optional list of keys that changed.
 	DeleteBeforeReplace bool                   // if true, this resource must be deleted before recreating it.
 }
 
@@ -121,4 +122,14 @@ func DiffUnavailable(reason string) DiffUnavailableError {
 // Error returns the error message for this DiffUnavailableError.
 func (e DiffUnavailableError) Error() string {
 	return e.reason
+}
+
+// ReadResult is the result of a call to Read.
+type ReadResult struct {
+	// Inputs contains the new inputs for the resource, if any. If this field is nil, the provider does not support
+	// returning inputs from a call to Read and the old inputs (if any) should be preserved.
+	Inputs resource.PropertyMap
+	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
+	// exist.
+	Outputs resource.PropertyMap
 }

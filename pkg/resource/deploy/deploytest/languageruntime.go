@@ -45,11 +45,11 @@ func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.
 	return p.requiredPlugins, nil
 }
 
-func (p *languageRuntime) Run(info plugin.RunInfo) (string, error) {
+func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	// Connect to the resource monitor and create an appropriate client.
 	conn, err := grpc.Dial(info.MonitorAddress, grpc.WithInsecure())
 	if err != nil {
-		return "", errors.Wrapf(err, "could not connect to resource monitor")
+		return "", false, errors.Wrapf(err, "could not connect to resource monitor")
 	}
 
 	// Fire up a resource monitor client
@@ -61,9 +61,9 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, error) {
 		done <- p.program(info, &ResourceMonitor{resmon: resmon})
 	}()
 	if progerr := <-done; progerr != nil {
-		return progerr.Error(), nil
+		return progerr.Error(), false, nil
 	}
-	return "", nil
+	return "", false, nil
 }
 
 func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {

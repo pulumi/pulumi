@@ -127,16 +127,19 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 }
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
-	state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
-	state, err := p.readStackReference(state)
+	outputs, err := p.readStackReference(state)
 	if err != nil {
-		return nil, resource.StatusUnknown, err
+		return plugin.ReadResult{}, resource.StatusUnknown, err
 	}
 
-	return state, resource.StatusOK, nil
+	return plugin.ReadResult{
+		Inputs:  inputs,
+		Outputs: outputs,
+	}, resource.StatusOK, nil
 }
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
