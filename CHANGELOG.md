@@ -1,4 +1,6 @@
-## 0.17.3 (Unreleased)
+## 0.17.4 (Unreleased)
+
+## 0.17.3 (Released March 26, 2019)
 
 - Add support for serializing JavaScript function that capture [BigInts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt).
 - Support serializing arrow-functions with deconstructed parameters.
