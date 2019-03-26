@@ -1,10 +1,12 @@
 ## 0.17.5 (Unreleased)
 
-## Improvements
+### Improvements
+
+- Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
 
 ## 0.17.4 (Released March 26, 2019)
 
-## Improvements
+### Improvements
 
 - Don't print the `error:` prefix when Pulumi exists because of a declined confirmation prompt (fixes [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/2070))
 - Fix issue where `Outputs` produced by `pulumi.interpolate` might have values which could
