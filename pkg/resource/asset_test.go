@@ -456,6 +456,22 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	assert.Equal(t, "foo/bar/b.txt", files[0].Name)
 }
 
+func TestFileExtentionSniffing(t *testing.T) {
+	assert.Equal(t, ArchiveFormat(ZIPArchive), detectArchiveFormat("./some/path/my.zip"))
+	assert.Equal(t, ArchiveFormat(TarArchive), detectArchiveFormat("./some/path/my.tar"))
+	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.tar.gz"))
+	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.tgz"))
+	assert.Equal(t, ArchiveFormat(NotArchive), detectArchiveFormat("./some/path/who.knows"))
+
+	// In #2589 we had cases where a file would look like it had an longer extension, because the suffix would include
+	// some stuff after a dot. i.e. we failed to treat "my.file.zip" as a ZIPArchive.
+	assert.Equal(t, ArchiveFormat(ZIPArchive), detectArchiveFormat("./some/path/my.file.zip"))
+	assert.Equal(t, ArchiveFormat(TarArchive), detectArchiveFormat("./some/path/my.file.tar"))
+	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.file.tar.gz"))
+	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.file.tgz"))
+	assert.Equal(t, ArchiveFormat(NotArchive), detectArchiveFormat("./some/path/who.even.knows"))
+}
+
 func TestInvalidPathArchive(t *testing.T) {
 	// Create a temp file that is not an asset.
 	tmpFile, err := ioutil.TempFile("", "")
