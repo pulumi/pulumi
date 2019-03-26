@@ -16,12 +16,15 @@ package engine
 
 import (
 	"context"
+	"sort"
 
+	"github.com/blang/semver"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -59,6 +62,11 @@ func (p pluginSet) Values() []workspace.PluginInfo {
 		plugins = append(plugins, value)
 	}
 	return plugins
+}
+
+// Empty returns whether or not the set is empty.
+func (p pluginSet) Empty() bool {
+	return len(p) == 0
 }
 
 // newPluginSet creates a new empty pluginSet.
@@ -182,4 +190,96 @@ func installPlugin(client deploy.BackendClient, plugin workspace.PluginInfo) err
 
 	logging.V(7).Infof("installPlugin(%s, %s): successfully installed", plugin.Name, plugin.Version)
 	return nil
+}
+
+// computeDefaultProviderPlugins computes, for every resource plugin, a mapping from packages to semver versions
+// reflecting the version of a provider that should be used as the "default" resource when registering resources. This
+// function takes two sets of plugins: a set of plugins given to us from the language host and the full set of plugins.
+// If the language host has sent us a non-empty set of plugins, we will use those exclusively to service default
+// provider requests. Otherwise, we will use the full set of plugins, which is the existing behavior today.
+//
+// The justification for favoring language plugins over all else is that, ultimately, it is the language plugin that
+// produces resource registrations and therefore it is the language plugin that should dictate exactly what plugins to
+// use to satisfy a resource registration. Since we do not today request a particular version of a plugin via
+// RegisterResource (pulumi/pulumi#2389), this is the best we can do to infer the version that the language plugin
+// actually wants.
+//
+// Whenever a resource arrives via RegisterResource and does not explicitly specify which provider to use, the engine
+// injects a "default" provider resource that will serve as that resource's provider. This function computes the map
+// that the engine uses to determine which version of a particular provider to load.
+//
+// it is critical that this function be 100% deterministic.
+func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]*semver.Version {
+	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
+	// from the language host is the empty set, fall back to using the list of all plugins instead.
+	sourceSet := languagePlugins
+	if sourceSet.Empty() {
+		logging.V(preparePluginLog).Infoln(
+			"computeDefaultProviderPlugins(): language host reported empty set of plugins, using all plugins")
+		sourceSet = allPlugins
+	}
+
+	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
+
+	// Sort the set of source plugins by version, so that we iterate over the set of plugins in a deterministic order.
+	// Sorting by version gets us two properties:
+	//   1. The below loop will never see a nil-versioned plugin after a non-nil versioned plugin, since the sort always
+	//      considers nil-versioned plugins to be less than non-nil versioned plugins.
+	//   2. The below loop will never see a plugin with a version that is older than a plugin that has already been
+	//      seen. The sort will always have placed the older plugin before the newer plugin.
+	//
+	// Despite these properties, the below loop explicitly handles those cases to preserve correct behavior even if the
+	// sort is not functioning properly.
+	sourcePlugins := sourceSet.Values()
+	sort.Sort(workspace.SortedPluginInfo(sourcePlugins))
+	for _, p := range sourcePlugins {
+		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
+		if p.Kind != workspace.ResourcePlugin {
+			continue
+		}
+
+		if seenVersion, has := defaultProviderVersions[tokens.Package(p.Name)]; has {
+			if seenVersion == nil {
+				logging.V(preparePluginLog).Infof(
+					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
+					p, p.Name)
+				defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+				continue
+			}
+
+			if p.Version == nil {
+				// This case is impossible, if the sort is correct.
+				logging.V(preparePluginLog).Infof(
+					"computeDefaultProviderPlugins(): plugin %s not selected for package %s (no version)", p, p.Name)
+				continue
+			}
+
+			if p.Version != nil && p.Version.GT(*seenVersion) {
+				logging.V(preparePluginLog).Infof(
+					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
+					p, p.Name, seenVersion)
+				defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+				continue
+			}
+
+			// This case is also impossible, if the sort is correct.
+			logging.V(preparePluginLog).Infof(
+				"computeDefaultProviderPlugins(): plugin %s not selected for package %s (older than previous %s)",
+				p, p.Name, seenVersion)
+			continue
+		}
+
+		logging.V(preparePluginLog).Infof(
+			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", p, p.Name)
+		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+	}
+
+	if logging.V(preparePluginLog) {
+		logging.V(preparePluginLog).Infoln("computeDefaultProviderPlugins(): summary of default plugins:")
+		for pkg, version := range defaultProviderVersions {
+			logging.V(preparePluginLog).Infof("  %-15s = %s", pkg, version)
+		}
+	}
+
+	return defaultProviderVersions
 }
