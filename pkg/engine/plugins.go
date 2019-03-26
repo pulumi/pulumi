@@ -235,12 +235,14 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 	sourcePlugins := sourceSet.Values()
 	sort.Sort(workspace.SortedPluginInfo(sourcePlugins))
 	for _, p := range sourcePlugins {
+		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
 		if p.Kind != workspace.ResourcePlugin {
 			// Default providers are only relevant for resource plugins.
+			logging.V(preparePluginVerboseLog).Infof(
+				"computeDefaultProviderPlugins(): skipping %s, not a resource provider", p)
 			continue
 		}
 
-		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
 		if seenVersion, has := defaultProviderVersions[tokens.Package(p.Name)]; has {
 			if seenVersion == nil {
 				logging.V(preparePluginLog).Infof(
