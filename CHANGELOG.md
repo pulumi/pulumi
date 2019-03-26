@@ -7,6 +7,10 @@
 
 - A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi update` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi update` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
 - Fix two warnings that were printed when using a dynamic provider about missing method handlers.
+- A bug in the previous version of the Pulumi CLI occasionally caused the Pulumi Engine to load the incorrect resource
+  plugin when processing an update. This bug has been fixed in 0.17.3 by performing a deterministic selection of the
+  best set of plugins available to the engine before starting up. See
+  [pulumi/pulumi#2579](https://github.com/pulumi/pulumi/issues/2579) for discussion on this issue.
 
 ## 0.17.2 (Released March 15, 2019)
 
