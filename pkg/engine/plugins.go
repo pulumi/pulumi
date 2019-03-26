@@ -64,11 +64,6 @@ func (p pluginSet) Values() []workspace.PluginInfo {
 	return plugins
 }
 
-// Empty returns whether or not the set is empty.
-func (p pluginSet) Empty() bool {
-	return len(p) == 0
-}
-
 // newPluginSet creates a new empty pluginSet.
 func newPluginSet() pluginSet {
 	return make(map[string]workspace.PluginInfo)
@@ -211,7 +206,7 @@ func installPlugin(client deploy.BackendClient, plugin workspace.PluginInfo) err
 // it is critical that this function be 100% deterministic.
 func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]*semver.Version {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
-	// from the language host is the empty set, fall back to using the list of all plugins instead.
+	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
 	for _, plug := range languagePlugins.Values() {
 		if plug.Kind == workspace.ResourcePlugin {
@@ -241,6 +236,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 	sort.Sort(workspace.SortedPluginInfo(sourcePlugins))
 	for _, p := range sourcePlugins {
 		if p.Kind != workspace.ResourcePlugin {
+			// Default providers are only relevant for resource plugins.
 			continue
 		}
 
@@ -254,13 +250,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 				continue
 			}
 
-			if p.Version == nil {
-				// This case is impossible, if the sort is correct.
-				logging.V(preparePluginLog).Infof(
-					"computeDefaultProviderPlugins(): plugin %s not selected for package %s (no version)", p, p.Name)
-				continue
-			}
-
+			contract.Assertf(p.Version != nil, "p.Version should not be nil if sorting is correct!")
 			if p.Version != nil && p.Version.GT(*seenVersion) {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
@@ -269,11 +259,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 				continue
 			}
 
-			// This case is also impossible, if the sort is correct.
-			logging.V(preparePluginLog).Infof(
-				"computeDefaultProviderPlugins(): plugin %s not selected for package %s (older than previous %s)",
-				p, p.Name, seenVersion)
-			continue
+			contract.Failf("Should not have seen an older plugin if sorting is correct!")
 		}
 
 		logging.V(preparePluginLog).Infof(
