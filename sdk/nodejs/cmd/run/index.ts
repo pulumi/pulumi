@@ -12,11 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The very first thing we do is set up unhandled exception and rejection hooks to ensure that these events cause us to
-// exit with a non-zero code. It is critically important that we do this early: if we do not, unhandled rejections in
-// particular may cause us to exit with a 0 exit code, which will trick the engine into thinking that the program ran
-// successfully. This can cause the engine to decide to delete all of a stack's resources.
+// The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
+// events cause us to exit with a non-zero code. It is critically important that we do this early:
+// if we do not, unhandled rejections in particular may cause us to exit with a 0 exit code, which
+// will trick the engine into thinking that the program ran successfully. This can cause the engine
+// to decide to delete all of a stack's resources.
+//
+// We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
+// code.
 const uncaughtErrors = new Set<Error>();
+
+// We also track errors we know were logged to the user using our standard `log.error` call from
+// inside our uncaught-error-handler in run.ts.  If all uncaught-errors above were also known to all
+// be logged properly to the user, then we know the user has the information they need to proceed.
+// We can then report the langhost that it should just stop running immediately and not print any
+// additional superfluous information.
 const loggedErrors = new Set<Error>();
 
 let programRunning = false;
