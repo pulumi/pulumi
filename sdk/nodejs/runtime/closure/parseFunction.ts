@@ -424,14 +424,14 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     const result: CapturedVariables = { required: new Map(), optional: new Map() };
 
     for (const key of required.keys()) {
-        if (required.has(key) && !isBuiltIn(key)) {
+        if (!isBuiltIn(key)) {
             result.required.set(key, required.get(key)!.concat(
                 optional.has(key) ? optional.get(key)! : []));
         }
     }
 
     for (const key of optional.keys()) {
-        if (optional.has(key) && !isBuiltIn(key) && !required.has(key)) {
+        if (!isBuiltIn(key) && !required.has(key)) {
             result.optional.set(key, optional.get(key)!);
         }
     }
@@ -440,6 +440,15 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     return result;
 
     function isBuiltIn(ident: string): boolean {
+        // The __awaiter is never considered built-in.  We do this as async/await code will generate
+        // this (so we will need it), but some libraries (like tslib) will add this to the 'global'
+        // object.  If we think this is built-in, we won't serialize it, and the function may not
+        // actually be available if the import that caused it to get attached isn't included in the
+        // final serialized code.
+        if (ident === "__awaiter") {
+            return false;
+        }
+
         // Anything in the global dictionary is a built-in.  So is anything that's a global Node.js object;
         // note that these only exist in the scope of modules, and so are not truly global in the usual sense.
         // See https://nodejs.org/api/globals.html for more details.
