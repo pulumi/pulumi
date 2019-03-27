@@ -186,8 +186,9 @@ export function run(argv: minimist.ParsedArgs, programStarted: () => void) {
             log.error(message, err.resource);
         }
         else {
-            log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(defaultMessage);
+            log.error(
+`Running program '${program}' failed with an unhandled exception:
+${defaultMessage}`);
         }
     };
 
