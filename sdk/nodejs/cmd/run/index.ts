@@ -37,17 +37,18 @@ const uncaughtHandler = (err: Error) => {
     }
 };
 
+// Keep track if we already logged the information about an unhandled error to the user..  If
+// so, we end with a different exit code.  The language host recognizes this and will not print
+// any further messages to the user since we already took care of it.
+//
+// 32 was picked so as to be very unlikely to collide with any of the error codes documented by
+// nodejs here:
+// https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
+
 process.on("uncaughtException", uncaughtHandler);
 process.on("unhandledRejection", uncaughtHandler);
 process.on("exit", (code: number) => {
-    // Keep track if we already logged the information about an unhandled error to the user..  If
-    // so, we end with a different exit code.  The language host recognizes this and will not print
-    // any further messages to the user since we already took care of it.
-    //
-    // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
-    // nodejs here:
-    // https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
-    const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
     // If there were any uncaught errors at all, we always want to exit with an error code. If we
     // did not, it could be disastrous for the user.  i.e. not all resources may have been created,
