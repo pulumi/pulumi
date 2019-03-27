@@ -337,7 +337,21 @@ describe("rpc", () => {
         "unhandled_error": {
             program: path.join(base, "011.unhandled_error"),
             expectResourceCount: 0,
-            expectError: "Program exited with non-zero exit code: 1",
+            expectError: "",
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                if (severity === engineproto.LogSeverity.ERROR) {
+                    if (message.indexOf("failed with an unhandled exception") < 0 &&
+                        message.indexOf("es the dynamite") < 0) {
+
+                        throw new Error("Unexpected error: message");
+                    }
+                }
+            },
         },
         // A program that creates one resource that contains an assets archive.
         "assets_archive": {
@@ -351,7 +365,21 @@ describe("rpc", () => {
         "unhandled_promise_rejection": {
             program: path.join(base, "013.unhandled_promise_rejection"),
             expectResourceCount: 0,
-            expectError: "Program exited with non-zero exit code: 1",
+            expectError: "",
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                if (severity === engineproto.LogSeverity.ERROR) {
+                    if (message.indexOf("failed with an unhandled exception") < 0 &&
+                        message.indexOf("es the dynamite") < 0) {
+
+                        throw new Error("Unexpected error: message");
+                    }
+                }
+            },
         },
         // A simple test of the read resource behavior.
         "read_resource": {
@@ -738,7 +766,7 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("run_error") < 0) {
+        // if (casename.indexOf("unhandled_promise_rejection") < 0) {
         //     continue;
         // }
 
