@@ -33,7 +33,6 @@ export class RunError extends Error {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is RunError {
-        // NOTE: keep this in sync with the check in cmd\run\index.ts
         return utils.isInstance<RunError>(obj, "__pulumiRunError");
     }
 

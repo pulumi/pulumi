@@ -16,37 +16,45 @@
 // exit with a non-zero code. It is critically important that we do this early: if we do not, unhandled rejections in
 // particular may cause us to exit with a 0 exit code, which will trick the engine into thinking that the program ran
 // successfully. This can cause the engine to decide to delete all of a stack's resources.
-let uncaught: Error | undefined;
+const uncaughtErrors = new Set<Error>();
+const loggedErrors = new Set<Error>();
+
 let programRunning = false;
-let allErrorsAreRunErrors = true;
 const uncaughtHandler = (err: Error) => {
-    uncaught = err;
+    uncaughtErrors.add(err);
     if (!programRunning) {
         console.error(err.stack || err.message);
     }
-
-    // Don't actually reference RunError.isInstance here.  We don't want to actually end up doing
-    // any sort of module either prior to the creation, or during the execution, of this error
-    // handler.
-    allErrorsAreRunErrors = allErrorsAreRunErrors && (<any>err).__pulumiRunError === true;
 };
+
 process.on("uncaughtException", uncaughtHandler);
 process.on("unhandledRejection", uncaughtHandler);
 process.on("exit", (code: number) => {
-    // If we don't already have an exit code, and we had an unhandled error, exit with a
-    // non-success.  Also keep track if all we heard about were RunErrors.  If so, we end with a
-    // different exit code.  The language host recognizes this and will not print any further
-    // messages to the user.
+    // Keep track if we already logged the information about an unhandled error to the user..  If
+    // so, we end with a different exit code.  The language host recognizes this and will not print
+    // any further messages to the user since we already took care of it.
     //
     // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
     // nodejs here:
     // https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
-    const nodeJSProcessExitedAfterShowingUserActionableMessage = 32;
+    const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
-    if (code === 0 && uncaught) {
-        process.exitCode = allErrorsAreRunErrors
-            ? nodeJSProcessExitedAfterShowingUserActionableMessage
-            : 1;
+    // If there were any uncaught errors at all, we always want to exit with an error code. If we
+    // did not, it could be disastrous for the user.  i.e. not all resources may have been created,
+    // but the 0 code would indicate we could proceed.  That could lead to many (or all) of the
+    // user resources being deleted.
+    if (code === 0 && uncaughtErrors.size > 0) {
+        // Now Check if this error was already logged to the user in a visible fashion.  If not
+        // we will exit with '1', indicating that the host should give a generic message about
+        // things not working.
+        for (const err of uncaughtErrors) {
+            if (!loggedErrors.has(err)) {
+                process.exitCode = 1;
+                return;
+            }
+        }
+
+        process.exitCode = nodeJSProcessExitedAfterLoggingUserActionableMessage;
     }
 });
 
@@ -126,9 +134,10 @@ function main(args: string[]): void {
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {
-        const promise: Promise<void> = require("./run").run(argv, () => {
-            programRunning = true;
-        });
+        const promise: Promise<void> = require("./run").run(
+            argv,
+            /*programStarted:   */ () => programRunning = true,
+            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err));
 
         // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
         // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.

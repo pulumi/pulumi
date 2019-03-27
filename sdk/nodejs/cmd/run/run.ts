@@ -117,7 +117,9 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     return process.exit(1);
 }
 
-export function run(argv: minimist.ParsedArgs, programStarted: () => void) {
+export function run(argv: minimist.ParsedArgs,
+                    programStarted: () => void,
+                    reportLoggedError: (err: Error) => void) {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -190,6 +192,8 @@ export function run(argv: minimist.ParsedArgs, programStarted: () => void) {
 `Running program '${program}' failed with an unhandled exception:
 ${defaultMessage}`);
         }
+
+        reportLoggedError(err);
     };
 
     process.on("uncaughtException", uncaughtHandler);
