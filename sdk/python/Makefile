@@ -52,6 +52,8 @@ test_fast::
 	pipenv run pip install ./env/src
 	pipenv run python -m unittest discover -s lib/test -v
 
+test_all:: test_fast
+
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/

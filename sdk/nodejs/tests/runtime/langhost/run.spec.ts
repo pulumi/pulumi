@@ -431,53 +431,7 @@ describe("rpc", () => {
         "parent_defaults": {
             program: path.join(base, "017.parent_defaults"),
             expectResourceCount: 240,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
-                               custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
-
-                if (custom && !t.startsWith("pulumi:providers:")) {
-                    let expectProtect = false;
-                    let expectProviderName = "";
-
-                    const rpath = name.split("/");
-                    for (let i = 1; i < rpath.length; i++) {
-                        switch (rpath[i]) {
-                        case "c0":
-                        case "r0":
-                            // Pass through parent values
-                            break;
-                        case "c1":
-                        case "r1":
-                            // Force protect to false
-                            expectProtect = false;
-                            break;
-                        case "c2":
-                        case "r2":
-                            // Force protect to true
-                            expectProtect = true;
-                            break;
-                        case "c3":
-                        case "r3":
-                            // Force provider
-                            expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
-                            break;
-                        default:
-                            assert.fail(`unexpected path element in name: ${rpath[i]}`);
-                        }
-                    }
-
-                    // r3 explicitly overrides its provider.
-                    if (rpath[rpath.length-1] === "r3") {
-                        expectProviderName = `${rpath.slice(0, rpath.length-1).join("/")}-p`;
-                    }
-
-                    const providerName = provider!.split("::").reduce((_, v) => v);
-
-                    assert.strictEqual(`${name}.protect: ${protect!}`, `${name}.protect: ${expectProtect}`);
-                    assert.strictEqual(`${name}.provider: ${providerName}`, `${name}.provider: ${expectProviderName}`);
-                }
-
-                return { urn: makeUrn(t, name), id: name, props: {} };
-            },
+            registerResource: parentDefaultsRegisterResource,
         },
         "logging": {
             program: path.join(base, "018.logging"),
@@ -763,6 +717,16 @@ describe("rpc", () => {
             // host should bail.
             expectBail: true,
         },
+        "component_opt_single_provider": {
+            program: path.join(base, "041.component_opt_single_provider"),
+            expectResourceCount: 240,
+            registerResource: parentDefaultsRegisterResource,
+        },
+        "component_opt_providers_array": {
+            program: path.join(base, "041.component_opt_single_provider"),
+            expectResourceCount: 240,
+            registerResource: parentDefaultsRegisterResource,
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -966,6 +930,55 @@ describe("rpc", () => {
         }));
     }
 });
+
+function parentDefaultsRegisterResource(
+    ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+    custom?: boolean, protect?: boolean, parent?: string, provider?: string) {
+
+    if (custom && !t.startsWith("pulumi:providers:")) {
+        let expectProtect = false;
+        let expectProviderName = "";
+
+        const rpath = name.split("/");
+        for (let i = 1; i < rpath.length; i++) {
+            switch (rpath[i]) {
+            case "c0":
+            case "r0":
+                // Pass through parent values
+                break;
+            case "c1":
+            case "r1":
+                // Force protect to false
+                expectProtect = false;
+                break;
+            case "c2":
+            case "r2":
+                // Force protect to true
+                expectProtect = true;
+                break;
+            case "c3":
+            case "r3":
+                // Force provider
+                expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
+                break;
+            default:
+                assert.fail(`unexpected path element in name: ${rpath[i]}`);
+            }
+        }
+
+        // r3 explicitly overrides its provider.
+        if (rpath[rpath.length-1] === "r3") {
+            expectProviderName = `${rpath.slice(0, rpath.length-1).join("/")}-p`;
+        }
+
+        const providerName = provider!.split("::").reduce((_, v) => v);
+
+        assert.strictEqual(`${name}.protect: ${protect!}`, `${name}.protect: ${expectProtect}`);
+        assert.strictEqual(`${name}.provider: ${providerName}`, `${name}.provider: ${expectProviderName}`);
+    }
+
+    return { urn: makeUrn(t, name), id: name, props: {} };
+}
 
 function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: boolean): Promise<[string | undefined, boolean]> {
     return new Promise<[string | undefined, boolean]>(
