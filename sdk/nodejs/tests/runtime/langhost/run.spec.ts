@@ -348,7 +348,7 @@ describe("rpc", () => {
                     if (message.indexOf("failed with an unhandled exception") < 0 &&
                         message.indexOf("es the dynamite") < 0) {
 
-                        throw new Error("Unexpected error: message");
+                        throw new Error("Unexpected error: " + message);
                     }
                 }
             },
@@ -376,7 +376,7 @@ describe("rpc", () => {
                     if (message.indexOf("failed with an unhandled exception") < 0 &&
                         message.indexOf("es the dynamite") < 0) {
 
-                        throw new Error("Unexpected error: message");
+                        throw new Error("Unexpected error: " + message);
                     }
                 }
             },
@@ -740,7 +740,7 @@ describe("rpc", () => {
             log: (ctx: any, severity: any, message: string) => {
                 if (severity === engineproto.LogSeverity.ERROR) {
                     if (message.indexOf("'dependsOn' was passed a value that was not a Resource.") < 0) {
-                        throw new Error("Unexpected error: message");
+                        throw new Error("Unexpected error: " + message);
                     }
                 }
             },
@@ -748,7 +748,7 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("component_opt_providers_array") < 0) {
+        // if (casename.indexOf("depends_on_non_resource") < 0) {
         //     continue;
         // }
 
