@@ -20,7 +20,8 @@ class InvalidPropertyDependencyTest(LanghostTest):
     def test_property_dependencies(self):
         self.run_test(
             program=path.join(self.base_path(), "invalid_property_dependency"),
-            expected_resource_count=5)
+            expected_error="Program exited with non-zero exit code: 1",
+            expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
                           _dependencies, _parent, _custom, _protect, _provider, _property_dependencies, _delete_before_replace):
