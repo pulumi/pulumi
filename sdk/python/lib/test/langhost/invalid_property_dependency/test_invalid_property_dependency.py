@@ -17,7 +17,7 @@ from ..util import LanghostTest
 
 
 class InvalidPropertyDependencyTest(LanghostTest):
-    def test_property_dependencies(self):
+    def test_invalid_property_dependency(self):
         self.run_test(
             program=path.join(self.base_path(), "invalid_property_dependency"),
             expected_error="Program exited with non-zero exit code: 1",
