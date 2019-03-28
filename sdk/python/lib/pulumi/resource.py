@@ -55,7 +55,7 @@ class ResourceOptions:
     provider bag (see also ResourceOptions.providers).
     """
 
-    providers: Mapping[str, 'ProviderResource']
+    providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]
     """
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
@@ -160,12 +160,27 @@ class Resource:
                         self._providers = {**self._providers, pkg: provider}
 
         if not custom:
-            providers = opts.providers
-            if providers is not None:
-                self._providers = {**self._providers, **providers}
+            providers = self.__convert_providers(opt.provider, opts.providers)
+            self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
         register_resource(self, t, name, custom, props, opts)
+
+    def __convert_providers__(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]) -> Mapping[str, 'ProviderResource']
+        if provider is not None:
+            return self.__convert_providers__(None, [provider])
+
+        if providers is None:
+            return {}
+
+        if not isinstance(providers, list):
+            return providers
+
+        result = {}
+        for p in providers:
+            result[p.package] = p
+
+        return result
 
     def translate_output_property(self, prop: str) -> str:
         """
@@ -276,6 +291,13 @@ class ProviderResource(CustomResource):
     ProviderResource is a resource that implements CRUD operations for other custom resources. These resources are
     managed similarly to other resources, including the usual diffing and update semantics.
     """
+
+    package: str
+    """
+    package is the name of the package this is provider for.  Common examples are "aws" and "azure".
+    """
+
+
     def __init__(self,
                  pkg: str,
                  name: str,
@@ -293,6 +315,7 @@ class ProviderResource(CustomResource):
             raise TypeError("Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(self, f"pulumi:providers:{pkg}", name, props, opts)
+        self.package = pkg
 
 
 def export(name: str, value: Any):
