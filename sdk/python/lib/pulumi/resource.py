@@ -160,7 +160,7 @@ class Resource:
                         self._providers = {**self._providers, pkg: provider}
 
         if not custom:
-            providers = self._convert_providers(opt.provider, opts.providers)
+            providers = self._convert_providers(opts.provider, opts.providers)
             self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
