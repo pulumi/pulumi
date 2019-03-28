@@ -267,6 +267,8 @@ export interface ComponentResourceOptions extends ResourceOptions {
      * "aws"), or just provided as an array.  In the latter case, the package name will be retrieved
      * from the provider itself.
      *
+     * In the case of a single provider, the options can be simplified to just pass along `provider: theProvider`
+     *
      * Note: do not provide both [provider] and [providers];
      */
     providers?: Record<string, ProviderResource> | ProviderResource[];
