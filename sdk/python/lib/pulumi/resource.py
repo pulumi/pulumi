@@ -166,7 +166,7 @@ class Resource:
         self._protect = bool(opts.protect)
         register_resource(self, t, name, custom, props, opts)
 
-    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]) -> Mapping[str, 'ProviderResource']
+    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
             return self._convert_providers(None, [provider])
 
