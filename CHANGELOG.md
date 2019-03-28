@@ -1,5 +1,9 @@
 ## 0.17.5 (Unreleased)
 
+- The API for passing along a custom provider to a ComponentResource has been simplified.  You can
+  now just say `new SomeComponentResource(name, props, { provider: awsProvider })` instead of
+  `new SomeComponentResource(name, props, { provider: { "aws" : awsProvider } })`
+
 ## Improvements
 
 ## 0.17.4 (Released March 26, 2019)
