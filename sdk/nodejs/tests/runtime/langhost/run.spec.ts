@@ -723,14 +723,32 @@ describe("rpc", () => {
             registerResource: parentDefaultsRegisterResource,
         },
         "component_opt_providers_array": {
-            program: path.join(base, "041.component_opt_single_provider"),
+            program: path.join(base, "042.component_opt_providers_array"),
             expectResourceCount: 240,
             registerResource: parentDefaultsRegisterResource,
+        },
+        "depends_on_non_resource": {
+            program: path.join(base, "043.depends_on_non_resource"),
+            expectResourceCount: 0,
+            // We should get the error message saying that a message was reported and the
+            // host should bail.
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                if (severity === engineproto.LogSeverity.ERROR) {
+                    if (message.indexOf("'dependsOn' was passed a value that was not a Resource.") < 0) {
+                        throw new Error("Unexpected error: message");
+                    }
+                }
+            },
         },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("unhandled_promise_rejection") < 0) {
+        // if (casename.indexOf("component_opt_providers_array") < 0) {
         //     continue;
         // }
 
