@@ -24,9 +24,9 @@ class InheritDefaultsTest(LanghostTest):
     from their parents.
     """
 
-    def test_inherit_defaults(self):
+    def test_component_resource_list_of_providers(self):
         self.run_test(
-            program=path.join(self.base_path(), "inherit_defaults"),
+            program=path.join(self.base_path(), "component_resource_list_of_providers"),
             expected_resource_count=240)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource,
