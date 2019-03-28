@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """The Resource module, containing all resource-related definitions."""
-from typing import Optional, List, Any, Mapping, TYPE_CHECKING
+from typing import Optional, List, Any, Mapping, Union, TYPE_CHECKING
 
 from .runtime import known_types
 from .runtime.resource import register_resource, register_resource_outputs
@@ -55,7 +55,7 @@ class ResourceOptions:
     provider bag (see also ResourceOptions.providers).
     """
 
-    providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]
+    providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]
     """
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
@@ -166,7 +166,7 @@ class Resource:
         self._protect = bool(opts.protect)
         register_resource(self, t, name, custom, props, opts)
 
-    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
+    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
             return self._convert_providers(None, [provider])
 
