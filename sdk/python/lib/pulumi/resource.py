@@ -160,15 +160,15 @@ class Resource:
                         self._providers = {**self._providers, pkg: provider}
 
         if not custom:
-            providers = self.__convert_providers__(opt.provider, opts.providers)
+            providers = self._convert_providers(opt.provider, opts.providers)
             self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
         register_resource(self, t, name, custom, props, opts)
 
-    def __convert_providers__(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]) -> Mapping[str, 'ProviderResource']
+    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'],List['ProviderResource']]) -> Mapping[str, 'ProviderResource']
         if provider is not None:
-            return self.__convert_providers__(None, [provider])
+            return self._convert_providers(None, [provider])
 
         if providers is None:
             return {}
