@@ -1101,15 +1101,13 @@ var ArchiveExts = map[string]ArchiveFormat{
 
 // detectArchiveFormat takes a path and infers its archive format based on the file extension.
 func detectArchiveFormat(path string) ArchiveFormat {
-	ext := filepath.Ext(path)
-	if moreext := filepath.Ext(strings.TrimRight(path, ext)); moreext != "" {
-		ext = moreext + ext // this ensures we detect ".tar.gz" correctly.
+	for ext, typ := range ArchiveExts {
+		if strings.HasSuffix(path, ext) {
+			return typ
+		}
 	}
-	format, has := ArchiveExts[ext]
-	if !has {
-		return NotArchive
-	}
-	return format
+
+	return NotArchive
 }
 
 // readArchive takes a stream to an existing archive and returns a map of names to readers for the inner assets.
