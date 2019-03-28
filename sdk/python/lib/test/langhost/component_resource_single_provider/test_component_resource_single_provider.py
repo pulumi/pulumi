@@ -15,7 +15,7 @@ from os import path
 from ..util import LanghostTest
 
 
-class InheritDefaultsTest(LanghostTest):
+class ComponentResourceSingleProviderTest(LanghostTest):
     """
     Tests that resources inherit a variety of properties from their parents, when parents are present.
 
