@@ -1,6 +1,2 @@
-/bin/
-/coverage/
-/prebuilt/
-/node_modules/
-/custom_node/
-/runtime/native/node_dev/
+**/bin
+**/node_modules
