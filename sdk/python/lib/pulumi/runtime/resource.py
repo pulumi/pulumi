@@ -69,10 +69,6 @@ async def prepare_resource(res: 'Resource',
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
     if opts is not None and opts.depends_on is not None:
-        for dep in opts.depends_on:
-            if not isinstance(dep, Resource):
-                raise Exception("'dependsOn' was passed a value that was not a Resource.")
-
         dependent_urns = list(map(lambda r: r.urn.future(), opts.depends_on))
         explicit_urn_dependencies = await asyncio.gather(*dependent_urns)
 
