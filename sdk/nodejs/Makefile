@@ -47,10 +47,13 @@ instanbul_tests::
 	istanbul report text-summary
 	istanbul report text
 
-test_fast:: instanbul_tests
+sxs_tests::
+	pushd tests/sxs && yarn && tsc && popd
+
+test_fast:: sxs_tests instanbul_tests
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: instanbul_tests
+test_all:: sxs_tests instanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
