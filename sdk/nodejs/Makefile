@@ -48,7 +48,7 @@ instanbul_tests::
 	istanbul report text
 
 sxs_tests::
-	pushd tests/sxs && yarn && tsc && popd
+#	pushd tests/sxs && yarn && tsc && popd
 
 test_fast:: sxs_tests instanbul_tests
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
