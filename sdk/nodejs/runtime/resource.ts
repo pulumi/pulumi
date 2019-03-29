@@ -312,8 +312,8 @@ async function getAllTransitivelyReferencedCustomResourceURNs(resources: Set<Res
     // [Comp1, Cust1, Comp2, Cust2, Cust3]
     const transitivelyReachableResources = getTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
-    const transitivelyReacableCustomResources =  [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
-    const promises = transitivelyReacableCustomResources.map(r => r.urn.promise());
+    const transitivelyReachableCustomResources =  [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
+    const promises = transitivelyReachableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
 }
@@ -365,7 +365,11 @@ async function gatherExplicitDependencies(
             const implicits = await gatherExplicitDependencies([...dos.resources()]);
             return urns.concat(implicits);
         } else {
-            return [dependsOn as Resource];
+            if (!Resource.isInstance(dependsOn)) {
+                throw new Error("'dependsOn' was passed a value that was not a Resource.");
+            }
+
+            return [dependsOn];
         }
     }
 
