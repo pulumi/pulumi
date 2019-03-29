@@ -48,12 +48,12 @@ instanbul_tests::
 	istanbul report text
 
 sxs_tests::
-	pushd tests/sxs && yarn&& tsc && popd
+	pushd tests/sxs && yarn && tsc && popd
 
-test_fast:: instanbul_tests sxs_tests
+test_fast:: sxs_tests instanbul_tests
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: instanbul_tests sxs_tests
+test_all:: sxs_tests instanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
