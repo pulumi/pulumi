@@ -1,6 +1,11 @@
 // tslint:disable:file-header
 
+// See README.md for information on what to do if this test fails.
+
 import * as latestShipped from "@pulumi/pulumi";
+
+// Note: we reference 'bin' as we want to see the typescript types with all internal information
+// stripped.
 import * as localUnshipped from "../../bin";
 
 declare let latestShippedResource: latestShipped.Resource;
@@ -24,28 +29,29 @@ localUnshippedCustomResourceOptions = latestShippedCustomResourceOptions;
 // simulate a resource similar to AWSX where there are instance methods that take
 // other resources and options.
 
-class LatestShippedDerivedComponentResourceExample extends latestShipped.ComponentResource {
+class LatestShippedResourceExample1 extends latestShipped.ComponentResource {
     constructor(name: string, props: any, opts: latestShipped.ComponentResourceOptions) {
         super("", name, undefined, opts);
     }
 
-    public createInstance(name: string, opts: latestShipped.ComponentResourceOptions): LatestShippedDerivedComponentResourceExample {
+    public createInstance(name: string, opts: latestShipped.ComponentResourceOptions): LatestShippedResourceExample1 {
         throw new Error();
     }
 }
 
-class LocalUnshippedDerivedComponentResourceExample extends localUnshipped.ComponentResource {
+class LocalUnshippedResourceExample1 extends localUnshipped.ComponentResource {
     constructor(name: string, props: any, opts: localUnshipped.ComponentResourceOptions) {
         super("", name, undefined, opts);
     }
 
-    public createInstance(name: string, opts: localUnshipped.ComponentResourceOptions): LocalUnshippedDerivedComponentResourceExample {
+    public createInstance(name: string, opts: localUnshipped.ComponentResourceOptions): LocalUnshippedResourceExample1 {
         throw new Error();
     }
 }
 
-declare let latestShippedComponentResource: LatestShippedDerivedComponentResourceExample;
-declare let localUnshippedComponentResource: LocalUnshippedDerivedComponentResourceExample;
+// make sure we can at least assign these to the Resource types from different versions.
+declare let latestShippedDerivedComponentResource: LatestShippedResourceExample1;
+declare let localUnshippedDerivedComponentResource: LocalUnshippedResourceExample1;
 
-latestShippedComponentResource = localUnshippedComponentResource;
-localUnshippedComponentResource = latestShippedComponentResource;
+latestShippedResource = localUnshippedDerivedComponentResource;
+localUnshippedResource = latestShippedDerivedComponentResource;
