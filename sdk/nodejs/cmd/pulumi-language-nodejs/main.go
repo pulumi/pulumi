@@ -63,6 +63,11 @@ const (
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
+
+	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
+	// need for us to print any additional error messages since the user already got a a good
+	// one they can handle.
+	nodeJSProcessExitedAfterShowingUserActionableMessage = 32
 )
 
 // Launches the language host RPC endpoint, which in turn fires
@@ -367,9 +372,17 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		contract.IgnoreError(os.Stdout.Sync())
 		contract.IgnoreError(os.Stderr.Sync())
 		if exiterr, ok := err.(*exec.ExitError); ok {
-			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
-			// errors will trigger this.  So, the error message should look as nice as possible.
+			// If the program ran, but exited with a non-zero error code.  This will happen often,
+			// since user errors will trigger this.  So, the error message should look as nice as
+			// possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				// Check if we got special exit code that means "we already gave the user an
+				// actionable message". In that case, we can simply bail out and terminate `pulumi`
+				// without showing any more messages.
+				if status.ExitStatus() == nodeJSProcessExitedAfterShowingUserActionableMessage {
+					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
+				}
+
 				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
 			} else {
 				err = errors.Wrapf(exiterr, "Program exited unexpectedly")

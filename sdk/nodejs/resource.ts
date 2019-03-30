@@ -122,6 +122,10 @@ export abstract class Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
+        if (opts.parent && !Resource.isInstance(opts.parent)) {
+            throw new Error(`Resource parent is not a valid Resource: ${opts.parent}`);
+        }
+
         if (!t) {
             throw new ResourceError("Missing resource type argument", opts.parent);
         }
@@ -132,10 +136,6 @@ export abstract class Resource {
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
-            if (!Resource.isInstance(opts.parent)) {
-                throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
-            }
-
             this.__parentResource = opts.parent;
             this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
             this.__parentResource.__childResources.add(this);
@@ -249,7 +249,7 @@ export abstract class CustomResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiCustomResource: boolean = true;
+    /* @internal */ public readonly __pulumiCustomResource: boolean;
 
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
@@ -278,8 +278,13 @@ export abstract class CustomResource extends Resource {
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, props?: Inputs, opts?: CustomResourceOptions) {
+    constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}) {
+        if ((<ComponentResourceOptions>opts).providers) {
+            throw new ResourceError("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", opts.parent);
+        }
+
         super(t, name, true, props, opts);
+        this.__pulumiCustomResource = true;
     }
 }
 
@@ -299,10 +304,6 @@ export abstract class ProviderResource extends CustomResource {
      * @param opts A bag of options that control this provider's behavior.
      */
     constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
-        if ((<any>opts).provider !== undefined) {
-            throw new ResourceError("Explicit providers may not be used with provider resources", opts.parent);
-        }
-
         super(`pulumi:providers:${pkg}`, name, props, opts);
     }
 }
@@ -341,8 +342,8 @@ export class ComponentResource extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
-        if ((<any>opts).provider !== undefined) {
-            throw new ResourceError("Explicit providers may not be used with component resources", opts.parent);
+        if ((<CustomResourceOptions>opts).provider) {
+            throw new ResourceError("Do not supply 'provider' option to a ComponentResource. Did you mean 'providers' instead?", opts.parent);
         }
 
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,

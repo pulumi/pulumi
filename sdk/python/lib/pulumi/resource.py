@@ -88,6 +88,11 @@ class ResourceOptions:
         self.providers = providers
         self.delete_before_replace = delete_before_replace
 
+        if depends_on is not None:
+            for dep in depends_on:
+                if not isinstance(dep, Resource):
+                    raise Exception("'dependsOn' was passed a value that was not a Resource.")
+
 class Resource:
     """
     Resource represents a class whose CRUD operations are implemented by a provider plugin.

@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -62,32 +63,32 @@ func newUpCmd() *cobra.Command {
 	var yes bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
-	upWorkingDirectory := func(opts backend.UpdateOptions) error {
+	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
 		s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 		if err != nil {
-			return err
+			return result.FromError(err)
 		}
 
 		// Save any config values passed via flags.
 		if len(configArray) > 0 {
 			commandLineConfig, err := parseConfig(configArray)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			if err = saveConfig(s, commandLineConfig); err != nil {
-				return errors.Wrap(err, "saving config")
+				return result.FromError(errors.Wrap(err, "saving config"))
 			}
 		}
 
 		proj, root, err := readProject()
 		if err != nil {
-			return err
+			return result.FromError(err)
 		}
 
 		m, err := getUpdateMetadata(message, root)
 		if err != nil {
-			return errors.Wrap(err, "gathering environment metadata")
+			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
 		opts.Engine = engine.UpdateOptions{
@@ -97,7 +98,7 @@ func newUpCmd() *cobra.Command {
 			Refresh:   refresh,
 		}
 
-		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
 			M:      m,
@@ -105,23 +106,23 @@ func newUpCmd() *cobra.Command {
 			Scopes: cancellationScopes,
 		})
 		switch {
-		case err == context.Canceled:
-			return errors.New("update cancelled")
-		case err != nil:
-			return PrintEngineError(err)
+		case res != nil && res.Error() == context.Canceled:
+			return result.FromError(errors.New("update cancelled"))
+		case res != nil:
+			return PrintEngineResult(res)
 		case expectNop && changes != nil && changes.HasChanges():
-			return errors.New("error: no changes were expected but changes occurred")
+			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 		default:
 			return nil
 		}
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) error {
+	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) result.Result {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false)
 		if err != nil {
-			return err
+			return result.FromError(err)
 		}
 		defer func() {
 			contract.IgnoreError(repo.Delete())
@@ -130,24 +131,24 @@ func newUpCmd() *cobra.Command {
 		// List the templates from the repo.
 		templates, err := repo.Templates()
 		if err != nil {
-			return err
+			return result.FromError(err)
 		}
 
 		var template workspace.Template
 		if len(templates) == 0 {
-			return errors.New("no template found")
+			return result.FromError(errors.New("no template found"))
 		} else if len(templates) == 1 {
 			template = templates[0]
 		} else {
 			if template, err = chooseTemplate(templates, opts.Display); err != nil {
-				return err
+				return result.FromError(err)
 			}
 		}
 
 		// Create temp directory for the "virtual workspace".
 		temp, err := ioutil.TempDir("", "pulumi-up-")
 		if err != nil {
-			return err
+			return result.FromError(err)
 		}
 		defer func() {
 			contract.IgnoreError(os.RemoveAll(temp))
@@ -155,7 +156,7 @@ func newUpCmd() *cobra.Command {
 
 		// Change the working directory to the "virtual workspace" directory.
 		if err = os.Chdir(temp); err != nil {
-			return errors.Wrap(err, "changing the working directory")
+			return result.FromError(errors.Wrap(err, "changing the working directory"))
 		}
 
 		// If a stack was specified via --stack, see if it already exists.
@@ -164,7 +165,7 @@ func newUpCmd() *cobra.Command {
 		var s backend.Stack
 		if stack != "" {
 			if s, name, description, err = getStack(stack, opts.Display); err != nil {
-				return err
+				return result.FromError(err)
 			}
 		}
 
@@ -174,7 +175,7 @@ func newUpCmd() *cobra.Command {
 			name, err = promptForValue(
 				yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 		}
 
@@ -185,48 +186,48 @@ func newUpCmd() *cobra.Command {
 			description, err = promptForValue(
 				yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 		}
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
 		if err = template.CopyTemplateFiles(temp, true, name, description); err != nil {
-			return err
+			return result.FromError(err)
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
 		proj, root, err := readProject()
 		if err != nil {
-			return err
+			return result.FromError(err)
 		}
 		proj.Name = tokens.PackageName(name)
 		proj.Description = &description
 		proj.Template = nil
 		if err = workspace.SaveProject(proj); err != nil {
-			return errors.Wrap(err, "saving project")
+			return result.FromError(errors.Wrap(err, "saving project"))
 		}
 
 		// Create the stack, if needed.
 		if s == nil {
 			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes, opts.Display); err != nil {
-				return err
+				return result.FromError(err)
 			}
 			// The backend will print "Created stack '<stack>'." on success.
 		}
 
 		// Prompt for config values (if needed) and save.
 		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts.Display); err != nil {
-			return err
+			return result.FromError(err)
 		}
 
 		// Install dependencies.
-		if err = installDependencies("Installing dependencies..."); err != nil {
-			return err
+		if err = installDependencies(); err != nil {
+			return result.FromError(err)
 		}
 
 		m, err := getUpdateMetadata(message, root)
 		if err != nil {
-			return errors.Wrap(err, "gathering environment metadata")
+			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
 		opts.Engine = engine.UpdateOptions{
@@ -241,7 +242,7 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), backend.UpdateOperation{
 			Proj:   proj,
 			Root:   root,
 			M:      m,
@@ -249,12 +250,12 @@ func newUpCmd() *cobra.Command {
 			Scopes: cancellationScopes,
 		})
 		switch {
-		case err == context.Canceled:
-			return errors.New("update cancelled")
-		case err != nil:
-			return PrintEngineError(err)
+		case res != nil && res.Error() == context.Canceled:
+			return result.FromError(errors.New("update cancelled"))
+		case res != nil:
+			return PrintEngineResult(res)
 		case expectNop && changes != nil && changes.HasChanges():
-			return errors.New("error: no changes were expected but changes occurred")
+			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 		default:
 			return nil
 		}
@@ -277,7 +278,7 @@ func newUpCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
@@ -285,7 +286,7 @@ func newUpCmd() *cobra.Command {
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			opts.Display = display.Options{

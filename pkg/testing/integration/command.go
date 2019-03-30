@@ -39,7 +39,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	go func() {
 		for !finished {
-			time.Sleep(30 * time.Second)
+			time.Sleep(120 * time.Second)
 			if !finished {
 				fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
 			}

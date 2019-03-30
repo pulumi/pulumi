@@ -18,6 +18,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -95,17 +97,19 @@ type Backend interface {
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error)
 
+	RenameStack(ctx context.Context, stackRef StackReference, newName tokens.QName) error
+
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
+	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
+	Update(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
+	Refresh(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, error)
+	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
@@ -221,4 +225,8 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 		return resource.PropertyMap{}, nil
 	}
 	return res.Outputs, nil
+}
+
+func (c *backendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
+	return nil, errors.New("downloading plugins at runtime not available when using local backend")
 }

@@ -46,7 +46,8 @@ func MakeProviderType(pkg tokens.Package) tokens.Type {
 	return tokens.Type("pulumi:providers:" + pkg)
 }
 
-func getProviderPackage(typ tokens.Type) tokens.Package {
+// GetProviderPackage returns the provider package for the given type token.
+func GetProviderPackage(typ tokens.Type) tokens.Package {
 	contract.Require(IsProviderType(typ), "typ")
 	return tokens.Package(typ.Name())
 }

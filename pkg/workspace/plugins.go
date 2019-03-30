@@ -45,6 +45,30 @@ var (
 	enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
 )
 
+// MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
+type MissingError struct {
+	// Info contains information about the plugin that was not found.
+	Info PluginInfo
+}
+
+// NewMissingError allocates a new error indicating the given plugin info was not found.
+func NewMissingError(info PluginInfo) error {
+	return &MissingError{
+		Info: info,
+	}
+}
+
+func (err *MissingError) Error() string {
+	if err.Info.Version != nil {
+		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
+			err.Info.Kind, err.Info.Name, err.Info.Version)
+	}
+
+	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
+		err.Info.Kind, err.Info.String())
+}
+
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
@@ -387,7 +411,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 		if err != nil {
-			return "", "", err
+			return "", "", NewMissingError(PluginInfo{
+				Name:    name,
+				Kind:    kind,
+				Version: version,
+			})
 		}
 		match = &candidate
 	} else {
@@ -434,10 +462,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	return "", "", nil
 }
 
-type sortedPluginInfo []PluginInfo
+// SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
+type SortedPluginInfo []PluginInfo
 
-func (sp sortedPluginInfo) Len() int { return len(sp) }
-func (sp sortedPluginInfo) Less(i, j int) bool {
+func (sp SortedPluginInfo) Len() int { return len(sp) }
+func (sp SortedPluginInfo) Less(i, j int) bool {
 	iVersion := sp[i].Version
 	jVersion := sp[j].Version
 	switch {
@@ -451,7 +480,7 @@ func (sp sortedPluginInfo) Less(i, j int) bool {
 		return iVersion.LT(*jVersion)
 	}
 }
-func (sp sortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
+func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
 // SelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that sastisfies the
 // requested semver range. It returns the highest version plugin that satisfies the requested constraints, or an error
@@ -471,7 +500,7 @@ func SelectCompatiblePlugin(
 	//
 	// Plugins without versions are treated as having the lowest version. Ties between plugins without versions are
 	// resolved arbitrarily.
-	sort.Sort(sortedPluginInfo(plugins))
+	sort.Sort(SortedPluginInfo(plugins))
 	for _, plugin := range plugins {
 		switch {
 		case plugin.Kind != kind || plugin.Name != name:

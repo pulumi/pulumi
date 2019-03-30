@@ -21,6 +21,7 @@ import * as pulumi from "../../index";
 import { output } from "../../output";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as typescript from "typescript";
+import * as semver from "semver";
 
 import * as deploymentOnlyModule from "./deploymentOnlyModule";
 
@@ -5677,6 +5678,96 @@ return function /*f*/({ whatever }) { };
 `,
     });
 
+    cases.push({
+        title: "Deconstructing async function",
+        // @ts-ignore
+        func: async function f({ whatever }) { },
+        expectText: `exports.handler = __f;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f() {
+  return (function() {
+    with({ __awaiter: __f0, f: __f }) {
+
+return function /*f*/({ whatever }) {
+            return __awaiter(this, void 0, void 0, function* () { });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
+    cases.push({
+        title: "Deconstructing arrow function",
+        // @ts-ignore
+        func: ({ whatever }) => { },
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return ({ whatever }) => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
+    cases.push({
+        title: "Deconstructing async arrow function",
+        // @ts-ignore
+        func: async ({ whatever }) => { },
+        expectText: `exports.handler = __f0;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return ({ whatever }) => __awaiter(this, void 0, void 0, function* () { });
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
     {
         const regex = /(abc)[\(123-456]\\a\b\z/gi;
 
@@ -5785,9 +5876,13 @@ return function () { console.log(regex); foo(); };
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
     // function.
-    const version = Number(process.version.match(/^v(\d+)\.\d+/)![1]);
-    if (version >= 8) {
-        const jsCases = require("./jsClosureCases");
+    if (semver.gte(process.version, "8.0.0")) {
+        const jsCases = require("./jsClosureCases_8");
+        cases.push(...jsCases.cases);
+    }
+
+    if (semver.gte(process.version, "10.4.0")) {
+        const jsCases = require("./jsClosureCases_10_4");
         cases.push(...jsCases.cases);
     }
 

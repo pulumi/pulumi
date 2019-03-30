@@ -114,8 +114,8 @@ func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Read(urn resource.URN, id resource.ID,
-	props resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
-	return nil, resource.StatusUnknown, errors.New("unsupported")
+	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
 }
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
@@ -279,9 +279,9 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		assert.True(t, p.(*testProvider).configured)
 
-		assert.Equal(t, getProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 
-		ver, err := getProviderVersion(old.Inputs)
+		ver, err := GetProviderVersion(old.Inputs)
 		assert.NoError(t, err)
 		if ver != nil {
 			info, err := p.GetPluginInfo()
@@ -402,7 +402,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 		assert.NotNil(t, p)
 
-		assert.Equal(t, getProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 	}
 
 	// Create a new provider for each package.
@@ -541,7 +541,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 		assert.NotNil(t, p)
 
-		assert.Equal(t, getProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
 	}
 
 	// Create a new provider for each package.

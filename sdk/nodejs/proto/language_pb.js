@@ -811,7 +811,8 @@ proto.pulumirpc.RunResponse.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.RunResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    error: jspb.Message.getFieldWithDefault(msg, 1, "")
+    error: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    bail: jspb.Message.getFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -852,6 +853,10 @@ proto.pulumirpc.RunResponse.deserializeBinaryFromReader = function(msg, reader) 
       var value = /** @type {string} */ (reader.readString());
       msg.setError(value);
       break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setBail(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -888,6 +893,13 @@ proto.pulumirpc.RunResponse.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
+  f = message.getBail();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -903,6 +915,23 @@ proto.pulumirpc.RunResponse.prototype.getError = function() {
 /** @param {string} value */
 proto.pulumirpc.RunResponse.prototype.setError = function(value) {
   jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional bool bail = 2;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.RunResponse.prototype.getBail = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 2, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.RunResponse.prototype.setBail = function(value) {
+  jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
 

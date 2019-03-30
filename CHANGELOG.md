@@ -1,4 +1,30 @@
-## 0.17.2 (unreleased)
+## 0.17.5 (Unreleased)
+
+### Improvements
+
+- Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
+
+## 0.17.4 (Released March 26, 2019)
+
+### Improvements
+
+- Don't print the `error:` prefix when Pulumi exists because of a declined confirmation prompt (fixes [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/2070))
+- Fix issue where `Outputs` produced by `pulumi.interpolate` might have values which could
+  cause validation errors due to them containing the text `<computed>` during previews.
+
+## 0.17.3 (Released March 26, 2019)
+
+### Improvements
+
+- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi update` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi update` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
+- Fix two warnings that were printed when using a dynamic provider about missing method handlers.
+- A bug in the previous version of the Pulumi CLI occasionally caused the Pulumi Engine to load the incorrect resource
+  plugin when processing an update. This bug has been fixed in 0.17.3 by performing a deterministic selection of the
+  best set of plugins available to the engine before starting up. See
+- Add support for serializing JavaScript function that capture [BigInts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt).
+- Support serializing arrow-functions with deconstructed parameters.
+
+## 0.17.2 (Released March 15, 2019)
 
 ### Improvements
 
@@ -7,6 +33,15 @@
 
 - Show `brew upgrade pulumi` as the upgrade message when the currently running `pulumi` executable
   is running on macOS from the brew install directory.
+- Resource diffs that are rendered to the console are now filtered to properties that have semantically-meaningful
+  changes where possible.
+- `pulumi new` no longer runs an initial deployment after a project is generated for nodejs projects.
+  Instead, instructions are printed indicating that `pulumi up` can be used to deploy the project.
+- Differences between the state of a refreshed resource and the state described in a Pulumi program are now properly
+  detected when using newer providers.
+- Differences between a resource's provider-internal properties are no longer displayed in the CLI.
+- Pulumi will now install missing plugins on startup. Previously, Pulumi would error if a required plugin was not
+  present and a bug in the Pulumi CLI made it common for users using Pulumi in their continuous integration setup to have problems with missing plugins. Starting with 0.17.2, if Pulumi detects that required plugins are missing, it will make an attempt to install the missing plugins before proceeding with the update.
 
 ## 0.17.1 (Released March 6, 2019)
 
@@ -46,6 +81,12 @@ Similarly, this only happens for properties.  Functions are not lifted.
   by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
   CustomResource will still only wait on that single resource being created, not any other Resources
   that consider that CustomResource to be a parent.
+
+
+## 0.16.19 (Released March 4, 2019)
+
+- Rolled back change where calling toString/toJSON on an Output would cause a message
+  to be logged to the `pulumi` diagnostics stream.
 
 ## 0.16.18 (Released March 1, 2019)
 
