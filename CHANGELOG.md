@@ -3,6 +3,8 @@
 ### Improvements
 
 - Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
+- Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
+  be `undefined` will properly encode and pass along that `undefined` information.
 
 ## 0.17.4 (Released March 26, 2019)
 
@@ -27,9 +29,6 @@
 ## 0.17.2 (Released March 15, 2019)
 
 ### Improvements
-
-- Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
-  be `undefined` will properly encode and pass along that `undefined` information.
 
 - Show `brew upgrade pulumi` as the upgrade message when the currently running `pulumi` executable
   is running on macOS from the brew install directory.
