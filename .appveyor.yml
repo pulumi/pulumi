@@ -18,12 +18,13 @@ environment:
   AWS_SECRET_ACCESS_KEY:
     secure: T19RJk7Uv3trAChRRDB82OAUDI8k2q9PaSetU7yDFu4aC+MshdwAhTTN/TaPkwl/
 install:
+- rmdir C:\go /s /q
+- appveyor DownloadFile https://dl.google.com/go/go1.12.1.windows-amd64.zip
+- 7z x go1.12.1.windows-amd64.zip -y -oC:\ > NUL
 - cmd: >-
     set GOPATH=%USERPROFILE%\go
 
-    set GOROOT=C:\go111
-
-    set PATH=C:\go111\bin;%PATH%;%GOPATH%\bin
+    set PATH=C:\go\bin;%PATH%;%GOPATH%\bin
 
     set PulumiRoot=C:\Pulumi
 
@@ -34,8 +35,6 @@ install:
     git clone https://github.com/pulumi/scripts.git "%USERPROFILE%\go\src\github.com\pulumi\scripts"
 - ps: >-
     New-Item -Type Directory "$env:USERPROFILE\go\bin"
-
-    Invoke-WebRequest -Uri https://github.com/golang/dep/releases/download/v0.5.0/dep-windows-amd64.exe -OutFile "$env:USERPROFILE\go\bin\dep.exe"
 build_script:
 - cmd: >-
     if defined APPVEYOR_PULL_REQUEST_NUMBER ( msbuild /t:AppVeyorPullRequest /v:Detailed build.proj ) else ( msbuild /t:AppVeyorPush /v:Detailed build.proj )

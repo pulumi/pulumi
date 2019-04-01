@@ -145,7 +145,8 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; fi
+	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; \
+		elif [ -e 'go.mod' ]; then echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor; fi
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::
