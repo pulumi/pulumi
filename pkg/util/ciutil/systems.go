@@ -14,6 +14,7 @@
 
 package ciutil
 
+// CI system constants.
 const (
 	AppVeyor                    System = "AppVeyor"
 	AWSCodeBuild                System = "AWS CodeBuild"
