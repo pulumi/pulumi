@@ -227,7 +227,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	_, err = os.Stat(b.stackPath(newName))
 	if err == nil {
 		return errors.Errorf("a stack named %s already exists", newName)
-	} else if err != nil && !os.IsNotExist(err) {
+	} else if !os.IsNotExist(err) {
 		return err
 	}
 
