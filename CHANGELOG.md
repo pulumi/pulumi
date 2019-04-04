@@ -1,10 +1,15 @@
-## 0.17.5 (Unreleased)
+## 0.17.6 (Unreleased)
+
+### Improvements
+
+## 0.17.5 (Released April 8, 2019)
 
 ### Improvements
 
 - Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
 - Make `Config`'s constructor's `name` argument optional in Python, for consistency with our Node.js SDK. If it isn't
     supplied, the current project name is used as the default.
+- `pulumi logs` will now display log messages from Google Cloud Functions.
 
 ## 0.17.4 (Released March 26, 2019)
 

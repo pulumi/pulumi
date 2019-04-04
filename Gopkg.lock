@@ -2,6 +2,17 @@
 
 
 [[projects]]
+  digest = "1:2a9bb06f4bb795b22f4f73e0eeb3aa781c3a2278148ea8e60cc9b61a8cea2a10"
+  name = "cloud.google.com/go"
+  packages = [
+    "compute/metadata",
+    "logging/apiv2",
+  ]
+  pruneopts = ""
+  revision = "458e1f376a2b44413160b5d301183b65debaa3f6"
+  version = "v0.37.2"
+
+[[projects]]
   branch = "master"
   digest = "1:6978a38432a017763a148afbc7ce6491734b54292af7d3e969d84d2e9dd242e2"
   name = "github.com/Azure/go-ansiterm"
@@ -187,6 +198,14 @@
   revision = "53e6ce116135b80d037921a7fdd5138cf32d7a8a"
 
 [[projects]]
+  digest = "1:b2f6f3029f88fb385269d36d2e7ec8c6082ec40b4572f99ced9032b0b166df6e"
+  name = "github.com/googleapis/gax-go"
+  packages = ["v2"]
+  pruneopts = ""
+  revision = "beaecbbdd8af86aa3acf14180d53828ce69400b2"
+  version = "v2.0.4"
+
+[[projects]]
   digest = "1:20ed7daa9b3b38b6d1d39b48ab3fd31122be5419461470d0c28de3e121c93ecf"
   name = "github.com/gorilla/context"
   packages = ["."]
@@ -225,6 +244,14 @@
   packages = ["."]
   pruneopts = ""
   revision = "83588e72410abfbe4df460eeb6f30841ae47d4c4"
+
+[[projects]]
+  digest = "1:85f8f8d390a03287a563e215ea6bd0610c858042731a8b42062435a0dcbc485f"
+  name = "github.com/hashicorp/golang-lru"
+  packages = ["simplelru"]
+  pruneopts = ""
+  revision = "7087cb70de9f7a8bc0a10c375cb0d2280a8edf9c"
+  version = "v0.5.1"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
@@ -509,6 +536,32 @@
   version = "v0.2.0"
 
 [[projects]]
+  digest = "1:01ed7dc01b3f220c715db799d269c7116cd6ac19b0613377800afcb7e36d0929"
+  name = "go.opencensus.io"
+  packages = [
+    ".",
+    "internal",
+    "internal/tagencoding",
+    "metric/metricdata",
+    "metric/metricproducer",
+    "plugin/ocgrpc",
+    "plugin/ochttp",
+    "plugin/ochttp/propagation/b3",
+    "resource",
+    "stats",
+    "stats/internal",
+    "stats/view",
+    "tag",
+    "trace",
+    "trace/internal",
+    "trace/propagation",
+    "trace/tracestate",
+  ]
+  pruneopts = ""
+  revision = "46618d076d80f4eab85adbcb3be9a370be1dc4e0"
+  version = "v0.20.0"
+
+[[projects]]
   branch = "master"
   digest = "1:7ac6c89335cdca86063465acc67ff283d9517a8ceec0da2f893a7a7ff5245e95"
   name = "golang.org/x/crypto"
@@ -538,6 +591,7 @@
   name = "golang.org/x/net"
   packages = [
     "context",
+    "context/ctxhttp",
     "http2",
     "http2/hpack",
     "idna",
@@ -547,6 +601,20 @@
   ]
   pruneopts = ""
   revision = "a337091b0525af65de94df2eb7e98bd9962dcbe2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:348696484a568aa816b0aa29d4924afa1a4e5492e29a003eaf365f650a53c7b4"
+  name = "golang.org/x/oauth2"
+  packages = [
+    ".",
+    "google",
+    "internal",
+    "jws",
+    "jwt",
+  ]
+  pruneopts = ""
+  revision = "9f3314589c9a9136388751d9adae6b0ed400978a"
 
 [[projects]]
   branch = "master"
@@ -591,10 +659,58 @@
   revision = "88f656faf3f37f690df1a32515b479415e1a6769"
 
 [[projects]]
+  digest = "1:07f87f26b7fc5f6a7d42cd64e0acb0106c89d50eaae84665c54a42e3647f5271"
+  name = "google.golang.org/api"
+  packages = [
+    "googleapi/transport",
+    "internal",
+    "iterator",
+    "option",
+    "transport",
+    "transport/grpc",
+    "transport/http",
+    "transport/http/internal/propagation",
+  ]
+  pruneopts = ""
+  revision = "bce707a4d0ea3488942724b3bcc1c8338f38f991"
+  version = "v0.3.0"
+
+[[projects]]
+  digest = "1:0a6cbf5be24f00105d33c9f6d2f40b8149e0316537a92be1b0d4c761b7ae39fb"
+  name = "google.golang.org/appengine"
+  packages = [
+    ".",
+    "internal",
+    "internal/app_identity",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/modules",
+    "internal/remote_api",
+    "internal/socket",
+    "internal/urlfetch",
+    "socket",
+    "urlfetch",
+  ]
+  pruneopts = ""
+  revision = "54a98f90d1c46b7731eb8fb305d2a321c30ef610"
+  version = "v1.5.0"
+
+[[projects]]
   branch = "master"
   digest = "1:b2a56937cae9680d4c1f8cc6d0a80cbbdd61853510509b80af7ffd9d51366a31"
   name = "google.golang.org/genproto"
-  packages = ["googleapis/rpc/status"]
+  packages = [
+    "googleapis/api/annotations",
+    "googleapis/api/distribution",
+    "googleapis/api/label",
+    "googleapis/api/metric",
+    "googleapis/api/monitoredres",
+    "googleapis/logging/type",
+    "googleapis/logging/v2",
+    "googleapis/rpc/status",
+    "protobuf/field_mask",
+  ]
   pruneopts = ""
   revision = "11c7f9e547da6db876260ce49ea7536985904c9b"
 
@@ -609,6 +725,7 @@
     "codes",
     "connectivity",
     "credentials",
+    "credentials/oauth",
     "encoding",
     "encoding/proto",
     "grpclb/grpc_lb_v1/messages",
@@ -727,6 +844,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "cloud.google.com/go/logging/apiv2",
     "github.com/Nvveen/Gotty",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/credentials",
@@ -770,6 +888,9 @@
     "golang.org/x/net/context",
     "golang.org/x/net/http2",
     "golang.org/x/sync/errgroup",
+    "google.golang.org/api/iterator",
+    "google.golang.org/api/option",
+    "google.golang.org/genproto/googleapis/logging/v2",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/connectivity",
