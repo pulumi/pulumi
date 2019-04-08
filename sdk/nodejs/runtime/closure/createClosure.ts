@@ -844,6 +844,8 @@ async function getOrCreateEntryAsync(
     }
 
     async function dispatchAnyAsync(): Promise<void> {
+        const typeofObj: string = typeof obj;
+
         if (doNotCapture()) {
             // We do not want to capture this object.  Explicit set .json to undefined so
             // that we will see that the property is set and we will simply roundtrip this
@@ -854,14 +856,14 @@ async function getOrCreateEntryAsync(
 
         if (obj === undefined ||
             obj === null ||
-            typeof obj === "boolean" ||
-            typeof obj === "string") {
+            typeofObj === "boolean" ||
+            typeofObj === "string") {
 
             // Serialize primitives as-is.
             entry.json = obj;
             return;
         }
-        else if (typeof obj === "bigint") {
+        else if (typeofObj === "bigint") {
             entry.expr = `${obj}n`;
             return;
         }
