@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- `refresh` will now warn instead of returning an error when it notices a resource is in an
+  unhealthy state. This is in service of https://github.com/pulumi/pulumi/issues/2633.
+
 ## 0.17.5 (Released April 8, 2019)
 
 ### Improvements
