@@ -15,7 +15,11 @@
 package deploy
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -667,6 +671,15 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		}
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 			initErrors = initErr.Reasons
+
+			// Partial failure SHOULD NOT cause refresh to fail. Instead:
+			//
+			// 1. Warn instead that during refresh we noticed the resource has become unhealthy.
+			// 2. Make sure the initialization errors are persisted in the state, so that the next
+			//    `pulumi up` will surface them to the user.
+			err = nil
+			msg := fmt.Sprintf("Refreshed resource is in an unhealthy state:\n* %s", strings.Join(initErrors, "\n* "))
+			s.Plan().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}
 	outputs := refreshed.Outputs

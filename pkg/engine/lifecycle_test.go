@@ -1372,10 +1372,11 @@ func TestRefreshInitFailure(t *testing.T) {
 	}
 
 	//
-	// Refresh DOES fail, causing the new initialization error to appear.
+	// Refresh again, see the resource is in a partial state of failure, but the refresh operation
+	// DOES NOT fail. The initialization error is still persisted.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true, ExpectFailure: true}}
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
