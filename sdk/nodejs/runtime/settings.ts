@@ -14,6 +14,7 @@
 
 import * as grpc from "grpc";
 import { RunError } from "../errors";
+import * as log from "../log";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
@@ -59,15 +60,21 @@ export function isDryRun(): boolean {
 /**
  * Get the project being run by the current update.
  */
-export function getProject(): string | undefined {
-    return options.project;
+export function getProject(): string {
+    if (options.project) {
+        return options.project;
+    }
+    throw new Error("Missing project name; run this program with the `pulumi` CLI, or set PULUMI_NODEJS_PROJECT");
 }
 
 /**
  * Get the stack being targeted by the current update.
  */
-export function getStack(): string | undefined {
-    return options.stack;
+export function getStack(): string {
+    if (options.stack) {
+        return options.stack;
+    }
+    throw new Error("Missing stack name; run this program with the `pulumi` CLI, or set PULUMI_NODEJS_STACK");
 }
 
 /**
@@ -85,19 +92,20 @@ export function hasMonitor(): boolean {
 /**
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
-export function getMonitor(): Object {
+export function getMonitor(): Object | undefined {
     if (!monitor) {
         const addr = options.monitorAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the monitor.
             monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure());
-        } else {
-            // Otherwise, this is an error.
-            throw new RunError(
-                "Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?");
+        } else if (!process.env["PULUMI_DISCONNECTED"]) {
+            // We will try to keep going but behavior will be impaired, so log a warning.
+            log.warn(
+                "Program run without the `pulumi` CLI; this may not be what you want " +
+                    "(set PULUMI_DISCONNECTED to suppress this warning)");
         }
     }
-    return monitor!;
+    return monitor;
 }
 
 /**
