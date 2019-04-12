@@ -255,6 +255,18 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 		return prop.ArchiveValue().Serialize()
 	}
 
+	if prop.IsSecret() {
+		//TODO(ellismg): We need to make this error returning (so we can communicate failures in JSON marshalling)
+		//               as well as any errors that occur when encrypting the raw value (which we also need to do!)
+		value := SerializePropertyValue(prop.SecretValue().Element)
+		bytes, err := json.Marshal(value)
+		contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
+		return apitype.SecretV1{
+			Sig:        resource.SecretSig,
+			Ciphertext: string(bytes),
+		}
+	}
+
 	// All others are returned as-is.
 	return prop.V
 }
@@ -343,8 +355,21 @@ func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 					contract.Assert(isarchive)
 					return resource.NewArchiveProperty(archive), nil
 				case resource.SecretSig:
-					return resource.PropertyValue{},
-						errors.New("this version of the Pulumi SDK does not support first-class secrets")
+					ciphertext, ok := objmap["ciphertext"].(string)
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed secret value: missing ciphertext")
+					}
+					// TODO(ellismg): The "ciphertext" is actually plaintext right now, so once that changes we'll
+					//                need to decrypt things here.
+					var elem interface{}
+					if err := json.Unmarshal([]byte(ciphertext), &elem); err != nil {
+						return resource.PropertyValue{}, err
+					}
+					ev, err := DeserializePropertyValue(elem)
+					if err != nil {
+						return resource.PropertyValue{}, err
+					}
+					return resource.MakeSecret(ev), nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}

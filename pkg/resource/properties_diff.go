@@ -312,6 +312,17 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		return vo.DeepEquals(oa)
 	}
 
+	// Secret are equal if the value they wrap are equal.
+	if v.IsSecret() {
+		if !other.IsSecret() {
+			return false
+		}
+		vs := v.SecretValue()
+		os := other.SecretValue()
+
+		vs.Element.DeepEquals(os.Element)
+	}
+
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
 }

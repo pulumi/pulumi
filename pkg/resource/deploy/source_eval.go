@@ -541,7 +541,11 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
 
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:        label,
+			KeepUnknowns: true,
+			KeepSecrets:  true,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
@@ -552,7 +556,11 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+		KeepSecrets:  req.GetAcceptSecrets(),
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
 	}
@@ -601,6 +609,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
+		KeepSecrets:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -636,6 +645,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
+		KeepSecrets:  req.GetAcceptSecrets(),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %s return state", result.State.URN)
@@ -694,7 +704,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetObject(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -757,7 +772,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+		KeepSecrets:  req.GetAcceptSecrets(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -782,7 +801,12 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	}
 	label := fmt.Sprintf("ResourceMonitor.RegisterResourceOutputs(%s)", urn)
 	outs, err := plugin.UnmarshalProperties(
-		req.GetOutputs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetOutputs(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal output properties")
 	}

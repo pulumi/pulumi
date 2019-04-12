@@ -234,7 +234,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 	}
 
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, KeepSecrets: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
@@ -246,7 +246,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 	}
 
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
-		Label: label, KeepUnknowns: true,
+		Label: label, KeepUnknowns: true, KeepSecrets: req.AcceptSecrets,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal return")
@@ -283,4 +283,20 @@ func (rm *queryResmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
 
 	return nil, fmt.Errorf("Query mode does not support registering resource operations")
+}
+
+// SupportsFeature the query resmon is able to have secrets passed to it, which may be arguments to invoke calls.
+func (rm *queryResmon) SupportsFeature(ctx context.Context,
+	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
+
+	hasSupport := false
+
+	switch req.Id {
+	case "secrets":
+		hasSupport = true
+	}
+
+	return &pulumirpc.SupportsFeatureResponse{
+		HasSupport: hasSupport,
+	}, nil
 }
