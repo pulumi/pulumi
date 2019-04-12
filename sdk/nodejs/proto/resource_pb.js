@@ -80,7 +80,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     dependenciesList: jspb.Message.getRepeatedField(msg, 6),
-    provider: jspb.Message.getFieldWithDefault(msg, 7, "")
+    provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    version: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -145,6 +146,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.setProvider(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVersion(value);
       break;
     default:
       reader.skipField();
@@ -222,6 +227,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeString(
       7,
+      f
+    );
+  }
+  f = message.getVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -359,6 +371,21 @@ proto.pulumirpc.ReadResourceRequest.prototype.getProvider = function() {
 /** @param {string} value */
 proto.pulumirpc.ReadResourceRequest.prototype.setProvider = function(value) {
   jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional string version = 8;
+ * @return {string}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.ReadResourceRequest.prototype.setVersion = function(value) {
+  jspb.Message.setProto3StringField(this, 8, value);
 };
 
 
@@ -611,7 +638,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     dependenciesList: jspb.Message.getRepeatedField(msg, 7),
     provider: jspb.Message.getFieldWithDefault(msg, 8, ""),
     propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject) : [],
-    deletebeforereplace: jspb.Message.getFieldWithDefault(msg, 10, false)
+    deletebeforereplace: jspb.Message.getFieldWithDefault(msg, 10, false),
+    version: jspb.Message.getFieldWithDefault(msg, 11, "")
   };
 
   if (includeInstance) {
@@ -690,6 +718,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 10:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setDeletebeforereplace(value);
+      break;
+    case 11:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVersion(value);
       break;
     default:
       reader.skipField();
@@ -785,6 +817,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f) {
     writer.writeBool(
       10,
+      f
+    );
+  }
+  f = message.getVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      11,
       f
     );
   }
@@ -1139,6 +1178,21 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getDeletebeforereplace = funct
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDeletebeforereplace = function(value) {
   jspb.Message.setProto3BooleanField(this, 10, value);
+};
+
+
+/**
+ * optional string version = 11;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 11, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setVersion = function(value) {
+  jspb.Message.setProto3StringField(this, 11, value);
 };
 
 

@@ -77,6 +77,7 @@ message InvokeRequest {
     string tok = 1;                  // the function token to invoke.
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
     string provider = 3;             // an optional reference to the provider to use for this invoke.
+    string version = 4;              // the version of the provider to use when servicing this request.
 }
 
 message InvokeResponse {

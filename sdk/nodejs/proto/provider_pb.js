@@ -607,7 +607,8 @@ proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
     args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    provider: jspb.Message.getFieldWithDefault(msg, 3, "")
+    provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    version: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -657,6 +658,10 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
       var value = /** @type {string} */ (reader.readString());
       msg.setProvider(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVersion(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -705,6 +710,13 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -768,6 +780,21 @@ proto.pulumirpc.InvokeRequest.prototype.getProvider = function() {
 /** @param {string} value */
 proto.pulumirpc.InvokeRequest.prototype.setProvider = function(value) {
   jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string version = 4;
+ * @return {string}
+ */
+proto.pulumirpc.InvokeRequest.prototype.getVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.InvokeRequest.prototype.setVersion = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
