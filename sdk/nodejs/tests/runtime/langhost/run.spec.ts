@@ -1006,6 +1006,12 @@ describe("rpc", () => {
 
                         callback(undefined, new engineproto.SetRootResourceResponse());
                     },
+                    // SupportsFeature callback
+                    (call: any, callback: any) => {
+                        const resp = new resproto.SupportsFeatureResponse();
+                        resp.setHassupport(false);
+                        callback(undefined, resp);
+                    },
                 );
 
                 // Next, go ahead and spawn a new language host that connects to said monitor.
@@ -1114,10 +1120,12 @@ function createMockEngine(
         registerResourceOutputsCallback: (call: any, request: any) => any,
         logCallback: (call: any, request: any) => any,
         getRootResourceCallback: (call: any, request: any) => any,
-        setRootResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
+        setRootResourceCallback: (call: any, request: any) => any,
+        supportsFeatureCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
     server.addService(resrpc.ResourceMonitorService, {
+        supportsFeature: supportsFeatureCallback,
         invoke: invokeCallback,
         readResource: readResourceCallback,
         registerResource: registerResourceCallback,

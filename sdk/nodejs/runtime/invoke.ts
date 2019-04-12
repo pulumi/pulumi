@@ -60,6 +60,7 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
         req.setArgs(obj);
         req.setProvider(providerRef);
         req.setVersion(opts.version || "");
+        req.setAcceptsecrets(true);
         const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
             monitor.invoke(req, (err: grpc.StatusObject, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);

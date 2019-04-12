@@ -42,8 +42,8 @@ describe("output", () => {
     it("propagates true isKnown bit from inner Output", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false)));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, true);
@@ -55,8 +55,8 @@ describe("output", () => {
     it("propagates false isKnown bit from inner Output", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(false)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(false), Promise.resolve(false)));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, false);
@@ -68,8 +68,8 @@ describe("output", () => {
     it("can await even when isKnown is a rejected promise.", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error())));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error()), Promise.resolve(false)));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, false);
@@ -82,6 +82,32 @@ describe("output", () => {
         }
 
         assert.fail("Should not read here");
+    }));
+
+    it("propagates true isSecret bit from inner Output", asyncTest(async () => {
+        runtime._setIsDryRun(true);
+
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(true)));
+
+        const isSecret = await output2.isSecret;
+        assert.equal(isSecret, true);
+
+        const value = await output2.promise();
+        assert.equal(value, "inner");
+    }));
+
+     it("retains true isSecret bit from outer Output", asyncTest(async () => {
+        runtime._setIsDryRun(true);
+
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(true));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false)));
+
+        const isSecret = await output2.isSecret;
+        assert.equal(isSecret, true);
+
+        const value = await output2.promise();
+        assert.equal(value, "inner");
     }));
 
     describe("concat", () => {
