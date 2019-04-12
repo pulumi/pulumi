@@ -55,7 +55,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 		for _, s := range steps {
 			g := s.Goal()
 			urn, id, outs, err := resmon.RegisterResource(g.Type, string(g.Name), g.Custom, g.Parent, g.Protect,
-				g.Dependencies, g.Provider, g.Properties, g.PropertyDependencies, false)
+				g.Dependencies, g.Provider, g.Properties, g.PropertyDependencies, false, "")
 			if err != nil {
 				return err
 			}
@@ -343,18 +343,18 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
-		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String())
+		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String())
+		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String())
+		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "")
 		assert.NoError(t, perr)
 
-		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String())
+		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String())
+		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String())
+		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "")
 		assert.NoError(t, perr)
 
 		return nil
@@ -414,18 +414,18 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
-		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "")
+		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "")
+		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "")
+		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "")
 		assert.NoError(t, err)
 
-		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "")
+		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "")
+		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "")
+		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "")
 		assert.NoError(t, err)
 
 		return nil
@@ -482,4 +482,191 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	assert.Equal(t, len(providerSource.providers), registers)
 	assert.Equal(t, expectedReads, reads)
 	assert.Equal(t, expectedInvokes, int(invokes))
+}
+
+func TestReadResourceAndInvokeVersion(t *testing.T) {
+	runInfo := &EvalRunInfo{
+		Proj:   &workspace.Project{Name: "test"},
+		Target: &Target{Name: "test"},
+	}
+
+	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
+		var pt tokens.Type
+		if parent != "" {
+			pt = parent.Type()
+		}
+		return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+	}
+
+	invokes := int32(0)
+	noopProvider := &deploytest.Provider{
+		InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+			atomic.AddInt32(&invokes, 1)
+			return resource.PropertyMap{}, nil, nil
+		},
+	}
+
+	// This program is designed to trigger the instantiation of two default providers:
+	//  1. Provider pkgA, version 0.18.0
+	//  2. Provider pkgC, version 0.18.0
+	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
+		// Triggers pkgA, v0.18.0.
+		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "0.18.0")
+		assert.NoError(t, err)
+		// Uses pkgA's already-instantiated provider.
+		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "0.18.0")
+		assert.NoError(t, err)
+
+		// Triggers pkgC, v0.18.0.
+		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "0.18.0")
+		assert.NoError(t, err)
+
+		// Uses pkgA and pkgC's already-instantiated provider.
+		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "0.18.0")
+		assert.NoError(t, err)
+		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "0.18.0")
+		assert.NoError(t, err)
+		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "0.18.0")
+		assert.NoError(t, err)
+
+		return nil
+	}
+
+	ctx, err := newTestPluginContext(program)
+	assert.NoError(t, err)
+
+	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
+
+	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	assert.Nil(t, res)
+	registrations, reads := 0, 0
+	for {
+		event, res := iter.Next()
+		assert.Nil(t, res)
+
+		if event == nil {
+			break
+		}
+
+		switch e := event.(type) {
+		case RegisterResourceEvent:
+			goal := e.Goal()
+			urn, id := newURN(goal.Type, string(goal.Name), goal.Parent), resource.ID("id")
+
+			assert.True(t, providers.IsProviderType(goal.Type))
+			// The name of the provider resource is derived from the version requested.
+			assert.Equal(t, "default_0_18_0", string(goal.Name))
+			ref, err := providers.NewReference(urn, id)
+			assert.NoError(t, err)
+			_, ok := providerSource.GetProvider(ref)
+			assert.False(t, ok)
+			providerSource.registerProvider(ref, noopProvider)
+
+			e.Done(&RegisterResult{
+				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
+					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+					false),
+			})
+			registrations++
+
+		case ReadResourceEvent:
+			urn := newURN(e.Type(), string(e.Name()), e.Parent())
+			e.Done(&ReadResult{
+				State: resource.NewState(e.Type(), urn, true, false, e.ID(), e.Properties(),
+					resource.PropertyMap{}, e.Parent(), false, false, e.Dependencies(), nil, e.Provider(), nil, false),
+			})
+			reads++
+		}
+	}
+
+	assert.Equal(t, 2, registrations)
+	assert.Equal(t, 3, reads)
+	assert.Equal(t, int32(3), invokes)
+}
+
+func TestRegisterResourceWithVersion(t *testing.T) {
+	runInfo := &EvalRunInfo{
+		Proj:   &workspace.Project{Name: "test"},
+		Target: &Target{Name: "test"},
+	}
+
+	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
+		var pt tokens.Type
+		if parent != "" {
+			pt = parent.Type()
+		}
+		return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+	}
+
+	noopProvider := &deploytest.Provider{}
+
+	// This program is designed to trigger the instantiation of two default providers:
+	//  1. Provider pkgA, version 0.18.0
+	//  2. Provider pkgC, version 0.18.0
+	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
+		// Triggers pkgA, v0.18.1.
+		_, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+			resource.PropertyMap{}, nil, false, "0.18.1")
+		assert.NoError(t, err)
+
+		// Re-uses pkgA's already-instantiated provider.
+		_, _, _, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
+			resource.PropertyMap{}, nil, false, "0.18.1")
+		assert.NoError(t, err)
+
+		// Triggers pkgA, v0.18.2
+		_, _, _, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
+			resource.PropertyMap{}, nil, false, "0.18.2")
+		assert.NoError(t, err)
+		return nil
+	}
+
+	ctx, err := newTestPluginContext(program)
+	assert.NoError(t, err)
+
+	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
+
+	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	assert.Nil(t, res)
+	registered181, registered182 := false, false
+	for {
+		event, res := iter.Next()
+		assert.Nil(t, res)
+
+		if event == nil {
+			break
+		}
+
+		switch e := event.(type) {
+		case RegisterResourceEvent:
+			goal := e.Goal()
+			urn, id := newURN(goal.Type, string(goal.Name), goal.Parent), resource.ID("id")
+
+			if providers.IsProviderType(goal.Type) {
+				switch goal.Name {
+				case "default_0_18_1":
+					assert.False(t, registered181)
+					registered181 = true
+				case "default_0_18_2":
+					assert.False(t, registered182)
+					registered182 = true
+				}
+
+				ref, err := providers.NewReference(urn, id)
+				assert.NoError(t, err)
+				_, ok := providerSource.GetProvider(ref)
+				assert.False(t, ok)
+				providerSource.registerProvider(ref, noopProvider)
+			}
+
+			e.Done(&RegisterResult{
+				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
+					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+					false),
+			})
+		}
+	}
+
+	assert.True(t, registered181)
+	assert.True(t, registered182)
 }
