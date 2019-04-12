@@ -110,9 +110,42 @@ function deserialize_pulumirpc_RegisterResourceResponse(buffer_arg) {
   return resource_pb.RegisterResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_SupportsFeatureRequest(arg) {
+  if (!(arg instanceof resource_pb.SupportsFeatureRequest)) {
+    throw new Error('Expected argument of type pulumirpc.SupportsFeatureRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_SupportsFeatureRequest(buffer_arg) {
+  return resource_pb.SupportsFeatureRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_SupportsFeatureResponse(arg) {
+  if (!(arg instanceof resource_pb.SupportsFeatureResponse)) {
+    throw new Error('Expected argument of type pulumirpc.SupportsFeatureResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_SupportsFeatureResponse(buffer_arg) {
+  return resource_pb.SupportsFeatureResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 var ResourceMonitorService = exports.ResourceMonitorService = {
+  supportsFeature: {
+    path: '/pulumirpc.ResourceMonitor/SupportsFeature',
+    requestStream: false,
+    responseStream: false,
+    requestType: resource_pb.SupportsFeatureRequest,
+    responseType: resource_pb.SupportsFeatureResponse,
+    requestSerialize: serialize_pulumirpc_SupportsFeatureRequest,
+    requestDeserialize: deserialize_pulumirpc_SupportsFeatureRequest,
+    responseSerialize: serialize_pulumirpc_SupportsFeatureResponse,
+    responseDeserialize: deserialize_pulumirpc_SupportsFeatureResponse,
+  },
   invoke: {
     path: '/pulumirpc.ResourceMonitor/Invoke',
     requestStream: false,
