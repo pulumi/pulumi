@@ -36,13 +36,14 @@ import (
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx       *Context                         // a plugin context for caching, etc.
-	pkg       tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug      *plugin                          // the actual plugin process wrapper.
-	clientRaw pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr    error                            // non-nil if a configure call fails.
-	cfgknown  bool                             // true if all configuration values are known.
-	cfgdone   chan bool                        // closed when configuration has completed.
+	ctx           *Context                         // a plugin context for caching, etc.
+	pkg           tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug          *plugin                          // the actual plugin process wrapper.
+	clientRaw     pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr        error                            // non-nil if a configure call fails.
+	cfgknown      bool                             // true if all configuration values are known.
+	cfgdone       chan bool                        // closed when configuration has completed.
+	acceptSecrets bool                             // true if this provider plugin can consume strongly typed secret.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -149,7 +150,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		}
 		switch {
 		case v.IsComputed():
-			p.cfgknown = false
+			p.cfgknown, p.acceptSecrets = false, false
 			close(p.cfgdone)
 			return nil
 		case v.IsString():
@@ -166,14 +167,17 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
-		_, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
+		resp, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{
+			AcceptSecrets: true,
+			Variables:     config,
+		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfgknown, p.cfgerr = true, err
+		p.cfgknown, p.acceptSecrets, p.cfgerr = true, resp.GetAcceptSecrets(), err
 		close(p.cfgdone)
 	}()
 

@@ -508,6 +508,23 @@ func (rm *resmon) parseProviderRequest(pkg tokens.Package, version string) (prov
 	return providers.NewProviderRequest(&parsedVersion, pkg), nil
 }
 
+func (rm *resmon) SupportsFeature(ctx context.Context,
+	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
+
+	hasSupport := false
+
+	switch req.Id {
+	case "secrets":
+		hasSupport = true
+	}
+
+	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
+
+	return &pulumirpc.SupportsFeatureResponse{
+		HasSupport: hasSupport,
+	}, nil
+}
+
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
