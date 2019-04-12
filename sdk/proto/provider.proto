@@ -28,7 +28,7 @@ service ResourceProvider {
     // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
     // Configure configures the resource provider with "globals" that control its behavior.
-    rpc Configure(ConfigureRequest) returns (google.protobuf.Empty) {}
+    rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
 
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
@@ -61,6 +61,11 @@ service ResourceProvider {
 message ConfigureRequest {
     map<string, string> variables = 1; // a map of configuration keys to values.
     google.protobuf.Struct args = 2;   // the input properties for the provider. Only filled in for newer providers.
+    bool acceptSecrets  = 3;          // when true operations should retrun secrets as strongly typed.
+}
+
+message ConfigureResponse {
+    bool acceptSecrets  = 1;  // when true, the engine should pass secrets as strongly typed values to the provider.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
@@ -78,6 +83,9 @@ message InvokeRequest {
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
     string provider = 3;             // an optional reference to the provider to use for this invoke.
     string version = 4;              // the version of the provider to use when servicing this request.
+    bool acceptSecrets  = 5;         // when true operations should retrun secrets as strongly typed. (only used by
+                                     // the resource monitor's Invoke rpc. Ignored for provider Invoke rpc (this is
+                                     // controlled via ConfigureRequest)
 }
 
 message InvokeResponse {

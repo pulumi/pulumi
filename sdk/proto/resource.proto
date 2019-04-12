@@ -22,10 +22,21 @@ package pulumirpc;
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
+    rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
+}
+
+// SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
+// to control the format or types of messages it sends.
+message SupportsFeatureRequest {
+    string id = 1;  // the ID of the feature to test support for.
+}
+
+message SupportsFeatureResponse {
+    bool hasSupport = 1; // true when the resource monitor supports this feature.
 }
 
 // There is a clear distinction here between the "properties" bag sent across the wire as part of these RPCs and
@@ -44,6 +55,7 @@ message ReadResourceRequest {
     repeated string dependencies = 6;      // a list of URNs that this read depends on, as observed by the language host.
     string provider = 7;                   // an optional reference to the provider to use for this read.
     string version = 8;                    // the version of the provider to use when servicing this request.
+    bool acceptSecrets = 9;                // when true operations should retrun secrets as strongly typed.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -71,6 +83,7 @@ message RegisterResourceRequest {
     bool deleteBeforeReplace = 10;     // true if this resource should be deleted before replacement.
     string version = 11;               // the version of the provider to use when servicing this request.
     repeated string ignoreChanges = 12; // a list of property selectors to ignore during updates.
+    bool acceptSecrets = 13;           // when true operations should retrun secrets as strongly typed.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
