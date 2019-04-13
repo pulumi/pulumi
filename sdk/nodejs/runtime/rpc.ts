@@ -17,7 +17,7 @@ import * as log from "../log";
 import { Input, Inputs, Output } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { excessiveDebugOutput, isDryRun } from "./settings";
+import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
@@ -290,8 +290,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         if (!isKnown) {
             return unknownValue;
         }
-        if (isSecret) {
-            // TODO(ellismg): We should only do this when we know the resource monitor can understand secrets
+        if (isSecret && await monitorSupportsSecrets()) {
             return {
                 [specialSigKey]: specialSecretSig,
                 value: value,
