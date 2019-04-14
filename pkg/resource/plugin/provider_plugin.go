@@ -136,6 +136,23 @@ func (p *provider) ensureConfigured() error {
 	return p.cfgerr
 }
 
+// annotateSecrets copies the "secretness" of any properties from one PropertyMap to another. For any property with a
+// secret value in "from", if there is a coresponding property in "to", it is marked as secret.
+func annotateSecrets(to, from resource.PropertyMap) {
+	if to == nil {
+		return
+	}
+
+	for fromKey, fromValue := range from {
+		if fromValue.IsSecret() {
+			if toValue, has := to[fromKey]; has && !toValue.IsSecret() {
+				logging.V(7).Infof("marking %s as secret", fromKey)
+				to[fromKey] = resource.MakeSecret(toValue)
+			}
+		}
+	}
+}
+
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
@@ -242,6 +259,13 @@ func (p *provider) Check(urn resource.URN,
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(inputs, news)
 	}
 
 	// And now any properties that failed verification.
@@ -399,6 +423,13 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resourceStatus, err
 	}
 
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(outs, props)
+	}
+
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 	if resourceError == nil {
 		return id, outs, resourceStatus, nil
@@ -509,6 +540,14 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		}
 	}
 
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(newInputs, inputs)
+		annotateSecrets(newState, state)
+	}
+
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResult{
 		Outputs: newState,
@@ -580,6 +619,13 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	})
 	if err != nil {
 		return nil, resourceStatus, err
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(outs, news)
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))

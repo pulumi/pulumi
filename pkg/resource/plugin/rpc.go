@@ -143,6 +143,7 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		return nil, nil // return nil and the caller will ignore it.
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
+			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
 			return MarshalPropertyValue(v.SecretValue().Element, opts)
 		}
 		secret := resource.NewObjectProperty(resource.PropertyMap{
@@ -317,6 +318,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 				return nil, errors.New("malformed RPC secret: missing value")
 			}
 			if !opts.KeepSecrets {
+				logging.V(5).Infof("unmarshalling secret as raw value, as opts.KeepSecrets is false")
 				return &value, nil
 			}
 			s := resource.MakeSecret(value)
