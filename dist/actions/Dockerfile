@@ -1,0 +1,29 @@
+FROM pulumi/pulumi:latest
+# We build the pulumi/actions container at the same time as pulumi/pulumi. So
+# the :latest tag will be relative to when this container was build.
+
+# Label things so it lights up in GitHub Actions!
+LABEL "com.github.actions.name"="Pulumi"
+LABEL "com.github.actions.description"="Deploy apps and infra to your favorite cloud!"
+LABEL "com.github.actions.icon"="cloud-lightning"
+LABEL "com.github.actions.color"="purple"
+
+# pulumi/actions contains documentation, examples. The actual container image is at
+# https://github.com/pulumi/pulumi.
+LABEL "repository"="https://github.com/pulumi/actions"
+LABEL "homepage"="http://pulumi.io/reference/gh-actions.html"
+
+# Install deps not already included in base container image.
+RUN apt-get update -y && \
+  apt-get install -y jq
+
+# Copy the entrypoint script.
+COPY ./entrypoint.sh /usr/bin/pulumi-action
+
+# The app directory should contain the Pulumi program and is the pwd for the CLI.
+WORKDIR /app
+VOLUME ["/app"]
+
+# This image uses a thin wrapper over the Pulumi CLI as its entrypoint. As a result, you may run commands
+# simply by running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
+ENTRYPOINT ["/usr/bin/pulumi-action", "--non-interactive"]

@@ -30,10 +30,24 @@ if [[ "${CLI_VERSION}" == *-* ]]; then
     exit 0    
 fi
 
-echo "Building and publishing pulumi/pulumi:${CLI_VERSION}"
-docker build --build-arg PULUMI_VERSION="${CLI_VERSION}" -t "pulumi/pulumi:${CLI_VERSION}" -t "pulumi/pulumi:latest" "${SCRIPT_DIR}/../dist/docker"
-
 docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_PASSWORD}"
+
+echo "Building and publishing pulumi/pulumi:${CLI_VERSION}"
+docker build --build-arg PULUMI_VERSION="${CLI_VERSION}" \
+    -t "pulumi/pulumi:${CLI_VERSION}" \
+    -t "pulumi/pulumi:latest" \
+    "${SCRIPT_DIR}/../dist/docker"
 docker push "pulumi/pulumi:${CLI_VERSION}"
 docker push "pulumi/pulumi:latest"
+
+# Pulumi container optimized for GitHub Actions.
+echo "Building and publishing pulumi/actions:${CLI_VERSION}"
+docker build \
+    -t "pulumi/actions:${CLI_VERSION}" \
+    -t "pulumi/actions:latest" \
+    -t "achrissmith/pulumi-actions-test:latest" \
+    "${SCRIPT_DIR}/../dist/actions"
+docker push "pulumi/actions:${CLI_VERSION}"
+docker push "pulumi/actions:latest"
+
 docker logout
