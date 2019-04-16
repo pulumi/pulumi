@@ -4,6 +4,10 @@
 
 - `refresh` will now warn instead of returning an error when it notices a resource is in an
   unhealthy state. This is in service of https://github.com/pulumi/pulumi/issues/2633.
+- A new "test mode" can be enabled by setting the `PULUMI_TEST_MODE` environment variable to
+  `true` in either the Node.js or Python SDK. This new mode allows you to unit test your Pulumi programs
+  using standard test harnesses, without needing to run the program using the Pulumi CLI. In this mode, limited
+  functionality is available, however basic resource creation with input properties will work.
 
 ## 0.17.5 (Released April 8, 2019)
 
