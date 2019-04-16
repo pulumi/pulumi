@@ -15,6 +15,7 @@ import asyncio
 import sys
 import traceback
 from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, TYPE_CHECKING
+from google.protobuf import struct_pb2
 import grpc
 
 from . import rpc, settings, known_types
@@ -187,17 +188,23 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             )
 
             def do_rpc_call():
-                try:
-                    return monitor.RegisterResource(req)
-                except grpc.RpcError as exn:
-                    # See the comment on invoke for the justification for disabling
-                    # this warning
-                    # pylint: disable=no-member
-                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                        sys.exit(0)
+                if monitor:
+                    # If there is a monitor available, make the true RPC request to the engine.
+                    try:
+                        return monitor.RegisterResource(req)
+                    except grpc.RpcError as exn:
+                        # See the comment on invoke for the justification for disabling
+                        # this warning
+                        # pylint: disable=no-member
+                        if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                            sys.exit(0)
 
-                    details = exn.details()
-                raise Exception(details)
+                        details = exn.details()
+                    raise Exception(details)
+                else:
+                    # If no monitor is available, we'll need to fake up a response, for testing.
+                    return RegisterResponse(create_test_urn(ty, name), None, resolver.serialized_props)
+
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
             log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
@@ -220,6 +227,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource", do_register)())
 
+
 def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
     async def do_register_resource_outputs():
         urn = await res.urn.future()
@@ -229,19 +237,42 @@ def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Awaitable
         req = resource_pb2.RegisterResourceOutputsRequest(urn=urn, outputs=serialized_props)
 
         def do_rpc_call():
-            try:
-                return monitor.RegisterResourceOutputs(req)
-            except grpc.RpcError as exn:
-                # See the comment on invoke for the justification for disabling
-                # this warning
-                # pylint: disable=no-member
-                if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                    sys.exit(0)
+            if monitor:
+                # If there's an engine attached, perform the RPC. Otherwise, simply ignore it.
+                try:
+                    return monitor.RegisterResourceOutputs(req)
+                except grpc.RpcError as exn:
+                    # See the comment on invoke for the justification for disabling
+                    # this warning
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
 
-                details = exn.details()
-            raise Exception(details)
+                    details = exn.details()
+                raise Exception(details)
+            else:
+                return None
 
         await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(f"resource registration successful: urn={urn}, props={serialized_props}")
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource outputs", do_register_resource_outputs)())
+
+
+class RegisterResponse:
+    urn: str
+    id: str
+    object: struct_pb2.Struct
+
+    # pylint: disable=redefined-builtin
+    def __init__(self, urn: str, id: str, object: struct_pb2.Struct):
+        self.urn = urn
+        self.id = id
+        self.object = object
+
+
+def create_test_urn(ty: str, name: str) -> str:
+    """
+    Creates a test URN for cases where the engine isn't available to give us one (i.e., test mode).
+    """
+    return 'urn:pulumi:{0}::{1}::{2}::{3}'.format(settings.get_stack(), settings.get_project(), ty, name)

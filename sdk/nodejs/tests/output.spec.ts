@@ -40,7 +40,7 @@ function mustCompile(): Output<Widget> {
 
 describe("output", () => {
     it("propagates true isKnown bit from inner Output", asyncTest(async () => {
-        runtime.setIsDryRun(true);
+        runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
         const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true)));
@@ -53,7 +53,7 @@ describe("output", () => {
     }));
 
     it("propagates false isKnown bit from inner Output", asyncTest(async () => {
-        runtime.setIsDryRun(true);
+        runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
         const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(false)));
@@ -66,7 +66,7 @@ describe("output", () => {
     }));
 
     it("can await even when isKnown is a rejected promise.", asyncTest(async () => {
-        runtime.setIsDryRun(true);
+        runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true));
         const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error())));

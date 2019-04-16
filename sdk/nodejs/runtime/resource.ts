@@ -72,7 +72,10 @@ interface ResourceResolverOperation {
     propertyToDirectDependencyURNs: Map<string, Set<URN>>;
 }
 
-function createUrn(t: string, name: string): string {
+/**
+ * Creates a test URN in the case where the engine isn't available to give us one.
+ */
+function createTestUrn(t: string, name: string): string {
     return `urn:pulumi:${getStack()}::${getProject()}::${t}::${name}`;
 }
 
@@ -127,9 +130,9 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
                         }
                     })), opLabel);
             } else {
-                // If we aren't attached to the engine, mock up a fake response for testing purposes.
+                // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
                 resp = {
-                    getUrn: () => createUrn(t, name),
+                    getUrn: () => createTestUrn(t, name),
                     getProperties: () => req.getProperties(),
                 };
             }
@@ -208,9 +211,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                         }
                     })), opLabel);
             } else {
-                // If we aren't attached to the engine, mock up a fake response for testing purposes.
+                // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
                 resp = {
-                    getUrn: () => createUrn(t, name),
+                    getUrn: () => createTestUrn(t, name),
                     getId: () => undefined,
                     getObject: () => req.getObject(),
                 };

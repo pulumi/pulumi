@@ -36,18 +36,18 @@ export interface Options {
     readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
     readonly engineAddr?: string; // a connection string to the engine's RPC, in case we need to reestablish.
     readonly monitorAddr?: string; // a connection string to the monitor's RPC, in case we need to reestablish.
-
-    dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
+    readonly dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
+    readonly testModeEnabled?: boolean; // true if we're in testing mode (allows execution without the CLI).
 }
 
 /**
- * _options are the current deployment options being used for this entire session.
+ * options are the current deployment options being used for this entire session.
  */
 const options = loadOptions();
 
 /* @internal Used only for testing purposes */
-export function setIsDryRun(val: boolean) {
-    options.dryRun = val;
+export function _setIsDryRun(val: boolean) {
+    (options as any).dryRun = val;
 }
 
 /**
@@ -57,6 +57,28 @@ export function isDryRun(): boolean {
     return options.dryRun === true;
 }
 
+/* @internal Used only for testing purposes */
+export function _setTestModeEnabled(val: boolean) {
+    (options as any).testModeEnabled = val;
+}
+
+/**
+ * Returns true if test mode is enabled (PULUMI_TEST_MODE).
+ */
+export function isTestModeEnabled(): boolean {
+    return options.testModeEnabled === true;
+}
+
+/**
+ * Checks that test mode is enabled and, if not, throws an error.
+ */
+function requireTestModeEnabled(): void {
+    if (!isTestModeEnabled()) {
+        throw new Error("Program run without the `pulumi` CLI; this may not be what you want " +
+            "(enable PULUMI_TEST_MODE to disable this error)");
+    }
+}
+
 /**
  * Get the project being run by the current update.
  */
@@ -64,7 +86,17 @@ export function getProject(): string {
     if (options.project) {
         return options.project;
     }
-    throw new Error("Missing project name; run this program with the `pulumi` CLI, or set PULUMI_NODEJS_PROJECT");
+
+    // If the project is missing, specialize the error. First, if test mode is disabled:
+    requireTestModeEnabled();
+
+    // And now an error if test mode is enabled, instructing how to manually configure the project:
+    throw new Error("Missing project name; for test mode, please set PULUMI_NODEJS_PROJECT");
+}
+
+/* @internal Used only for testing purposes. */
+export function _setProject(val: string) {
+    (options as any).project = val;
 }
 
 /**
@@ -74,7 +106,17 @@ export function getStack(): string {
     if (options.stack) {
         return options.stack;
     }
-    throw new Error("Missing stack name; run this program with the `pulumi` CLI, or set PULUMI_NODEJS_STACK");
+
+    // If the stack is missing, specialize the error. First, if test mode is disabled:
+    requireTestModeEnabled();
+
+    // And now an error if test mode is enabled, instructing how to manually configure the stack:
+    throw new Error("Missing stack name; for test mode, please set PULUMI_NODEJS_STACK");
+}
+
+/* @internal Used only for testing purposes. */
+export function _setStack(val: string) {
+    (options as any).stack = val;
 }
 
 /**
@@ -98,11 +140,9 @@ export function getMonitor(): Object | undefined {
         if (addr) {
             // Lazily initialize the RPC connection to the monitor.
             monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure());
-        } else if (!process.env["PULUMI_DISCONNECTED"]) {
-            // We will try to keep going but behavior will be impaired, so log a warning.
-            log.warn(
-                "Program run without the `pulumi` CLI; this may not be what you want " +
-                    "(set PULUMI_DISCONNECTED to suppress this warning)");
+        } else {
+            // If test mode isn't enabled, we can't run the program without an engine.
+            requireTestModeEnabled();
         }
     }
     return monitor;
@@ -160,6 +200,7 @@ function loadOptions(): Options {
         parallel: parallel,
         monitorAddr: process.env["PULUMI_NODEJS_MONITOR"],
         engineAddr: process.env["PULUMI_NODEJS_ENGINE"],
+        testModeEnabled: (process.env["PULUMI_TEST_MODE"] === "true"),
     };
 }
 
