@@ -7,7 +7,10 @@
 - A new "test mode" can be enabled by setting the `PULUMI_TEST_MODE` environment variable to
   `true` in either the Node.js or Python SDK. This new mode allows you to unit test your Pulumi programs
   using standard test harnesses, without needing to run the program using the Pulumi CLI. In this mode, limited
-  functionality is available, however basic resource creation with input properties will work.
+  functionality is available, however basic resource object allocation with input properties will work.
+  Note that no actual engine operations will occur in this mode, and that you'll need to use the
+  `PULUMI_CONFIG`, `PULUMI_NODEJS_PROJECT`, and `PULUMI_NODEJS_STACK` environment variables to control settings
+  the CLI would have otherwise managed for you.
 
 ## 0.17.5 (Released April 8, 2019)
 
