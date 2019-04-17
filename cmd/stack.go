@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
+
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -135,8 +137,8 @@ func newStackCmd() *cobra.Command {
 					Prefix:  "    ",
 				})
 
-				// Print out the output properties for the stack, if present.
-				if res, outputs := stack.GetRootStackResource(snap); res != nil {
+				res, outputs, err := stack.GetRootStackResource(snap, base64sm.NewBase64SecretsManager())
+				if err != nil && res != nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}

@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
+
 	"github.com/pulumi/pulumi/pkg/util/result"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -166,8 +168,13 @@ func runTotalStateEdit(stackName string,
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
+	sdep, err := stack.SerializeDeployment(snap, base64sm.NewBase64SecretsManager())
+	if err != nil {
+		return result.FromError(errors.Wrap(err, "serializing deployment"))
+	}
+
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
-	bytes, err := json.Marshal(stack.SerializeDeployment(snap))
+	bytes, err := json.Marshal(sdep)
 	if err != nil {
 		return result.FromError(err)
 	}

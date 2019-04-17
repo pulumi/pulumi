@@ -24,7 +24,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -48,7 +51,7 @@ var (
 )
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV3 {
+func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager) (*apitype.DeploymentV3, error) {
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
@@ -70,22 +73,48 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV3 {
 		})
 	}
 
+	enc, err := sm.Encrypter()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting encrypter for deployment")
+	}
+
 	// Serialize all vertices and only include a vertex section if non-empty.
 	var resources []apitype.ResourceV3
 	for _, res := range snap.Resources {
-		resources = append(resources, SerializeResource(res))
+		sres, err := SerializeResource(res, enc)
+		if err != nil {
+			return nil, errors.Wrap(err, "serializing resources")
+		}
+		resources = append(resources, sres)
 	}
 
 	var operations []apitype.OperationV2
 	for _, op := range snap.PendingOperations {
-		operations = append(operations, SerializeOperation(op))
+		sop, err := SerializeOperation(op, enc)
+		if err != nil {
+			return nil, err
+		}
+		operations = append(operations, sop)
+	}
+
+	secretsProvider := apitype.SecretsProvidersV1{
+		Type: sm.Type(),
+	}
+
+	if state := sm.State(); state != nil {
+		rm, err := json.Marshal(state)
+		if err != nil {
+			return nil, err
+		}
+		secretsProvider.State = rm
 	}
 
 	return &apitype.DeploymentV3{
 		Manifest:          manifest,
 		Resources:         resources,
+		SecretsProviders:  &secretsProvider,
 		PendingOperations: operations,
-	}
+	}, nil
 }
 
 // DeserializeUntypedDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
@@ -150,10 +179,25 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 		})
 	}
 
+	var dec config.Decrypter
+	if deployment.SecretsProviders == nil {
+		dec = config.NewPanicCrypter()
+	} else if deployment.SecretsProviders.Type == "base64" {
+		sm, err := base64sm.NewProvider().FromState(deployment.SecretsProviders.State)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating secrets manager")
+		}
+		base64dec, err := sm.Decrypter()
+		contract.AssertNoError(err)
+		dec = base64dec
+	} else {
+		return nil, errors.Errorf("unknown secrets provider type %s", deployment.SecretsProviders.Type)
+	}
+
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
 	var resources []*resource.State
 	for _, res := range deployment.Resources {
-		desres, err := DeserializeResource(res)
+		desres, err := DeserializeResource(res, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +206,7 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 
 	var ops []resource.Operation
 	for _, op := range deployment.PendingOperations {
-		desop, err := DeserializeOperation(op)
+		desop, err := DeserializeOperation(op, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -173,18 +217,26 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State) apitype.ResourceV3 {
+func SerializeResource(res *resource.State, enc config.Encrypter) (apitype.ResourceV3, error) {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]interface{}
 	if inp := res.Inputs; inp != nil {
-		inputs = SerializeProperties(inp)
+		sinp, err := SerializeProperties(inp, enc)
+		if err != nil {
+			return apitype.ResourceV3{}, err
+		}
+		inputs = sinp
 	}
 	var outputs map[string]interface{}
 	if outp := res.Outputs; outp != nil {
-		outputs = SerializeProperties(outp)
+		soutp, err := SerializeProperties(outp, enc)
+		if err != nil {
+			return apitype.ResourceV3{}, err
+		}
+		outputs = soutp
 	}
 
 	return apitype.ResourceV3{
@@ -203,34 +255,41 @@ func SerializeResource(res *resource.State) apitype.ResourceV3 {
 		Provider:             res.Provider,
 		PropertyDependencies: res.PropertyDependencies,
 		PendingReplacement:   res.PendingReplacement,
-	}
+	}, nil
 }
 
-func SerializeOperation(op resource.Operation) apitype.OperationV2 {
-	res := SerializeResource(op.Resource)
+func SerializeOperation(op resource.Operation, enc config.Encrypter) (apitype.OperationV2, error) {
+	res, err := SerializeResource(op.Resource, enc)
+	if err != nil {
+		return apitype.OperationV2{}, errors.Wrap(err, "serializing resource")
+	}
 	return apitype.OperationV2{
 		Resource: res,
 		Type:     apitype.OperationType(op.Type),
-	}
+	}, nil
 }
 
 // SerializeProperties serializes a resource property bag so that it's suitable for serialization.
-func SerializeProperties(props resource.PropertyMap) map[string]interface{} {
+func SerializeProperties(props resource.PropertyMap, enc config.Encrypter) (map[string]interface{}, error) {
 	dst := make(map[string]interface{})
 	for _, k := range props.StableKeys() {
-		if v := SerializePropertyValue(props[k]); v != nil {
+		v, err := SerializePropertyValue(props[k], enc)
+		if err != nil {
+			return nil, err
+		}
+		if v != nil {
 			dst[string(k)] = v
 		}
 	}
-	return dst
+	return dst, nil
 }
 
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
-func SerializePropertyValue(prop resource.PropertyValue) interface{} {
+func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter) (interface{}, error) {
 	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
 	// that hasn't materialized (either because we're serializing inputs or the provider didn't give us the value).
 	if prop.IsComputed() || !prop.HasValue() {
-		return nil
+		return nil, nil
 	}
 
 	// For arrays, make sure to recurse.
@@ -238,47 +297,62 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 		srcarr := prop.ArrayValue()
 		dstarr := make([]interface{}, len(srcarr))
 		for i, elem := range prop.ArrayValue() {
-			dstarr[i] = SerializePropertyValue(elem)
+			selem, err := SerializePropertyValue(elem, enc)
+			if err != nil {
+				return nil, err
+			}
+			dstarr[i] = selem
 		}
-		return dstarr
+		return dstarr, nil
 	}
 
 	// Also for objects, recurse and use naked properties.
 	if prop.IsObject() {
-		return SerializeProperties(prop.ObjectValue())
+		return SerializeProperties(prop.ObjectValue(), enc)
 	}
 
 	// For assets, we need to serialize them a little carefully, so we can recover them afterwards.
 	if prop.IsAsset() {
-		return prop.AssetValue().Serialize()
+		return prop.AssetValue().Serialize(), nil
 	} else if prop.IsArchive() {
-		return prop.ArchiveValue().Serialize()
+		return prop.ArchiveValue().Serialize(), nil
 	}
 
 	if prop.IsSecret() {
-		//TODO(ellismg): We need to make this error returning (so we can communicate failures in JSON marshalling)
-		//               as well as any errors that occur when encrypting the raw value (which we also need to do!)
-		value := SerializePropertyValue(prop.SecretValue().Element)
+		// Since we are going to encrypt property value, we can elide encrypting sub-elements. We'll mark them as
+		// "secret" so we retain that information when deserializaing the overall structure, but there is no
+		// need to double encrypt everything.
+		value, err := SerializePropertyValue(prop.SecretValue().Element, config.NopEncrypter)
+		if err != nil {
+			return nil, err
+		}
 		bytes, err := json.Marshal(value)
+		if err != nil {
+			return nil, errors.Wrap(err, "encoding serialized property value")
+		}
+		ciphertext, err := enc.EncryptValue(string(bytes))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to encrypt secret value")
+		}
 		contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
 		return apitype.SecretV1{
 			Sig:        resource.SecretSig,
-			Ciphertext: string(bytes),
-		}
+			Ciphertext: ciphertext,
+		}, nil
 	}
 
 	// All others are returned as-is.
-	return prop.V
+	return prop.V, nil
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV3) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
-	inputs, err := DeserializeProperties(res.Inputs)
+	inputs, err := DeserializeProperties(res.Inputs, dec)
 	if err != nil {
 		return nil, err
 	}
-	outputs, err := DeserializeProperties(res.Outputs)
+	outputs, err := DeserializeProperties(res.Outputs, dec)
 	if err != nil {
 		return nil, err
 	}
@@ -289,8 +363,8 @@ func DeserializeResource(res apitype.ResourceV3) (*resource.State, error) {
 		res.PropertyDependencies, res.PendingReplacement), nil
 }
 
-func DeserializeOperation(op apitype.OperationV2) (resource.Operation, error) {
-	res, err := DeserializeResource(op.Resource)
+func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter) (resource.Operation, error) {
+	res, err := DeserializeResource(op.Resource, dec)
 	if err != nil {
 		return resource.Operation{}, err
 	}
@@ -298,10 +372,10 @@ func DeserializeOperation(op apitype.OperationV2) (resource.Operation, error) {
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
-func DeserializeProperties(props map[string]interface{}) (resource.PropertyMap, error) {
+func DeserializeProperties(props map[string]interface{}, dec config.Decrypter) (resource.PropertyMap, error) {
 	result := make(resource.PropertyMap)
 	for k, prop := range props {
-		desprop, err := DeserializePropertyValue(prop)
+		desprop, err := DeserializePropertyValue(prop, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -311,7 +385,7 @@ func DeserializeProperties(props map[string]interface{}) (resource.PropertyMap, 
 }
 
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
-func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
+func DeserializePropertyValue(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
@@ -323,7 +397,7 @@ func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 		case []interface{}:
 			var arr []resource.PropertyValue
 			for _, elem := range w {
-				ev, err := DeserializePropertyValue(elem)
+				ev, err := DeserializePropertyValue(elem, dec)
 				if err != nil {
 					return resource.PropertyValue{}, err
 				}
@@ -331,7 +405,7 @@ func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 			}
 			return resource.NewArrayProperty(arr), nil
 		case map[string]interface{}:
-			obj, err := DeserializeProperties(w)
+			obj, err := DeserializeProperties(w, dec)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}
@@ -359,13 +433,15 @@ func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 					if !ok {
 						return resource.PropertyValue{}, errors.New("malformed secret value: missing ciphertext")
 					}
-					// TODO(ellismg): The "ciphertext" is actually plaintext right now, so once that changes we'll
-					//                need to decrypt things here.
 					var elem interface{}
-					if err := json.Unmarshal([]byte(ciphertext), &elem); err != nil {
+					plaintext, err := dec.DecryptValue(ciphertext)
+					if err != nil {
+						return resource.PropertyValue{}, errors.Wrap(err, "decrypting secret value")
+					}
+					if err := json.Unmarshal([]byte(plaintext), &elem); err != nil {
 						return resource.PropertyValue{}, err
 					}
-					ev, err := DeserializePropertyValue(elem)
+					ev, err := DeserializePropertyValue(elem, config.NopDecrypter)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}

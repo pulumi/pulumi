@@ -385,17 +385,10 @@ func GetLogs(
 	stackInfo RuntimeValidationStackInfo,
 	query operations.LogQuery) *[]operations.LogEntry {
 
-	var states []*resource.State
-	for _, res := range stackInfo.Deployment.Resources {
-		state, err := stack.DeserializeResource(res)
-		if !assert.NoError(t, err) {
-			return nil
-		}
+	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment)
+	assert.NoError(t, err)
 
-		states = append(states, state)
-	}
-
-	tree := operations.NewResourceTree(states)
+	tree := operations.NewResourceTree(snap.Resources)
 	if !assert.NotNil(t, tree) {
 		return nil
 	}

@@ -26,13 +26,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
 	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -46,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -211,7 +211,10 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.Wrap(err, "validating stack properties")
 	}
 
-	file, err := b.saveStack(stackName, nil, nil)
+	// TODO(ellismg): Clean this up. We shouldn't even need to pass a secrets manager here, or we should
+	// be able to pass some well known one that the deployment generator knows not to include the checkpoint (like a)
+	// panicing secrets manager.
+	file, err := b.saveStack(stackName, nil, nil, base64sm.NewBase64SecretsManager())
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +294,8 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 		return err
 	}
 
-	if _, err = b.saveStack(newName, cfg, snap); err != nil {
+	// TODO(ellismg): Make this configurable
+	if _, err = b.saveStack(newName, cfg, snap, base64sm.NewBase64SecretsManager()); err != nil {
 		return err
 	}
 
@@ -427,7 +431,7 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(stackName)
+	persister := b.newSnapshotPersister(stackName, base64sm.NewBase64SecretsManager())
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
@@ -590,7 +594,13 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil)
 	}
 
-	data, err := json.Marshal(stack.SerializeDeployment(snap))
+	// TODO(ellismg): Fix this up!
+	sdep, err := stack.SerializeDeployment(snap, base64sm.NewBase64SecretsManager())
+	if err != nil {
+		return nil, errors.Wrap(err, "serializing deployment")
+	}
+
+	data, err := json.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}
@@ -615,7 +625,8 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	_, err = b.saveStack(stackName, config, snap)
+	// TODO(ellismg): Make this configurable
+	_, err = b.saveStack(stackName, config, snap, base64sm.NewBase64SecretsManager())
 	return err
 }
 

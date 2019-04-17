@@ -32,6 +32,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
+
 	"github.com/cheggaaa/pb"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -887,7 +889,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
 	// the Snapshot (checkpoint file) in the HTTP backend.
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, base64sm.NewBase64SecretsManager())
 	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and

@@ -83,13 +83,20 @@ func ShowJSONEvents(op string, action apitype.UpdateKind,
 					DiffReasons:    m.Diffs,
 					ReplaceReasons: m.Keys,
 				}
+				// TODO(ellismg): It is not clear what we want to do when producing a JSON output, we likely need to
+				// bring the secrets manager for the stack into this display routine so we can encrypt stuff before
+				// splatting it to the console.
 				if m.Old != nil {
-					res := stack.SerializeResource(m.Old.State)
-					step.OldState = &res
+					res, err := stack.SerializeResource(m.Old.State, nil)
+					if err != nil {
+						step.OldState = &res
+					}
 				}
 				if m.New != nil {
-					res := stack.SerializeResource(m.New.State)
-					step.NewState = &res
+					res, err := stack.SerializeResource(m.New.State, nil)
+					if err != nil {
+						step.NewState = &res
+					}
 				}
 				digest.Steps = append(digest.Steps, step)
 			}

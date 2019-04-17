@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -158,7 +159,7 @@ func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.Checkpoin
 }
 
 func (b *localBackend) saveStack(name tokens.QName,
-	config map[config.Key]config.Value, snap *deploy.Snapshot) (string, error) {
+	config map[config.Key]config.Value, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
 	// Make a serializable stack and then use the encoder to encode it.
 	file := b.stackPath(name)
 	m, ext := encoding.Detect(file)
@@ -168,7 +169,10 @@ func (b *localBackend) saveStack(name tokens.QName,
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	chk := stack.SerializeCheckpoint(name, config, snap)
+	chk, err := stack.SerializeCheckpoint(name, config, snap, sm)
+	if err != nil {
+		return "", errors.Wrap(err, "serializaing checkpoint")
+	}
 	byts, err := m.Marshal(chk)
 	if err != nil {
 		return "", errors.Wrap(err, "An IO error occurred during the current operation")
