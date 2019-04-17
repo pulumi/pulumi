@@ -80,7 +80,8 @@ proto.pulumirpc.ConfigureRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    variablesMap: (f = msg.getVariablesMap()) ? f.toObject(includeInstance, undefined) : []
+    variablesMap: (f = msg.getVariablesMap()) ? f.toObject(includeInstance, undefined) : [],
+    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -123,6 +124,11 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
          });
       break;
+    case 2:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setArgs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -156,6 +162,14 @@ proto.pulumirpc.ConfigureRequest.serializeBinaryToWriter = function(message, wri
   if (f && f.getLength() > 0) {
     f.serializeBinary(1, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
+  f = message.getArgs();
+  if (f != null) {
+    writer.writeMessage(
+      2,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
 };
 
 
@@ -174,6 +188,36 @@ proto.pulumirpc.ConfigureRequest.prototype.getVariablesMap = function(opt_noLazy
 
 proto.pulumirpc.ConfigureRequest.prototype.clearVariablesMap = function() {
   this.getVariablesMap().clear();
+};
+
+
+/**
+ * optional google.protobuf.Struct args = 2;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getArgs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.ConfigureRequest.prototype.setArgs = function(value) {
+  jspb.Message.setWrapperField(this, 2, value);
+};
+
+
+proto.pulumirpc.ConfigureRequest.prototype.clearArgs = function() {
+  this.setArgs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.hasArgs = function() {
+  return jspb.Message.getField(this, 2) != null;
 };
 
 
@@ -563,7 +607,8 @@ proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
     args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    provider: jspb.Message.getFieldWithDefault(msg, 3, "")
+    provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    version: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -613,6 +658,10 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
       var value = /** @type {string} */ (reader.readString());
       msg.setProvider(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVersion(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -661,6 +710,13 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -724,6 +780,21 @@ proto.pulumirpc.InvokeRequest.prototype.getProvider = function() {
 /** @param {string} value */
 proto.pulumirpc.InvokeRequest.prototype.setProvider = function(value) {
   jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string version = 4;
+ * @return {string}
+ */
+proto.pulumirpc.InvokeRequest.prototype.getVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.InvokeRequest.prototype.setVersion = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -1830,7 +1901,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.DiffResponse.repeatedFields_ = [1,2];
+proto.pulumirpc.DiffResponse.repeatedFields_ = [1,2,5];
 
 
 
@@ -1864,7 +1935,8 @@ proto.pulumirpc.DiffResponse.toObject = function(includeInstance, msg) {
     replacesList: jspb.Message.getRepeatedField(msg, 1),
     stablesList: jspb.Message.getRepeatedField(msg, 2),
     deletebeforereplace: jspb.Message.getFieldWithDefault(msg, 3, false),
-    changes: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    changes: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    diffsList: jspb.Message.getRepeatedField(msg, 5)
   };
 
   if (includeInstance) {
@@ -1916,6 +1988,10 @@ proto.pulumirpc.DiffResponse.deserializeBinaryFromReader = function(msg, reader)
     case 4:
       var value = /** @type {!proto.pulumirpc.DiffResponse.DiffChanges} */ (reader.readEnum());
       msg.setChanges(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addDiffs(value);
       break;
     default:
       reader.skipField();
@@ -1971,6 +2047,13 @@ proto.pulumirpc.DiffResponse.serializeBinaryToWriter = function(message, writer)
   if (f !== 0.0) {
     writer.writeEnum(
       4,
+      f
+    );
+  }
+  f = message.getDiffsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      5,
       f
     );
   }
@@ -2073,6 +2156,35 @@ proto.pulumirpc.DiffResponse.prototype.getChanges = function() {
 /** @param {!proto.pulumirpc.DiffResponse.DiffChanges} value */
 proto.pulumirpc.DiffResponse.prototype.setChanges = function(value) {
   jspb.Message.setProto3EnumField(this, 4, value);
+};
+
+
+/**
+ * repeated string diffs = 5;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.DiffResponse.prototype.getDiffsList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 5));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.DiffResponse.prototype.setDiffsList = function(value) {
+  jspb.Message.setField(this, 5, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.DiffResponse.prototype.addDiffs = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 5, value, opt_index);
+};
+
+
+proto.pulumirpc.DiffResponse.prototype.clearDiffsList = function() {
+  this.setDiffsList([]);
 };
 
 
@@ -2497,7 +2609,8 @@ proto.pulumirpc.ReadRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -2547,6 +2660,11 @@ proto.pulumirpc.ReadRequest.deserializeBinaryFromReader = function(msg, reader) 
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 4:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setInputs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2594,6 +2712,14 @@ proto.pulumirpc.ReadRequest.serializeBinaryToWriter = function(message, writer) 
   if (f != null) {
     writer.writeMessage(
       3,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getInputs();
+  if (f != null) {
+    writer.writeMessage(
+      4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -2661,6 +2787,36 @@ proto.pulumirpc.ReadRequest.prototype.hasProperties = function() {
 };
 
 
+/**
+ * optional google.protobuf.Struct inputs = 4;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ReadRequest.prototype.getInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.ReadRequest.prototype.setInputs = function(value) {
+  jspb.Message.setWrapperField(this, 4, value);
+};
+
+
+proto.pulumirpc.ReadRequest.prototype.clearInputs = function() {
+  this.setInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.ReadRequest.prototype.hasInputs = function() {
+  return jspb.Message.getField(this, 4) != null;
+};
+
+
 
 /**
  * Generated by JsPbCodeGenerator.
@@ -2709,7 +2865,8 @@ proto.pulumirpc.ReadResponse.prototype.toObject = function(opt_includeInstance) 
 proto.pulumirpc.ReadResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -2755,6 +2912,11 @@ proto.pulumirpc.ReadResponse.deserializeBinaryFromReader = function(msg, reader)
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setInputs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2795,6 +2957,14 @@ proto.pulumirpc.ReadResponse.serializeBinaryToWriter = function(message, writer)
   if (f != null) {
     writer.writeMessage(
       2,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getInputs();
+  if (f != null) {
+    writer.writeMessage(
+      3,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -2844,6 +3014,36 @@ proto.pulumirpc.ReadResponse.prototype.clearProperties = function() {
  */
 proto.pulumirpc.ReadResponse.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional google.protobuf.Struct inputs = 3;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ReadResponse.prototype.getInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.ReadResponse.prototype.setInputs = function(value) {
+  jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+proto.pulumirpc.ReadResponse.prototype.clearInputs = function() {
+  this.setInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.ReadResponse.prototype.hasInputs = function() {
+  return jspb.Message.getField(this, 3) != null;
 };
 
 
@@ -3532,7 +3732,8 @@ proto.pulumirpc.ErrorResourceInitFailed.toObject = function(includeInstance, msg
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    reasonsList: jspb.Message.getRepeatedField(msg, 3)
+    reasonsList: jspb.Message.getRepeatedField(msg, 3),
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -3581,6 +3782,11 @@ proto.pulumirpc.ErrorResourceInitFailed.deserializeBinaryFromReader = function(m
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.addReasons(value);
+      break;
+    case 4:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setInputs(value);
       break;
     default:
       reader.skipField();
@@ -3631,6 +3837,14 @@ proto.pulumirpc.ErrorResourceInitFailed.serializeBinaryToWriter = function(messa
     writer.writeRepeatedString(
       3,
       f
+    );
+  }
+  f = message.getInputs();
+  if (f != null) {
+    writer.writeMessage(
+      4,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -3707,6 +3921,36 @@ proto.pulumirpc.ErrorResourceInitFailed.prototype.addReasons = function(value, o
 
 proto.pulumirpc.ErrorResourceInitFailed.prototype.clearReasonsList = function() {
   this.setReasonsList([]);
+};
+
+
+/**
+ * optional google.protobuf.Struct inputs = 4;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.getInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.setInputs = function(value) {
+  jspb.Message.setWrapperField(this, 4, value);
+};
+
+
+proto.pulumirpc.ErrorResourceInitFailed.prototype.clearInputs = function() {
+  this.setInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.hasInputs = function() {
+  return jspb.Message.getField(this, 4) != null;
 };
 
 

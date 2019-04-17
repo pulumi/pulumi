@@ -17,6 +17,7 @@ package display
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -425,9 +426,32 @@ func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
 				updates[k] = resource.PropertyValue{}
 			}
 
-			writePropertyKeys(changesBuf, diff.Adds, deploy.OpCreate)
-			writePropertyKeys(changesBuf, diff.Deletes, deploy.OpDelete)
-			writePropertyKeys(changesBuf, updates, deploy.OpUpdate)
+			filteredKeys := func(m resource.PropertyMap) []string {
+				keys := make([]string, 0, len(m))
+				for k := range m {
+					keys = append(keys, string(k))
+				}
+				return keys
+			}
+			if include := step.Diffs; include != nil {
+				includeSet := make(map[resource.PropertyKey]bool)
+				for _, k := range include {
+					includeSet[k] = true
+				}
+				filteredKeys = func(m resource.PropertyMap) []string {
+					var filteredKeys []string
+					for k := range m {
+						if includeSet[k] {
+							filteredKeys = append(filteredKeys, string(k))
+						}
+					}
+					return filteredKeys
+				}
+			}
+
+			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
+			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
+			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
 		}
 	}
 
@@ -435,23 +459,17 @@ func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
 	return changesBuf.String()
 }
 
-func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {
-	if len(propMap) > 0 {
+func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
+	if len(keys) > 0 {
 		writeString(b, strings.Trim(op.Prefix(), " "))
 
-		keys := make([]string, 0, len(propMap))
-		for k := range propMap {
-			keys = append(keys, string(k))
-		}
 		sort.Strings(keys)
 
-		index := 0
-		for _, k := range keys {
+		for index, k := range keys {
 			if index != 0 {
 				writeString(b, ",")
 			}
 			writeString(b, k)
-			index++
 		}
 
 		writeString(b, colors.Reset)

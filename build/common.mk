@@ -104,8 +104,8 @@ endif
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 
-GO_TEST_FAST = PATH=$(PULUMI_BIN):$(PATH) go test -short -v -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
-GO_TEST = PATH=$(PULUMI_BIN):$(PATH) go test -v -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
+GO_TEST_FAST = PATH=$(PULUMI_BIN):$(PATH) go test -short -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
+GO_TEST = PATH=$(PULUMI_BIN):$(PATH) go test -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
 
 .PHONY: default all ensure only_build only_test build lint install test_all core
 
@@ -145,7 +145,8 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; fi
+	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; \
+		elif [ -e 'go.mod' ]; then echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor; fi
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::

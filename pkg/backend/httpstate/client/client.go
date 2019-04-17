@@ -411,6 +411,15 @@ func (pc *Client) CreateUpdate(
 	}, nil
 }
 
+func (pc *Client) RenameStack(ctx context.Context, stack StackIdentifier, newName string) error {
+	req := apitype.StackRenameRequest{
+		NewName: newName,
+	}
+	var resp apitype.ImportStackResponse
+
+	return pc.restCall(ctx, "POST", getStackPath(stack, "rename"), nil, &req, &resp)
+}
+
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
 func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,

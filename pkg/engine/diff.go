@@ -17,6 +17,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"reflect"
 	"sort"
 	"strconv"
@@ -30,6 +31,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+// IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
+// users.
+func IsInternalPropertyKey(key resource.PropertyKey) bool {
+	return strings.HasPrefix(string(key), "__")
+}
 
 // GetIndent computes a step's parent indentation.
 func GetIndent(step StepEventMetadata, seen map[resource.URN]StepEventMetadata) int {
@@ -48,7 +55,7 @@ func GetIndent(step StepEventMetadata, seen map[resource.URN]StepEventMetadata) 
 	return indent
 }
 
-func printStepHeader(b *bytes.Buffer, step StepEventMetadata) {
+func printStepHeader(b io.StringWriter, step StepEventMetadata) {
 	var extra string
 	old := step.Old
 	new := step.New
@@ -88,27 +95,27 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 	return result[:len(result)-2] + rp
 }
 
-func writeString(b *bytes.Buffer, s string) {
+func writeString(b io.StringWriter, s string) {
 	_, err := b.WriteString(s)
 	contract.IgnoreError(err)
 }
 
-func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
+func writeWithIndent(b io.StringWriter, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
 	writeString(b, op.Color())
 	writeString(b, getIndentationString(indent, op, prefix))
 	writeString(b, fmt.Sprintf(format, a...))
 	writeString(b, colors.Reset)
 }
 
-func writeWithIndentNoPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
+func writeWithIndentNoPrefix(b io.StringWriter, indent int, op deploy.StepOp, format string, a ...interface{}) {
 	writeWithIndent(b, indent, op, false, format, a...)
 }
 
-func write(b *bytes.Buffer, op deploy.StepOp, format string, a ...interface{}) {
+func write(b io.StringWriter, op deploy.StepOp, format string, a ...interface{}) {
 	writeWithIndentNoPrefix(b, 0, op, format, a...)
 }
 
-func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
+func writeVerbatim(b io.StringWriter, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
@@ -196,9 +203,9 @@ func GetResourcePropertiesDetails(
 			printObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
 	} else if len(new.Outputs) > 0 {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, debug)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, debug)
 	}
 
 	return b.String()
@@ -218,13 +225,13 @@ func printObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
-	// Compute the maximum with of property keys so we can justify everything.
+	// Compute the maximum width of property keys so we can justify everything.
 	keys := props.StableKeys()
 	maxkey := maxKey(keys)
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		if v := props[k]; shouldPrintPropertyValue(v, planning) {
+		if v := props[k]; !IsInternalPropertyKey(k) && shouldPrintPropertyValue(v, planning) {
 			printPropertyTitle(b, string(k), maxkey, indent, op, prefix)
 			printPropertyValue(b, v, planning, indent, op, prefix, debug)
 		}
@@ -273,7 +280,7 @@ func GetResourceOutputsPropertiesString(
 	// the new outputs, we want to print the diffs.
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
-		outputDiff = step.Old.Outputs.Diff(outs)
+		outputDiff = step.Old.Outputs.Diff(outs, IsInternalPropertyKey)
 	}
 
 	var keys []resource.PropertyKey
@@ -288,11 +295,14 @@ func GetResourceOutputsPropertiesString(
 	for _, k := range keys {
 		out := outs[k]
 
-		// Print this property if it is printable and either ins doesn't have it or it's different.
-		if outputDiff != nil || shouldPrintPropertyValue(out, true) {
+		// Print this property if it is printable and if any of the following are true:
+		// - a property with the same key is not present in the inputs
+		// - the property that is present in the inputs is different
+		// - we are doing a refresh, in which case we always want to show state differences
+		if outputDiff != nil || (!IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
 			print := true
-			if in, has := ins[k]; has {
-				print = (out.Diff(in) != nil)
+			if in, has := ins[k]; has && !refresh {
+				print = (out.Diff(in, IsInternalPropertyKey) != nil)
 			}
 
 			if print {
@@ -341,7 +351,7 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	return true
 }
 
-func printPropertyTitle(b *bytes.Buffer, name string, align int, indent int, op deploy.StepOp, prefix bool) {
+func printPropertyTitle(b io.StringWriter, name string, align int, indent int, op deploy.StepOp, prefix bool) {
 	writeWithIndent(b, indent, op, prefix, "%-"+strconv.Itoa(align)+"s: ", name)
 }
 
@@ -444,12 +454,12 @@ func shortHash(hash string) string {
 }
 
 func printOldNewDiffs(
-	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
+	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op deploy.StepOp, summary bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
-	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, planning, indent, summary, debug)
+	if diff := olds.Diff(news, IsInternalPropertyKey); diff != nil {
+		printObjectDiff(b, *diff, include, planning, indent, summary, debug)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -457,13 +467,27 @@ func printOldNewDiffs(
 	}
 }
 
-func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
+func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, debug bool) {
 
 	contract.Assert(indent > 0)
 
-	// Compute the maximum with of property keys so we can justify everything.
+	// Compute the maximum width of property keys so we can justify everything. If an include set was given, filter out
+	// any properties that are not in the set.
 	keys := diff.Keys()
+	if include != nil {
+		includeSet := make(map[resource.PropertyKey]bool)
+		for _, k := range include {
+			includeSet[k] = true
+		}
+		var filteredKeys []resource.PropertyKey
+		for _, k := range keys {
+			if includeSet[k] {
+				filteredKeys = append(filteredKeys, k)
+			}
+		}
+		keys = filteredKeys
+	}
 	maxkey := maxKey(keys)
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
@@ -525,7 +549,7 @@ func printPropertyValueDiff(
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, planning, indent+1, summary, debug)
+		printObjectDiff(b, *diff.Object, nil, planning, indent+1, summary, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
@@ -567,7 +591,7 @@ func isPrimitive(value resource.PropertyValue) bool {
 		value.IsBool() || value.IsComputed() || value.IsOutput()
 }
 
-func printPrimitivePropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool, op deploy.StepOp) {
+func printPrimitivePropertyValue(b io.StringWriter, v resource.PropertyValue, planning bool, op deploy.StepOp) {
 	contract.Assert(isPrimitive(v))
 
 	if v.IsNull() {

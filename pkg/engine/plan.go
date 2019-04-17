@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -105,7 +106,7 @@ type planOptions struct {
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
 type planSourceFunc func(
-	opts planOptions, proj *workspace.Project, pwd, main string,
+	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
@@ -136,7 +137,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
-	source, err := opts.SourceFunc(opts, proj, pwd, main, target, plugctx, dryRun)
+	source, err := opts.SourceFunc(ctx.BackendClient, opts, proj, pwd, main, target, plugctx, dryRun)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -178,8 +179,8 @@ type planResult struct {
 
 // Chdir changes the directory so that all operations from now on are relative to the project we are working with.
 // It returns a function that, when run, restores the old working directory.
-func (res *planResult) Chdir() (func(), error) {
-	pwd := res.Plugctx.Pwd
+func (planResult *planResult) Chdir() (func(), error) {
+	pwd := planResult.Plugctx.Pwd
 	if pwd == "" {
 		return func() {}, nil
 	}
@@ -200,20 +201,20 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) error {
+func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) result.Result {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	done := make(chan bool)
-	var err error
+	var walkResult result.Result
 	go func() {
 		opts := deploy.Options{
 			Events:            events,
-			Parallel:          res.Options.Parallel,
-			Refresh:           res.Options.Refresh,
-			RefreshOnly:       res.Options.isRefresh,
-			TrustDependencies: res.Options.trustDependencies,
+			Parallel:          planResult.Options.Parallel,
+			Refresh:           planResult.Options.Refresh,
+			RefreshOnly:       planResult.Options.isRefresh,
+			TrustDependencies: planResult.Options.trustDependencies,
 		}
-		err = res.Plan.Execute(ctx, opts, preview)
+		walkResult = planResult.Plan.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -230,30 +231,34 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 
 	select {
 	case <-cancelCtx.Cancel.Terminated():
-		return cancelCtx.Cancel.TerminateErr()
+		return result.WrapIfNonNil(cancelCtx.Cancel.TerminateErr())
 
 	case <-done:
-		return err
+		return walkResult
 	}
 }
 
-func (res *planResult) Close() error {
-	return res.Plugctx.Close()
+func (planResult *planResult) Close() error {
+	return planResult.Plugctx.Close()
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, error) {
-	result.Options.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
+func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChanges, result.Result) {
+	planResult.Options.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
-	actions := newPlanActions(result.Options)
-	if err := result.Walk(ctx, actions, true); err != nil {
-		return nil, errors.New("an error occurred while advancing the preview")
+	actions := newPlanActions(planResult.Options)
+	if res := planResult.Walk(ctx, actions, true); res != nil {
+		if res.IsBail() {
+			return nil, res
+		}
+
+		return nil, result.Error("an error occurred while advancing the preview")
 	}
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
-	result.Options.Events.previewSummaryEvent(changes)
+	planResult.Options.Events.previewSummaryEvent(changes)
 	return changes, nil
 }
 

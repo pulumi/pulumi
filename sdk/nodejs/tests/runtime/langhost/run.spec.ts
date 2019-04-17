@@ -37,6 +37,7 @@ interface RunCase {
     args?: string[];
     config?: {[key: string]: any};
     expectError?: string;
+    expectBail?: boolean;
     expectResourceCount?: number;
     expectedLogs?: {
         count?: number;
@@ -336,7 +337,21 @@ describe("rpc", () => {
         "unhandled_error": {
             program: path.join(base, "011.unhandled_error"),
             expectResourceCount: 0,
-            expectError: "Program exited with non-zero exit code: 1",
+            expectError: "",
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                if (severity === engineproto.LogSeverity.ERROR) {
+                    if (message.indexOf("failed with an unhandled exception") < 0 &&
+                        message.indexOf("es the dynamite") < 0) {
+
+                        throw new Error("Unexpected error: " + message);
+                    }
+                }
+            },
         },
         // A program that creates one resource that contains an assets archive.
         "assets_archive": {
@@ -350,7 +365,21 @@ describe("rpc", () => {
         "unhandled_promise_rejection": {
             program: path.join(base, "013.unhandled_promise_rejection"),
             expectResourceCount: 0,
-            expectError: "Program exited with non-zero exit code: 1",
+            expectError: "",
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                if (severity === engineproto.LogSeverity.ERROR) {
+                    if (message.indexOf("failed with an unhandled exception") < 0 &&
+                        message.indexOf("es the dynamite") < 0) {
+
+                        throw new Error("Unexpected error: " + message);
+                    }
+                }
+            },
         },
         // A simple test of the read resource behavior.
         "read_resource": {
@@ -600,7 +629,12 @@ describe("rpc", () => {
             pwd: path.join(base, "021.parent_child_dependencies"),
             program: "./index.js",
             expectResourceCount: 2,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
@@ -608,14 +642,149 @@ describe("rpc", () => {
             pwd: path.join(base, "022.parent_child_dependencies_2"),
             program: "./index.js",
             expectResourceCount: 3,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
+                    case "cust3": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_3": {
+            pwd: path.join(base, "023.parent_child_dependencies_3"),
+            program: "./index.js",
+            expectResourceCount: 1,
+            expectError: "Program exited with non-zero exit code: 1",
+        },
+        "parent_child_dependencies_4": {
+            pwd: path.join(base, "024.parent_child_dependencies_4"),
+            program: "./index.js",
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, []); break;
+                    case "comp1": assert.deepStrictEqual(deps, []); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_5": {
+            pwd: path.join(base, "025.parent_child_dependencies_5"),
+            program: "./index.js",
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, []); break;
+                    case "comp1": assert.deepStrictEqual(deps, []); break;
+                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2"]); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_6": {
+            pwd: path.join(base, "026.parent_child_dependencies_6"),
+            program: "./index.js",
+            expectResourceCount: 6,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "comp1": assert.deepStrictEqual(deps, []); break;
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "comp2": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, []); break;
+                    case "cust3": assert.deepStrictEqual(deps, []); break;
+                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_7": {
+            pwd: path.join(base, "027.parent_child_dependencies_7"),
+            program: "./index.js",
+            expectResourceCount: 10,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "comp1": assert.deepStrictEqual(deps, []); break;
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "comp2": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, []); break;
+                    case "cust3": assert.deepStrictEqual(deps, []); break;
+                    case "cust4": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
+                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
+                    case "res2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
+                    case "res3": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
+                    case "res4": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust4"]); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_8": {
+            pwd: path.join(base, "028.parent_child_dependencies_8"),
+            program: "./index.js",
+            expectResourceCount: 6,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "comp1": assert.deepStrictEqual(deps, []); break;
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                    case "res2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                    case "res3": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "parent_child_dependencies_9": {
+            pwd: path.join(base, "029.parent_child_dependencies_9"),
+            program: "./index.js",
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+                switch (name) {
+                    case "cust1": assert.deepStrictEqual(deps, []); break;
+                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                    default: throw new Error("Didn't check: " + name);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "run_error": {
+            program: path.join(base, "040.run_error"),
+            expectResourceCount: 0,
+            // We should get the error message saying that a message was reported and the
+            // host should bail.
+            expectBail: true,
+        },
+        "depends_on_non_resource": {
+            program: path.join(base, "043.depends_on_non_resource"),
+            expectResourceCount: 0,
+            // We should get the error message saying that a message was reported and the
+            // host should bail.
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                if (severity === engineproto.LogSeverity.ERROR) {
+                    if (message.indexOf("'dependsOn' was passed a value that was not a Resource.") < 0) {
+                        throw new Error("Unexpected error: " + message);
+                    }
+                }
             },
         },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename !== "parent_child_dependencies_2") {
+        // if (casename.indexOf("depends_on_non_resource") < 0) {
         //     continue;
         // }
 
@@ -764,15 +933,22 @@ describe("rpc", () => {
 
                 // Invoke our little test program; it will allocate a few resources, which we will record.  It will
                 // throw an error if anything doesn't look right, which gets reflected back in the run results.
-                const runError: string | undefined = await mockRun(langHostClient, monitor.addr, opts, dryrun);
+                const [runError, runBail] = await mockRun(langHostClient, monitor.addr, opts, dryrun);
 
                 // Validate that everything looks right.
-                let expectError: string | undefined = opts.expectError;
+                let expectError = opts.expectError;
                 if (expectError === undefined) {
                     expectError = "";
                 }
                 assert.strictEqual(runError, expectError,
                                    `Expected an error of "${expectError}"; got "${runError}"`);
+
+                let expectBail = opts.expectBail;
+                if (expectBail === undefined) {
+                    expectBail = false;
+                }
+                assert.strictEqual(runBail, expectBail,
+                                   `Expected an 'bail' of "${expectBail}"; got "${runBail}"`);
 
                 let expectResourceCount: number | undefined = opts.expectResourceCount;
                 if (expectResourceCount === undefined) {
@@ -809,8 +985,8 @@ describe("rpc", () => {
     }
 });
 
-function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: boolean): Promise<string | undefined> {
-    return new Promise<string | undefined>(
+function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: boolean): Promise<[string | undefined, boolean]> {
+    return new Promise<[string | undefined, boolean]>(
         (resolve, reject) => {
             const runReq = new langproto.RunRequest();
             runReq.setMonitorAddress(monitor);
@@ -836,7 +1012,7 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
                 }
                 else {
                     // The response has a single field, the error, if any, that occurred (blank means success).
-                    resolve(res.getError());
+                    resolve([res.getError(), res.getBail()]);
                 }
             });
         },

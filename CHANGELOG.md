@@ -1,6 +1,115 @@
-## 0.16.19 (Unreleased)
+## 0.17.8 (Unreleased)
 
 ### Improvements
+
+## 0.17.7 (Released April 17, 2019)
+
+### Improvements
+
+- A new "test mode" can be enabled by setting the `PULUMI_TEST_MODE` environment variable to
+  `true` in either the Node.js or Python SDK. This new mode allows you to unit test your Pulumi programs
+  using standard test harnesses, without needing to run the program using the Pulumi CLI. In this mode, limited
+  functionality is available, however basic resource object allocation with input properties will work.
+  Note that no actual engine operations will occur in this mode, and that you'll need to use the
+  `PULUMI_CONFIG`, `PULUMI_NODEJS_PROJECT`, and `PULUMI_NODEJS_STACK` environment variables to control settings
+  the CLI would have otherwise managed for you.
+
+## 0.17.6 (Released April 11, 2019)
+
+### Improvements
+
+- `refresh` will now warn instead of returning an error when it notices a resource is in an
+  unhealthy state. This is in service of https://github.com/pulumi/pulumi/issues/2633.
+
+## 0.17.5 (Released April 8, 2019)
+
+### Improvements
+
+- Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
+- Make `Config`'s constructor's `name` argument optional in Python, for consistency with our Node.js SDK. If it isn't
+    supplied, the current project name is used as the default.
+- `pulumi logs` will now display log messages from Google Cloud Functions.
+
+## 0.17.4 (Released March 26, 2019)
+
+### Improvements
+
+- Don't print the `error:` prefix when Pulumi exists because of a declined confirmation prompt (fixes [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/2070))
+- Fix issue where `Outputs` produced by `pulumi.interpolate` might have values which could
+  cause validation errors due to them containing the text `<computed>` during previews.
+
+## 0.17.3 (Released March 26, 2019)
+
+### Improvements
+
+- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi update` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi update` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
+- Fix two warnings that were printed when using a dynamic provider about missing method handlers.
+- A bug in the previous version of the Pulumi CLI occasionally caused the Pulumi Engine to load the incorrect resource
+  plugin when processing an update. This bug has been fixed in 0.17.3 by performing a deterministic selection of the
+  best set of plugins available to the engine before starting up. See
+- Add support for serializing JavaScript function that capture [BigInts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt).
+- Support serializing arrow-functions with deconstructed parameters.
+
+## 0.17.2 (Released March 15, 2019)
+
+### Improvements
+
+- Show `brew upgrade pulumi` as the upgrade message when the currently running `pulumi` executable
+  is running on macOS from the brew install directory.
+- Resource diffs that are rendered to the console are now filtered to properties that have semantically-meaningful
+  changes where possible.
+- `pulumi new` no longer runs an initial deployment after a project is generated for nodejs projects.
+  Instead, instructions are printed indicating that `pulumi up` can be used to deploy the project.
+- Differences between the state of a refreshed resource and the state described in a Pulumi program are now properly
+  detected when using newer providers.
+- Differences between a resource's provider-internal properties are no longer displayed in the CLI.
+- Pulumi will now install missing plugins on startup. Previously, Pulumi would error if a required plugin was not
+  present and a bug in the Pulumi CLI made it common for users using Pulumi in their continuous integration setup to have problems with missing plugins. Starting with 0.17.2, if Pulumi detects that required plugins are missing, it will make an attempt to install the missing plugins before proceeding with the update.
+
+## 0.17.1 (Released March 6, 2019)
+
+### Improvements
+
+- Slight tweak to `Output.apply` signature to help TypeScript infer types better.
+
+## 0.17.0 (Released March 5, 2019)
+
+This update includes several changes to core `@pulumi/pulumi` constructs that will not play nicely
+in side-by-side applications that pull in prior versions of this package.  As such, we are rev'ing
+the minor version of the package from 0.16 to 0.17.  Recent version of `pulumi` will now detect,
+and warn, if different versions of `@pulumi/pulumi` are loaded into the same application.  If you
+encounter this warning, it is recommended you move to versions of the `@pulumi/...` packages that
+are compatible.  i.e. keep everything on 0.16.x until you are ready to move everything to 0.17.x.
+
+### Improvements
+
+- `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
+For example:
+
+```ts
+interface Widget { text: string, x: number, y: number };
+var v: Output<Widget>;
+
+var widgetX = v.x;
+// `widgetX` has the type Output<number>.
+// This is equivalent to writing `v.apply(w => w.x)`
+```
+
+Note: this 'lifting' only occurs for POJO values.  It does not happen for `Output<Resource>`s.
+Similarly, this only happens for properties.  Functions are not lifted.
+
+- Depending on a **Component** Resource will now depend on all other Resources parented by that
+  Resource. This will help out the programming model for Component Resources as your consumers can
+  just depend on a Component and have that automatically depend on all the child Resources created
+  by that Component.  Note: this does not apply to a **Custom** resource.  Depending on a
+  CustomResource will still only wait on that single resource being created, not any other Resources
+  that consider that CustomResource to be a parent.
+
+
+## 0.16.19 (Released March 4, 2019)
+
+- Rolled back change where calling toString/toJSON on an Output would cause a message
+  to be logged to the `pulumi` diagnostics stream.
 
 ## 0.16.18 (Released March 1, 2019)
 
@@ -88,7 +197,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 ### Improvements
 
-- Issue a more perscriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
+- Issue a more prescriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
 
 ## 0.16.12 (Released January 25th, 2019)
 

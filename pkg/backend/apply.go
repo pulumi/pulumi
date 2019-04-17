@@ -31,19 +31,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // ApplierOptions is a bag of configuration settings for an Applier.
 type ApplierOptions struct {
-	// DryRun indiciates if the update should not change any resource state and instead just preview changes.
+	// DryRun indicates if the update should not change any resource state and instead just preview changes.
 	DryRun bool
-	// ShowLink indiciates if a link to the update persisted result should be displayed.
+	// ShowLink indicates if a link to the update persisted result should be displayed.
 	ShowLink bool
 }
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, error)
+	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -77,7 +78,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, error) {
+	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -109,10 +110,10 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: false,
 	}
 
-	changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
-	if err != nil {
+	changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
+	if res != nil {
 		close(eventsChannel)
-		return changes, err
+		return changes, res
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
@@ -122,14 +123,14 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	err = confirmBeforeUpdating(kind, stack, events, op.Opts)
+	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
-	return changes, err
+	return changes, res
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, opts UpdateOptions) error {
+	events []engine.Event, opts UpdateOptions) result.Result {
 	for {
 		var response string
 
@@ -166,11 +167,12 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			Options: choices,
 			Default: string(no),
 		}, &response, nil); err != nil {
-			return errors.Wrapf(err, "confirmation cancelled, not proceeding with the %s", kind)
+			return result.FromError(errors.Wrapf(err, "confirmation cancelled, not proceeding with the %s", kind))
 		}
 
 		if response == string(no) {
-			return errors.Errorf("confirmation declined, not proceeding with the %s", kind)
+			fmt.Printf("confirmation declined, not proceeding with the %s\n", kind)
+			return result.Bail()
 		}
 
 		if response == string(yes) {
@@ -187,13 +189,13 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, error) {
+	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
-		changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
-		if err != nil || kind == apitype.PreviewUpdate {
-			return changes, err
+		changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		if res != nil || kind == apitype.PreviewUpdate {
+			return changes, res
 		}
 	}
 

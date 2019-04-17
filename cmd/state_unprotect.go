@@ -17,9 +17,10 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/util/result"
+
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 
@@ -41,13 +42,13 @@ func newStateUnprotectCommand() *cobra.Command {
 
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			if unprotectAll {
 				return unprotectAllResources(stack)
 			}
 
 			if len(args) != 1 {
-				return errors.New("must provide a URN corresponding to a resource")
+				return result.Error("must provide a URN corresponding to a resource")
 			}
 
 			urn := resource.URN(args[0])
@@ -62,8 +63,8 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 	return cmd
 }
 
-func unprotectAllResources(stackName string) error {
-	err := runTotalStateEdit(stackName, func(_ display.Options, snap *deploy.Snapshot) error {
+func unprotectAllResources(stackName string) result.Result {
+	res := runTotalStateEdit(stackName, func(_ display.Options, snap *deploy.Snapshot) error {
 		for _, res := range snap.Resources {
 			err := edit.UnprotectResource(snap, res)
 			contract.AssertNoError(err)
@@ -72,17 +73,17 @@ func unprotectAllResources(stackName string) error {
 		return nil
 	})
 
-	if err != nil {
-		return err
+	if res != nil {
+		return res
 	}
 	fmt.Println("All resources successfully unprotected")
 	return nil
 }
 
-func unprotectResource(stackName string, urn resource.URN) error {
-	err := runStateEdit(stackName, urn, edit.UnprotectResource)
-	if err != nil {
-		return err
+func unprotectResource(stackName string, urn resource.URN) result.Result {
+	res := runStateEdit(stackName, urn, edit.UnprotectResource)
+	if res != nil {
+		return res
 	}
 	fmt.Println("Resource successfully unprotected")
 	return nil

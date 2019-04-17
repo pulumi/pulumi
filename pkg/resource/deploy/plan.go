@@ -16,7 +16,10 @@ package deploy
 
 import (
 	"context"
+	"io"
 	"math"
+
+	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -29,12 +32,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // BackendClient provides an interface for retrieving information about other stacks.
 type BackendClient interface {
 	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
+
+	DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error)
 }
 
 // Options controls the planning and deployment process.
@@ -290,7 +296,7 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
 // or update.
-func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) error {
+func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) result.Result {
 	planExec := &planExecutor{plan: p}
 	return planExec.Execute(ctx, opts, preview)
 }

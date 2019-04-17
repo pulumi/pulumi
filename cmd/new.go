@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -57,13 +55,12 @@ func newNewCmd() *cobra.Command {
 	var name string
 	var offline bool
 	var stack string
-	var suppressOutputs bool
 	var yes bool
 
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create and deploy a new Pulumi project",
+		Short:      "Create a new Pulumi project",
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			interactive := cmdutil.Interactive()
@@ -72,17 +69,9 @@ func newNewCmd() *cobra.Command {
 			}
 
 			// Prepare options.
-			opts, err := updateFlagsToOptions(interactive, false /*skipPreview*/, yes)
-			if err != nil {
-				return err
-			}
-			opts.Display = display.Options{
-				Color:           cmdutil.GetGlobalColorization(),
-				SuppressOutputs: suppressOutputs,
-				IsInteractive:   interactive,
-			}
-			opts.Engine = engine.UpdateOptions{
-				Parallel: defaultParallel,
+			opts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
 			}
 
 			// Validate name (if specified) before further prompts/operations.
@@ -126,7 +115,7 @@ func newNewCmd() *cobra.Command {
 			// If we're going to be creating a stack, get the current backend, which
 			// will kick off the login flow (if not already logged-in).
 			if !generateOnly {
-				if _, err = currentBackend(opts.Display); err != nil {
+				if _, err = currentBackend(opts); err != nil {
 					return err
 				}
 			}
@@ -157,7 +146,7 @@ func newNewCmd() *cobra.Command {
 			} else if len(templates) == 1 {
 				template = templates[0]
 			} else {
-				if template, err = chooseTemplate(templates, opts.Display); err != nil {
+				if template, err = chooseTemplate(templates, opts); err != nil {
 					return err
 				}
 			}
@@ -175,7 +164,7 @@ func newNewCmd() *cobra.Command {
 			// If a stack was specified via --stack, see if it already exists.
 			var s backend.Stack
 			if stack != "" {
-				existingStack, existingName, existingDesc, err := getStack(stack, opts.Display)
+				existingStack, existingName, existingDesc, err := getStack(stack, opts)
 				if err != nil {
 					return err
 				}
@@ -191,14 +180,14 @@ func newNewCmd() *cobra.Command {
 			// Show instructions, if we're going to show at least one prompt.
 			hasAtLeastOnePrompt := (name == "") || (description == "") || (!generateOnly && stack == "")
 			if !yes && hasAtLeastOnePrompt {
-				fmt.Println("This command will walk you through creating and deploying a new Pulumi project.")
+				fmt.Println("This command will walk you through creating a new Pulumi project.")
 				fmt.Println()
 				fmt.Println(
-					opts.Display.Color.Colorize(
+					opts.Color.Colorize(
 						colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
 							"<ENTER>", colors.BrightCyan+colors.Bold)))
 				fmt.Println(
-					opts.Display.Color.Colorize(
+					opts.Color.Colorize(
 						colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
 				fmt.Println()
 			}
@@ -207,7 +196,7 @@ func newNewCmd() *cobra.Command {
 			if name == "" {
 				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, filepath.Base(cwd))
 				name, err = promptForValue(
-					yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
+					yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts)
 				if err != nil {
 					return err
 				}
@@ -218,7 +207,7 @@ func newNewCmd() *cobra.Command {
 				defaultValue := workspace.ValueOrDefaultProjectDescription(
 					description, template.ProjectDescription, template.Description)
 				description, err = promptForValue(
-					yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
+					yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts)
 				if err != nil {
 					return err
 				}
@@ -249,7 +238,7 @@ func newNewCmd() *cobra.Command {
 
 			// Create the stack, if needed.
 			if !generateOnly && s == nil {
-				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts.Display); err != nil {
+				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts); err != nil {
 					return err
 				}
 				// The backend will print "Created stack '<stack>'" on success.
@@ -258,30 +247,26 @@ func newNewCmd() *cobra.Command {
 
 			// Prompt for config values (if needed) and save.
 			if !generateOnly {
-				if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts.Display); err != nil {
+				if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts); err != nil {
 					return err
 				}
 			}
 
 			// Install dependencies.
 			if !generateOnly {
-				if err = installDependencies("Installing dependencies..."); err != nil {
-					return err
-				}
-
-				fmt.Println(
-					opts.Display.Color.Colorize(
-						colors.BrightGreen+colors.Bold+"Your new project is configured and ready to go!"+colors.Reset) +
-						" " + cmdutil.EmojiOr("✨", ""))
-				fmt.Println()
-			}
-
-			// Run `up` automatically, or print out next steps to run `up` manually.
-			if !generateOnly {
-				if err = runUpOrPrintNextSteps(s, originalCwd, cwd, opts, yes); err != nil {
+				if err := installDependencies(); err != nil {
 					return err
 				}
 			}
+
+			fmt.Println(
+				opts.Color.Colorize(
+					colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset) +
+					" " + cmdutil.EmojiOr("✨", ""))
+			fmt.Println()
+
+			// Print out next steps.
+			printNextSteps(proj, originalCwd, cwd, generateOnly, opts)
 
 			if template.Quickstart != "" {
 				fmt.Println(template.Quickstart)
@@ -346,9 +331,6 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
-	cmd.PersistentFlags().BoolVar(
-		&suppressOutputs, "suppress-outputs", false,
-		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
@@ -458,9 +440,8 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 	return saveProjectStack(stack, ps)
 }
 
-// installDependencies will install dependencies for the project, e.g. by running
-// `npm install` for nodejs projects or `pip install` for python projects.
-func installDependencies(message string) error {
+// installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+func installDependencies() error {
 	proj, _, err := readProject()
 	if err != nil {
 		return err
@@ -476,10 +457,8 @@ func installDependencies(message string) error {
 		return nil
 	}
 
-	if message != "" {
-		fmt.Println(message)
-		fmt.Println()
-	}
+	fmt.Println("Installing dependencies...")
+	fmt.Println()
 
 	// Run the command.
 	c.Stdout = os.Stdout
@@ -495,69 +474,8 @@ func installDependencies(message string) error {
 	return nil
 }
 
-// runUpOrPrintNextSteps runs `up` automatically, or if `up` shouldn't run, prints out a message with next steps.
-func runUpOrPrintNextSteps(
-	stack backend.Stack, originalCwd string, cwd string, opts backend.UpdateOptions, yes bool) error {
-
-	proj, root, err := readProject()
-	if err != nil {
-		return err
-	}
-
-	// Currently go projects require a build/install step before deployment, so we won't automatically run `up` for
-	// such projects. Once we switch over to using `go run` for go, we can remove this and always run `up`.
-	isGo := strings.EqualFold(proj.Runtime.Name(), "go")
-	isPython := strings.EqualFold(proj.Runtime.Name(), "python")
-	runUp := !isGo && !isPython
-
-	if runUp {
-		m, err := getUpdateMetadata("", root)
-		if err != nil {
-			return errors.Wrap(err, "gathering environment metadata")
-		}
-
-		fmt.Println("Previewing initial update...")
-		fmt.Println()
-
-		_, err = stack.Update(commandContext(), backend.UpdateOperation{
-			Proj:   proj,
-			Root:   root,
-			M:      m,
-			Opts:   opts,
-			Scopes: cancellationScopes,
-		})
-		switch {
-		case err == context.Canceled:
-			return errors.New("update cancelled")
-		case err != nil:
-			fmt.Println(
-				opts.Display.Color.Colorize(
-					colors.Highlight("An error occurred; address the issue, then run 'pulumi up' to try again",
-						"pulumi up", colors.BrightBlue+colors.Bold)))
-			return PrintEngineError(err)
-		default:
-			fmt.Println()
-			fmt.Println(
-				opts.Display.Color.Colorize(
-					colors.BrightGreen+colors.Bold+"Initial update complete!"+colors.Reset) +
-					" " + cmdutil.EmojiOr("✨", ""))
-			fmt.Println()
-			fmt.Println(
-				opts.Display.Color.Colorize(
-					colors.Highlight("Modify your program as needed, then run 'pulumi up' to deploy the changes",
-						"pulumi up", colors.BrightBlue+colors.Bold)))
-			return nil
-		}
-	} else {
-		// If we're not running up, print out the steps necessary to get the environment to state where we *can* run up.
-		printNextSteps(opts, originalCwd, cwd, isPython)
-	}
-
-	return nil
-}
-
 // printNextSteps prints out a series of commands that the user needs to run before their stack is able to be updated.
-func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPython bool) {
+func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOnly bool, opts display.Options) {
 	var commands []string
 
 	// If the target working directory is not the same as our current WD, tell the user to
@@ -580,9 +498,14 @@ func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPytho
 		commands = append(commands, cd)
 	}
 
-	// If we're generating a Python project, instruct the user to set up and activate a virtual
-	// environment.
-	if isPython {
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") && generateOnly {
+		// If we're generating a NodeJS project, and we didn't install dependencies (generateOnly),
+		// instruct the user to do so.
+		commands = append(commands, "npm install")
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+		// If we're generating a Python project, instruct the user to set up and activate a virtual
+		// environment.
+
 		// Create the virtual environment.
 		commands = append(commands, "virtualenv -p python3 venv")
 
@@ -599,28 +522,46 @@ func printNextSteps(opts backend.UpdateOptions, originalCwd, cwd string, isPytho
 		commands = append(commands, "pip3 install -r requirements.txt")
 	}
 
+	// If we didn't create a stack, show that as a command to run before `pulumi up`.
+	if generateOnly {
+		commands = append(commands, "pulumi stack init")
+	}
+
 	if len(commands) == 0 { // No additional commands need to be run.
 		deployMsg := "To perform an initial deployment, run 'pulumi up'"
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
-		fmt.Println(opts.Display.Color.Colorize(deployMsg))
+		fmt.Println(opts.Color.Colorize(deployMsg))
+		fmt.Println()
+		return
+	}
+
+	if len(commands) == 1 { // Only one additional command need to be run.
+		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run 'pulumi up'", commands[0])
+		deployMsg = colors.Highlight(deployMsg, commands[0], colors.BrightBlue+colors.Bold)
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
+		fmt.Println(opts.Color.Colorize(deployMsg))
+		fmt.Println()
 		return
 	}
 
 	// One or more additional commands needs to be run.
 	fmt.Println("To perform an initial deployment, run the following commands:")
+	fmt.Println()
 	for i, cmd := range commands {
 		cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
-		fmt.Printf("   %d. %s\n", i+1, opts.Display.Color.Colorize(cmdColors))
+		fmt.Printf("   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
 	}
+	fmt.Println()
 
 	upMsg := colors.Highlight("Then, run 'pulumi up'", "pulumi up", colors.BrightBlue+colors.Bold)
-	fmt.Println(opts.Display.Color.Colorize(upMsg))
+	fmt.Println(opts.Color.Colorize(upMsg))
+	fmt.Println()
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
 func chooseTemplate(templates []workspace.Template, opts display.Options) (workspace.Template, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
-	if !cmdutil.Interactive() {
+	if !opts.IsInteractive {
 		return workspace.Template{}, errors.New(chooseTemplateErr)
 	}
 

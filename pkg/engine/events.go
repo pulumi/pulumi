@@ -107,6 +107,7 @@ type StepEventMetadata struct {
 	New      *StepEventStateMetadata // the state of the resource after performing this step.
 	Res      *StepEventStateMetadata // the latest state for the resource that is known (worst case, old).
 	Keys     []resource.PropertyKey  // the keys causing replacement (only for CreateStep and ReplaceStep).
+	Diffs    []resource.PropertyKey  // the keys causing diffs
 	Logical  bool                    // true if this step represents a logical operation in the program.
 	Provider string                  // the provider that performed this step.
 }
@@ -177,11 +178,12 @@ type eventEmitter struct {
 func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepEventMetadata {
 	contract.Assert(op == step.Op() || step.Op() == deploy.OpRefresh)
 
-	var keys []resource.PropertyKey
-	if step.Op() == deploy.OpCreateReplacement {
-		keys = step.(*deploy.CreateStep).Keys()
-	} else if step.Op() == deploy.OpReplace {
-		keys = step.(*deploy.ReplaceStep).Keys()
+	var keys, diffs []resource.PropertyKey
+	if keyer, hasKeys := step.(interface{ Keys() []resource.PropertyKey }); hasKeys {
+		keys = keyer.Keys()
+	}
+	if differ, hasDiffs := step.(interface{ Diffs() []resource.PropertyKey }); hasDiffs {
+		diffs = differ.Diffs()
 	}
 
 	return StepEventMetadata{
@@ -189,6 +191,7 @@ func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepE
 		URN:      step.URN(),
 		Type:     step.Type(),
 		Keys:     keys,
+		Diffs:    diffs,
 		Old:      makeStepEventStateMetadata(step.Old(), debug),
 		New:      makeStepEventStateMetadata(step.New(), debug),
 		Res:      makeStepEventStateMetadata(step.Res(), debug),

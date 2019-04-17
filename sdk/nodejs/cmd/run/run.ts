@@ -20,6 +20,8 @@ import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 
+import * as mod from ".";
+
 /**
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
@@ -27,6 +29,15 @@ import * as runtime from "../../runtime";
  * @param error The error that occured. Must be a module load error.
  */
 function reportModuleLoadFailure(program: string, error: Error): never {
+    throwOrPrintModuleLoadError(program, error);
+
+    // Note: from this point on, we've printed something to the user telling them about the
+    // problem.  So we can let our langhost know it doesn't need to report any further issues.
+    return process.exit(mod.nodeJSProcessExitedAfterLoggingUserActionableMessage);
+}
+
+
+function throwOrPrintModuleLoadError(program: string, error: Error): void {
     // error is guaranteed to be a Node module load error. Node emits a very
     // specific string in its error message for module load errors, which includes
     // the module it was trying to load.
@@ -49,6 +60,8 @@ function reportModuleLoadFailure(program: string, error: Error): never {
         throw error;
     }
 
+    // Note: from this point on, we've printed something to the user telling them about the
+    // problem.  So we can let our langhost know it doesn't need to report any further issues.
     console.error(`We failed to locate the entry point for your program: ${program}`);
 
     // From here on out, we're going to try to inspect the program we're being asked to run
@@ -72,7 +85,7 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     } catch {
         // This is all best-effort so if we can't load the package.json file, that's
         // fine.
-        return process.exit(1);
+        return;
     }
 
     console.error("Here's what we think went wrong:");
@@ -93,14 +106,14 @@ function reportModuleLoadFailure(program: string, error: Error): never {
         console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
         console.error("Pulumi does not run build scripts before running your program. " +
                         `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
-        return process.exit(1);
+        return;
     }
 
     // Not all typescript programs have build scripts. If we think it's a typescript program,
     // tell the user to run tsc.
     if ("typescript" in deps || "typescript" in devDeps) {
         console.error("  * Your program looks like a TypeScript program. Have you run 'tsc'?");
-        return process.exit(1);
+        return;
     }
 
     // Not all projects are typescript. If there's a main property, check that the file exists.
@@ -108,16 +121,18 @@ function reportModuleLoadFailure(program: string, error: Error): never {
         const mainFile = path.join(projectRoot, mainProperty);
         if (!fs.existsSync(mainFile)) {
             console.error(`  * Your program's 'main' file (${mainFile}) does not exist.`);
-            return process.exit(1);
+            return;
         }
     }
 
     console.error("  * Yowzas, our sincere apologies, we haven't seen this before!");
     console.error(`    Here is the raw exception message we received: ${error.message}`);
-    return process.exit(1);
+    return;
 }
 
-export function run(argv: minimist.ParsedArgs, programStarted: () => void): void {
+export function run(argv: minimist.ParsedArgs,
+                    programStarted: () => void,
+                    reportLoggedError: (err: Error) => void) {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -186,9 +201,12 @@ export function run(argv: minimist.ParsedArgs, programStarted: () => void): void
             log.error(message, err.resource);
         }
         else {
-            log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(defaultMessage);
+            log.error(
+`Running program '${program}' failed with an unhandled exception:
+${defaultMessage}`);
         }
+
+        reportLoggedError(err);
     };
 
     process.on("uncaughtException", uncaughtHandler);
@@ -198,7 +216,7 @@ export function run(argv: minimist.ParsedArgs, programStarted: () => void): void
     programStarted();
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    runtime.runInPulumiStack(() => {
+    return runtime.runInPulumiStack(() => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental

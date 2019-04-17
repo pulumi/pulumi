@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // NewFixedSource returns a valid planning source that is comprised of a list of pre-computed steps.
@@ -36,7 +37,9 @@ func (src *fixedSource) Close() error                { return nil }
 func (src *fixedSource) Project() tokens.PackageName { return src.ctx }
 func (src *fixedSource) Info() interface{}           { return nil }
 
-func (src *fixedSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {
+func (src *fixedSource) Iterate(
+	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {
+
 	contract.Ignore(ctx) // TODO[pulumi/pulumi#1714]
 	return &fixedSourceIterator{
 		src:     src,
@@ -54,7 +57,7 @@ func (iter *fixedSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *fixedSourceIterator) Next() (SourceEvent, error) {
+func (iter *fixedSourceIterator) Next() (SourceEvent, result.Result) {
 	iter.current++
 	if iter.current >= len(iter.src.steps) {
 		return nil, nil

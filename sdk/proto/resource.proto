@@ -43,6 +43,7 @@ message ReadResourceRequest {
     google.protobuf.Struct properties = 5; // optional state sufficient to uniquely identify the resource.
     repeated string dependencies = 6;      // a list of URNs that this read depends on, as observed by the language host.
     string provider = 7;                   // an optional reference to the provider to use for this read.
+    string version = 8;                    // the version of the provider to use when servicing this request.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -67,7 +68,8 @@ message RegisterResourceRequest {
     repeated string dependencies = 7;  // a list of URNs that this resource depends on, as observed by the language host.
     string provider = 8;               // an optional reference to the provider to manage this resource's CRUD operations.
     map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
-    bool deleteBeforeReplace = 10;      // true if this resource should be deleted before replacement.
+    bool deleteBeforeReplace = 10;     // true if this resource should be deleted before replacement.
+    string version = 11;               // the version of the provider to use when servicing this request.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

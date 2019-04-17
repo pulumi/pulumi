@@ -36,10 +36,10 @@ class Config:
     The configuration bag's logical name that uniquely identifies it.  The default is the name of the current project.
     """
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: Optional[str] = None) -> None:
         """
-        :param str name: The configuration bag's logical name that uniquely identifies it.  The default is the name of
-               the current project.
+        :param str name: The configuration bag's logical name that uniquely identifies it.  If not provided, the name
+               of the current project is used.
         """
         if not name:
             name = get_project()

@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -256,17 +257,20 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 	return &u.target
 }
 
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, error)
-type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal, events []Event, err error) error
+type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, result.Result)
+type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal,
+	events []Event, res result.Result) result.Result
 
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, error) {
+	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
 
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
 
-func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Project, target deploy.Target,
-	opts UpdateOptions, dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, error) {
+func (op TestOp) RunWithContext(
+	callerCtx context.Context, project workspace.Project,
+	target deploy.Target, opts UpdateOptions, dryRun bool,
+	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
 
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
@@ -301,21 +305,21 @@ func (op TestOp) RunWithContext(callerCtx context.Context, project workspace.Pro
 	}()
 
 	// Run the step and its validator.
-	_, err := op(info, ctx, opts, dryRun)
+	_, res := op(info, ctx, opts, dryRun)
 	contract.IgnoreClose(journal)
 
 	if dryRun {
-		return nil, err
+		return nil, res
 	}
 	if validate != nil {
-		err = validate(project, target, journal, firedEvents, err)
+		res = validate(project, target, journal, firedEvents, res)
 	}
 
 	snap := journal.Snap(target.Snapshot)
-	if err == nil && snap != nil {
-		err = snap.VerifyIntegrity()
+	if res == nil && snap != nil {
+		res = result.WrapIfNonNil(snap.VerifyIntegrity())
 	}
-	return snap, err
+	return snap, res
 
 }
 
@@ -392,6 +396,10 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 	}
 }
 
+func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
+	assert.NotNil(t, res)
+}
+
 func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
 	project := p.GetProject()
 	snap := snapshot
@@ -402,24 +410,24 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		if !step.SkipPreview {
 			previewSnap := CloneSnapshot(t, snap)
 			previewTarget := p.GetTarget(previewSnap)
-			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
+			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
 			if step.ExpectFailure {
-				assert.Error(t, err)
+				assertIsErrorOrBailResult(t, res)
 				continue
 			}
 
-			assert.NoError(t, err)
+			assert.Nil(t, res)
 		}
 
-		var err error
+		var res result.Result
 		target := p.GetTarget(snap)
-		snap, err = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
+		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
-			assert.Error(t, err)
+			assertIsErrorOrBailResult(t, res)
 			continue
 		}
 
-		assert.NoError(t, err)
+		assert.Nil(t, res)
 	}
 
 	return snap
@@ -442,57 +450,67 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		// Initial update
 		{
 			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				_ []Event, res result.Result) result.Result {
+
 				// Should see only creates.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return err
+				return res
 			},
 		},
 		// No-op refresh
 		{
 			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				_ []Event, res result.Result) result.Result {
+
 				// Should see only refresh-sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return err
+				return res
 			},
 		},
 		// No-op update
 		{
 			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				_ []Event, res result.Result) result.Result {
+
 				// Should see only sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return err
+				return res
 			},
 		},
 		// No-op refresh
 		{
 			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				_ []Event, res result.Result) result.Result {
+
 				// Should see only referesh-sames.
 				for _, entry := range j.Entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return err
+				return res
 			},
 		},
 		// Destroy
 		{
 			Op: Destroy,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				_ []Event, res result.Result) result.Result {
+
 				// Should see only deletes.
 				for _, entry := range j.Entries {
 					switch entry.Step.Op() {
@@ -503,16 +521,18 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					}
 				}
 				assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
-				return err
+				return res
 			},
 		},
 		// No-op refresh
 		{
 			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				_ []Event, res result.Result) result.Result {
+
 				assert.Len(t, j.Entries, 0)
 				assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
-				return err
+				return res
 			},
 		},
 	}
@@ -540,7 +560,7 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -562,7 +582,7 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, "",
-			false, nil, "", resource.PropertyMap{}, nil, false)
+			false, nil, "", resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		if provID == "" {
@@ -573,7 +593,7 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, provRef.String(),
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		return nil
@@ -596,7 +616,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -622,7 +642,9 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	}
 
 	isRefresh := false
-	validate := func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+	validate := func(project workspace.Project, target deploy.Target, j *Journal,
+		_ []Event, res result.Result) result.Result {
+
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
 		for _, entry := range j.Entries {
@@ -638,7 +660,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 			}
 		}
 		assert.Len(t, j.Snap(target.Snapshot).Resources, 2)
-		return err
+		return res
 	}
 
 	// Run a single update step using the base snapshot.
@@ -654,7 +676,9 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	isRefresh = false
 	p.Steps = []TestStep{{
 		Op: Destroy,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
 			// Should see two deletes:  the default provider should be injected into the old state before the update
 			// runs.
 			deleted := make(map[resource.URN]bool)
@@ -669,7 +693,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 			}
 			assert.Len(t, deleted, 2)
 			assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
-			return err
+			return res
 		},
 	}}
 	p.Run(t, old)
@@ -697,7 +721,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -721,7 +745,9 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	p.Config[config.MustMakeKey("pkgA", "foo")] = config.NewValue("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
 			provURN := p.NewProviderURN("pkgA", "default", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -744,7 +770,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 			assert.True(t, replacedProvider)
 			assert.True(t, replacedResource)
 
-			return err
+			return res
 		},
 	}}
 
@@ -776,7 +802,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	}
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, "",
-			false, nil, "", providerInputs, nil, false)
+			false, nil, "", providerInputs, nil, false, "")
 		assert.NoError(t, err)
 
 		if provID == "" {
@@ -787,7 +813,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, provRef.String(),
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		return nil
@@ -809,7 +835,9 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -832,7 +860,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 			assert.True(t, replacedProvider)
 			assert.True(t, replacedResource)
 
-			return err
+			return res
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -863,7 +891,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	}
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, "",
-			false, nil, "", providerInputs, nil, false)
+			false, nil, "", providerInputs, nil, false, "")
 		assert.NoError(t, err)
 
 		if provID == "" {
@@ -874,7 +902,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, provRef.String(),
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		return nil
@@ -896,7 +924,9 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -939,7 +969,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 			assert.True(t, deletedProvider)
 			assert.True(t, deletedResource)
 
-			return err
+			return res
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -964,7 +994,8 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	inputs := resource.PropertyMap{}
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false)
+		_, _, _, err := monitor.RegisterResource(
+			"pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false, "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -977,13 +1008,15 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
 
 	// Now change the inputs to our resource and run a preview.
 	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	_, err = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ *Journal, events []Event, err error) error {
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+			events []Event, res result.Result) result.Result {
+
 			found := false
 			for _, e := range events {
 				if e.Type == DiagEvent {
@@ -995,9 +1028,9 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 				}
 			}
 			assert.True(t, found)
-			return err
+			return res
 		})
-	assert.NoError(t, err)
+	assert.Nil(t, res)
 }
 
 func TestDestroyWithPendingDelete(t *testing.T) {
@@ -1043,7 +1076,9 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, err error) error {
+		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
@@ -1068,7 +1103,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 			assert.True(t, deletedID0)
 			assert.True(t, deletedID1)
 
-			return err
+			return res
 		},
 	}}
 	p.Run(t, old)
@@ -1115,7 +1150,9 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 
 	p.Steps = []TestStep{{
 		Op: Destroy,
-		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, err error) error {
+		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
@@ -1140,7 +1177,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 			assert.True(t, deletedID0)
 			assert.True(t, deletedID1)
 
-			return err
+			return res
 		},
 	}}
 	p.Run(t, old)
@@ -1157,19 +1194,19 @@ func TestParallelRefresh(t *testing.T) {
 	// it.
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		resB, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, "", false, []resource.URN{resA}, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		resC, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, "", false, []resource.URN{resB}, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, "", false, []resource.URN{resC}, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 
 		return nil
@@ -1210,7 +1247,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	// Our program reads a resource and exits.
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "")
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "")
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -1265,17 +1302,17 @@ func TestRefreshInitFailure(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(
-					urn resource.URN, id resource.ID, props resource.PropertyMap,
-				) (resource.PropertyMap, resource.Status, error) {
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					if refreshShouldFail && urn == resURN {
 						err := &plugin.InitError{
 							Reasons: []string{"Refresh reports continued to fail to initialize"},
 						}
-						return resource.PropertyMap{}, resource.StatusPartialFailure, err
+						return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusPartialFailure, err
 					} else if urn == res2URN {
-						return res2Outputs, resource.StatusOK, nil
+						return plugin.ReadResult{Outputs: res2Outputs}, resource.StatusOK, nil
 					}
-					return resource.PropertyMap{}, resource.StatusOK, nil
+					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
 				},
 			}, nil
 		}),
@@ -1283,7 +1320,7 @@ func TestRefreshInitFailure(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -1336,10 +1373,11 @@ func TestRefreshInitFailure(t *testing.T) {
 	}
 
 	//
-	// Refresh DOES fail, causing the new initialization error to appear.
+	// Refresh again, see the resource is in a partial state of failure, but the refresh operation
+	// DOES NOT fail. The initialization error is still persisted.
 	//
 	refreshShouldFail = true
-	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true, ExpectFailure: true}}
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
 	snap = p.Run(t, old)
 	for _, resource := range snap.Resources {
 		switch urn := resource.URN; urn {
@@ -1370,7 +1408,7 @@ func TestCheckFailureRecord(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil, nil, false)
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil, nil, false, "")
 		assert.Error(t, err)
 		return err
 	})
@@ -1382,7 +1420,9 @@ func TestCheckFailureRecord(t *testing.T) {
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				evts []Event, res result.Result) result.Result {
+
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
@@ -1393,7 +1433,7 @@ func TestCheckFailureRecord(t *testing.T) {
 				}
 
 				assert.True(t, sawFailure)
-				return err
+				return res
 			},
 		}},
 	}
@@ -1418,7 +1458,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil, nil, false)
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil, nil, false, "")
 		assert.Error(t, err)
 		return err
 	})
@@ -1430,7 +1470,9 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				evts []Event, res result.Result) result.Result {
+
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
@@ -1444,7 +1486,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 				}
 
 				assert.True(t, sawFailure)
-				return err
+				return res
 			},
 		}},
 	}
@@ -1462,18 +1504,19 @@ func TestRefreshWithDelete(t *testing.T) {
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{
 						ReadF: func(
-							urn resource.URN, id resource.ID, props resource.PropertyMap,
-						) (resource.PropertyMap, resource.Status, error) {
+							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+						) (plugin.ReadResult, resource.Status, error) {
 							// This thing doesn't exist. Returning nil from Read should trigger
 							// the engine to delete it from the snapshot.
-							return nil, resource.StatusOK, nil
+							return plugin.ReadResult{}, resource.StatusOK, nil
 						},
 					}, nil
 				}),
 			}
 
 			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "", nil, nil, false)
+				_, _, _, err := monitor.RegisterResource(
+					"pkgA:m:typA", "resA", true, "", false, nil, "", nil, nil, false, "")
 				assert.NoError(t, err)
 				return err
 			})
@@ -1535,14 +1578,14 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 					switch id {
 					case "0", "4":
 						// We want to delete resources A::0 and A::4.
-						return nil, resource.StatusOK, nil
+						return plugin.ReadResult{}, resource.StatusOK, nil
 					default:
-						return state, resource.StatusOK, nil
+						return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 					}
 				},
 			}, nil
@@ -1619,18 +1662,21 @@ func TestRefreshBasics(t *testing.T) {
 		newResource(urnC, "5", true, urnA, urnB),
 	}
 
-	newStates := map[resource.ID]resource.PropertyMap{
+	newStates := map[resource.ID]plugin.ReadResult{
 		// A::0 and A::3 will have no changes.
-		"0": {},
-		"3": {},
+		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
+		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
-		// B::1 and A::4 will have changes.
-		"1": {"foo": resource.NewStringProperty("bar")},
-		"4": {"baz": resource.NewStringProperty("qux")},
+		// B::1 and A::4 will have changes. The latter will also have input changes.
+		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"4": {
+			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
+			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
+		},
 
 		// C::2 and C::5 will be deleted.
-		"2": nil,
-		"5": nil,
+		"2": {},
+		"5": {},
 	}
 
 	old := &deploy.Snapshot{
@@ -1641,7 +1687,7 @@ func TestRefreshBasics(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 					new, hasNewState := newStates[id]
 					assert.True(t, hasNewState)
@@ -1655,7 +1701,9 @@ func TestRefreshBasics(t *testing.T) {
 
 	p.Steps = []TestStep{{
 		Op: Refresh,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
 			// Should see only refreshes.
 			for _, entry := range j.Entries {
 				assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -1669,25 +1717,26 @@ func TestRefreshBasics(t *testing.T) {
 				}
 
 				expected, new := newStates[old.ID], entry.Step.New()
-				if expected == nil {
+				if expected.Outputs == nil {
 					// If the resource was deleted, we want the result op to be an OpDelete.
 					assert.Nil(t, new)
 					assert.Equal(t, deploy.OpDelete, resultOp)
 				} else {
 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
 					// an OpSame.
-					if reflect.DeepEqual(old.Outputs, expected) {
+					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
 					}
 
-					// Only the outputs should have changed (if anything changed).
-					old.Outputs = expected
+					// Only the inputs and outputs should have changed (if anything changed).
+					old.Inputs = expected.Inputs
+					old.Outputs = expected.Outputs
 					assert.Equal(t, old, new)
 				}
 			}
-			return err
+			return res
 		},
 	}}
 	snap := p.Run(t, old)
@@ -1711,9 +1760,10 @@ func TestRefreshBasics(t *testing.T) {
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
 		assert.NoError(t, err)
 
-		// The new resources should be equal to the old resources + the new outputs.
+		// The new resources should be equal to the old resources + the new inputs and outputs.
 		old := oldResources[int(idx)]
-		old.Outputs = expected
+		old.Inputs = expected.Inputs
+		old.Outputs = expected.Outputs
 		assert.Equal(t, old, r)
 	}
 }
@@ -1772,14 +1822,14 @@ func TestCanceledRefresh(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					state resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 					refreshes <- id
 					<-cancelled
 
 					new, hasNewState := newStates[id]
 					assert.True(t, hasNewState)
-					return new, resource.StatusOK, nil
+					return plugin.ReadResult{Outputs: new}, resource.StatusOK, nil
 				},
 				CancelF: func() error {
 					close(cancelled)
@@ -1796,7 +1846,9 @@ func TestCanceledRefresh(t *testing.T) {
 		host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
 	}
 	project, target := p.GetProject(), p.GetTarget(old)
-	validate := func(project workspace.Project, target deploy.Target, j *Journal, _ []Event, err error) error {
+	validate := func(project workspace.Project, target deploy.Target, j *Journal,
+		_ []Event, res result.Result) result.Result {
+
 		for _, entry := range j.Entries {
 			assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 			resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
@@ -1829,11 +1881,11 @@ func TestCanceledRefresh(t *testing.T) {
 				assert.Equal(t, old, new)
 			}
 		}
-		return err
+		return res
 	}
 
-	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
-	assert.Error(t, err)
+	snap, res := op.RunWithContext(ctx, project, target, options, false, nil, validate)
+	assertIsErrorOrBailResult(t, res)
 	assert.Equal(t, 1, len(refreshed))
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -1890,8 +1942,10 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-				assert.Error(t, err)
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				evts []Event, res result.Result) result.Result {
+
+				assertIsErrorOrBailResult(t, res)
 				sawExitCode := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
@@ -1905,7 +1959,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 				}
 
 				assert.True(t, sawExitCode)
-				return err
+				return res
 			},
 		}},
 	}
@@ -1945,12 +1999,14 @@ func TestBrokenDecrypter(t *testing.T) {
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-				assert.Error(t, err)
-				decryptErr := err.(DecryptError)
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				evts []Event, res result.Result) result.Result {
+
+				assertIsErrorOrBailResult(t, res)
+				decryptErr := res.Error().(DecryptError)
 				assert.Equal(t, key, decryptErr.Key)
 				assert.Contains(t, decryptErr.Err.Error(), msg)
-				return err
+				return res
 			},
 		}},
 	}
@@ -1967,14 +2023,14 @@ func TestBadResourceType(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, _, err := mon.RegisterResource(
-			"very:bad", "resA", true, "", false, nil, "", resource.PropertyMap{}, nil, false)
+			"very:bad", "resA", true, "", false, nil, "", resource.PropertyMap{}, nil, false, "")
 		assert.Error(t, err)
 		rpcerr, ok := rpcerror.FromError(err)
 		assert.True(t, ok)
 		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
 		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
 
-		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "")
+		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "", "")
 		assert.Error(t, err)
 		rpcerr, ok = rpcerror.FromError(err)
 		assert.True(t, ok)
@@ -1983,11 +2039,11 @@ func TestBadResourceType(t *testing.T) {
 
 		// Component resources may have any format type.
 		_, _, _, noErr := mon.RegisterResource(
-			"a:component", "resB", false /* custom */, "", false, nil, "", resource.PropertyMap{}, nil, false)
+			"a:component", "resB", false /* custom */, "", false, nil, "", resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, noErr)
 
 		_, _, _, noErr = mon.RegisterResource(
-			"singlename", "resC", false /* custom */, "", false, nil, "", resource.PropertyMap{}, nil, false)
+			"singlename", "resC", false /* custom */, "", false, nil, "", resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, noErr)
 
 		return err
@@ -2051,7 +2107,7 @@ func TestProviderCancellation(t *testing.T) {
 		for i := 0; i < resourceCount; i++ {
 			go func(idx int) {
 				_, _, _, errors[idx] = monitor.RegisterResource("pkgA:m:typA", fmt.Sprintf("res%d", idx), true, "",
-					false, nil, "", resource.PropertyMap{}, nil, false)
+					false, nil, "", resource.PropertyMap{}, nil, false, "")
 				resources.Done()
 			}(i)
 		}
@@ -2071,8 +2127,8 @@ func TestProviderCancellation(t *testing.T) {
 	}
 	project, target := p.GetProject(), p.GetTarget(nil)
 
-	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
-	assert.Error(t, err)
+	_, res := op.RunWithContext(ctx, project, target, options, false, nil, nil)
+	assertIsErrorOrBailResult(t, res)
 
 	// Wait for the program to finish.
 	<-done
@@ -2116,7 +2172,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
-			resource.PropertyMap{}, nil, false)
+			resource.PropertyMap{}, nil, false, "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -2126,12 +2182,13 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(old)
 
 	// A preview should succeed despite the pending operations.
-	_, err := op.Run(project, target, options, true, nil, nil)
-	assert.NoError(t, err)
+	_, res := op.Run(project, target, options, true, nil, nil)
+	assert.Nil(t, res)
 
 	// But an update should fail.
-	_, err = op.Run(project, target, options, false, nil, nil)
-	assert.EqualError(t, err, deploy.PlanPendingOperationsError{}.Error())
+	_, res = op.Run(project, target, options, false, nil, nil)
+	assertIsErrorOrBailResult(t, res)
+	assert.EqualError(t, res.Error(), deploy.PlanPendingOperationsError{}.Error())
 }
 
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
@@ -2161,7 +2218,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 		_, _, _, err := mon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"input_prop": "new inputs",
-			}), nil, false)
+			}), nil, false, "")
 
 		return err
 	})
@@ -2174,8 +2231,10 @@ func TestUpdatePartialFailure(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: true,
 		SkipPreview:   true,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-			assert.Error(t, err)
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assertIsErrorOrBailResult(t, res)
 			for _, entry := range j.Entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
@@ -2198,7 +2257,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 				}
 			}
 
-			return err
+			return res
 		},
 	}}
 
@@ -2231,7 +2290,7 @@ func TestStackReference(t *testing.T) {
 		_, _, state, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
-			}), nil, false)
+			}), nil, false, "")
 		assert.NoError(t, err)
 		if !info.DryRun {
 			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
@@ -2278,8 +2337,10 @@ func TestStackReference(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op:          Update,
 		SkipPreview: true,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-			assert.NoError(t, err)
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
 			for _, entry := range j.Entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
@@ -2292,7 +2353,7 @@ func TestStackReference(t *testing.T) {
 				}
 			}
 
-			return err
+			return res
 		},
 	}}
 	p.Run(t, old)
@@ -2302,7 +2363,7 @@ func TestStackReference(t *testing.T) {
 		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, "", false, nil, "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "rehto",
-			}), nil, false)
+			}), nil, false, "")
 		assert.Error(t, err)
 		return err
 	})
@@ -2320,7 +2381,7 @@ func TestStackReference(t *testing.T) {
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
 				"foo":  "bar",
-			}), nil, false)
+			}), nil, false, "")
 		assert.Error(t, err)
 		return err
 	})
@@ -2424,8 +2485,8 @@ func TestLoadFailureShutdown(t *testing.T) {
 	options := UpdateOptions{host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(old)
 
-	_, err := op.Run(project, target, options, true, nil, nil)
-	assert.Error(t, err)
+	_, res := op.Run(project, target, options, true, nil, nil)
+	assertIsErrorOrBailResult(t, res)
 
 	close(sinkWriter.channel)
 	close(release)
@@ -2551,7 +2612,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
 			_, id, _, err := monitor.RegisterResource(urn.Type(), string(urn.Name()), true, "", false, nil, provider,
-				inputs, nil, false)
+				inputs, nil, false, "")
 			assert.NoError(t, err)
 			return id
 		}
@@ -2578,8 +2639,10 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: false,
 		SkipPreview:   true,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-			assert.NoError(t, err)
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
 
 			replaced := make(map[resource.URN]bool)
 			for _, entry := range j.Entries {
@@ -2597,7 +2660,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 				urnK: true,
 			}, replaced)
 
-			return err
+			return res
 		},
 	}}
 
@@ -2624,7 +2687,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 			dependencies []resource.URN) resource.URN {
 
 			urn, _, _, err := monitor.RegisterResource(resType, name, true, "", false, dependencies, "", inputs,
-				inputDeps, false)
+				inputDeps, false, "")
 			assert.NoError(t, err)
 
 			return urn
@@ -2703,7 +2766,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	var err error
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err = monitor.RegisterResource(
-			providers.MakeProviderType("pkgA"), "provA", true, "", false, nil, "", nil, nil, false)
+			providers.MakeProviderType("pkgA"), "provA", true, "", false, nil, "", nil, nil, false, "")
 		assert.NoError(t, err)
 
 		if provID == "" {
@@ -2713,12 +2776,12 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		assert.NoError(t, err)
 		provA := provRef.String()
 
-		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, "", false, nil, provA, inputsA, nil, dbrA)
+		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, "", false, nil, provA, inputsA, nil, dbrA, "")
 		assert.NoError(t, err)
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
 		urnB, _, _, err = monitor.RegisterResource(resType, "resB", true, "", false, []resource.URN{urnA}, provA,
-			inputsB, inputDepsB, false)
+			inputsB, inputDepsB, false, "")
 		assert.NoError(t, err)
 
 		return nil
@@ -2733,8 +2796,10 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-			assert.NoError(t, err)
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -2744,7 +2809,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
 			}, j.SuccessfulSteps())
 
-			return err
+			return res
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -2755,8 +2820,10 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-			assert.NoError(t, err)
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -2768,7 +2835,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnB},
 			}, j.SuccessfulSteps())
 
-			return err
+			return res
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -2778,8 +2845,10 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-			assert.NoError(t, err)
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -2789,7 +2858,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnB},
 			}, j.SuccessfulSteps())
 
-			return err
+			return res
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -2800,8 +2869,10 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal, evts []Event, err error) error {
-			assert.NoError(t, err)
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -2811,7 +2882,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
 			}, j.SuccessfulSteps())
 
-			return err
+			return res
 		},
 	}}
 	p.Run(t, snap)

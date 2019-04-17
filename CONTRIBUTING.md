@@ -12,7 +12,6 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 - NodeJS 6.10.X or later
 - Python 3.6 or later
 - [pipenv](https://github.com/pypa/pipenv)
-- [dep](https://github.com/golang/dep)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
 
@@ -21,7 +20,7 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 You can easily get all required dependencies with brew
 
 ```bash
-brew install node pipenv python@3 typescript dep yarn pandoc
+brew install node pipenv python@3 typescript yarn pandoc
 ```
 
 ## Make build system

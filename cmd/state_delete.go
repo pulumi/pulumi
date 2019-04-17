@@ -17,13 +17,14 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/util/result"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -36,13 +37,21 @@ func newStateDeleteCommand() *cobra.Command {
 		Short: "Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
 
-This command deletes a resource from a stack's state, as long as it is safe to do so. Resources can't be deleted if
-there exist other resources that depend on it or are parented to it. Protected resources will not be deleted unless
-it is specifically requested using the --force flag.`,
+This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified 
+by its Pulumi URN (use 'pulumi stack --show-urns' to get it).
+
+Resources can't be deleted if there exist other resources that depend on it or are parented to it. Protected resources 
+will not be deleted unless it is specifically requested using the --force flag.
+
+Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+
+Example:
+pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'
+`,
 		Args: cmdutil.ExactArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			urn := resource.URN(args[0])
-			err := runStateEdit(stack, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+			res := runStateEdit(stack, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 				if !force {
 					return edit.DeleteResource(snap, res)
 				}
@@ -54,8 +63,8 @@ it is specifically requested using the --force flag.`,
 
 				return edit.DeleteResource(snap, res)
 			})
-			if err != nil {
-				switch e := err.(type) {
+			if res != nil {
+				switch e := res.Error().(type) {
 				case edit.ResourceHasDependenciesError:
 					message := "This resource can't be safely deleted because the following resources depend on it:\n"
 					for _, dependentResource := range e.Dependencies {
@@ -64,13 +73,13 @@ it is specifically requested using the --force flag.`,
 					}
 
 					message += "\nDelete those resources first before deleting this one."
-					return errors.New(message)
+					return result.Error(message)
 				case edit.ResourceProtectedError:
-					return errors.New(
+					return result.Error(
 						"This resource can't be safely deleted because it is protected. " +
 							"Re-run this command with --force to force deletion")
 				default:
-					return err
+					return res
 				}
 			}
 			fmt.Println("Resource deleted successfully")

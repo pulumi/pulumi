@@ -55,5 +55,11 @@ message RunRequest {
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
 message RunResponse {
-    string error = 1; // an unhandled error if any occurred.
+    // An unhandled error if any occurred.
+    string error = 1;
+
+    // An error happened.  And it was reported to the user.  Work should stop immediately
+    // with nothing further to print to the user.  This corresponds to a "result.Bail()"
+    // value in the 'go' layer.
+    bool bail = 2;
 }
