@@ -33,7 +33,8 @@ import (
 // called "default providers".
 //
 // ProviderRequest is useful as a hash key. The engine is free to instantiate any numver of provider requests, but it
-// is free to cache requests for a provider request that is equal to one that has already been serviced.
+// is free to cache requests for a provider request that is equal to one that has already been serviced. If you do use
+// ProviderRequest as a hash key, you should call String() to get a usable key for string-based hash maps.
 type ProviderRequest struct {
 	version *semver.Version
 	pkg     tokens.Package
