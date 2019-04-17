@@ -149,7 +149,7 @@ func (b *localBackend) getStack(name tokens.QName) (config.Map, *deploy.Snapshot
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
 func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.CheckpointV3, error) {
 	chkpath := b.stackPath(stackName)
-	bytes, err := b.bucket.ReadAll(context.Background(), chkpath)
+	bytes, err := b.bucket.ReadAll(context.TODO(), chkpath)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (b *localBackend) saveStack(name tokens.QName,
 	bck := backupTarget(b.bucket, file)
 
 	// And now write out the new snapshot file, overwriting that location.
-	if err = b.bucket.WriteAll(context.Background(), file, byts, nil); err != nil {
+	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
 		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
@@ -186,7 +186,7 @@ func (b *localBackend) saveStack(name tokens.QName,
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
-		if err = b.bucket.WriteAll(context.Background(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
+		if err = b.bucket.WriteAll(context.TODO(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
 			return "", errors.Wrap(err, "An IO error occurred during the current operation")
 		}
 	}
@@ -239,7 +239,7 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 
 	// Read the current checkpoint file. (Assuming it aleady exists.)
 	stackPath := b.stackPath(name)
-	byts, err := b.bucket.ReadAll(context.Background(), stackPath)
+	byts, err := b.bucket.ReadAll(context.TODO(), stackPath)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	ext := filepath.Ext(stackFile)
 	base := strings.TrimSuffix(stackFile, ext)
 	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
-	return b.bucket.WriteAll(context.Background(), filepath.Join(backupDir, backupFile), byts, nil)
+	return b.bucket.WriteAll(context.TODO(), filepath.Join(backupDir, backupFile), byts, nil)
 }
 
 func (b *localBackend) stackPath(stack tokens.QName) string {
@@ -310,7 +310,7 @@ func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, erro
 		}
 
 		var update backend.UpdateInfo
-		b, err := b.bucket.ReadAll(context.Background(), filepath)
+		b, err := b.bucket.ReadAll(context.TODO(), filepath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading history file %s", filepath)
 		}
@@ -347,16 +347,16 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 	}
 
 	historyFile := fmt.Sprintf("%s.history.json", pathPrefix)
-	if err = b.bucket.WriteAll(context.Background(), historyFile, byts, nil); err != nil {
+	if err = b.bucket.WriteAll(context.TODO(), historyFile, byts, nil); err != nil {
 		return err
 	}
 
 	// Make a copy of the checkpoint file. (Assuming it aleady exists.)
-	byts, err = b.bucket.ReadAll(context.Background(), b.stackPath(name))
+	byts, err = b.bucket.ReadAll(context.TODO(), b.stackPath(name))
 	if err != nil {
 		return err
 	}
 
 	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
-	return b.bucket.WriteAll(context.Background(), checkpointFile, byts, nil)
+	return b.bucket.WriteAll(context.TODO(), checkpointFile, byts, nil)
 }

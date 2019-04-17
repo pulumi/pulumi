@@ -19,7 +19,7 @@ func listBucket(bucket *blob.Bucket, dir string) ([]*blob.ListObject, error) {
 
 	files := []*blob.ListObject{}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 	for {
 		file, err := bucketIter.Next(ctx)
 		if err == io.EOF {
@@ -48,7 +48,7 @@ func removeAllByPrefix(bucket *blob.Bucket, dir string) error {
 	}
 
 	for _, file := range files {
-		err = bucket.Delete(context.Background(), file.Key)
+		err = bucket.Delete(context.TODO(), file.Key)
 		if err != nil {
 			logging.V(5).Infof("error deleting object: %v (%v) skipping", file.Key, err)
 		}
@@ -59,17 +59,17 @@ func removeAllByPrefix(bucket *blob.Bucket, dir string) error {
 
 // renameObject renames an object in a bucket. the rename requires a download/upload of the object due to a go-cloud API limitation
 func renameObject(bucket *blob.Bucket, source string, dest string) error {
-	byts, err := bucket.ReadAll(context.Background(), source)
+	byts, err := bucket.ReadAll(context.TODO(), source)
 	if err != nil {
 		return errors.Wrap(err, "reading source object to be renamed")
 	}
 
-	err = bucket.WriteAll(context.Background(), dest, byts, nil)
+	err = bucket.WriteAll(context.TODO(), dest, byts, nil)
 	if err != nil {
 		return errors.Wrapf(err, "writing destination object during rename of %s", source)
 	}
 
-	err = bucket.Delete(context.Background(), source)
+	err = bucket.Delete(context.TODO(), source)
 	if err != nil {
 		logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", source, err)
 	}

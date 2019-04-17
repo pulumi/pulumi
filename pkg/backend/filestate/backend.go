@@ -109,7 +109,7 @@ func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
 		}
 	}
 
-	bucket, err := blob.OpenBucket(context.Background(), url)
+	bucket, err := blob.OpenBucket(context.TODO(), url)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to open bucket %s", url)
 	}
