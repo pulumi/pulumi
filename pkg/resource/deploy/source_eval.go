@@ -493,23 +493,29 @@ func (rm *resmon) getProvider(req providers.ProviderRequest, rawProviderRef stri
 	return provider, nil
 }
 
-func (rm *resmon) parseProviderRequest(pkg tokens.Package, version string) providers.ProviderRequest {
-	var semverVersion *semver.Version
+func (rm *resmon) parseProviderRequest(pkg tokens.Package, version string) (providers.ProviderRequest, error) {
+	if version == "" {
+		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
+		return providers.NewProviderRequest(nil, pkg), nil
+	}
+
 	parsedVersion, err := semver.Parse(version)
 	if err != nil {
 		logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
-	} else {
-		semverVersion = &parsedVersion
+		return providers.ProviderRequest{}, err
 	}
 
-	return providers.NewProviderRequest(semverVersion, pkg)
+	return providers.NewProviderRequest(&parsedVersion, pkg), nil
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq := rm.parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := rm.parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
 	prov, err := rm.getProvider(providerReq, req.GetProvider())
 	if err != nil {
 		return nil, err
@@ -557,7 +563,10 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		providerReq := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		providerReq, err := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		if err != nil {
+			return nil, err
+		}
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
@@ -650,7 +659,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 	provider := req.GetProvider()
 	if custom && !providers.IsProviderType(t) && provider == "" {
-		providerReq := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		providerReq, err := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		if err != nil {
+			return nil, err
+		}
 		ref, err := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if err != nil {
 			return nil, err
