@@ -51,10 +51,12 @@ export function _setIsDryRun(val: boolean) {
 }
 
 /**
- * Returns true if we're currently performing a dry-run, or false if this is a true update.
+ * Returns true if we're currently performing a dry-run, or false if this is a true update. Note that we
+ * always consider executions in test mode to be "dry-runs", since we will never actually carry out an update,
+ * and therefore certain output properties will never be resolved.
  */
 export function isDryRun(): boolean {
-    return options.dryRun === true;
+    return options.dryRun === true || isTestModeEnabled();
 }
 
 /* @internal Used only for testing purposes */
