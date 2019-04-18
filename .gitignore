@@ -5,7 +5,6 @@
 **/.vscode/
 coverage.cov
 *.coverprofile
-**/dist
 
 /.idea/
 *.iml
