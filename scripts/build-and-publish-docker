@@ -42,10 +42,9 @@ docker push "pulumi/pulumi:latest"
 
 # Pulumi container optimized for GitHub Actions.
 echo "Building and publishing pulumi/actions:${CLI_VERSION}"
-docker build \
+docker build --build-arg PULUMI_VERSION="${CLI_VERSION}" \
     -t "pulumi/actions:${CLI_VERSION}" \
     -t "pulumi/actions:latest" \
-    -t "achrissmith/pulumi-actions-test:latest" \
     "${SCRIPT_DIR}/../dist/actions"
 docker push "pulumi/actions:${CLI_VERSION}"
 docker push "pulumi/actions:latest"

@@ -1,6 +1,7 @@
-FROM pulumi/pulumi:latest
-# We build the pulumi/actions container at the same time as pulumi/pulumi. So
-# the :latest tag will be relative to when this container was build.
+ARG PULUMI_VERSION=latest
+FROM pulumi/pulumi:${PULUMI_VERSION}
+# Extend the base pulumi/pulumi container at a specific version. "latest"
+# will always correspond to the most recently released SDK.
 
 # Label things so it lights up in GitHub Actions!
 LABEL "com.github.actions.name"="Pulumi"
