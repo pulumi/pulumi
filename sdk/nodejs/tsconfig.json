@@ -36,6 +36,13 @@
 
         "log/index.ts",
 
+        "query/enumerablePromise.ts",
+        "query/index.ts",
+        "query/interfaces.ts",
+        "query/operators.ts",
+        "query/sources.ts",
+        "query/queryable.ts",
+
         "runtime/index.ts",
         "runtime/closure/v8.ts",
         "runtime/closure/createClosure.ts",
@@ -63,7 +70,8 @@
         "tests/runtime/closureLoader.spec.ts",
         "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
-        "tests/runtime/langhost/run.spec.ts"
+        "tests/runtime/langhost/run.spec.ts",
+        "tests/query/enumerablePromise.spec.ts"
     ]
 }
 

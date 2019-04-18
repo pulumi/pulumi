@@ -15,9 +15,11 @@
 import * as grpc from "grpc";
 import * as log from "../log";
 import { Input, Inputs, Output } from "../output";
+import * as query from "../query";
 import { ComponentResource, CustomResource, CustomResourceOptions, ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
+import { invoke } from "./invoke";
 import {
     deserializeProperties,
     deserializeProperty,
@@ -30,6 +32,7 @@ import {
     unknownValue,
 } from "./rpc";
 import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
+import { getStack } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -451,6 +454,37 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                 }
             })), label);
     }, false);
+}
+
+function isAny(o: any): o is any {
+    return true;
+}
+
+/**
+ * listResourceOutputs returns the resource outputs (if any) for a stack, or an error if the stack
+ * cannot be found. Resources are retrieved from the latest stack snapshot, which may include
+ * ongoing updates.
+ *
+ * @param stackName Name of stack to retrieve resource outputs for. Defaults to the current stack.
+ * @param typeFilter A [type
+ * guard](https://www.typescriptlang.org/docs/handbook/advanced-types.html#user-defined-type-guards)
+ * that specifies which resource types to list outputs of.
+ *
+ * @example pulumi.runtime.listResourceOutput(aws.s3.Bucket.isInstance)
+ */
+export function listResourceOutputs<U extends CustomResource = any>(
+    stackName?: string,
+    typeFilter: (o: any) => o is U = isAny,
+): query.EnumerablePromise<query.QueryableCustomResource<U>> {
+    return query.from(
+        invoke("pulumi:pulumi:readStackResourceOutputs", {
+            stackName: stackName || getStack(),
+        }).then<any[]>(({ outputs }) => Object.values(outputs)),
+    )
+        .map<query.Queryable<U>>(({ type: typ, outputs }) => {
+            return { ...outputs, __pulumiType: typ };
+        })
+        .filter(typeFilter);
 }
 
 /**

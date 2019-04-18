@@ -252,6 +252,13 @@ export abstract class CustomResource extends Resource {
     /* @internal */ public readonly __pulumiCustomResource: boolean;
 
     /**
+     * Private field containing the type ID for this object. Useful for implementing `isInstance` on
+     * classes that inherit from `CustomResource`.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public readonly __pulumiType: string;
+
+    /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
      * deployments and may be missing (undefined) during planning phases.
      */
@@ -285,6 +292,7 @@ export abstract class CustomResource extends Resource {
 
         super(t, name, true, props, opts);
         this.__pulumiCustomResource = true;
+        this.__pulumiType = t;
     }
 }
 
