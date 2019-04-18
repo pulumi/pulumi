@@ -32,7 +32,7 @@ class FirstClassProviderUnknown(LanghostTest):
 
     def register_resource(self, _ctx, dry_run, ty, name, resource, _deps,
                           _parent, _custom, _protect, provider, _property_deps, _delete_before_replace,
-                          _ignore_changes):
+                          _ignore_changes, _version):
         if name == "testprov":
             self.assertEqual("pulumi:providers:test", ty)
             # Only provide an ID when doing an update. When doing a preview the ID will be unknown

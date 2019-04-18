@@ -15,17 +15,25 @@ from os import path
 from ..util import LanghostTest
 
 
-class OneResourceTest(LanghostTest):
-    def test_one_resource(self):
+class TestVersions(LanghostTest):
+    def test_versions(self):
         self.run_test(
-            program=path.join(self.base_path(), "one_resource"),
-            expected_resource_count=1)
+            program=path.join(self.base_path(), "versions"),
+            expected_resource_count=3)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
-        self.assertEqual(ty, "test:index:MyResource")
-        self.assertEqual(name, "testResource1")
+    def register_resource(self, ctx, dry_run, ty, name, _resource,
+                          _dependencies, _parent, _custom, _protect,
+                          _provider, _property_deps, _delete_before_replace, version):
+        if name == "testres":
+            self.assertEqual(version, "0.19.1")
+        elif name == "testres2":
+            self.assertEqual(version, "0.19.2")
+        elif name == "testres3":
+            self.assertEqual(version, "")
+        else:
+            self.fail(f"unknown resource: {name}")
         return {
             "urn": self.make_urn(ty, name),
+            "id": name,
+            "object": {}
         }

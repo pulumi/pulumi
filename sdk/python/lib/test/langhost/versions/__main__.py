@@ -11,17 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os import path
-from ..util import LanghostTest
+from pulumi import CustomResource, ResourceOptions
 
 
-class UnhandledExceptionTest(LanghostTest):
-    def test_unhandled_exception(self):
-        self.run_test(
-            program=path.join(self.base_path(), "resource_op_fail"),
-            expected_error="Program exited with non-zero exit code: 1")
+class MyResource(CustomResource):
+    def __init__(self, name, version=None):
+        CustomResource.__init__(self, "test:index:MyResource", name, opts=ResourceOptions(version=version))
 
-    def register_resource(self, _ctx, _dry_run, _ty, _name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
-        raise Exception("oh no")
+
+res = MyResource("testres", version="0.19.1")
+res2 = MyResource("testres2", version="0.19.2")
+res3 = MyResource("testres3")

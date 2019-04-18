@@ -26,7 +26,7 @@ class TenResourcesTest(LanghostTest):
 
     def register_resource(self, ctx, dry_run, ty, name, _resource,
                           _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes):
+                          _ignore_changes, _version):
         self.assertEqual("test:index:MyResource", ty)
         if not dry_run:
             self.assertIsNone(
