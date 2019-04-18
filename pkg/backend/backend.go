@@ -120,7 +120,8 @@ type Backend interface {
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(ctx context.Context, stackRef StackReference, query operations.LogQuery) ([]operations.LogEntry, error)
+	GetLogs(ctx context.Context, stackRef StackReference, cfg StackConfiguration,
+		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stackRef StackReference) (config.Map, error)
 
@@ -141,11 +142,18 @@ type Backend interface {
 
 // UpdateOperation is a complete stack update operation (preview, update, refresh, or destroy).
 type UpdateOperation struct {
-	Proj   *workspace.Project
-	Root   string
-	M      *UpdateMetadata
-	Opts   UpdateOptions
-	Scopes CancellationScopeSource
+	Proj               *workspace.Project
+	Root               string
+	M                  *UpdateMetadata
+	Opts               UpdateOptions
+	StackConfiguration StackConfiguration
+	Scopes             CancellationScopeSource
+}
+
+// StackConfiguration holds the configuration for a stack and it's associated decrypter.
+type StackConfiguration struct {
+	Config    config.Map
+	Decrypter config.Decrypter
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.

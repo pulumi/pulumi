@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -244,18 +245,18 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 }
 
 func (b *cloudBackend) newQuery(ctx context.Context, stackRef backend.StackReference,
-	proj *workspace.Project, root string) (*cloudQuery, error) {
+	op backend.UpdateOperation) (*cloudQuery, error) {
 	// Construct the query target.
-	target, err := b.getTarget(ctx, stackRef)
+	target, err := b.getTarget(ctx, stackRef, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
 
-	return &cloudQuery{root: root, proj: proj, target: target}, nil
+	return &cloudQuery{root: op.Root, proj: op.Proj, target: target}, nil
 }
 
-func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, proj *workspace.Project,
-	root string, update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
+func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
+	update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
 
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
@@ -268,7 +269,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	// Construct the deployment target.
-	target, err := b.getTarget(ctx, stackRef)
+	target, err := b.getTarget(ctx, stackRef, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -279,8 +280,8 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 		backend:     b,
 		update:      update,
 		tokenSource: tokenSource,
-		root:        root,
-		proj:        proj,
+		root:        op.Root,
+		proj:        op.Proj,
 		target:      target,
 	}, nil
 }
@@ -299,25 +300,8 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	return snapshot, nil
 }
 
-func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
-	// Pull the local stack info so we can get at its configuration bag.
-	stackConfigFile := b.stackConfigFile
-	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackRef.Name())
-		if err != nil {
-			return nil, err
-		}
-		stackConfigFile = f
-	}
-	stk, err := workspace.LoadProjectStack(stackConfigFile)
-	if err != nil {
-		return nil, err
-	}
-
-	decrypter, err := b.GetStackCrypter(stackRef)
-	if err != nil {
-		return nil, err
-	}
+func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
+	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
 	snapshot, err := b.getSnapshot(ctx, stackRef)
 	if err != nil {
 		switch err {
@@ -334,8 +318,8 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 
 	return &deploy.Target{
 		Name:      stackRef.Name(),
-		Config:    stk.Config,
-		Decrypter: decrypter,
+		Config:    cfg,
+		Decrypter: dec,
 		Snapshot:  snapshot,
 	}, nil
 }

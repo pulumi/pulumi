@@ -57,7 +57,7 @@ type Stack interface {
 	// rename this stack.
 	Rename(ctx context.Context, newName tokens.QName) error
 	// list log entries for this stack.
-	GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error)
+	GetLogs(ctx context.Context, cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
 	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
 	// import the given deployment into this stack.
@@ -109,8 +109,9 @@ func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
-func GetStackLogs(ctx context.Context, s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(ctx, s.Ref(), query)
+func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
+	return s.Backend().GetLogs(ctx, s.Ref(), cfg, query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.

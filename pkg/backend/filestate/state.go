@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/secrets"
@@ -69,50 +70,33 @@ func (u *update) GetTarget() *deploy.Target {
 	return u.target
 }
 
-func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {
+func (b *localBackend) newUpdate(stackName tokens.QName, op backend.UpdateOperation) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
 	// Construct the deployment target.
-	target, err := b.getTarget(stackName)
+	target, err := b.getTarget(stackName, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
 
 	// Construct and return a new update.
 	return &update{
-		root:    root,
-		proj:    proj,
+		root:    op.Root,
+		proj:    op.Proj,
 		target:  target,
 		backend: b,
 	}, nil
 }
 
-func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
-	stackConfigFile := b.stackConfigFile
-	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
-		if err != nil {
-			return nil, err
-		}
-		stackConfigFile = f
-	}
-
-	stk, err := workspace.LoadProjectStack(stackConfigFile)
-	if err != nil {
-		return nil, err
-	}
-	decrypter, err := defaultCrypter(stackName, stk.Config, stackConfigFile)
-	if err != nil {
-		return nil, err
-	}
+func (b *localBackend) getTarget(stackName tokens.QName, cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
 	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
 	return &deploy.Target{
 		Name:      stackName,
-		Config:    stk.Config,
-		Decrypter: decrypter,
+		Config:    cfg,
+		Decrypter: dec,
 		Snapshot:  snapshot,
 	}, nil
 }

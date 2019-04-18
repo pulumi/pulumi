@@ -93,6 +93,11 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
+		cfg, err := getStackConfiguration(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -101,11 +106,12 @@ func newUpCmd() *cobra.Command {
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
-			Proj:   proj,
-			Root:   root,
-			M:      m,
-			Opts:   opts,
-			Scopes: cancellationScopes,
+			Proj:               proj,
+			Root:               root,
+			M:                  m,
+			Opts:               opts,
+			StackConfiguration: cfg,
+			Scopes:             cancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:
@@ -232,6 +238,11 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
+		cfg, err := getStackConfiguration(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -245,11 +256,12 @@ func newUpCmd() *cobra.Command {
 		// - show template.Quickstart?
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
-			Proj:   proj,
-			Root:   root,
-			M:      m,
-			Opts:   opts,
-			Scopes: cancellationScopes,
+			Proj:               proj,
+			Root:               root,
+			M:                  m,
+			Opts:               opts,
+			StackConfiguration: cfg,
+			Scopes:             cancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:

@@ -37,17 +37,6 @@ func readPassphrase(prompt string) (string, error) {
 	return cmdutil.ReadConsoleNoEcho(prompt)
 }
 
-// defaultCrypter gets the right value encrypter/decrypter given the project configuration.
-func defaultCrypter(stackName tokens.QName, cfg config.Map, configFile string) (config.Crypter, error) {
-	// If there is no config, we can use a standard panic crypter.
-	if !cfg.HasSecureValue() {
-		return config.NewPanicCrypter(), nil
-	}
-
-	// Otherwise, we will use an encrypted one.
-	return symmetricCrypter(stackName, configFile)
-}
-
 // symmetricCrypter gets the right value encrypter/decrypter for this project.
 func symmetricCrypter(stackName tokens.QName, configFile string) (config.Crypter, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")

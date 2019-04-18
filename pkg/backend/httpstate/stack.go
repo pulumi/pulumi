@@ -147,8 +147,9 @@ func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *cloudStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, query)
+func (s *cloudStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
+	return backend.GetStackLogs(ctx, s, cfg, query)
 }
 
 func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {

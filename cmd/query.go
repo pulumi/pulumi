@@ -17,6 +17,7 @@ package cmd
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -63,13 +64,19 @@ func newQueryCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			cfg, err := getStackConfiguration(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			}
+
 			opts.Engine = engine.UpdateOptions{}
 
 			res := s.Query(commandContext(), backend.UpdateOperation{
-				Proj:   proj,
-				Root:   root,
-				Opts:   opts,
-				Scopes: cancellationScopes,
+				Proj:               proj,
+				Root:               root,
+				Opts:               opts,
+				StackConfiguration: cfg,
+				Scopes:             cancellationScopes,
 			})
 			switch {
 			case res != nil && res.Error() == context.Canceled:

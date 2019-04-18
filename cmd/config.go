@@ -531,3 +531,32 @@ func looksLikeSecret(k config.Key, v string) bool {
 	return (info.Entropy >= entropyThreshold ||
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold))
 }
+
+// getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
+// it is uses instead of the default configuration file for the stack
+func getStackConfiguration(stack backend.Stack) (backend.StackConfiguration, error) {
+	workspaceStack, err := loadProjectStack(stack)
+	if err != nil {
+		return backend.StackConfiguration{}, errors.Wrap(err, "loading stack configuration")
+	}
+
+	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
+	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
+	// the correct decrypter for the local backend would involve prompting for a passphrase)
+	if !workspaceStack.Config.HasSecureValue() {
+		return backend.StackConfiguration{
+			Config:    workspaceStack.Config,
+			Decrypter: config.NewPanicCrypter(),
+		}, nil
+	}
+
+	crypter, err := stack.Backend().GetStackCrypter(stack.Ref())
+	if err != nil {
+		return backend.StackConfiguration{}, errors.Wrap(err, "getting configuration decrypter")
+	}
+
+	return backend.StackConfiguration{
+		Config:    workspaceStack.Config,
+		Decrypter: crypter,
+	}, nil
+}
