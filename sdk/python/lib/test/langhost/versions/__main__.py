@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pulumi import CustomResource, ResourceOptions
+from pulumi import CustomResource, ResourceOptions, InvokeOptions
+from pulumi.runtime import invoke
 
 
 class MyResource(CustomResource):
@@ -22,3 +23,7 @@ class MyResource(CustomResource):
 res = MyResource("testres", version="0.19.1")
 res2 = MyResource("testres2", version="0.19.2")
 res3 = MyResource("testres3")
+
+invoke("test:index:doit", {}, opts=InvokeOptions(version="0.19.1"))
+invoke("test:index:doit_v2", {}, opts=InvokeOptions(version="0.19.2"))
+invoke("test:index:doit_no_version", {})

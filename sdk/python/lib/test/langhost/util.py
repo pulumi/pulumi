@@ -52,7 +52,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
     def Invoke(self, request, context):
         args = rpc.deserialize_properties(request.args)
-        failures, ret = self.langhost_test.invoke(context, request.tok, args, request.provider)
+        failures, ret = self.langhost_test.invoke(context, request.tok, args, request.provider, request.version)
         failures_rpc = list(map(
             lambda fail: provider_pb2.CheckFailure(property=fail["property"], reason=fail["reason"]), failures))
 

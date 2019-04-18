@@ -21,7 +21,7 @@ class TestInvoke(LanghostTest):
             program=path.join(self.base_path(), "invoke"),
             expected_resource_count=1)
 
-    def invoke(self, _ctx, token, args, provider):
+    def invoke(self, _ctx, token, args, provider, _version):
         self.assertEqual("test:index:MyFunction", token)
         self.assertEqual("", provider)
         self.assertDictEqual({
@@ -53,7 +53,7 @@ class TestInvokeWithFailures(LanghostTest):
             expected_resource_count=0,
             expected_error="Program exited with non-zero exit code: 1")
 
-    def invoke(self, _ctx, token, args, _provider):
+    def invoke(self, _ctx, token, args, _provider, _version):
         self.assertEqual("test:index:MyFunction", token)
         self.assertDictEqual({
             "value": 41,

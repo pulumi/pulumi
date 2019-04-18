@@ -37,3 +37,12 @@ class TestVersions(LanghostTest):
             "id": name,
             "object": {}
         }
+
+    def invoke(self, _ctx, token, args, _provider, version):
+        if token == "test:index:doit":
+            self.assertEqual("0.19.1", version)
+        elif token == "test:index:doit_v2":
+            self.assertEqual("0.19.2", version)
+        elif token == "test:index:doit_no_version":
+            self.assertEqual("", version)
+        return [], args

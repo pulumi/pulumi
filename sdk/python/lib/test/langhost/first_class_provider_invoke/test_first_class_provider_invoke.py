@@ -30,7 +30,7 @@ class TestFirstClassProviderInvoke(LanghostTest):
             expected_resource_count=4)
 
 
-    def invoke(self, _ctx, token, args, provider):
+    def invoke(self, _ctx, token, args, provider, _version):
         # MyFunction explicitly receives a provider reference.
         if token == "test:index:MyFunction":
             self.assertDictEqual({
