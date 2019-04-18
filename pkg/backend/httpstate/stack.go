@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -75,8 +74,6 @@ type cloudStack struct {
 	cloudURL string
 	// orgName is the organization that owns this stack.
 	orgName string
-	// config is this stack's config bag.
-	config config.Map
 	// snapshot contains the latest deployment state, allocated on first use.
 	snapshot **deploy.Snapshot
 	// b is a pointer to the backend that this stack belongs to.
@@ -96,7 +93,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		},
 		cloudURL: b.CloudURL(),
 		orgName:  apistack.OrgName,
-		config:   nil, // TODO[pulumi/pulumi-service#249]: add the config variables.
 		snapshot: nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
 		tags:     apistack.Tags,
 		b:        b,
@@ -104,7 +100,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 }
 
 func (s *cloudStack) Ref() backend.StackReference           { return s.ref }
-func (s *cloudStack) Config() config.Map                    { return s.config }
 func (s *cloudStack) Backend() backend.Backend              { return s.b }
 func (s *cloudStack) CloudURL() string                      { return s.cloudURL }
 func (s *cloudStack) OrgName() string                       { return s.orgName }

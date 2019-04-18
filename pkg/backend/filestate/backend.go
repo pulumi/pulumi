@@ -199,7 +199,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, _, err := b.getStack(stackName); err == nil {
+	if _, _, err := b.getStack(stackName); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
@@ -214,12 +214,12 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	// TODO(ellismg): Clean this up. We shouldn't even need to pass a secrets manager here, or we should
 	// be able to pass some well known one that the deployment generator knows not to include the checkpoint (like a)
 	// panicing secrets manager.
-	file, err := b.saveStack(stackName, nil, nil, base64sm.NewBase64SecretsManager())
+	file, err := b.saveStack(stackName, nil, base64sm.NewBase64SecretsManager())
 	if err != nil {
 		return nil, err
 	}
 
-	stack := newStack(stackRef, file, nil, nil, b)
+	stack := newStack(stackRef, file, nil, b)
 	fmt.Printf("Created stack '%s'\n", stack.Ref())
 
 	return stack, nil
@@ -227,14 +227,14 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
-	config, snapshot, path, err := b.getStack(stackName)
+	snapshot, path, err := b.getStack(stackName)
 	switch {
 	case os.IsNotExist(errors.Cause(err)):
 		return nil, nil
 	case err != nil:
 		return nil, err
 	default:
-		return newStack(stackRef, path, config, snapshot, b), nil
+		return newStack(stackRef, path, snapshot, b), nil
 	}
 }
 
@@ -261,7 +261,7 @@ func (b *localBackend) ListStacks(
 
 func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
 	stackName := stackRef.Name()
-	_, snapshot, _, err := b.getStack(stackName)
+	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return false, err
 	}
@@ -276,7 +276,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 
 func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackReference, newName tokens.QName) error {
 	stackName := stackRef.Name()
-	cfg, snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -295,7 +295,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	// TODO(ellismg): Make this configurable
-	if _, err = b.saveStack(newName, cfg, snap, base64sm.NewBase64SecretsManager()); err != nil {
+	if _, err = b.saveStack(newName, snap, base64sm.NewBase64SecretsManager()); err != nil {
 		return err
 	}
 
@@ -585,7 +585,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
 
 	stackName := stackRef.Name()
-	_, snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -615,7 +615,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	deployment *apitype.UntypedDeployment) error {
 
 	stackName := stackRef.Name()
-	config, _, _, err := b.getStack(stackName)
+	_, _, err := b.getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -626,7 +626,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	}
 
 	// TODO(ellismg): Make this configurable
-	_, err = b.saveStack(stackName, config, snap, base64sm.NewBase64SecretsManager())
+	_, err = b.saveStack(stackName, snap, base64sm.NewBase64SecretsManager())
 	return err
 }
 
@@ -668,7 +668,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, _, err := b.getStack(name)
+		_, _, err := b.getStack(name)
 		if err != nil {
 			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
 			continue // failure reading the stack information.

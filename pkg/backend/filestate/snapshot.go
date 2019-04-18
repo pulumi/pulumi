@@ -35,12 +35,12 @@ func (sp *localSnapshotPersister) Invalidate() error {
 }
 
 func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	config, _, _, err := sp.backend.getStack(sp.name)
+	_, _, err := sp.backend.getStack(sp.name)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	_, err = sp.backend.saveStack(sp.name, config, snapshot, sp.sm)
+	_, err = sp.backend.saveStack(sp.name, snapshot, sp.sm)
 	return err
 
 }

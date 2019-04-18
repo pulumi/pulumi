@@ -38,7 +38,6 @@ import (
 // Stack is a stack associated with a particular backend implementation.
 type Stack interface {
 	Ref() StackReference                                    // this stack's identity.
-	Config() config.Map                                     // the current config map.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
 

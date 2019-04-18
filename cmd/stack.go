@@ -98,12 +98,6 @@ func newStackCmd() *cobra.Command {
 				fmt.Printf("    No updates yet; run 'pulumi up'\n")
 			}
 
-			cfg := s.Config()
-			if cfg != nil && len(cfg) > 0 {
-				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(cfg))
-			}
-			fmt.Printf("\n")
-
 			// Now show the resources.
 			var rescnt int
 			if snap != nil {

@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -81,7 +80,7 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot,
+func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 	sm secrets.Manager) (*apitype.VersionedCheckpoint, error) {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *apitype.DeploymentV3
@@ -95,7 +94,6 @@ func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Sna
 
 	b, err := json.Marshal(apitype.CheckpointV3{
 		Stack:  stack,
-		Config: config,
 		Latest: latest,
 	})
 	if err != nil {
