@@ -14,3 +14,7 @@ new MyResource("testResource3");
 pulumi.runtime.invoke("invoke:index:doit", {}, { version: "0.19.1" });
 pulumi.runtime.invoke("invoke:index:doit_v2", {}, { version: "0.19.2" });
 pulumi.runtime.invoke("invoke:index:doit_noversion", {});
+
+
+new pulumi.CustomResource("test:index:ReadResource", "foo", {}, { id: "readme", version: "0.20.0" });
+new pulumi.CustomResource("test:index:ReadResource", "foo_noversion", {}, { id: "readme" });

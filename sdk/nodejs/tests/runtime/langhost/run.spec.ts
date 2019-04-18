@@ -47,7 +47,7 @@ interface RunCase {
     skipRootResourceEndpoints?: boolean;
     showRootResourceRegistration?: boolean;
     invoke?: (ctx: any, tok: string, args: any, version: string) => { failures: any, ret: any };
-    readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
+    readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
         urn: URN | undefined, props: any | undefined };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
@@ -845,6 +845,22 @@ describe("rpc", () => {
                     ret: args,
                 };
             },
+            readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
+                switch (name) {
+                    case "foo":
+                        assert.strictEqual(version, "0.20.0");
+                        break;
+                    case "foo_noversion":
+                        assert.strictEqual(version, "");
+                        break;
+                    default:
+                        assert.fail(`unknown read: ${name}`);
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    props: state,
+                };
+            },
         },
     };
 
@@ -890,7 +906,8 @@ describe("rpc", () => {
                             const id = req.getId();
                             const par = req.getParent();
                             const state = req.getProperties().toJavaScript();
-                            const { urn, props } = opts.readResource(ctx, t, name, id, par, state);
+                            const version = req.getVersion();
+                            const { urn, props } = opts.readResource(ctx, t, name, id, par, state, version);
                             resp.setUrn(urn);
                             resp.setProperties(gstruct.Struct.fromJavaScript(props));
                         }
