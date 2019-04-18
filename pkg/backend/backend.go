@@ -21,7 +21,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 
 	"github.com/pkg/errors"
 
@@ -236,7 +236,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	// TODO(ellismg): Since we throw the decrypted property bag on the floor, we don't care what secrets manager
 	// we pass to this operation. It would be nice to not have to pass one and just be able to get the
 	// resource.PropertyMap back as the only return value.  Maybe we can have another function that does this?
-	res, _, err := stack.GetRootStackResource(snap, base64sm.NewBase64SecretsManager())
+	res, _, err := stack.GetRootStackResource(snap, b64.NewBase64SecretsManager())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting root stack resources")
 	}

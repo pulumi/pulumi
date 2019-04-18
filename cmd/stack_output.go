@@ -17,7 +17,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -54,7 +54,7 @@ func newStackOutputCmd() *cobra.Command {
 				return err
 			}
 
-			_, outputs, err := stack.GetRootStackResource(snap, base64sm.NewBase64SecretsManager())
+			_, outputs, err := stack.GetRootStackResource(snap, b64.NewBase64SecretsManager())
 			if err != nil {
 				return errors.Wrap(err, "getting outputs")
 			}

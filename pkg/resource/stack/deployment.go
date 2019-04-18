@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -182,8 +182,8 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 	var dec config.Decrypter
 	if deployment.SecretsProviders == nil {
 		dec = config.NewPanicCrypter()
-	} else if deployment.SecretsProviders.Type == "base64" {
-		sm, err := base64sm.NewProvider().FromState(deployment.SecretsProviders.State)
+	} else if deployment.SecretsProviders.Type == "b64" {
+		sm, err := b64.NewProvider().FromState(deployment.SecretsProviders.State)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating secrets manager")
 		}

@@ -45,7 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/secrets/base64sm"
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -214,7 +214,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	// TODO(ellismg): Clean this up. We shouldn't even need to pass a secrets manager here, or we should
 	// be able to pass some well known one that the deployment generator knows not to include the checkpoint (like a)
 	// panicing secrets manager.
-	file, err := b.saveStack(stackName, nil, base64sm.NewBase64SecretsManager())
+	file, err := b.saveStack(stackName, nil, b64.NewBase64SecretsManager())
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	// TODO(ellismg): Make this configurable
-	if _, err = b.saveStack(newName, snap, base64sm.NewBase64SecretsManager()); err != nil {
+	if _, err = b.saveStack(newName, snap, b64.NewBase64SecretsManager()); err != nil {
 		return err
 	}
 
@@ -431,7 +431,7 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(stackName, base64sm.NewBase64SecretsManager())
+	persister := b.newSnapshotPersister(stackName, b64.NewBase64SecretsManager())
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
@@ -595,7 +595,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	}
 
 	// TODO(ellismg): Fix this up!
-	sdep, err := stack.SerializeDeployment(snap, base64sm.NewBase64SecretsManager())
+	sdep, err := stack.SerializeDeployment(snap, b64.NewBase64SecretsManager())
 	if err != nil {
 		return nil, errors.Wrap(err, "serializing deployment")
 	}
@@ -626,7 +626,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	}
 
 	// TODO(ellismg): Make this configurable
-	_, err = b.saveStack(stackName, snap, base64sm.NewBase64SecretsManager())
+	_, err = b.saveStack(stackName, snap, b64.NewBase64SecretsManager())
 	return err
 }
 

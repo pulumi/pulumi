@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package base64sm
+package b64
 
 import (
 	"encoding/base64"
@@ -40,7 +40,7 @@ func NewBase64SecretsManager() secrets.Manager {
 
 type manager struct{}
 
-func (m *manager) Type() string                         { return "base64" }
+func (m *manager) Type() string                         { return "b64" }
 func (m *manager) State() interface{}                   { return map[string]string{} }
 func (m *manager) Encrypter() (config.Encrypter, error) { return &base64Crypter{}, nil }
 func (m *manager) Decrypter() (config.Decrypter, error) { return &base64Crypter{}, nil }
