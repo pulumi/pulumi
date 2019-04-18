@@ -28,6 +28,7 @@ const langrpc = require("../../../proto/language_grpc_pb.js");
 const langproto = require("../../../proto/language_pb.js");
 const resrpc = require("../../../proto/resource_grpc_pb.js");
 const resproto = require("../../../proto/resource_pb.js");
+const providerproto = require("../../../proto/provider_pb.js");
 
 interface RunCase {
     project?: string;
@@ -45,7 +46,7 @@ interface RunCase {
     };
     skipRootResourceEndpoints?: boolean;
     showRootResourceRegistration?: boolean;
-    invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
+    invoke?: (ctx: any, tok: string, args: any, version: string) => { failures: any, ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
         urn: URN | undefined, props: any | undefined };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
@@ -824,6 +825,26 @@ describe("rpc", () => {
                     props: {},
                 };
             },
+            invoke: (ctx: any, tok: string, args: any, version: string) => {
+                switch (tok) {
+                    case "invoke:index:doit":
+                        assert.strictEqual(version, "0.19.1");
+                        break;
+                    case "invoke:index:doit_v2":
+                        assert.strictEqual(version, "0.19.2");
+                        break;
+                    case "invoke:index:doit_noversion":
+                        assert.strictEqual(version, "");
+                        break;
+                    default:
+                        assert.fail(`unknown invoke: ${tok}`);
+                }
+
+                return {
+                    failures: [],
+                    ret: args,
+                };
+            },
         },
     };
 
@@ -847,12 +868,13 @@ describe("rpc", () => {
                 const monitor = createMockEngine(opts,
                     // Invoke callback
                     (call: any, callback: any) => {
-                        const resp = new resproto.InvokeResponse();
+                        const resp = new providerproto.InvokeResponse();
                         if (opts.invoke) {
                             const req: any = call.request;
                             const args: any = req.getArgs().toJavaScript();
+                            const version: string = req.getVersion();
                             const { failures, ret } =
-                                opts.invoke(ctx, req.getTok(), args);
+                                opts.invoke(ctx, req.getTok(), args, version);
                             resp.setFailuresList(failures);
                             resp.setReturn(gstruct.Struct.fromJavaScript(ret));
                         }
