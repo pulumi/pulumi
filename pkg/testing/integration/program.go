@@ -84,6 +84,9 @@ type EditDir struct {
 	Stderr io.Writer
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
 	Verbose bool
+
+	// Run program directory in query mode.
+	QueryMode bool
 }
 
 // TestCommandStats is a collection of data related to running a single command during a test.
@@ -156,6 +159,8 @@ type ProgramTestOptions struct {
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
+	// QueryCommandlineFlags specifies flags to add to the `pulumi query` command line (e.g. "--color=raw")
+	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
 	RunBuild bool
 
@@ -949,6 +954,33 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	return nil
 }
 
+func (pt *programTester) query(dir string, name string, shouldFail bool) error {
+
+	query := []string{"query", "--non-interactive"}
+	if pt.opts.GetDebugUpdates() {
+		query = append(query, "-d")
+	}
+	if pt.opts.QueryCommandlineFlags != nil {
+		query = append(query, pt.opts.QueryCommandlineFlags...)
+	}
+
+	// Now run a query.
+	if err := pt.runPulumiCommand("pulumi-query-"+name, query, dir); err != nil {
+		if shouldFail {
+			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+			return nil
+		}
+		return err
+	}
+
+	// If we expected a failure, but none occurred, return an error.
+	if shouldFail {
+		return errors.New("expected this step to fail, but it succeeded")
+	}
+
+	return nil
+}
+
 func (pt *programTester) testEdits(dir string) error {
 	for i, edit := range pt.opts.EditDirs {
 		var err error
@@ -1052,9 +1084,15 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i),
-		edit.ExpectFailure, edit.ExpectNoChanges, edit.ExpectNoChanges); err != nil {
-		return err
+	if !edit.QueryMode {
+		if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i),
+			edit.ExpectFailure, edit.ExpectNoChanges, edit.ExpectNoChanges); err != nil {
+			return err
+		}
+	} else {
+		if err = pt.query(dir, fmt.Sprintf("query-%d", i), edit.ExpectFailure); err != nil {
+			return err
+		}
 	}
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
 }
