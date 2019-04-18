@@ -50,7 +50,7 @@ interface RunCase {
         urn: URN | undefined, props: any | undefined };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
-                        propertyDeps?: any, ignoreChanges?: string[]) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
+                        propertyDeps?: any, ignoreChanges?: string[], version?: string) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
@@ -799,6 +799,32 @@ describe("rpc", () => {
                 };
             },
         },
+        "versions": {
+            program: path.join(base, "044.versions"),
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                               propertyDeps?: any, ignoreChanges?: string[], version?: string)  => {
+                switch (name) {
+                    case "testResource":
+                        assert.strictEqual("0.19.1", version);
+                        break;
+                    case "testResource2":
+                        assert.strictEqual("0.19.2", version);
+                        break;
+                    case "testResource3":
+                        assert.strictEqual("", version);
+                        break;
+                    default:
+                        assert.fail(`unknown resource: ${name}`);
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {},
+                };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -868,8 +894,9 @@ describe("rpc", () => {
                                     .reduce((o: any, [key, value]: [any, any]) => {
                                         return { ...o, [key]: value.getUrnsList().sort() };
                                     }, {});
+                                const version: string = req.getVersion();
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
-                                    custom, protect, parent, provider, propertyDeps, ignoreChanges);
+                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));

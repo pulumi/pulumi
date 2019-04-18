@@ -110,6 +110,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setProvider(resop.providerRef);
         req.setProperties(gstruct.Struct.fromJavaScript(resop.serializedProps));
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
+        req.setVersion(opts.version || "");
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
@@ -178,6 +179,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);
         req.setIgnorechangesList(opts.ignoreChanges || []);
+        req.setVersion(opts.version || "");
 
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
