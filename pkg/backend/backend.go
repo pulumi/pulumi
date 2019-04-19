@@ -101,9 +101,6 @@ type Backend interface {
 
 	RenameStack(ctx context.Context, stackRef StackReference, newName tokens.QName) error
 
-	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
-	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
-
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).

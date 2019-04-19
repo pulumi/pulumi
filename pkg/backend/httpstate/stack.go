@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -36,6 +37,7 @@ type Stack interface {
 	OrgName() string                       // the organization that owns this stack.
 	ConsoleURL() (string, error)           // the URL to view the stack's information on Pulumi.com
 	Tags() map[apitype.StackTagName]string // the stack's tags.
+	StackIdentifier() client.StackIdentifier
 }
 
 type cloudBackendReference struct {
@@ -69,7 +71,7 @@ func (c cloudBackendReference) Name() tokens.QName {
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
 	// ref is the stack's unique name.
-	ref backend.StackReference
+	ref cloudBackendReference
 	// cloudURL is the URl to the cloud containing this stack.
 	cloudURL string
 	// orgName is the organization that owns this stack.
@@ -98,12 +100,17 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		b:        b,
 	}
 }
-
 func (s *cloudStack) Ref() backend.StackReference           { return s.ref }
 func (s *cloudStack) Backend() backend.Backend              { return s.b }
 func (s *cloudStack) CloudURL() string                      { return s.cloudURL }
 func (s *cloudStack) OrgName() string                       { return s.orgName }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string { return s.tags }
+
+func (s *cloudStack) StackIdentifier() client.StackIdentifier {
+	si, err := s.b.getCloudStackIdentifier(s.ref)
+	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
+	return si
+}
 
 func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {

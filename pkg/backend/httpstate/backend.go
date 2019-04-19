@@ -17,7 +17,6 @@ package httpstate
 import (
 	"context"
 	cryptorand "crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -140,6 +139,7 @@ type Backend interface {
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
+	Client() *client.Client
 }
 
 type cloudBackend struct {
@@ -600,41 +600,6 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	return b.client.RenameStack(ctx, stack, string(newName))
-}
-
-// cloudCrypter is an encrypter/decrypter that uses the Pulumi cloud to encrypt/decrypt a stack's secrets.
-type cloudCrypter struct {
-	backend *cloudBackend
-	stack   client.StackIdentifier
-}
-
-func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
-	ciphertext, err := c.backend.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
-	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
-	if err != nil {
-		return "", err
-	}
-	plaintext, err := c.backend.client.DecryptValue(context.Background(), c.stack, ciphertext)
-	if err != nil {
-		return "", err
-	}
-	return string(plaintext), nil
-}
-
-func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	stack, err := b.getCloudStackIdentifier(stackRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
 func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
@@ -1111,6 +1076,11 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 		Project: cleanProjectName(cloudBackendStackRef.project),
 		Stack:   string(cloudBackendStackRef.name),
 	}, nil
+}
+
+// Client returns a client object that may be used to interact with this backend.
+func (b *cloudBackend) Client() *client.Client {
+	return b.client
 }
 
 type DisplayEventType string

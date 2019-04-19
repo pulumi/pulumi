@@ -310,10 +310,6 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	return os.Rename(oldHistoryDir, newHistoryDir)
 }
 
-func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	return symmetricCrypter(stackRef.Name(), b.stackConfigFile)
-}
-
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	stackRef backend.StackReference) (config.Map, error) {
 

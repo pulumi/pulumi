@@ -98,11 +98,6 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 	return s.Backend().Destroy(ctx, s.Ref(), op)
 }
 
-// GetStackCrypter fetches the encrypter/decrypter for a stack.
-func GetStackCrypter(s Stack) (config.Crypter, error) {
-	return s.Backend().GetStackCrypter(s.Ref())
-}
-
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
 func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s.Ref())
