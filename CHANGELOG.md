@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- Add a new `ignoreChanges` option to resource options to allow specifying a list of properties to
+  ignore for purposes of updates or replacements.  [#2657](https://github.com/pulumi/pulumi/pull/2657)
+
 ## 0.17.7 (Released April 17, 2019)
 
 ### Improvements
