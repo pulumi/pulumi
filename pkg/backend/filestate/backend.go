@@ -60,10 +60,9 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d               diag.Sink
-	url             string
-	stackConfigFile string
-	bucket          *blob.Bucket
+	d      diag.Sink
+	url    string
+	bucket *blob.Bucket
 }
 
 type localBackendReference struct {
@@ -87,27 +86,26 @@ func IsFileStateBackendURL(urlstr string) bool {
 	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
-func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
-	if !IsFileStateBackendURL(u) {
+func New(d diag.Sink, url string) (Backend, error) {
+	if !IsFileStateBackendURL(url) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
-			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
+			url, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	u, err := massageBlobPath(u)
+	url, err := massageBlobPath(url)
 	if err != nil {
 		return nil, err
 	}
 
-	bucket, err := blob.OpenBucket(context.TODO(), u)
+	bucket, err := blob.OpenBucket(context.TODO(), url)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
+		return nil, errors.Wrapf(err, "unable to open bucket %s", url)
 	}
 
 	return &localBackend{
-		d:               d,
-		url:             u,
-		stackConfigFile: stackConfigFile,
-		bucket:          bucket,
+		d:      d,
+		url:    url,
+		bucket: bucket,
 	}, nil
 }
 
@@ -158,8 +156,8 @@ func massageBlobPath(path string) (string, error) {
 	return filePathPrefix + path, nil
 }
 
-func Login(d diag.Sink, url, stackConfigFile string) (Backend, error) {
-	be, err := New(d, url, stackConfigFile)
+func Login(d diag.Sink, url string) (Backend, error) {
+	be, err := New(d, url)
 	if err != nil {
 		return nil, err
 	}

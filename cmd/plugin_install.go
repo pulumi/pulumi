@@ -96,7 +96,7 @@ func newPluginInstallCmd() *cobra.Command {
 			// Target the cloud URL for downloads.
 			var releases httpstate.Backend
 			if len(installs) > 0 && file == "" {
-				r, err := httpstate.New(cmdutil.Diag(), httpstate.ValueOrDefaultURL(cloudURL), "")
+				r, err := httpstate.New(cmdutil.Diag(), httpstate.ValueOrDefaultURL(cloudURL))
 				if err != nil {
 					return errors.Wrap(err, "creating API client")
 				}

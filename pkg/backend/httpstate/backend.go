@@ -143,15 +143,14 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d               diag.Sink
-	url             string
-	stackConfigFile string
-	client          *client.Client
-	currentProject  *workspace.Project
+	d              diag.Sink
+	url            string
+	client         *client.Client
+	currentProject *workspace.Project
 }
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
+func New(d diag.Sink, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	apiToken, err := workspace.GetAccessToken(cloudURL)
 	if err != nil {
@@ -165,16 +164,15 @@ func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 	}
 
 	return &cloudBackend{
-		d:               d,
-		url:             cloudURL,
-		stackConfigFile: stackConfigFile,
-		client:          client.NewClient(cloudURL, apiToken, d),
-		currentProject:  currentProject,
+		d:              d,
+		url:            cloudURL,
+		client:         client.NewClient(cloudURL, apiToken, d),
+		currentProject: currentProject,
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -246,11 +244,11 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFil
 		return nil, err
 	}
 
-	return New(d, cloudURL, stackConfigFile)
+	return New(d, cloudURL)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, opts display.Options) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -262,7 +260,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 				return nil, err
 			}
 
-			return New(d, cloudURL, stackConfigFile)
+			return New(d, cloudURL)
 		}
 	}
 
@@ -329,7 +327,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL, stackConfigFile)
+				return loginWithBrowser(ctx, d, cloudURL)
 			}
 		}
 	}
@@ -347,7 +345,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 		return nil, err
 	}
 
-	return New(d, cloudURL, stackConfigFile)
+	return New(d, cloudURL)
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
