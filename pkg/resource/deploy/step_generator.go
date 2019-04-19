@@ -130,9 +130,15 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		oldOutputs = old.Outputs
 	}
 
+	// Create the desired inputs from the goal state
+	inputs := goal.Properties
+	if hasOld {
+		// Set inputs back to their old values (if any) for any "ignored" properties
+		inputs = sg.processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
+	}
+
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
-	inputs := goal.Properties
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false)
 
@@ -619,6 +625,23 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 		}
 	}
 	return true
+}
+
+// processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
+// the effect of ensuring that no changes will be made for the corresponding property.
+func (sg *stepGenerator) processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
+	ignoreChanges []string) resource.PropertyMap {
+
+	ignoredInputs := inputs.Copy()
+	for _, ignoreChange := range ignoreChanges {
+		ignoreChangePropertyKey := resource.PropertyKey(ignoreChange)
+		if oldValue, has := oldInputs[ignoreChangePropertyKey]; has {
+			ignoredInputs[ignoreChangePropertyKey] = oldValue
+		} else {
+			delete(ignoredInputs, ignoreChangePropertyKey)
+		}
+	}
+	return ignoredInputs
 }
 
 func (sg *stepGenerator) loadResourceProvider(
