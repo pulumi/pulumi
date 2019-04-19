@@ -117,26 +117,14 @@ func DeserializeCheckpoint(chkpoint *apitype.CheckpointV3) (*deploy.Snapshot, er
 	return nil, nil
 }
 
-// GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.  If the stack
-// exists, its output properties, if any, are also returned in the resulting map.
-func GetRootStackResource(snap *deploy.Snapshot,
-	sm secrets.Manager) (*resource.State, map[string]interface{}, error) {
+// GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.
+func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 	if snap != nil {
 		for _, res := range snap.Resources {
 			if res.Type == resource.RootStackType {
-				enc, err := sm.Encrypter()
-				if err != nil {
-					return nil, nil, errors.Wrap(err, "getting encrytper")
-				}
-
-				sres, err := SerializeResource(res, enc)
-				if err != nil {
-					return nil, nil, errors.Wrap(err, "serializing output properties")
-				}
-
-				return res, sres.Outputs, nil
+				return res, nil
 			}
 		}
 	}
-	return nil, nil, nil
+	return nil, nil
 }

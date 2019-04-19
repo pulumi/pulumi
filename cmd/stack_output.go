@@ -17,12 +17,12 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -54,7 +54,7 @@ func newStackOutputCmd() *cobra.Command {
 				return err
 			}
 
-			_, outputs, err := stack.GetRootStackResource(snap, b64.NewBase64SecretsManager())
+			outputs, err := getStackOutputs(snap)
 			if err != nil {
 				return errors.Wrap(err, "getting outputs")
 			}
@@ -94,4 +94,20 @@ func newStackOutputCmd() *cobra.Command {
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
+}
+
+func getStackOutputs(snap *deploy.Snapshot) (map[string]interface{}, error) {
+	state, err := stack.GetRootStackResource(snap)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO(ellismg): We probably want to adjust this interface slightly. Instead of just taking an encrypter, it
+	// should take something that lests us control how SecretValues are handled. For example, we may by default want
+	// to say that secret values are just returned as `[secret]` and if you pass --show-secrets we will show them. As
+	// is, right now, you'd see weird JSON encoding of secret outputs. Note that in order to construct the snapshot
+	// you had to have access to see the secrets, so we aren't disclosing anything you already didn't have access to
+	// by passing config.NopEncrypter here.  But you will end up seeing the wire encoding of a property map which
+	// isn't super intuitive.
+	return stack.SerializeProperties(state.Outputs, config.NopEncrypter)
 }

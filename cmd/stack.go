@@ -19,14 +19,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
-
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -131,8 +128,8 @@ func newStackCmd() *cobra.Command {
 					Prefix:  "    ",
 				})
 
-				res, outputs, err := stack.GetRootStackResource(snap, b64.NewBase64SecretsManager())
-				if err != nil && res != nil {
+				outputs, err := getStackOutputs(snap)
+				if err != nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}

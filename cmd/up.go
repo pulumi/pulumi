@@ -21,8 +21,6 @@ import (
 	"math"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
-
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -475,7 +473,7 @@ func isPreconfiguredEmptyStack(
 	if len(snap.Resources) != 1 {
 		return false
 	}
-	stackResource, _, err := stack.GetRootStackResource(snap, b64.NewBase64SecretsManager())
+	stackResource, err := stack.GetRootStackResource(snap)
 	if err != nil || stackResource == nil {
 		return false
 	}
