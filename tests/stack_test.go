@@ -28,8 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -246,7 +244,7 @@ func TestStackCommands(t *testing.T) {
 			Resource: res,
 			Type:     resource.OperationTypeDeleting,
 		})
-		v3deployment, err := stack.SerializeDeployment(snap, b64.NewBase64SecretsManager())
+		v3deployment, err := stack.SerializeDeployment(snap, nil)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

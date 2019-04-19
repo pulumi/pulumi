@@ -209,10 +209,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.Wrap(err, "validating stack properties")
 	}
 
-	// TODO(ellismg): Clean this up. We shouldn't even need to pass a secrets manager here, or we should
-	// be able to pass some well known one that the deployment generator knows not to include the checkpoint (like a)
-	// panicing secrets manager.
-	file, err := b.saveStack(stackName, nil, b64.NewBase64SecretsManager())
+	file, err := b.saveStack(stackName, nil, nil)
 	if err != nil {
 		return nil, err
 	}

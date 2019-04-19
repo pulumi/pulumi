@@ -73,9 +73,15 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager) (*apitype.De
 		})
 	}
 
-	enc, err := sm.Encrypter()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting encrypter for deployment")
+	var enc config.Encrypter
+	if sm != nil {
+		e, err := sm.Encrypter()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting encrypter for deployment")
+		}
+		enc = e
+	} else {
+		enc = config.NewPanicCrypter()
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
@@ -97,16 +103,17 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager) (*apitype.De
 		operations = append(operations, sop)
 	}
 
-	secretsProvider := apitype.SecretsProvidersV1{
-		Type: sm.Type(),
-	}
+	secretsProvider := apitype.SecretsProvidersV1{}
 
-	if state := sm.State(); state != nil {
-		rm, err := json.Marshal(state)
-		if err != nil {
-			return nil, err
+	if sm != nil {
+		secretsProvider.Type = sm.Type()
+		if state := sm.State(); state != nil {
+			rm, err := json.Marshal(state)
+			if err != nil {
+				return nil, err
+			}
+			secretsProvider.State = rm
 		}
-		secretsProvider.State = rm
 	}
 
 	return &apitype.DeploymentV3{
