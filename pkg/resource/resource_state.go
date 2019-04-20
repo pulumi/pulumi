@@ -68,8 +68,3 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		PendingReplacement:   pendingReplacement,
 	}
 }
-
-// All returns all resource state, including the inputs and outputs, overlaid in that order.
-func (s *State) All() PropertyMap {
-	return s.Inputs.Merge(s.Outputs)
-}

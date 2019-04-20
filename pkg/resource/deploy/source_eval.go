@@ -728,7 +728,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	state := result.State
-	props = state.All()
 	stable := result.Stable
 	var stables []string
 	for _, sta := range result.Stables {
