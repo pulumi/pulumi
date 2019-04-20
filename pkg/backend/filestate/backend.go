@@ -478,10 +478,11 @@ func (b *localBackend) apply(
 			}
 		}
 
-		fmt.Printf(
+		_, err := fmt.Fprintf(os.Stderr,
 			op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
 					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+		contract.IgnoreError(err)
 	}
 
 	return changes, nil
