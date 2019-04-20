@@ -747,8 +747,9 @@ func (b *cloudBackend) apply(
 
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
-	fmt.Printf(op.Opts.Display.Color.Colorize(
+	_, err := fmt.Fprintf(os.Stderr, op.Opts.Display.Color.Colorize(
 		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+	contract.IgnoreError(err)
 
 	// Create an update object to persist results.
 	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
@@ -767,10 +768,11 @@ func (b *cloudBackend) apply(
 		}
 		if link != "" {
 			defer func() {
-				fmt.Printf(
+				_, err := fmt.Fprintf(os.Stderr,
 					op.Opts.Display.Color.Colorize(
 						colors.SpecHeadline+"Permalink: "+
 							colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+				contract.IgnoreError(err)
 			}()
 		}
 	}
