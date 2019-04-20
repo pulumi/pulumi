@@ -15,28 +15,24 @@ from os import path
 from ..util import LanghostTest
 
 
-class PreviewTest(LanghostTest):
+class TestIgnoreChanges(LanghostTest):
     """
-    Test that tests that pulumi.runtime.is_dry_run actually returns True on previews and False on updates.
+    Tests that Pulumi resources can accept ignore_changes resource options.
     """
-    def test_preview(self):
+    def test_ignore_changes(self):
         self.run_test(
-            program=path.join(self.base_path(), "preview"),
+            program=path.join(self.base_path(), "ignore_changes"),
             expected_resource_count=1)
 
-    def register_resource(self, _ctx, dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes):
-        self.assertEqual(ty, "test:index:MyResource")
-        self.assertEqual(name, "foo")
-        if dry_run:
-            self.assertDictEqual({
-                "is_preview": True
-            }, resource)
-        else:
-            self.assertDictEqual({
-                "is_preview": False
-            }, resource)
+    def register_resource(self, _ctx, _dry_run, ty, name, resource, _deps,
+                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
+                          ignore_changes):
+
+        # Note that here we expect to receive `ignoredProperty`, even though the user provided `ignored_property`.
+        self.assertListEqual(ignore_changes, ["ignoredProperty", "ignored_property_other"])
+
         return {
             "urn": self.make_urn(ty, name),
+            "id": name,
+            "object": resource
         }

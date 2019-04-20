@@ -60,6 +60,10 @@ class ResourceOptions:
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
 
+    ignore_changes: Optional[List[str]]
+    """
+    If provided, ignore changes to any of the specified properties.
+    """
 
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -67,7 +71,8 @@ class ResourceOptions:
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Mapping[str, 'ProviderResource']] = None,
-                 delete_before_replace: Optional[bool] = None) -> None:
+                 delete_before_replace: Optional[bool] = None,
+                 ignore_changes: Optional[List[str]] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -87,6 +92,7 @@ class ResourceOptions:
         self.provider = provider
         self.providers = providers
         self.delete_before_replace = delete_before_replace
+        self.ignore_changes = ignore_changes
 
         if depends_on is not None:
             for dep in depends_on:
