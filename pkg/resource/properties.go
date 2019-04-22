@@ -148,20 +148,6 @@ func (m PropertyMap) Copy() PropertyMap {
 	return new
 }
 
-// Merge simply merges in another map atop another, and returns the result.
-func (m PropertyMap) Merge(other PropertyMap) PropertyMap {
-	new := m.Copy()
-	for k, v := range other {
-		if !v.IsNull() {
-			if mv, ok := m[k]; ok {
-				v = mv.merge(v)
-			}
-			new[k] = v
-		}
-	}
-	return new
-}
-
 // StableKeys returns all of the map's keys in a stable order.
 func (m PropertyMap) StableKeys() []PropertyKey {
 	sorted := make([]PropertyKey, 0, len(m))
@@ -469,42 +455,6 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 	}
 	contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 	return v.ObjectValue().MapRepl(replk, replv)
-}
-
-// merge simply merges the value of other into v. Merging proceeds as follows:
-// - If other is null, v is returned.
-// - If v and other are both arrays, the corresponding elements are recurively merged. Any unmerged elements in v or
-//   other are then appended to the result.
-// - If v and other are both maps, the corresponding key-value pairs are recursively merged.
-// - Otherwise, other is returned.
-func (v PropertyValue) merge(other PropertyValue) PropertyValue {
-	switch {
-	case other.IsNull():
-		return v
-	case v.IsArray() && other.IsArray():
-		left, right, merged := v.ArrayValue(), other.ArrayValue(), []PropertyValue{}
-		for len(left) > 0 && len(right) > 0 {
-			merged = append(merged, left[0].merge(right[0]))
-			left, right = left[1:], right[1:]
-		}
-		switch {
-		case len(left) > 0:
-			contract.Assert(len(right) == 0)
-			for ; len(left) > 0; left = left[1:] {
-				merged = append(merged, left[0])
-			}
-		case len(right) > 0:
-			contract.Assert(len(left) == 0)
-			for ; len(right) > 0; right = right[1:] {
-				merged = append(merged, right[0])
-			}
-		}
-		return NewArrayProperty(merged)
-	case v.IsObject() && other.IsObject():
-		return NewObjectProperty(v.ObjectValue().Merge(other.ObjectValue()))
-	default:
-		return other
-	}
 }
 
 // String implements the fmt.Stringer interface to add slightly more information to the output.

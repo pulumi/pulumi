@@ -1,11 +1,8 @@
 FROM python:3.7-slim
+# TODO[pulumi/pulumi#1986]: consider switching to, or supporting, Alpine Linux for smaller image sizes.
 
-LABEL "com.github.actions.name"="Pulumi"
-LABEL "com.github.actions.description"="Deploy apps and infra to your favorite cloud!"
-LABEL "com.github.actions.icon"="cloud-lightning"
-LABEL "com.github.actions.color"="purple"
 LABEL "repository"="https://github.com/pulumi/pulumi"
-LABEL "homepage"="http://pulumi.io/reference/gh-actions.html"
+LABEL "homepage"="http://pulumi.io/"
 LABEL "maintainer"="Pulumi Team <team@pulumi.com>"
 
 # Install deps all in one step

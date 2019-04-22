@@ -729,7 +729,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	state := result.State
-	props = state.All()
 	stable := result.Stable
 	var stables []string
 	for _, sta := range result.Stables {
@@ -737,11 +736,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, stable=%v, #stables=%v #outs=%v",
-		state.Type, state.URN, stable, len(stables), len(props))
+		state.Type, state.URN, stable, len(stables), len(state.Outputs))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}
