@@ -85,6 +85,8 @@ class ResourceOptions:
         :param Optional[Mapping[str,ProviderResource]] providers: An optional set of providers to use for child resources. Keyed
                by package name (e.g. "aws")
         :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
+        :param Optional[List[string]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
+               or replacements.
         """
         self.parent = parent
         self.depends_on = depends_on
