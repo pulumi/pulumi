@@ -68,7 +68,8 @@ class ResourceOptions:
     version: Optional[str]
     """
     An optional version. If provided, the engine loads a provider with exactly the requested version to operate on this
-    resource.
+    resource. This version overrides the version information inferred from the current package and should rarely be
+    used.
     """
 
 

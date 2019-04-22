@@ -216,7 +216,8 @@ export interface ResourceOptions {
 
     /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
-     * this resource.
+     * this resource. This version overrides the version information inferred from the current package and should
+     * rarely be used.
      */
     version?: string;
 }
