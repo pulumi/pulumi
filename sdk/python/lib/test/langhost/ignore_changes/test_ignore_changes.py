@@ -26,7 +26,7 @@ class TestIgnoreChanges(LanghostTest):
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource, _deps,
                           _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          ignore_changes):
+                          ignore_changes, _version):
 
         # Note that here we expect to receive `ignoredProperty`, even though the user provided `ignored_property`.
         self.assertListEqual(ignore_changes, ["ignoredProperty", "ignored_property_other"])

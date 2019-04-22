@@ -23,7 +23,7 @@ class TestVersions(LanghostTest):
 
     def register_resource(self, ctx, dry_run, ty, name, _resource,
                           _dependencies, _parent, _custom, _protect,
-                          _provider, _property_deps, _delete_before_replace, version):
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, version):
         if name == "testres":
             self.assertEqual(version, "0.19.1")
         elif name == "testres2":
