@@ -302,7 +302,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			if err != nil {
 				return resource.StatusOK, nil, err
 			}
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.All()); err != nil {
+			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs); err != nil {
 				return rst, nil, err
 			}
 		}
@@ -403,8 +403,8 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), s.new.Inputs)
+			// Update to the combination of the old "all" state, but overwritten with new inputs.
+			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, upderr
