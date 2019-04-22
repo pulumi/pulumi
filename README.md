@@ -59,6 +59,52 @@ Many examples are available spanning containers, serverless, and infrastructure 
 Pulumi is open source under the Apache 2.0 license, supports many languages and clouds, and is easy to extend.  This
 repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and individual libraries are in their own repos.
 
+## Problem Scope
+
+Provisioning, configuring, and maintaining cloud native infrastructure is met with varying responsibilities,
+spanning many layers, organizational requirements, cloud providers, tools, and systems.
+
+Current standards require that teams adopt provider-specific templates, Domain
+Specific Languages (DSL's), YAML, and/or JSON to configure and manage their
+infrastructure. This can introduce mutability, require custom scripts & code,
+and creates a wider surface area for operators, admins, and developers to collaborate.
+
+Pulumi is collection of cloud SDK's to work with many utilities including: cloud provider IaaS, managed services,
+containers and serverless. Pulumi's SDKs are made available as infrastructure-as-code (IaC) libraries for many
+general purpose programming languages that allow you to use real code to manage and operate your cloud
+resources, services, and apps.
+
+Users architect, compartmentalize, author, and deploy Pulumi programs written in their
+favorite general programming language for the layer(s) of cloud infrastructure
+needed under management. Leveraging Pulumi's IaC libaries alongside your
+code allows you to:
+
+* Program your **raw infrastructure** resources across all major cloud providers and platforms.
+* Provision, utilize, and integrate **managed services** such as databases, monitoring, logging, and serverless systems.
+* Program your Kubernetes infrastructure and services for **managed**, or **open source** clusters.
+* Deploy your Kubernetes **workloads** to Kubernetes clusters.
+* Consolidate the number of languages, tools, and systems your team uses to manage your infrastructure and apps.
+* Capture your standards, requirements, and abstractions through code for maximum reusability, and encapsulation within your team.
+
+## Features
+
+Pulumi's SDK's are modular and span several layers of abstraction starting from the
+foundational IaaS layer, all the way up the stack to containers, hosted
+services, and serverless providing features including:
+
+* A **single, declarative** programming model for your favorite programming language.
+* Simplified best practices and authorship semantics based on industry standards and real-world deployment experience.
+* Supports **many** programming [languages](https://pulumi.io/reference/languages.html): [Node.js (TypeScript, JavaScript)](https://pulumi.io/reference/javascript.html), [Python](https://pulumi.io/reference/python.html), Go (coming soon).
+* Supports **many** cloud platforms: [AWS](https://pulumi.io/reference/aws.html), [Azure](https://pulumi.io/reference/azure.html), [GCP](https://pulumi.io/reference/gcp.html), Managed or OpenSource [Kubernetes](https://pulumi.io/reference/kubernetes.html).
+* Supports **many** cloud services: [Lambda, ECS, Fargate](https://pulumi.io/quickstart/aws/index.html), [Cloud Functions](https://pulumi.io/quickstart/gcp/index.html).
+* Supports **many** Continuous Delivery systems: [AWS Code Services](https://pulumi.io/reference/cd-aws-code-services.html), [Azure DevOps](https://pulumi.io/reference/cd-azure-devops.html), [CircleCI](https://pulumi.io/reference/cd-circleci.html), [GitHub Actions](https://pulumi.io/reference/cd-github-actions.html), [GitLab CI](https://pulumi.io/reference/cd-gitlab-ci.html), [Google Cloud Build](https://pulumi.io/reference/cd-google-cloud-build.html), [Travis](https://pulumi.io/reference/cd-travis.html).
+* Use Infrastructure as Code to capture desired state goals.
+* Use Policy as Code to operate with gated deployments.
+* Built with security, distributed teams, and Enterprise standards and services in mind.
+* Supports integration tools for: Terraform, and Kubernetes manifests & Helm charts.
+* No DSLs, YAML, or JSON required or used.
+* Leverage your programming tools and IDE feature-set for your whole stack: type & error checking, linting, and testing.
+
 ## Welcome
 
 <img align="right" width="400" src="https://pulumi.io/images/quickstart/console.png" />
