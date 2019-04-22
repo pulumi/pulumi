@@ -29,8 +29,8 @@ type ResourceMonitor struct {
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool, parent resource.URN, protect bool,
 	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
-	propertyDeps map[resource.PropertyKey][]resource.URN,
-	deleteBeforeReplace bool, version string) (resource.URN, resource.ID, resource.PropertyMap, error) {
+	propertyDeps map[resource.PropertyKey][]resource.URN, deleteBeforeReplace bool,
+	version string, ignoreChanges []string) (resource.URN, resource.ID, resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -67,6 +67,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Object:               ins,
 		PropertyDependencies: inputDeps,
 		DeleteBeforeReplace:  deleteBeforeReplace,
+		IgnoreChanges:        ignoreChanges,
 		Version:              version,
 	})
 	if err != nil {

@@ -33,7 +33,8 @@ class TestInvoke(LanghostTest):
         }
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource, _deps,
-                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
+                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
+                          _ignore_changes):
         self.assertEqual("test:index:MyResource", ty)
         self.assertEqual("resourceA", name)
         self.assertEqual(resource["value"], 42)

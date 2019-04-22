@@ -23,7 +23,8 @@ class OneComplexResourceTest(LanghostTest):
             expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
+                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
+                          _ignore_changes):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "testres")
         self.assertEqual(resource["falseprop"], False)

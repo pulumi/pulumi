@@ -23,7 +23,8 @@ class PropertyDependenciesTest(LanghostTest):
             expected_resource_count=5)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_dependencies, _delete_before_replace):
+                          _dependencies, _parent, _custom, _protect, _provider, _property_dependencies, _delete_before_replace,
+                          _ignore_changes):
         self.assertEqual(ty, "test:index:MyResource")
         if name == "resA":
             self.assertListEqual(_dependencies, [])

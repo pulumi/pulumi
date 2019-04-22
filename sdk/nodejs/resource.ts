@@ -208,6 +208,10 @@ export interface ResourceOptions {
      * When set to true, protect ensures this resource cannot be deleted.
      */
     protect?: boolean;
+    /**
+     * Ignore changes to any of the specified properties.
+     */
+    ignoreChanges?: string[];
 }
 
 /**

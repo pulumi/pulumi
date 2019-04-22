@@ -70,6 +70,7 @@ message RegisterResourceRequest {
     map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
     bool deleteBeforeReplace = 10;     // true if this resource should be deleted before replacement.
     string version = 11;               // the version of the provider to use when servicing this request.
+    repeated string ignoreChanges = 12; // a list of property selectors to ignore during updates.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

@@ -11,17 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os import path
-from ..util import LanghostTest
+from pulumi import CustomResource, ResourceOptions, InvokeOptions
+from pulumi.runtime import invoke
 
 
-class UnhandledExceptionTest(LanghostTest):
-    def test_unhandled_exception(self):
-        self.run_test(
-            program=path.join(self.base_path(), "resource_op_fail"),
-            expected_error="Program exited with non-zero exit code: 1")
+class MyResource(CustomResource):
+    def __init__(self, name, opts=None):
+        CustomResource.__init__(self, "test:index:MyResource", name, opts=opts)
 
-    def register_resource(self, _ctx, _dry_run, _ty, _name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes):
-        raise Exception("oh no")
+    def translate_input_property(self, prop: str) -> str:
+        if prop == "ignored_property":
+            return "ignoredProperty"
+        
+        return prop
+
+
+res = MyResource("testResource", opts=ResourceOptions(ignore_changes=["ignored_property", "ignored_property_other"]))
