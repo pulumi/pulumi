@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to 
+  unexpected Update, Replace or Delete operations being scheduled. [#2650]https://github.com/pulumi/pulumi/issues/2650)
+
 ## 0.17.7 (Released April 17, 2019)
 
 ### Improvements
