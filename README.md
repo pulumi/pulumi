@@ -69,8 +69,8 @@ Specific Languages (DSL's), YAML, and/or JSON to configure and manage their
 infrastructure. This can introduce mutability, require custom scripts & code,
 and creates a wider surface area for operators, admins, and developers to collaborate.
 
-Pulumi is collection of cloud SDK's to work with many utilities including: cloud provider IaaS, managed services,
-containers and serverless. Pulumi's SDKs are made available as infrastructure-as-code (IaC) libraries for many
+Pulumi works with cloud providers, managed services, containers and serverless computing.
+Pulumi offers various infrastructure-as-code (IaC) libraries for many
 general purpose programming languages that allow you to use real code to manage and operate your cloud
 resources, services, and apps.
 
