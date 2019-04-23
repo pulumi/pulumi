@@ -65,6 +65,14 @@ class ResourceOptions:
     If provided, ignore changes to any of the specified properties.
     """
 
+    version: Optional[str]
+    """
+    An optional version. If provided, the engine loads a provider with exactly the requested version to operate on this
+    resource. This version overrides the version information inferred from the current package and should rarely be
+    used.
+    """
+
+
     def __init__(self,
                  parent: Optional['Resource'] = None,
                  depends_on: Optional[List['Resource']] = None,
@@ -72,7 +80,8 @@ class ResourceOptions:
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Mapping[str, 'ProviderResource']] = None,
                  delete_before_replace: Optional[bool] = None,
-                 ignore_changes: Optional[List[str]] = None) -> None:
+                 ignore_changes: Optional[List[str]] = None,
+                 version: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -95,6 +104,7 @@ class ResourceOptions:
         self.providers = providers
         self.delete_before_replace = delete_before_replace
         self.ignore_changes = ignore_changes
+        self.version = version
 
         if depends_on is not None:
             for dep in depends_on:
