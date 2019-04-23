@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 type MockRegisterResourceEvent struct {
@@ -797,21 +796,4 @@ func TestRegisterOutputs(t *testing.T) {
 	lastSnap := sp.LastSnap()
 	assert.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
-}
-
-func TestSavePlugins(t *testing.T) {
-	snap := NewSnapshot(nil)
-	manager, sp := MockSetup(t, snap)
-
-	err := manager.RecordPlugin(workspace.PluginInfo{
-		Name: "myplugin",
-	})
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
-
-	// RecordPlugin should have written out a new snapshot with the plugin recorded in the manifest.
-	lastSnap := sp.LastSnap()
-	assert.Len(t, lastSnap.Manifest.Plugins, 1)
-	assert.Equal(t, "myplugin", lastSnap.Manifest.Plugins[0].Name)
 }

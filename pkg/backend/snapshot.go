@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
@@ -60,7 +59,6 @@ type SnapshotManager struct {
 	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
 	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
 	doVerify         bool                     // If true, verify the snapshot before persisting it
-	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
@@ -118,15 +116,6 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 // entirely, but the hope is that this state of things will not be permament.
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return sm.mutate(func() bool { return true })
-}
-
-// RecordPlugin records that the current plan loaded a plugin and saves it in the snapshot.
-func (sm *SnapshotManager) RecordPlugin(plugin workspace.PluginInfo) error {
-	logging.V(9).Infof("SnapshotManager: RecordPlugin(%v)", plugin)
-	return sm.mutate(func() bool {
-		sm.plugins = append(sm.plugins, plugin)
-		return true
-	})
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
@@ -507,7 +496,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	manifest := deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
-		Plugins: sm.plugins,
+		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
 	}
 
 	manifest.Magic = manifest.NewMagic()

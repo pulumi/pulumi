@@ -33,7 +33,7 @@ import (
 )
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource, pluginEvents plugin.Events,
+func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource,
 	diag, statusDiag diag.Sink, tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 	contract.Require(projinfo != nil, "projinfo")
 
@@ -44,7 +44,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(diag, statusDiag, host, config, pluginEvents, pwd,
+	ctx, err := plugin.NewContext(diag, statusDiag, host, config, pwd,
 		projinfo.Proj.Runtime.Options(), tracingSpan)
 	if err != nil {
 		return "", "", nil, err
@@ -115,20 +115,13 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	contract.Assert(info.Update != nil)
 	contract.Assert(opts.SourceFunc != nil)
 
-	// If this isn't a dry run, we will need to record plugin events, so that we persist them in the checkpoint. If
-	// we're just doing a dry run, we don't actually need to persist anything (and indeed trying to do so would fail).
-	var pluginEvents plugin.Events
-	if !dryRun {
-		pluginEvents = &pluginActions{ctx}
-	}
-
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
 	proj, target := info.Update.GetProject(), info.Update.GetTarget()
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.host, target, pluginEvents,
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.host, target,
 		opts.Diag, opts.StatusDiag, info.TracingSpan)
 	if err != nil {
 		return nil, err

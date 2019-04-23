@@ -115,11 +115,6 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 			Version: version,
 		})
 	}
-	for _, plug := range target.Snapshot.Manifest.Plugins {
-		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromSnapshot(): plugin %s %s is required by snapshot manifest", plug.Name, plug.Version)
-		set.Add(plug)
-	}
 	return set, nil
 }
 
