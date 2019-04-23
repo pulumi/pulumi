@@ -243,6 +243,13 @@ export interface CustomResourceOptions extends ResourceOptions {
      * is created when replacement is necessary.
      */
     deleteBeforeReplace?: boolean;
+
+    /**
+     * The names of outputs for this resource that should be treated as secrets. This augments the list that
+     * the resource provider and pulumi engine already determine based on inputs to your resource. It can be used
+     * to mark certain ouputs as a secrets on a per resource basis.
+     */
+    additionalSecretOutputs?: string[];
 }
 
 /**
