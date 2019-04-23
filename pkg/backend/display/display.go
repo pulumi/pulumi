@@ -73,6 +73,13 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 		return opts.ShowSameResources
 	}
 
+	// For logical replacement operations, only show them during progress-style updates (since this is integrated
+	// into the resource status update), or if it is requested explicitly (for diffs and JSON outputs).
+	if (opts.DiffDisplay || opts.JSONDisplay) && !step.Logical && !opts.ShowReplacementSteps {
+		return false
+	}
+
+	// Otherwise, default to showing the operation.
 	return true
 }
 

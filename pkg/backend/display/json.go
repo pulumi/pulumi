@@ -75,23 +75,24 @@ func ShowJSONEvents(op string, action apitype.UpdateKind,
 		case engine.ResourcePreEvent:
 			// Create the detailed metadata for this step and the initial state of its resource. Later,
 			// if new outputs arrive, we'll search for and swap in those new values.
-			m := e.Payload.(engine.ResourcePreEventPayload).Metadata
-			step := &previewStep{
-				Op:             m.Op,
-				URN:            m.URN,
-				Provider:       m.Provider,
-				DiffReasons:    m.Diffs,
-				ReplaceReasons: m.Keys,
+			if m := e.Payload.(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
+				step := &previewStep{
+					Op:             m.Op,
+					URN:            m.URN,
+					Provider:       m.Provider,
+					DiffReasons:    m.Diffs,
+					ReplaceReasons: m.Keys,
+				}
+				if m.Old != nil {
+					res := stack.SerializeResource(m.Old.State)
+					step.OldState = &res
+				}
+				if m.New != nil {
+					res := stack.SerializeResource(m.New.State)
+					step.NewState = &res
+				}
+				digest.Steps = append(digest.Steps, step)
 			}
-			if m.Old != nil {
-				res := stack.SerializeResource(m.Old.State)
-				step.OldState = &res
-			}
-			if m.New != nil {
-				res := stack.SerializeResource(m.New.State)
-				step.NewState = &res
-			}
-			digest.Steps = append(digest.Steps, step)
 		case engine.ResourceOutputsEvent, engine.ResourceOperationFailed:
 			// Because we are only JSON serializing previews, we don't need to worry about outputs
 			// resolving or operations failing. In the future, if we serialize actual deployments, we will
