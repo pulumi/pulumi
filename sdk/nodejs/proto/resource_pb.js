@@ -331,7 +331,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ReadResourceRequest.repeatedFields_ = [6];
+proto.pulumirpc.ReadResourceRequest.repeatedFields_ = [6,10];
 
 
 
@@ -370,7 +370,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     dependenciesList: jspb.Message.getRepeatedField(msg, 6),
     provider: jspb.Message.getFieldWithDefault(msg, 7, ""),
     version: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    acceptsecrets: jspb.Message.getFieldWithDefault(msg, 9, false)
+    acceptsecrets: jspb.Message.getFieldWithDefault(msg, 9, false),
+    secretoutputsList: jspb.Message.getRepeatedField(msg, 10)
   };
 
   if (includeInstance) {
@@ -443,6 +444,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 9:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsecrets(value);
+      break;
+    case 10:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addSecretoutputs(value);
       break;
     default:
       reader.skipField();
@@ -534,6 +539,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f) {
     writer.writeBool(
       9,
+      f
+    );
+  }
+  f = message.getSecretoutputsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      10,
       f
     );
   }
@@ -703,6 +715,35 @@ proto.pulumirpc.ReadResourceRequest.prototype.getAcceptsecrets = function() {
 /** @param {boolean} value */
 proto.pulumirpc.ReadResourceRequest.prototype.setAcceptsecrets = function(value) {
   jspb.Message.setProto3BooleanField(this, 9, value);
+};
+
+
+/**
+ * repeated string secretOutputs = 10;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getSecretoutputsList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 10));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.ReadResourceRequest.prototype.setSecretoutputsList = function(value) {
+  jspb.Message.setField(this, 10, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.addSecretoutputs = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 10, value, opt_index);
+};
+
+
+proto.pulumirpc.ReadResourceRequest.prototype.clearSecretoutputsList = function() {
+  this.setSecretoutputsList([]);
 };
 
 
@@ -915,7 +956,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14];
 
 
 
@@ -958,7 +999,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     deletebeforereplace: jspb.Message.getFieldWithDefault(msg, 10, false),
     version: jspb.Message.getFieldWithDefault(msg, 11, ""),
     ignorechangesList: jspb.Message.getRepeatedField(msg, 12),
-    acceptsecrets: jspb.Message.getFieldWithDefault(msg, 13, false)
+    acceptsecrets: jspb.Message.getFieldWithDefault(msg, 13, false),
+    secretoutputsList: jspb.Message.getRepeatedField(msg, 14)
   };
 
   if (includeInstance) {
@@ -1049,6 +1091,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 13:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsecrets(value);
+      break;
+    case 14:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addSecretoutputs(value);
       break;
     default:
       reader.skipField();
@@ -1165,6 +1211,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f) {
     writer.writeBool(
       13,
+      f
+    );
+  }
+  f = message.getSecretoutputsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      14,
       f
     );
   }
@@ -1580,6 +1633,35 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getAcceptsecrets = function() 
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setAcceptsecrets = function(value) {
   jspb.Message.setProto3BooleanField(this, 13, value);
+};
+
+
+/**
+ * repeated string secretOutputs = 14;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getSecretoutputsList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 14));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setSecretoutputsList = function(value) {
+  jspb.Message.setField(this, 14, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addSecretoutputs = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 14, value, opt_index);
+};
+
+
+proto.pulumirpc.RegisterResourceRequest.prototype.clearSecretoutputsList = function() {
+  this.setSecretoutputsList([]);
 };
 
 
