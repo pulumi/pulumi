@@ -65,8 +65,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		event.Dependencies(),
 		nil, /* initErrors */
 		event.Provider(),
-		nil, /* propertyDependencies */
-		false)
+		nil,   /* propertyDependencies */
+		false, /* deleteBeforeCreate */
+		event.SecretOutputs())
 	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
@@ -140,7 +141,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false)
+		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false, goal.SecretOutputs)
 
 	// Fetch the provider for this resource.
 	prov, res := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)

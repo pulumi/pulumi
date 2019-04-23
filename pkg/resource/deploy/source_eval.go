@@ -298,7 +298,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil),
 		done: done,
 	}
 	return event, done, nil
@@ -615,15 +615,21 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, err
 	}
 
+	var secretOutputs []resource.PropertyKey
+	for _, name := range req.GetSecretOutputs() {
+		secretOutputs = append(secretOutputs, resource.PropertyKey(name))
+	}
+
 	event := &readResourceEvent{
-		id:           id,
-		name:         name,
-		baseType:     t,
-		provider:     provider,
-		parent:       parent,
-		props:        props,
-		dependencies: deps,
-		done:         make(chan *ReadResult),
+		id:            id,
+		name:          name,
+		baseType:      t,
+		provider:      provider,
+		parent:        parent,
+		props:         props,
+		dependencies:  deps,
+		secretOutputs: secretOutputs,
+		done:          make(chan *ReadResult),
 	}
 	select {
 	case rm.regReadChan <- event:
@@ -732,6 +738,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
+	var secretOutputs []resource.PropertyKey
+	for _, name := range req.GetSecretOutputs() {
+		secretOutputs = append(secretOutputs, resource.PropertyKey(name))
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v",
@@ -740,7 +751,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies, deleteBeforeReplace, ignoreChanges),
+			propertyDependencies, deleteBeforeReplace, ignoreChanges, secretOutputs),
 		done: make(chan *RegisterResult),
 	}
 
@@ -881,14 +892,15 @@ func (g *registerResourceOutputsEvent) Done() {
 }
 
 type readResourceEvent struct {
-	id           resource.ID
-	name         tokens.QName
-	baseType     tokens.Type
-	provider     string
-	parent       resource.URN
-	props        resource.PropertyMap
-	dependencies []resource.URN
-	done         chan *ReadResult
+	id            resource.ID
+	name          tokens.QName
+	baseType      tokens.Type
+	provider      string
+	parent        resource.URN
+	props         resource.PropertyMap
+	dependencies  []resource.URN
+	secretOutputs []resource.PropertyKey
+	done          chan *ReadResult
 }
 
 var _ ReadResourceEvent = (*readResourceEvent)(nil)
@@ -905,3 +917,4 @@ func (g *readResourceEvent) Dependencies() []resource.URN     { return g.depende
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result
 }
+func (g *readResourceEvent) SecretOutputs() []resource.PropertyKey { return g.secretOutputs }

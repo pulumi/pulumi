@@ -39,13 +39,14 @@ type State struct {
 	Provider             string                // the provider to use for this resource.
 	PropertyDependencies map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement   bool                  // true if this resource was deleted and is awaiting replacement.
+	SecretOutputs        []PropertyKey         // an additional set of outputs that should be treated as secrets.
 }
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,
 	external bool, dependencies []URN, initErrors []string, provider string,
-	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool) *State {
+	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool, secretOutputs []PropertyKey) *State {
 
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -66,5 +67,6 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		Provider:             provider,
 		PropertyDependencies: propertyDependencies,
 		PendingReplacement:   pendingReplacement,
+		SecretOutputs:        secretOutputs,
 	}
 }
