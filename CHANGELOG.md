@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- Update the readme to reflect the problem scope and feature set of Pulumi
+  [#2664](https://github.com/pulumi/pulumi/pull/2664)
 - Add a new `ignoreChanges` option to resource options to allow specifying a list of properties to
   ignore for purposes of updates or replacements.  [#2657](https://github.com/pulumi/pulumi/pull/2657)
 - Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to 
