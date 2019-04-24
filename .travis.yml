@@ -22,6 +22,8 @@ before_install:
     - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
     - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
+    # Increase the default file descriptor limit on MacOS
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ulimit -n 2048; fi 
 install:
     - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
 before_script:

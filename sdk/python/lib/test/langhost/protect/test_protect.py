@@ -25,7 +25,8 @@ class ProtectTest(LanghostTest):
             expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, protect, _provider, _property_deps, _delete_before_replace):
+                          _dependencies, _parent, _custom, protect, _provider, _property_deps, _delete_before_replace,
+                          _ignore_changes, _version):
         self.assertEqual("foo", name)
         self.assertTrue(protect)
         return {

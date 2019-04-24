@@ -193,16 +193,6 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	return resourceChanges, res
 }
 
-// pluginActions listens for plugin events and persists the set of loaded plugins
-// to the snapshot.
-type pluginActions struct {
-	Context *Context
-}
-
-func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo) error {
-	return p.Context.SnapshotManager.RecordPlugin(loadedPlug)
-}
-
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
 	Context      *Context

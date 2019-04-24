@@ -25,18 +25,21 @@ export type URN = string; // an automatically generated logical URN, used to sta
  */
 export abstract class Resource {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
      // tslint:disable-next-line:variable-name
-     /* @internal */ public readonly __pulumiResource: boolean = true;
+     public readonly __pulumiResource: boolean = true;
 
     /**
+     * @internal
      * The optional parent of this resource.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __parentResource: Resource | undefined;
+    public readonly __parentResource: Resource | undefined;
 
     /**
+     * @internal
      * The child resources of this resource.  We use these (only from a ComponentResource) to allow
      * code to dependOn a ComponentResource and have that effectively mean that it is depending on
      * all the CustomResource children of that component.
@@ -74,7 +77,7 @@ export abstract class Resource {
      * pattern failed in practice.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public __childResources: Set<Resource> | undefined;
+    public __childResources: Set<Resource> | undefined;
 
     /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
@@ -83,16 +86,18 @@ export abstract class Resource {
     public readonly urn: Output<URN>;
 
     /**
+     * @internal
      * When set to true, protect ensures this resource cannot be deleted.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __protect: boolean;
+    private readonly __protect: boolean;
 
     /**
+     * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
      // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __providers: Record<string, ProviderResource>;
+    private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
@@ -208,6 +213,18 @@ export interface ResourceOptions {
      * When set to true, protect ensures this resource cannot be deleted.
      */
     protect?: boolean;
+
+    /**
+     * Ignore changes to any of the specified properties.
+     */
+    ignoreChanges?: string[];
+
+    /**
+     * An optional version, corresponding to the version of the provider plugin that should be used when operating on
+     * this resource. This version overrides the version information inferred from the current package and should
+     * rarely be used.
+     */
+    version?: string;
 }
 
 /**
@@ -246,10 +263,11 @@ export interface ComponentResourceOptions extends ResourceOptions {
  */
 export abstract class CustomResource extends Resource {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiCustomResource: boolean;
+    public readonly __pulumiCustomResource: boolean;
 
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
@@ -315,10 +333,11 @@ export abstract class ProviderResource extends CustomResource {
  */
 export class ComponentResource extends Resource {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiComponentResource: boolean;
+    public readonly __pulumiComponentResource: boolean;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -372,7 +391,7 @@ export class ComponentResource extends Resource {
 (<any>ComponentResource).doNotCapture = true;
 (<any>ComponentResource.prototype).registerOutputs.doNotCapture = true;
 
-/* @internal */
+/** @internal */
 export const testingOptions = {
     isDryRun: false,
 };

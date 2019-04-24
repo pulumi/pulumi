@@ -298,7 +298,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, false),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil),
 		done: done,
 	}
 	return event, done, nil
@@ -641,6 +641,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
 	deleteBeforeReplace := req.GetDeleteBeforeReplace()
+	ignoreChanges := req.GetIgnoreChanges()
 	var t tokens.Type
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -701,13 +702,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
-			"provider=%v, deps=%v, deleteBeforeReplace=%v",
-		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace)
+			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v",
+		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace, ignoreChanges)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies, deleteBeforeReplace),
+			propertyDependencies, deleteBeforeReplace, ignoreChanges),
 		done: make(chan *RegisterResult),
 	}
 
@@ -728,7 +729,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	state := result.State
-	props = state.All()
 	stable := result.Stable
 	var stables []string
 	for _, sta := range result.Stables {
@@ -736,11 +736,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, stable=%v, #stables=%v #outs=%v",
-		state.Type, state.URN, stable, len(stables), len(props))
+		state.Type, state.URN, stable, len(stables), len(state.Outputs))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}

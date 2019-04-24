@@ -36,5 +36,5 @@ export { asset, dynamic, iterable, log, runtime };
 // we want to give a good message about what the problem likely is.  Note that capturing a
 // deployment time module can be ok in some cases.  For example, using "new pulumi.Config" is fine.
 // However, in general, the majority of this API is not safe to use at 'run time' and will fail.
-/* @internal */
+/** @internal */
 export const deploymentOnlyModule = true;

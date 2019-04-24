@@ -60,6 +60,18 @@ class ResourceOptions:
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
 
+    ignore_changes: Optional[List[str]]
+    """
+    If provided, ignore changes to any of the specified properties.
+    """
+
+    version: Optional[str]
+    """
+    An optional version. If provided, the engine loads a provider with exactly the requested version to operate on this
+    resource. This version overrides the version information inferred from the current package and should rarely be
+    used.
+    """
+
 
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -67,7 +79,9 @@ class ResourceOptions:
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Mapping[str, 'ProviderResource']] = None,
-                 delete_before_replace: Optional[bool] = None) -> None:
+                 delete_before_replace: Optional[bool] = None,
+                 ignore_changes: Optional[List[str]] = None,
+                 version: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -80,6 +94,8 @@ class ResourceOptions:
         :param Optional[Mapping[str,ProviderResource]] providers: An optional set of providers to use for child resources. Keyed
                by package name (e.g. "aws")
         :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
+        :param Optional[List[string]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
+               or replacements.
         """
         self.parent = parent
         self.depends_on = depends_on
@@ -87,6 +103,8 @@ class ResourceOptions:
         self.provider = provider
         self.providers = providers
         self.delete_before_replace = delete_before_replace
+        self.ignore_changes = ignore_changes
+        self.version = version
 
         if depends_on is not None:
             for dep in depends_on:

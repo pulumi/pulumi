@@ -32,12 +32,13 @@ type Goal struct {
 	InitErrors           []string              // errors encountered as we attempted to initialize the resource.
 	PropertyDependencies map[PropertyKey][]URN // the set of dependencies that affect each property.
 	DeleteBeforeReplace  bool                  // true if this resource should be deleted prior to replacement.
+	IgnoreChanges        []string              // a list of property names to ignore during changes.
 }
 
 // NewGoal allocates a new resource goal state.
 func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
-	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace bool) *Goal {
+	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace bool, ignoreChanges []string) *Goal {
 
 	return &Goal{
 		Type:                 t,
@@ -51,5 +52,6 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 		InitErrors:           initErrors,
 		PropertyDependencies: propertyDependencies,
 		DeleteBeforeReplace:  deleteBeforeReplace,
+		IgnoreChanges:        ignoreChanges,
 	}
 }

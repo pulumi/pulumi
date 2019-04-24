@@ -598,7 +598,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12];
 
 
 
@@ -639,7 +639,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     provider: jspb.Message.getFieldWithDefault(msg, 8, ""),
     propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceRequest.PropertyDependencies.toObject) : [],
     deletebeforereplace: jspb.Message.getFieldWithDefault(msg, 10, false),
-    version: jspb.Message.getFieldWithDefault(msg, 11, "")
+    version: jspb.Message.getFieldWithDefault(msg, 11, ""),
+    ignorechangesList: jspb.Message.getRepeatedField(msg, 12)
   };
 
   if (includeInstance) {
@@ -722,6 +723,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.setVersion(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addIgnorechanges(value);
       break;
     default:
       reader.skipField();
@@ -824,6 +829,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       11,
+      f
+    );
+  }
+  f = message.getIgnorechangesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      12,
       f
     );
   }
@@ -1193,6 +1205,35 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getVersion = function() {
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setVersion = function(value) {
   jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * repeated string ignoreChanges = 12;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getIgnorechangesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 12));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setIgnorechangesList = function(value) {
+  jspb.Message.setField(this, 12, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addIgnorechanges = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 12, value, opt_index);
+};
+
+
+proto.pulumirpc.RegisterResourceRequest.prototype.clearIgnorechangesList = function() {
+  this.setIgnorechangesList([]);
 };
 
 

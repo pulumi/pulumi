@@ -174,6 +174,10 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             for key, deps in resolver.property_dependencies.items():
                 property_dependencies[key] = resource_pb2.RegisterResourceRequest.PropertyDependencies(urns=deps)
 
+            ignore_changes = opts.ignore_changes
+            if res.translate_input_property is not None and opts.ignore_changes is not None:
+                ignore_changes = map(res.translate_input_property, opts.ignore_changes)
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -184,7 +188,9 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 provider=resolver.provider_ref,
                 dependencies=resolver.dependencies,
                 propertyDependencies=property_dependencies,
-                deleteBeforeReplace=opts.delete_before_replace
+                deleteBeforeReplace=opts.delete_before_replace,
+                ignoreChanges=ignore_changes,
+                version=opts.version or "",
             )
 
             def do_rpc_call():
