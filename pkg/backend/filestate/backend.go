@@ -53,14 +53,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// supportedSchemes are the fake URL schemes that are used to signal which blob storage to use when not using http state.
-var supportedSchemes = []string{
-	"azblob://",
-	"file://",
-	"gs://",
-	"s3://",
-}
-
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
@@ -97,7 +89,7 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
 	if !IsFileStateBackendURL(url) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of %s", url, strings.Join(supportedSchemes, ", "))
+		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s", url, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
 	if strings.HasPrefix(url, "file://") {
