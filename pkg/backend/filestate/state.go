@@ -295,7 +295,7 @@ func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, erro
 	// newer ones. Loop backwards so we added the newest updates to the array we will return first.
 	for i := len(allFiles) - 1; i >= 0; i-- {
 		file := allFiles[i]
-		filepath := path.Join(dir, objectName(file))
+		filepath := file.Key
 
 		// Open all of the history files, ignoring the checkpoints.
 		if !strings.HasSuffix(filepath, ".history.json") {
