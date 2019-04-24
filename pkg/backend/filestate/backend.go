@@ -97,11 +97,6 @@ func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 		localPath, _ := filepath.Abs(strings.TrimPrefix(u, "file://"))
 		u2 := url.URL{Scheme: "file", Path: localPath}
 		u = u2.String()
-
-		// Ensure the directory exists for a local file:// backend.
-		if err := os.MkdirAll(filepath.Dir(localPath), 0700); err != nil {
-			return nil, errors.Wrap(err, "An IO error occurred during the current operation")
-		}
 	}
 
 	bucket, err := blob.OpenBucket(context.TODO(), u)

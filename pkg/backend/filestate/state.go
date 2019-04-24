@@ -247,13 +247,6 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	// Get the backup directory.
 	backupDir := b.backupDirectory(name)
 
-	// Ensure the backup directory exists (only required for local filesystem).
-	if b.urlScheme() == "file://" {
-		if err = os.MkdirAll(backupDir, 0700); err != nil {
-			return err
-		}
-	}
-
 	// Write out the new backup checkpoint file.
 	stackFile := filepath.Base(stackPath)
 	ext := filepath.Ext(stackFile)
