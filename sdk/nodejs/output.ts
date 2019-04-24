@@ -26,36 +26,40 @@ import * as utils from "./utils";
  */
 class OutputImpl<T> implements OutputInstance<T> {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiOutput: boolean = true;
+    public readonly __pulumiOutput: boolean = true;
 
     /**
+     * @internal
      * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
      * an Output value may not be known (because it would have to actually be computed by doing an
      * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
      * may not expect an undefined value.  So, instead, we just transition to another Output
      * value that itself knows it should not perform .apply calls.
      */
-    /* @internal */ public readonly isKnown: Promise<boolean>;
+    public readonly isKnown: Promise<boolean>;
 
     /**
+     * @internal
      * Method that actually produces the concrete value of this output, as well as the total
      * deployment-time set of resources this output depends on.
      *
      * Only callable on the outside.
      */
-    /* @internal */ public readonly promise: () => Promise<T>;
+    public readonly promise: () => Promise<T>;
 
     /**
+     * @internal
      * The list of resource that this output value depends on.
      *
      * Only callable on the outside.
      */
-    /* @internal */ public readonly resources: () => Set<Resource>;
+    public readonly resources: () => Set<Resource>;
 
     public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
     public readonly get: () => T;
@@ -112,7 +116,8 @@ class OutputImpl<T> implements OutputInstance<T> {
         return utils.isInstance(obj, "__pulumiOutput");
     }
 
-    /* @internal */ public constructor(
+    /** @internal */
+    public constructor(
             resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
         this.isKnown = isKnown;
 
@@ -480,9 +485,9 @@ export type UnwrappedObject<T> = {
  * for working with the underlying value of an [Output<T>].
  */
 export interface OutputInstance<T> {
-    /* @internal */ readonly isKnown: Promise<boolean>;
-    /* @internal */ promise(): Promise<T>;
-    /* @internal */ resources(): Set<Resource>;
+    /** @internal */ readonly isKnown: Promise<boolean>;
+    /** @internal */ promise(): Promise<T>;
+    /** @internal */ resources(): Set<Resource>;
 
     /**
      * Transforms the data of the output with the provided func.  The result remains a
@@ -536,7 +541,7 @@ export interface OutputConstructor {
 
     isInstance<T>(obj: any): obj is Output<T>;
 
-    /* @internal */ new<T>(
+    /** @internal */ new<T>(
             resources: Set<Resource> | Resource[] | Resource,
             promise: Promise<T>,
             isKnown: Promise<boolean>): Output<T>;

@@ -23,10 +23,11 @@ import * as utils from "./utils";
  */
 export class RunError extends Error {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiRunError: boolean = true;
+    public readonly __pulumiRunError: boolean = true;
 
     /**
      * Returns true if the given object is an instance of a RunError.  This is designed to work even when
@@ -49,10 +50,11 @@ export class RunError extends Error {
  */
 export class ResourceError extends Error {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumResourceError: boolean = true;
+    public readonly __pulumResourceError: boolean = true;
 
     /**
      * Returns true if the given object is an instance of a ResourceError.  This is designed to work even when

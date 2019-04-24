@@ -45,7 +45,7 @@ export interface Options {
  */
 const options = loadOptions();
 
-/* @internal Used only for testing purposes */
+/** @internal Used only for testing purposes */
 export function _setIsDryRun(val: boolean) {
     (options as any).dryRun = val;
 }
@@ -59,7 +59,7 @@ export function isDryRun(): boolean {
     return options.dryRun === true || isTestModeEnabled();
 }
 
-/* @internal Used only for testing purposes */
+/** @internal Used only for testing purposes */
 export function _setTestModeEnabled(val: boolean) {
     (options as any).testModeEnabled = val;
 }
@@ -96,7 +96,7 @@ export function getProject(): string {
     throw new Error("Missing project name; for test mode, please set PULUMI_NODEJS_PROJECT");
 }
 
-/* @internal Used only for testing purposes. */
+/** @internal Used only for testing purposes. */
 export function _setProject(val: string) {
     (options as any).project = val;
 }
@@ -116,7 +116,7 @@ export function getStack(): string {
     throw new Error("Missing stack name; for test mode, please set PULUMI_NODEJS_STACK");
 }
 
-/* @internal Used only for testing purposes. */
+/** @internal Used only for testing purposes. */
 export function _setStack(val: string) {
     (options as any).stack = val;
 }
