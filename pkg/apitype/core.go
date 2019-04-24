@@ -282,7 +282,6 @@ type ResourceV3 struct {
 	// recreated.
 	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
 	// SecretOutputs is an additional set of output properties that should be treated as secrets.
-	// TODO(ellismg): Do we need to bump the version here?
 	SecretOutputs []resource.PropertyKey `json:"secretOutputs,omitempty" yaml:"secretOutputs,omitempty"`
 }
 

@@ -18,8 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
-
 	"github.com/pulumi/pulumi/pkg/util/result"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -168,7 +166,7 @@ func runTotalStateEdit(stackName string,
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, b64.NewBase64SecretsManager())
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager)
 	if err != nil {
 		return result.FromError(errors.Wrap(err, "serializing deployment"))
 	}

@@ -289,8 +289,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 		return err
 	}
 
-	// TODO(ellismg): Make this configurable
-	if _, err = b.saveStack(newName, snap, b64.NewBase64SecretsManager()); err != nil {
+	if _, err = b.saveStack(newName, snap, snap.SecretsManager); err != nil {
 		return err
 	}
 
@@ -585,8 +584,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil)
 	}
 
-	// TODO(ellismg): Fix this up!
-	sdep, err := stack.SerializeDeployment(snap, b64.NewBase64SecretsManager())
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager)
 	if err != nil {
 		return nil, errors.Wrap(err, "serializing deployment")
 	}
@@ -616,8 +614,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	// TODO(ellismg): Make this configurable
-	_, err = b.saveStack(stackName, snap, b64.NewBase64SecretsManager())
+	_, err = b.saveStack(stackName, snap, snap.SecretsManager)
 	return err
 }
 

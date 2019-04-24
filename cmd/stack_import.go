@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -122,7 +121,7 @@ func newStackImportCmd() *cobra.Command {
 
 				snapshot.PendingOperations = nil
 			}
-			sdp, err := stack.SerializeDeployment(snapshot, b64.NewBase64SecretsManager())
+			sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager)
 			if err != nil {
 				return errors.Wrap(err, "constructing deployment for upload")
 			}
