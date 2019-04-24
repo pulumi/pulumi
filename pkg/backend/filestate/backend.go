@@ -93,15 +93,23 @@ func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	// fmt.Printf("u1: %s", u)
-	if strings.HasPrefix(u, "file://") {
+	var localPath string
+	if u == "file://~" {
+		usr, err := user.Current()
+		if err != nil {
+			return nil, errors.Wrap(err, "Could not determine current user")
+		}
+
+		localPath = usr.HomeDir
+	} else if strings.HasPrefix(u, "file://") {
 		// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
-		localPath, _ := filepath.Abs(strings.TrimPrefix(u, "file://"))
+		localPath, _ = filepath.Abs(strings.TrimPrefix(u, "file://"))
+	}
+
+	if localPath != "" {
 		u2 := url.URL{Scheme: "file", Path: localPath}
 		u = u2.String()
-		// fmt.Printf("u2: %s", u)
 
-		// fmt.Printf("Making dir %s\n", localPath)
 		if err := os.MkdirAll(localPath, 0700); err != nil {
 			return nil, errors.Wrap(err, "An IO error occurred during the current operation")
 		}
