@@ -21,6 +21,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -109,6 +110,7 @@ func newUpCmd() *cobra.Command {
 			M:                  m,
 			Opts:               opts,
 			StackConfiguration: cfg,
+			SecretsManager:     b64.NewBase64SecretsManager(),
 			Scopes:             cancellationScopes,
 		})
 		switch {
@@ -259,6 +261,7 @@ func newUpCmd() *cobra.Command {
 			M:                  m,
 			Opts:               opts,
 			StackConfiguration: cfg,
+			SecretsManager:     b64.NewBase64SecretsManager(),
 			Scopes:             cancellationScopes,
 		})
 		switch {

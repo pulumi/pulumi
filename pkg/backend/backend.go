@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -141,6 +142,7 @@ type UpdateOperation struct {
 	Root               string
 	M                  *UpdateMetadata
 	Opts               UpdateOptions
+	SecretsManager     secrets.Manager
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
 }

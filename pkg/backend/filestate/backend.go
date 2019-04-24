@@ -421,7 +421,7 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(stackName, b64.NewBase64SecretsManager())
+	persister := b.newSnapshotPersister(stackName, op.SecretsManager)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),

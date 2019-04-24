@@ -17,6 +17,8 @@ package cmd
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -116,6 +118,7 @@ func newDestroyCmd() *cobra.Command {
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
+				SecretsManager:     b64.NewBase64SecretsManager(),
 				Scopes:             cancellationScopes,
 			})
 			if res != nil && res.Error() == context.Canceled {
