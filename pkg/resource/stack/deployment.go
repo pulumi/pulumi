@@ -73,6 +73,11 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager) (*apitype.De
 		})
 	}
 
+	// If a specific secrets manager was not provided, use the one in the snapshot, if present.
+	if sm == nil {
+		sm = snap.SecretsManager
+	}
+
 	var enc config.Encrypter
 	if sm != nil {
 		e, err := sm.Encrypter()
@@ -186,19 +191,29 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 		})
 	}
 
-	var dec config.Decrypter
-	if deployment.SecretsProviders == nil {
-		dec = config.NewPanicCrypter()
-	} else if deployment.SecretsProviders.Type == "b64" {
-		sm, err := b64.NewProvider().FromState(deployment.SecretsProviders.State)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating secrets manager")
+	var secretsManager secrets.Manager
+	if deployment.SecretsProviders != nil {
+		switch deployment.SecretsProviders.Type {
+		case "b64":
+			sm, err := b64.NewProvider().FromState(deployment.SecretsProviders.State)
+			if err != nil {
+				return nil, errors.Wrap(err, "creating secrets manager")
+			}
+			secretsManager = sm
+		default:
+			return nil, errors.Errorf("unknown secrets provider type %s", deployment.SecretsProviders.Type)
 		}
-		base64dec, err := sm.Decrypter()
-		contract.AssertNoError(err)
-		dec = base64dec
+	}
+
+	var dec config.Decrypter
+	if secretsManager == nil {
+		dec = config.NewPanicCrypter()
 	} else {
-		return nil, errors.Errorf("unknown secrets provider type %s", deployment.SecretsProviders.Type)
+		d, err := secretsManager.Decrypter()
+		if err != nil {
+			return nil, err
+		}
+		dec = d
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
@@ -220,7 +235,7 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 		ops = append(ops, desop)
 	}
 
-	return deploy.NewSnapshot(manifest, resources, ops), nil
+	return deploy.NewSnapshot(manifest, secretsManager, resources, ops), nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.

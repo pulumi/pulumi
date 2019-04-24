@@ -23,6 +23,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/secrets"
+
 	"github.com/blang/semver"
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
@@ -187,9 +189,15 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 		}
 	}
 
+	// If we have a base snapshot, copy over its secrets manager.
+	var secretsManager secrets.Manager
+	if base != nil {
+		secretsManager = base.SecretsManager
+	}
+
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, resources, operations)
+	return deploy.NewSnapshot(manifest, secretsManager, resources, operations)
 }
 
 func (j *Journal) SuccessfulSteps() []deploy.Step {

@@ -500,7 +500,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, resources, operations)
+	return deploy.NewSnapshot(manifest, sm.baseSnapshot.SecretsManager, resources, operations)
 }
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
