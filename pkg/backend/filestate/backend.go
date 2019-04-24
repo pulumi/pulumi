@@ -87,15 +87,16 @@ func IsFileStateBackendURL(urlstr string) bool {
 	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
-func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
-	if !IsFileStateBackendURL(url) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s", url, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
+func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
+	if !IsFileStateBackendURL(u) {
+		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s", u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	if strings.HasPrefix(url, "file://") {
+	if strings.HasPrefix(u, "file://") {
 		// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
-		localPath, _ := filepath.Abs(strings.TrimPrefix(url, "file://"))
-		url = path.Join("file://", localPath)
+		localPath, _ := filepath.Abs(strings.TrimPrefix(u, "file://"))
+		u2 := url.URL{Scheme: "file", Path: localPath}
+		u = u2.String()
 
 		// Ensure the directory exists for a local file:// backend.
 		if err := os.MkdirAll(filepath.Dir(localPath), 0700); err != nil {
@@ -103,14 +104,14 @@ func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
 		}
 	}
 
-	bucket, err := blob.OpenBucket(context.TODO(), url)
+	bucket, err := blob.OpenBucket(context.TODO(), u)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to open bucket %s", url)
+		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
 	}
 
 	return &localBackend{
 		d:               d,
-		url:             url,
+		url:             u,
 		stackConfigFile: stackConfigFile,
 		bucket:          bucket,
 	}, nil
