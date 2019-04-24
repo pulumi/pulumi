@@ -89,7 +89,8 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 	if !IsFileStateBackendURL(u) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s", u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
+		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
+			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
 	// fmt.Printf("u1: %s", u)
