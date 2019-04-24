@@ -86,13 +86,13 @@ func (r localBackendReference) Name() tokens.QName {
 	return r.name
 }
 
-func IsFileStateBackendURL(url string) bool {
-	for _, scheme := range supportedSchemes {
-		if strings.HasPrefix(url, scheme) {
-			return true
-		}
+func IsFileStateBackendURL(urlstr string) bool {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return false
 	}
-	return false
+
+	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
 func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
