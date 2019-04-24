@@ -324,12 +324,6 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 
 	dir := b.historyDirectory(name)
 
-	if b.urlScheme() == "file://" {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return err
-		}
-	}
-
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
 
@@ -344,7 +338,7 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 		return err
 	}
 
-	// Make a copy of the checkpoint file. (Assuming it aleady exists.)
+	// Make a copy of the checkpoint file. (Assuming it already exists.)
 	byts, err = b.bucket.ReadAll(context.TODO(), b.stackPath(name))
 	if err != nil {
 		return err
