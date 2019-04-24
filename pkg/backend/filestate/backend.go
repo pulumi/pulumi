@@ -21,7 +21,6 @@ import (
 	"net/url"
 	"os"
 	"os/user"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
