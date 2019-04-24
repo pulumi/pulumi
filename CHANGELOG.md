@@ -1,5 +1,12 @@
 ## 0.17.9 (Unreleased)
 
+- `pulumi login` now supports `s3://`, `azblob://` and `gs://` paths (on top of `file://`) for
+  storing stack information. These are passed the location of a desired bucket for each respective
+  cloud provider (i.e. `pulumi login s3://mybucket`).  Pulumi artifacts (like the
+  `xxx.checkpoint.json` file) will then be stored in that bucket.  Credentials for accessing the
+  bucket operate in the normal manner for each cloud provider.  i.e. for AWS this can come from the
+  environment, or your `.aws/credentials` file, etc.
+
 ### Improvements
 
 ## 0.17.8 (Released April 23, 2019)
@@ -8,7 +15,7 @@
 
 - Add a new `ignoreChanges` option to resource options to allow specifying a list of properties to
   ignore for purposes of updates or replacements.  [#2657](https://github.com/pulumi/pulumi/pull/2657)
-- Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to 
+- Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to
   unexpected Update, Replace or Delete operations being scheduled. [#2650]https://github.com/pulumi/pulumi/issues/2650)
 - Build/push `pulumi/actions` container to [DockerHub](https://hub.docker.com/r/pulumi/actions) with new SDK releases [#2646](https://github.com/pulumi/pulumi/pull/2646)
 
