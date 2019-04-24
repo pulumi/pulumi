@@ -59,14 +59,9 @@ func removeAllByPrefix(bucket *blob.Bucket, dir string) error {
 
 // renameObject renames an object in a bucket. the rename requires a download/upload of the object due to a go-cloud API limitation
 func renameObject(bucket *blob.Bucket, source string, dest string) error {
-	byts, err := bucket.ReadAll(context.TODO(), source)
+	err := bucket.Copy(context.TODO(), source, dest, nil)
 	if err != nil {
-		return errors.Wrap(err, "reading source object to be renamed")
-	}
-
-	err = bucket.WriteAll(context.TODO(), dest, byts, nil)
-	if err != nil {
-		return errors.Wrapf(err, "writing destination object during rename of %s", source)
+		return errors.Wrapf(err, "copying %s to %s", source, dest)
 	}
 
 	err = bucket.Delete(context.TODO(), source)
