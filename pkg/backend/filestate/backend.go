@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -91,11 +92,18 @@ func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s", u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
+	// fmt.Printf("u1: %s", u)
 	if strings.HasPrefix(u, "file://") {
 		// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 		localPath, _ := filepath.Abs(strings.TrimPrefix(u, "file://"))
 		u2 := url.URL{Scheme: "file", Path: localPath}
 		u = u2.String()
+		// fmt.Printf("u2: %s", u)
+
+		// fmt.Printf("Making dir %s\n", localPath)
+		if err := os.MkdirAll(localPath, 0700); err != nil {
+			return nil, errors.Wrap(err, "An IO error occurred during the current operation")
+		}
 	}
 
 	bucket, err := blob.OpenBucket(context.TODO(), u)
@@ -446,10 +454,24 @@ func (b *localBackend) apply(
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
 	if opts.ShowLink {
+		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
+		// file:// links so we manually create the link ourselves.
+		var link string
+		if strings.HasPrefix(b.url, "file://") {
+			u, _ := url.Parse(b.url)
+			u.Path = path.Join(u.Path, b.stackPath(stackName))
+			link = u.String()
+		} else {
+			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
+			if err != nil {
+				return changes, result.FromError(errors.Wrap(err, "Could not get signed url for stack location"))
+			}
+		}
+
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
-					colors.Underline+colors.BrightBlue+"%s%s"+colors.Reset+"\n"), b.urlScheme(), stack.(*localStack).Path())
+					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 	}
 
 	return changes, nil
@@ -601,10 +623,4 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")
-}
-
-// urlScheme returns the scheme of the storage url e.g. file:// or s3://
-func (b *localBackend) urlScheme() string {
-	uri, _ := url.Parse(b.url)
-	return uri.Scheme + "://"
 }

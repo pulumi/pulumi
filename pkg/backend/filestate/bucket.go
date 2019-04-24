@@ -59,7 +59,7 @@ func removeAllByPrefix(bucket *blob.Bucket, dir string) error {
 
 // renameObject renames an object in a bucket. the rename requires a download/upload of the object due to a go-cloud API limitation
 func renameObject(bucket *blob.Bucket, source string, dest string) error {
-	err := bucket.Copy(context.TODO(), source, dest, nil)
+	err := bucket.Copy(context.TODO(), dest, source, nil)
 	if err != nil {
 		return errors.Wrapf(err, "copying %s to %s", source, dest)
 	}

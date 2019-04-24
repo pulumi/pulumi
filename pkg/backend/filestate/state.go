@@ -340,5 +340,5 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 
 	// Make a copy of the checkpoint file. (Assuming it already exists.)
 	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
-	return b.bucket.Copy(context.TODO(), b.stackPath(name), checkpointFile, nil)
+	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
 }
