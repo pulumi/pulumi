@@ -18,12 +18,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"net/url"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gocloud.dev/blob"
+	_ "gocloud.dev/blob/azureblob" // driver for azblob://
+	_ "gocloud.dev/blob/fileblob"  // driver for file://
+	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
+	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 
 	"github.com/pkg/errors"
 
@@ -46,9 +53,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// localBackendURL is fake URL scheme we use to signal we want to use the local backend vs a cloud one.
-const localBackendURLPrefix = "file://"
-
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
@@ -59,6 +63,7 @@ type localBackend struct {
 	d               diag.Sink
 	url             string
 	stackConfigFile string
+	bucket          *blob.Bucket
 }
 
 type localBackendReference struct {
@@ -73,18 +78,53 @@ func (r localBackendReference) Name() tokens.QName {
 	return r.name
 }
 
-func IsLocalBackendURL(url string) bool {
-	return strings.HasPrefix(url, localBackendURLPrefix)
+func IsFileStateBackendURL(urlstr string) bool {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return false
+	}
+
+	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
-func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
-	if !IsLocalBackendURL(url) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
+func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
+	if !IsFileStateBackendURL(u) {
+		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
+			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
+
+	var localPath string
+	if u == "file://~" {
+		usr, err := user.Current()
+		if err != nil {
+			return nil, errors.Wrap(err, "Could not determine current user")
+		}
+
+		localPath = usr.HomeDir
+	} else if strings.HasPrefix(u, "file://") {
+		// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
+		localPath, _ = filepath.Abs(strings.TrimPrefix(u, "file://"))
+	}
+
+	if localPath != "" {
+		u2 := url.URL{Scheme: "file", Path: localPath}
+		u = u2.String()
+
+		if err := os.MkdirAll(localPath, 0700); err != nil {
+			return nil, errors.Wrap(err, "An IO error occurred during the current operation")
+		}
+	}
+
+	bucket, err := blob.OpenBucket(context.TODO(), u)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
+	}
+
 	return &localBackend{
 		d:               d,
-		url:             url,
+		url:             u,
 		stackConfigFile: stackConfigFile,
+		bucket:          bucket,
 	}, nil
 }
 
@@ -111,23 +151,8 @@ func (b *localBackend) URL() string {
 	return b.url
 }
 
-func (b *localBackend) Dir() string {
-	path := b.url[len(localBackendURLPrefix):]
-	if path == "~" {
-		user, err := user.Current()
-		contract.AssertNoErrorf(err, "could not determine current user")
-		path = user.HomeDir
-	} else if path == "." {
-		pwd, err := os.Getwd()
-		contract.AssertNoErrorf(err, "could not determine current working directory")
-		path = pwd
-	}
-	return path
-}
-
 func (b *localBackend) StateDir() string {
-	dir := b.Dir()
-	return filepath.Join(dir, workspace.BookkeepingDir)
+	return workspace.BookkeepingDir
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
@@ -242,7 +267,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
 	file := b.stackPath(stackName)
-	backupTarget(file)
+	backupTarget(b.bucket, file)
 
 	// And move the history over as well.
 	oldHistoryDir := b.historyDirectory(stackName)
@@ -438,10 +463,24 @@ func (b *localBackend) apply(
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
 	if opts.ShowLink {
+		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
+		// file:// links so we manually create the link ourselves.
+		var link string
+		if strings.HasPrefix(b.url, "file://") {
+			u, _ := url.Parse(b.url)
+			u.Path = path.Join(u.Path, b.stackPath(stackName))
+			link = u.String()
+		} else {
+			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
+			if err != nil {
+				return changes, result.FromError(errors.Wrap(err, "Could not get signed url for stack location"))
+			}
+		}
+
 		fmt.Printf(
 			op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
-					colors.Underline+colors.BrightBlue+"file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
+					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 	}
 
 	return changes, nil
@@ -547,19 +586,19 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	// Read the stack directory.
 	path := b.stackPath("")
 
-	files, err := ioutil.ReadDir(path)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Errorf("could not read stacks: %v", err)
+	files, err := listBucket(b.bucket, path)
+	if err != nil {
+		return nil, errors.Wrap(err, "error listing stacks")
 	}
 
 	for _, file := range files {
 		// Ignore directories.
-		if file.IsDir() {
+		if file.IsDir {
 			continue
 		}
 
 		// Skip files without valid extensions (e.g., *.bak files).
-		stackfn := file.Name()
+		stackfn := objectName(file)
 		ext := filepath.Ext(stackfn)
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue

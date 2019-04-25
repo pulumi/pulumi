@@ -299,7 +299,9 @@ func TestStackBackups(t *testing.T) {
 		// Verify the backup directory contains a single backup.
 		files, err := ioutil.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
-		assert.Equal(t, 1, len(files))
+		files = filterOutAttrsFiles(files)
+		fileNames := getFileNames(files)
+		assert.Equal(t, 1, len(files), "Files: %s", strings.Join(fileNames, ", "))
 		fileName := files[0].Name()
 
 		// Verify the backup file.
@@ -313,7 +315,9 @@ func TestStackBackups(t *testing.T) {
 		// Verify the backup directory has been updated with 1 additional backups.
 		files, err = ioutil.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
-		assert.Equal(t, 2, len(files))
+		files = filterOutAttrsFiles(files)
+		fileNames = getFileNames(files)
+		assert.Equal(t, 2, len(files), "Files: %s", strings.Join(fileNames, ", "))
 
 		// Verify the new backup file.
 		for _, file := range files {
@@ -329,16 +333,34 @@ func TestStackBackups(t *testing.T) {
 	})
 }
 
+func getFileNames(infos []os.FileInfo) []string {
+	var result []string
+	for _, i := range infos {
+		result = append(result, i.Name())
+	}
+	return result
+}
+
+func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
+	var result []os.FileInfo
+	for _, f := range files {
+		if filepath.Ext(f.Name()) != ".attrs" {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
 func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
 	assert.False(t, file.IsDir())
 	assert.True(t, file.Size() > 0)
 	split := strings.Split(file.Name(), ".")
-	assert.Equal(t, 3, len(split))
+	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])
 	parsedTime, err := strconv.ParseInt(split[1], 10, 64)
 	assert.NoError(t, err, "parsing the time in the stack backup filename")
-	assert.True(t, parsedTime > before)
-	assert.True(t, parsedTime < after)
+	assert.True(t, parsedTime > before, "False: %v > %v", parsedTime, before)
+	assert.True(t, parsedTime < after, "False: %v < %v", parsedTime, after)
 }
 
 func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string, error) {
