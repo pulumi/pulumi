@@ -299,7 +299,7 @@ func TestStackBackups(t *testing.T) {
 		// Verify the backup directory contains a single backup.
 		files, err := ioutil.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
-
+		files = filterOutAttrsFiles(files)
 		fileNames := getFileNames(files)
 		assert.Equal(t, 1, len(files), "Files: %s", strings.Join(fileNames, ", "))
 		fileName := files[0].Name()
@@ -315,6 +315,7 @@ func TestStackBackups(t *testing.T) {
 		// Verify the backup directory has been updated with 1 additional backups.
 		files, err = ioutil.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
+		files = filterOutAttrsFiles(files)
 		fileNames = getFileNames(files)
 		assert.Equal(t, 2, len(files), "Files: %s", strings.Join(fileNames, ", "))
 
@@ -336,6 +337,16 @@ func getFileNames(infos []os.FileInfo) []string {
 	var result []string
 	for _, i := range infos {
 		result = append(result, i.Name())
+	}
+	return result
+}
+
+func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
+	var result []os.FileInfo
+	for _, f := range files {
+		if filepath.Ext(f.Name()) != ".attrs" {
+			result = append(result, f)
+		}
 	}
 	return result
 }
