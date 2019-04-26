@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -53,6 +52,11 @@ func NewClient(apiURL, apiToken string, d diag.Sink) *Client {
 		apiToken: apiAccessToken(apiToken),
 		diag:     d,
 	}
+}
+
+// URL returns the URL of the API endpoint this client interacts with
+func (pc *Client) URL() string {
+	return pc.apiURL
 }
 
 // apiCall makes a raw HTTP request to the Pulumi API using the given method, path, and request body.
@@ -289,23 +293,6 @@ func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphe
 		return nil, err
 	}
 	return resp.Plaintext, nil
-}
-
-// GetStackLogs retrieves the log entries for the indicated stack that match the given query.
-func (pc *Client) GetStackLogs(ctx context.Context, stack StackIdentifier,
-	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
-
-	var response apitype.LogsResult
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "logs"), logQuery, nil, &response); err != nil {
-		return nil, err
-	}
-
-	logs := make([]operations.LogEntry, 0, len(response.Logs))
-	for _, entry := range response.Logs {
-		logs = append(logs, operations.LogEntry(entry))
-	}
-
-	return logs, nil
 }
 
 // GetStackUpdates returns all updates to the indicated stack.
