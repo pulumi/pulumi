@@ -18,6 +18,10 @@
 - Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to
   unexpected Update, Replace or Delete operations being scheduled. [#2650]https://github.com/pulumi/pulumi/issues/2650)
 - Build/push `pulumi/actions` container to [DockerHub](https://hub.docker.com/r/pulumi/actions) with new SDK releases [#2646](https://github.com/pulumi/pulumi/pull/2646)
+- Add a `--json` flag (`-j` for short) to the `preview` command. This allows basic serialization of a plan,
+  including the anticipated set of deployment steps, list of diagnostics messages, and summary information.
+  Each step includes deeply serialized information about the resource state and step metadata itself. This
+  is part of ongoing work tracked in [pulumi/pulumi#2390](https://github.com/pulumi/pulumi/issues/2390).
 
 ## 0.17.7 (Released April 17, 2019)
 
