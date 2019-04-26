@@ -345,12 +345,13 @@ func (b *localBackend) apply(
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
-
-	// Print a banner so it's clear this is a local deployment.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
-	_, err := fmt.Fprintf(os.Stderr, op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
-	contract.IgnoreError(err)
+
+	if !op.Opts.Display.JSONDisplay {
+		// Print a banner so it's clear this is a local deployment.
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
+	}
 
 	// Start the update.
 	update, err := b.newUpdate(stackName, op.Proj, op.Root)
@@ -463,7 +464,7 @@ func (b *localBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if opts.ShowLink {
+	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -478,11 +479,9 @@ func (b *localBackend) apply(
 			}
 		}
 
-		_, err := fmt.Fprintf(os.Stderr,
-			op.Opts.Display.Color.Colorize(
-				colors.SpecHeadline+"Permalink: "+
-					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
-		contract.IgnoreError(err)
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"Permalink: "+
+				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 	}
 
 	return changes, nil

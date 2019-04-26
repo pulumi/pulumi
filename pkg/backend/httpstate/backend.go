@@ -745,11 +745,13 @@ func (b *cloudBackend) apply(
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
 
-	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
-	_, err := fmt.Fprintf(os.Stderr, op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
-	contract.IgnoreError(err)
+
+	if !op.Opts.Display.JSONDisplay {
+		// Print a banner so it's clear this is going to the cloud.
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+	}
 
 	// Create an update object to persist results.
 	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
@@ -757,7 +759,7 @@ func (b *cloudBackend) apply(
 		return nil, result.FromError(err)
 	}
 
-	if opts.ShowLink {
+	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Print a URL at the end of the update pointing to the Pulumi Service.
 		var link string
 		base := b.cloudConsoleStackPath(update.StackIdentifier)
@@ -768,11 +770,9 @@ func (b *cloudBackend) apply(
 		}
 		if link != "" {
 			defer func() {
-				_, err := fmt.Fprintf(os.Stderr,
-					op.Opts.Display.Color.Colorize(
-						colors.SpecHeadline+"Permalink: "+
-							colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
-				contract.IgnoreError(err)
+				fmt.Printf(op.Opts.Display.Color.Colorize(
+					colors.SpecHeadline+"Permalink: "+
+						colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 			}()
 		}
 	}
