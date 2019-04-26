@@ -8,7 +8,7 @@ For larger features, we'd appreciate it if you open a [new issue](https://github
 
 To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
 
-- Go 1.9 or later
+- Go 1.12 or later
 - NodeJS 6.10.X or later
 - Python 3.6 or later
 - [pipenv](https://github.com/pypa/pipenv)
