@@ -656,8 +656,18 @@ func promptForConfig(
 	}
 	sort.Sort(keys)
 
-	var err error
-	var crypter config.Crypter
+	sm, err := getStackSecretsManager(stack)
+	if err != nil {
+		return nil, err
+	}
+	encrypter, err := sm.Encrypter()
+	if err != nil {
+		return nil, err
+	}
+	decrypter, err := sm.Decrypter()
+	if err != nil {
+		return nil, err
+	}
 
 	c := make(config.Map)
 
@@ -676,17 +686,8 @@ func promptForConfig(
 		if stackConfig != nil {
 			// Use the stack's existing value as the default.
 			if val, ok := stackConfig[k]; ok {
-				secret = val.Secure()
-
-				// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
-				if secret && crypter == nil {
-					if crypter, err = getStackCrypter(stack); err != nil {
-						return nil, err
-					}
-				}
-
 				// It's OK to pass a nil or non-nil crypter for non-secret values.
-				value, err := val.Value(crypter)
+				value, err := val.Value(decrypter)
 				if err != nil {
 					return nil, err
 				}
@@ -715,14 +716,7 @@ func promptForConfig(
 		// Encrypt the value if needed.
 		var v config.Value
 		if secret {
-			// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
-			if crypter == nil {
-				if crypter, err = getStackCrypter(stack); err != nil {
-					return nil, err
-				}
-			}
-
-			enc, err := crypter.EncryptValue(value)
+			enc, err := encrypter.EncryptValue(value)
 			if err != nil {
 				return nil, err
 			}

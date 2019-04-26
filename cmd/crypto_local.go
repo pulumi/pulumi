@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -37,20 +38,20 @@ func readPassphrase(prompt string) (string, error) {
 }
 
 // symmetricCrypter gets the right value encrypter/decrypter for this project.
-func symmetricCrypter(stackName tokens.QName, configFile string) (config.Crypter, error) {
+func symmetricCrypter(stackName tokens.QName, configFile string) (config.Crypter, string, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
 		f, err := workspace.DetectProjectStackPath(stackName)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		configFile = f
 	}
 
 	info, err := workspace.LoadProjectStack(configFile)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// If we have a salt, we can just use it.
@@ -58,28 +59,28 @@ func symmetricCrypter(stackName tokens.QName, configFile string) (config.Crypter
 		phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
 			"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
 		if phraseErr != nil {
-			return nil, phraseErr
+			return nil, "", phraseErr
 		}
 
 		crypter, crypterErr := symmetricCrypterFromPhraseAndState(phrase, info.EncryptionSalt)
 		if crypterErr != nil {
-			return nil, crypterErr
+			return nil, "", crypterErr
 		}
 
-		return crypter, nil
+		return crypter, info.EncryptionSalt, nil
 	}
 
 	// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
 	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	confirm, err := readPassphrase("Re-enter your passphrase to confirm")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if phrase != confirm {
-		return nil, errors.New("passphrases do not match")
+		return nil, "", errors.New("passphrases do not match")
 	}
 
 	// Produce a new salt.
@@ -95,10 +96,10 @@ func symmetricCrypter(stackName tokens.QName, configFile string) (config.Crypter
 	// Now store the result and save it.
 	info.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
 	if err = info.Save(configFile); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return crypter, nil
+	return crypter, info.EncryptionSalt, nil
 }
 
 // given a passphrase and an encryption state, construct a Crypter from it. Our encryption
@@ -143,4 +144,47 @@ func indexN(s string, substr string, n int) int {
 	}
 
 	return len(s) - (len(scratch) + len(substr))
+}
+
+type localSecretsManagerState struct {
+	Salt string `json:"salt"`
+}
+
+var _ secrets.Manager = &localSecretsManager{}
+
+type localSecretsManager struct {
+	state   localSecretsManagerState
+	crypter config.Crypter
+}
+
+func (sm *localSecretsManager) Type() string {
+	return "passphrase"
+}
+
+func (sm *localSecretsManager) State() interface{} {
+	return sm.state
+}
+
+func (sm *localSecretsManager) Decrypter() (config.Decrypter, error) {
+	contract.Assert(sm.crypter != nil)
+	return sm.crypter, nil
+}
+
+func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
+	contract.Assert(sm.crypter != nil)
+	return sm.crypter, nil
+}
+
+func newLocalSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
+	crypter, state, err := symmetricCrypter(stackName, configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &localSecretsManager{
+		crypter: crypter,
+		state: localSecretsManagerState{
+			Salt: state,
+		},
+	}, nil
 }

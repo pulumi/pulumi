@@ -60,7 +60,7 @@ This command lists data about previous updates for a stack.`,
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
-				crypter, err := getStackCrypter(s)
+				crypter, err := getStackDencrypter(s)
 				if err != nil {
 					return errors.Wrap(err, "decrypting secrets")
 				}

@@ -21,14 +21,33 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/secrets"
 )
 
-func getStackCrypter(s backend.Stack) (config.Crypter, error) {
+func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
+	sm, err := getStackSecretsManager(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return sm.Encrypter()
+}
+
+func getStackDencrypter(s backend.Stack) (config.Decrypter, error) {
+	sm, err := getStackSecretsManager(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return sm.Decrypter()
+}
+
+func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	switch stack := s.(type) {
 	case httpstate.Stack:
-		return newCloudCrypter(stack.Backend().(httpstate.Backend).Client(), stack.StackIdentifier()), nil
+		return newCloudSecretsManager(stack), nil
 	case filestate.Stack:
-		return symmetricCrypter(s.Ref().Name(), stackConfigFile)
+		return newLocalSecretsManager(s.Ref().Name(), stackConfigFile)
 	}
 
 	return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))
