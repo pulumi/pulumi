@@ -180,30 +180,6 @@ type CancellationScopeSource interface {
 	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
 }
 
-// tracingOptionsKey is the value used as the context key for TracingOptions.
-var tracingOptionsKey struct{}
-
-// TracingOptions describes the set of options available for configuring tracing on a per-request basis.
-type TracingOptions struct {
-	// PropagateSpans indicates that spans should be propagated from the client to the Pulumi service when making API
-	// calls.
-	PropagateSpans bool
-	// IncludeTracingHeader indicates that API calls should include the indicated tracing header contents.
-	TracingHeader string
-}
-
-// ContextWithTracingOptions returns a new context.Context with the indicated tracing options.
-func ContextWithTracingOptions(ctx context.Context, opts TracingOptions) context.Context {
-	return context.WithValue(ctx, tracingOptionsKey, opts)
-}
-
-// TracingOptionsFromContext retrieves any tracing options present in the given context. If no options are present,
-// this function returns the zero value.
-func TracingOptionsFromContext(ctx context.Context) TracingOptions {
-	opts, _ := ctx.Value(tracingOptionsKey).(TracingOptions)
-	return opts
-}
-
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
 func NewBackendClient(backend Backend) deploy.BackendClient {
 	return &backendClient{backend: backend}

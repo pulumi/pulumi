@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/pkg/util/tracing"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -75,11 +76,11 @@ func commandContext() context.Context {
 			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
 		}
 
-		tracingOptions := backend.TracingOptions{
+		tracingOptions := tracing.Options{
 			PropagateSpans: true,
 			TracingHeader:  tracingHeader,
 		}
-		ctx = backend.ContextWithTracingOptions(ctx, tracingOptions)
+		ctx = tracing.ContextWithOptions(ctx, tracingOptions)
 	}
 	return ctx
 }

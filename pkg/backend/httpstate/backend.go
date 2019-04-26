@@ -961,7 +961,15 @@ func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 		return nil, err
 	}
 
-	return b.client.GetLatestConfiguration(ctx, stackID)
+	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
+	switch {
+	case err == client.ErrNoPreviousDeployment:
+		return nil, backend.ErrNoPreviousDeployment
+	case err != nil:
+		return nil, err
+	default:
+		return cfg, nil
+	}
 }
 
 // convertResourceChanges converts the apitype version of engine.ResourceChanges into the internal version.
