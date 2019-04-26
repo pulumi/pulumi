@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
@@ -104,13 +103,18 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
 			}
 
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			}
+
 			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
-				SecretsManager:     b64.NewBase64SecretsManager(),
+				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
 

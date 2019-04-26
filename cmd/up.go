@@ -21,7 +21,6 @@ import (
 	"math"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -97,6 +96,11 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
+		sm, err := getStackSecretsManager(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -110,7 +114,7 @@ func newUpCmd() *cobra.Command {
 			M:                  m,
 			Opts:               opts,
 			StackConfiguration: cfg,
-			SecretsManager:     b64.NewBase64SecretsManager(),
+			SecretsManager:     sm,
 			Scopes:             cancellationScopes,
 		})
 		switch {
@@ -243,6 +247,13 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
+		// TODO(ellismg): Is there UX here what we want?  Do we end up double prompting for a passphrase
+		// when using passphrase based secrets management?
+		sm, err := getStackSecretsManager(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -261,7 +272,7 @@ func newUpCmd() *cobra.Command {
 			M:                  m,
 			Opts:               opts,
 			StackConfiguration: cfg,
-			SecretsManager:     b64.NewBase64SecretsManager(),
+			SecretsManager:     sm,
 			Scopes:             cancellationScopes,
 		})
 		switch {
