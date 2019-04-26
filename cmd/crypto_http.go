@@ -20,9 +20,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/secrets"
 )
 
-func newCloudSecretsManager(s httpstate.Stack) (secrets.Manager, error) {
+func newServiceSecretsManager(s httpstate.Stack) (secrets.Manager, error) {
 	client := s.Backend().(httpstate.Backend).Client()
 	id := s.StackIdentifier()
 
-	return service.NewCloudSecretsManager(client, id)
+	return service.NewServiceSecretsManager(client, id)
 }

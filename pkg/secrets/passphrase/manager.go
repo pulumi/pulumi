@@ -103,7 +103,7 @@ func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
 	return sm.crypter, nil
 }
 
-func NewLocalSecretsManager(phrase string, state string) (secrets.Manager, error) {
+func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, error) {
 	crypter, err := symmetricCrypterFromPhraseAndState(phrase, state)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
 	// (since we need to decrypt the deployment)
 	phrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 
-	sm, err := NewLocalSecretsManager(phrase, s.Salt)
+	sm, err := NewPassphaseSecretsManager(phrase, s.Salt)
 	switch {
 	case err == errIncorrectPassphrase:
 		return nil, errors.New("incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the correct passphrase")

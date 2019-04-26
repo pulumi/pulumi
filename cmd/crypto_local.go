@@ -37,7 +37,7 @@ func readPassphrase(prompt string) (string, error) {
 	return cmdutil.ReadConsoleNoEcho(prompt)
 }
 
-func newLocalSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
+func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
@@ -61,7 +61,7 @@ func newLocalSecretsManager(stackName tokens.QName, configFile string) (secrets.
 			return nil, phraseErr
 		}
 
-		sm, smerr := passphrase.NewLocalSecretsManager(phrase, info.EncryptionSalt)
+		sm, smerr := passphrase.NewPassphaseSecretsManager(phrase, info.EncryptionSalt)
 		if smerr != nil {
 			return nil, smerr
 		}
@@ -99,5 +99,5 @@ func newLocalSecretsManager(stackName tokens.QName, configFile string) (secrets.
 	}
 
 	// Finally, build the full secrets manager from the state we just saved
-	return passphrase.NewLocalSecretsManager(phrase, info.EncryptionSalt)
+	return passphrase.NewPassphaseSecretsManager(phrase, info.EncryptionSalt)
 }

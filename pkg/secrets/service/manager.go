@@ -17,19 +17,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-const Type = "pulumi"
+const Type = "service"
 
-// cloudCrypter is an encrypter/decrypter that uses the Pulumi cloud to encrypt/decrypt a stack's secrets.
-type cloudCrypter struct {
+// serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
+type serviceCrypter struct {
 	client *client.Client
 	stack  client.StackIdentifier
 }
 
-func newCloudCrypter(client *client.Client, stack client.StackIdentifier) config.Crypter {
-	return &cloudCrypter{client: client, stack: stack}
+func newServiceCrypter(client *client.Client, stack client.StackIdentifier) config.Crypter {
+	return &serviceCrypter{client: client, stack: stack}
 }
 
-func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
+func (c *serviceCrypter) EncryptValue(plaintext string) (string, error) {
 	ciphertext, err := c.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
 	if err != nil {
 		return "", err
@@ -37,7 +37,7 @@ func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
+func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
 	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
 	if err != nil {
 		return "", err
@@ -49,47 +49,47 @@ func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
 	return string(plaintext), nil
 }
 
-type cloudSecretsManagerState struct {
+type serviceSecretsManagerState struct {
 	URL     string `json:"url,omitempty"`
 	Owner   string `json:"owner"`
 	Project string `json:"project"`
 	Stack   string `json:"stack"`
 }
 
-var _ secrets.Manager = &cloudSecretsManager{}
+var _ secrets.Manager = &serviceSecretsManager{}
 
-type cloudSecretsManager struct {
-	state   cloudSecretsManagerState
+type serviceSecretsManager struct {
+	state   serviceSecretsManagerState
 	crypter config.Crypter
 }
 
-func (sm *cloudSecretsManager) Type() string {
+func (sm *serviceSecretsManager) Type() string {
 	return Type
 }
 
-func (sm *cloudSecretsManager) State() interface{} {
+func (sm *serviceSecretsManager) State() interface{} {
 	return sm.state
 }
 
-func (sm *cloudSecretsManager) Decrypter() (config.Decrypter, error) {
+func (sm *serviceSecretsManager) Decrypter() (config.Decrypter, error) {
 	contract.Assert(sm.crypter != nil)
 	return sm.crypter, nil
 }
 
-func (sm *cloudSecretsManager) Encrypter() (config.Encrypter, error) {
+func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
 	contract.Assert(sm.crypter != nil)
 	return sm.crypter, nil
 }
 
-func NewCloudSecretsManager(c *client.Client, id client.StackIdentifier) (secrets.Manager, error) {
-	return &cloudSecretsManager{
-		state: cloudSecretsManagerState{
+func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier) (secrets.Manager, error) {
+	return &serviceSecretsManager{
+		state: serviceSecretsManagerState{
 			URL:     c.URL(),
 			Owner:   id.Owner,
 			Project: id.Project,
 			Stack:   id.Stack,
 		},
-		crypter: newCloudCrypter(c, id),
+		crypter: newServiceCrypter(c, id),
 	}, nil
 }
 
@@ -102,7 +102,7 @@ func NewProvider() secrets.ManagerProvider {
 }
 
 func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
-	var s cloudSecretsManagerState
+	var s serviceSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling state")
 	}
@@ -123,8 +123,8 @@ func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
 	}
 	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{}))
 
-	return &cloudSecretsManager{
+	return &serviceSecretsManager{
 		state:   s,
-		crypter: newCloudCrypter(c, id),
+		crypter: newServiceCrypter(c, id),
 	}, nil
 }
