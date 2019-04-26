@@ -22,6 +22,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/secrets"
 )
 
+const Type = "b64"
+
 type provider struct{}
 
 func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
@@ -40,7 +42,7 @@ func NewBase64SecretsManager() secrets.Manager {
 
 type manager struct{}
 
-func (m *manager) Type() string                         { return "b64" }
+func (m *manager) Type() string                         { return Type }
 func (m *manager) State() interface{}                   { return map[string]string{} }
 func (m *manager) Encrypter() (config.Encrypter, error) { return &base64Crypter{}, nil }
 func (m *manager) Decrypter() (config.Decrypter, error) { return &base64Crypter{}, nil }

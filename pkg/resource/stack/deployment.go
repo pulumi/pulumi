@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/pulumi/pulumi/pkg/secrets/service"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -28,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -193,16 +196,24 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 
 	var secretsManager secrets.Manager
 	if deployment.SecretsProviders != nil {
+		var provider secrets.ManagerProvider
+
 		switch deployment.SecretsProviders.Type {
-		case "b64":
-			sm, err := b64.NewProvider().FromState(deployment.SecretsProviders.State)
-			if err != nil {
-				return nil, errors.Wrap(err, "creating secrets manager")
-			}
-			secretsManager = sm
+		case b64.Type:
+			provider = b64.NewProvider()
+		case passphrase.Type:
+			provider = passphrase.NewProvider()
+		case service.Type:
+			provider = service.NewProvider()
 		default:
 			return nil, errors.Errorf("unknown secrets provider type %s", deployment.SecretsProviders.Type)
 		}
+
+		sm, err := provider.FromState(deployment.SecretsProviders.State)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating secrets manager from existing state")
+		}
+		secretsManager = sm
 	}
 
 	var dec config.Decrypter

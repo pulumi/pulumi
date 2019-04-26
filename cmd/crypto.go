@@ -45,7 +45,7 @@ func getStackDencrypter(s backend.Stack) (config.Decrypter, error) {
 func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	switch stack := s.(type) {
 	case httpstate.Stack:
-		return newCloudSecretsManager(stack), nil
+		return newCloudSecretsManager(stack)
 	case filestate.Stack:
 		return newLocalSecretsManager(s.Ref().Name(), stackConfigFile)
 	}
