@@ -30,6 +30,7 @@ import (
 func newStackCmd() *cobra.Command {
 	var showIDs bool
 	var showURNs bool
+	var showSecrets bool
 	var stackName string
 
 	cmd := &cobra.Command{
@@ -128,7 +129,7 @@ func newStackCmd() *cobra.Command {
 					Prefix:  "    ",
 				})
 
-				outputs, err := getStackOutputs(snap)
+				outputs, err := getStackOutputs(snap, showSecrets)
 				if err != nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
@@ -157,6 +158,8 @@ func newStackCmd() *cobra.Command {
 		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.PersistentFlags().BoolVarP(
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())

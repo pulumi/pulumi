@@ -17,6 +17,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/resource"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -29,6 +31,7 @@ import (
 
 func newStackOutputCmd() *cobra.Command {
 	var jsonOut bool
+	var showSecrets bool
 	var stackName string
 
 	cmd := &cobra.Command{
@@ -54,7 +57,7 @@ func newStackOutputCmd() *cobra.Command {
 				return err
 			}
 
-			outputs, err := getStackOutputs(snap)
+			outputs, err := getStackOutputs(snap, showSecrets)
 			if err != nil {
 				return errors.Wrap(err, "getting outputs")
 			}
@@ -92,22 +95,57 @@ func newStackOutputCmd() *cobra.Command {
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
 
 	return cmd
 }
 
-func getStackOutputs(snap *deploy.Snapshot) (map[string]interface{}, error) {
+// massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
+// not true any secret values are replaced with "[secret]".
+func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
+	switch {
+	case v.IsArray():
+		new := make([]resource.PropertyValue, len(v.ArrayValue()))
+		for i, e := range v.ArrayValue() {
+			new[i] = massagePropertyValue(e, showSecrets)
+		}
+		return resource.NewArrayProperty(new)
+	case v.IsObject():
+		new := make(resource.PropertyMap, len(v.ObjectValue()))
+		for k, e := range v.ObjectValue() {
+			new[k] = massagePropertyValue(e, showSecrets)
+		}
+		return resource.NewObjectProperty(massageSecrets(v.ObjectValue(), showSecrets))
+	case v.IsSecret() && showSecrets:
+		return massagePropertyValue(v.SecretValue().Element, showSecrets)
+	case v.IsSecret():
+		return resource.NewStringProperty("[secret]")
+	default:
+		return v
+	}
+}
+
+// massageSecrets takes a property map and returns a new map by transforming each value with massagePropertyValue
+// This allows us to serialize the resulting map using our existing serialization logic we use for deployments, to
+// produce sane output for stackOutputs.  If we did not do this, SecretValues would be serialized as objects
+// with the signature key and value.
+func massageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyMap {
+	new := make(resource.PropertyMap, len(m))
+	for k, e := range m {
+		new[k] = massagePropertyValue(e, showSecrets)
+	}
+	return new
+}
+
+func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {
 	state, err := stack.GetRootStackResource(snap)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO(ellismg): We probably want to adjust this interface slightly. Instead of just taking an encrypter, it
-	// should take something that lests us control how SecretValues are handled. For example, we may by default want
-	// to say that secret values are just returned as `[secret]` and if you pass --show-secrets we will show them. As
-	// is, right now, you'd see weird JSON encoding of secret outputs. Note that in order to construct the snapshot
-	// you had to have access to see the secrets, so we aren't disclosing anything you already didn't have access to
-	// by passing config.NopEncrypter here.  But you will end up seeing the wire encoding of a property map which
-	// isn't super intuitive.
-	return stack.SerializeProperties(state.Outputs, config.NopEncrypter)
+	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
+	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
+	// secret values!
+	return stack.SerializeProperties(massageSecrets(state.Outputs, showSecrets), config.NewPanicCrypter())
 }
