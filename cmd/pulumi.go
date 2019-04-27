@@ -111,7 +111,11 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			checkForUpdate()
+			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
+				logging.Infof("skipping update check")
+			} else {
+				checkForUpdate()
+			}
 
 			return nil
 		}),
