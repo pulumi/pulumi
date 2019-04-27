@@ -6,6 +6,8 @@
   `xxx.checkpoint.json` file) will then be stored in that bucket.  Credentials for accessing the
   bucket operate in the normal manner for each cloud provider.  i.e. for AWS this can come from the
   environment, or your `.aws/credentials` file, etc.
+- The pulumi version update check can be skipped by setting the environment variable
+  `PULUMI_SKIP_UPDATE_CHECK` to `1` or `true`.
 
 ### Improvements
 
