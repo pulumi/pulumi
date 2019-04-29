@@ -3,16 +3,13 @@ if: branch = master OR branch =~ ^features/ OR tag IS present
 matrix:
   include:
     - os: linux
-      env: NODE_VERSION=v8.11.1 TRAVIS_PUBLISH_PACKAGES=true
+      env: NODE_VERSION=v12.1.0 TRAVIS_PUBLISH_PACKAGES=true
     - if: type IN (cron, push)
       os: osx
-      env: NODE_VERSION=v6.10.3
+      env: NODE_VERSION=v10.15.3
     - if: type = cron
       os: linux
-      env: NODE_VERSION=v11.0.0
-    - if: type = cron
-      os: linux
-      env: NODE_VERSION=v10.7
+      env: NODE_VERSION=v8.16.0
 language: go
 go: 1.12
 sudo: true # give us 7.5GB and >2 bursted cores.
