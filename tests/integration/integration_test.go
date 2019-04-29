@@ -258,6 +258,16 @@ func TestPreviewJSON(t *testing.T) {
 	// Run the preview to get the JSON. Trim out some pieces we don't want to be sensitive to (like
 	// the precise details of dynamic provider serialization), and then ensure the text matches what we expect.
 	stdout, _ := e.RunCommand("pulumi", "preview", "--json")
+
+	// Don't diff the provider, since it contains code that may change that we don't want to be sensitive to.
+	providerRegexp := regexp.MustCompile(`"__provider": ".*",`)
+	stdout = providerRegexp.ReplaceAllString(stdout, `"__provider": "...",`)
+
+	// Ignore this certain warning that fires only on Node.js 11.
+	warningRegexp := regexp.MustCompile(`(?ms)^    "diagnostics": \[.*\],\n`)
+	stdout = warningRegexp.ReplaceAllString(stdout, "")
+
+	// Now check that the result matches.
 	// nolint: lll
 	expect := fmt.Sprintf(`{
     "steps": [
@@ -296,9 +306,9 @@ func TestPreviewJSON(t *testing.T) {
     }
 }
 `, stackName)
-	rex := regexp.MustCompile(`"__provider": ".*",`)
-	stdout = rex.ReplaceAllString(stdout, `"__provider": "...",`)
 	assert.Equal(t, expect, stdout)
+
+	// Finally, remove the stack and be done.
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
