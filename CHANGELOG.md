@@ -16,6 +16,8 @@
   `PULUMI_SKIP_UPDATE_CHECK` to `1` or `true`.
 - Fix an issue where the stack would not be selected when an existing stack is specified when running
   `pulumi new <template> -s <existing-stack>`.
+- Warnings from `npm` about missing description, repository, and license fields in package.json are
+  now suppressed when `npm install` is run from `pulumi new` (via `npm install --loglevel=error`).
 
 ## 0.17.8 (Released April 23, 2019)
 
