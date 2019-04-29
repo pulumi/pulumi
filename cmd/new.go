@@ -25,6 +25,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pulumi/pulumi/pkg/backend/state"
+
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
@@ -250,6 +252,11 @@ func newNewCmd() *cobra.Command {
 				if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts); err != nil {
 					return err
 				}
+			}
+
+			// Ensure the stack is selected.
+			if !generateOnly && s != nil {
+				state.SetCurrentStack(s.Ref().String())
 			}
 
 			// Install dependencies.
