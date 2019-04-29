@@ -8,6 +8,8 @@
   environment, or your `.aws/credentials` file, etc.
 - The pulumi version update check can be skipped by setting the environment variable
   `PULUMI_SKIP_UPDATE_CHECK` to `1` or `true`.
+- Fix an issue where the stack would not be selected when an existing stack is specified when running
+  `pulumi new <template> -s <existing-stack>`.
 
 ### Improvements
 
