@@ -477,6 +477,12 @@ func installDependencies() error {
 			"then run 'pulumi up' to perform an initial deployment", command)
 	}
 
+	// Ensure the "node_modules" directory exists.
+	if _, err := os.Stat("node_modules"); os.IsNotExist(err) {
+		return errors.Errorf("installing dependencies; rerun '%s' manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment", command)
+	}
+
 	fmt.Println("Finished installing dependencies")
 	fmt.Println()
 
