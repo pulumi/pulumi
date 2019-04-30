@@ -389,7 +389,6 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	src              *evalSource                        // the evaluation source.
 	providers        ProviderSource                     // the provider source itself.
 	defaultProviders *defaultProviders                  // the default provider manager.
 	regChan          chan *registerResourceEvent        // the channel to send resource registrations to.
@@ -419,7 +418,6 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		src:              src,
 		providers:        provs,
 		defaultProviders: d,
 		regChan:          regChan,
