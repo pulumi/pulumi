@@ -133,6 +133,7 @@ func query(ctx *Context, u UpdateInfo, opts QueryOptions) result.Result {
 
 func runQuery(cancelCtx *Context, u UpdateInfo, opts QueryOptions) result.Result {
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	contract.Ignore(cancelFunc)
 
 	src, err := newQuerySource(ctx, cancelCtx.BackendClient, u, opts)
 	if err != nil {
@@ -142,15 +143,13 @@ func runQuery(cancelCtx *Context, u UpdateInfo, opts QueryOptions) result.Result
 	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context
 	// is cancelled.
 	go func() {
-		select {
-		// case <-ctx.Done():
-		case <-cancelCtx.Cancel.Canceled():
-			logging.V(4).Infof("engine.runQuery(...): signalling cancellation to providers...")
-			cancelErr := opts.plugctx.Host.SignalCancellation()
-			if cancelErr != nil {
-				logging.V(4).Infof("engine.runQuery(...): failed to signal cancellation to providers: %v", cancelErr)
-			}
-			cancelFunc()
+		<-cancelCtx.Cancel.Canceled()
+
+		logging.V(4).Infof("engine.runQuery(...): signalling cancellation to providers...")
+		cancelFunc()
+		cancelErr := opts.plugctx.Host.SignalCancellation()
+		if cancelErr != nil {
+			logging.V(4).Infof("engine.runQuery(...): failed to signal cancellation to providers: %v", cancelErr)
 		}
 	}()
 
