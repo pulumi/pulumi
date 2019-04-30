@@ -68,6 +68,11 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			var displayType = display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
 			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
@@ -75,7 +80,7 @@ func newRefreshCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
-				DiffDisplay:          diffDisplay,
+				Type:                 displayType,
 				Debug:                debug,
 			}
 
