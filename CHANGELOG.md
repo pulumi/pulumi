@@ -7,6 +7,9 @@
 - Support for referencing the outputs of other Pulumi stacks has been added to the Pulumi Python libraries via the
   `StackReference` type.
 - Add CI system detection for Bitbucket Pipelines.
+- Add support for renaming resources via the `aliases` resource option.  Adding aliases allows new resources to match
+  resource from previous deployments which used different names, maintaining the identity of the resource and avoiding
+  replacements or re-creation of the resource.
 
 ## 0.17.14 (Released May 28, 2019)
 
