@@ -17,11 +17,12 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/spf13/cobra"
 )
+
+var verbose bool
 
 func newWhoAmICmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -46,10 +47,20 @@ func newWhoAmICmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Println(name)
+			if verbose {
+				fmt.Printf("User: %s\n", name)
+				fmt.Printf("Backend URL: %s\n", b.URL())
+			} else {
+				fmt.Println(name)
+			}
+
 			return nil
 		}),
 	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&verbose, "verbose", "v", false,
+		"Print detailed whoami information")
 
 	return cmd
 }

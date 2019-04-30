@@ -13,6 +13,8 @@
 
 ### Improvements
 
+- `pulumi whoami` now outputs the URL of the currently connected backend
+
 ## 0.17.8 (Released April 23, 2019)
 
 ### Improvements
