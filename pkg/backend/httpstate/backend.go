@@ -689,6 +689,17 @@ func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
+func (b *cloudBackend) Query(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) result.Result {
+
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	return b.query(ctx, stack, op, nil /*events*/)
+}
+
 func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
@@ -778,6 +789,66 @@ func (b *cloudBackend) apply(
 	}
 
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+}
+
+// query executes a query program against the resource outputs of a stack hosted in the Pulumi
+// Cloud.
+func (b *cloudBackend) query(
+	ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
+	callerEventsOpt chan<- engine.Event) result.Result {
+
+	stackRef := stack.Ref()
+
+	q, err := b.newQuery(ctx, stackRef, op.Proj, op.Root)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	// Render query output to CLI.
+	displayEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+	go display.ShowQueryEvents("running query", displayEvents, displayDone, op.Opts.Display)
+
+	// The engineEvents channel receives all events from the engine, which we then forward onto other
+	// channels for actual processing. (displayEvents and callerEventsOpt.)
+	engineEvents := make(chan engine.Event)
+	eventsDone := make(chan bool)
+	go func() {
+		for e := range engineEvents {
+			displayEvents <- e
+			if callerEventsOpt != nil {
+				callerEventsOpt <- e
+			}
+		}
+
+		close(eventsDone)
+	}()
+
+	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
+	// return error conditions, because we will do so below after waiting for the display channels to close.
+	cancellationScope := op.Scopes.NewScope(engineEvents, true /*dryRun*/)
+	engineCtx := &engine.Context{
+		Cancel:        cancellationScope.Context(),
+		Events:        engineEvents,
+		BackendClient: httpstateBackendClient{backend: b},
+	}
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		engineCtx.ParentSpan = parentSpan.Context()
+	}
+
+	res := engine.Query(engineCtx, q, op.Opts.Engine)
+
+	// Wait for dependent channels to finish processing engineEvents before closing.
+	<-displayDone
+	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
+	close(engineEvents)
+
+	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
+	// has exited before proceeding
+	<-eventsDone
+	close(displayEvents)
+
+	return res
 }
 
 func (b *cloudBackend) runEngineAction(

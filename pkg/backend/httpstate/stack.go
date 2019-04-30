@@ -124,6 +124,10 @@ func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	return *s.snapshot, nil
 }
 
+func (s *cloudStack) Query(ctx context.Context, op backend.UpdateOperation) result.Result {
+	return backend.Query(ctx, s, op)
+}
+
 func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
