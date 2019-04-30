@@ -1,4 +1,10 @@
-## 0.17.9 (Unreleased)
+## 0.17.10 (Unreleased)
+
+### Improvements
+
+## 0.17.9 (Released April 30, 2019)
+
+### Improvements
 
 - `pulumi login` now supports `s3://`, `azblob://` and `gs://` paths (on top of `file://`) for
   storing stack information. These are passed the location of a desired bucket for each respective
@@ -10,8 +16,6 @@
   `PULUMI_SKIP_UPDATE_CHECK` to `1` or `true`.
 - Fix an issue where the stack would not be selected when an existing stack is specified when running
   `pulumi new <template> -s <existing-stack>`.
-
-### Improvements
 
 ## 0.17.8 (Released April 23, 2019)
 
