@@ -37,10 +37,19 @@ func ShowEvents(
 		// TODO[pulumi/pulumi#2390]: enable JSON display for real deployments.
 		contract.Assertf(isPreview, "JSON display only available in preview mode")
 		ShowJSONEvents(op, action, events, done, opts)
-	} else if opts.DiffDisplay {
+		return
+	}
+
+	switch opts.Type {
+	case DisplayDiff:
 		ShowDiffEvents(op, action, events, done, opts)
-	} else {
+	case DisplayProgress:
 		ShowProgressEvents(op, action, stack, proj, events, done, opts, isPreview)
+	case DisplayQuery:
+		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
+			"directly instead of through ShowEvents")
+	default:
+		contract.Failf("Unknown display type %d", opts.Type)
 	}
 }
 
@@ -75,7 +84,7 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 
 	// For logical replacement operations, only show them during progress-style updates (since this is integrated
 	// into the resource status update), or if it is requested explicitly (for diffs and JSON outputs).
-	if (opts.DiffDisplay || opts.JSONDisplay) && !step.Logical && !opts.ShowReplacementSteps {
+	if (opts.Type == DisplayDiff || opts.JSONDisplay) && !step.Logical && !opts.ShowReplacementSteps {
 		return false
 	}
 

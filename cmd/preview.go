@@ -59,6 +59,11 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			var displayType = display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					Analyzers: analyzers,
@@ -72,7 +77,7 @@ func newPreviewCmd() *cobra.Command {
 					ShowSameResources:    showSames,
 					SuppressOutputs:      suppressOutputs,
 					IsInteractive:        cmdutil.Interactive(),
-					DiffDisplay:          diffDisplay,
+					Type:                 displayType,
 					JSONDisplay:          jsonDisplay,
 					Debug:                debug,
 				},

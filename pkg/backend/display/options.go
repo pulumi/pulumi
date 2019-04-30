@@ -16,6 +16,18 @@ package display
 
 import "github.com/pulumi/pulumi/pkg/diag/colors"
 
+// Type of output to display.
+type Type int
+
+const (
+	// DisplayProgress displays an update as it progresses.
+	DisplayProgress Type = iota
+	// DisplayDiff displays a rich diff.
+	DisplayDiff
+	// DisplayQuery displays query output.
+	DisplayQuery
+)
+
 // Options controls how the output of events are rendered
 type Options struct {
 	Color                colors.Colorization // colorization to apply to events.
@@ -25,7 +37,7 @@ type Options struct {
 	SuppressOutputs      bool                // true to suppress output summarization, e.g. if contains sensitive info.
 	SummaryDiff          bool                // true if diff display should be summarized.
 	IsInteractive        bool                // true if we should display things interactively.
-	DiffDisplay          bool                // true if we should display things as a rich diff.
+	Type                 Type                // type of display (rich diff, progress, or query).
 	JSONDisplay          bool                // true if we should emit the entire diff as JSON.
 	Debug                bool                // true to enable debug output.
 }
