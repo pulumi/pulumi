@@ -61,6 +61,10 @@ func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { r
 func (s *localStack) Backend() backend.Backend                               { return s.b }
 func (s *localStack) Path() string                                           { return s.path }
 
+func (s *localStack) Query(ctx context.Context, op backend.UpdateOperation) result.Result {
+	return backend.Query(ctx, s, op)
+}
+
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }

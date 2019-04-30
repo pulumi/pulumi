@@ -337,6 +337,17 @@ func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
+func (b *localBackend) Query(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) result.Result {
+
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	return b.query(ctx, stack, op, nil /*events*/)
+}
+
 // apply actually performs the provided type of update on a locally hosted stack.
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -485,6 +496,15 @@ func (b *localBackend) apply(
 	}
 
 	return changes, nil
+}
+
+// query executes a query program against the resource outputs of a locally hosted stack.
+func (b *localBackend) query(ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
+	events chan<- engine.Event) result.Result {
+
+	// TODO: Consider implementing this for local backend. We left it out for the initial cut
+	// because we weren't sure we wanted to commit to it.
+	return result.Error("Local backend does not support querying over the state")
 }
 
 func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {

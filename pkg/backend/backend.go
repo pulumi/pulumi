@@ -111,6 +111,9 @@ type Backend interface {
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
+	// Query against the resource outputs in a stack's state checkpoint.
+	Query(ctx context.Context, stackRef StackReference, op UpdateOperation) result.Result
+
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
