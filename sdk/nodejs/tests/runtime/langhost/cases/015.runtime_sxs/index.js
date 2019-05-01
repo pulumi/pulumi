@@ -23,22 +23,21 @@ assert(pulumi1 !== pulumi2);
 assert(pulumi1.runtime !== pulumi2.runtime);
 
 // Check that various settings are equal:
-assert.strictEqual(pulumi1.runtime.isDryRun(), pulumi2.runtime.isDryRun());
-assert.strictEqual(pulumi1.runtime.getProject(), pulumi2.runtime.getProject());
-assert.strictEqual(pulumi1.runtime.getStack(), pulumi2.runtime.getStack());
-assert.deepEqual(pulumi1.runtime.allConfig(), pulumi2.runtime.allConfig());
+assert.strictEqual(pulumi1.runtime.isDryRun(), pulumi2.runtime.isDryRun(), "pulumi1.runtime.isDryRun() !== pulumi2.runtime.isDryRun()");
+assert.strictEqual(pulumi1.runtime.getProject(), pulumi2.runtime.getProject(), "pulumi1.runtime.getProject() !== pulumi2.runtime.getProject()");
+assert.strictEqual(pulumi1.runtime.getStack(), pulumi2.runtime.getStack(), "pulumi1.runtime.getStack() !== pulumi2.runtime.getStack()");
+assert.deepEqual(pulumi1.runtime.allConfig(), pulumi2.runtime.allConfig(), "pulumi1.runtime.allConfig() !== pulumi2.runtime.getStack()");
 
 // Check that the two runtimes agree on the root resource
 pulumi1.runtime.getRootResource().then(r => {
     pulumi2.runtime.getRootResource().then(other => {
-        assert.strictEqual(r, other);
+        assert.strictEqual(r, other, "pulumi1.runtime.getRootResouce() !== pulumi2.runtime.getRootResource()");
     });
 });
 
 // allConfig should have caught this, but let's check individual config values too.
 let cfg1 = new pulumi1.Config("sxs");
 let cfg2 = new pulumi2.Config("sxs");
-assert.strictEqual(cfg1.get("SxS config works!"));
 assert.strictEqual(cfg1.get("message"), cfg2.get("message"));
 
 // Now do some useful things that require RPC connections:
