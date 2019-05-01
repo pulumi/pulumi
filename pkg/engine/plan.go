@@ -17,6 +17,7 @@ package engine
 import (
 	"context"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
@@ -367,5 +368,5 @@ func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
 
 func isDefaultProviderStep(step deploy.Step) bool {
 	urn := step.URN()
-	return providers.IsProviderType(urn.Type()) && urn.Name() == "default"
+	return providers.IsProviderType(urn.Type()) && strings.HasPrefix(urn.Name().String(), "default")
 }
