@@ -419,6 +419,7 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []st
 		args = append(args, "--dry-run")
 	}
 
+	maybeAppendArg("query-mode", fmt.Sprint(req.GetQueryMode()))
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendArg("tracing", host.tracing)
 	if req.GetProgram() == "" {

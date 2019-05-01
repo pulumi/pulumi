@@ -87,6 +87,7 @@ function usage(): void {
     console.error(`        --stack=s           set the stack name to s`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
     console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
+    console.error(`        --query-mode        true to run pulumi in query mode`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      [required] the RPC address for a resource monitor to connect to`);
@@ -105,7 +106,7 @@ function printErrorUsageAndExit(message: string): never {
 function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     const argv: minimist.ParsedArgs = minimist(args, {
-        boolean: [ "dry-run" ],
+        boolean: [ "dry-run", "query-mode" ],
         string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             return true;
@@ -139,6 +140,7 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_PROJECT", argv["project"]);
     addToEnvIfDefined("PULUMI_NODEJS_STACK", argv["stack"]);
     addToEnvIfDefined("PULUMI_NODEJS_DRY_RUN", argv["dry-run"]);
+    addToEnvIfDefined("PULUMI_NODEJS_QUERY_MODE", argv["query-mode"]);
     addToEnvIfDefined("PULUMI_NODEJS_PARALLEL", argv["parallel"]);
     addToEnvIfDefined("PULUMI_NODEJS_MONITOR", argv["monitor"]);
     addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
