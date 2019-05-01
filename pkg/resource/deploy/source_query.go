@@ -134,6 +134,7 @@ func (src *querySource) forkRun() {
 				Args:           src.runinfo.Args,
 				Config:         config,
 				DryRun:         true,
+				QueryMode:      true,
 				Parallel:       math.MaxInt32,
 			})
 
