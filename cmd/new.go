@@ -459,7 +459,9 @@ func installDependencies() error {
 	var c *exec.Cmd
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		command = "npm install"
-		c = exec.Command("npm", "install")
+		// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
+		// `description`, `repository`, and `license` fields in the package.json file.
+		c = exec.Command("npm", "install", "--loglevel=error")
 	} else {
 		return nil
 	}
@@ -472,6 +474,12 @@ func installDependencies() error {
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
 		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment", command)
+	}
+
+	// Ensure the "node_modules" directory exists.
+	if _, err := os.Stat("node_modules"); os.IsNotExist(err) {
+		return errors.Errorf("installing dependencies; rerun '%s' manually to try again, "+
 			"then run 'pulumi up' to perform an initial deployment", command)
 	}
 

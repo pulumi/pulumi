@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- Warnings from `npm` about missing description, repository, and license fields in package.json are
+  now suppressed when `npm install` is run from `pulumi new` (via `npm install --loglevel=error`).
+
 ## 0.17.9 (Released April 30, 2019)
 
 ### Improvements
