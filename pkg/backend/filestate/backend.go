@@ -93,26 +93,9 @@ func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	var localPath string
-	if u == "file://~" {
-		usr, err := user.Current()
-		if err != nil {
-			return nil, errors.Wrap(err, "Could not determine current user")
-		}
-
-		localPath = usr.HomeDir
-	} else if strings.HasPrefix(u, "file://") {
-		// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
-		localPath, _ = filepath.Abs(strings.TrimPrefix(u, "file://"))
-	}
-
-	if localPath != "" {
-		u2 := url.URL{Scheme: "file", Path: localPath}
-		u = u2.String()
-
-		if err := os.MkdirAll(localPath, 0700); err != nil {
-			return nil, errors.Wrap(err, "An IO error occurred during the current operation")
-		}
+	u, err := massageBlobPath(u)
+	if err != nil {
+		return nil, err
 	}
 
 	bucket, err := blob.OpenBucket(context.TODO(), u)
@@ -126,6 +109,53 @@ func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 		stackConfigFile: stackConfigFile,
 		bucket:          bucket,
 	}, nil
+}
+
+const filePathPrefix = "file://"
+
+// massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
+// can support.  Importantly, s3/azblob/gs paths should not be be touched. This will only affect
+// file:// paths which have a few oddities around them that we want to ensure work properly.
+func massageBlobPath(path string) (string, error) {
+	if !strings.HasPrefix(path, filePathPrefix) {
+		// not a file:// path.  Keep this untouched and pass directly to gocloud.
+		return path, nil
+	}
+
+	// Strip off the "file://"" portion so we can examine and determine what to do with the rest.
+	path = strings.TrimPrefix(path, filePathPrefix)
+
+	// We need to specially handle ~.  The shell doesn't take care of this for us, and later
+	// functions we run into can't handle this either.
+	//
+	// From https://stackoverflow.com/questions/17609732/expand-tilde-to-home-directory
+	if strings.HasPrefix(path, "~") {
+		usr, err := user.Current()
+		if err != nil {
+			return "", errors.Wrap(err, "Could not determine current user to resolve `file://~` path.")
+		}
+
+		if path == "~" {
+			path = usr.HomeDir
+		} else {
+			path = filepath.Join(usr.HomeDir, path[2:])
+		}
+	}
+
+	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+	}
+
+	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
+	// On Windows, convert "\" to "/" and add a leading "/":
+	path = filepath.ToSlash(path)
+	if os.PathSeparator != '/' && !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
+	return filePathPrefix + path, nil
 }
 
 func Login(d diag.Sink, url, stackConfigFile string) (Backend, error) {

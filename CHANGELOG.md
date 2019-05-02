@@ -1,5 +1,8 @@
 ## 0.17.10 (Unreleased)
 
+- Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
+  `s3://`, `azblob://` and `gs://` save locations.
+
 ### Improvements
 
 - Warnings from `npm` about missing description, repository, and license fields in package.json are
