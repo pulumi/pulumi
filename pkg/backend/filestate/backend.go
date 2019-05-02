@@ -142,12 +142,12 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		}
 	}
 
-	return &localBackend{
-		d:           d,
+	return NewLockableBackend(&localBackend{
+		d:      d,
 		originalURL: originalURL,
-		url:         u,
-		bucket:      &wrappedBucket{bucket: bucket},
-	}, nil
+		url:    u,
+		bucket: &wrappedBucket{bucket: bucket},
+	}), nil
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud

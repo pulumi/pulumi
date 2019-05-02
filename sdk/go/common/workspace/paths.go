@@ -45,6 +45,8 @@ const (
 	PolicyDir = "policies"
 	// StackDir is the name of the directory that holds stack information for projects.
 	StackDir = "stacks"
+	// lockDir is the name of the directory that holds locking information for projects.
+	LockDir = "locks"
 	// TemplateDir is the name of the directory containing templates.
 	TemplateDir = "templates"
 	// TemplatePolicyDir is the name of the directory containing templates for Policy Packs.

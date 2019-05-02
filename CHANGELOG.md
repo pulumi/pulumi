@@ -1652,6 +1652,7 @@ CHANGELOG
 
 ### Improvements
 
+- Implement locks in filestate backends
 - Fix an issue where creating a first class provider would fail if any of the
   configuration values for the providers were secrets. (fixes [pulumi/pulumi#2741](https://github.com/pulumi/pulumi/issues/2741)).
 - Fix an issue where when using `--diff` or looking at details for a proposed
