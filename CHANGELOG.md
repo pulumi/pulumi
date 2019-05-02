@@ -2,6 +2,7 @@
 
 ### Improvements
 
+- Minor contributing document improvement.
 - Warnings from `npm` about missing description, repository, and license fields in package.json are
   now suppressed when `npm install` is run from `pulumi new` (via `npm install --loglevel=error`).
 
