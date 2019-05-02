@@ -5,7 +5,7 @@
 #
 # The default targets we use are:
 #
-#  - ensure: restores and dependencies needed for the build from
+#  - ensure: restores any dependencies needed for the build from
 #            remote sources (e.g dep ensure or yarn install)
 #
 #  - build: builds a project but does not install it. In the case of

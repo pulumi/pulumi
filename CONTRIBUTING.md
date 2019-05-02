@@ -31,6 +31,7 @@ For historical reasons (which we'd [like to address](https://github.com/pulumi/p
 
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
 
+0. `make ensure`, which restores/installs any build dependencies
 1. `make`, which builds Pulumi and runs a quick set of tests
 2. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
 
