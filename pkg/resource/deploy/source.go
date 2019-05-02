@@ -18,11 +18,13 @@ import (
 	"context"
 	"io"
 
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/result"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // A ProviderSource allows a Source to lookup provider plugins.
@@ -50,6 +52,23 @@ type SourceIterator interface {
 
 	// Next returns the next event from the source.
 	Next() (SourceEvent, result.Result)
+}
+
+// SourceResourceMonitor directs resource operations from the `Source` to various resource
+// providers.
+type SourceResourceMonitor interface {
+	// NOTE: This interface does not implement pulumirpc.ResourceMonitorClient because the eval and
+	// query implementations of `Source` do not implement precisely the same signatures.
+
+	Address() string
+	Cancel() error
+	Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error)
+	ReadResource(ctx context.Context,
+		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
+	RegisterResource(ctx context.Context,
+		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
+	RegisterResourceOutputs(ctx context.Context,
+		req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error)
 }
 
 // SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source

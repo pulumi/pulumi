@@ -117,7 +117,7 @@ func (src *evalSource) Iterate(
 }
 
 type evalSourceIterator struct {
-	mon         *resmon                            // the resource monitor, per iterator.
+	mon         SourceResourceMonitor              // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
@@ -398,6 +398,8 @@ type resmon struct {
 	cancel           chan bool                          // a channel that can cancel the server.
 	done             chan error                         // a channel that resolves when the server completes.
 }
+
+var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
