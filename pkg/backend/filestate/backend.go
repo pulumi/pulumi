@@ -64,6 +64,7 @@ type localBackend struct {
 	url             string
 	stackConfigFile string
 	bucket          *blob.Bucket
+	bucketSubDir    string
 }
 
 type localBackendReference struct {
@@ -98,6 +99,15 @@ func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 		return nil, err
 	}
 
+	var bucketSubDir string
+	if !strings.HasPrefix(u, "file://") {
+		p, err := url.Parse(u)
+		if err != nil {
+			return nil, err
+		}
+		bucketSubDir = strings.TrimLeft(p.Path, "/")
+	}
+
 	bucket, err := blob.OpenBucket(context.TODO(), u)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
@@ -108,6 +118,7 @@ func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
 		url:             u,
 		stackConfigFile: stackConfigFile,
 		bucket:          bucket,
+		bucketSubDir:    bucketSubDir,
 	}, nil
 }
 
@@ -182,6 +193,9 @@ func (b *localBackend) URL() string {
 }
 
 func (b *localBackend) StateDir() string {
+	if b.bucketSubDir != "" {
+		return filepath.Join(b.bucketSubDir, workspace.BookkeepingDir)
+	}
 	return workspace.BookkeepingDir
 }
 

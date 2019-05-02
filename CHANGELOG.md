@@ -1,5 +1,6 @@
 ## 0.17.10 (Unreleased)
 
+- Fixes a bug where the path provided to a URL in `pulumi login` is lost are dropped, so if you `pulumi login s3://bucketname/afolder`, the Pulumi files will be inside of `s3://bucketname/afolder/.pulumi` rather than `s3://bucketname/.pulumi`
 - Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
   `s3://`, `azblob://` and `gs://` save locations.
 
