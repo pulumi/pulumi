@@ -176,7 +176,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newPluginCmd())
 	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newHistoryCmd())
-	cmd.AddCommand(newQueryCmd())
 
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenCompletionCmd(cmd))
@@ -187,6 +186,7 @@ func NewPulumiCmd() *cobra.Command {
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
+		cmd.AddCommand(newQueryCmd())
 	}
 
 	return cmd
