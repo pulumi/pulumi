@@ -47,6 +47,9 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 
 	// First, fire up a resource monitor that will disallow all resource operations, as well as
 	// service calls for things like resource ouptuts of state snapshots.
+	//
+	// NOTE: Using the queryResourceMonitor here is *VERY* important, as its job is to disallow
+	// resource operations in query mode!
 	mon, err := newQueryResourceMonitor(builtins)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
@@ -54,11 +57,12 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 
 	// Create a new iterator with appropriate channels, and gear up to go!
 	src := &querySource{
-		mon:     mon,
-		plugctx: plugctx,
-		runinfo: runinfo,
-		finChan: make(chan result.Result),
-		cancel:  cancel,
+		mon:           mon,
+		plugctx:       plugctx,
+		runinfo:       runinfo,
+		runLangPlugin: runLangPlugin,
+		finChan:       make(chan result.Result),
+		cancel:        cancel,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -70,33 +74,38 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 }
 
 type querySource struct {
-	mon     *queryResmon       // the resource monitor, per iterator.
-	plugctx *plugin.Context    // the plugin context.
-	runinfo *EvalRunInfo       // the directives to use when running the program.
-	finChan chan result.Result // the channel that communicates completion.
-	done    bool               // set to true when the evaluation is done.
-	cancel  context.Context
+	mon           SourceResourceMonitor            // the resource monitor, per iterator.
+	plugctx       *plugin.Context                  // the plugin context.
+	runinfo       *EvalRunInfo                     // the directives to use when running the program.
+	runLangPlugin func(*querySource) result.Result // runs the language plugin.
+	finChan       chan result.Result               // the channel that communicates completion.
+	done          bool                             // set to true when the evaluation is done.
+	res           result.Result                    // result when the channel is finished.
+	cancel        context.Context
 }
 
 func (src *querySource) Close() error {
 	// Cancel the monitor and reclaim any associated resources.
 	src.done = true
+	close(src.finChan)
 	return src.mon.Cancel()
 }
 
 func (src *querySource) Wait() result.Result {
 	// If we are done, quit.
 	if src.done {
-		return nil
+		return src.res
 	}
 
 	select {
-	case res := <-src.finChan:
-		src.Close()
-		return res
+	case src.res = <-src.finChan:
+		// Language plugin has exited. No need to call `Close`.
+		src.done = true
+		return src.res
 	case <-src.cancel.Done():
+		src.done = true
 		src.Close()
-		return nil
+		return src.res
 	}
 }
 
@@ -106,54 +115,54 @@ func (src *querySource) forkRun() {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
-		// Next, launch the language plugin.
-		run := func() result.Result {
-			rt := src.runinfo.Proj.Runtime.Name()
-			langhost, err := src.plugctx.Host.LanguageRuntime(rt)
-			if err != nil {
-				return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
-			}
-			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
-
-			// Make sure to clean up before exiting.
-			defer contract.IgnoreClose(langhost)
-
-			// Decrypt the configuration.
-			config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			// Now run the actual program.
-			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress: src.mon.Address(),
-				Stack:          string(src.runinfo.Target.Name),
-				Project:        string(src.runinfo.Proj.Name),
-				Pwd:            src.runinfo.Pwd,
-				Program:        src.runinfo.Program,
-				Args:           src.runinfo.Args,
-				Config:         config,
-				DryRun:         true,
-				QueryMode:      true,
-				Parallel:       math.MaxInt32,
-			})
-
-			// Check if we were asked to Bail.  This a special random constant used for that
-			// purpose.
-			if err == nil && bail {
-				return result.Bail()
-			}
-
-			if err == nil && progerr != "" {
-				// If the program had an unhandled error; propagate it to the caller.
-				err = errors.Errorf("an unhandled error occurred: %v", progerr)
-			}
-			return result.WrapIfNonNil(err)
-		}
-
-		// Communicate the error, if it exists, or nil if the program exited cleanly.
-		src.finChan <- run()
+		// Next, launch the language plugin. Communicate the error, if it exists, or nil if the
+		// program exited cleanly.
+		src.finChan <- src.runLangPlugin(src)
 	}()
+}
+
+func runLangPlugin(src *querySource) result.Result {
+	rt := src.runinfo.Proj.Runtime.Name()
+	langhost, err := src.plugctx.Host.LanguageRuntime(rt)
+	if err != nil {
+		return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
+	}
+	contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
+
+	// Make sure to clean up before exiting.
+	defer contract.IgnoreClose(langhost)
+
+	// Decrypt the configuration.
+	config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	// Now run the actual program.
+	progerr, bail, err := langhost.Run(plugin.RunInfo{
+		MonitorAddress: src.mon.Address(),
+		Stack:          string(src.runinfo.Target.Name),
+		Project:        string(src.runinfo.Proj.Name),
+		Pwd:            src.runinfo.Pwd,
+		Program:        src.runinfo.Program,
+		Args:           src.runinfo.Args,
+		Config:         config,
+		DryRun:         true,
+		QueryMode:      true,
+		Parallel:       math.MaxInt32,
+	})
+
+	// Check if we were asked to Bail.  This a special random constant used for that
+	// purpose.
+	if err == nil && bail {
+		return result.Bail()
+	}
+
+	if err == nil && progerr != "" {
+		// If the program had an unhandled error; propagate it to the caller.
+		err = errors.Errorf("an unhandled error occurred: %v", progerr)
+	}
+	return result.WrapIfNonNil(err)
 }
 
 // newQueryResourceMonitor creates a new resource monitor RPC server intended to be used in Pulumi's
@@ -199,6 +208,8 @@ type queryResmon struct {
 	cancel   chan bool        // a channel that can cancel the server.
 	done     chan error       // a channel that resolves when the server completes.
 }
+
+var _ SourceResourceMonitor = (*queryResmon)(nil)
 
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *queryResmon) Address() string {
