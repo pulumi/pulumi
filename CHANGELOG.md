@@ -4,6 +4,9 @@
 
 - Warnings from `npm` about missing description, repository, and license fields in package.json are
   now suppressed when `npm install` is run from `pulumi new` (via `npm install --loglevel=error`).
+- Depend on newer version of gRPC package in the NodeJS SDK. This version has
+  prebuilt binaries for Node 12, which should make installing `@pulumi/pulumi`
+  more reliable when running on Node 12.
 
 ## 0.17.9 (Released April 30, 2019)
 
