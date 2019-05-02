@@ -793,7 +793,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	}
 
 	// Stack init
-	stackInitArgs := []string{"stack", "init",stackInitName}
+	stackInitArgs := []string{"stack", "init", stackInitName}
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
