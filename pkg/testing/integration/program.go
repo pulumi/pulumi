@@ -770,6 +770,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
 	// Login as needed.
+	stackInitName := string(pt.opts.GetStackNameWithOwner())
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" && pt.opts.CloudURL == "" {
 		fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
 	} else {
@@ -780,13 +782,17 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		loginArgs := []string{"login"}
 		loginArgs = addFlagIfNonNil(loginArgs, "--cloud-url", pt.opts.CloudURL)
 
+		if strings.HasPrefix(pt.opts.CloudURL, "file://") {
+			stackInitName = string(pt.opts.GetStackName())
+		}
+
 		if err := pt.runPulumiCommand("pulumi-login", loginArgs, dir); err != nil {
 			return err
 		}
 	}
 
 	// Stack init
-	stackInitArgs := []string{"stack", "init", string(pt.opts.GetStackNameWithOwner())}
+	stackInitArgs := []string{"stack", "init",stackInitName}
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
