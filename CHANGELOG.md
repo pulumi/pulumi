@@ -1,4 +1,6 @@
-## 0.17.10 (Unreleased)
+## 0.17.11 (Unreleased)
+
+## 0.17.10 (Released 5/2/2019)
 
 - Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
   `s3://`, `azblob://` and `gs://` save locations.
