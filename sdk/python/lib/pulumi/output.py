@@ -93,7 +93,7 @@ class Output(Generic[T]):
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
         and you want to get a transitive dependency of it.
 
-        This function will be called during execution of a 'pulumi update' request.  It may not run
+        This function will be called during execution of a 'pulumi up' request.  It may not run
         during 'pulumi preview' (as the values of resources are of course may not be known then).
 
         :param Callable[[T],Input[U]] func: A function that will, given this Output's value, transform the value to
