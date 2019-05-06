@@ -43,6 +43,15 @@ func getStackDencrypter(s backend.Stack) (config.Decrypter, error) {
 }
 
 func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
+	ps, err := loadProjectStack(s)
+	if err != nil {
+		return nil, err
+	}
+
+	if ps.EncryptionSalt != "" {
+		return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
+	}
+
 	switch stack := s.(type) {
 	case httpstate.Stack:
 		return newServiceSecretsManager(stack)

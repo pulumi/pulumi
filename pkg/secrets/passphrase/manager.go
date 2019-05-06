@@ -28,7 +28,7 @@ import (
 
 const Type = "passphrase"
 
-var errIncorrectPassphrase = errors.New("incorrect passphrase")
+var ErrIncorrectPassphrase = errors.New("incorrect passphrase")
 
 // given a passphrase and an encryption state, construct a Crypter from it. Our encryption
 // state value is a version tag followed by version specific state information. Presently, we only have one version
@@ -52,7 +52,7 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Cry
 	decrypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
 	decrypted, err := decrypter.DecryptValue(state[indexN(state, ":", 2)+1:])
 	if err != nil || decrypted != "pulumi" {
-		return nil, errors.New("incorrect passphrase")
+		return nil, ErrIncorrectPassphrase
 	}
 
 	return decrypter, nil
@@ -138,7 +138,7 @@ func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
 
 	sm, err := NewPassphaseSecretsManager(phrase, s.Salt)
 	switch {
-	case err == errIncorrectPassphrase:
+	case err == ErrIncorrectPassphrase:
 		return nil, errors.New("incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the correct passphrase")
 	case err != nil:
 		return nil, errors.Wrap(err, "constructing secrets manager")

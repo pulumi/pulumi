@@ -19,8 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
-
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
@@ -55,31 +54,46 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 
 	// If we have a salt, we can just use it.
 	if info.EncryptionSalt != "" {
-		phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
-			"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
-		if phraseErr != nil {
-			return nil, phraseErr
+		for {
+			phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
+				"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
+			if phraseErr != nil {
+				return nil, phraseErr
+			}
+
+			sm, smerr := passphrase.NewPassphaseSecretsManager(phrase, info.EncryptionSalt)
+			switch {
+			case smerr == passphrase.ErrIncorrectPassphrase:
+				cmdutil.Diag().Errorf(diag.Message("", "incorrect passphrase"))
+				continue
+			case smerr != nil:
+				return nil, smerr
+			default:
+				return sm, nil
+			}
+		}
+	}
+
+	var phrase string
+
+	// Get a the passphrase from the user, ensuring that they match.
+	for {
+		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
+		first, err := readPassphrase("Enter your passphrase to protect config/secrets")
+		if err != nil {
+			return nil, err
+		}
+		second, err := readPassphrase("Re-enter your passphrase to confirm")
+		if err != nil {
+			return nil, err
 		}
 
-		sm, smerr := passphrase.NewPassphaseSecretsManager(phrase, info.EncryptionSalt)
-		if smerr != nil {
-			return nil, smerr
+		if first == second {
+			phrase = first
+			break
 		}
-
-		return sm, nil
-	}
-
-	// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
-	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets")
-	if err != nil {
-		return nil, err
-	}
-	confirm, err := readPassphrase("Re-enter your passphrase to confirm")
-	if err != nil {
-		return nil, err
-	}
-	if phrase != confirm {
-		return nil, errors.New("passphrases do not match")
+		// If they didn't match, print an error and try again
+		cmdutil.Diag().Errorf(diag.Message("", "passphrases do not match"))
 	}
 
 	// Produce a new salt.

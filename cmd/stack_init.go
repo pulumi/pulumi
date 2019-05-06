@@ -23,6 +23,7 @@ import (
 )
 
 func newStackInitCmd() *cobra.Command {
+	var secretsProvider string
 	var stackName string
 
 	cmd := &cobra.Command{
@@ -74,11 +75,14 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/)
+			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
 			return err
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to create")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "", "The name of the provider that should be used to encrypt and "+
+			"decrypt secrets.")
 	return cmd
 }

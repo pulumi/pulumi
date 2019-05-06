@@ -61,6 +61,7 @@ func newUpCmd() *cobra.Command {
 	var skipPreview bool
 	var suppressOutputs bool
 	var yes bool
+	var secretsProvider string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -221,7 +222,8 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes, opts.Display); err != nil {
+			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes,
+				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}
 			// The backend will print "Created stack '<stack>'." on success.
@@ -354,6 +356,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "", "The name of the provider that should be used to encrypt and "+
+			"decrypt secrets. Only used when creating a new stack from an existing template.")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
