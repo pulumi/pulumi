@@ -1,6 +1,6 @@
 ## 0.17.11 (Unreleased)
 
-- Add detection of CI environment when running inside Azure Pipelines.
+- Add support for Azure Pipelines in CI environment detection.
 
 ## 0.17.10 (Released 5/2/2019)
 

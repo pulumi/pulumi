@@ -15,6 +15,7 @@
 package ciutil
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -39,64 +40,16 @@ type Vars struct {
 }
 
 // DetectVars detects and returns the CI variables for the current environment.
+// Not all fields of the `Vars` struct are applicable to every CI system,
+// and may be left blank.
 func DetectVars() Vars {
 	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
 		return Vars{Name: ""}
 	}
 
-	systemName := DetectSystem()
-	// If CI variables have been set specifically for Pulumi in the environment,
-	// use that in preference to attempting to automatically detect the CI system.
-	// This allows Pulumi to work with any CI system with appropriate configuration,
-	// rather than requiring explicit support for each one.
-	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
-		v := Vars{}
-		// Override the name with the actual name in the env var.
-		v.Name = System(os.Getenv("PULUMI_CI_SYSTEM"))
-		v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
-		v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
-		v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
-		v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
-
-		// Don't proceed with automatic CI detection since we are using the PULUMI_* values.
-		return v
-	}
-
-	return detectCISystemVars(systemName)
-}
-
-// detectCISystemVars detects the various aspects of a CI environment
-// using pre-defined variables provided by each CI system.
-// It's okay if we can't detect the additional metadata,
-// we'll just have reduced functionality for our various CI integrations.
-func detectCISystemVars(systemName System) Vars {
-	v := Vars{Name: systemName}
+	v := Vars{Name: DetectSystem()}
 
 	switch v.Name {
-	case GitLab:
-		// See https://docs.gitlab.com/ee/ci/variables/.
-		v.BuildID = os.Getenv("CI_JOB_ID")
-		v.BuildURL = os.Getenv("CI_JOB_URL")
-		v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
-		v.SHA = os.Getenv("CI_COMMIT_SHA")
-		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
-		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
-		v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
-	case Travis:
-		// See https://docs.travis-ci.com/user/environment-variables/.
-		v.BuildID = os.Getenv("TRAVIS_JOB_ID")
-		v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
-		v.BuildURL = os.Getenv("TRAVIS_BUILD_WEB_URL")
-		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
-		v.BranchName = os.Getenv("TRAVIS_BRANCH")
-		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
-		v.PRNumber = os.Getenv("TRAVIS_PULL_REQUEST")
-	case CircleCI:
-		// See: https://circleci.com/docs/2.0/env-vars/
-		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
-		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
-		v.SHA = os.Getenv("CIRCLE_SHA1")
-		v.BranchName = os.Getenv("CIRCLE_BRANCH")
 	case AzurePipelines:
 		// See:
 		// https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#build-variables
@@ -112,12 +65,45 @@ func detectCISystemVars(systemName System) Vars {
 		vcsProvider := os.Getenv("BUILD_REPOSITORY_PROVIDER")
 		switch vcsProvider {
 		case "TfsGit":
+			orgURI := os.Getenv("SYSTEM_PULLREQUEST_TEAMFOUNDATIONCOLLECTIONURI")
+			projectName := os.Getenv("SYSTEM_TEAMPROJECT")
+			v.BuildURL = fmt.Sprintf("%v/%v/_build/results?buildId=%v", orgURI, projectName, v.BuildID)
 			// TfsGit is a git repo hosted on Azure DevOps.
 			v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
 		case "GitHub":
 			// GitHub is a git repo hosted on GitHub.
 			v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
 		}
+	case CircleCI:
+		// See: https://circleci.com/docs/2.0/env-vars/
+		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
+		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
+		v.SHA = os.Getenv("CIRCLE_SHA1")
+		v.BranchName = os.Getenv("CIRCLE_BRANCH")
+	case GitLab:
+		// See https://docs.gitlab.com/ee/ci/variables/.
+		v.BuildID = os.Getenv("CI_JOB_ID")
+		v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
+		v.BuildURL = os.Getenv("CI_JOB_URL")
+		v.SHA = os.Getenv("CI_COMMIT_SHA")
+		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
+		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
+		v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
+	case PulumiCI:
+		v.Name = System(os.Getenv("PULUMI_CI_SYSTEM"))
+		v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
+		v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
+		v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
+		v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
+	case Travis:
+		// See https://docs.travis-ci.com/user/environment-variables/.
+		v.BuildID = os.Getenv("TRAVIS_JOB_ID")
+		v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
+		v.BuildURL = os.Getenv("TRAVIS_BUILD_WEB_URL")
+		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
+		v.BranchName = os.Getenv("TRAVIS_BRANCH")
+		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
+		v.PRNumber = os.Getenv("TRAVIS_PULL_REQUEST")
 	}
 	return v
 }
