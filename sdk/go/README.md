@@ -13,4 +13,4 @@ To author a Pulumi program in Go, simply say so in your `Pulumi.yaml`
 and ensure you have `pulumi-language-go` on your path (it is distributed in the Pulumi download automatically).
 
 By default, the language plugin will use your project's name, `<my-project>`, as the executable that it loads.  This too
-must be on your path for the language provider to load it when you run `pulumi preview` or `pulumi update`.
+must be on your path for the language provider to load it when you run `pulumi preview` or `pulumi up`.

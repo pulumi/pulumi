@@ -344,7 +344,7 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
         # can propagate its final value.  Otherwise, it must be undefined, since we don't know
         # if it's final.
         if not settings.is_dry_run():
-            # normal 'pulumi update'.  resolve the output with the value we got back
+            # normal 'pulumi up'.  resolve the output with the value we got back
             # from the engine.  That output can always run its .apply calls.
             resolve(value, True, None)
         else:

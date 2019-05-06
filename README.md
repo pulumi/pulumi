@@ -110,14 +110,14 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
 
 4. **Deploy to the Cloud**:
 
-    Run `pulumi update` to get your code to the cloud:
+    Run `pulumi up` to get your code to the cloud:
 
     ```bash
-    $ pulumi update
+    $ pulumi up
     ```
 
     This makes all cloud resources needed to run your code.  Simply make edits to your project, and subsequent
-    `pulumi update`s will compute the minimal diff to deploy your changes.
+    `pulumi up`s will compute the minimal diff to deploy your changes.
 
 5. **Use Your Program**:
 

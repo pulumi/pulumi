@@ -510,7 +510,7 @@ export interface OutputInstance<T> {
      * If you need have multiple Outputs and a single Output is needed that combines both
      * set of resources, then 'pulumi.all' should be used instead.
      *
-     * This function will only be called execution of a 'pulumi update' request.  It will not run
+     * This function will only be called execution of a 'pulumi up' request.  It will not run
      * during 'pulumi preview' (as the values of resources are of course not known then). It is not
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.

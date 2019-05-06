@@ -83,7 +83,7 @@
 
 ### Improvements
 
-- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi update` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi update` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
+- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi up` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi up` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
 - Fix two warnings that were printed when using a dynamic provider about missing method handlers.
 - A bug in the previous version of the Pulumi CLI occasionally caused the Pulumi Engine to load the incorrect resource
   plugin when processing an update. This bug has been fixed in 0.17.3 by performing a deterministic selection of the
@@ -294,7 +294,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - During previews and updates, read operations (i.e. calls to `.get` methods) are no longer shown in the output unless they cause any changes.
 
-- Fix a performance regression where `pulumi preview` and `pulumi update` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
+- Fix a performance regression where `pulumi preview` and `pulumi up` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
 
 ## 0.16.8 (Released December 14th, 2018)
 
@@ -384,7 +384,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Add an `iterable` module to `@pulumi/pulumi` with two helpful combinators `toObject` and `groupBy` to help combine multiple `Output<T>`'s into a single object.
 
-- Pulumi no longer prompts you for confirmation when `--skip-preview` is passed to `pulumi update`. Instead, it just preforms the update as requested.
+- Pulumi no longer prompts you for confirmation when `--skip-preview` is passed to `pulumi up`. Instead, it just preforms the update as requested.
 
 - Add the `--json` flag to the `pulumi stack ls` command.
 

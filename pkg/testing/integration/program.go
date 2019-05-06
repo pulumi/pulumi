@@ -151,7 +151,7 @@ type ProgramTestOptions struct {
 	Quick bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
 	PreviewCommandlineFlags []string
-	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
+	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
 	RunBuild bool
@@ -187,7 +187,7 @@ type ProgramTestOptions struct {
 	// equivalent to `--logtostderr -v=N`, where N is the value of DebugLogLevel.  This may also be enabled by setting
 	// the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
 	DebugLogLevel int
-	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi update`, and
+	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi up`, and
 	// `pulumi destroy`.  This may also be enabled by setting the environment variable PULUMI_TEST_DEBUG_UPDATES.
 	DebugUpdates bool
 
@@ -426,11 +426,11 @@ func GetLogs(
 //   pulumi config set <each opts.Config>
 //   pulumi config set --secret <each opts.Secrets>
 //   pulumi preview
-//   pulumi update
+//   pulumi up
 //   pulumi stack export --file stack.json
 //   pulumi stack import --file stack.json
 //   pulumi preview (expected to be empty)
-//   pulumi update (expected to be empty)
+//   pulumi up (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
 //
