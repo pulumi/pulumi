@@ -40,12 +40,17 @@ type Vars struct {
 
 // DetectVars detects and returns the CI variables for the current environment.
 func DetectVars() Vars {
-	v := Vars{Name: DetectSystem()}
+	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
+		return Vars{Name: ""}
+	}
+
+	systemName := DetectSystem()
 	// If CI variables have been set specifically for Pulumi in the environment,
 	// use that in preference to attempting to automatically detect the CI system.
 	// This allows Pulumi to work with any CI system with appropriate configuration,
 	// rather than requiring explicit support for each one.
 	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
+		v := Vars{}
 		// Override the name with the actual name in the env var.
 		v.Name = System(os.Getenv("PULUMI_CI_SYSTEM"))
 		v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
@@ -56,9 +61,17 @@ func DetectVars() Vars {
 		// Don't proceed with automatic CI detection since we are using the PULUMI_* values.
 		return v
 	}
-	// All CI systems have a name (that's how we know we're in a CI system). After detecting one, we will
-	// try to detect some additional CI-specific metadata that the CLI will use. It's okay if we can't,
-	// we'll just have reduced functionality for our various CI integrations.
+
+	return detectCISystemVars(systemName)
+}
+
+// detectCISystemVars detects the various aspects of a CI environment
+// using pre-defined variables provided by each CI system.
+// It's okay if we can't detect the additional metadata,
+// we'll just have reduced functionality for our various CI integrations.
+func detectCISystemVars(systemName System) Vars {
+	v := Vars{Name: systemName}
+
 	switch v.Name {
 	case GitLab:
 		// See https://docs.gitlab.com/ee/ci/variables/.
@@ -84,6 +97,27 @@ func DetectVars() Vars {
 		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
 		v.SHA = os.Getenv("CIRCLE_SHA1")
 		v.BranchName = os.Getenv("CIRCLE_BRANCH")
+	case AzurePipelines:
+		// See:
+		// https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#build-variables
+		v.BuildID = os.Getenv("BUILD_BUILDID")
+		v.BuildType = os.Getenv("BUILD_REASON")
+		v.SHA = os.Getenv("BUILD_SOURCEVERSION")
+		v.BranchName = os.Getenv("BUILD_SOURCEBRANCHNAME")
+		v.CommitMessage = os.Getenv("BUILD_SOURCEVERSIONMESSAGE")
+		// Azure Pipelines can be connected to external repos.
+		// So we check if the provider is GitHub, then we use
+		// `SYSTEM_PULLREQUEST_PULLREQUESTNUMBER` instead of `SYSTEM_PULLREQUEST_PULLREQUESTID`.
+		// The PR ID/number only applies to Git repos.
+		vcsProvider := os.Getenv("BUILD_REPOSITORY_PROVIDER")
+		switch vcsProvider {
+		case "TfsGit":
+			// TfsGit is a git repo hosted on Azure DevOps.
+			v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
+		case "GitHub":
+			// GitHub is a git repo hosted on GitHub.
+			v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
+		}
 	}
 	return v
 }
