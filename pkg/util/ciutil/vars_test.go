@@ -15,23 +15,31 @@ package ciutil
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDetectVars(t *testing.T) {
 	buildID := "123"
 	systemAndEnvVars := map[System]map[string]string{
+		// Since the `pulumi/pulumi` repo runs on Travis,
+		// we set the TRAVIS env var to an empty string for all test cases
+		// except for the Travis one itself.
+		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
 		AzurePipelines: {
+			"TRAVIS":        "",
 			"TF_BUILD":      "true",
 			"BUILD_BUILDID": buildID,
 		},
 		CircleCI: {
+			"TRAVIS":           "",
 			"CIRCLECI":         "true",
 			"CIRCLE_BUILD_NUM": buildID,
 		},
 		GitLab: {
+			"TRAVIS":    "",
 			"GITLAB_CI": "true",
 			"CI_JOB_ID": buildID,
 		},
@@ -44,15 +52,28 @@ func TestDetectVars(t *testing.T) {
 	for system := range systemAndEnvVars {
 		t.Run(fmt.Sprintf("Test_%v_Detection", system), func(t *testing.T) {
 			envVars := systemAndEnvVars[system]
+			originalEnvVars := make(map[string]string)
 			for envVar := range envVars {
+				// Save the original env value
+				if value, isSet := os.LookupEnv(envVar); isSet {
+					originalEnvVars[envVar] = value
+				}
+
 				os.Setenv(envVar, envVars[envVar])
 			}
 			vars := DetectVars()
 			assert.Equal(t,
 				buildID, vars.BuildID,
 				"%v did not set the expected build ID %v in the Vars struct.", system, buildID)
+
+			// Restore any modified env vars back to their original value
+			// if we previously saved it. Otherwise, just unset it.
 			for envVar := range envVars {
-				os.Setenv(envVar, "")
+				if val, ok := originalEnvVars[envVar]; ok {
+					os.Setenv(envVar, val)
+				} else {
+					os.Unsetenv(envVar)
+				}
 			}
 		})
 	}
