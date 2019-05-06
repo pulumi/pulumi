@@ -1,5 +1,7 @@
 ## 0.17.11 (Unreleased)
 
+- Add detection of CI environment when running inside Azure Pipelines.
+
 ## 0.17.10 (Released 5/2/2019)
 
 - Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
