@@ -84,6 +84,9 @@ const (
 	// CIPRHeadSHA is the SHA of the HEAD commit of a pull request running on CI. This is needed since the CI
 	// server will run at a different, merge commit. (headSHA merged into the target branch.)
 	CIPRHeadSHA = "ci.pr.headSHA"
+	// CIPRNumber is the PR number, for which the current CI job may be executing.
+	// Combining this information with the `VCSRepoKind` will give us the PR URL.
+	CIPRNumber = "ci.pr.number"
 )
 
 // UpdateInfo describes a previous update.

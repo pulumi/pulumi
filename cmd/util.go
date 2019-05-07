@@ -494,30 +494,17 @@ func addCIMetadataToEnvironment(env map[string]string) {
 		}
 	}
 
-	// If CI variables have been set specifically for Pulumi in the environment,
-	// use that in preference to attempting to automatically detect the CI system.
-	// This allows Pulumi to work with any CI system with appropriate configuration,
-	// rather than requiring explicit support for each one.
-	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
-		env[backend.CISystem] = os.Getenv("PULUMI_CI_SYSTEM")
-		addIfSet(backend.CIBuildID, os.Getenv("PULUMI_CI_BUILD_ID"))
-		addIfSet(backend.CIBuildType, os.Getenv("PULUMI_CI_BUILD_TYPE"))
-		addIfSet(backend.CIBuildURL, os.Getenv("PULUMI_CI_BUILD_URL"))
-		addIfSet(backend.CIPRHeadSHA, os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"))
-
-		// Don't proceed with automatic CI detection since we are using the PULUMI_* values.
-		return
-	}
-
 	// Use our built-in CI/CD detection logic.
 	vars := ciutil.DetectVars()
-	if vars.Name != "" {
-		env[backend.CISystem] = string(vars.Name)
-		addIfSet(backend.CIBuildID, vars.BuildID)
-		addIfSet(backend.CIBuildType, vars.BuildType)
-		addIfSet(backend.CIBuildURL, vars.BuildURL)
-		addIfSet(backend.CIPRHeadSHA, vars.SHA)
+	if vars.Name == "" {
+		return
 	}
+	env[backend.CISystem] = string(vars.Name)
+	addIfSet(backend.CIBuildID, vars.BuildID)
+	addIfSet(backend.CIBuildType, vars.BuildType)
+	addIfSet(backend.CIBuildURL, vars.BuildURL)
+	addIfSet(backend.CIPRHeadSHA, vars.SHA)
+	addIfSet(backend.CIPRNumber, vars.PRNumber)
 }
 
 type cancellationScope struct {
