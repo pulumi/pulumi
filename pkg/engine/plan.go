@@ -16,11 +16,10 @@ package engine
 
 import (
 	"context"
-	"os"
+	"strings"
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -28,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -173,22 +173,7 @@ type planResult struct {
 // Chdir changes the directory so that all operations from now on are relative to the project we are working with.
 // It returns a function that, when run, restores the old working directory.
 func (planResult *planResult) Chdir() (func(), error) {
-	pwd := planResult.Plugctx.Pwd
-	if pwd == "" {
-		return func() {}, nil
-	}
-	oldpwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	if err = os.Chdir(pwd); err != nil {
-		return nil, errors.Wrapf(err, "could not change to the project working directory")
-	}
-	return func() {
-		// Restore the working directory after planning completes.
-		cderr := os.Chdir(oldpwd)
-		contract.IgnoreError(cderr)
-	}, nil
+	return fsutil.Chdir(planResult.Plugctx.Pwd)
 }
 
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
@@ -367,5 +352,5 @@ func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
 
 func isDefaultProviderStep(step deploy.Step) bool {
 	urn := step.URN()
-	return providers.IsProviderType(urn.Type()) && urn.Name() == "default"
+	return providers.IsProviderType(urn.Type()) && strings.HasPrefix(urn.Name().String(), "default")
 }

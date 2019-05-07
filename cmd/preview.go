@@ -34,6 +34,7 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
 	var diffDisplay bool
+	var jsonDisplay bool
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -58,6 +59,11 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			var displayType = display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					Analyzers: analyzers,
@@ -71,7 +77,8 @@ func newPreviewCmd() *cobra.Command {
 					ShowSameResources:    showSames,
 					SuppressOutputs:      suppressOutputs,
 					IsInteractive:        cmdutil.Interactive(),
-					DiffDisplay:          diffDisplay,
+					Type:                 displayType,
+					JSONDisplay:          jsonDisplay,
 					Debug:                debug,
 				},
 			}
@@ -134,6 +141,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the preview diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")

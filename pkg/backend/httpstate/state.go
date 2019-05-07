@@ -102,6 +102,24 @@ func (ts *tokenSource) GetToken() (string, error) {
 	return resp.token, resp.err
 }
 
+type cloudQuery struct {
+	root   string
+	proj   *workspace.Project
+	target *deploy.Target
+}
+
+func (q *cloudQuery) GetRoot() string {
+	return q.root
+}
+
+func (q *cloudQuery) GetProject() *workspace.Project {
+	return q.proj
+}
+
+func (q *cloudQuery) GetTarget() *deploy.Target {
+	return q.target
+}
+
 // cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
 type cloudUpdate struct {
 	context context.Context
@@ -223,6 +241,17 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 
 	// Block until all of the spawned Go-routines complete.
 	wg.Wait()
+}
+
+func (b *cloudBackend) newQuery(ctx context.Context, stackRef backend.StackReference,
+	proj *workspace.Project, root string) (*cloudQuery, error) {
+	// Construct the query target.
+	target, err := b.getTarget(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cloudQuery{root: root, proj: proj, target: target}, nil
 }
 
 func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, proj *workspace.Project,

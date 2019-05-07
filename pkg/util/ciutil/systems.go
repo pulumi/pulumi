@@ -14,26 +14,34 @@
 
 package ciutil
 
+// CI system constants.
 const (
 	AppVeyor                    System = "AppVeyor"
 	AWSCodeBuild                System = "AWS CodeBuild"
 	AtlassianBamboo             System = "Atlassian Bamboo"
 	AtlassianBitbucketPipelines System = "Atlassian Bitbucket Pipelines"
+	AzurePipelines              System = "Azure Pipelines"
 	Buildkite                   System = "Buildkite"
 	CircleCI                    System = "CircleCI"
 	Codeship                    System = "Codeship"
 	Drone                       System = "Drone"
-	GitHub                      System = "GitHub"
-	GitLab                      System = "GitLab"
-	GoCD                        System = "GoCD"
-	Hudson                      System = "Hudson"
-	Jenkins                     System = "Jenkins"
-	MagnumCI                    System = "Magnum CI"
-	MicrosoftTFS                System = "Microsoft Team Foundation Server"
-	Semaphore                   System = "Semaphore"
-	TaskCluster                 System = "TaskCluster"
-	TeamCity                    System = "TeamCity"
-	Travis                      System = "Travis CI"
+
+	// GenericCI is used when a CI system in which the CLI is being run,
+	// is not recognized by it. Users can set the relevant env vars
+	// as a fallback so that the CLI would still pick-up the metadata related
+	// to their CI build.
+	GenericCI System = "Generic CI"
+
+	GitHub      System = "GitHub"
+	GitLab      System = "GitLab"
+	GoCD        System = "GoCD"
+	Hudson      System = "Hudson"
+	Jenkins     System = "Jenkins"
+	MagnumCI    System = "Magnum CI"
+	Semaphore   System = "Semaphore"
+	TaskCluster System = "TaskCluster"
+	TeamCity    System = "TeamCity"
+	Travis      System = "Travis CI"
 )
 
 // System is a recognized CI system.

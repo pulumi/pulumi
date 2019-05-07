@@ -65,7 +65,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		// Update the history-test stack.
-		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "-m", "this is an updated stack")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "-m", "this is an updated stack")
 		// Confirm we see the update message in thie history output.
 		out, err := e.RunCommand("pulumi", "history")
 		assert.Equal(t, "", err)

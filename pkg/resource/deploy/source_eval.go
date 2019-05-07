@@ -117,7 +117,7 @@ func (src *evalSource) Iterate(
 }
 
 type evalSourceIterator struct {
-	mon         *resmon                            // the resource monitor, per iterator.
+	mon         SourceResourceMonitor              // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
@@ -389,7 +389,6 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	src              *evalSource                        // the evaluation source.
 	providers        ProviderSource                     // the provider source itself.
 	defaultProviders *defaultProviders                  // the default provider manager.
 	regChan          chan *registerResourceEvent        // the channel to send resource registrations to.
@@ -399,6 +398,8 @@ type resmon struct {
 	cancel           chan bool                          // a channel that can cancel the server.
 	done             chan error                         // a channel that resolves when the server completes.
 }
+
+var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
@@ -419,7 +420,6 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		src:              src,
 		providers:        provs,
 		defaultProviders: d,
 		regChan:          regChan,

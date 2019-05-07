@@ -18,12 +18,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"net/url"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gocloud.dev/blob"
+	_ "gocloud.dev/blob/azureblob" // driver for azblob://
+	_ "gocloud.dev/blob/fileblob"  // driver for file://
+	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
+	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 
 	"github.com/pkg/errors"
 
@@ -46,9 +53,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// localBackendURL is fake URL scheme we use to signal we want to use the local backend vs a cloud one.
-const localBackendURLPrefix = "file://"
-
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
@@ -59,6 +63,7 @@ type localBackend struct {
 	d               diag.Sink
 	url             string
 	stackConfigFile string
+	bucket          *blob.Bucket
 }
 
 type localBackendReference struct {
@@ -73,19 +78,84 @@ func (r localBackendReference) Name() tokens.QName {
 	return r.name
 }
 
-func IsLocalBackendURL(url string) bool {
-	return strings.HasPrefix(url, localBackendURLPrefix)
+func IsFileStateBackendURL(urlstr string) bool {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return false
+	}
+
+	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
-func New(d diag.Sink, url, stackConfigFile string) (Backend, error) {
-	if !IsLocalBackendURL(url) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected %s", url, localBackendURLPrefix)
+func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
+	if !IsFileStateBackendURL(u) {
+		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
+			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
+
+	u, err := massageBlobPath(u)
+	if err != nil {
+		return nil, err
+	}
+
+	bucket, err := blob.OpenBucket(context.TODO(), u)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
+	}
+
 	return &localBackend{
 		d:               d,
-		url:             url,
+		url:             u,
 		stackConfigFile: stackConfigFile,
+		bucket:          bucket,
 	}, nil
+}
+
+const filePathPrefix = "file://"
+
+// massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
+// can support.  Importantly, s3/azblob/gs paths should not be be touched. This will only affect
+// file:// paths which have a few oddities around them that we want to ensure work properly.
+func massageBlobPath(path string) (string, error) {
+	if !strings.HasPrefix(path, filePathPrefix) {
+		// not a file:// path.  Keep this untouched and pass directly to gocloud.
+		return path, nil
+	}
+
+	// Strip off the "file://"" portion so we can examine and determine what to do with the rest.
+	path = strings.TrimPrefix(path, filePathPrefix)
+
+	// We need to specially handle ~.  The shell doesn't take care of this for us, and later
+	// functions we run into can't handle this either.
+	//
+	// From https://stackoverflow.com/questions/17609732/expand-tilde-to-home-directory
+	if strings.HasPrefix(path, "~") {
+		usr, err := user.Current()
+		if err != nil {
+			return "", errors.Wrap(err, "Could not determine current user to resolve `file://~` path.")
+		}
+
+		if path == "~" {
+			path = usr.HomeDir
+		} else {
+			path = filepath.Join(usr.HomeDir, path[2:])
+		}
+	}
+
+	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+	}
+
+	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
+	// On Windows, convert "\" to "/" and add a leading "/":
+	path = filepath.ToSlash(path)
+	if os.PathSeparator != '/' && !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
+	return filePathPrefix + path, nil
 }
 
 func Login(d diag.Sink, url, stackConfigFile string) (Backend, error) {
@@ -111,23 +181,8 @@ func (b *localBackend) URL() string {
 	return b.url
 }
 
-func (b *localBackend) Dir() string {
-	path := b.url[len(localBackendURLPrefix):]
-	if path == "~" {
-		user, err := user.Current()
-		contract.AssertNoErrorf(err, "could not determine current user")
-		path = user.HomeDir
-	} else if path == "." {
-		pwd, err := os.Getwd()
-		contract.AssertNoErrorf(err, "could not determine current working directory")
-		path = pwd
-	}
-	return path
-}
-
 func (b *localBackend) StateDir() string {
-	dir := b.Dir()
-	return filepath.Join(dir, workspace.BookkeepingDir)
+	return workspace.BookkeepingDir
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
@@ -242,7 +297,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
 	file := b.stackPath(stackName)
-	backupTarget(file)
+	backupTarget(b.bucket, file)
 
 	// And move the history over as well.
 	oldHistoryDir := b.historyDirectory(stackName)
@@ -312,6 +367,17 @@ func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
+func (b *localBackend) Query(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) result.Result {
+
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	return b.query(ctx, stack, op, nil /*events*/)
+}
+
 // apply actually performs the provided type of update on a locally hosted stack.
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -320,11 +386,13 @@ func (b *localBackend) apply(
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
-
-	// Print a banner so it's clear this is a local deployment.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
-	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
+
+	if !op.Opts.Display.JSONDisplay {
+		// Print a banner so it's clear this is a local deployment.
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
+	}
 
 	// Start the update.
 	update, err := b.newUpdate(stackName, op.Proj, op.Root)
@@ -437,14 +505,36 @@ func (b *localBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if opts.ShowLink {
-		fmt.Printf(
-			op.Opts.Display.Color.Colorize(
-				colors.SpecHeadline+"Permalink: "+
-					colors.Underline+colors.BrightBlue+"file://%s"+colors.Reset+"\n"), stack.(*localStack).Path())
+	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
+		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
+		// file:// links so we manually create the link ourselves.
+		var link string
+		if strings.HasPrefix(b.url, "file://") {
+			u, _ := url.Parse(b.url)
+			u.Path = path.Join(u.Path, b.stackPath(stackName))
+			link = u.String()
+		} else {
+			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
+			if err != nil {
+				return changes, result.FromError(errors.Wrap(err, "Could not get signed url for stack location"))
+			}
+		}
+
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"Permalink: "+
+				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 	}
 
 	return changes, nil
+}
+
+// query executes a query program against the resource outputs of a locally hosted stack.
+func (b *localBackend) query(ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
+	events chan<- engine.Event) result.Result {
+
+	// TODO: Consider implementing this for local backend. We left it out for the initial cut
+	// because we weren't sure we wanted to commit to it.
+	return result.Error("Local backend does not support querying over the state")
 }
 
 func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
@@ -547,19 +637,19 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	// Read the stack directory.
 	path := b.stackPath("")
 
-	files, err := ioutil.ReadDir(path)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Errorf("could not read stacks: %v", err)
+	files, err := listBucket(b.bucket, path)
+	if err != nil {
+		return nil, errors.Wrap(err, "error listing stacks")
 	}
 
 	for _, file := range files {
 		// Ignore directories.
-		if file.IsDir() {
+		if file.IsDir {
 			continue
 		}
 
 		// Skip files without valid extensions (e.g., *.bak files).
-		stackfn := file.Name()
+		stackfn := objectName(file)
 		ext := filepath.Ext(stackfn)
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue

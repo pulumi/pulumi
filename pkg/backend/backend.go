@@ -111,6 +111,9 @@ type Backend interface {
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
+	// Query against the resource outputs in a stack's state checkpoint.
+	Query(ctx context.Context, stackRef StackReference, op UpdateOperation) result.Result
+
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
@@ -214,7 +217,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 		return nil, err
 	}
 	if s == nil {
-		return nil, errors.Errorf("unknown stack \"%s\"", name)
+		return nil, errors.Errorf("unknown stack %q", name)
 	}
 	snap, err := s.Snapshot(ctx)
 	if err != nil {
@@ -229,4 +232,35 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 
 func (c *backendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
 	return nil, errors.New("downloading plugins at runtime not available when using local backend")
+}
+
+func (c *backendClient) GetStackResourceOutputs(
+	ctx context.Context, name string) (resource.PropertyMap, error) {
+	ref, err := c.backend.ParseStackReference(name)
+	if err != nil {
+		return nil, err
+	}
+	s, err := c.backend.GetStack(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil {
+		return nil, errors.Errorf("unknown stack %q", name)
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pm := resource.PropertyMap{}
+	for _, r := range snap.Resources {
+		if r.Delete {
+			continue
+		}
+
+		resc := resource.PropertyMap{
+			resource.PropertyKey("type"):    resource.NewStringProperty(string(r.Type)),
+			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs)}
+		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
+	}
+	return pm, nil
 }

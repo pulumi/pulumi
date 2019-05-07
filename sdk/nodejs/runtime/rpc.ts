@@ -173,7 +173,7 @@ export function resolveProperties(
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know
             // if it's final.
             if (!isDryRun()) {
-                // normal 'pulumi update'.  resolve the output with the value we got back
+                // normal 'pulumi up'.  resolve the output with the value we got back
                 // from the engine.  That output can always run its .apply calls.
                 resolve(allProps[k], true);
             }

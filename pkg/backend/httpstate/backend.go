@@ -94,7 +94,7 @@ func ValueOrDefaultURL(cloudURL string) string {
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
 	// to ignore the local cloud.
 	if creds, err := workspace.GetStoredCredentials(); err == nil {
-		if creds.Current != "" && !filestate.IsLocalBackendURL(creds.Current) {
+		if creds.Current != "" && !filestate.IsFileStateBackendURL(creds.Current) {
 			return creds.Current
 		}
 	}
@@ -689,6 +689,17 @@ func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
+func (b *cloudBackend) Query(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) result.Result {
+
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	return b.query(ctx, stack, op, nil /*events*/)
+}
+
 func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
@@ -745,10 +756,13 @@ func (b *cloudBackend) apply(
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
 
-	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
-	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+
+	if !op.Opts.Display.JSONDisplay {
+		// Print a banner so it's clear this is going to the cloud.
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+	}
 
 	// Create an update object to persist results.
 	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
@@ -756,7 +770,7 @@ func (b *cloudBackend) apply(
 		return nil, result.FromError(err)
 	}
 
-	if opts.ShowLink {
+	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Print a URL at the end of the update pointing to the Pulumi Service.
 		var link string
 		base := b.cloudConsoleStackPath(update.StackIdentifier)
@@ -767,15 +781,74 @@ func (b *cloudBackend) apply(
 		}
 		if link != "" {
 			defer func() {
-				fmt.Printf(
-					op.Opts.Display.Color.Colorize(
-						colors.SpecHeadline+"Permalink: "+
-							colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+				fmt.Printf(op.Opts.Display.Color.Colorize(
+					colors.SpecHeadline+"Permalink: "+
+						colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 			}()
 		}
 	}
 
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+}
+
+// query executes a query program against the resource outputs of a stack hosted in the Pulumi
+// Cloud.
+func (b *cloudBackend) query(
+	ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
+	callerEventsOpt chan<- engine.Event) result.Result {
+
+	stackRef := stack.Ref()
+
+	q, err := b.newQuery(ctx, stackRef, op.Proj, op.Root)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	// Render query output to CLI.
+	displayEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+	go display.ShowQueryEvents("running query", displayEvents, displayDone, op.Opts.Display)
+
+	// The engineEvents channel receives all events from the engine, which we then forward onto other
+	// channels for actual processing. (displayEvents and callerEventsOpt.)
+	engineEvents := make(chan engine.Event)
+	eventsDone := make(chan bool)
+	go func() {
+		for e := range engineEvents {
+			displayEvents <- e
+			if callerEventsOpt != nil {
+				callerEventsOpt <- e
+			}
+		}
+
+		close(eventsDone)
+	}()
+
+	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
+	// return error conditions, because we will do so below after waiting for the display channels to close.
+	cancellationScope := op.Scopes.NewScope(engineEvents, true /*dryRun*/)
+	engineCtx := &engine.Context{
+		Cancel:        cancellationScope.Context(),
+		Events:        engineEvents,
+		BackendClient: httpstateBackendClient{backend: b},
+	}
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		engineCtx.ParentSpan = parentSpan.Context()
+	}
+
+	res := engine.Query(engineCtx, q, op.Opts.Engine)
+
+	// Wait for dependent channels to finish processing engineEvents before closing.
+	<-displayDone
+	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
+	close(engineEvents)
+
+	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
+	// has exited before proceeding
+	<-eventsDone
+	close(displayEvents)
+
+	return res
 }
 
 func (b *cloudBackend) runEngineAction(
@@ -1254,4 +1327,9 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 
 func (c httpstateBackendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
 	return c.backend.DownloadPlugin(ctx, plug, false, display.Options{})
+}
+
+func (c httpstateBackendClient) GetStackResourceOutputs(
+	ctx context.Context, name string) (resource.PropertyMap, error) {
+	return backend.NewBackendClient(c.backend).GetStackResourceOutputs(ctx, name)
 }

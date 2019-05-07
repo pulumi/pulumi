@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource } from "../resource";
-import { getRootResource, setRootResource } from "./settings";
+import { getRootResource, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -30,8 +30,12 @@ export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
  * returned by the callback will be stored as output properties on this resulting Stack object.
  */
 export function runInPulumiStack(init: () => any): Promise<Inputs | undefined> {
-    const stack = new Stack(init);
-    return stack.outputs.promise();
+    if (!isQueryMode()) {
+        const stack = new Stack(init);
+        return stack.outputs.promise();
+    } else {
+        return Promise.resolve(init());
+    }
 }
 
 /**

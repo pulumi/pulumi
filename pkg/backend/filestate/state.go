@@ -15,14 +15,16 @@
 package filestate
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gocloud.dev/blob"
 
 	"github.com/pkg/errors"
 
@@ -147,7 +149,7 @@ func (b *localBackend) getStack(name tokens.QName) (config.Map, *deploy.Snapshot
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
 func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.CheckpointV3, error) {
 	chkpath := b.stackPath(stackName)
-	bytes, err := ioutil.ReadFile(chkpath)
+	bytes, err := b.bucket.ReadAll(context.TODO(), chkpath)
 	if err != nil {
 		return nil, err
 	}
@@ -173,15 +175,10 @@ func (b *localBackend) saveStack(name tokens.QName,
 	}
 
 	// Back up the existing file if it already exists.
-	bck := backupTarget(file)
-
-	// Ensure the directory exists.
-	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
-	}
+	bck := backupTarget(b.bucket, file)
 
 	// And now write out the new snapshot file, overwriting that location.
-	if err = ioutil.WriteFile(file, byts, 0600); err != nil {
+	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
 		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
@@ -189,7 +186,7 @@ func (b *localBackend) saveStack(name tokens.QName,
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
-		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, 0600); err != nil {
+		if err = b.bucket.WriteAll(context.TODO(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
 			return "", errors.Wrap(err, "An IO error occurred during the current operation")
 		}
 	}
@@ -214,18 +211,18 @@ func (b *localBackend) removeStack(name tokens.QName) error {
 
 	// Just make a backup of the file and don't write out anything new.
 	file := b.stackPath(name)
-	backupTarget(file)
+	backupTarget(b.bucket, file)
 
 	historyDir := b.historyDirectory(name)
-	return os.RemoveAll(historyDir)
+	return removeAllByPrefix(b.bucket, historyDir)
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
-func backupTarget(file string) string {
+func backupTarget(bucket *blob.Bucket, file string) string {
 	contract.Require(file != "", "file")
 	bck := file + ".bak"
-	err := os.Rename(file, bck)
+	err := renameObject(bucket, file, bck)
 	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
@@ -242,7 +239,7 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 
 	// Read the current checkpoint file. (Assuming it aleady exists.)
 	stackPath := b.stackPath(name)
-	byts, err := ioutil.ReadFile(stackPath)
+	byts, err := b.bucket.ReadAll(context.TODO(), stackPath)
 	if err != nil {
 		return err
 	}
@@ -250,17 +247,12 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	// Get the backup directory.
 	backupDir := b.backupDirectory(name)
 
-	// Ensure the backup directory exists.
-	if err = os.MkdirAll(backupDir, 0700); err != nil {
-		return err
-	}
-
 	// Write out the new backup checkpoint file.
 	stackFile := filepath.Base(stackPath)
 	ext := filepath.Ext(stackFile)
 	base := strings.TrimSuffix(stackFile, ext)
 	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
-	return ioutil.WriteFile(filepath.Join(backupDir, backupFile), byts, 0600)
+	return b.bucket.WriteAll(context.TODO(), filepath.Join(backupDir, backupFile), byts, nil)
 }
 
 func (b *localBackend) stackPath(stack tokens.QName) string {
@@ -288,7 +280,7 @@ func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, erro
 	contract.Require(name != "", "name")
 
 	dir := b.historyDirectory(name)
-	allFiles, err := ioutil.ReadDir(dir)
+	allFiles, err := listBucket(b.bucket, dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
 		if os.IsNotExist(err) {
@@ -299,11 +291,11 @@ func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, erro
 
 	var updates []backend.UpdateInfo
 
-	// os.ReadDir returns the array sorted by file name, but because of how we name files, older updates come before
+	// listBucket returns the array sorted by file name, but because of how we name files, older updates come before
 	// newer ones. Loop backwards so we added the newest updates to the array we will return first.
 	for i := len(allFiles) - 1; i >= 0; i-- {
 		file := allFiles[i]
-		filepath := path.Join(dir, file.Name())
+		filepath := file.Key
 
 		// Open all of the history files, ignoring the checkpoints.
 		if !strings.HasSuffix(filepath, ".history.json") {
@@ -311,7 +303,7 @@ func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, erro
 		}
 
 		var update backend.UpdateInfo
-		b, err := ioutil.ReadFile(filepath)
+		b, err := b.bucket.ReadAll(context.TODO(), filepath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading history file %s", filepath)
 		}
@@ -331,9 +323,6 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 	contract.Require(name != "", "name")
 
 	dir := b.historyDirectory(name)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return err
-	}
 
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
@@ -345,16 +334,11 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 	}
 
 	historyFile := fmt.Sprintf("%s.history.json", pathPrefix)
-	if err = ioutil.WriteFile(historyFile, byts, os.ModePerm); err != nil {
+	if err = b.bucket.WriteAll(context.TODO(), historyFile, byts, nil); err != nil {
 		return err
 	}
 
-	// Make a copy of the checkpoint file. (Assuming it aleady exists.)
-	byts, err = ioutil.ReadFile(b.stackPath(name))
-	if err != nil {
-		return err
-	}
-
+	// Make a copy of the checkpoint file. (Assuming it already exists.)
 	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
-	return ioutil.WriteFile(checkpointFile, byts, os.ModePerm)
+	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
 }

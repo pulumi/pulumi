@@ -147,6 +147,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		Stack:          info.Stack,
 		Config:         config,
 		DryRun:         info.DryRun,
+		QueryMode:      info.QueryMode,
 		Parallel:       int32(info.Parallel),
 	})
 	if err != nil {

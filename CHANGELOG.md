@@ -1,6 +1,39 @@
-## 0.17.9 (Unreleased)
+## 0.17.11 (Unreleased)
+
+- Add support for Azure Pipelines in CI environment detection.
+
+## 0.17.10 (Released 5/2/2019)
+
+- Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
+  `s3://`, `azblob://` and `gs://` save locations.
 
 ### Improvements
+
+- Minor contributing document improvement.
+- Warnings from `npm` about missing description, repository, and license fields in package.json are
+  now suppressed when `npm install` is run from `pulumi new` (via `npm install --loglevel=error`).
+- Depend on newer version of gRPC package in the NodeJS SDK. This version has
+  prebuilt binaries for Node 12, which should make installing `@pulumi/pulumi`
+  more reliable when running on Node 12.
+
+## 0.17.9 (Released April 30, 2019)
+
+### Improvements
+
+- `pulumi login` now supports `s3://`, `azblob://` and `gs://` paths (on top of `file://`) for
+  storing stack information. These are passed the location of a desired bucket for each respective
+  cloud provider (i.e. `pulumi login s3://mybucket`).  Pulumi artifacts (like the
+  `xxx.checkpoint.json` file) will then be stored in that bucket.  Credentials for accessing the
+  bucket operate in the normal manner for each cloud provider.  i.e. for AWS this can come from the
+  environment, or your `.aws/credentials` file, etc.
+- The pulumi version update check can be skipped by setting the environment variable
+  `PULUMI_SKIP_UPDATE_CHECK` to `1` or `true`.
+- Fix an issue where the stack would not be selected when an existing stack is specified when running
+  `pulumi new <template> -s <existing-stack>`.
+- Add a `--json` flag (`-j` for short) to the `preview` command. This allows basic serialization of a plan,
+  including the anticipated set of deployment steps, list of diagnostics messages, and summary information.
+  Each step includes deeply serialized information about the resource state and step metadata itself. This
+  is part of ongoing work tracked in [pulumi/pulumi#2390](https://github.com/pulumi/pulumi/issues/2390).
 
 ## 0.17.8 (Released April 23, 2019)
 
@@ -8,7 +41,7 @@
 
 - Add a new `ignoreChanges` option to resource options to allow specifying a list of properties to
   ignore for purposes of updates or replacements.  [#2657](https://github.com/pulumi/pulumi/pull/2657)
-- Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to 
+- Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to
   unexpected Update, Replace or Delete operations being scheduled. [#2650]https://github.com/pulumi/pulumi/issues/2650)
 - Build/push `pulumi/actions` container to [DockerHub](https://hub.docker.com/r/pulumi/actions) with new SDK releases [#2646](https://github.com/pulumi/pulumi/pull/2646)
 
@@ -52,7 +85,7 @@
 
 ### Improvements
 
-- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi update` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi update` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
+- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi up` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi up` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
 - Fix two warnings that were printed when using a dynamic provider about missing method handlers.
 - A bug in the previous version of the Pulumi CLI occasionally caused the Pulumi Engine to load the incorrect resource
   plugin when processing an update. This bug has been fixed in 0.17.3 by performing a deterministic selection of the
@@ -263,7 +296,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - During previews and updates, read operations (i.e. calls to `.get` methods) are no longer shown in the output unless they cause any changes.
 
-- Fix a performance regression where `pulumi preview` and `pulumi update` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
+- Fix a performance regression where `pulumi preview` and `pulumi up` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
 
 ## 0.16.8 (Released December 14th, 2018)
 
@@ -353,7 +386,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Add an `iterable` module to `@pulumi/pulumi` with two helpful combinators `toObject` and `groupBy` to help combine multiple `Output<T>`'s into a single object.
 
-- Pulumi no longer prompts you for confirmation when `--skip-preview` is passed to `pulumi update`. Instead, it just preforms the update as requested.
+- Pulumi no longer prompts you for confirmation when `--skip-preview` is passed to `pulumi up`. Instead, it just preforms the update as requested.
 
 - Add the `--json` flag to the `pulumi stack ls` command.
 
