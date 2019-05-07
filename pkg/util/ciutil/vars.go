@@ -80,6 +80,12 @@ func DetectVars() Vars {
 		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
 		v.SHA = os.Getenv("CIRCLE_SHA1")
 		v.BranchName = os.Getenv("CIRCLE_BRANCH")
+	case GenericCI:
+		v.Name = System(os.Getenv("PULUMI_CI_SYSTEM"))
+		v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
+		v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
+		v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
+		v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
 	case GitLab:
 		// See https://docs.gitlab.com/ee/ci/variables/.
 		v.BuildID = os.Getenv("CI_JOB_ID")
@@ -89,12 +95,6 @@ func DetectVars() Vars {
 		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
 		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
 		v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
-	case PulumiCI:
-		v.Name = System(os.Getenv("PULUMI_CI_SYSTEM"))
-		v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
-		v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
-		v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
-		v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
 	case Travis:
 		// See https://docs.travis-ci.com/user/environment-variables/.
 		v.BuildID = os.Getenv("TRAVIS_JOB_ID")

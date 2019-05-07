@@ -38,6 +38,11 @@ func TestDetectVars(t *testing.T) {
 			"CIRCLECI":         "true",
 			"CIRCLE_BUILD_NUM": buildID,
 		},
+		GenericCI: {
+			"TRAVIS":             "",
+			"GENERIC_CI_SYSTEM":  "true",
+			"PULUMI_CI_BUILD_ID": buildID,
+		},
 		GitLab: {
 			"TRAVIS":    "",
 			"GITLAB_CI": "true",
