@@ -45,8 +45,6 @@ const (
 	GitHubHostName VCSKind = "github.com"
 	// The host name for Azure DevOps
 	AzureDevOpsHostName VCSKind = "dev.azure.com"
-	// The host name for Legacy Azure DevOps
-	LegacyAzureDevOpsHostName VCSKind = "visualstudio.com"
 	// The host name for Bitbucket
 	BitbucketHostName VCSKind = "bitbucket.org"
 )
@@ -56,8 +54,9 @@ const (
 // be sure to update its usage elsewhere in the code as well.
 // The nolint instruction prevents gometalinter from complaining about the length of the line.
 var (
-	cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
-	azureSourceControlSSHRegex = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+	cloudSourceControlSSHRegex    = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
+	azureSourceControlSSHRegex    = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+	legacyAzureSourceControlRegex = regexp.MustCompile("(?P<owner>[a-zA-Z0-9-]*).visualstudio.com$")
 )
 
 // VCSInfo describes a cloud-hosted version control system.
@@ -174,9 +173,10 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 	if vcsKind == AzureDevOpsHostName {
 		azureSplit := strings.SplitN(project, "/", 2)
 
-		// Azure repo links are in the format owner/project/_git/repo -- some remote URLs do not
-		// include the _git piece, but then we cannot reconstruct the URL to repo. We will add the
-		// _git piece if its missing to enable us to recreate the URL.
+		// Azure DevOps repo links are in the format `owner/project/_git/repo`. Some remote URLs do
+		// not include the `_git` piece, which results in the reconstructed URL linking to the
+		// project dashboard. To remedy this, we will add the _git portion to the URL if its
+		// missing.
 		project = azureSplit[1]
 		if !strings.Contains(project, "_git") {
 			projectSplit := strings.SplitN(project, "/", 2)
@@ -190,12 +190,12 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 		}, nil
 	}
 
-	// Legacy Azure URL we will have more than 2 parts in the array when split on /.
-	// We will convert this to the newer Azure DevOps URL to allow for the UI to properly
-	// construct the URL to the repo.
-	azureVisualStudioRegex := regexp.MustCompile("(?P<owner>[a-zA-Z0-9-]*).visualstudio.com$")
-	if azureVisualStudioRegex.MatchString(vcsKind) {
-		groups := getMatchedGroupsFromRegex(azureVisualStudioRegex, vcsKind)
+	// Legacy Azure URLs have the owner as part of the host name. We will convert the Git info to
+	// reflect the newer Azure DevOps URLs. This allows the UI to properly construct the repo URL
+	// and group it with other projects/stacks that have been pulled with a newer version of the Git
+	// URL.
+	if legacyAzureSourceControlRegex.MatchString(vcsKind) {
+		groups := getMatchedGroupsFromRegex(legacyAzureSourceControlRegex, vcsKind)
 
 		return &VCSInfo{
 			Owner: groups["owner"],
