@@ -1,6 +1,8 @@
 ## 0.17.11 (Unreleased)
 
 - Add support for Azure Pipelines in CI environment detection.
+- Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
+  repositories when various remote URLs are used to pull the repository.
 
 ## 0.17.10 (Released 5/2/2019)
 
