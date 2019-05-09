@@ -52,8 +52,7 @@ def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> Awaitable[Any
         inputs = await rpc.serialize_properties(props, {})
         version = opts.version or ""
         log.debug(f"Invoking function prepared: tok={tok}")
-        req = provider_pb2.InvokeRequest(tok=tok, args=inputs, provider=provider_ref, version=version,
-                                         acceptSecrets=True)
+        req = provider_pb2.InvokeRequest(tok=tok, args=inputs, provider=provider_ref, version=version)
 
         def do_invoke():
             try:

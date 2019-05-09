@@ -83,9 +83,6 @@ message InvokeRequest {
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
     string provider = 3;             // an optional reference to the provider to use for this invoke.
     string version = 4;              // the version of the provider to use when servicing this request.
-    bool acceptSecrets  = 5;         // when true operations should retrun secrets as strongly typed. (only used by
-                                     // the resource monitor's Invoke rpc. Ignored for provider Invoke rpc (this is
-                                     // controlled via ConfigureRequest)
 }
 
 message InvokeResponse {

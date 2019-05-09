@@ -234,7 +234,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 	}
 
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, KeepSecrets: true})
+		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
@@ -245,9 +245,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 		return nil, errors.Wrapf(err, "invoke %s failed", tok)
 	}
 
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
-		Label: label, KeepUnknowns: true, KeepSecrets: req.AcceptSecrets,
-	})
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal return")
 	}

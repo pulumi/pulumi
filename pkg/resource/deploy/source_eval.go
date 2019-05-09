@@ -559,7 +559,6 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
-		KeepSecrets:  req.GetAcceptSecrets(),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
