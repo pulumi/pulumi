@@ -142,8 +142,18 @@ async def serialize_property(value: 'Input[Any]',
         # sentinel. We will do the former for all outputs created directly by user code (such outputs always
         # resolve isKnown to true) and for any resource outputs that were resolved with known values.
         is_known = await value._is_known
+        is_secret = await value._is_secret
         value = await serialize_property(value.future(), deps, input_transformer)
-        return value if is_known else UNKNOWN
+        if not is_known:
+            return UNKNOWN
+        if is_secret and await settings.monitor_supports_secrets():
+            # Serializing an output with a secret value requires the use of a magical signature key,
+            # which the engine detects.
+            return {
+                _special_sig_key: _special_secret_sig,
+                "value": value
+            }
+        return value
 
     if isinstance(value, dict):
         obj = {}
@@ -188,7 +198,10 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
             if "uri" in props_struct:
                 return known_types.new_remote_archive(props_struct["uri"])
         elif props_struct[_special_sig_key] == _special_secret_sig:
-            raise AssertionError("this version of the Pulumi SDK does not support first-class secrets")
+            return {
+                _special_sig_key: _special_secret_sig,
+                "value": deserialize_property(props_struct["value"])
+            }
 
         raise AssertionError("Unrecognized signature when unmarshaling resource property")
 
@@ -223,16 +236,17 @@ def deserialize_property(value: Any) -> Any:
     return value
 
 
-Resolver = Callable[[Any, bool, Optional[Exception]], None]
+Resolver = Callable[[Any, bool, bool, Optional[Exception]], None]
 """
-A Resolver is a function that takes three arguments:
+A Resolver is a function that takes four arguments:
     1. A value, which represents the "resolved" value of a particular output (from the engine)
     2. A boolean "is_known", which represents whether or not this value is known to have a particular value at this
        point in time (not always true for previews), and
-    3. An exception, which (if provided) is an exception that occured when attempting to create the resource to whom
+    3. A boolean "is_secret", which represents whether or not this value is contains secret data, and
+    4. An exception, which (if provided) is an exception that occured when attempting to create the resource to whom
        this resolver belongs.
 
-If argument 3 is not none, this output is considered to be abnormally resolved and attempts to await its future will
+If argument 4 is not none, this output is considered to be abnormally resolved and attempts to await its future will
 result in the exception being re-thrown.
 """
 
@@ -246,27 +260,32 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
 
         resolve_value = asyncio.Future()
         resolve_is_known = asyncio.Future()
+        resolve_is_secret = asyncio.Future()
 
         def do_resolve(value_fut: asyncio.Future,
                        known_fut: asyncio.Future,
+                       secret_fut: asyncio.Future,
                        value: Any,
                        is_known: bool,
+                       is_secret: bool,
                        failed: Optional[Exception]):
             # Was an exception provided? If so, this is an abnormal (exceptional) resolution. Resolve the futures
             # using set_exception so that any attempts to wait for their resolution will also fail.
             if failed is not None:
                 value_fut.set_exception(failed)
                 known_fut.set_exception(failed)
+                secret_fut.set_exception(failed)
             else:
                 value_fut.set_result(value)
                 known_fut.set_result(is_known)
+                secret_fut.set_result(is_secret)
 
         # Important to note here is that the resolver's future is assigned to the resource object using the
         # name before translation. When properties are returned from the engine, we must first translate the name
         # using res.translate_output_property and then use *that* name to index into the resolvers table.
         log.debug(f"adding resolver {name}")
-        resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known)
-        res.__setattr__(name, known_types.new_output({res}, resolve_value, resolve_is_known))
+        resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known, resolve_is_secret)
+        res.__setattr__(name, known_types.new_output({res}, resolve_value, resolve_is_known, resolve_is_secret))
 
     return resolvers
 
@@ -340,24 +359,31 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
             #     the type at some non-deterministic point in the future.
             continue
 
+        # Secrets are passed back as object with our special signiture key set to _special_secret_sig, in this case
+        # we have to unwrap the object to get the actual underlying value.
+        is_secret = False
+        if isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig:
+            is_secret = True
+            value = value["value"]
+
         # If either we are performing a real deployment, or this is a stable property value, we
         # can propagate its final value.  Otherwise, it must be undefined, since we don't know
         # if it's final.
         if not settings.is_dry_run():
             # normal 'pulumi up'.  resolve the output with the value we got back
             # from the engine.  That output can always run its .apply calls.
-            resolve(value, True, None)
+            resolve(value, True, is_secret, None)
         else:
             # We're previewing. If the engine was able to give us a reasonable value back,
             # then use it. Otherwise, inform the Output that the value isn't known.
-            resolve(value, value is not None, None)
+            resolve(value, value is not None, is_secret, None)
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
     # preview.
     for key, resolve in resolvers.items():
         if key not in all_properties:
-            resolve(None, not settings.is_dry_run(), None)
+            resolve(None, not settings.is_dry_run(), False, None)
 
 
 def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Exception):
@@ -370,4 +396,4 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     """
     for key, resolve in resolvers.items():
         log.debug(f"sending exception to resolver for {key}")
-        resolve(None, False, exn)
+        resolve(None, False, False, exn)

@@ -137,25 +137,30 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     log.debug(f"preparing resource for RPC")
     urn_future = asyncio.Future()
     urn_known = asyncio.Future()
+    urn_secret = asyncio.Future()
     urn_known.set_result(True)
+    urn_secret.set_result(True)
     resolve_urn = urn_future.set_result
     resolve_urn_exn = urn_future.set_exception
-    res.urn = known_types.new_output({res}, urn_future, urn_known)
+    res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
 
     # If a custom resource, make room for the ID property.
     resolve_id: Optional[Callable[[Any, str, Optional[Exception]], None]] = None
     if custom:
         resolve_value = asyncio.Future()
         resolve_perform_apply = asyncio.Future()
-        res.id = known_types.new_output({res}, resolve_value, resolve_perform_apply)
+        resolve_secret = asyncio.Future()
+        res.id = known_types.new_output({res}, resolve_value, resolve_perform_apply, resolve_secret)
 
         def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
             if exn is not None:
                 resolve_value.set_exception(exn)
                 resolve_perform_apply.set_exception(exn)
+                resolve_secret.set_exception(exn)
             else:
                 resolve_value.set_result(value)
                 resolve_perform_apply.set_result(perform_apply)
+                resolve_secret.set_result(False)
 
         resolve_id = do_resolve
 
@@ -178,6 +183,13 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             if res.translate_input_property is not None and opts.ignore_changes is not None:
                 ignore_changes = map(res.translate_input_property, opts.ignore_changes)
 
+            # Note that while `additional_secret_outputs` lists property names that are outputs, we call
+            # `translate_input_property` because it is the method that converts from the language projection
+            # name to the provider name, which is what we want.
+            additional_secret_outputs = opts.additional_secret_outputs
+            if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
+                additional_secret_outputs = map(res.translate_input_property, opts.additional_secret_outputs)
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -191,6 +203,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 deleteBeforeReplace=opts.delete_before_replace,
                 ignoreChanges=ignore_changes,
                 version=opts.version or "",
+                acceptSecrets=True,
+                secretOutputs=additional_secret_outputs
             )
 
             def do_rpc_call():
