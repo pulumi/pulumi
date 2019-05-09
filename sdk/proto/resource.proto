@@ -55,8 +55,8 @@ message ReadResourceRequest {
     repeated string dependencies = 6;      // a list of URNs that this read depends on, as observed by the language host.
     string provider = 7;                   // an optional reference to the provider to use for this read.
     string version = 8;                    // the version of the provider to use when servicing this request.
-    bool acceptSecrets = 9;                // when true operations should retrun secrets as strongly typed.
-    repeated string secretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
+    bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
+    repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -84,8 +84,8 @@ message RegisterResourceRequest {
     bool deleteBeforeReplace = 10;     // true if this resource should be deleted before replacement.
     string version = 11;               // the version of the provider to use when servicing this request.
     repeated string ignoreChanges = 12; // a list of property selectors to ignore during updates.
-    bool acceptSecrets = 13;           // when true operations should retrun secrets as strongly typed.
-    repeated string secretOutputs = 14;  // a list of output properties that should also be treated as secret, in addition to ones we detect.
+    bool acceptSecrets = 13;           // when true operations should return secrets as strongly typed.
+    repeated string additionalSecretOutputs = 14;  // a list of output properties that should also be treated as secret, in addition to ones we detect.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

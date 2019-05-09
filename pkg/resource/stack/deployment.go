@@ -273,22 +273,22 @@ func SerializeResource(res *resource.State, enc config.Encrypter) (apitype.Resou
 	}
 
 	return apitype.ResourceV3{
-		URN:                  res.URN,
-		Custom:               res.Custom,
-		Delete:               res.Delete,
-		ID:                   res.ID,
-		Type:                 res.Type,
-		Parent:               res.Parent,
-		Inputs:               inputs,
-		Outputs:              outputs,
-		Protect:              res.Protect,
-		External:             res.External,
-		Dependencies:         res.Dependencies,
-		InitErrors:           res.InitErrors,
-		Provider:             res.Provider,
-		PropertyDependencies: res.PropertyDependencies,
-		PendingReplacement:   res.PendingReplacement,
-		SecretOutputs:        res.SecretOutputs,
+		URN:                     res.URN,
+		Custom:                  res.Custom,
+		Delete:                  res.Delete,
+		ID:                      res.ID,
+		Type:                    res.Type,
+		Parent:                  res.Parent,
+		Inputs:                  inputs,
+		Outputs:                 outputs,
+		Protect:                 res.Protect,
+		External:                res.External,
+		Dependencies:            res.Dependencies,
+		InitErrors:              res.InitErrors,
+		Provider:                res.Provider,
+		PropertyDependencies:    res.PropertyDependencies,
+		PendingReplacement:      res.PendingReplacement,
+		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 	}, nil
 }
 
@@ -394,7 +394,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
-		res.PropertyDependencies, res.PendingReplacement, res.SecretOutputs), nil
+		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs), nil
 }
 
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter) (resource.Operation, error) {

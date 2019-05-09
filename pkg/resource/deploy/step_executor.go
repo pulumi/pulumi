@@ -285,7 +285,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	// Ensure that any secrets properties in the output are marked as such.
 	if step.New() != nil {
 		newState := step.New()
-		for _, k := range newState.SecretOutputs {
+		for _, k := range newState.AdditionalSecretOutputs {
 			if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 				newState.Outputs[k] = resource.MakeSecret(v)
 			}

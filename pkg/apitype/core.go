@@ -281,8 +281,8 @@ type ResourceV3 struct {
 	// PendingReplacement is used to track delete-before-replace resources that have been deleted but not yet
 	// recreated.
 	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
-	// SecretOutputs is an additional set of output properties that should be treated as secrets.
-	SecretOutputs []resource.PropertyKey `json:"secretOutputs,omitempty" yaml:"secretOutputs,omitempty"`
+	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
+	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

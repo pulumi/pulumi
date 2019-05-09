@@ -204,7 +204,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 ignoreChanges=ignore_changes,
                 version=opts.version or "",
                 acceptSecrets=True,
-                secretOutputs=additional_secret_outputs
+                additionalSecretOutputs=additional_secret_outputs
             )
 
             def do_rpc_call():

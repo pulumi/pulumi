@@ -125,7 +125,7 @@ type ReadResourceEvent interface {
 	// Done indicates that we are done with this event.
 	Done(result *ReadResult)
 	// The names of any additional outputs that should be treated as secrets.
-	SecretOutputs() []resource.PropertyKey
+	AdditionalSecretOutputs() []resource.PropertyKey
 }
 
 type ReadResult struct {
