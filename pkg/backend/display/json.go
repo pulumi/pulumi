@@ -45,7 +45,7 @@ func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.P
 		for k, e := range v.ObjectValue() {
 			new[k] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewObjectProperty(MassageSecrets(v.ObjectValue(), showSecrets))
+		return resource.NewObjectProperty(new)
 	case v.IsSecret() && showSecrets:
 		return massagePropertyValue(v.SecretValue().Element, showSecrets)
 	case v.IsSecret():
