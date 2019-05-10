@@ -434,9 +434,27 @@ export function deserializeProperty(prop: any): any {
         }
 
         // If there isn't a signature, it's not a special type, and we can simply return the object as a map.
+        // However, we want to push secretness up to the top level (since we can't set sub-properties to secret)
+        // values since they are not typed as Output<T>.
         const obj: any = {};
+        let hadSecrets = false;
+
         for (const k of Object.keys(prop)) {
-            obj[k] = deserializeProperty(prop[k]);
+            let o = deserializeProperty(prop[k]);
+
+            if (o[specialSecretSig] === true) {
+                hadSecrets = true;
+                o = o.value;
+            }
+
+            obj[k] = o;
+        }
+
+        if (hadSecrets) {
+            return {
+                [specialSecretSig]: true,
+                value: obj,
+            };
         }
         return obj;
     }

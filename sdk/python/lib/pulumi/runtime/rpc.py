@@ -205,13 +205,26 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
 
         raise AssertionError("Unrecognized signature when unmarshaling resource property")
 
-    # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways.
+    # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
+    # that if the struct had any secret properties, we push the secretness of the object up to us
+    # since we can only set secret outputs on top level properties.
     output = {}
+    had_secret = False
     for k, v in list(props_struct.items()):
         value = deserialize_property(v)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
+            if isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig:
+                had_secret = True
+                value = value["value"]
+
             output[k] = value
+
+    if had_secret:
+        return {
+            _special_sig_key: _special_secret_sig,
+            value: output
+        }
 
     return output
 
