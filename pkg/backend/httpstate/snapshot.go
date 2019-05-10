@@ -34,13 +34,8 @@ type cloudSnapshotPersister struct {
 	sm          secrets.Manager
 }
 
-func (persister *cloudSnapshotPersister) Invalidate() error {
-	token, err := persister.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-
-	return persister.backend.client.InvalidateUpdateCheckpoint(persister.context, persister.update, token)
+func (persister *cloudSnapshotPersister) SecretsManager() secrets.Manager {
+	return persister.sm
 }
 
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {

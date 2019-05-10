@@ -30,8 +30,8 @@ type localSnapshotPersister struct {
 	sm      secrets.Manager
 }
 
-func (sp *localSnapshotPersister) Invalidate() error {
-	return nil
+func (sp *localSnapshotPersister) SecretsManager() secrets.Manager {
+	return sp.sm
 }
 
 func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {

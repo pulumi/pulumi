@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
@@ -34,6 +35,8 @@ import (
 type SnapshotPersister interface {
 	// Persists the given snapshot. Returns an error if the persistence failed.
 	Save(snapshot *deploy.Snapshot) error
+	// Gets the secrets manager used by this persister.
+	SecretsManager() secrets.Manager
 }
 
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
@@ -500,7 +503,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, sm.baseSnapshot.SecretsManager, resources, operations)
+	return deploy.NewSnapshot(manifest, sm.persister.SecretsManager(), resources, operations)
 }
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
