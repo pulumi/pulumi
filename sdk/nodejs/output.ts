@@ -34,7 +34,14 @@ class OutputImpl<T> implements OutputInstance<T> {
     // tslint:disable-next-line:variable-name
     public readonly __pulumiOutput: boolean = true;
 
-    /** @internal */ public readonly isSecret: Promise<boolean>;
+    /**
+     * @internal
+     * Wheter or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
+     * encrypted format when they are persisted as part of a state file. When`true` this "taints" any
+     * additional resources created from it via an [all] or [apply], such that they are also treated as
+     * secrets.
+     */
+    public readonly isSecret: Promise<boolean>;
 
     /**
      * @internal
