@@ -24,10 +24,54 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+// massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
+// not true any secret values are replaced with "[secret]".
+func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
+	switch {
+	case v.IsArray():
+		new := make([]resource.PropertyValue, len(v.ArrayValue()))
+		for i, e := range v.ArrayValue() {
+			new[i] = massagePropertyValue(e, showSecrets)
+		}
+		return resource.NewArrayProperty(new)
+	case v.IsObject():
+		new := make(resource.PropertyMap, len(v.ObjectValue()))
+		for k, e := range v.ObjectValue() {
+			new[k] = massagePropertyValue(e, showSecrets)
+		}
+		return resource.NewObjectProperty(MassageSecrets(v.ObjectValue(), showSecrets))
+	case v.IsSecret() && showSecrets:
+		return massagePropertyValue(v.SecretValue().Element, showSecrets)
+	case v.IsSecret():
+		return resource.NewStringProperty("[secret]")
+	default:
+		return v
+	}
+}
+
+// MassageSecrets takes a property map and returns a new map by transforming each value with massagePropertyValue
+// This allows us to serialize the resulting map using our existing serialization logic we use for deployments, to
+// produce sane output for stackOutputs.  If we did not do this, SecretValues would be serialized as objects
+// with the signature key and value.
+func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyMap {
+	new := make(resource.PropertyMap, len(m))
+	for k, e := range m {
+		new[k] = massagePropertyValue(e, showSecrets)
+	}
+	return new
+}
+
+func removeSecrets(s *resource.State) *resource.State {
+	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, MassageSecrets(s.Inputs, false),
+		MassageSecrets(s.Outputs, false), s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
+		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs)
+}
 
 // ShowJSONEvents renders engine events from a preview into a well-formed JSON document. Note that this does not
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
@@ -83,17 +127,15 @@ func ShowJSONEvents(op string, action apitype.UpdateKind,
 					DiffReasons:    m.Diffs,
 					ReplaceReasons: m.Keys,
 				}
-				// TODO(ellismg): It is not clear what we want to do when producing a JSON output, we likely need to
-				// bring the secrets manager for the stack into this display routine so we can encrypt stuff before
-				// splatting it to the console.
+				// For now, replace any secret properties as the string [secret] and then serialize what we have.
 				if m.Old != nil {
-					res, err := stack.SerializeResource(m.Old.State, nil)
+					res, err := stack.SerializeResource(removeSecrets(m.Old.State), config.NewPanicCrypter())
 					if err != nil {
 						step.OldState = &res
 					}
 				}
 				if m.New != nil {
-					res, err := stack.SerializeResource(m.New.State, nil)
+					res, err := stack.SerializeResource(removeSecrets(m.New.State), config.NewPanicCrypter())
 					if err != nil {
 						step.NewState = &res
 					}
