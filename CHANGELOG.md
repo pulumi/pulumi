@@ -4,7 +4,7 @@
 - Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
   repositories when various remote URLs are used to pull the repository.
 
-## 0.17.10 (Released 5/2/2019)
+## 0.17.10 (Released May 2, 2019)
 
 - Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
   `s3://`, `azblob://` and `gs://` save locations.
