@@ -18,9 +18,9 @@ The config module contains all configuration management functionality.
 from typing import Optional
 
 from . import errors
+from .output import Output
 from .runtime.config import get_config
 from .metadata import get_project
-
 
 class Config:
     """
@@ -57,6 +57,20 @@ class Config:
         """
         return get_config(self.full_key(key))
 
+    def get_secret(self, key: str) -> Optional[Output[str]]:
+        """
+        Returns an optional configuration value by its key, marked as a secret, or None if it doesn't exist.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value, or None if one does not exist.
+        :rtype: Optional[str]
+        """
+        c = self.get(self.full_key(key))
+        if c is None:
+            return None
+
+        return Output.secret(c)
+
     def get_bool(self, key: str) -> Optional[bool]:
         """
         Returns an optional configuration value, as a bool, by its key, or None if it doesn't exist.
@@ -76,6 +90,22 @@ class Config:
             return False
         raise ConfigTypeError(self.full_key(key), v, 'bool')
 
+    def get_secret_bool(self, key: str) -> Optional[Output[bool]]:
+        """
+        Returns an optional configuration value, as a bool, by its key, marked as a secret or None if it doesn't exist.
+        If the configuration value isn't a legal boolean, this function will throw an error.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value, or None if one does not exist.
+        :rtype: Optional[bool]
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
+        """
+        v = self.get_bool(key)
+        if v is None:
+            return None
+
+        return Output.secret(v)
+
     def get_int(self, key: str) -> Optional[int]:
         """
         Returns an optional configuration value, as an int, by its key, or None if it doesn't exist.
@@ -93,6 +123,22 @@ class Config:
             return int(v)
         except:
             raise ConfigTypeError(self.full_key(key), v, 'int')
+
+    def get_secret_int(self, key: str) -> Optional[Output[int]]:
+        """
+        Returns an optional configuration value, as an int, by its key, marked as a secret, or None if it doesn't exist.
+        If the configuration value isn't a legal int, this function will throw an error.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value, or None if one does not exist.
+        :rtype: Optional[int]
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
+        """
+        v = self.get_int(key)
+        if v is None:
+            return None
+
+        return Output.secret(v)
 
     def get_float(self, key: str) -> Optional[float]:
         """
@@ -112,6 +158,22 @@ class Config:
         except:
             raise ConfigTypeError(self.full_key(key), v, 'float')
 
+    def get_secret_float(self, key: str) -> Optional[Output[float]]:
+        """
+        Returns an optional configuration value, as a float, by its key, marked as a secret or None if it doesn't exist.
+        If the configuration value isn't a legal float, this function will throw an error.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value, or None if one does not exist.
+        :rtype: Optional[float]
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
+        """
+        v = self.get(key)
+        if v is None:
+            return None
+
+        return Output.secret(v)
+
     def require(self, key: str) -> str:
         """
         Returns a configuration value by its given key.  If it doesn't exist, an error is thrown.
@@ -125,6 +187,17 @@ class Config:
         if v is None:
             raise ConfigMissingError(self.full_key(key))
         return v
+
+    def require_secret(self, key: str) -> Output[str]:
+        """
+        Returns a configuration value, marked as a secret by its given key.  If it doesn't exist, an error is thrown.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value.
+        :rtype: str
+        :raises ConfigMissingError: The configuration value did not exist.
+        """
+        return Output.secret(self.require(key))
 
     def require_bool(self, key: str) -> bool:
         """
@@ -142,6 +215,19 @@ class Config:
             raise ConfigMissingError(self.full_key(key))
         return v
 
+    def require_secret_bool(self, key: str) -> Output[bool]:
+        """
+        Returns a configuration value, as a bool, marked as a secret by its given key.  If it doesn't exist, or the
+        configuration value is not a legal bool, an error is thrown.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value.
+        :rtype: bool
+        :raises ConfigMissingError: The configuration value did not exist.
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
+        """
+        return Output.secret(self.require_bool(key))
+
     def require_int(self, key: str) -> int:
         """
         Returns a configuration value, as an int, by its given key.  If it doesn't exist, or the
@@ -158,6 +244,19 @@ class Config:
             raise ConfigMissingError(self.full_key(key))
         return v
 
+    def require_secret_int(self, key: str) -> Output[int]:
+        """
+        Returns a configuration value, as an int, marked as a secret by its given key.  If it doesn't exist, or the
+        configuration value is not a legal int, an error is thrown.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value.
+        :rtype: int
+        :raises ConfigMissingError: The configuration value did not exist.
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
+        """
+        return Output.secret(self.require_int(key))
+
     def require_float(self, key: str) -> float:
         """
         Returns a configuration value, as a float, by its given key.  If it doesn't exist, or the
@@ -173,6 +272,19 @@ class Config:
         if v is None:
             raise ConfigMissingError(self.full_key(key))
         return v
+
+    def require_secret_float(self, key: str) -> float:
+        """
+        Returns a configuration value, as a float, marked as a secret by its given key.  If it doesn't exist, or the
+        configuration value is not a legal number, an error is thrown.
+
+        :param str key: The requested configuration key.
+        :return: The configuration key's value.
+        :rtype: float
+        :raises ConfigMissingError: The configuration value did not exist.
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
+        """
+        return Output.secret(self.require_float(key))
 
     def full_key(self, key: str) -> str:
         """

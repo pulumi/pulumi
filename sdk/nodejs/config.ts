@@ -15,7 +15,12 @@
 import * as util from "util";
 import { RunError } from "./errors";
 import { getProject } from "./metadata";
+import { Output } from "./output";
 import { getConfig } from "./runtime";
+
+function makeSecret<T>(value: T): Output<T> {
+    return new Output([], Promise.resolve(value), Promise.resolve(true), Promise.resolve(true));
+}
 
 /**
  * Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by
@@ -79,6 +84,22 @@ export class Config {
     }
 
     /**
+     * getSecret loads an optional configuration value by its key, marking it as a secret, or undefined if it
+     * doesn't exist.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public getSecret<K extends string = string>(key: string, opts?: StringConfigOptions<K>): Output<K> | undefined {
+        const v = this.get(key, opts);
+        if (v === undefined) {
+            return undefined;
+        }
+
+        return makeSecret(v);
+    }
+
+    /**
      * getBoolean loads an optional configuration value, as a boolean, by its key, or undefined if it doesn't exist.
      * If the configuration value isn't a legal boolean, this function will throw an error.
      *
@@ -94,6 +115,22 @@ export class Config {
             return false;
         }
         throw new ConfigTypeError(this.fullKey(key), v, "boolean");
+    }
+
+    /**
+     * getSecretBoolean loads an optional configuration value, as a boolean, by its key, making it as a secret
+     * or undefined if it doesn't exist. If the configuration value isn't a legal boolean, this function will
+     * throw an error.
+     *
+     * @param key The key to lookup.
+     */
+    public getSecretBoolean(key: string): Output<boolean> | undefined {
+        const v = this.getBoolean(key);
+        if (v === undefined) {
+            return undefined;
+        }
+
+        return makeSecret(v);
     }
 
     /**
@@ -123,6 +160,23 @@ export class Config {
     }
 
     /**
+     * getSecretNumber loads an optional configuration value, as a number, by its key, marking it as a secret
+     * or undefined if it doesn't exist.
+     * If the configuration value isn't a legal number, this function will throw an error.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public getSecretNumber(key: string, opts?: NumberConfigOptions): Output<number> | undefined {
+        const v = this.getNumber(key, opts);
+        if (v === undefined) {
+            return undefined;
+        }
+
+        return makeSecret(v);
+    }
+
+    /**
      * getObject loads an optional configuration value, as an object, by its key, or undefined if it doesn't exist.
      * This routine simply JSON parses and doesn't validate the shape of the contents.
      *
@@ -142,6 +196,23 @@ export class Config {
     }
 
     /**
+     * getSecretObject loads an optional configuration value, as an object, by its key, marking it as a secret
+     * or undefined if it doesn't exist.
+     * This routine simply JSON parses and doesn't validate the shape of the contents.
+     *
+     * @param key The key to lookup.
+     */
+    public getSecretObject<T>(key: string): Output<T> | undefined {
+        const v = this.getObject<T>(key);
+
+        if (v === undefined) {
+            return undefined;
+        }
+
+        return makeSecret<T>(v);
+    }
+
+    /**
      * require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
      *
      * @param key The key to lookup.
@@ -156,6 +227,17 @@ export class Config {
     }
 
     /**
+     * require loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
+     * is thrown.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public requireSecret<K extends string = string>(key: string, opts?: StringConfigOptions<K>): Output<K> {
+        return makeSecret(this.require(key, opts));
+    }
+
+    /**
      * requireBoolean loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
      * configuration value is not a legal boolean, an error is thrown.
      *
@@ -167,6 +249,16 @@ export class Config {
             throw new ConfigMissingError(this.fullKey(key));
         }
         return v;
+    }
+
+    /**
+     * requireSecretBoolean loads a configuration value, as a boolean, by its given key, marking it as a secret.
+     * If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
+     *
+     * @param key The key to lookup.
+     */
+    public requireSecretBoolean(key: string): Output<boolean> {
+        return makeSecret(this.requireBoolean(key));
     }
 
     /**
@@ -185,6 +277,17 @@ export class Config {
     }
 
     /**
+     * requireSecretNumber loads a configuration value, as a number, by its given key, marking it as a secret.
+     * If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
+     *
+     * @param key The key to lookup.
+     * @param opts An options bag to constrain legal values.
+     */
+    public requireSecretNumber(key: string, opts?: NumberConfigOptions): Output<number> {
+        return makeSecret(this.requireNumber(key, opts));
+    }
+
+    /**
      * requireObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript object. If
      * it doesn't exist, or the configuration value is not a legal JSON string, an error is thrown.
      *
@@ -196,6 +299,17 @@ export class Config {
             throw new ConfigMissingError(this.fullKey(key));
         }
         return v;
+    }
+
+    /**
+     * requireSecretObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
+     * object, marking it as a secret. If it doesn't exist, or the configuration value is not a legal JSON
+     * string, an error is thrown.
+     *
+     * @param key The key to lookup.
+     */
+    public requireSecretObject<T>(key: string): Output<T> {
+        return makeSecret(this.requireObject<T>(key));
     }
 
     /**
