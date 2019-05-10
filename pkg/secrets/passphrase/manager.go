@@ -139,10 +139,34 @@ func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
 	sm, err := NewPassphaseSecretsManager(phrase, s.Salt)
 	switch {
 	case err == ErrIncorrectPassphrase:
-		return nil, errors.New("incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the correct passphrase")
+		return newLockedPasspharseSecretsManager(s), nil
 	case err != nil:
 		return nil, errors.Wrap(err, "constructing secrets manager")
 	default:
 		return sm, nil
 	}
+}
+
+// newLockedPasspharseSecretsManager returns a Passphrase secrets manager that has the correct state, but can not
+// encrypt or decrypt anything. This is helpful today for some cases, because we have operations that roundtrip
+// checkpoints and we'd like to continue to support these operations even if we don't have the correct passphrase. But
+// if we never end up having to call encrypt or decrypt, this provider will be sufficient.  Since it has the correct
+// state, we ensure that when we roundtrip, we don't lose the state stored in the deployment.
+func newLockedPasspharseSecretsManager(state localSecretsManagerState) secrets.Manager {
+	return &localSecretsManager{
+		state:   state,
+		crypter: &errorCrypter{},
+	}
+}
+
+type errorCrypter struct{}
+
+func (ec *errorCrypter) EncryptValue(v string) (string, error) {
+	return "", errors.New("failed to encrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the" +
+		"correct passphrase")
+}
+
+func (ec *errorCrypter) DecryptValue(v string) (string, error) {
+	return "", errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the" +
+		"correct passphrase")
 }
