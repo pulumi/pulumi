@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -130,14 +132,18 @@ func ShowJSONEvents(op string, action apitype.UpdateKind,
 				// For now, replace any secret properties as the string [secret] and then serialize what we have.
 				if m.Old != nil {
 					res, err := stack.SerializeResource(removeSecrets(m.Old.State), config.NewPanicCrypter())
-					if err != nil {
+					if err == nil {
 						step.OldState = &res
+					} else {
+						glog.V(7).Infof("not adding old state as there was an error serialzing: %s", err)
 					}
 				}
 				if m.New != nil {
 					res, err := stack.SerializeResource(removeSecrets(m.New.State), config.NewPanicCrypter())
-					if err != nil {
+					if err == nil {
 						step.NewState = &res
+					} else {
+						glog.V(7).Infof("not adding new state as there was an error serialzing: %s", err)
 					}
 				}
 				digest.Steps = append(digest.Steps, step)
