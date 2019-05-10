@@ -150,6 +150,7 @@ func (e *Environment) GetCommandResults(t *testing.T, command string, args ...st
 	cmd.Stderr = &errBuffer
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
+	cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
 	runErr := cmd.Run()
 	return outBuffer.String(), errBuffer.String(), runErr
