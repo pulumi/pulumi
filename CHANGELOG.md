@@ -5,15 +5,12 @@
 #### Secrets and Pluggable Encryption
 
 - The Pulumi engine and Python and NodeJS SDKs now have support for tracking values as "secret" to ensure they are
-  encrypted when being persisted in a state file.
+  encrypted when being persisted in a state file. `[pulumi/pulumi#397](https://github.com/pulumi/pulumi/issues/397)`
 
   Any existing value may be turned into a secret by calling `pulumi.secret(<value>)` (NodeJS) or
-  `Output.secret(<value>`) (Python).  In both cases, the returned value is an Output which may be passed around
+  `Output.secret(<value>`) (Python).  In both cases, the returned value is an output which may be passed around
   like any other.  If this value flows into a resource, the plaintext will not be stored in the state file, but instead
   It will be encrypted, just like values added to config with `pulumi config set --secret`.
-
-  If an output which has been marked as secret is combiend with other outputs (either via `all` or `apply`) the
-  resulting output value will also be treated as a secret.
 
   You can verify that values are being stored as you expect by running `pulumi stack export`, When values are encrypted
   in the state file, they appear as an object with a special signiture key and a ciphertext property.
@@ -21,23 +18,10 @@
   When ouputs of a stack are secrets, `pulumi stack output` will show `[secret]` as the value, by default.  You can
   pass `--show-secrets` to `pulumi stack output` in order to see the actual raw value.
 
-  **Known Issues**
-
-  - If a function which captures a secret output is serialized, the raw value will be visible inside the
-    function source code, and if that function is used to create a resource like an AWS Lambda, the raw text will
-    end up present in the state file. We are working to improve this experience.
-
-  - When using `StackReference` to fetch outputs from a stack which has any secret values (even if they are not
-    exported as stack outputs) Pulumi will need to decrypt the existing state file. If you are using passphrase based
-    encryption (which is the case for all stacks managed by the local backend, and may be used on new stacks managed)
-    by the Pulumi Service, you must set PULUMI_CONFIG_PASSPHRASE to the passphrase for the stack you are taking a
-    reference to. This means that both the source stack and target stack must share the same passphrase.
-    We are working to improve this experience.
-
 - When storing state with the Pulumi Service, you may now elect to use the passphrase based encryption for both secret
   configuration values and values that are encrypted in a state file.  To use this new feature, pass
   `--secrets-provider passphrase` to `pulumi new` or `pulumi stack init` when you initally create the stack. When you
-  create the stack, you will be prompted for a passphrase (or if PULUMI_CONFIG_PASSPHRASE is set, it will be used).
+  create the stack, you will be prompted for a passphrase (or if `PULUMI_CONFIG_PASSPHRASE` is set, it will be used).
   This passphrase is used to generate a unique key for your stack, and config values and encrypted state values are
   encrypted using AES-256-GCM. The key is derived from your passphrase, and while information to re-create it when
   provided with your passphrase is stored in both the `Pulumi.<stack-name>.yaml` file and the state file for your stack,
@@ -51,6 +35,8 @@
 
 Stacks with encrypted secrets in their state files can only be managed by 0.17.11 or later of the CLI. Attempting
 to use a previous version of the CLI with these stacks will result in an error.
+
+Fixes #397
 
 ### Improvements
 
