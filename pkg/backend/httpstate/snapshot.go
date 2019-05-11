@@ -17,10 +17,12 @@ package httpstate
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/secrets"
 )
 
 // cloudSnapshotPersister persists snapshots to the Pulumi service.
@@ -29,15 +31,11 @@ type cloudSnapshotPersister struct {
 	update      client.UpdateIdentifier // The UpdateIdentifier for this update sequence.
 	tokenSource *tokenSource            // A token source for interacting with the service.
 	backend     *cloudBackend           // A backend for communicating with the service
+	sm          secrets.Manager
 }
 
-func (persister *cloudSnapshotPersister) Invalidate() error {
-	token, err := persister.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-
-	return persister.backend.client.InvalidateUpdateCheckpoint(persister.context, persister.update, token)
+func (persister *cloudSnapshotPersister) SecretsManager() secrets.Manager {
+	return persister.sm
 }
 
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
@@ -45,18 +43,22 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	deployment := stack.SerializeDeployment(snapshot)
+	deployment, err := stack.SerializeDeployment(snapshot, persister.sm)
+	if err != nil {
+		return errors.Wrap(err, "serializing deployment")
+	}
 	return persister.backend.client.PatchUpdateCheckpoint(persister.context, persister.update, deployment, token)
 }
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
 
 func (cb *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
-	tokenSource *tokenSource) *cloudSnapshotPersister {
+	tokenSource *tokenSource, sm secrets.Manager) *cloudSnapshotPersister {
 	return &cloudSnapshotPersister{
 		context:     ctx,
 		update:      update,
 		tokenSource: tokenSource,
 		backend:     cb,
+		sm:          sm,
 	}
 }

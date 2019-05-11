@@ -33,10 +33,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/tracing"
 	"github.com/pulumi/pulumi/pkg/version"
 )
 
@@ -171,7 +171,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), tok.String()))
 	}
 
-	tracingOptions := backend.TracingOptionsFromContext(requestContext)
+	tracingOptions := tracing.OptionsFromContext(requestContext)
 	if tracingOptions.PropagateSpans {
 		carrier := opentracing.HTTPHeadersCarrier(req.Header)
 		if err = requestSpan.Tracer().Inject(requestSpan.Context(), opentracing.HTTPHeaders, carrier); err != nil {

@@ -22,6 +22,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/version"
 )
@@ -40,6 +42,10 @@ type MockStackPersister struct {
 func (m *MockStackPersister) Save(snap *deploy.Snapshot) error {
 	m.SavedSnapshots = append(m.SavedSnapshots, snap)
 	return nil
+}
+
+func (m *MockStackPersister) SecretsManager() secrets.Manager {
+	return b64.NewBase64SecretsManager()
 }
 
 func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
@@ -71,7 +77,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, resources, nil)
+	}, b64.NewBase64SecretsManager(), resources, nil)
 }
 
 func TestIdenticalSames(t *testing.T) {

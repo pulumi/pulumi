@@ -58,6 +58,7 @@ func newNewCmd() *cobra.Command {
 	var offline bool
 	var stack string
 	var yes bool
+	var secretsProvider string
 
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
@@ -240,7 +241,7 @@ func newNewCmd() *cobra.Command {
 
 			// Create the stack, if needed.
 			if !generateOnly && s == nil {
-				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts); err != nil {
+				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts, secretsProvider); err != nil {
 					return err
 				}
 				// The backend will print "Created stack '<stack>'" on success.
@@ -341,6 +342,9 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "", "The name of the provider that should be used to encrypt and "+
+			"decrypt secrets.")
 
 	return cmd
 }
@@ -392,14 +396,16 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
 func promptAndCreateStack(
-	stack string, projectName string, setCurrent bool, yes bool, opts display.Options) (backend.Stack, error) {
+	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
+	secretsProvider string) (backend.Stack, error) {
+
 	b, err := currentBackend(opts)
 	if err != nil {
 		return nil, err
 	}
 
 	if stack != "" {
-		s, err := stackInit(b, stack, setCurrent)
+		s, err := stackInit(b, stack, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -411,7 +417,7 @@ func promptAndCreateStack(
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(b, stackName, setCurrent)
+		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -425,12 +431,12 @@ func promptAndCreateStack(
 }
 
 // stackInit creates the stack.
-func stackInit(b backend.Backend, stackName string, setCurrent bool) (backend.Stack, error) {
+func stackInit(b backend.Backend, stackName string, setCurrent bool, secretsProvider string) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(b, stackRef, nil, setCurrent)
+	return createStack(b, stackRef, nil, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.
@@ -656,8 +662,18 @@ func promptForConfig(
 	}
 	sort.Sort(keys)
 
-	var err error
-	var crypter config.Crypter
+	sm, err := getStackSecretsManager(stack)
+	if err != nil {
+		return nil, err
+	}
+	encrypter, err := sm.Encrypter()
+	if err != nil {
+		return nil, err
+	}
+	decrypter, err := sm.Decrypter()
+	if err != nil {
+		return nil, err
+	}
 
 	c := make(config.Map)
 
@@ -676,17 +692,8 @@ func promptForConfig(
 		if stackConfig != nil {
 			// Use the stack's existing value as the default.
 			if val, ok := stackConfig[k]; ok {
-				secret = val.Secure()
-
-				// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
-				if secret && crypter == nil {
-					if crypter, err = backend.GetStackCrypter(stack); err != nil {
-						return nil, err
-					}
-				}
-
 				// It's OK to pass a nil or non-nil crypter for non-secret values.
-				value, err := val.Value(crypter)
+				value, err := val.Value(decrypter)
 				if err != nil {
 					return nil, err
 				}
@@ -715,14 +722,7 @@ func promptForConfig(
 		// Encrypt the value if needed.
 		var v config.Value
 		if secret {
-			// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
-			if crypter == nil {
-				if crypter, err = backend.GetStackCrypter(stack); err != nil {
-					return nil, err
-				}
-			}
-
-			enc, err := crypter.EncryptValue(value)
+			enc, err := encrypter.EncryptValue(value)
 			if err != nil {
 				return nil, err
 			}

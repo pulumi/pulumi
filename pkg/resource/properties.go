@@ -86,6 +86,11 @@ type Output struct {
 	Element PropertyValue // the eventual value (type) of the output property.
 }
 
+// Secret indicates that the underlying value should be persisted securely.
+type Secret struct {
+	Element PropertyValue
+}
+
 type ReqError struct {
 	K PropertyKey
 }
@@ -168,6 +173,7 @@ func NewArchiveProperty(v *Archive) PropertyValue      { return PropertyValue{v}
 func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
+func NewSecretProperty(v Secret) PropertyValue         { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
 	return NewComputedProperty(Computed{Element: v})
@@ -175,6 +181,10 @@ func MakeComputed(v PropertyValue) PropertyValue {
 
 func MakeOutput(v PropertyValue) PropertyValue {
 	return NewOutputProperty(Output{Element: v})
+}
+
+func MakeSecret(v PropertyValue) PropertyValue {
+	return NewSecretProperty(Secret{Element: v})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
@@ -228,6 +238,8 @@ func NewPropertyValueRepl(v interface{},
 		return NewComputedProperty(t)
 	case Output:
 		return NewOutputProperty(t)
+	case Secret:
+		return NewSecretProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
@@ -330,6 +342,9 @@ func (v PropertyValue) Input() Computed { return v.V.(Computed) }
 // OutputValue fetches the underlying output value (panicking if it isn't a output).
 func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
 
+// SecretValue fetches the underlying secret value (panicking if it isn't a secret).
+func (v PropertyValue) SecretValue() Secret { return v.V.(Secret) }
+
 // IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
 	return v.V == nil
@@ -389,6 +404,12 @@ func (v PropertyValue) IsOutput() bool {
 	return is
 }
 
+// IsSecret returns true if the underlying value is a secret value.
+func (v PropertyValue) IsSecret() bool {
+	_, is := v.V.(Secret)
+	return is
+}
+
 // TypeString returns a type representation of the property value's holder type.
 func (v PropertyValue) TypeString() string {
 	if v.IsNull() {
@@ -411,6 +432,8 @@ func (v PropertyValue) TypeString() string {
 		return "output<" + v.Input().Element.TypeString() + ">"
 	} else if v.IsOutput() {
 		return "output<" + v.OutputValue().Element.TypeString() + ">"
+	} else if v.IsSecret() {
+		return "secret<" + v.SecretValue().Element.TypeString() + ">"
 	}
 	contract.Failf("Unrecognized PropertyValue type")
 	return ""
@@ -452,6 +475,8 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 		return v.Input()
 	} else if v.IsOutput() {
 		return v.OutputValue()
+	} else if v.IsSecret() {
+		return v.SecretValue()
 	}
 	contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 	return v.ObjectValue().MapRepl(replk, replv)

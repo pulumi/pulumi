@@ -21,6 +21,7 @@ import { debuggablePromise } from "./debuggable";
 const engrpc = require("../proto/engine_grpc_pb.js");
 const engproto = require("../proto/engine_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
+const resproto = require("../proto/resource_pb.js");
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
@@ -346,6 +347,37 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
             }
 
             return resolve();
+        });
+    });
+}
+
+/**
+ * monitorSupportsSecrets returns a promise that when resolved tells you if the resource monitor we are connected
+ * to is able to support secrets across it's RPC interface. When it does, we marshal outputs marked with the secret
+ * bit in a special way.
+ */
+export function monitorSupportsSecrets(): Promise<boolean> {
+    const monitorRef: any = getMonitor();
+    if (!monitorRef) {
+        return Promise.resolve(false);
+    }
+
+    const req = new resproto.SupportsFeatureRequest();
+    req.setId("secrets");
+
+    return new Promise<boolean>((resolve, reject) => {
+        monitorRef.supportsFeature(req, (err: grpc.ServiceError, resp: any) => {
+            // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
+            // secrets.
+            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                return resolve(false);
+            }
+
+            if (err) {
+                return reject(err);
+            }
+
+            return resolve(resp.getHassupport());
         });
     });
 }

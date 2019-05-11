@@ -61,6 +61,7 @@ func newUpCmd() *cobra.Command {
 	var skipPreview bool
 	var suppressOutputs bool
 	var yes bool
+	var secretsProvider string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -91,6 +92,16 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
+		cfg, err := getStackConfiguration(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+		}
+
+		sm, err := getStackSecretsManager(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -99,11 +110,13 @@ func newUpCmd() *cobra.Command {
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
-			Proj:   proj,
-			Root:   root,
-			M:      m,
-			Opts:   opts,
-			Scopes: cancellationScopes,
+			Proj:               proj,
+			Root:               root,
+			M:                  m,
+			Opts:               opts,
+			StackConfiguration: cfg,
+			SecretsManager:     sm,
+			Scopes:             cancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:
@@ -209,7 +222,8 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes, opts.Display); err != nil {
+			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes,
+				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}
 			// The backend will print "Created stack '<stack>'." on success.
@@ -230,6 +244,18 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
+		cfg, err := getStackConfiguration(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+		}
+
+		// TODO(ellismg): Is there UX here what we want?  Do we end up double prompting for a passphrase
+		// when using passphrase based secrets management?
+		sm, err := getStackSecretsManager(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -243,11 +269,13 @@ func newUpCmd() *cobra.Command {
 		// - show template.Quickstart?
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
-			Proj:   proj,
-			Root:   root,
-			M:      m,
-			Opts:   opts,
-			Scopes: cancellationScopes,
+			Proj:               proj,
+			Root:               root,
+			M:                  m,
+			Opts:               opts,
+			StackConfiguration: cfg,
+			SecretsManager:     sm,
+			Scopes:             cancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:
@@ -328,6 +356,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "", "The name of the provider that should be used to encrypt and "+
+			"decrypt secrets. Only used when creating a new stack from an existing template.")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
@@ -461,8 +492,8 @@ func isPreconfiguredEmptyStack(
 	if len(snap.Resources) != 1 {
 		return false
 	}
-	stackResource, _ := stack.GetRootStackResource(snap)
-	if stackResource == nil {
+	stackResource, err := stack.GetRootStackResource(snap)
+	if err != nil || stackResource == nil {
 		return false
 	}
 

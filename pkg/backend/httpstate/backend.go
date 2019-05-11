@@ -17,7 +17,6 @@ package httpstate
 import (
 	"context"
 	cryptorand "crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -138,18 +137,18 @@ type Backend interface {
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
+	Client() *client.Client
 }
 
 type cloudBackend struct {
-	d               diag.Sink
-	url             string
-	stackConfigFile string
-	client          *client.Client
-	currentProject  *workspace.Project
+	d              diag.Sink
+	url            string
+	client         *client.Client
+	currentProject *workspace.Project
 }
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
+func New(d diag.Sink, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	apiToken, err := workspace.GetAccessToken(cloudURL)
 	if err != nil {
@@ -163,16 +162,15 @@ func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 	}
 
 	return &cloudBackend{
-		d:               d,
-		url:             cloudURL,
-		stackConfigFile: stackConfigFile,
-		client:          client.NewClient(cloudURL, apiToken, d),
-		currentProject:  currentProject,
+		d:              d,
+		url:            cloudURL,
+		client:         client.NewClient(cloudURL, apiToken, d),
+		currentProject: currentProject,
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -244,11 +242,11 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFil
 		return nil, err
 	}
 
-	return New(d, cloudURL, stackConfigFile)
+	return New(d, cloudURL)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, opts display.Options) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -260,7 +258,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 				return nil, err
 			}
 
-			return New(d, cloudURL, stackConfigFile)
+			return New(d, cloudURL)
 		}
 	}
 
@@ -327,7 +325,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL, stackConfigFile)
+				return loginWithBrowser(ctx, d, cloudURL)
 			}
 		}
 	}
@@ -345,7 +343,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 		return nil, err
 	}
 
-	return New(d, cloudURL, stackConfigFile)
+	return New(d, cloudURL)
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -600,41 +598,6 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	return b.client.RenameStack(ctx, stack, string(newName))
 }
 
-// cloudCrypter is an encrypter/decrypter that uses the Pulumi cloud to encrypt/decrypt a stack's secrets.
-type cloudCrypter struct {
-	backend *cloudBackend
-	stack   client.StackIdentifier
-}
-
-func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
-	ciphertext, err := c.backend.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
-	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
-	if err != nil {
-		return "", err
-	}
-	plaintext, err := c.backend.client.DecryptValue(context.Background(), c.stack, ciphertext)
-	if err != nil {
-		return "", err
-	}
-	return string(plaintext), nil
-}
-
-func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	stack, err := b.getCloudStackIdentifier(stackRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cloudCrypter{backend: b, stack: stack}, nil
-}
-
 func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
@@ -710,24 +673,12 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	stackConfigFile := b.stackConfigFile
-	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackRef.Name())
-		if err != nil {
-			return client.UpdateIdentifier{}, 0, "", err
-		}
-		stackConfigFile = f
-	}
-	workspaceStack, err := workspace.LoadProjectStack(stackConfigFile)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
-	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stackID, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
+		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -799,7 +750,7 @@ func (b *cloudBackend) query(
 
 	stackRef := stack.Ref()
 
-	q, err := b.newQuery(ctx, stackRef, op.Proj, op.Root)
+	q, err := b.newQuery(ctx, stackRef, op)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -857,7 +808,7 @@ func (b *cloudBackend) runEngineAction(
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
+	u, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -887,7 +838,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
 	// the Snapshot (checkpoint file) in the HTTP backend.
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, op.SecretsManager)
 	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
@@ -1010,7 +961,15 @@ func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 		return nil, err
 	}
 
-	return b.client.GetLatestConfiguration(ctx, stackID)
+	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
+	switch {
+	case err == client.ErrNoPreviousDeployment:
+		return nil, backend.ErrNoPreviousDeployment
+	case err != nil:
+		return nil, err
+	default:
+		return cfg, nil
+	}
 }
 
 // convertResourceChanges converts the apitype version of engine.ResourceChanges into the internal version.
@@ -1039,7 +998,7 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 	return c, nil
 }
 
-func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackReference, cfg backend.StackConfiguration,
 	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stack, err := b.GetStack(ctx, stackRef)
@@ -1050,7 +1009,7 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 		return nil, errors.New("stack not found")
 	}
 
-	target, targetErr := b.getTarget(ctx, stackRef)
+	target, targetErr := b.getTarget(ctx, stackRef, cfg.Config, cfg.Decrypter)
 	if targetErr != nil {
 		return nil, targetErr
 	}
@@ -1121,6 +1080,11 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 		Project: cleanProjectName(cloudBackendStackRef.project),
 		Stack:   string(cloudBackendStackRef.name),
 	}, nil
+}
+
+// Client returns a client object that may be used to interact with this backend.
+func (b *cloudBackend) Client() *client.Client {
+	return b.client
 }
 
 type DisplayEventType string

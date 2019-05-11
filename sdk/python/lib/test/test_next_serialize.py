@@ -236,17 +236,6 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual("foo.tar.gz", prop["path"])
 
 class DeserializationTests(unittest.TestCase):
-    def test_unsupported_secret(self):
-        struct = struct_pb2.Struct()
-        struct[rpc._special_sig_key] = rpc._special_secret_sig
-
-        error = None
-        try:
-            rpc.deserialize_property(struct)
-        except  AssertionError as err:
-            error = err
-        self.assertIsNotNone(error)
-
     def test_unsupported_sig(self):
         struct = struct_pb2.Struct()
         struct[rpc._special_sig_key] = "foobar"

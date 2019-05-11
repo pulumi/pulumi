@@ -72,6 +72,13 @@ class ResourceOptions:
     used.
     """
 
+    additional_secret_outputs: [List[str]]
+    """
+    The names of outputs for this resource that should be treated as secrets. This augments the list that
+    the resource provider and pulumi engine already determine based on inputs to your resource. It can be used
+    to mark certain ouputs as a secrets on a per resource basis.
+    """
+
 
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -81,7 +88,8 @@ class ResourceOptions:
                  providers: Optional[Mapping[str, 'ProviderResource']] = None,
                  delete_before_replace: Optional[bool] = None,
                  ignore_changes: Optional[List[str]] = None,
-                 version: Optional[str] = None) -> None:
+                 version: Optional[str] = None,
+                 additional_secret_outputs: Optional[List[str]] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -96,6 +104,8 @@ class ResourceOptions:
         :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
         :param Optional[List[string]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
                or replacements.
+        :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
+               also be treated as secret.
         """
         self.parent = parent
         self.depends_on = depends_on
@@ -105,6 +115,7 @@ class ResourceOptions:
         self.delete_before_replace = delete_before_replace
         self.ignore_changes = ignore_changes
         self.version = version
+        self.additional_secret_outputs = additional_secret_outputs
 
         if depends_on is not None:
             for dep in depends_on:

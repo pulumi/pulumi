@@ -55,6 +55,11 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
+			cfg, err := getStackConfiguration(s)
+			if err != nil {
+				return errors.Wrap(err, "getting stack configuration")
+			}
+
 			startTime, err := parseSince(since, time.Now())
 			if err != nil {
 				return errors.Wrapf(err, "failed to parse argument to '--since' as duration or timestamp")
@@ -81,7 +86,7 @@ func newLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(commandContext(), operations.LogQuery{
+				logs, err := s.GetLogs(commandContext(), cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})

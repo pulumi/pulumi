@@ -121,7 +121,12 @@ func newStackImportCmd() *cobra.Command {
 
 				snapshot.PendingOperations = nil
 			}
-			bytes, err := json.Marshal(stack.SerializeDeployment(snapshot))
+			sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager)
+			if err != nil {
+				return errors.Wrap(err, "constructing deployment for upload")
+			}
+
+			bytes, err := json.Marshal(sdp)
 			if err != nil {
 				return err
 			}

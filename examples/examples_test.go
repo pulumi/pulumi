@@ -12,11 +12,12 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
-
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func TestExamples(t *testing.T) {
@@ -101,6 +102,72 @@ func TestExamples(t *testing.T) {
 			CloudURL: "file://~",
 		}))
 	}
+
+	// Add a secrets example:  This deploys a program that spins up a bunch of custom resources with different sets
+	// of secret inputs.
+	examples = append(examples, integration.ProgramTestOptions{
+		Dir:          path.Join(cwd, "secrets"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Config: map[string]string{
+			"message": "plaintext message",
+		},
+		Secrets: map[string]string{
+			"apiKey": "FAKE_API_KEY_FOR_TESTING",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
+
+			isEncrypted := func(v interface{}) bool {
+				if m, ok := v.(map[string]interface{}); ok {
+					sigKey := m[resource.SigKey]
+					if sigKey == nil {
+						return false
+					}
+
+					v, vOk := sigKey.(string)
+					if !vOk {
+						return false
+					}
+
+					if v != resource.SecretSig {
+						return false
+					}
+
+					ciphertext := m["ciphertext"]
+					if ciphertext == nil {
+						return false
+					}
+
+					_, cOk := ciphertext.(string)
+					return cOk
+				}
+
+				return false
+			}
+
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.Type == "pulumi-nodejs:dynamic:Resource" {
+					switch res.URN.Name() {
+					case "sValue", "sApply", "cValue", "cApply":
+						assert.Truef(t, isEncrypted(res.Inputs["value"]), "input value should be encrypted")
+						assert.Truef(t, isEncrypted(res.Outputs["value"]), "output value should be encrypted")
+					case "pValue", "pApply":
+						assert.Falsef(t, isEncrypted(res.Inputs["value"]), "input value should not be encrypted")
+						assert.Falsef(t, isEncrypted(res.Outputs["value"]), "output value should not be encrypted")
+					case "pDummy":
+						assert.Falsef(t, isEncrypted(res.Outputs["value"]), "output value should not be encrypted")
+					case "sDummy":
+						// Creation of this resource passes in a custom resource options to ensure that "value" is
+						// treated as secret.  In the state file, we'll see this as an uncrypted input with an
+						// encrypted output.
+						assert.Truef(t, isEncrypted(res.Outputs["value"]), "output value should be encrypted")
+					default:
+						contract.Assertf(false, "unknown name type: %s", res.URN.Name())
+					}
+				}
+			}
+		},
+	})
 
 	// The compat test only works on Node 6.10.X because its uses the old 0.10.0 pulumi package, which only supported
 	// a single node version, since it had the native runtime component.

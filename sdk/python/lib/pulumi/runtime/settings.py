@@ -15,10 +15,12 @@
 """
 Runtime settings and configuration.
 """
-from typing import Optional, TYPE_CHECKING
+import asyncio
+import sys
+from typing import Optional, Awaitable, TYPE_CHECKING
 
 import grpc
-from ..runtime.proto import engine_pb2_grpc, resource_pb2_grpc
+from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ..errors import RunError
 
 if TYPE_CHECKING:
@@ -174,3 +176,27 @@ def set_root_resource(root: 'Resource'):
     """
     global ROOT
     ROOT = root
+
+
+async def monitor_supports_secrets() -> bool:
+    monitor = SETTINGS.monitor
+    if not monitor:
+        return False
+
+    req = resource_pb2.SupportsFeatureRequest(id="secrets")
+    def do_rpc_call():
+        try:
+            resp = monitor.SupportsFeature(req)
+            return resp.hasSupport
+        except grpc.RpcError as exn:
+            # See the comment on invoke for the justification for disabling
+            # this warning
+            # pylint: disable=no-member
+            if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                sys.exit(0)
+            if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+                return False
+            details = exn.details()
+        raise Exception(details)
+
+    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)

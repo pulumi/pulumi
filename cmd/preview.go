@@ -98,12 +98,24 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
 
+			cfg, err := getStackConfiguration(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			}
+
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			}
+
 			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
-				Proj:   proj,
-				Root:   root,
-				M:      m,
-				Opts:   opts,
-				Scopes: cancellationScopes,
+				Proj:               proj,
+				Root:               root,
+				M:                  m,
+				Opts:               opts,
+				StackConfiguration: cfg,
+				SecretsManager:     sm,
+				Scopes:             cancellationScopes,
 			})
 
 			switch {

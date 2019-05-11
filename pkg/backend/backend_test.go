@@ -152,7 +152,7 @@ type mockBackend struct {
 		UpdateOperation) (engine.ResourceChanges, result.Result)
 	DestroyF func(context.Context, StackReference,
 		UpdateOperation) (engine.ResourceChanges, result.Result)
-	GetLogsF func(context.Context, StackReference,
+	GetLogsF func(context.Context, StackReference, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
 }
 
@@ -273,11 +273,11 @@ func (be *mockBackend) GetHistory(ctx context.Context, stackRef StackReference) 
 	panic("not implemented")
 }
 
-func (be *mockBackend) GetLogs(ctx context.Context, stackRef StackReference,
+func (be *mockBackend) GetLogs(ctx context.Context, stackRef StackReference, cfg StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	if be.GetLogsF != nil {
-		return be.GetLogsF(ctx, stackRef, query)
+		return be.GetLogsF(ctx, stackRef, cfg, query)
 	}
 	panic("not implemented")
 }
@@ -346,18 +346,19 @@ func (be *mockBackend) CurrentUser() (string, error) {
 //
 
 type mockStack struct {
-	RefF              func() StackReference
-	ConfigF           func() config.Map
-	SnapshotF         func(ctx context.Context) (*deploy.Snapshot, error)
-	BackendF          func() Backend
-	PreviewF          func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	UpdateF           func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	RefreshF          func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	DestroyF          func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	QueryF            func(ctx context.Context, op UpdateOperation) result.Result
-	RemoveF           func(ctx context.Context, force bool) (bool, error)
-	RenameF           func(ctx context.Context, newName tokens.QName) error
-	GetLogsF          func(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error)
+	RefF      func() StackReference
+	ConfigF   func() config.Map
+	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
+	BackendF  func() Backend
+	PreviewF  func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	RefreshF  func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	DestroyF  func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	QueryF    func(ctx context.Context, op UpdateOperation) result.Result
+	RemoveF   func(ctx context.Context, force bool) (bool, error)
+	RenameF   func(ctx context.Context, newName tokens.QName) error
+	GetLogsF  func(ctx context.Context, cfg StackConfiguration,
+		query operations.LogQuery) ([]operations.LogEntry, error)
 	ExportDeploymentF func(ctx context.Context) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF func(ctx context.Context, deployment *apitype.UntypedDeployment) error
 }
@@ -441,9 +442,10 @@ func (ms *mockStack) Rename(ctx context.Context, newName tokens.QName) error {
 	panic("not implemented")
 }
 
-func (ms *mockStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
+func (ms *mockStack) GetLogs(ctx context.Context, cfg StackConfiguration,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
 	if ms.GetLogsF != nil {
-		return ms.GetLogsF(ctx, query)
+		return ms.GetLogsF(ctx, cfg, query)
 	}
 	panic("not implemented")
 }

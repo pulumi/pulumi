@@ -21,9 +21,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -37,6 +37,7 @@ type Stack interface {
 	OrgName() string                       // the organization that owns this stack.
 	ConsoleURL() (string, error)           // the URL to view the stack's information on Pulumi.com
 	Tags() map[apitype.StackTagName]string // the stack's tags.
+	StackIdentifier() client.StackIdentifier
 }
 
 type cloudBackendReference struct {
@@ -70,13 +71,11 @@ func (c cloudBackendReference) Name() tokens.QName {
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
 	// ref is the stack's unique name.
-	ref backend.StackReference
+	ref cloudBackendReference
 	// cloudURL is the URl to the cloud containing this stack.
 	cloudURL string
 	// orgName is the organization that owns this stack.
 	orgName string
-	// config is this stack's config bag.
-	config config.Map
 	// snapshot contains the latest deployment state, allocated on first use.
 	snapshot **deploy.Snapshot
 	// b is a pointer to the backend that this stack belongs to.
@@ -96,19 +95,22 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		},
 		cloudURL: b.CloudURL(),
 		orgName:  apistack.OrgName,
-		config:   nil, // TODO[pulumi/pulumi-service#249]: add the config variables.
 		snapshot: nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
 		tags:     apistack.Tags,
 		b:        b,
 	}
 }
-
 func (s *cloudStack) Ref() backend.StackReference           { return s.ref }
-func (s *cloudStack) Config() config.Map                    { return s.config }
 func (s *cloudStack) Backend() backend.Backend              { return s.b }
 func (s *cloudStack) CloudURL() string                      { return s.cloudURL }
 func (s *cloudStack) OrgName() string                       { return s.orgName }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string { return s.tags }
+
+func (s *cloudStack) StackIdentifier() client.StackIdentifier {
+	si, err := s.b.getCloudStackIdentifier(s.ref)
+	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
+	return si
+}
 
 func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {
@@ -152,8 +154,9 @@ func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *cloudStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, query)
+func (s *cloudStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
+	return backend.GetStackLogs(ctx, s, cfg, query)
 }
 
 func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {

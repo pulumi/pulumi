@@ -1,16 +1,55 @@
 ## 0.17.11 (Unreleased)
 
+### Major Changes
+
+#### Secrets and Pluggable Encryption
+
+- The Pulumi engine and Python and NodeJS SDKs now have support for tracking values as "secret" to ensure they are
+  encrypted when being persisted in a state file. `[pulumi/pulumi#397](https://github.com/pulumi/pulumi/issues/397)`
+
+  Any existing value may be turned into a secret by calling `pulumi.secret(<value>)` (NodeJS) or
+  `Output.secret(<value>`) (Python).  In both cases, the returned value is an output which may be passed around
+  like any other.  If this value flows into a resource, the plaintext will not be stored in the state file, but instead
+  It will be encrypted, just like values added to config with `pulumi config set --secret`.
+
+  You can verify that values are being stored as you expect by running `pulumi stack export`, When values are encrypted
+  in the state file, they appear as an object with a special signiture key and a ciphertext property.
+
+  When ouputs of a stack are secrets, `pulumi stack output` will show `[secret]` as the value, by default.  You can
+  pass `--show-secrets` to `pulumi stack output` in order to see the actual raw value.
+
+- When storing state with the Pulumi Service, you may now elect to use the passphrase based encryption for both secret
+  configuration values and values that are encrypted in a state file.  To use this new feature, pass
+  `--secrets-provider passphrase` to `pulumi new` or `pulumi stack init` when you initally create the stack. When you
+  create the stack, you will be prompted for a passphrase (or if `PULUMI_CONFIG_PASSPHRASE` is set, it will be used).
+  This passphrase is used to generate a unique key for your stack, and config values and encrypted state values are
+  encrypted using AES-256-GCM. The key is derived from your passphrase, and while information to re-create it when
+  provided with your passphrase is stored in both the `Pulumi.<stack-name>.yaml` file and the state file for your stack,
+  this information can not be used to recover the key. When using this mode, the Pulumi Service is unable to decrypt
+  either your secret configuration values or and secret values in your state file.
+
+  We will be adding gestures to move existing stacks managed by the service to use passphrase based encryption soon
+  as well as gestures to change the passphrase for an existing stack.
+
+** Note **
+
+Stacks with encrypted secrets in their state files can only be managed by 0.17.11 or later of the CLI. Attempting
+to use a previous version of the CLI with these stacks will result in an error.
+
+Fixes #397
+
+### Improvements
+
 - Add support for Azure Pipelines in CI environment detection.
 - Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
   repositories when various remote URLs are used to pull the repository.
 
 ## 0.17.10 (Released May 2, 2019)
 
-- Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
-  `s3://`, `azblob://` and `gs://` save locations.
-
 ### Improvements
 
+- Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
+  `s3://`, `azblob://` and `gs://` save locations.
 - Minor contributing document improvement.
 - Warnings from `npm` about missing description, repository, and license fields in package.json are
   now suppressed when `npm install` is run from `pulumi new` (via `npm install --loglevel=error`).

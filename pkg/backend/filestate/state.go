@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -69,81 +70,64 @@ func (u *update) GetTarget() *deploy.Target {
 	return u.target
 }
 
-func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {
+func (b *localBackend) newUpdate(stackName tokens.QName, op backend.UpdateOperation) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
 	// Construct the deployment target.
-	target, err := b.getTarget(stackName)
+	target, err := b.getTarget(stackName, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
 
 	// Construct and return a new update.
 	return &update{
-		root:    root,
-		proj:    proj,
+		root:    op.Root,
+		proj:    op.Proj,
 		target:  target,
 		backend: b,
 	}, nil
 }
 
-func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
-	stackConfigFile := b.stackConfigFile
-	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
-		if err != nil {
-			return nil, err
-		}
-		stackConfigFile = f
-	}
-
-	stk, err := workspace.LoadProjectStack(stackConfigFile)
-	if err != nil {
-		return nil, err
-	}
-	decrypter, err := defaultCrypter(stackName, stk.Config, stackConfigFile)
-	if err != nil {
-		return nil, err
-	}
-	_, snapshot, _, err := b.getStack(stackName)
+func (b *localBackend) getTarget(stackName tokens.QName, cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
+	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
 	return &deploy.Target{
 		Name:      stackName,
-		Config:    stk.Config,
-		Decrypter: decrypter,
+		Config:    cfg,
+		Decrypter: dec,
 		Snapshot:  snapshot,
 	}, nil
 }
 
-func (b *localBackend) getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
+func (b *localBackend) getStack(name tokens.QName) (*deploy.Snapshot, string, error) {
 	if name == "" {
-		return nil, nil, "", errors.New("invalid empty stack name")
+		return nil, "", errors.New("invalid empty stack name")
 	}
 
 	file := b.stackPath(name)
 
 	chk, err := b.getCheckpoint(name)
 	if err != nil {
-		return nil, nil, file, errors.Wrap(err, "failed to load checkpoint")
+		return nil, file, errors.Wrap(err, "failed to load checkpoint")
 	}
 
 	// Materialize an actual snapshot object.
 	snapshot, err := stack.DeserializeCheckpoint(chk)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !DisableIntegrityChecking {
 		if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
-			return nil, nil, file,
+			return nil, file,
 				errors.Wrapf(verifyerr, "%s: snapshot integrity failure; refusing to use it", file)
 		}
 	}
 
-	return chk.Config, snapshot, file, nil
+	return snapshot, file, nil
 }
 
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
@@ -157,8 +141,7 @@ func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.Checkpoin
 	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
 }
 
-func (b *localBackend) saveStack(name tokens.QName,
-	config map[config.Key]config.Value, snap *deploy.Snapshot) (string, error) {
+func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
 	// Make a serializable stack and then use the encoder to encode it.
 	file := b.stackPath(name)
 	m, ext := encoding.Detect(file)
@@ -168,7 +151,10 @@ func (b *localBackend) saveStack(name tokens.QName,
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	chk := stack.SerializeCheckpoint(name, config, snap)
+	chk, err := stack.SerializeCheckpoint(name, snap, sm)
+	if err != nil {
+		return "", errors.Wrap(err, "serializaing checkpoint")
+	}
 	byts, err := m.Marshal(chk)
 	if err != nil {
 		return "", errors.Wrap(err, "An IO error occurred during the current operation")

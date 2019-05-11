@@ -18,18 +18,16 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"regexp"
-
-	"github.com/pulumi/pulumi/pkg/tokens"
-
-	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -38,7 +36,6 @@ import (
 // Stack is a stack associated with a particular backend implementation.
 type Stack interface {
 	Ref() StackReference                                    // this stack's identity.
-	Config() config.Map                                     // the current config map.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
 
@@ -58,7 +55,7 @@ type Stack interface {
 	// rename this stack.
 	Rename(ctx context.Context, newName tokens.QName) error
 	// list log entries for this stack.
-	GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error)
+	GetLogs(ctx context.Context, cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
 	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
 	// import the given deployment into this stack.
@@ -99,19 +96,15 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 	return s.Backend().Destroy(ctx, s.Ref(), op)
 }
 
-// GetStackCrypter fetches the encrypter/decrypter for a stack.
-func GetStackCrypter(s Stack) (config.Crypter, error) {
-	return s.Backend().GetStackCrypter(s.Ref())
-}
-
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
 func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s.Ref())
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
-func GetStackLogs(ctx context.Context, s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(ctx, s.Ref(), query)
+func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
+	return s.Backend().GetLogs(ctx, s.Ref(), cfg, query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
@@ -226,50 +219,4 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	}
 
 	return nil
-}
-
-// validateStackName checks if s is a valid stack name, otherwise returns a descritive error.
-// This should match the stack naming rules enforced by the Pulumi Service.
-func validateStackName(s string) error {
-	stackNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
-	if stackNameRE.MatchString(s) {
-		return nil
-	}
-	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
-}
-
-// ValidateStackTags validates the tag names and values.
-func ValidateStackTags(tags map[apitype.StackTagName]string) error {
-	const maxTagName = 40
-	const maxTagValue = 256
-
-	for t, v := range tags {
-		if len(t) == 0 {
-			return errors.Errorf("invalid stack tag %q", t)
-		}
-		if len(t) > maxTagName {
-			return errors.Errorf("stack tag %q is too long (max length %d characters)", t, maxTagName)
-		}
-		if len(v) > maxTagValue {
-			return errors.Errorf("stack tag %q value is too long (max length %d characters)", t, maxTagValue)
-		}
-	}
-
-	return nil
-}
-
-// ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
-// naming and length restrictions.
-func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
-	const maxStackName = 100 // Derived from the regex in validateStackName.
-	if len(stack) > maxStackName {
-		return errors.Errorf("stack name too long (max length %d characters)", maxStackName)
-	}
-	if err := validateStackName(stack); err != nil {
-		return errors.Wrapf(err, "invalid stack name")
-	}
-
-	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
-	// values make sense, e.g. ProjectRuntimeTag is a supported runtime.
-	return ValidateStackTags(tags)
 }

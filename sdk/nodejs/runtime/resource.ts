@@ -111,6 +111,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setProperties(gstruct.Struct.fromJavaScript(resop.serializedProps));
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
+        req.setAcceptsecrets(true);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
@@ -180,6 +181,8 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);
         req.setIgnorechangesList(opts.ignoreChanges || []);
         req.setVersion(opts.version || "");
+        req.setAcceptsecrets(true);
+        req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
 
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
@@ -253,22 +256,24 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
             `resolveURN(${label})`),
-        /*performApply:*/ Promise.resolve(true));
+        /*isKnown:*/ Promise.resolve(true),
+        /*isSecret:*/ Promise.resolve(false));
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: any, performApply: boolean) => void) | undefined;
     if (custom) {
         let resolveValue: (v: ID) => void;
-        let resolvePerformApply: (v: boolean) => void;
+        let resolveIsKnown: (v: boolean) => void;
         (res as any).id = new Output(
             res,
             debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
             debuggablePromise(new Promise<boolean>(
-                resolve => resolvePerformApply = resolve), `resolveIDPerformApply(${label})`));
+                resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${label})`),
+            Promise.resolve(false));
 
-        resolveID = (v, performApply) => {
+        resolveID = (v, isKnown) => {
             resolveValue(v);
-            resolvePerformApply(performApply);
+            resolveIsKnown(isKnown);
         };
     }
 

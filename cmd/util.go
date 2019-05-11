@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/pkg/util/tracing"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -60,9 +61,9 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 		return nil, err
 	}
 	if filestate.IsFileStateBackendURL(creds.Current) {
-		return filestate.New(cmdutil.Diag(), creds.Current, stackConfigFile)
+		return filestate.New(cmdutil.Diag(), creds.Current)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, stackConfigFile, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -75,18 +76,35 @@ func commandContext() context.Context {
 			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
 		}
 
-		tracingOptions := backend.TracingOptions{
+		tracingOptions := tracing.Options{
 			PropagateSpans: true,
 			TracingHeader:  tracingHeader,
 		}
-		ctx = backend.ContextWithTracingOptions(ctx, tracingOptions)
+		ctx = tracing.ContextWithOptions(ctx, tracingOptions)
 	}
 	return ctx
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
 func createStack(
-	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool) (backend.Stack, error) {
+	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
+	secretsProvider string) (backend.Stack, error) {
+
+	if secretsProvider != "" && secretsProvider != "passphrase" {
+		return nil, errors.Errorf("unknown secrets provider type '%s'", secretsProvider)
+	}
+
+	// As part of creating the stack, we also need to configure the secrets provider for the stack. Today, we only
+	// have to do this configuration step when you are using the passpharse provider (which is used for all filestate,
+	// stacks and well as httpstate stacks that opted into this by passing --secrets-provider passphrase
+	// while initialing a stack).  The only other supported provider today (the provider that uses the pulumi service
+	// does not need to be initialized explicitly, as creating the stack inside the Pulumi service does this).
+	if _, ok := b.(filestate.Backend); ok || secretsProvider == "passphrase" {
+		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
+			return nil, pharseErr
+		}
+	}
+
 	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
 		// If it's a StackAlreadyExistsError, don't wrap it.
@@ -142,7 +160,7 @@ func requireStack(
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil, setCurrent)
+		return createStack(b, stackRef, nil, setCurrent, "")
 	}
 
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
@@ -249,7 +267,7 @@ func chooseStack(
 			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil, setCurrent)
+		return createStack(b, stackRef, nil, setCurrent, "")
 	}
 
 	// With the stack name selected, look it up from the backend.

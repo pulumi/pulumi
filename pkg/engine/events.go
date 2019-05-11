@@ -285,6 +285,8 @@ func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.Pr
 				URI:    t.URI,
 				Assets: filterValue(t.Assets).(map[string]interface{}),
 			}
+		case resource.Secret:
+			return "[secret]"
 		case resource.Computed:
 			return resource.Computed{
 				Element: filterPropertyValue(t.Element),

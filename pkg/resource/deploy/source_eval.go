@@ -298,7 +298,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil),
 		done: done,
 	}
 	return event, done, nil
@@ -508,6 +508,23 @@ func (rm *resmon) parseProviderRequest(pkg tokens.Package, version string) (prov
 	return providers.NewProviderRequest(&parsedVersion, pkg), nil
 }
 
+func (rm *resmon) SupportsFeature(ctx context.Context,
+	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
+
+	hasSupport := false
+
+	switch req.Id {
+	case "secrets":
+		hasSupport = true
+	}
+
+	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
+
+	return &pulumirpc.SupportsFeatureResponse{
+		HasSupport: hasSupport,
+	}, nil
+}
+
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
@@ -524,7 +541,11 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
 
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:        label,
+			KeepUnknowns: true,
+			KeepSecrets:  true,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
@@ -535,7 +556,10 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
 	}
@@ -584,20 +608,27 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
+		KeepSecrets:  true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	var additionalSecretOutputs []resource.PropertyKey
+	for _, name := range req.GetAdditionalSecretOutputs() {
+		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
+	}
+
 	event := &readResourceEvent{
-		id:           id,
-		name:         name,
-		baseType:     t,
-		provider:     provider,
-		parent:       parent,
-		props:        props,
-		dependencies: deps,
-		done:         make(chan *ReadResult),
+		id:                      id,
+		name:                    name,
+		baseType:                t,
+		provider:                provider,
+		parent:                  parent,
+		props:                   props,
+		dependencies:            deps,
+		additionalSecretOutputs: additionalSecretOutputs,
+		done:                    make(chan *ReadResult),
 	}
 	select {
 	case rm.regReadChan <- event:
@@ -619,6 +650,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
+		KeepSecrets:  req.GetAcceptSecrets(),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %s return state", result.State.URN)
@@ -677,7 +709,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetObject(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -700,6 +737,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
+	var additionalSecretOutputs []resource.PropertyKey
+	for _, name := range req.GetAdditionalSecretOutputs() {
+		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v",
@@ -708,7 +750,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies, deleteBeforeReplace, ignoreChanges),
+			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs),
 		done: make(chan *RegisterResult),
 	}
 
@@ -740,7 +782,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+		KeepSecrets:  req.GetAcceptSecrets(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -765,7 +811,12 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	}
 	label := fmt.Sprintf("ResourceMonitor.RegisterResourceOutputs(%s)", urn)
 	outs, err := plugin.UnmarshalProperties(
-		req.GetOutputs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetOutputs(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal output properties")
 	}
@@ -840,14 +891,15 @@ func (g *registerResourceOutputsEvent) Done() {
 }
 
 type readResourceEvent struct {
-	id           resource.ID
-	name         tokens.QName
-	baseType     tokens.Type
-	provider     string
-	parent       resource.URN
-	props        resource.PropertyMap
-	dependencies []resource.URN
-	done         chan *ReadResult
+	id                      resource.ID
+	name                    tokens.QName
+	baseType                tokens.Type
+	provider                string
+	parent                  resource.URN
+	props                   resource.PropertyMap
+	dependencies            []resource.URN
+	additionalSecretOutputs []resource.PropertyKey
+	done                    chan *ReadResult
 }
 
 var _ ReadResourceEvent = (*readResourceEvent)(nil)
@@ -861,6 +913,9 @@ func (g *readResourceEvent) Provider() string                 { return g.provide
 func (g *readResourceEvent) Parent() resource.URN             { return g.parent }
 func (g *readResourceEvent) Properties() resource.PropertyMap { return g.props }
 func (g *readResourceEvent) Dependencies() []resource.URN     { return g.dependencies }
+func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
+	return g.additionalSecretOutputs
+}
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result
 }

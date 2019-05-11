@@ -26,13 +26,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
 	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -50,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/pkg/util/validation"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -60,10 +60,9 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d               diag.Sink
-	url             string
-	stackConfigFile string
-	bucket          *blob.Bucket
+	d      diag.Sink
+	url    string
+	bucket *blob.Bucket
 }
 
 type localBackendReference struct {
@@ -87,27 +86,26 @@ func IsFileStateBackendURL(urlstr string) bool {
 	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
-func New(d diag.Sink, u, stackConfigFile string) (Backend, error) {
-	if !IsFileStateBackendURL(u) {
+func New(d diag.Sink, url string) (Backend, error) {
+	if !IsFileStateBackendURL(url) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
-			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
+			url, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	u, err := massageBlobPath(u)
+	url, err := massageBlobPath(url)
 	if err != nil {
 		return nil, err
 	}
 
-	bucket, err := blob.OpenBucket(context.TODO(), u)
+	bucket, err := blob.OpenBucket(context.TODO(), url)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
+		return nil, errors.Wrapf(err, "unable to open bucket %s", url)
 	}
 
 	return &localBackend{
-		d:               d,
-		url:             u,
-		stackConfigFile: stackConfigFile,
-		bucket:          bucket,
+		d:      d,
+		url:    url,
+		bucket: bucket,
 	}, nil
 }
 
@@ -158,8 +156,8 @@ func massageBlobPath(path string) (string, error) {
 	return filePathPrefix + path, nil
 }
 
-func Login(d diag.Sink, url, stackConfigFile string) (Backend, error) {
-	be, err := New(d, url, stackConfigFile)
+func Login(d diag.Sink, url string) (Backend, error) {
+	be, err := New(d, url)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +197,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, _, err := b.getStack(stackName); err == nil {
+	if _, _, err := b.getStack(stackName); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
@@ -207,7 +205,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	if err != nil {
 		return nil, errors.Wrap(err, "getting stack tags")
 	}
-	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
+	if err = validation.ValidateStackProperties(string(stackName), tags); err != nil {
 		return nil, errors.Wrap(err, "validating stack properties")
 	}
 
@@ -216,7 +214,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 
-	stack := newStack(stackRef, file, nil, nil, b)
+	stack := newStack(stackRef, file, nil, b)
 	fmt.Printf("Created stack '%s'\n", stack.Ref())
 
 	return stack, nil
@@ -224,14 +222,14 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
-	config, snapshot, path, err := b.getStack(stackName)
+	snapshot, path, err := b.getStack(stackName)
 	switch {
 	case os.IsNotExist(errors.Cause(err)):
 		return nil, nil
 	case err != nil:
 		return nil, err
 	default:
-		return newStack(stackRef, path, config, snapshot, b), nil
+		return newStack(stackRef, path, snapshot, b), nil
 	}
 }
 
@@ -258,7 +256,7 @@ func (b *localBackend) ListStacks(
 
 func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
 	stackName := stackRef.Name()
-	_, snapshot, _, err := b.getStack(stackName)
+	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return false, err
 	}
@@ -273,7 +271,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 
 func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackReference, newName tokens.QName) error {
 	stackName := stackRef.Name()
-	cfg, snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -291,7 +289,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 		return err
 	}
 
-	if _, err = b.saveStack(newName, cfg, snap); err != nil {
+	if _, err = b.saveStack(newName, snap, snap.SecretsManager); err != nil {
 		return err
 	}
 
@@ -304,10 +302,6 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	newHistoryDir := b.historyDirectory(newName)
 
 	return os.Rename(oldHistoryDir, newHistoryDir)
-}
-
-func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	return symmetricCrypter(stackRef.Name(), b.stackConfigFile)
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
@@ -395,7 +389,7 @@ func (b *localBackend) apply(
 	}
 
 	// Start the update.
-	update, err := b.newUpdate(stackName, op.Proj, op.Root)
+	update, err := b.newUpdate(stackName, op)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -427,7 +421,7 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(stackName)
+	persister := b.newSnapshotPersister(stackName, op.SecretsManager)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
@@ -546,11 +540,11 @@ func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 	return updates, nil
 }
 
-func (b *localBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) GetLogs(ctx context.Context, stackRef backend.StackReference, cfg backend.StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stackRef.Name()
-	target, err := b.getTarget(stackName)
+	target, err := b.getTarget(stackName, cfg.Config, cfg.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -581,16 +575,21 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
 
 	stackName := stackRef.Name()
-	_, snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
 
 	if snap == nil {
-		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil)
+		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil)
 	}
 
-	data, err := json.Marshal(stack.SerializeDeployment(snap))
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager)
+	if err != nil {
+		return nil, errors.Wrap(err, "serializing deployment")
+	}
+
+	data, err := json.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +604,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	deployment *apitype.UntypedDeployment) error {
 
 	stackName := stackRef.Name()
-	config, _, _, err := b.getStack(stackName)
+	_, _, err := b.getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -615,7 +614,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	_, err = b.saveStack(stackName, config, snap)
+	_, err = b.saveStack(stackName, snap, snap.SecretsManager)
 	return err
 }
 
@@ -657,7 +656,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, _, err := b.getStack(name)
+		_, _, err := b.getStack(name)
 		if err != nil {
 			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
 			continue // failure reading the stack information.

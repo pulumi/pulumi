@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -99,9 +100,6 @@ type Backend interface {
 
 	RenameStack(ctx context.Context, stackRef StackReference, newName tokens.QName) error
 
-	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
-	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
-
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
@@ -118,7 +116,8 @@ type Backend interface {
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(ctx context.Context, stackRef StackReference, query operations.LogQuery) ([]operations.LogEntry, error)
+	GetLogs(ctx context.Context, stackRef StackReference, cfg StackConfiguration,
+		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stackRef StackReference) (config.Map, error)
 
@@ -139,11 +138,19 @@ type Backend interface {
 
 // UpdateOperation is a complete stack update operation (preview, update, refresh, or destroy).
 type UpdateOperation struct {
-	Proj   *workspace.Project
-	Root   string
-	M      *UpdateMetadata
-	Opts   UpdateOptions
-	Scopes CancellationScopeSource
+	Proj               *workspace.Project
+	Root               string
+	M                  *UpdateMetadata
+	Opts               UpdateOptions
+	SecretsManager     secrets.Manager
+	StackConfiguration StackConfiguration
+	Scopes             CancellationScopeSource
+}
+
+// StackConfiguration holds the configuration for a stack and it's associated decrypter.
+type StackConfiguration struct {
+	Config    config.Map
+	Decrypter config.Decrypter
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.
@@ -173,30 +180,6 @@ type CancellationScopeSource interface {
 	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
 }
 
-// tracingOptionsKey is the value used as the context key for TracingOptions.
-var tracingOptionsKey struct{}
-
-// TracingOptions describes the set of options available for configuring tracing on a per-request basis.
-type TracingOptions struct {
-	// PropagateSpans indicates that spans should be propagated from the client to the Pulumi service when making API
-	// calls.
-	PropagateSpans bool
-	// IncludeTracingHeader indicates that API calls should include the indicated tracing header contents.
-	TracingHeader string
-}
-
-// ContextWithTracingOptions returns a new context.Context with the indicated tracing options.
-func ContextWithTracingOptions(ctx context.Context, opts TracingOptions) context.Context {
-	return context.WithValue(ctx, tracingOptionsKey, opts)
-}
-
-// TracingOptionsFromContext retrieves any tracing options present in the given context. If no options are present,
-// this function returns the zero value.
-func TracingOptionsFromContext(ctx context.Context) TracingOptions {
-	opts, _ := ctx.Value(tracingOptionsKey).(TracingOptions)
-	return opts
-}
-
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
 func NewBackendClient(backend Backend) deploy.BackendClient {
 	return &backendClient{backend: backend}
@@ -223,7 +206,10 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	if err != nil {
 		return nil, err
 	}
-	res, _ := stack.GetRootStackResource(snap)
+	res, err := stack.GetRootStackResource(snap)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting root stack resources")
+	}
 	if res == nil {
 		return resource.PropertyMap{}, nil
 	}
