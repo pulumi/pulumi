@@ -162,7 +162,7 @@ func runQuery(cancelCtx *Context, u UpdateInfo, opts QueryOptions) result.Result
 	select {
 	case <-cancelCtx.Cancel.Terminated():
 		return result.WrapIfNonNil(cancelCtx.Cancel.TerminateErr())
-	case <-done:
-		return nil
+	case res := <-done:
+		return res
 	}
 }
