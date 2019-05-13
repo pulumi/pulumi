@@ -175,7 +175,7 @@ export function resolveProperties(
 
         // If this value is a secret, unwrap its inner value.
         let value = allProps[k];
-        const isSecret = value !== undefined && value[specialSecretSig] === true;
+        const isSecret = value && value[specialSecretSig] === true;
         if (isSecret) {
             value = value.value;
         }
@@ -442,7 +442,7 @@ export function deserializeProperty(prop: any): any {
         for (const k of Object.keys(prop)) {
             let o = deserializeProperty(prop[k]);
 
-            if (o[specialSecretSig] === true) {
+            if (o && o[specialSecretSig] === true) {
                 hadSecrets = true;
                 o = o.value;
             }
