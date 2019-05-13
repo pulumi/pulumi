@@ -880,7 +880,10 @@ async function getOrCreateEntryAsync(
             // Serialize functions recursively, and store them in a closure property.
             entry.function = await analyzeFunctionInfoAsync(obj, context, serialize, logInfo);
         }
-        else if (await isOutputAsync(obj)) {
+        else if (Output.isInstance(obj)) {
+            if (await obj.isSecret) {
+                throw new Error("Secret outputs cannot be captured by a closure.");
+            }
             entry.output = await createOutputEntryAsync(obj);
         }
         else if (obj instanceof Promise) {
