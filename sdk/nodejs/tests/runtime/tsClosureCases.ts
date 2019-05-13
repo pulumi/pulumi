@@ -5872,6 +5872,18 @@ return function () { console.log(regex); foo(); };
         });
     }
 
+    {
+        const s = pulumi.secret("can't capture me");
+
+        cases.push({
+            title: "Can't capture secrets",
+            func: function() {
+                console.log(s.get());
+            },
+            error: "Secret outputs cannot be captured by a closure.",
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
