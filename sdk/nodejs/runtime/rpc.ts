@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { Input, Inputs, Output } from "../output";
+import { Input, Inputs, isSecretOutput, Output } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
@@ -285,7 +285,13 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
         // resolve isKnown to true) and for any resource outputs that were resolved with known values.
         const isKnown = await prop.isKnown;
-        const isSecret = await prop.isSecret;
+
+        // You might think that doing an explict `=== true` here is not needed, but it is for a subtle reason. If the
+        // output we are serializing is a proxy itself, and it comes from a version of the SDK that did not have the
+        // `isSecret` member on `OutputImpl` then the call to `prop.isSecret` here will return an Output itself,
+        // which will wrap undefined, if it were to be resolved (since `Output` has no member named .isSecret).
+        // so we must compare to the literal true instead of just doing await prop.isSecret.
+        const isSecret = await prop.isSecret === true;
         const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
         if (!isKnown) {
             return unknownValue;

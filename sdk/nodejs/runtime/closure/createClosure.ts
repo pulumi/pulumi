@@ -16,7 +16,7 @@
 
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
-import { Input, Output } from "../../output";
+import { Input, isSecretOutput, Output } from "../../output";
 import * as resource from "../../resource";
 import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
@@ -881,7 +881,7 @@ async function getOrCreateEntryAsync(
             entry.function = await analyzeFunctionInfoAsync(obj, context, serialize, logInfo);
         }
         else if (Output.isInstance(obj)) {
-            if (await obj.isSecret) {
+            if (await isSecretOutput(obj)) {
                 throw new Error("Secret outputs cannot be captured by a closure.");
             }
             entry.output = await createOutputEntryAsync(obj);
