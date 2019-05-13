@@ -314,6 +314,14 @@ To manipulate the value of this Output, use '.apply' instead.`);
     }
 }
 
+// Returns an promise denoting if the output is a secret or not. This is not the same as just calling `.isSecret`
+// because in cases where the output does not have a `isSecret` property and it is a Proxy, we need to ignore
+// the isSecret member that the proxy reports back.
+/** @internal */
+export function isSecretOutput<T>(o: Output<T>): Promise<boolean> {
+    return Output.isInstance(o.isSecret) ? Promise.resolve(false) : o.isSecret;
+}
+
 /**
  * [output] takes any Input value and converts it into an Output, deeply unwrapping nested Input
  * values as necessary.
@@ -447,7 +455,7 @@ function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[]
     const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
 
     // A merged output is secret if any of its inputs are secret.
-    const isSecret = Promise.all(allOutputs.map(o => o.isSecret || Promise.resolve(false))).then(ps => ps.find(b => b) !== undefined);
+    const isSecret = Promise.all(allOutputs.map(o => isSecretOutput(o))).then(ps => ps.find(b => b) !== undefined);
 
     return [allResources, isKnown, isSecret];
 }
