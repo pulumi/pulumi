@@ -59,17 +59,6 @@ const (
 	// GitAuthorEmail is the email address associated with the commit's author.
 	GitAuthorEmail = "git.author.email"
 
-	// GitHubLogin is the user/organization who owns the local repo, if the origin remote is hosted on GitHub.com.
-	// [DEPRECATED] This will be remove in a future version.
-	// This key is read-only for stack updates created pre-0.16.4.
-	// Do not use this key set any value in the environment metadata map.
-	GitHubLogin = "github.login"
-	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
-	// [DEPRECATED] This will be remove in a future version.
-	// This key is read-only for stack updates created pre-0.16.4.
-	// Do not use this key set any value in the environment metadata map.
-	GitHubRepo = "github.repo"
-
 	// VCSRepoOwner is the user who owns the local repo, if the origin remote is a cloud host.
 	VCSRepoOwner = "vcs.owner"
 	// VCSRepoName is the name of the repo, if the local git repo's remote origin is a cloud host.
