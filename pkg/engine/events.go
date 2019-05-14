@@ -43,6 +43,7 @@ const (
 	StdoutColorEvent        EventType = "stdoutcolor"
 	DiagEvent               EventType = "diag"
 	PreludeEvent            EventType = "prelude"
+	PolicyPreEvent          EventType = "policy-pre"
 	SummaryEvent            EventType = "summary"
 	ResourcePreEvent        EventType = "resource-pre"
 	ResourceOutputsEvent    EventType = "resource-outputs"
@@ -72,6 +73,13 @@ type StdoutEventPayload struct {
 type PreludeEventPayload struct {
 	IsPreview bool              // true if this prelude is for a plan operation
 	Config    map[string]string // the keys and values for config. For encrypted config, the values may be blinded
+}
+
+// PolicyPreEventPayload is the event payload sent before a policy check.
+type PolicyPreEventPayload struct {
+	IsPreview  bool
+	ResourceID resource.ID
+	PolicyID   string
 }
 
 type SummaryEventPayload struct {

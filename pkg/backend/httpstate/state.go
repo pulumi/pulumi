@@ -146,6 +146,10 @@ func (u *cloudUpdate) GetTarget() *deploy.Target {
 	return u.target
 }
 
+func (u *cloudUpdate) GetPoliciesToRun() *apitype.PoliciesToRun {
+	return u.update.PoliciesToRun
+}
+
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	defer u.tokenSource.Close()
 

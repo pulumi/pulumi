@@ -400,6 +400,15 @@ func (pc *Client) CreateUpdate(
 		StackIdentifier: stack,
 		UpdateKind:      kind,
 		UpdateID:        updateResponse.UpdateID,
+		PoliciesToRun: &apitype.PoliciesToRun{
+			Policies: []apitype.Policy{
+				{
+					ID:          "HELLO",
+					Name:        "my_name",
+					IsCompliant: func() bool { return false },
+				},
+			},
+		},
 	}, nil
 }
 
