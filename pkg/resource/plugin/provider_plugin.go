@@ -139,18 +139,41 @@ func (p *provider) ensureConfigured() error {
 // annotateSecrets copies the "secretness" of any properties from one PropertyMap to another. For any property with a
 // secret value in "from", if there is a coresponding property in "to", it is marked as secret.
 func annotateSecrets(to, from resource.PropertyMap) {
-	if to == nil {
+	if to == nil || from == nil {
 		return
 	}
 
-	for fromKey, fromValue := range from {
-		if fromValue.IsSecret() {
-			if toValue, has := to[fromKey]; has && !toValue.IsSecret() {
-				logging.V(7).Infof("marking %s as secret", fromKey)
-				to[fromKey] = resource.MakeSecret(toValue)
-			}
+	for toKey, toValue := range to {
+		fromValue, has := from[toKey]
+		if !has {
+			continue
+		}
+		to[toKey] = annotateSecretValue(toValue, fromValue)
+	}
+}
+
+func annotateSecretValue(to, from resource.PropertyValue) resource.PropertyValue {
+	if from.IsSecret() && !to.IsSecret() {
+		return resource.MakeSecret(to)
+	}
+	if from.IsComputed() && to.IsComputed() {
+		return resource.MakeComputed(annotateSecretValue(to.Input().Element, to.Input().Element))
+	}
+	if from.IsOutput() && to.IsOutput() {
+		return resource.MakeOutput(annotateSecretValue(to.OutputValue().Element, to.OutputValue().Element))
+	}
+	if from.IsObject() && to.IsObject() {
+		annotateSecrets(to.ObjectValue(), from.ObjectValue())
+	}
+	if from.IsArray() && to.IsArray() && len(from.ArrayValue()) == len(to.ArrayValue()) {
+		fromArr := from.ArrayValue()
+		toArr := to.ArrayValue()
+		for idx, v := range toArr {
+			toArr[idx] = annotateSecretValue(v, fromArr[idx])
 		}
 	}
+
+	return to
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
