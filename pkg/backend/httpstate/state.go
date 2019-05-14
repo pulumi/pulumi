@@ -184,7 +184,7 @@ func isDebugDiagEvent(e engine.Event) bool {
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
-// posting them to the Pulumi service. Any failures will post DiaogEvents to be displayed in the CLI.
+// posting them to the Pulumi service.
 func (u *cloudUpdate) RecordAndDisplayEvents(
 	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
 	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
@@ -192,7 +192,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// Create a new channel to synchronize with the event renderer.
 	innerDone := make(chan bool)
 	defer func() {
-		// Wait for the display routime to exit, then notify any listeners that this routine is finished.
+		// Wait for the display goroutine to exit, then notify any listeners that this goroutine is finished.
 		<-innerDone
 		close(done)
 	}()
@@ -208,8 +208,8 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	eventIdx := 0
 
 	// We start the requests to record engine events in separate Go routines since they can
-	// all be done independently, and updates with a "chatty" event stream can have serious
-	// perf problems when issuing the requests serially.
+	// all be done independently. Updates with a "chatty" event stream can have serious
+	// perf problems if issued serially.
 	var wg sync.WaitGroup
 	recordEngineEvent := func(event engine.Event, eventIdx int) {
 		defer wg.Done()
@@ -341,7 +341,6 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 
 		Old: convertStepEventStateMetadata(md.Old),
 		New: convertStepEventStateMetadata(md.New),
-		Res: convertStepEventStateMetadata(md.Res),
 
 		Keys:     keys,
 		Diffs:    diffs,
