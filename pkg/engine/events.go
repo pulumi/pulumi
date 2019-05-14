@@ -153,8 +153,9 @@ type StepEventStateMetadata struct {
 
 // PolicyError contains the details of a policy that has failed
 type PolicyError struct {
-	PolicyID string
-	Message  string
+	PolicyID         string
+	Message          string
+	EnforcementLevel int
 }
 
 func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
@@ -240,8 +241,9 @@ func makePolicyErrors(policyErrs []resource.PolicyError) []PolicyError {
 
 	for i, pe := range policyErrs {
 		result[i] = PolicyError{
-			PolicyID: pe.PolicyID,
-			Message:  pe.Message,
+			PolicyID:         pe.PolicyID,
+			Message:          pe.Message,
+			EnforcementLevel: pe.EnforcementLevel,
 		}
 	}
 	return result

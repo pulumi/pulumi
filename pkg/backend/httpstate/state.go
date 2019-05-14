@@ -385,8 +385,9 @@ func convertPolicyErrors(policyErrs []engine.PolicyError) []apitype.PolicyError 
 
 	for i, pe := range policyErrs {
 		result[i] = apitype.PolicyError{
-			PolicyID: pe.PolicyID,
-			Message:  pe.Message,
+			PolicyID:         pe.PolicyID,
+			Message:          pe.Message,
+			EnforcementLevel: pe.EnforcementLevel,
 		}
 	}
 	return result
