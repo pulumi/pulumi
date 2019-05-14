@@ -73,8 +73,9 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		InitErrors:   initErrors,
 		PolicyErrors: []PolicyError{
 			{
-				PolicyID: "test_policy_id",
-				Message:  "sorry this is rigged.",
+				PolicyID:         "test_policy_id",
+				Message:          "sorry this is rigged.",
+				EnforcementLevel: 100,
 			},
 		},
 		Provider:             provider,
