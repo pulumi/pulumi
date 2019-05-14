@@ -19,6 +19,8 @@ import (
 	"io"
 	"math"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -101,9 +103,10 @@ type Plan struct {
 	olds      map[resource.URN]*resource.State // a map of all old resources.
 	source    Source                           // the source of new resources.
 	analyzers []tokens.QName                   // the analyzers to run during this plan's generation.
-	preview   bool                             // true if this plan is to be previewed rather than applied.
-	depGraph  *graph.DependencyGraph           // the dependency graph of the old snapshot
-	providers *providers.Registry              // the provider registry for this plan.
+	policies  []apitype.Policy
+	preview   bool                   // true if this plan is to be previewed rather than applied.
+	depGraph  *graph.DependencyGraph // the dependency graph of the old snapshot
+	providers *providers.Registry    // the provider registry for this plan.
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -186,7 +189,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 // Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
 // a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
 func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source, analyzers []tokens.QName,
-	preview bool, backendClient BackendClient) (*Plan, error) {
+	policies []apitype.Policy, preview bool, backendClient BackendClient) (*Plan, error) {
 
 	contract.Assert(ctx != nil)
 	contract.Assert(target != nil)
@@ -248,6 +251,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		olds:      olds,
 		source:    source,
 		analyzers: analyzers,
+		policies:  policies,
 		preview:   preview,
 		depGraph:  depGraph,
 		providers: reg,
