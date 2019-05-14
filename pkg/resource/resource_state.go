@@ -44,8 +44,9 @@ type State struct {
 
 // PolicyError contains the details of a policy that has failed
 type PolicyError struct {
-	PolicyID string
-	Message  string
+	PolicyID         string
+	Message          string
+	EnforcementLevel int
 }
 
 // NewState creates a new resource value from existing resource state information.

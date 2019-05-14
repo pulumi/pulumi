@@ -121,8 +121,9 @@ type StepEventStateMetadata struct {
 
 // PolicyError contains the details of a policy that has failed
 type PolicyError struct {
-	PolicyID string `json:"policyId"`
-	Message  string `json:"message"`
+	PolicyID         string `json:"policyId"`
+	Message          string `json:"message"`
+	EnforcementLevel int    `json:"enforcementLevel"`
 }
 
 // ResourcePreEvent is emitted before a resource is modified.
