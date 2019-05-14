@@ -146,6 +146,15 @@ type StepEventStateMetadata struct {
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
 	InitErrors []string
+
+	// PolicyErrors contains the set of errors as a result of required policies.
+	PolicyErrors []PolicyError
+}
+
+// PolicyError contains the details of a policy that has failed
+type PolicyError struct {
+	PolicyID string
+	Message  string
 }
 
 func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
@@ -210,19 +219,32 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 	}
 
 	return &StepEventStateMetadata{
-		State:      state,
-		Type:       state.Type,
-		URN:        state.URN,
-		Custom:     state.Custom,
-		Delete:     state.Delete,
-		ID:         state.ID,
-		Parent:     state.Parent,
-		Protect:    state.Protect,
-		Inputs:     filterPropertyMap(state.Inputs, debug),
-		Outputs:    filterPropertyMap(state.Outputs, debug),
-		Provider:   state.Provider,
-		InitErrors: state.InitErrors,
+		State:        state,
+		Type:         state.Type,
+		URN:          state.URN,
+		Custom:       state.Custom,
+		Delete:       state.Delete,
+		ID:           state.ID,
+		Parent:       state.Parent,
+		Protect:      state.Protect,
+		Inputs:       filterPropertyMap(state.Inputs, debug),
+		Outputs:      filterPropertyMap(state.Outputs, debug),
+		Provider:     state.Provider,
+		InitErrors:   state.InitErrors,
+		PolicyErrors: makePolicyErrors(state.PolicyErrors),
 	}
+}
+
+func makePolicyErrors(policyErrs []resource.PolicyError) []PolicyError {
+	result := make([]PolicyError, len(policyErrs))
+
+	for i, pe := range policyErrs {
+		result[i] = PolicyError{
+			PolicyID: pe.PolicyID,
+			Message:  pe.Message,
+		}
+	}
+	return result
 }
 
 func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.PropertyMap {

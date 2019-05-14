@@ -36,9 +36,16 @@ type State struct {
 	External             bool                  // true if this resource is "external" to Pulumi and we don't control the lifecycle
 	Dependencies         []URN                 // the resource's dependencies
 	InitErrors           []string              // the set of errors encountered in the process of initializing resource.
+	PolicyErrors         []PolicyError         // the set of policy errors
 	Provider             string                // the provider to use for this resource.
 	PropertyDependencies map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement   bool                  // true if this resource was deleted and is awaiting replacement.
+}
+
+// PolicyError contains the details of a policy that has failed
+type PolicyError struct {
+	PolicyID string
+	Message  string
 }
 
 // NewState creates a new resource value from existing resource state information.
@@ -51,18 +58,24 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
 	contract.Assertf(inputs != nil, "inputs was non-nil")
 	return &State{
-		Type:                 t,
-		URN:                  urn,
-		Custom:               custom,
-		Delete:               del,
-		ID:                   id,
-		Inputs:               inputs,
-		Outputs:              outputs,
-		Parent:               parent,
-		Protect:              protect,
-		External:             external,
-		Dependencies:         dependencies,
-		InitErrors:           initErrors,
+		Type:         t,
+		URN:          urn,
+		Custom:       custom,
+		Delete:       del,
+		ID:           id,
+		Inputs:       inputs,
+		Outputs:      outputs,
+		Parent:       parent,
+		Protect:      protect,
+		External:     external,
+		Dependencies: dependencies,
+		InitErrors:   initErrors,
+		PolicyErrors: []PolicyError{
+			{
+				PolicyID: "test_policy_id",
+				Message:  "sorry this is rigged.",
+			},
+		},
 		Provider:             provider,
 		PropertyDependencies: propertyDependencies,
 		PendingReplacement:   pendingReplacement,

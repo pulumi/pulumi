@@ -114,6 +114,15 @@ type StepEventStateMetadata struct {
 	Provider string `json:"provider"`
 	// InitErrors is the set of errors encountered in the process of initializing resource.
 	InitErrors []string `json:"initErrors"`
+
+	// PolicyErrors contains the set of errors as a result of required policies.
+	PolicyErrors []PolicyError `json:"policyErrors"`
+}
+
+// PolicyError contains the details of a policy that has failed
+type PolicyError struct {
+	PolicyID string `json:"policyId"`
+	Message  string `json:"message"`
 }
 
 // ResourcePreEvent is emitted before a resource is modified.

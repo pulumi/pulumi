@@ -355,15 +355,28 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.S
 		Type: string(md.Type),
 		URN:  string(md.URN),
 
-		Custom:     md.Custom,
-		Delete:     md.Delete,
-		ID:         string(md.ID),
-		Parent:     string(md.Parent),
-		Protect:    md.Protect,
-		Inputs:     inputs,
-		Outputs:    outputs,
-		InitErrors: md.InitErrors,
+		Custom:       md.Custom,
+		Delete:       md.Delete,
+		ID:           string(md.ID),
+		Parent:       string(md.Parent),
+		Protect:      md.Protect,
+		Inputs:       inputs,
+		Outputs:      outputs,
+		InitErrors:   md.InitErrors,
+		PolicyErrors: convertPolicyErrors(md.PolicyErrors),
 	}
+}
+
+func convertPolicyErrors(policyErrs []engine.PolicyError) []apitype.PolicyError {
+	result := make([]apitype.PolicyError, len(policyErrs))
+
+	for i, pe := range policyErrs {
+		result[i] = apitype.PolicyError{
+			PolicyID: pe.PolicyID,
+			Message:  pe.Message,
+		}
+	}
+	return result
 }
 
 // convertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
