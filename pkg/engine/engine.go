@@ -17,7 +17,6 @@ package engine
 import (
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -34,8 +33,6 @@ type UpdateInfo interface {
 	// GetTarget returns information about the target of this update. This includes the name of the stack being
 	// updated, the configuration values associated with the target and the target's latest snapshot.
 	GetTarget() *deploy.Target
-
-	GetPoliciesToRun() *apitype.PoliciesToRun
 }
 
 // Context provides cancellation, termination, and eventing options for an engine operation. It also provides

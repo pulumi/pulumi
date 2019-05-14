@@ -20,7 +20,6 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -150,16 +149,8 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		analyzers = append(analyzers, tokens.QName(a))
 	}
 
-	// Run policy checks -- TODO
-	var policies []apitype.Policy
-	if policiesToRun := info.Update.GetPoliciesToRun(); policies != nil {
-		for _, p := range policiesToRun.Policies {
-			policies = append(policies, p)
-		}
-	}
-
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan, err := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, policies, dryRun, ctx.BackendClient)
+	plan, err := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, dryRun, ctx.BackendClient)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err

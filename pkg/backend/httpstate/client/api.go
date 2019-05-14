@@ -56,9 +56,8 @@ type StackIdentifier struct {
 type UpdateIdentifier struct {
 	StackIdentifier
 
-	UpdateKind    apitype.UpdateKind
-	UpdateID      string
-	PoliciesToRun *apitype.PoliciesToRun
+	UpdateKind apitype.UpdateKind
+	UpdateID   string
 }
 
 // accessTokenKind is enumerates the various types of access token used with the Pulumi API. These kinds correspond
