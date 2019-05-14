@@ -38,16 +38,14 @@ for (let i = 0; i < 3; i++) {
 Or a simple serverless timer that archives Hacker News every day at 8:30AM:
 
 ```typescript
-let cloud = require("@pulumi/cloud");
-let snapshots = new cloud.Table("snapshots");
+const cloud = require("@pulumi/cloud");
+const snapshots = new cloud.Table("snapshots");
 cloud.timer.daily("daily-yc-snapshot", { hourUTC: 8, minuteUTC: 30 }, () => {
-    let req = require("https").get("https://news.ycombinator.com", (res) => {
+    const req = require("https").get("https://news.ycombinator.com", res => {
         let content = "";
         res.setEncoding("utf8");
-        res.on("data", (chunk) => { content += chunk });
-        res.on("end", () => {
-           snapshots.insert({ date: Date.now(), content: content });
-        });
+        res.on("data", chunk => content += chunk);
+        res.on("end", () => snapshots.insert({ date: Date.now(), content }));
     });
     req.end();
 });
