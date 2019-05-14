@@ -411,16 +411,6 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	// If the environment map contains the vcs kind and if it is GitHub,
-	// then let's set the old metadata keys as well, so that the UI can continue to read those.
-	// As of this writing, none of the other VCS were detected _previously_ and only the `github` keys were set
-	// when the origin remote was truly a github remote.
-	// TODO [pulumi/pulumi-service#2306] Once the UI is updated and we no longer need these keys, we can remove this block.
-	if env[backend.VCSRepoKind] == gitutil.GitHubHostName && env[backend.VCSRepoOwner] != "" {
-		env[backend.GitHubLogin] = env[backend.VCSRepoOwner]
-		env[backend.GitHubRepo] = env[backend.VCSRepoName]
-	}
-
 	return allErrors.ErrorOrNil()
 }
 
