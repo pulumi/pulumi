@@ -200,7 +200,7 @@ func SerializeResource(res *resource.State) apitype.ResourceV3 {
 		External:             res.External,
 		Dependencies:         res.Dependencies,
 		InitErrors:           res.InitErrors,
-		PolicyErrors:            res.PolicyErrors,
+		PolicyErrors:         res.PolicyErrors,
 		Provider:             res.Provider,
 		PropertyDependencies: res.PropertyDependencies,
 		PendingReplacement:   res.PendingReplacement,
