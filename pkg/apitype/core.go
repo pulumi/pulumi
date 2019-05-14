@@ -274,6 +274,8 @@ type ResourceV3 struct {
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
 	InitErrors []string `json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
+	// PolicyErrors is the set of policy errors
+	PolicyErrors []resource.PolicyError `json:"policyErrors,omitempty" yaml:"policyErrors,omitempty"`
 	// Provider is a reference to the provider that is associated with this resource.
 	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
 	// PropertyDependencies maps from an input property name to the set of resources that property depends on.

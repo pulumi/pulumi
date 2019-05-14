@@ -285,6 +285,7 @@ func SerializeResource(res *resource.State, enc config.Encrypter) (apitype.Resou
 		External:                res.External,
 		Dependencies:            res.Dependencies,
 		InitErrors:              res.InitErrors,
+		PolicyErrors:            res.PolicyErrors,
 		Provider:                res.Provider,
 		PropertyDependencies:    res.PropertyDependencies,
 		PendingReplacement:      res.PendingReplacement,
