@@ -157,3 +157,63 @@ func TestAnnotateSecretsArrays(t *testing.T) {
 
 	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
 }
+
+func TestNestedSecret(t *testing.T) {
+	from := resource.PropertyMap{
+		"secretString": resource.MakeSecret(resource.NewStringProperty("shh")),
+		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("hello"),
+			resource.MakeSecret(resource.NewStringProperty("shh")),
+			resource.NewStringProperty("goodbye")}),
+		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+			"b": resource.NewStringProperty("b"),
+		})),
+		"deepSecretMap": resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+			"b": resource.MakeSecret(resource.NewStringProperty("b")),
+		}),
+	}
+
+	to := resource.PropertyMap{
+		"secretString": resource.NewStringProperty("shh"),
+		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("shh"),
+			resource.NewStringProperty("hello"),
+			resource.NewStringProperty("goodbye")}),
+		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+			"b": resource.NewStringProperty("b"),
+		})),
+		"deepSecretMap": resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+			"b": resource.NewStringProperty("b"),
+			// Note the additional property here, which we expect to be kept when annotating.
+			"c": resource.NewStringProperty("c"),
+		}),
+	}
+
+	expected := resource.PropertyMap{
+		"secretString": resource.MakeSecret(resource.NewStringProperty("shh")),
+		// The entire array has been marked a secret because it contained a secret member in from. Since arrays
+		// are often used for sets, we didn't try to apply the secretness to a specific member of the array, like
+		// we would have with maps (where we can use the keys to correlate related properties)
+		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("shh"),
+			resource.NewStringProperty("hello"),
+			resource.NewStringProperty("goodbye")})),
+		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+			"b": resource.NewStringProperty("b"),
+		})),
+		"deepSecretMap": resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+			"b": resource.MakeSecret(resource.NewStringProperty("b")),
+			"c": resource.NewStringProperty("c"),
+		}),
+	}
+
+	annotateSecrets(to, from)
+
+	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
+}
