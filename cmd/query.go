@@ -27,7 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
-// nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
+// intentionally disabling here for cleaner err declaration/assignment.
+// nolint: vetshadow
 func newQueryCmd() *cobra.Command {
 	var stack string
 

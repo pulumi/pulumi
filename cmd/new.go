@@ -47,7 +47,8 @@ import (
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
-// nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
+// intentionally disabling here for cleaner err declaration/assignment.
+// nolint: vetshadow
 func newNewCmd() *cobra.Command {
 	var configArray []string
 	var description string
@@ -262,7 +263,7 @@ func newNewCmd() *cobra.Command {
 
 			// Ensure the stack is selected.
 			if !generateOnly && s != nil {
-				state.SetCurrentStack(s.Ref().String())
+				contract.IgnoreError(state.SetCurrentStack(s.Ref().String()))
 			}
 
 			// Install dependencies.
