@@ -108,7 +108,7 @@ var lock sync.Mutex
 var cache map[string]secrets.Manager
 
 func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, error) {
-	// check the cache first, if we have an already seen this state before, return a cached value
+	// check the cache first, if we have already seen this state before, return a cached value.
 	lock.Lock()
 	if cache == nil {
 		cache = make(map[string]secrets.Manager)

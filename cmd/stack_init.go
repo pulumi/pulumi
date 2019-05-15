@@ -88,6 +88,6 @@ func newStackInitCmd() *cobra.Command {
 		&stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passpharse)")
+			"decrypt secrets (possible choices: default, passphrase)")
 	return cmd
 }
