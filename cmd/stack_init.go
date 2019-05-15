@@ -55,6 +55,11 @@ func newStackInitCmd() *cobra.Command {
 				stackName = args[0]
 			}
 
+			// Validate secrets provider type
+			if err := validateSecretsProvider(secretsProvider); err != nil {
+				return err
+			}
+
 			if stackName == "" && cmdutil.Interactive() {
 				name, nameErr := cmdutil.ReadConsole("Please enter your desired stack name.\n" +
 					"To create a stack in an organization, " +
@@ -82,7 +87,7 @@ func newStackInitCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "", "The name of the provider that should be used to encrypt and "+
-			"decrypt secrets.")
+		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+			"decrypt secrets (possible choices: default, passphrase)")
 	return cmd
 }

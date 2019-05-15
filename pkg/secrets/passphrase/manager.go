@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -103,18 +104,38 @@ func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
 	return sm.crypter, nil
 }
 
+var lock sync.Mutex
+var cache map[string]secrets.Manager
+
 func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, error) {
+	// check the cache first, if we have already seen this state before, return a cached value.
+	lock.Lock()
+	if cache == nil {
+		cache = make(map[string]secrets.Manager)
+	}
+	cachedValue := cache[state]
+	lock.Unlock()
+
+	if cachedValue != nil {
+		return cachedValue, nil
+	}
+
+	// wasn't in the cache so try to construct it and add it if there's no error.
 	crypter, err := symmetricCrypterFromPhraseAndState(phrase, state)
 	if err != nil {
 		return nil, err
 	}
 
-	return &localSecretsManager{
+	lock.Lock()
+	defer lock.Unlock()
+	sm := &localSecretsManager{
 		crypter: crypter,
 		state: localSecretsManagerState{
 			Salt: state,
 		},
-	}, nil
+	}
+	cache[state] = sm
+	return sm, nil
 }
 
 type provider struct{}
@@ -162,11 +183,11 @@ func newLockedPasspharseSecretsManager(state localSecretsManagerState) secrets.M
 type errorCrypter struct{}
 
 func (ec *errorCrypter) EncryptValue(v string) (string, error) {
-	return "", errors.New("failed to encrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the" +
+	return "", errors.New("failed to encrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase")
 }
 
 func (ec *errorCrypter) DecryptValue(v string) (string, error) {
-	return "", errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the" +
+	return "", errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase")
 }

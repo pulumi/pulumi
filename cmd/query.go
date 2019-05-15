@@ -27,7 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
-// nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
+// intentionally disabling here for cleaner err declaration/assignment.
+// nolint: vetshadow
 func newQueryCmd() *cobra.Command {
 	var stack string
 
@@ -64,7 +65,12 @@ func newQueryCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			cfg, err := getStackConfiguration(s)
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			}
+
+			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
 			}
@@ -76,6 +82,7 @@ func newQueryCmd() *cobra.Command {
 				Root:               root,
 				Opts:               opts,
 				StackConfiguration: cfg,
+				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
 			switch {
