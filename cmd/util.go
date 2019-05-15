@@ -90,10 +90,6 @@ func createStack(
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	if secretsProvider != "" && secretsProvider != "passphrase" {
-		return nil, errors.Errorf("unknown secrets provider type '%s'", secretsProvider)
-	}
-
 	// As part of creating the stack, we also need to configure the secrets provider for the stack. Today, we only
 	// have to do this configuration step when you are using the passpharse provider (which is used for all filestate,
 	// stacks and well as httpstate stacks that opted into this by passing --secrets-provider passphrase

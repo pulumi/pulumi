@@ -158,6 +158,11 @@ func newUpCmd() *cobra.Command {
 			}
 		}
 
+		// Validate secrets provider type
+		if err := validateSecretsProvider(secretsProvider); err != nil {
+			return result.FromError(err)
+		}
+
 		// Create temp directory for the "virtual workspace".
 		temp, err := ioutil.TempDir("", "pulumi-up-")
 		if err != nil {
@@ -355,8 +360,9 @@ func newUpCmd() *cobra.Command {
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "", "The name of the provider that should be used to encrypt and "+
-			"decrypt secrets. Only used when creating a new stack from an existing template.")
+		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+			"decrypt secrets (possible choices: default, passpharse). Only used when creating a new stack from "+
+			"an existing template")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

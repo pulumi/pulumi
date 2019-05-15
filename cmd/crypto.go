@@ -61,3 +61,11 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 
 	return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))
 }
+
+func validateSecretsProvider(typ string) error {
+	if typ != "default" && typ != "passphrase" {
+		return errors.Errorf("unknown secrets provider type '%s' (supported values: default, passphrase)", typ)
+	}
+
+	return nil
+}

@@ -82,6 +82,11 @@ func newNewCmd() *cobra.Command {
 				return errors.Errorf("'%s' is not a valid project name. %s.", name, workspace.ValidateProjectName(name))
 			}
 
+			// Validate secrets provider type
+			if err := validateSecretsProvider(secretsProvider); err != nil {
+				return err
+			}
+
 			// Get the current working directory.
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -343,8 +348,8 @@ func newNewCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "", "The name of the provider that should be used to encrypt and "+
-			"decrypt secrets.")
+		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+			"decrypt secrets (possible choices: default, passpharse)")
 
 	return cmd
 }
