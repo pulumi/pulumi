@@ -136,44 +136,35 @@ func (p *provider) ensureConfigured() error {
 	return p.cfgerr
 }
 
-// annotateSecrets copies the "secretness" of any properties from one PropertyMap to another. For any property with a
-// secret value in "from", if there is a coresponding property in "to", it is marked as secret.
-func annotateSecrets(to, from resource.PropertyMap) {
-	if to == nil || from == nil {
+// annotateSecrets copies the "secretness" from the ins to the outs. If there are values with the same keys for the
+// outs and the ins, if they are both objects, they are transformed recursively. Otherwise, if the value in the ins
+// contains a secret, the entire out value is marked as a secret.  This is very close to how we project secrets
+// in the programming model, with one small difference, which is how we treat the case where both are objects. In the
+// programming model, we would say the entire output object is a secret. Here, we actually recur in. We do this because
+// we don't want a single secret value in a rich structure to taint the entire object. Doing so would mean things like
+// the entire value in the deployment would be encrypted instead of a small chunk. It also means the entire property
+// would be displayed as `[secret]` in the CLI instead of a small part.
+//
+// NOTE: This means that for an array, if any value in the input version is a secret, the entire output array is
+// marked as a secret. This is actually a very nice result, because often arrays are treated like sets by providers
+// and the order may not be preserved across an operation. This means we do end up encrypting the entire array
+// but that's better than accidentally leaking a value which just moved to a different location.
+func annotateSecrets(outs, ins resource.PropertyMap) {
+	if outs == nil || ins == nil {
 		return
 	}
 
-	for toKey, toValue := range to {
-		fromValue, has := from[toKey]
+	for key, inValue := range ins {
+		outValue, has := outs[key]
 		if !has {
 			continue
 		}
-		to[toKey] = annotateSecretValue(toValue, fromValue)
-	}
-}
-
-func annotateSecretValue(to, from resource.PropertyValue) resource.PropertyValue {
-	if from.IsSecret() && !to.IsSecret() {
-		return resource.MakeSecret(to)
-	}
-	if from.IsComputed() && to.IsComputed() {
-		return resource.MakeComputed(annotateSecretValue(to.Input().Element, to.Input().Element))
-	}
-	if from.IsOutput() && to.IsOutput() {
-		return resource.MakeOutput(annotateSecretValue(to.OutputValue().Element, to.OutputValue().Element))
-	}
-	if from.IsObject() && to.IsObject() {
-		annotateSecrets(to.ObjectValue(), from.ObjectValue())
-	}
-	if from.IsArray() && to.IsArray() && len(from.ArrayValue()) == len(to.ArrayValue()) {
-		fromArr := from.ArrayValue()
-		toArr := to.ArrayValue()
-		for idx, v := range toArr {
-			toArr[idx] = annotateSecretValue(v, fromArr[idx])
+		if outValue.IsObject() && inValue.IsObject() {
+			annotateSecrets(outValue.ObjectValue(), inValue.ObjectValue())
+		} else if !outValue.IsSecret() && inValue.ContainsSecrets() {
+			outs[key] = resource.MakeSecret(outValue)
 		}
 	}
-
-	return to
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.

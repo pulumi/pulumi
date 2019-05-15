@@ -19,11 +19,6 @@ func TestAnnotateSecrets(t *testing.T) {
 			resource.NewStringProperty("b"),
 			resource.NewStringProperty("c"),
 		})),
-		"arrayWithSecretsValue": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.MakeSecret(resource.NewStringProperty("b")),
-			resource.NewStringProperty("c"),
-		}),
 		"secretObjectValue": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 			"a": resource.NewStringProperty("aValue"),
 			"b": resource.NewStringProperty("bValue"),
@@ -41,11 +36,6 @@ func TestAnnotateSecrets(t *testing.T) {
 		"numberValue": resource.NewNumberProperty(1.00),
 		"boolValue":   resource.NewBoolProperty(true),
 		"secretArrayValue": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
-		}),
-		"arrayWithSecretsValue": resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewStringProperty("a"),
 			resource.NewStringProperty("b"),
 			resource.NewStringProperty("c"),
@@ -75,16 +65,6 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 		"stringValue": resource.MakeSecret(resource.NewStringProperty("hello")),
 		"numberValue": resource.MakeSecret(resource.NewNumberProperty(1.00)),
 		"boolValue":   resource.MakeSecret(resource.NewBoolProperty(true)),
-		"secretArrayValue": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
-		})),
-		"arrayWithSecretsValue": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.MakeSecret(resource.NewStringProperty("b")),
-			resource.NewStringProperty("c"),
-		}),
 		"secretObjectValue": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 			"a": resource.NewStringProperty("aValue"),
 			"b": resource.NewStringProperty("bValue"),
@@ -102,16 +82,6 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 		"stringValue": resource.NewStringProperty("hello"),
 		"numberValue": resource.NewNumberProperty(1.00),
 		"boolValue":   resource.NewBoolProperty(true),
-		"secretArrayValue": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
-		}),
-		"arrayWithSecretsValue": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("a"),
-			resource.NewStringProperty("b"),
-			resource.NewStringProperty("c"),
-		}),
 		"secretObjectValue": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 			"a": resource.NewStringProperty("aValue"),
 			"b": resource.NewStringProperty("bValue"),
@@ -141,4 +111,49 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 
 	_, has = to["extraToValue"]
 	assert.True(t, has, "to should have a key named extraToValue, even though it was not in the from value")
+}
+
+func TestAnnotateSecretsArrays(t *testing.T) {
+	from := resource.PropertyMap{
+		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+			resource.NewStringProperty("b"),
+			resource.NewStringProperty("c"),
+		})),
+		"arrayWithSecrets": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+			resource.MakeSecret(resource.NewStringProperty("b")),
+			resource.NewStringProperty("c"),
+		}),
+	}
+
+	to := resource.PropertyMap{
+		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+			resource.NewStringProperty("b"),
+			resource.NewStringProperty("c"),
+		}),
+		"arrayWithSecrets": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+			resource.NewStringProperty("c"),
+			resource.NewStringProperty("b"),
+		}),
+	}
+
+	expected := resource.PropertyMap{
+		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+			resource.NewStringProperty("b"),
+			resource.NewStringProperty("c"),
+		})),
+		"arrayWithSecrets": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+			resource.NewStringProperty("c"),
+			resource.NewStringProperty("b"),
+		})),
+	}
+
+	annotateSecrets(to, from)
+
+	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
 }

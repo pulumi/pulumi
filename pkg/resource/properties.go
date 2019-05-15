@@ -122,6 +122,16 @@ func (m PropertyMap) ContainsUnknowns() bool {
 	return false
 }
 
+// ContainsSecrets returns true if the property map contains at least one secret value.
+func (m PropertyMap) ContainsSecrets() bool {
+	for _, v := range m {
+		if v.ContainsSecrets() {
+			return true
+		}
+	}
+	return false
+}
+
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() map[string]interface{} {
 	return m.MapRepl(nil, nil)
@@ -311,6 +321,26 @@ func (v PropertyValue) ContainsUnknowns() bool {
 		}
 	} else if v.IsObject() {
 		return v.ObjectValue().ContainsUnknowns()
+	}
+	return false
+}
+
+// ContainsSecrets returns true if the property value contains at least one secret (deeply).
+func (v PropertyValue) ContainsSecrets() bool {
+	if v.IsSecret() {
+		return true
+	} else if v.IsComputed() {
+		return v.Input().Element.ContainsSecrets()
+	} else if v.IsOutput() {
+		return v.OutputValue().Element.ContainsSecrets()
+	} else if v.IsArray() {
+		for _, e := range v.ArrayValue() {
+			if e.ContainsSecrets() {
+				return true
+			}
+		}
+	} else if v.IsObject() {
+		return v.ObjectValue().ContainsSecrets()
 	}
 	return false
 }
