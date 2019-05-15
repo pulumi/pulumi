@@ -145,27 +145,48 @@ func TestExamples(t *testing.T) {
 				return false
 			}
 
+			assertEncryptedValue := func(m map[string]interface{}, key string) {
+				assert.Truef(t, isEncrypted(m[key]), "%s value should be encrypted", key)
+			}
+
+			assertPlaintextValue := func(m map[string]interface{}, key string) {
+				assert.Truef(t, !isEncrypted(m[key]), "%s value should not encrypted", key)
+			}
+
 			for _, res := range stackInfo.Deployment.Resources {
 				if res.Type == "pulumi-nodejs:dynamic:Resource" {
 					switch res.URN.Name() {
 					case "sValue", "sApply", "cValue", "cApply":
-						assert.Truef(t, isEncrypted(res.Inputs["value"]), "input value should be encrypted")
-						assert.Truef(t, isEncrypted(res.Outputs["value"]), "output value should be encrypted")
+						assertEncryptedValue(res.Inputs, "value")
+						assertEncryptedValue(res.Outputs, "value")
 					case "pValue", "pApply":
-						assert.Falsef(t, isEncrypted(res.Inputs["value"]), "input value should not be encrypted")
-						assert.Falsef(t, isEncrypted(res.Outputs["value"]), "output value should not be encrypted")
+						assertPlaintextValue(res.Inputs, "value")
+						assertPlaintextValue(res.Outputs, "value")
 					case "pDummy":
-						assert.Falsef(t, isEncrypted(res.Outputs["value"]), "output value should not be encrypted")
+						assertPlaintextValue(res.Outputs, "value")
 					case "sDummy":
 						// Creation of this resource passes in a custom resource options to ensure that "value" is
 						// treated as secret.  In the state file, we'll see this as an uncrypted input with an
 						// encrypted output.
-						assert.Truef(t, isEncrypted(res.Outputs["value"]), "output value should be encrypted")
+						assertEncryptedValue(res.Outputs, "value")
+					case "rValue":
+						assertEncryptedValue(res.Inputs["value"].(map[string]interface{}), "secret")
+						assertEncryptedValue(res.Outputs["value"].(map[string]interface{}), "secret")
+						assertPlaintextValue(res.Inputs["value"].(map[string]interface{}), "plain")
+						assertPlaintextValue(res.Outputs["value"].(map[string]interface{}), "plain")
 					default:
 						contract.Assertf(false, "unknown name type: %s", res.URN.Name())
 					}
 				}
 			}
+
+			assertEncryptedValue(stackInfo.Outputs, "combinedApply")
+			assertEncryptedValue(stackInfo.Outputs, "combinedMessage")
+			assertPlaintextValue(stackInfo.Outputs, "plaintextApply")
+			assertPlaintextValue(stackInfo.Outputs, "plaintextMessage")
+			assertEncryptedValue(stackInfo.Outputs, "secretApply")
+			assertEncryptedValue(stackInfo.Outputs, "secretMessage")
+			assertEncryptedValue(stackInfo.Outputs, "richStructure")
 		},
 	})
 

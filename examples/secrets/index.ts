@@ -32,6 +32,14 @@ export const plaintextApply = new ReflectResource("pApply", message.length).valu
 export const combinedMessage = new ReflectResource("cValue", combined).value;
 export const combinedApply = new ReflectResource("cApply", combined.apply(x => x.length)).value;
 
+// With a rich structure like this, we expect that the actual reasource properties in the state file will be stored
+// as a mixture of plaintext and secrets, but the outputed stack property will be a secret (because part of the value
+// property  contains a secret, and that means the entire Output object must be marked as a secret.
+export const richStructure = new ReflectResource("rValue", {
+    plain: pulumi.output("plaintext"),
+    secret: pulumi.secret("secret value"),
+}).value;
+
 // The dummy resource just provides a single output named "value" with a simple message.  But we can use
 // `additionalSecretOutputs` as a way to enforce that it is treated as a secret.
 export const dummyValue = new DummyResource("pDummy").value;

@@ -9,10 +9,10 @@ class ReflectProvider implements dynamic.ResourceProvider {
     public update(id: string, olds: any, news: any) { return Promise.resolve({ outs: news }); }
 }
 
-export class ReflectResource extends dynamic.Resource {
-    public readonly value: pulumi.Output<string>;
+export class ReflectResource<T> extends dynamic.Resource {
+    public readonly value: pulumi.Output<T>;
 
-    constructor(name: string, value: pulumi.Input<any>, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, value: pulumi.Input<T>, opts?: pulumi.CustomResourceOptions) {
         super(new ReflectProvider(), name, {value: value }, opts);
     }
 }
