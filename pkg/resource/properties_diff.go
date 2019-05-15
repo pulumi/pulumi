@@ -320,7 +320,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		vs := v.SecretValue()
 		os := other.SecretValue()
 
-		vs.Element.DeepEquals(os.Element)
+		return vs.Element.DeepEquals(os.Element)
 	}
 
 	// For all other cases, primitives are equal if their values are equal.

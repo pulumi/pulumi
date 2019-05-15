@@ -338,3 +338,16 @@ func TestArchivePropertyValueDiffs(t *testing.T) {
 	assert.Equal(t, path, d3.Old.ArchiveValue().Path)
 	assert.True(t, d3.New.IsNull())
 }
+
+func TestMismatchedPropertyValueDiff(t *testing.T) {
+	t.Parallel()
+
+	a1 := NewPropertyValue([]string{"a", "b", "c"})
+	a2 := NewPropertyValue([]string{"a", "b", "c"})
+
+	s1 := MakeSecret(a1)
+	s2 := MakeSecret(a2)
+
+	assert.True(t, s2.DeepEquals(s1))
+	assert.True(t, s1.DeepEquals(s2))
+}
