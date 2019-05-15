@@ -92,14 +92,14 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
-		cfg, err := getStackConfiguration(s)
-		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting stack configuration"))
-		}
-
 		sm, err := getStackSecretsManager(s)
 		if err != nil {
 			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
+		cfg, err := getStackConfiguration(s, sm)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
 		opts.Engine = engine.UpdateOptions{
@@ -244,16 +244,14 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
-		cfg, err := getStackConfiguration(s)
-		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting stack configuration"))
-		}
-
-		// TODO(ellismg): Is there UX here what we want?  Do we end up double prompting for a passphrase
-		// when using passphrase based secrets management?
 		sm, err := getStackSecretsManager(s)
 		if err != nil {
 			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
+		cfg, err := getStackConfiguration(s, sm)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
 		opts.Engine = engine.UpdateOptions{

@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -533,7 +534,7 @@ func looksLikeSecret(k config.Key, v string) bool {
 
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
-func getStackConfiguration(stack backend.Stack) (backend.StackConfiguration, error) {
+func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
 	workspaceStack, err := loadProjectStack(stack)
 	if err != nil {
 		return backend.StackConfiguration{}, errors.Wrap(err, "loading stack configuration")
@@ -549,7 +550,7 @@ func getStackConfiguration(stack backend.Stack) (backend.StackConfiguration, err
 		}, nil
 	}
 
-	crypter, err := getStackDencrypter(stack)
+	crypter, err := sm.Decrypter()
 	if err != nil {
 		return backend.StackConfiguration{}, errors.Wrap(err, "getting configuration decrypter")
 	}
