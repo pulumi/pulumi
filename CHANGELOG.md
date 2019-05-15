@@ -13,6 +13,7 @@
   are using the passphrase based secrets provider. (fixes [pulumi/pulumi#2729](https://github.com/pulumi/pulumi/issues/2729)).
 - Fix an issue where complex inputs to a resource which contained secret values
   would not be stored correctly.
+- Fix a panic during property diffing when comparing two secret arrays.
 
 ## 0.17.11 (Released May 13, 2019)
 
