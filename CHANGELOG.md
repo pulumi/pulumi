@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- Fix an issue where creating a first class provider would fail if any of the
+  configuration values for the providers were secrets. (fixes [pulumi/pulumi#2741](https://github.com/pulumi/pulumi/issues/2741)).
+
 ## 0.17.12 (Released May 15, 2019)
 
 ### Improvements

@@ -758,3 +758,12 @@ func TestPython3NotInstalled(t *testing.T) {
 		},
 	})
 }
+
+// TestProviderSecretConfig that a first class provider can be created when it has secrets as part of its config.
+func TestProviderSecretConfig(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "provider_secret_config",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
