@@ -89,6 +89,12 @@ func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 	// Ensure that all config values are strings or unknowns.
 	var failures []CheckFailure
 	for k, v := range news {
+		// The configure method has to accept strings, so we go through and strip off all the secret markers before
+		// doing our checks (this mimics stripping code we have in Configure itself).
+		for v.IsSecret() {
+			v = v.SecretValue().Element
+		}
+
 		if !v.IsString() && !v.IsComputed() {
 			failures = append(failures, CheckFailure{
 				Property: k,
@@ -172,12 +178,17 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(inputs))
 
-	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leavce
+	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
 	config := make(map[string]string)
 	for k, v := range inputs {
 		if k == "version" {
 			continue
+		}
+		// The configure method has to accept strings, so we go through and strip off all the secret markers before
+		// calling configure.
+		for v.IsSecret() {
+			v = v.SecretValue().Element
 		}
 		switch {
 		case v.IsComputed():
