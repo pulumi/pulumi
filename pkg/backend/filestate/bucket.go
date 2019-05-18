@@ -11,6 +11,17 @@ import (
 	"gocloud.dev/blob"
 )
 
+// Bucket is a wrapper around an underlying gocloud blob.Bucket.  It ensures that we pass all paths
+// to it normalized to forward-slash form like it requires.
+type Bucket interface {
+	Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error)
+	Delete(ctx context.Context, key string) (err error)
+	List(opts *blob.ListOptions) *blob.ListIterator
+	SignedURL(ctx context.Context, key string, opts *blob.SignedURLOptions) (string, error)
+	ReadAll(ctx context.Context, key string) (_ []byte, err error)
+	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error)
+}
+
 // wrappedBucket encapsulates a true gocloud blob.Bucket, but ensures that all paths we send to it
 // are appropriately normalized to use forward slashes as required by it.  Without this, we may use
 // filepath.join which can make paths like `c:\temp\etc`.  gocloud's fileblob then converts those

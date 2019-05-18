@@ -59,17 +59,6 @@ type Backend interface {
 	local() // at the moment, no local specific info, so just use a marker function.
 }
 
-// Bucket is a wrapper around an underlying gocloud blob.Bucket.  It ensures that we pass all paths
-// to it normalized to forward-slash form like it requires.
-type Bucket interface {
-	Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error)
-	Delete(ctx context.Context, key string) (err error)
-	List(opts *blob.ListOptions) *blob.ListIterator
-	SignedURL(ctx context.Context, key string, opts *blob.SignedURLOptions) (string, error)
-	ReadAll(ctx context.Context, key string) (_ []byte, err error)
-	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error)
-}
-
 type localBackend struct {
 	d      diag.Sink
 	url    string
