@@ -4,11 +4,44 @@ import (
 	"context"
 	"io"
 	"path"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"gocloud.dev/blob"
 )
+
+// wrappedBucket encapsulates a true gocloud blob.Bucket, but ensures that all paths we send to it
+// are appropriately normalized to use forward slashes as required by it.  Without this, we may use
+// filepath.join which can make paths like `c:\temp\etc`.  gocloud's fileblob then converts those
+// backslashes to the hex string __0x5c__, breaking things on windows completely.
+type wrappedBucket struct {
+	bucket *blob.Bucket
+}
+
+func (b *wrappedBucket) Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error) {
+	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), opts)
+}
+
+func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {
+	return b.bucket.Delete(ctx, filepath.ToSlash(key))
+}
+
+func (b *wrappedBucket) List(opts *blob.ListOptions) *blob.ListIterator {
+	return b.bucket.List(opts)
+}
+
+func (b *wrappedBucket) SignedURL(ctx context.Context, key string, opts *blob.SignedURLOptions) (string, error) {
+	return b.bucket.SignedURL(ctx, filepath.ToSlash(key), opts)
+}
+
+func (b *wrappedBucket) ReadAll(ctx context.Context, key string) (_ []byte, err error) {
+	return b.bucket.ReadAll(ctx, filepath.ToSlash(key))
+}
+
+func (b *wrappedBucket) WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error) {
+	return b.bucket.WriteAll(ctx, filepath.ToSlash(key), p, opts)
+}
 
 // listBucket returns a list of all files in the bucket within a given directory. go-cloud sorts the results by key
 func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {

@@ -59,34 +59,6 @@ type Backend interface {
 	local() // at the moment, no local specific info, so just use a marker function.
 }
 
-type wrappedBucket struct {
-	bucket *blob.Bucket
-}
-
-func (b *wrappedBucket) Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error) {
-	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), opts)
-}
-
-func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {
-	return b.bucket.Delete(ctx, filepath.ToSlash(key))
-}
-
-func (b *wrappedBucket) List(opts *blob.ListOptions) *blob.ListIterator {
-	return b.bucket.List(opts)
-}
-
-func (b *wrappedBucket) SignedURL(ctx context.Context, key string, opts *blob.SignedURLOptions) (string, error) {
-	return b.bucket.SignedURL(ctx, filepath.ToSlash(key), opts)
-}
-
-func (b *wrappedBucket) ReadAll(ctx context.Context, key string) (_ []byte, err error) {
-	return b.bucket.ReadAll(ctx, filepath.ToSlash(key))
-}
-
-func (b *wrappedBucket) WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error) {
-	return b.bucket.WriteAll(ctx, filepath.ToSlash(key), p, opts)
-}
-
 // Bucket is a wrapper around an underlying gocloud blob.Bucket.  It ensures that we pass all paths
 // to it normalized to forward-slash form like it requires.
 type Bucket interface {
