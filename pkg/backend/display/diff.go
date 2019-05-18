@@ -279,8 +279,10 @@ func renderDiffResourceOutputsEvent(
 		if !opts.SuppressOutputs {
 			if text := engine.GetResourceOutputsPropertiesString(
 				payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh); text != "" {
-				fprintfIgnoreError(out, "%v%v--outputs:--%v\n",
+
+				header := fmt.Sprintf("%v%v--outputs:--%v\n",
 					payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
+				fprintfIgnoreError(out, opts.Color.Colorize(header))
 				fprintIgnoreError(out, opts.Color.Colorize(text))
 			}
 		}
