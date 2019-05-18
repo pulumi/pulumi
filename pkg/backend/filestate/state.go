@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"gocloud.dev/blob"
-
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -205,7 +203,7 @@ func (b *localBackend) removeStack(name tokens.QName) error {
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
-func backupTarget(bucket *blob.Bucket, file string) string {
+func backupTarget(bucket Bucket, file string) string {
 	contract.Require(file != "", "file")
 	bck := file + ".bak"
 	err := renameObject(bucket, file, bck)

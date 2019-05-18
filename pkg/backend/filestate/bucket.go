@@ -11,7 +11,7 @@ import (
 )
 
 // listBucket returns a list of all files in the bucket within a given directory. go-cloud sorts the results by key
-func listBucket(bucket *blob.Bucket, dir string) ([]*blob.ListObject, error) {
+func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 	bucketIter := bucket.List(&blob.ListOptions{
 		Delimiter: "/",
 		Prefix:    dir + "/",
@@ -41,7 +41,7 @@ func objectName(obj *blob.ListObject) string {
 }
 
 // removeAllByPrefix deletes all objects with a given prefix (i.e. filepath)
-func removeAllByPrefix(bucket *blob.Bucket, dir string) error {
+func removeAllByPrefix(bucket Bucket, dir string) error {
 	files, err := listBucket(bucket, dir)
 	if err != nil {
 		return errors.Wrap(err, "unable to list bucket objects for removal")
@@ -59,7 +59,7 @@ func removeAllByPrefix(bucket *blob.Bucket, dir string) error {
 
 // renameObject renames an object in a bucket. the rename requires a download/upload of the object
 // due to a go-cloud API limitation
-func renameObject(bucket *blob.Bucket, source string, dest string) error {
+func renameObject(bucket Bucket, source string, dest string) error {
 	err := bucket.Copy(context.TODO(), dest, source, nil)
 	if err != nil {
 		return errors.Wrapf(err, "copying %s to %s", source, dest)
