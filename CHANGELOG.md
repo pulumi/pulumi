@@ -43,6 +43,8 @@ Fixes #397
 - Add support for Azure Pipelines in CI environment detection.
 - Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
   repositories when various remote URLs are used to pull the repository.
+- Fixes local login on Windows.  Specifically, windows local paths are properly understood and
+  backslashes `\` are not converted to `__5c__` in paths.
 
 ## 0.17.10 (Released May 2, 2019)
 
