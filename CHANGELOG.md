@@ -44,11 +44,7 @@ Fixes #397
 - Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
   repositories when various remote URLs are used to pull the repository.
 - Fixes local login on Windows.  Specifically, windows local paths are properly understood and
-  backslashes `\` are not converted to `__5c__` in paths.  Note: local login paths on Windows should be of the form:
-    1. `pulumi login --local`
-    2. `pulumi login file://~/additional/homedir/paths`
-    3. `pulumi login file://relative/path/from/current/dir`
-    4. `pulumi login file://C:/absolute/path/from/drive/root`
+  backslashes `\` are not converted to `__5c__` in paths.
 
 ## 0.17.10 (Released May 2, 2019)
 
