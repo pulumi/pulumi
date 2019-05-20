@@ -39,9 +39,9 @@ type Provider interface {
 	Pkg() tokens.Package
 
 	// CheckConfig validates the configuration for this resource provider.
-	CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	CheckConfig(urn resource.URN, olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-	DiffConfig(olds, news resource.PropertyMap) (DiffResult, error)
+	DiffConfig(urn resource.URN, olds, news resource.PropertyMap) (DiffResult, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
 	Configure(inputs resource.PropertyMap) error
 

@@ -77,9 +77,10 @@ type testProvider struct {
 	pkg         tokens.Package
 	version     semver.Version
 	configured  bool
-	checkConfig func(resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	diffConfig  func(resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
-	config      func(resource.PropertyMap) error
+	checkConfig func(resource.URN, resource.PropertyMap,
+		resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
+	config     func(resource.PropertyMap) error
 }
 
 func (prov *testProvider) SignalCancellation() error {
@@ -91,12 +92,12 @@ func (prov *testProvider) Close() error {
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
-func (prov *testProvider) CheckConfig(olds,
+func (prov *testProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return prov.checkConfig(olds, news)
+	return prov.checkConfig(urn, olds, news)
 }
-func (prov *testProvider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
-	return prov.diffConfig(olds, news)
+func (prov *testProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+	return prov.diffConfig(urn, olds, news)
 }
 func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	if err := prov.config(inputs); err != nil {
@@ -202,10 +203,11 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 		return &testProvider{
 			pkg:     pkg,
 			version: ver,
-			checkConfig: func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+			checkConfig: func(urn resource.URN, olds,
+				news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				return news, nil, nil
 			},
-			diffConfig: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 				return plugin.DiffResult{}, nil
 			},
 			config: config,
@@ -512,10 +514,11 @@ func TestCRUDPreview(t *testing.T) {
 			return &testProvider{
 				pkg:     pkg,
 				version: ver,
-				checkConfig: func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				checkConfig: func(urn resource.URN, olds,
+					news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
-				diffConfig: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					// Always reuquire replacement.
 					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
 				},

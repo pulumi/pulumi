@@ -38,15 +38,14 @@ func (p *builtinProvider) Pkg() tokens.Package {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *builtinProvider) CheckConfig(olds,
+func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	return nil, nil, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
-
+func (p *builtinProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 

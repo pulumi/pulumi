@@ -32,9 +32,10 @@ type Provider struct {
 
 	configured bool
 
-	CheckConfigF func(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	DiffConfigF  func(olds, news resource.PropertyMap) (plugin.DiffResult, error)
-	ConfigureF   func(news resource.PropertyMap) error
+	CheckConfigF func(urn resource.URN, olds,
+		news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	DiffConfigF func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error)
+	ConfigureF  func(news resource.PropertyMap) error
 
 	CheckF func(urn resource.URN,
 		olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
@@ -75,18 +76,18 @@ func (prov *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
-func (prov *Provider) CheckConfig(olds,
+func (prov *Provider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	if prov.CheckConfigF == nil {
 		return news, nil, nil
 	}
-	return prov.CheckConfigF(olds, news)
+	return prov.CheckConfigF(urn, olds, news)
 }
-func (prov *Provider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+func (prov *Provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 	if prov.DiffConfigF == nil {
 		return plugin.DiffResult{}, nil
 	}
-	return prov.DiffConfigF(olds, news)
+	return prov.DiffConfigF(urn, olds, news)
 }
 func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 	contract.Assert(!prov.configured)

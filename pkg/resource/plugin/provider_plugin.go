@@ -85,7 +85,8 @@ func (p *provider) label() string {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+func (p *provider) CheckConfig(urn resource.URN, olds,
+	news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
 	// Ensure that all config values are strings or unknowns.
 	var failures []CheckFailure
 	for k, v := range news {
@@ -111,7 +112,7 @@ func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, error) {
+func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap) (DiffResult, error) {
 	// There are two interesting scenarios with the present gRPC interface:
 	// 1. Configuration differences in which all properties are known
 	// 2. Configuration differences in which some new property is unknown.
