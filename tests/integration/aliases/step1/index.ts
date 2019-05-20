@@ -22,12 +22,14 @@ const comp2 = new Component("comp2");
 
 // Scenario #3 - rename a component (and all it's children)
 class ComponentTwo extends pulumi.ComponentResource {
-    resource: Resource;
+    resource1: Resource;
+    resource2: Resource;
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         super("my:module:ComponentTwo", name, {}, opts);
-        // TODO: Unfortunately, if this was names `${name}-child` which is best practice, it would not be possible to
-        // rename the whole component, as both the parent structure and the name of the resource itself changes.
-        this.resource = new Resource(`child`, {parent: this});
+        // Note that both un-prefixed and parent-name-prefixed child names are supported. For the later, the implicit
+        // alias inherited from the parent alias will include replacing the name prefix to match the parent alias name.
+        this.resource1 = new Resource(`${name}-child`, {parent: this});
+        this.resource2 = new Resource("otherchild", {parent: this});
     }
 }
 const comp3 = new ComponentTwo("comp3");

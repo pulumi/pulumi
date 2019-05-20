@@ -20,8 +20,12 @@ import * as utils from "./utils";
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
 
-// TODO: It's unfortunate to have to guess the URN shape here - we traditionally have kept all knowledge of URN format
-// in the Engine.
+/**
+ * childUrn computes a derived child URN from the combination of a parent URN, a child type and a child name.
+ *
+ * Note: In the future, we may want to move this logic into the engine to keep URN construction localized to the engine,
+ * so that it can be versioned in a single place.
+ */
 function childURN(parentURN: URN, childType: string, childName: string) {
     const parentType = parentURN.substring(0, parentURN.lastIndexOf("::"));
     return `${parentType}$${childType}::${childName}`;
@@ -108,6 +112,13 @@ export abstract class Resource {
 
     /**
      * @internal
+     * The name assigned to the resource at construction.
+     */
+     // tslint:disable-next-line:variable-name
+     private readonly __name: string;
+
+    /**
+     * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
      // tslint:disable-next-line:variable-name
@@ -152,6 +163,8 @@ export abstract class Resource {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
 
+        this.__name = name;
+
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
@@ -164,11 +177,21 @@ export abstract class Resource {
             }
 
             for (const parentAlias of opts.parent.__aliases) {
-                console.log(`Parent alias: ${parentAlias}`);
                 if (!opts.aliases) {
                     opts.aliases = [];
                 }
-                const childAlias = childURN(parentAlias, t, name);
+
+                let aliasName = name;
+                // If the child name has the parent name as a prefix, then we make the assumption that it was
+                // constructed from the convention of using `{name}-details` as the name of the child resource.  To
+                // ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
+                // the child resource name.
+                if (name.startsWith(opts.parent.__name)) {
+                    const parentAliasName = parentAlias.substring(parentAlias.lastIndexOf("::")+2);
+                    aliasName = parentAliasName + name.substring(opts.parent.__name.length);
+                }
+
+                const childAlias = childURN(parentAlias, t, aliasName);
                 console.log(`Child alias: ${childAlias}`);
                 opts.aliases.push(childAlias);
             }
