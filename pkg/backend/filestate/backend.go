@@ -505,8 +505,8 @@ func (b *localBackend) apply(
 		var link string
 		if strings.HasPrefix(b.url, "file://") {
 			u, _ := url.Parse(b.url)
-			u.Path = path.Join(u.Path, b.stackPath(stackName))
-			link = filepath.ToSlash(u.String())
+			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(stackName)))
+			link = u.String()
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
