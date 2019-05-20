@@ -16,6 +16,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -81,7 +84,14 @@ func newLoginCmd() *cobra.Command {
 				if cloudURL != "" {
 					return errors.New("a URL may not be specified when --local mode is enabled")
 				}
-				cloudURL = "file://~"
+				cloudURL = filestate.FilePathPrefix + "~"
+			}
+
+			// If we're on Windows, and this is a local login path, then allow the user to provide
+			// backslashes as path separators.  We will normalize them here to forward slashes as that's
+			// what the gocloud blob system requires.
+			if strings.HasPrefix(cloudURL, filestate.FilePathPrefix) && os.PathSeparator != '/' {
+				cloudURL = filepath.ToSlash(cloudURL)
 			}
 
 			var be backend.Backend
