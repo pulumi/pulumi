@@ -86,7 +86,16 @@ func IsFileStateBackendURL(urlstr string) bool {
 	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
+const filePathPrefix = "file://"
+
 func New(d diag.Sink, url string) (Backend, error) {
+	// If we're on Windows, and this is a local login path, then allow the user to provide
+	// backslashes as path separators.  We will normalize them here to forward slashes as that's
+	// what the gocloud blob system requires.
+	if strings.HasPrefix(url, filePathPrefix) && os.PathSeparator != '/' {
+		url = filepath.ToSlash(url)
+	}
+
 	if !IsFileStateBackendURL(url) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			url, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -108,8 +117,6 @@ func New(d diag.Sink, url string) (Backend, error) {
 		bucket: &wrappedBucket{bucket: bucket},
 	}, nil
 }
-
-const filePathPrefix = "file://"
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
 // can support.  Importantly, s3/azblob/gs paths should not be be touched. This will only affect
@@ -503,7 +510,7 @@ func (b *localBackend) apply(
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
-		if strings.HasPrefix(b.url, "file://") {
+		if strings.HasPrefix(b.url, filePathPrefix) {
 			u, _ := url.Parse(b.url)
 			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(stackName)))
 			link = u.String()
