@@ -86,16 +86,9 @@ func IsFileStateBackendURL(urlstr string) bool {
 	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 
-const filePathPrefix = "file://"
+const FilePathPrefix = "file://"
 
 func New(d diag.Sink, url string) (Backend, error) {
-	// If we're on Windows, and this is a local login path, then allow the user to provide
-	// backslashes as path separators.  We will normalize them here to forward slashes as that's
-	// what the gocloud blob system requires.
-	if strings.HasPrefix(url, filePathPrefix) && os.PathSeparator != '/' {
-		url = filepath.ToSlash(url)
-	}
-
 	if !IsFileStateBackendURL(url) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			url, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -122,13 +115,13 @@ func New(d diag.Sink, url string) (Backend, error) {
 // can support.  Importantly, s3/azblob/gs paths should not be be touched. This will only affect
 // file:// paths which have a few oddities around them that we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
-	if !strings.HasPrefix(path, filePathPrefix) {
+	if !strings.HasPrefix(path, FilePathPrefix) {
 		// not a file:// path.  Keep this untouched and pass directly to gocloud.
 		return path, nil
 	}
 
 	// Strip off the "file://"" portion so we can examine and determine what to do with the rest.
-	path = strings.TrimPrefix(path, filePathPrefix)
+	path = strings.TrimPrefix(path, FilePathPrefix)
 
 	// We need to specially handle ~.  The shell doesn't take care of this for us, and later
 	// functions we run into can't handle this either.
@@ -160,7 +153,7 @@ func massageBlobPath(path string) (string, error) {
 		path = "/" + path
 	}
 
-	return filePathPrefix + path, nil
+	return FilePathPrefix + path, nil
 }
 
 func Login(d diag.Sink, url string) (Backend, error) {
@@ -510,7 +503,7 @@ func (b *localBackend) apply(
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
-		if strings.HasPrefix(b.url, filePathPrefix) {
+		if strings.HasPrefix(b.url, FilePathPrefix) {
 			u, _ := url.Parse(b.url)
 			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(stackName)))
 			link = u.String()
