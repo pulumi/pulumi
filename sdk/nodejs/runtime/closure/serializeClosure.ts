@@ -183,8 +183,10 @@ function serializeJavaScriptText(
         delete capturedValues.this;
         delete capturedValues.arguments;
 
+        const parameters = [...Array(functionInfo.paramCount)].map((_, index) => `__${index}`).join(", ");
+
         functionText += "\n" +
-            "function " + varName + "() {\n" +
+            "function " + varName + "(" + parameters + ") {\n" +
             "  return (function() {\n" +
             "    with(" + envObjToString(capturedValues) + ") {\n\n" +
             "return " + functionInfo.code + ";\n\n" +
