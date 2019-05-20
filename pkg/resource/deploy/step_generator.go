@@ -280,7 +280,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
-		contract.Assert(old != nil && old.Type == new.Type)
+		contract.Assert(old != nil)
 
 		var diff plugin.DiffResult
 		if old.Provider != new.Provider {

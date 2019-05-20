@@ -38,11 +38,11 @@ const comp2 = new Component("comp2");
 
 // Scenario #3 - rename a component (and all it's children)
 // No change to the component...
-class ComponentTwo extends pulumi.ComponentResource {
+class ComponentThree extends pulumi.ComponentResource {
     resource1: Resource;
     resource2: Resource;
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
-        super("my:module:ComponentTwo", name, {}, opts);
+        super("my:module:ComponentThree", name, {}, opts);
         // Note that both un-prefixed and parent-name-prefixed child names are supported. For the later, the implicit
         // alias inherited from the parent alias will include replacing the name prefix to match the parent alias name.
         this.resource1 = new Resource(`${name}-child`, {parent: this});
@@ -50,8 +50,19 @@ class ComponentTwo extends pulumi.ComponentResource {
     }
 }
 // ...but applying an alias to the instance succesfully renames both the component and the children.
-const comp3 = new ComponentTwo("newcomp3", {
-    aliases: [`urn:pulumi:${stackName}::${projectName}::my:module:ComponentTwo::comp3`],
+const comp3 = new ComponentThree("newcomp3", {
+    aliases: [`urn:pulumi:${stackName}::${projectName}::my:module:ComponentThree::comp3`],
 });
 
+// Scenario #4 - change the type of a component
+class ComponentFour extends pulumi.ComponentResource {
+    resource: Resource;
+    constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
+        const aliases = (opts && opts.aliases) || [];
+        aliases.push(`urn:pulumi:${stackName}::${projectName}::my:module:ComponentFour::${name}`);
+        super("my:differentmodule:ComponentFourWithADifferentTypeName", name, {}, { ...opts, aliases });
+        this.resource = new Resource("otherchild", {parent: this});
+    }
+}
+const comp4 = new ComponentFour("comp4");
 
