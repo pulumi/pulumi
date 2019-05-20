@@ -118,6 +118,118 @@ async def prepare_resource(res: 'Resource',
         property_dependencies
     )
 
+# pylint: disable=too-many-locals,too-many-statements
+def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Optional['ResourceOptions']):
+    if opts.id is None:
+        raise Exception("Cannot read resource whose options are lacking an ID value")
+
+    log.debug(f"reading resource: ty={ty}, name={name}, id={opts.id}")
+    monitor = settings.get_monitor()
+
+    # Prepare the resource, similar to a RegisterResource. Reads are deliberately similar to RegisterResource except
+    # that we are populating the Resource object with properties associated with an already-live resource.
+    #
+    # Same as below, we initialize the URN property on the resource, which will always be resolved.
+    log.debug(f"preparing read resource for RPC")
+    urn_future = asyncio.Future()
+    urn_known = asyncio.Future()
+    urn_secret = asyncio.Future()
+    urn_known.set_result(True)
+    urn_secret.set_result(True)
+    resolve_urn = urn_future.set_result
+    resolve_urn_exn = urn_future.set_exception
+    res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
+
+    # Furthermore, since resources being Read must always be custom resources (enforced in the Resource constructor),
+    # we'll need to set up the ID field which will be populated at the end of the ReadResource call.
+    #
+    # Note that we technically already have the ID (opts.id), but it's more consistent with the rest of the model to
+    # resolve it asynchronously along with all of the other resources.
+    resolve_value = asyncio.Future()
+    resolve_perform_apply = asyncio.Future()
+    resolve_secret = asyncio.Future()
+    res.id = known_types.new_output({res}, resolve_value, resolve_perform_apply, resolve_secret)
+
+    def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
+        if exn is not None:
+            resolve_value.set_exception(exn)
+            resolve_perform_apply.set_exception(exn)
+            resolve_secret.set_exception(exn)
+        else:
+            resolve_value.set_result(value)
+            resolve_perform_apply.set_result(perform_apply)
+            resolve_secret.set_result(False)
+
+    resolve_id = do_resolve
+
+    # Like below, "transfer" all input properties onto unresolved futures on res.
+    resolvers = rpc.transfer_properties(res, props)
+
+    async def do_read():
+        try:
+            log.debug(f"preparing read: ty={ty}, name={name}, id={opts.id}")
+            resolver = await prepare_resource(res, ty, True, props, opts)
+
+            # Resolve the ID that we were given. Note that we are explicitly discarding the list of dependencies
+            # returned to us from "serialize_property" (the second argument). This is because a "read" resource does
+            # not actually have any dependencies at all in the cloud provider sense, because a read resource already
+            # exists. We do not need to track this dependency.
+            resolved_id = await rpc.serialize_property(opts.id, [])
+            log.debug(f"read prepared: ty={ty}, name={name}, id={opts.id}")
+
+            # These inputs will end up in the snapshot, so if there are any additional secret outputs, record them
+            # here.
+            additional_secret_outputs = opts.additional_secret_outputs
+            if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
+                additional_secret_outputs = map(res.translate_input_property, opts.additional_secret_outputs)
+
+            req = resource_pb2.ReadResourceRequest(
+                type=ty,
+                name=name,
+                id=resolved_id,
+                parent=resolver.parent_urn,
+                provider=resolver.provider_ref,
+                properties=resolver.serialized_props,
+                dependencies=resolver.dependencies,
+                version=opts.version or "",
+                acceptSecrets=True,
+                additionalSecretOutputs=additional_secret_outputs,
+            )
+
+            def do_rpc_call():
+                if monitor:
+                    # If there is a monitor available, make the true RPC request to the engine.
+                    try:
+                        return monitor.ReadResource(req)
+                    except grpc.RpcError as exn:
+                        # See the comment on invoke for the justification for disabling
+                        # this warning
+                        # pylint: disable=no-member
+                        if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                            sys.exit(0)
+
+                        details = exn.details()
+                    raise Exception(details)
+                else:
+                    # If no monitor is available, we'll need to fake up a response, for testing.
+                    return RegisterResponse(create_test_urn(ty, name), None, resolver.serialized_props)
+
+            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+
+        except Exception as exn:
+            log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            rpc.resolve_outputs_due_to_exception(resolvers, exn)
+            resolve_urn_exn(exn)
+            if resolve_id is not None:
+                resolve_id(None, False, exn)
+            raise
+
+        log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
+        resolve_urn(resp.urn)
+        resolve_id(resolve_id, True, None) # Read IDs are always known.
+        await rpc.resolve_outputs(res, props, resp.properties, resolvers)
+
+    asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
 # pylint: disable=too-many-locals,too-many-statements
 def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
