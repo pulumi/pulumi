@@ -111,10 +111,11 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager) (*apitype.De
 		operations = append(operations, sop)
 	}
 
-	secretsProvider := apitype.SecretsProvidersV1{}
-
+	var secretsProvider *apitype.SecretsProvidersV1
 	if sm != nil {
-		secretsProvider.Type = sm.Type()
+		secretsProvider = &apitype.SecretsProvidersV1{
+			Type: sm.Type(),
+		}
 		if state := sm.State(); state != nil {
 			rm, err := json.Marshal(state)
 			if err != nil {
@@ -127,7 +128,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager) (*apitype.De
 	return &apitype.DeploymentV3{
 		Manifest:          manifest,
 		Resources:         resources,
-		SecretsProviders:  &secretsProvider,
+		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
 	}, nil
 }
@@ -195,7 +196,7 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 	}
 
 	var secretsManager secrets.Manager
-	if deployment.SecretsProviders != nil {
+	if deployment.SecretsProviders != nil && deployment.SecretsProviders.Type != "" {
 		var provider secrets.ManagerProvider
 
 		switch deployment.SecretsProviders.Type {
