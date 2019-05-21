@@ -29,7 +29,8 @@ class FirstClassProviderTest(LanghostTest):
             expected_resource_count=2)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, provider, _property_deps, _delete_before_replace):
+                          _dependencies, _parent, _custom, _protect, provider, _property_deps, _delete_before_replace,
+                          _ignore_changes, _version):
         if name == "testprov":
             # Provider resource.
             self.assertEqual("pulumi:providers:test", ty)

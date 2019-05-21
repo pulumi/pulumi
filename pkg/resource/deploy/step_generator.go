@@ -65,8 +65,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		event.Dependencies(),
 		nil, /* initErrors */
 		event.Provider(),
-		nil, /* propertyDependencies */
-		false)
+		nil,   /* propertyDependencies */
+		false, /* deleteBeforeCreate */
+		event.AdditionalSecretOutputs())
 	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
@@ -130,11 +131,17 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		oldOutputs = old.Outputs
 	}
 
+	// Create the desired inputs from the goal state
+	inputs := goal.Properties
+	if hasOld {
+		// Set inputs back to their old values (if any) for any "ignored" properties
+		inputs = sg.processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
+	}
+
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
-	inputs := goal.Properties
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false)
+		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false, goal.AdditionalSecretOutputs)
 
 	// Fetch the provider for this resource.
 	prov, res := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
@@ -269,6 +276,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			if diffErr != nil {
 				// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 				// report the message contained in the error.
+				//nolint
 				if _, ok := diffErr.(plugin.DiffUnavailableError); ok {
 					d = plugin.DiffResult{Changes: plugin.DiffSome}
 					sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, diffErr.Error()))
@@ -618,6 +626,23 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 		}
 	}
 	return true
+}
+
+// processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
+// the effect of ensuring that no changes will be made for the corresponding property.
+func (sg *stepGenerator) processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
+	ignoreChanges []string) resource.PropertyMap {
+
+	ignoredInputs := inputs.Copy()
+	for _, ignoreChange := range ignoreChanges {
+		ignoreChangePropertyKey := resource.PropertyKey(ignoreChange)
+		if oldValue, has := oldInputs[ignoreChangePropertyKey]; has {
+			ignoredInputs[ignoreChangePropertyKey] = oldValue
+		} else {
+			delete(ignoredInputs, ignoreChangePropertyKey)
+		}
+	}
+	return ignoredInputs
 }
 
 func (sg *stepGenerator) loadResourceProvider(

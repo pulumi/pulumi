@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -274,7 +275,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			// Encrypt the config value if needed.
 			var v config.Value
 			if secret {
-				c, cerr := backend.GetStackCrypter(s)
+				c, cerr := getStackEncrypter(s)
 				if cerr != nil {
 					return cerr
 				}
@@ -388,14 +389,13 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	cfg := ps.Config
 
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
-	var decrypter config.Decrypter
+	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		decrypter, err = backend.GetStackCrypter(stack)
-		if err != nil {
-			return err
+		dec, decerr := getStackDencrypter(stack)
+		if decerr != nil {
+			return decerr
 		}
-	} else {
-		decrypter = config.NewBlindingDecrypter()
+		decrypter = dec
 	}
 
 	var keys config.KeyArray
@@ -465,7 +465,7 @@ func getConfig(stack backend.Stack, key config.Key, jsonOut bool) error {
 		var d config.Decrypter
 		if v.Secure() {
 			var err error
-			if d, err = backend.GetStackCrypter(stack); err != nil {
+			if d, err = getStackDencrypter(stack); err != nil {
 				return errors.Wrap(err, "could not create a decrypter")
 			}
 		} else {
@@ -530,4 +530,33 @@ func looksLikeSecret(k config.Key, v string) bool {
 	entropyPerChar := info.Entropy / float64(len(v))
 	return (info.Entropy >= entropyThreshold ||
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold))
+}
+
+// getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
+// it is uses instead of the default configuration file for the stack
+func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
+	workspaceStack, err := loadProjectStack(stack)
+	if err != nil {
+		return backend.StackConfiguration{}, errors.Wrap(err, "loading stack configuration")
+	}
+
+	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
+	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
+	// the correct decrypter for the local backend would involve prompting for a passphrase)
+	if !workspaceStack.Config.HasSecureValue() {
+		return backend.StackConfiguration{
+			Config:    workspaceStack.Config,
+			Decrypter: config.NewPanicCrypter(),
+		}, nil
+	}
+
+	crypter, err := sm.Decrypter()
+	if err != nil {
+		return backend.StackConfiguration{}, errors.Wrap(err, "getting configuration decrypter")
+	}
+
+	return backend.StackConfiguration{
+		Config:    workspaceStack.Config,
+		Decrypter: crypter,
+	}, nil
 }

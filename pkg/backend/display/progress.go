@@ -17,6 +17,7 @@ package display
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"sort"
@@ -1224,7 +1225,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 	return op.Color() + getDescription() + colors.Reset
 }
 
-func writeString(b *bytes.Buffer, s string) {
+func writeString(b io.StringWriter, s string) {
 	_, err := b.WriteString(s)
 	contract.IgnoreError(err)
 }

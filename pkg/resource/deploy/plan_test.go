@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
+
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -26,7 +28,7 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, resources, ops)
+	}, b64.NewBase64SecretsManager(), resources, ops)
 }
 
 func TestPendingOperationsPlan(t *testing.T) {

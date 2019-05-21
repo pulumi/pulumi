@@ -24,8 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -80,24 +80,30 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *apitype.VersionedCheckpoint {
+func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
+	sm secrets.Manager) (*apitype.VersionedCheckpoint, error) {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *apitype.DeploymentV3
 	if snap != nil {
-		latest = SerializeDeployment(snap)
+		dep, err := SerializeDeployment(snap, sm)
+		if err != nil {
+			return nil, errors.Wrap(err, "serializing deployment")
+		}
+		latest = dep
 	}
 
 	b, err := json.Marshal(apitype.CheckpointV3{
 		Stack:  stack,
-		Config: config,
 		Latest: latest,
 	})
-	contract.AssertNoError(err)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling checkpoint")
+	}
 
 	return &apitype.VersionedCheckpoint{
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Checkpoint: json.RawMessage(b),
-	}
+	}, nil
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot. Returns nil
@@ -111,13 +117,12 @@ func DeserializeCheckpoint(chkpoint *apitype.CheckpointV3) (*deploy.Snapshot, er
 	return nil, nil
 }
 
-// GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.  If the stack
-// exists, its output properties, if any, are also returned in the resulting map.
-func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, map[string]interface{}) {
+// GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.
+func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 	if snap != nil {
 		for _, res := range snap.Resources {
 			if res.Type == resource.RootStackType {
-				return res, SerializeResource(res).Outputs
+				return res, nil
 			}
 		}
 	}

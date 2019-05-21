@@ -52,7 +52,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
     def Invoke(self, request, context):
         args = rpc.deserialize_properties(request.args)
-        failures, ret = self.langhost_test.invoke(context, request.tok, args, request.provider)
+        failures, ret = self.langhost_test.invoke(context, request.tok, args, request.provider, request.version)
         failures_rpc = list(map(
             lambda fail: provider_pb2.CheckFailure(property=fail["property"], reason=fail["reason"]), failures))
 
@@ -89,6 +89,8 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         protect = request.protect
         provider = request.provider
         delete_before_replace = request.deleteBeforeReplace
+        ignore_changes = sorted(list(request.ignoreChanges))
+        version = request.version
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
@@ -97,7 +99,8 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
             outs = self.langhost_test.register_resource(
-                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider, property_dependencies, delete_before_replace)
+                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider, 
+                property_dependencies, delete_before_replace, ignore_changes, version)
             if outs.get("urn"):
                 urn = outs["urn"]
                 self.registrations[urn] = {

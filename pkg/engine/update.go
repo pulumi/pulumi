@@ -18,10 +18,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -92,9 +94,9 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}, dryRun)
 }
 
-func newUpdateSource(
-	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
+func installPlugins(
+	client deploy.BackendClient, proj *workspace.Project, pwd, main string, target *deploy.Target,
+	plugctx *plugin.Context) (pluginSet, map[tokens.Package]*semver.Version, error) {
 
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
@@ -106,20 +108,21 @@ func newUpdateSource(
 	//      that were loaded are recorded. Second, all first class providers record the version of the plugin
 	//      to which they are bound.
 	//
-	// In order to get a complete view of the set of plugins that we need for an update, we must consult both
-	// sources and merge their results into a list of plugins.
+	// In order to get a complete view of the set of plugins that we need for an update or query, we must
+	// consult both sources and merge their results into a list of plugins.
 	languagePlugins, err := gatherPluginsFromProgram(plugctx, plugin.ProgInfo{
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
 	allPlugins := languagePlugins.Union(snapshotPlugins)
 
 	// If there are any plugins that are not available, we can attempt to install them here. This only works when using
@@ -131,6 +134,22 @@ func newUpdateSource(
 		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
 
+	// Collect the version information for default providers.
+	defaultProviderVersions := computeDefaultProviderPlugins(languagePlugins, allPlugins)
+
+	return allPlugins, defaultProviderVersions, nil
+}
+
+func newUpdateSource(
+	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
+	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
+
+	allPlugins, defaultProviderVersions, err := installPlugins(client, proj, pwd, main, target,
+		plugctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// Once we've installed all of the plugins we need, make sure that all analyzers and language plugins are
 	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
 	// need to be loaded here.
@@ -138,9 +157,6 @@ func newUpdateSource(
 	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
 		return nil, err
 	}
-
-	// Collect the version information for default providers.
-	defaultProviderVersions := computeDefaultProviderPlugins(languagePlugins, allPlugins)
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
@@ -191,16 +207,6 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		}
 	}
 	return resourceChanges, res
-}
-
-// pluginActions listens for plugin events and persists the set of loaded plugins
-// to the snapshot.
-type pluginActions struct {
-	Context *Context
-}
-
-func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo) error {
-	return p.Context.SnapshotManager.RecordPlugin(loadedPlug)
 }
 
 // updateActions pretty-prints the plan application process as it goes.

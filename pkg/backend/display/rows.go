@@ -17,6 +17,7 @@ package display
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -458,7 +459,7 @@ func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
 	return changesBuf.String()
 }
 
-func writePropertyKeys(b *bytes.Buffer, keys []string, op deploy.StepOp) {
+func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
 	if len(keys) > 0 {
 		writeString(b, strings.Trim(op.Prefix(), " "))
 

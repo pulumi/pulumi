@@ -28,4 +28,10 @@ export interface InvokeOptions {
      * invoked function's package will be used.
      */
     provider?: ProviderResource;
+
+    /**
+     * An optional version, corresponding to the version of the provider plugin that should be used when performing this
+     * invoke.
+     */
+    version?: string;
 }

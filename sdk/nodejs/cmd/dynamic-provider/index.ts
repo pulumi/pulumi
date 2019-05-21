@@ -53,7 +53,9 @@ function cancelRPC(call: any, callback: any): void {
 }
 
 function configureRPC(call: any, callback: any): void {
-    callback(undefined, new emptyproto.Empty());
+    const resp = new provproto.ConfigureResponse();
+    resp.setAcceptsecrets(false);
+    callback(undefined, resp);
 }
 
 async function invokeRPC(call: any, callback: any): Promise<void> {

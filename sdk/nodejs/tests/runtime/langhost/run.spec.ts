@@ -28,6 +28,7 @@ const langrpc = require("../../../proto/language_grpc_pb.js");
 const langproto = require("../../../proto/language_pb.js");
 const resrpc = require("../../../proto/resource_grpc_pb.js");
 const resproto = require("../../../proto/resource_pb.js");
+const providerproto = require("../../../proto/provider_pb.js");
 
 interface RunCase {
     project?: string;
@@ -45,12 +46,12 @@ interface RunCase {
     };
     skipRootResourceEndpoints?: boolean;
     showRootResourceRegistration?: boolean;
-    invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
-    readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
+    invoke?: (ctx: any, tok: string, args: any, version: string) => { failures: any, ret: any };
+    readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
         urn: URN | undefined, props: any | undefined };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
-                        propertyDeps?: any) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
+                        propertyDeps?: any, ignoreChanges?: string[], version?: string) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
@@ -781,6 +782,86 @@ describe("rpc", () => {
                 }
             },
         },
+        "ignore_changes": {
+            program: path.join(base, "045.ignore_changes"),
+            expectResourceCount: 1,
+            registerResource: (
+                ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                propertyDeps?: any, ignoreChanges?: string[],
+            ) => {
+                if (name === "testResource") {
+                    assert.deepEqual(ignoreChanges, ["ignoredProperty"]);
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {},
+                };
+            },
+        },
+        "versions": {
+            program: path.join(base, "044.versions"),
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                               propertyDeps?: any, ignoreChanges?: string[], version?: string)  => {
+                switch (name) {
+                    case "testResource":
+                        assert.strictEqual("0.19.1", version);
+                        break;
+                    case "testResource2":
+                        assert.strictEqual("0.19.2", version);
+                        break;
+                    case "testResource3":
+                        assert.strictEqual("", version);
+                        break;
+                    default:
+                        assert.fail(`unknown resource: ${name}`);
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {},
+                };
+            },
+            invoke: (ctx: any, tok: string, args: any, version: string) => {
+                switch (tok) {
+                    case "invoke:index:doit":
+                        assert.strictEqual(version, "0.19.1");
+                        break;
+                    case "invoke:index:doit_v2":
+                        assert.strictEqual(version, "0.19.2");
+                        break;
+                    case "invoke:index:doit_noversion":
+                        assert.strictEqual(version, "");
+                        break;
+                    default:
+                        assert.fail(`unknown invoke: ${tok}`);
+                }
+
+                return {
+                    failures: [],
+                    ret: args,
+                };
+            },
+            readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
+                switch (name) {
+                    case "foo":
+                        assert.strictEqual(version, "0.20.0");
+                        break;
+                    case "foo_noversion":
+                        assert.strictEqual(version, "");
+                        break;
+                    default:
+                        assert.fail(`unknown read: ${name}`);
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    props: state,
+                };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -803,12 +884,13 @@ describe("rpc", () => {
                 const monitor = createMockEngine(opts,
                     // Invoke callback
                     (call: any, callback: any) => {
-                        const resp = new resproto.InvokeResponse();
+                        const resp = new providerproto.InvokeResponse();
                         if (opts.invoke) {
                             const req: any = call.request;
                             const args: any = req.getArgs().toJavaScript();
+                            const version: string = req.getVersion();
                             const { failures, ret } =
-                                opts.invoke(ctx, req.getTok(), args);
+                                opts.invoke(ctx, req.getTok(), args, version);
                             resp.setFailuresList(failures);
                             resp.setReturn(gstruct.Struct.fromJavaScript(ret));
                         }
@@ -824,7 +906,8 @@ describe("rpc", () => {
                             const id = req.getId();
                             const par = req.getParent();
                             const state = req.getProperties().toJavaScript();
-                            const { urn, props } = opts.readResource(ctx, t, name, id, par, state);
+                            const version = req.getVersion();
+                            const { urn, props } = opts.readResource(ctx, t, name, id, par, state, version);
                             resp.setUrn(urn);
                             resp.setProperties(gstruct.Struct.fromJavaScript(props));
                         }
@@ -845,12 +928,14 @@ describe("rpc", () => {
                                 const protect: boolean = req.getProtect();
                                 const parent: string = req.getParent();
                                 const provider: string = req.getProvider();
+                                const ignoreChanges: string[] = req.getIgnorechangesList().sort();
                                 const propertyDeps: any = Array.from(req.getPropertydependenciesMap().entries())
                                     .reduce((o: any, [key, value]: [any, any]) => {
                                         return { ...o, [key]: value.getUrnsList().sort() };
                                     }, {});
+                                const version: string = req.getVersion();
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
-                                    custom, protect, parent, provider, propertyDeps);
+                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));
@@ -920,6 +1005,12 @@ describe("rpc", () => {
                         }
 
                         callback(undefined, new engineproto.SetRootResourceResponse());
+                    },
+                    // SupportsFeature callback
+                    (call: any, callback: any) => {
+                        const resp = new resproto.SupportsFeatureResponse();
+                        resp.setHassupport(false);
+                        callback(undefined, resp);
                     },
                 );
 
@@ -1029,10 +1120,12 @@ function createMockEngine(
         registerResourceOutputsCallback: (call: any, request: any) => any,
         logCallback: (call: any, request: any) => any,
         getRootResourceCallback: (call: any, request: any) => any,
-        setRootResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
+        setRootResourceCallback: (call: any, request: any) => any,
+        supportsFeatureCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
     server.addService(resrpc.ResourceMonitorService, {
+        supportsFeature: supportsFeatureCallback,
         invoke: invokeCallback,
         readResource: readResourceCallback,
         registerResource: registerResourceCallback,

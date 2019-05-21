@@ -254,6 +254,8 @@ func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
 		return CloudOperationsProvider(ops.config, ops.resource)
 	case "aws":
 		return AWSOperationsProvider(ops.config, ops.resource)
+	case "gcp":
+		return GCPOperationsProvider(ops.config, ops.resource)
 	default:
 		return nil, nil
 	}

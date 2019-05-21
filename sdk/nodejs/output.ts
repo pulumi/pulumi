@@ -26,36 +26,49 @@ import * as utils from "./utils";
  */
 class OutputImpl<T> implements OutputInstance<T> {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiOutput: boolean = true;
+    public readonly __pulumiOutput: boolean = true;
 
     /**
+     * @internal
+     * Wheter or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
+     * encrypted format when they are persisted as part of a state file. When`true` this "taints" any
+     * additional resources created from it via an [all] or [apply], such that they are also treated as
+     * secrets.
+     */
+    public readonly isSecret: Promise<boolean>;
+
+    /**
+     * @internal
      * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
      * an Output value may not be known (because it would have to actually be computed by doing an
      * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
      * may not expect an undefined value.  So, instead, we just transition to another Output
      * value that itself knows it should not perform .apply calls.
      */
-    /* @internal */ public readonly isKnown: Promise<boolean>;
+    public readonly isKnown: Promise<boolean>;
 
     /**
+     * @internal
      * Method that actually produces the concrete value of this output, as well as the total
      * deployment-time set of resources this output depends on.
      *
      * Only callable on the outside.
      */
-    /* @internal */ public readonly promise: () => Promise<T>;
+    public readonly promise: () => Promise<T>;
 
     /**
+     * @internal
      * The list of resource that this output value depends on.
      *
      * Only callable on the outside.
      */
-    /* @internal */ public readonly resources: () => Set<Resource>;
+    public readonly resources: () => Set<Resource>;
 
     public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
     public readonly get: () => T;
@@ -112,9 +125,14 @@ class OutputImpl<T> implements OutputInstance<T> {
         return utils.isInstance(obj, "__pulumiOutput");
     }
 
-    /* @internal */ public constructor(
-            resources: Set<Resource> | Resource[] | Resource, promise: Promise<T>, isKnown: Promise<boolean>) {
+    /** @internal */
+    public constructor(
+            resources: Set<Resource> | Resource[] | Resource,
+            promise: Promise<T>,
+            isKnown: Promise<boolean>,
+            isSecret: Promise<boolean>) {
         this.isKnown = isKnown;
+        this.isSecret = isSecret;
 
         let resourcesArray: Resource[];
 
@@ -158,15 +176,16 @@ This function may throw in a future version of @pulumi/pulumi.`;
         };
 
         this.apply = <U>(func: (t: T) => Input<U>) => {
-            let innerIsKnownResolve: (val: boolean) => void;
-            const innerIsKnown = new Promise<boolean>(resolve => {
-                innerIsKnownResolve = resolve;
+            let innerDetailsResolve: (val: {isKnown: boolean, isSecret: boolean}) => void;
+            const innerDetails = new Promise<any>(resolve => {
+                innerDetailsResolve = resolve;
             });
 
             // The known state of the output we're returning depends on if we're known as well, and
             // if a potential lifted inner Output is known.  If we get an inner Output, and it is
             // not known itself, then the result we return should not be known.
-            const resultIsKnown = Promise.all([isKnown, innerIsKnown]).then(([k1, k2]) => k1 && k2);
+            const resultIsKnown = Promise.all([isKnown, innerDetails]).then(([k1, k2]) => k1 && k2.isKnown);
+            const resultIsSecret = Promise.all([isSecret, innerDetails]).then(([k1, k2]) => k1 || k2.isSecret);
 
             return new Output<U>(resources, promise.then(async v => {
                 try {
@@ -178,7 +197,10 @@ This function may throw in a future version of @pulumi/pulumi.`;
                         if (!applyDuringPreview) {
                             // We didn't actually run the function, our new Output is definitely
                             // **not** known.
-                            innerIsKnownResolve(false);
+                            innerDetailsResolve({
+                                isKnown: false,
+                                isSecret: await isSecret,
+                            });
                             return <U><any>undefined;
                         }
                     }
@@ -194,11 +216,17 @@ This function may throw in a future version of @pulumi/pulumi.`;
                         // The callback func has produced an inner Output that may be 'known' or 'unknown'.
                         // We have to properly forward that along to our outer output.  That way the Outer
                         // output doesn't consider itself 'known' then the inner Output did not.
-                        innerIsKnownResolve(await transformed.isKnown);
+                        innerDetailsResolve({
+                            isKnown: await transformed.isKnown,
+                            isSecret: await (transformed.isSecret || Promise.resolve(false)),
+                        });
                         return await transformed.promise();
                     } else {
                         // We successfully ran the inner function.  Our new Output should be considered known.
-                        innerIsKnownResolve(true);
+                        innerDetailsResolve({
+                            isKnown: true,
+                            isSecret: false,
+                        });
                         return transformed;
                     }
                 }
@@ -207,9 +235,12 @@ This function may throw in a future version of @pulumi/pulumi.`;
                     // above. If anything failed along the way, consider this output to be
                     // not-known. Awaiting this Output's promise() will still throw, but await'ing
                     // the isKnown bit will just return 'false'.
-                    innerIsKnownResolve(false);
+                    innerDetailsResolve({
+                        isKnown: false,
+                        isSecret: false,
+                    });
                 }
-            }), resultIsKnown);
+            }), resultIsKnown, resultIsSecret);
         };
 
         this.get = () => {
@@ -283,6 +314,14 @@ To manipulate the value of this Output, use '.apply' instead.`);
     }
 }
 
+// Returns an promise denoting if the output is a secret or not. This is not the same as just calling `.isSecret`
+// because in cases where the output does not have a `isSecret` property and it is a Proxy, we need to ignore
+// the isSecret member that the proxy reports back.
+/** @internal */
+export function isSecretOutput<T>(o: Output<T>): Promise<boolean> {
+    return Output.isInstance(o.isSecret) ? Promise.resolve(false) : o.isSecret;
+}
+
 /**
  * [output] takes any Input value and converts it into an Output, deeply unwrapping nested Input
  * values as necessary.
@@ -318,7 +357,7 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
         // For a promise, we can just treat the same as an output that points to that resource. So
         // we just create an Output around the Promise, and immediately apply the unwrap function on
         // it to transform the value it points at.
-        return <any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true)).apply(output);
+        return <any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true), /*isSecret*/ Promise.resolve(false)).apply(output);
     }
     else if (Output.isInstance(val)) {
         return <any>val.apply(output);
@@ -336,8 +375,22 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
     }
 }
 
+/**
+ * [secret] behaves the same as [output] except the resturned output is marked as contating sensitive data.
+ */
+export function secret<T>(val: Input<T>): Output<Unwrap<T>>;
+export function secret<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
+export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
+    const o = output(val);
+    return new Output(o.resources(), o.promise(), o.isKnown, Promise.resolve(true));
+}
+
 function createSimpleOutput(val: any) {
-    return new Output(new Set(), Promise.resolve(val), /*isKnown*/ Promise.resolve(true));
+    return new Output(
+        new Set(),
+        Promise.resolve(val),
+        /*isKnown*/ Promise.resolve(true),
+        /*isSecret */ Promise.resolve(false));
 }
 
 /**
@@ -365,18 +418,18 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));
 
-        const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
+        const [resources, isKnown, isSecret] = getResourcesAndDetails(allOutputs);
         const promisedArray = Promise.all(allOutputs.map(o => o.promise()));
 
-        return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown);
+        return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown, isSecret);
     } else {
         const keysAndOutputs = Object.keys(val).map(key => ({ key, value: output(val[key]) }));
         const allOutputs = keysAndOutputs.map(kvp => kvp.value);
 
-        const [resources, isKnown] = getResourcesAndIsKnown(allOutputs);
+        const [resources, isKnown, isSecret] = getResourcesAndDetails(allOutputs);
         const promisedObject = getPromisedObject(keysAndOutputs);
 
-        return new Output<Record<string, Unwrap<T>>>(new Set<Resource>(resources), promisedObject, isKnown);
+        return new Output<Record<string, Unwrap<T>>>(new Set<Resource>(resources), promisedObject, isKnown, isSecret);
     }
 }
 
@@ -390,13 +443,16 @@ async function getPromisedObject<T>(
     return result;
 }
 
-function getResourcesAndIsKnown<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[], Promise<boolean>] {
+function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[], Promise<boolean>, Promise<boolean>] {
     const allResources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
 
     // A merged output is known if all of its inputs are known.
     const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
 
-    return [allResources, isKnown];
+    // A merged output is secret if any of its inputs are secret.
+    const isSecret = Promise.all(allOutputs.map(o => isSecretOutput(o))).then(ps => ps.find(b => b) !== undefined);
+
+    return [allResources, isKnown, isSecret];
 }
 
 /**
@@ -475,9 +531,10 @@ export type UnwrappedObject<T> = {
  * for working with the underlying value of an [Output<T>].
  */
 export interface OutputInstance<T> {
-    /* @internal */ readonly isKnown: Promise<boolean>;
-    /* @internal */ promise(): Promise<T>;
-    /* @internal */ resources(): Set<Resource>;
+    /** @internal */ readonly isKnown: Promise<boolean>;
+    /** @internal */ readonly isSecret: Promise<boolean>;
+    /** @internal */ promise(): Promise<T>;
+    /** @internal */ resources(): Set<Resource>;
 
     /**
      * Transforms the data of the output with the provided func.  The result remains a
@@ -500,7 +557,7 @@ export interface OutputInstance<T> {
      * If you need have multiple Outputs and a single Output is needed that combines both
      * set of resources, then 'pulumi.all' should be used instead.
      *
-     * This function will only be called execution of a 'pulumi update' request.  It will not run
+     * This function will only be called execution of a 'pulumi up' request.  It will not run
      * during 'pulumi preview' (as the values of resources are of course not known then). It is not
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.
@@ -531,10 +588,11 @@ export interface OutputConstructor {
 
     isInstance<T>(obj: any): obj is Output<T>;
 
-    /* @internal */ new<T>(
+    /** @internal */ new<T>(
             resources: Set<Resource> | Resource[] | Resource,
             promise: Promise<T>,
-            isKnown: Promise<boolean>): Output<T>;
+            isKnown: Promise<boolean>,
+            isSecret: Promise<boolean>): Output<T>;
 }
 
 /**

@@ -44,13 +44,18 @@ type Crypter interface {
 	Decrypter
 }
 
-// A nopDecrypter simply returns the ciphertext as-is.
-type nopDecrypter struct{}
+// A nopCrypter simply returns the ciphertext as-is.
+type nopCrypter struct{}
 
-var NopDecrypter Decrypter = nopDecrypter{}
+var NopDecrypter Decrypter = nopCrypter{}
+var NopEncrypter Encrypter = nopCrypter{}
 
-func (nopDecrypter) DecryptValue(ciphertext string) (string, error) {
+func (nopCrypter) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext, nil
+}
+
+func (nopCrypter) EncryptValue(plaintext string) (string, error) {
+	return plaintext, nil
 }
 
 // NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "[secret]", it can

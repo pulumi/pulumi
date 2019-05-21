@@ -30,7 +30,7 @@ class TestFirstClassProviderInvoke(LanghostTest):
             expected_resource_count=4)
 
 
-    def invoke(self, _ctx, token, args, provider):
+    def invoke(self, _ctx, token, args, provider, _version):
         # MyFunction explicitly receives a provider reference.
         if token == "test:index:MyFunction":
             self.assertDictEqual({
@@ -53,7 +53,8 @@ class TestFirstClassProviderInvoke(LanghostTest):
         }
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource, _deps,
-                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace):
+                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
+                          _ignore_changes, _version):
         if name == "testprov":
             self.assertEqual("pulumi:providers:test", ty)
             self.prov_urn = self.make_urn(ty, name)

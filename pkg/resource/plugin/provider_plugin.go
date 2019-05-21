@@ -36,13 +36,14 @@ import (
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx       *Context                         // a plugin context for caching, etc.
-	pkg       tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug      *plugin                          // the actual plugin process wrapper.
-	clientRaw pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr    error                            // non-nil if a configure call fails.
-	cfgknown  bool                             // true if all configuration values are known.
-	cfgdone   chan bool                        // closed when configuration has completed.
+	ctx           *Context                         // a plugin context for caching, etc.
+	pkg           tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug          *plugin                          // the actual plugin process wrapper.
+	clientRaw     pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr        error                            // non-nil if a configure call fails.
+	cfgknown      bool                             // true if all configuration values are known.
+	cfgdone       chan bool                        // closed when configuration has completed.
+	acceptSecrets bool                             // true if this provider plugin can consume strongly typed secret.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -88,6 +89,12 @@ func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 	// Ensure that all config values are strings or unknowns.
 	var failures []CheckFailure
 	for k, v := range news {
+		// The configure method has to accept strings, so we go through and strip off all the secret markers before
+		// doing our checks (this mimics stripping code we have in Configure itself).
+		for v.IsSecret() {
+			v = v.SecretValue().Element
+		}
+
 		if !v.IsString() && !v.IsComputed() {
 			failures = append(failures, CheckFailure{
 				Property: k,
@@ -135,21 +142,57 @@ func (p *provider) ensureConfigured() error {
 	return p.cfgerr
 }
 
+// annotateSecrets copies the "secretness" from the ins to the outs. If there are values with the same keys for the
+// outs and the ins, if they are both objects, they are transformed recursively. Otherwise, if the value in the ins
+// contains a secret, the entire out value is marked as a secret.  This is very close to how we project secrets
+// in the programming model, with one small difference, which is how we treat the case where both are objects. In the
+// programming model, we would say the entire output object is a secret. Here, we actually recur in. We do this because
+// we don't want a single secret value in a rich structure to taint the entire object. Doing so would mean things like
+// the entire value in the deployment would be encrypted instead of a small chunk. It also means the entire property
+// would be displayed as `[secret]` in the CLI instead of a small part.
+//
+// NOTE: This means that for an array, if any value in the input version is a secret, the entire output array is
+// marked as a secret. This is actually a very nice result, because often arrays are treated like sets by providers
+// and the order may not be preserved across an operation. This means we do end up encrypting the entire array
+// but that's better than accidentally leaking a value which just moved to a different location.
+func annotateSecrets(outs, ins resource.PropertyMap) {
+	if outs == nil || ins == nil {
+		return
+	}
+
+	for key, inValue := range ins {
+		outValue, has := outs[key]
+		if !has {
+			continue
+		}
+		if outValue.IsObject() && inValue.IsObject() {
+			annotateSecrets(outValue.ObjectValue(), inValue.ObjectValue())
+		} else if !outValue.IsSecret() && inValue.ContainsSecrets() {
+			outs[key] = resource.MakeSecret(outValue)
+		}
+	}
+}
+
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(inputs))
 
-	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leavce
+	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
 	config := make(map[string]string)
 	for k, v := range inputs {
 		if k == "version" {
 			continue
 		}
+		// The configure method has to accept strings, so we go through and strip off all the secret markers before
+		// calling configure.
+		for v.IsSecret() {
+			v = v.SecretValue().Element
+		}
 		switch {
 		case v.IsComputed():
-			p.cfgknown = false
+			p.cfgknown, p.acceptSecrets = false, false
 			close(p.cfgdone)
 			return nil
 		case v.IsString():
@@ -166,14 +209,17 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
-		_, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
+		resp, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{
+			AcceptSecrets: true,
+			Variables:     config,
+		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfgknown, p.cfgerr = true, err
+		p.cfgknown, p.acceptSecrets, p.cfgerr = true, resp.GetAcceptSecrets(), err
 		close(p.cfgdone)
 	}()
 
@@ -198,13 +244,19 @@ func (p *provider) Check(urn resource.URN,
 		return news, nil, nil
 	}
 
-	molds, err := MarshalProperties(olds, MarshalOptions{Label: fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: allowUnknowns})
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -224,10 +276,21 @@ func (p *provider) Check(urn resource.URN,
 	var inputs resource.PropertyMap
 	if ins := resp.GetInputs(); ins != nil {
 		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: allowUnknowns, RejectUnknowns: !allowUnknowns})
+			Label:          fmt.Sprintf("%s.inputs", label),
+			KeepUnknowns:   allowUnknowns,
+			RejectUnknowns: !allowUnknowns,
+			KeepSecrets:    true,
+		})
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(inputs, news)
 	}
 
 	// And now any properties that failed verification.
@@ -268,12 +331,19 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
+		Label:              fmt.Sprintf("%s.olds", label),
+		ElideAssetContents: true,
+		KeepUnknowns:       allowUnknowns,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
+	})
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -326,7 +396,10 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{Label: fmt.Sprintf("%s.inputs", label)})
+	mprops, err := MarshalProperties(props, MarshalOptions{
+		Label:       fmt.Sprintf("%s.inputs", label),
+		KeepSecrets: p.acceptSecrets,
+	})
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
@@ -367,9 +440,19 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.outputs", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return "", nil, resourceStatus, err
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(outs, props)
 	}
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
@@ -407,13 +490,21 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	// Marshal the resource inputs and state so we can perform the RPC.
 	var minputs *_struct.Struct
 	if inputs != nil {
-		m, err := MarshalProperties(inputs, MarshalOptions{Label: label, ElideAssetContents: true})
+		m, err := MarshalProperties(inputs, MarshalOptions{
+			Label:              label,
+			ElideAssetContents: true,
+			KeepSecrets:        p.acceptSecrets,
+		})
 		if err != nil {
 			return ReadResult{}, resource.StatusUnknown, err
 		}
 		minputs = m
 	}
-	mstate, err := MarshalProperties(state, MarshalOptions{Label: label, ElideAssetContents: true})
+	mstate, err := MarshalProperties(state, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
 	}
@@ -454,7 +545,10 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 	// Finally, unmarshal the resulting state properties and return them.
 	newState, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.outputs", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return ReadResult{}, resourceStatus, err
 	}
@@ -462,10 +556,21 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	var newInputs resource.PropertyMap
 	if liveInputs != nil {
 		newInputs, err = UnmarshalProperties(liveInputs, MarshalOptions{
-			Label: label + ".inputs", RejectUnknowns: true})
+			Label:          label + ".inputs",
+			RejectUnknowns: true,
+			KeepSecrets:    true,
+		})
 		if err != nil {
 			return ReadResult{}, resourceStatus, err
 		}
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(newInputs, inputs)
+		annotateSecrets(newState, state)
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
@@ -487,11 +592,17 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true})
+		Label:              fmt.Sprintf("%s.olds", label),
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label)})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:       fmt.Sprintf("%s.news", label),
+		KeepSecrets: p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
@@ -527,9 +638,19 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.outputs", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return nil, resourceStatus, err
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(outs, news)
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
@@ -547,7 +668,11 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
+	mprops, err := MarshalProperties(props, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return resource.StatusOK, err
 	}
@@ -594,7 +719,10 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		return resource.PropertyMap{}, nil, nil
 	}
 
-	margs, err := MarshalProperties(args, MarshalOptions{Label: fmt.Sprintf("%s.args", label)})
+	margs, err := MarshalProperties(args, MarshalOptions{
+		Label:       fmt.Sprintf("%s.args", label),
+		KeepSecrets: p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -608,7 +736,10 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	// Unmarshal any return values.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label: fmt.Sprintf("%s.returns", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.returns", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return nil, nil, err
 	}

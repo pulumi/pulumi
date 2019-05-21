@@ -68,10 +68,10 @@ func newLogoutCmd() *cobra.Command {
 
 			var be backend.Backend
 			var err error
-			if filestate.IsLocalBackendURL(cloudURL) {
-				be, err = filestate.New(cmdutil.Diag(), cloudURL, "")
+			if filestate.IsFileStateBackendURL(cloudURL) {
+				be, err = filestate.New(cmdutil.Diag(), cloudURL)
 			} else {
-				be, err = httpstate.New(cmdutil.Diag(), cloudURL, "")
+				be, err = httpstate.New(cmdutil.Diag(), cloudURL)
 			}
 			if err != nil {
 				return err

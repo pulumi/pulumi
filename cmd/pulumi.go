@@ -111,7 +111,11 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			checkForUpdate()
+			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
+				logging.Infof("skipping update check")
+			} else {
+				checkForUpdate()
+			}
 
 			return nil
 		}),
@@ -182,6 +186,7 @@ func NewPulumiCmd() *cobra.Command {
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
+		cmd.AddCommand(newQueryCmd())
 	}
 
 	return cmd

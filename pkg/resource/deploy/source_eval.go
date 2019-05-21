@@ -117,7 +117,7 @@ func (src *evalSource) Iterate(
 }
 
 type evalSourceIterator struct {
-	mon         *resmon                            // the resource monitor, per iterator.
+	mon         SourceResourceMonitor              // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
@@ -227,8 +227,13 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 // resource that will be used to manage resources that do not explicitly reference a provider. Default providers will
 // only be registered for packages that are used by resources registered by the user's Pulumi program.
 type defaultProviders struct {
-	versions  map[tokens.Package]*semver.Version
-	providers map[tokens.Package]providers.Reference
+	// A map of package identifiers to versions, used to disambiguate which plugin to load if no version is provided
+	// by the language host.
+	defaultVersions map[tokens.Package]*semver.Version
+
+	// A map of ProviderRequest strings to provider references, used to keep track of the set of default providers that
+	// have already been loaded.
+	providers map[string]providers.Reference
 	config    plugin.ConfigSource
 
 	requests chan defaultProviderRequest
@@ -242,17 +247,17 @@ type defaultProviderResponse struct {
 }
 
 type defaultProviderRequest struct {
-	pkg      tokens.Package
+	req      providers.ProviderRequest
 	response chan<- defaultProviderResponse
 }
 
 // newRegisterDefaultProviderEvent creates a RegisterResourceEvent and completion channel that can be sent to the
 // engine to register a default provider resource for the indicated package.
 func (d *defaultProviders) newRegisterDefaultProviderEvent(
-	pkg tokens.Package) (*registerResourceEvent, <-chan *RegisterResult, error) {
+	req providers.ProviderRequest) (*registerResourceEvent, <-chan *RegisterResult, error) {
 
 	// Attempt to get the config for the package.
-	cfg, err := d.config.GetPackageConfig(pkg)
+	cfg, err := d.config.GetPackageConfig(req.Package())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -262,14 +267,38 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	for k, v := range cfg {
 		inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
 	}
-	if version := d.versions[pkg]; version != nil {
-		inputs["version"] = resource.NewStringProperty(version.String())
+
+	// Request that the engine instantiate a specific version of this provider, if one was requested. We'll figure out
+	// what version to request by:
+	//   1. Providing the Version field of the ProviderRequest verbatim, if it was provided, otherwise
+	//   2. Querying the list of default versions provided to us on startup and returning the value associated with
+	//      the given package, if one exists, otherwise
+	//   3. We give nothing to the engine and let the engine figure it out.
+	//
+	// As we tighen up our approach to provider versioning, 2 and 3 will go away and be replaced entirely by 1. 3 is
+	// especially onerous because the engine selects the "newest" plugin available on the machine, which is generally
+	// problematic for a lot of reasons.
+	if req.Version() != nil {
+		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using version %s from request", req, req.Version())
+		inputs["version"] = resource.NewStringProperty(req.Version().String())
+	} else {
+		logging.V(5).Infof(
+			"newRegisterDefaultProviderEvent(%s): no version specified, falling back to default version", req)
+		if version := d.defaultVersions[req.Package()]; version != nil {
+			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default version hit on version %s", req, version)
+			inputs["version"] = resource.NewStringProperty(version.String())
+		} else {
+			logging.V(5).Infof(
+				"newRegisterDefaultProviderEvent(%s): default provider miss, sending nil version to engine", req)
+		}
 	}
 
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal(providers.MakeProviderType(pkg), "default", true, inputs, "", false, nil, "", nil, nil, false),
+		goal: resource.NewGoal(
+			providers.MakeProviderType(req.Package()),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil),
 		done: done,
 	}
 	return event, done, nil
@@ -282,15 +311,21 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 //
 // Note that this function must not be called from two goroutines concurrently; it is the responsibility of d.serve()
 // to ensure this.
-func (d *defaultProviders) handleRequest(pkg tokens.Package) (providers.Reference, error) {
-	logging.V(5).Infof("handling default provider request for package %s", pkg)
+func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
+	logging.V(5).Infof("handling default provider request for package %s", req)
 
-	ref, ok := d.providers[pkg]
+	// Have we loaded this provider before? Use the existing reference, if so.
+	//
+	// Note that we are using the request's String as the key for the provider map. Go auto-derives hash and equality
+	// functions for aggregates, but the one auto-derived for ProviderRequest does not have the semantics we want. The
+	// use of a string key here is hacky but gets us the desired semantics - that ProviderRequest is a tuple of
+	// optional value-typed Version and a package.
+	ref, ok := d.providers[req.String()]
 	if ok {
 		return ref, nil
 	}
 
-	event, done, err := d.newRegisterDefaultProviderEvent(pkg)
+	event, done, err := d.newRegisterDefaultProviderEvent(req)
 	if err != nil {
 		return providers.Reference{}, err
 	}
@@ -301,7 +336,7 @@ func (d *defaultProviders) handleRequest(pkg tokens.Package) (providers.Referenc
 		return providers.Reference{}, context.Canceled
 	}
 
-	logging.V(5).Infof("waiting for default provider for package %s", pkg)
+	logging.V(5).Infof("waiting for default provider for package %s", req)
 
 	var result *RegisterResult
 	select {
@@ -310,7 +345,7 @@ func (d *defaultProviders) handleRequest(pkg tokens.Package) (providers.Referenc
 		return providers.Reference{}, context.Canceled
 	}
 
-	logging.V(5).Infof("registered default provider for package %s: %s", pkg, result.State.URN)
+	logging.V(5).Infof("registered default provider for package %s: %s", req, result.State.URN)
 
 	id := result.State.ID
 	if id == "" {
@@ -319,7 +354,7 @@ func (d *defaultProviders) handleRequest(pkg tokens.Package) (providers.Referenc
 
 	ref, err = providers.NewReference(result.State.URN, id)
 	contract.Assert(err == nil)
-	d.providers[pkg] = ref
+	d.providers[req.String()] = ref
 
 	return ref, nil
 }
@@ -331,7 +366,7 @@ func (d *defaultProviders) serve() {
 		case req := <-d.requests:
 			// Note that we do not need to handle cancellation when sending the response: every message we receive is
 			// guaranteed to have something waiting on the other end of the response channel.
-			ref, err := d.handleRequest(req.pkg)
+			ref, err := d.handleRequest(req.req)
 			req.response <- defaultProviderResponse{ref: ref, err: err}
 		case <-d.cancel:
 			return
@@ -340,10 +375,10 @@ func (d *defaultProviders) serve() {
 }
 
 // getDefaultProviderRef fetches the provider reference for the default provider for a particular package.
-func (d *defaultProviders) getDefaultProviderRef(pkg tokens.Package) (providers.Reference, error) {
+func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) (providers.Reference, error) {
 	response := make(chan defaultProviderResponse)
 	select {
-	case d.requests <- defaultProviderRequest{pkg: pkg, response: response}:
+	case d.requests <- defaultProviderRequest{req: req, response: response}:
 	case <-d.cancel:
 		return providers.Reference{}, context.Canceled
 	}
@@ -354,7 +389,6 @@ func (d *defaultProviders) getDefaultProviderRef(pkg tokens.Package) (providers.
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	src              *evalSource                        // the evaluation source.
 	providers        ProviderSource                     // the provider source itself.
 	defaultProviders *defaultProviders                  // the default provider manager.
 	regChan          chan *registerResourceEvent        // the channel to send resource registrations to.
@@ -365,6 +399,8 @@ type resmon struct {
 	done             chan error                         // a channel that resolves when the server completes.
 }
 
+var _ SourceResourceMonitor = (*resmon)(nil)
+
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent) (*resmon, error) {
@@ -374,17 +410,16 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// Create a new default provider manager.
 	d := &defaultProviders{
-		versions:  src.defaultProviderVersions,
-		providers: make(map[tokens.Package]providers.Reference),
-		config:    src.runinfo.Target,
-		requests:  make(chan defaultProviderRequest),
-		regChan:   regChan,
-		cancel:    cancel,
+		defaultVersions: src.defaultProviderVersions,
+		providers:       make(map[string]providers.Reference),
+		config:          src.runinfo.Target,
+		requests:        make(chan defaultProviderRequest),
+		regChan:         regChan,
+		cancel:          cancel,
 	}
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		src:              src,
 		providers:        provs,
 		defaultProviders: d,
 		regChan:          regChan,
@@ -426,7 +461,8 @@ func (rm *resmon) Cancel() error {
 // getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
 // given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
 // to the default provider for the indicated package.
-func (rm *resmon) getProviderReference(pkg tokens.Package, rawProviderRef string) (providers.Reference, error) {
+func (rm *resmon) getProviderReference(req providers.ProviderRequest,
+	rawProviderRef string) (providers.Reference, error) {
 	if rawProviderRef != "" {
 		ref, err := providers.ParseReference(rawProviderRef)
 		if err != nil {
@@ -435,7 +471,7 @@ func (rm *resmon) getProviderReference(pkg tokens.Package, rawProviderRef string
 		return ref, nil
 	}
 
-	ref, err := rm.defaultProviders.getDefaultProviderRef(pkg)
+	ref, err := rm.defaultProviders.getDefaultProviderRef(req)
 	if err != nil {
 		return providers.Reference{}, err
 	}
@@ -445,8 +481,8 @@ func (rm *resmon) getProviderReference(pkg tokens.Package, rawProviderRef string
 // getProvider fetches the provider plugin for a resource, read, or invoke from the given package with the given
 // unparsed provider reference. If the unparsed provider reference is empty, this function returns the plugin for the
 // indicated package's default provider.
-func (rm *resmon) getProvider(pkg tokens.Package, rawProviderRef string) (plugin.Provider, error) {
-	providerRef, err := rm.getProviderReference(pkg, rawProviderRef)
+func (rm *resmon) getProvider(req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
+	providerRef, err := rm.getProviderReference(req, rawProviderRef)
 	if err != nil {
 		return nil, err
 	}
@@ -457,12 +493,47 @@ func (rm *resmon) getProvider(pkg tokens.Package, rawProviderRef string) (plugin
 	return provider, nil
 }
 
+func (rm *resmon) parseProviderRequest(pkg tokens.Package, version string) (providers.ProviderRequest, error) {
+	if version == "" {
+		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
+		return providers.NewProviderRequest(nil, pkg), nil
+	}
+
+	parsedVersion, err := semver.Parse(version)
+	if err != nil {
+		logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
+		return providers.ProviderRequest{}, err
+	}
+
+	return providers.NewProviderRequest(&parsedVersion, pkg), nil
+}
+
+func (rm *resmon) SupportsFeature(ctx context.Context,
+	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
+
+	hasSupport := false
+
+	switch req.Id {
+	case "secrets":
+		hasSupport = true
+	}
+
+	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
+
+	return &pulumirpc.SupportsFeatureResponse{
+		HasSupport: hasSupport,
+	}, nil
+}
+
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-
-	prov, err := rm.getProvider(tok.Package(), req.GetProvider())
+	providerReq, err := rm.parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	prov, err := rm.getProvider(providerReq, req.GetProvider())
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +541,11 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
 
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:        label,
+			KeepUnknowns: true,
+			KeepSecrets:  true,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
@@ -481,7 +556,10 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
 	}
@@ -509,7 +587,11 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		ref, provErr := rm.defaultProviders.getDefaultProviderRef(t.Package())
+		providerReq, err := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		if err != nil {
+			return nil, err
+		}
+		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
 		}
@@ -526,20 +608,27 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
+		KeepSecrets:  true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	var additionalSecretOutputs []resource.PropertyKey
+	for _, name := range req.GetAdditionalSecretOutputs() {
+		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
+	}
+
 	event := &readResourceEvent{
-		id:           id,
-		name:         name,
-		baseType:     t,
-		provider:     provider,
-		parent:       parent,
-		props:        props,
-		dependencies: deps,
-		done:         make(chan *ReadResult),
+		id:                      id,
+		name:                    name,
+		baseType:                t,
+		provider:                provider,
+		parent:                  parent,
+		props:                   props,
+		dependencies:            deps,
+		additionalSecretOutputs: additionalSecretOutputs,
+		done:                    make(chan *ReadResult),
 	}
 	select {
 	case rm.regReadChan <- event:
@@ -561,6 +650,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
+		KeepSecrets:  req.GetAcceptSecrets(),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %s return state", result.State.URN)
@@ -583,6 +673,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
 	deleteBeforeReplace := req.GetDeleteBeforeReplace()
+	ignoreChanges := req.GetIgnoreChanges()
 	var t tokens.Type
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -601,7 +692,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 	provider := req.GetProvider()
 	if custom && !providers.IsProviderType(t) && provider == "" {
-		ref, err := rm.defaultProviders.getDefaultProviderRef(t.Package())
+		providerReq, err := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		if err != nil {
+			return nil, err
+		}
+		ref, err := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if err != nil {
 			return nil, err
 		}
@@ -614,7 +709,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetObject(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -637,15 +737,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
+	var additionalSecretOutputs []resource.PropertyKey
+	for _, name := range req.GetAdditionalSecretOutputs() {
+		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
-			"provider=%v, deps=%v, deleteBeforeReplace=%v",
-		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace)
+			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v",
+		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace, ignoreChanges)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies, deleteBeforeReplace),
+			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs),
 		done: make(chan *RegisterResult),
 	}
 
@@ -666,7 +771,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	state := result.State
-	props = state.All()
 	stable := result.Stable
 	var stables []string
 	for _, sta := range result.Stables {
@@ -674,11 +778,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, stable=%v, #stables=%v #outs=%v",
-		state.Type, state.URN, stable, len(stables), len(props))
+		state.Type, state.URN, stable, len(stables), len(state.Outputs))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+		KeepSecrets:  req.GetAcceptSecrets(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -703,7 +811,12 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	}
 	label := fmt.Sprintf("ResourceMonitor.RegisterResourceOutputs(%s)", urn)
 	outs, err := plugin.UnmarshalProperties(
-		req.GetOutputs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetOutputs(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal output properties")
 	}
@@ -778,14 +891,15 @@ func (g *registerResourceOutputsEvent) Done() {
 }
 
 type readResourceEvent struct {
-	id           resource.ID
-	name         tokens.QName
-	baseType     tokens.Type
-	provider     string
-	parent       resource.URN
-	props        resource.PropertyMap
-	dependencies []resource.URN
-	done         chan *ReadResult
+	id                      resource.ID
+	name                    tokens.QName
+	baseType                tokens.Type
+	provider                string
+	parent                  resource.URN
+	props                   resource.PropertyMap
+	dependencies            []resource.URN
+	additionalSecretOutputs []resource.PropertyKey
+	done                    chan *ReadResult
 }
 
 var _ ReadResourceEvent = (*readResourceEvent)(nil)
@@ -799,6 +913,9 @@ func (g *readResourceEvent) Provider() string                 { return g.provide
 func (g *readResourceEvent) Parent() resource.URN             { return g.parent }
 func (g *readResourceEvent) Properties() resource.PropertyMap { return g.props }
 func (g *readResourceEvent) Dependencies() []resource.URN     { return g.dependencies }
+func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
+	return g.additionalSecretOutputs
+}
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result
 }

@@ -143,6 +143,7 @@ disable=print-statement,
 
         # Pulumi-specific exclusions begin here
         too-few-public-methods,
+        too-many-instance-attributes,
         wildcard-import,
         global-statement,
         invalid-name,

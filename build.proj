@@ -12,6 +12,10 @@
 
   <Target Name="EnsureGoDependencies">
     <Exec Command="dep ensure -v"
+          Condition="Exists('Gopkg.toml')"
+          WorkingDirectory="$(RepoRootDirectory)" />
+    <Exec Command="(set GO111MODULE=on) &amp; go mod vendor"
+          Condition="Exists('go.mod')"
           WorkingDirectory="$(RepoRootDirectory)" />
   </Target>
 

@@ -41,7 +41,13 @@ This command deletes a resource from a stack's state, as long as it is safe to d
 by its Pulumi URN (use 'pulumi stack --show-urns' to get it).
 
 Resources can't be deleted if there exist other resources that depend on it or are parented to it. Protected resources 
-will not be deleted unless it is specifically requested using the --force flag.`,
+will not be deleted unless it is specifically requested using the --force flag.
+
+Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+
+Example:
+pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'
+`,
 		Args: cmdutil.ExactArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			urn := resource.URN(args[0])

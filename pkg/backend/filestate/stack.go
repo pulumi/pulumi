@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
@@ -39,27 +38,27 @@ type Stack interface {
 type localStack struct {
 	ref      backend.StackReference // the stack's reference (qualified name).
 	path     string                 // a path to the stack's checkpoint file on disk.
-	config   config.Map             // the stack's config bag.
 	snapshot *deploy.Snapshot       // a snapshot representing the latest deployment state.
 	b        *localBackend          // a pointer to the backend this stack belongs to.
 }
 
-func newStack(ref backend.StackReference, path string, config config.Map,
-	snapshot *deploy.Snapshot, b *localBackend) Stack {
+func newStack(ref backend.StackReference, path string, snapshot *deploy.Snapshot, b *localBackend) Stack {
 	return &localStack{
 		ref:      ref,
 		path:     path,
-		config:   config,
 		snapshot: snapshot,
 		b:        b,
 	}
 }
 
 func (s *localStack) Ref() backend.StackReference                            { return s.ref }
-func (s *localStack) Config() config.Map                                     { return s.config }
 func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
 func (s *localStack) Backend() backend.Backend                               { return s.b }
 func (s *localStack) Path() string                                           { return s.path }
+
+func (s *localStack) Query(ctx context.Context, op backend.UpdateOperation) result.Result {
+	return backend.Query(ctx, s, op)
+}
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
@@ -85,8 +84,9 @@ func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *localStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, query)
+func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
+	return backend.GetStackLogs(ctx, s, cfg, query)
 }
 
 func (s *localStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {

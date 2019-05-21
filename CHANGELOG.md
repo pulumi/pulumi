@@ -1,10 +1,145 @@
-## 0.17.5 (Unreleased)
+## 0.17.13 (unreleased)
+
+### Improvements
+
+- Fix an issue where creating a first class provider would fail if any of the
+  configuration values for the providers were secrets. (fixes [pulumi/pulumi#2741](https://github.com/pulumi/pulumi/issues/2741)).
+- Fix an issue where when using `--diff` or looking at details for a proposed
+  updated, the CLI might print text like: `<{%reset%}>
+  --outputs:--<{%reset%}>` instead of just `--outputs:--`.
+- Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
+  be `undefined` will properly encode and pass along that `undefined` information.
+
+## 0.17.12 (Released May 15, 2019)
+
+### Improvements
+
+- Pulumi now tells you much earlier when the `--secrets-provider` argument to
+  `up` `init` or `new` has the wrong value. In addition, supported values are
+  now listed in the help text. (fixes [pulumi/pulumi#2727](https://github.com/pulumi/pulumi/issues/2727)).
+- Pulumi no longer prompts for your passphrase twice during operations when you
+  are using the passphrase based secrets provider. (fixes [pulumi/pulumi#2729](https://github.com/pulumi/pulumi/issues/2729)).
+- Fix an issue where complex inputs to a resource which contained secret values
+  would not be stored correctly.
+- Fix a panic during property diffing when comparing two secret arrays.
+
+## 0.17.11 (Released May 13, 2019)
+
+### Major Changes
+
+#### Secrets and Pluggable Encryption
+
+- The Pulumi engine and Python and NodeJS SDKs now have support for tracking values as "secret" to ensure they are
+  encrypted when being persisted in a state file. `[pulumi/pulumi#397](https://github.com/pulumi/pulumi/issues/397)`
+
+  Any existing value may be turned into a secret by calling `pulumi.secret(<value>)` (NodeJS) or
+  `Output.secret(<value>`) (Python).  In both cases, the returned value is an output which may be passed around
+  like any other.  If this value flows into a resource, the plaintext will not be stored in the state file, but instead
+  It will be encrypted, just like values added to config with `pulumi config set --secret`.
+
+  You can verify that values are being stored as you expect by running `pulumi stack export`, When values are encrypted
+  in the state file, they appear as an object with a special signiture key and a ciphertext property.
+
+  When ouputs of a stack are secrets, `pulumi stack output` will show `[secret]` as the value, by default.  You can
+  pass `--show-secrets` to `pulumi stack output` in order to see the actual raw value.
+
+- When storing state with the Pulumi Service, you may now elect to use the passphrase based encryption for both secret
+  configuration values and values that are encrypted in a state file.  To use this new feature, pass
+  `--secrets-provider passphrase` to `pulumi new` or `pulumi stack init` when you initally create the stack. When you
+  create the stack, you will be prompted for a passphrase (or if `PULUMI_CONFIG_PASSPHRASE` is set, it will be used).
+  This passphrase is used to generate a unique key for your stack, and config values and encrypted state values are
+  encrypted using AES-256-GCM. The key is derived from your passphrase, and while information to re-create it when
+  provided with your passphrase is stored in both the `Pulumi.<stack-name>.yaml` file and the state file for your stack,
+  this information can not be used to recover the key. When using this mode, the Pulumi Service is unable to decrypt
+  either your secret configuration values or and secret values in your state file.
+
+  We will be adding gestures to move existing stacks managed by the service to use passphrase based encryption soon
+  as well as gestures to change the passphrase for an existing stack.
+
+** Note **
+
+Stacks with encrypted secrets in their state files can only be managed by 0.17.11 or later of the CLI. Attempting
+to use a previous version of the CLI with these stacks will result in an error.
+
+Fixes #397
+
+### Improvements
+
+- Add support for Azure Pipelines in CI environment detection.
+- Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
+  repositories when various remote URLs are used to pull the repository.
+- Fixes local login on Windows.  Specifically, windows local paths are properly understood and
+  backslashes `\` are not converted to `__5c__` in paths.
+
+## 0.17.10 (Released May 2, 2019)
+
+### Improvements
+
+- Fixes issue introduced in 0.17.9 where local-login broke on Windows due to the new support for
+  `s3://`, `azblob://` and `gs://` save locations.
+- Minor contributing document improvement.
+- Warnings from `npm` about missing description, repository, and license fields in package.json are
+  now suppressed when `npm install` is run from `pulumi new` (via `npm install --loglevel=error`).
+- Depend on newer version of gRPC package in the NodeJS SDK. This version has
+  prebuilt binaries for Node 12, which should make installing `@pulumi/pulumi`
+  more reliable when running on Node 12.
+
+## 0.17.9 (Released April 30, 2019)
+
+### Improvements
+
+- `pulumi login` now supports `s3://`, `azblob://` and `gs://` paths (on top of `file://`) for
+  storing stack information. These are passed the location of a desired bucket for each respective
+  cloud provider (i.e. `pulumi login s3://mybucket`).  Pulumi artifacts (like the
+  `xxx.checkpoint.json` file) will then be stored in that bucket.  Credentials for accessing the
+  bucket operate in the normal manner for each cloud provider.  i.e. for AWS this can come from the
+  environment, or your `.aws/credentials` file, etc.
+- The pulumi version update check can be skipped by setting the environment variable
+  `PULUMI_SKIP_UPDATE_CHECK` to `1` or `true`.
+- Fix an issue where the stack would not be selected when an existing stack is specified when running
+  `pulumi new <template> -s <existing-stack>`.
+- Add a `--json` flag (`-j` for short) to the `preview` command. This allows basic serialization of a plan,
+  including the anticipated set of deployment steps, list of diagnostics messages, and summary information.
+  Each step includes deeply serialized information about the resource state and step metadata itself. This
+  is part of ongoing work tracked in [pulumi/pulumi#2390](https://github.com/pulumi/pulumi/issues/2390).
+
+## 0.17.8 (Released April 23, 2019)
+
+### Improvements
+
+- Add a new `ignoreChanges` option to resource options to allow specifying a list of properties to
+  ignore for purposes of updates or replacements.  [#2657](https://github.com/pulumi/pulumi/pull/2657)
+- Fix an engine bug that could lead to incorrect interpretation of the previous state of a resource leading to
+  unexpected Update, Replace or Delete operations being scheduled. [#2650]https://github.com/pulumi/pulumi/issues/2650)
+- Build/push `pulumi/actions` container to [DockerHub](https://hub.docker.com/r/pulumi/actions) with new SDK releases [#2646](https://github.com/pulumi/pulumi/pull/2646)
+
+## 0.17.7 (Released April 17, 2019)
+
+### Improvements
+
+- A new "test mode" can be enabled by setting the `PULUMI_TEST_MODE` environment variable to
+  `true` in either the Node.js or Python SDK. This new mode allows you to unit test your Pulumi programs
+  using standard test harnesses, without needing to run the program using the Pulumi CLI. In this mode, limited
+  functionality is available, however basic resource object allocation with input properties will work.
+  Note that no actual engine operations will occur in this mode, and that you'll need to use the
+  `PULUMI_CONFIG`, `PULUMI_NODEJS_PROJECT`, and `PULUMI_NODEJS_STACK` environment variables to control settings
+  the CLI would have otherwise managed for you.
+
+## 0.17.6 (Released April 11, 2019)
+
+### Improvements
+
+- `refresh` will now warn instead of returning an error when it notices a resource is in an
+  unhealthy state. This is in service of https://github.com/pulumi/pulumi/issues/2633.
+
+## 0.17.5 (Released April 8, 2019)
 
 ### Improvements
 
 - Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
-- Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
-  be `undefined` will properly encode and pass along that `undefined` information.
+- Make `Config`'s constructor's `name` argument optional in Python, for consistency with our Node.js SDK. If it isn't
+    supplied, the current project name is used as the default.
+- `pulumi logs` will now display log messages from Google Cloud Functions.
 
 ## 0.17.4 (Released March 26, 2019)
 
@@ -18,7 +153,7 @@
 
 ### Improvements
 
-- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi update` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi update` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
+- A new command, `pulumi stack rename` was added. This allows you to change the name of an existing stack in a project. Note: When a stack is renamed, the `pulumi.getStack` function in the SDK will now return a new value. If a stack name is used as part of a resource name, the next `pulumi up` will not understand that the old and new resources are logically the same. We plan to support adding aliases to individual resources so you can handle these cases. See [pulumi/pulumi#458](https://github.com/pulumi/pulumi/issues/458) for discussion on this new feature. For now, if you are unwilling to have `pulumi up` create and destroy these resources, you can rename your stack back to the old name. (fixes [pulumi/pulumi#2402](https://github.com/pulumi/pulumi/issues/2402))
 - Fix two warnings that were printed when using a dynamic provider about missing method handlers.
 - A bug in the previous version of the Pulumi CLI occasionally caused the Pulumi Engine to load the incorrect resource
   plugin when processing an update. This bug has been fixed in 0.17.3 by performing a deterministic selection of the
@@ -229,7 +364,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - During previews and updates, read operations (i.e. calls to `.get` methods) are no longer shown in the output unless they cause any changes.
 
-- Fix a performance regression where `pulumi preview` and `pulumi update` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
+- Fix a performance regression where `pulumi preview` and `pulumi up` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
 
 ## 0.16.8 (Released December 14th, 2018)
 
@@ -319,7 +454,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Add an `iterable` module to `@pulumi/pulumi` with two helpful combinators `toObject` and `groupBy` to help combine multiple `Output<T>`'s into a single object.
 
-- Pulumi no longer prompts you for confirmation when `--skip-preview` is passed to `pulumi update`. Instead, it just preforms the update as requested.
+- Pulumi no longer prompts you for confirmation when `--skip-preview` is passed to `pulumi up`. Instead, it just preforms the update as requested.
 
 - Add the `--json` flag to the `pulumi stack ls` command.
 

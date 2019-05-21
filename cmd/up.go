@@ -42,7 +42,8 @@ const (
 	defaultParallel = math.MaxInt32
 )
 
-// nolint: vetshadow, intentionally disabling here for cleaner err declaration/assignment.
+// intentionally disabling here for cleaner err declaration/assignment.
+// nolint: vetshadow
 func newUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
@@ -61,6 +62,7 @@ func newUpCmd() *cobra.Command {
 	var skipPreview bool
 	var suppressOutputs bool
 	var yes bool
+	var secretsProvider string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -91,6 +93,16 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
+		sm, err := getStackSecretsManager(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
+		cfg, err := getStackConfiguration(s, sm)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -99,11 +111,13 @@ func newUpCmd() *cobra.Command {
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
-			Proj:   proj,
-			Root:   root,
-			M:      m,
-			Opts:   opts,
-			Scopes: cancellationScopes,
+			Proj:               proj,
+			Root:               root,
+			M:                  m,
+			Opts:               opts,
+			StackConfiguration: cfg,
+			SecretsManager:     sm,
+			Scopes:             cancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:
@@ -143,6 +157,11 @@ func newUpCmd() *cobra.Command {
 			if template, err = chooseTemplate(templates, opts.Display); err != nil {
 				return result.FromError(err)
 			}
+		}
+
+		// Validate secrets provider type
+		if err := validateSecretsProvider(secretsProvider); err != nil {
+			return result.FromError(err)
 		}
 
 		// Create temp directory for the "virtual workspace".
@@ -209,7 +228,8 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes, opts.Display); err != nil {
+			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes,
+				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}
 			// The backend will print "Created stack '<stack>'." on success.
@@ -230,6 +250,16 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
 
+		sm, err := getStackSecretsManager(s)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+		}
+
+		cfg, err := getStackConfiguration(s, sm)
+		if err != nil {
+			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			Analyzers: analyzers,
 			Parallel:  parallel,
@@ -243,11 +273,13 @@ func newUpCmd() *cobra.Command {
 		// - show template.Quickstart?
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
-			Proj:   proj,
-			Root:   root,
-			M:      m,
-			Opts:   opts,
-			Scopes: cancellationScopes,
+			Proj:               proj,
+			Root:               root,
+			M:                  m,
+			Opts:               opts,
+			StackConfiguration: cfg,
+			SecretsManager:     sm,
+			Scopes:             cancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:
@@ -289,6 +321,11 @@ func newUpCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			var displayType = display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
 			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
@@ -296,7 +333,7 @@ func newUpCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
-				DiffDisplay:          diffDisplay,
+				Type:                 displayType,
 				Debug:                debug,
 			}
 
@@ -323,6 +360,10 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+			"decrypt secrets (possible choices: default, passphrase). Only used when creating a new stack from "+
+			"an existing template")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
@@ -456,8 +497,8 @@ func isPreconfiguredEmptyStack(
 	if len(snap.Resources) != 1 {
 		return false
 	}
-	stackResource, _ := stack.GetRootStackResource(snap)
-	if stackResource == nil {
+	stackResource, err := stack.GetRootStackResource(snap)
+	if err != nil || stackResource == nil {
 		return false
 	}
 

@@ -5,7 +5,7 @@
 #
 # The default targets we use are:
 #
-#  - ensure: restores and dependencies needed for the build from
+#  - ensure: restores any dependencies needed for the build from
 #            remote sources (e.g dep ensure or yarn install)
 #
 #  - build: builds a project but does not install it. In the case of
@@ -145,7 +145,8 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; fi
+	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; \
+		elif [ -e 'go.mod' ]; then echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor; fi
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::

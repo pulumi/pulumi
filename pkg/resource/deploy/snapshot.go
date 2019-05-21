@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -31,6 +32,7 @@ import (
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
 	Manifest          Manifest             // a deployment manifest of versions, checksums, and so on.
+	SecretsManager    secrets.Manager      // the manager to use use when seralizing this snapshot.
 	Resources         []*resource.State    // fetches all resources and their associated states.
 	PendingOperations []resource.Operation // all currently pending resource operations.
 }
@@ -54,9 +56,12 @@ func (m Manifest) NewMagic() string {
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
-func NewSnapshot(manifest Manifest, resources []*resource.State, ops []resource.Operation) *Snapshot {
+func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
+	resources []*resource.State, ops []resource.Operation) *Snapshot {
+
 	return &Snapshot{
 		Manifest:          manifest,
+		SecretsManager:    secretsManager,
 		Resources:         resources,
 		PendingOperations: ops,
 	}

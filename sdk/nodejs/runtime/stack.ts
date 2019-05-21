@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource } from "../resource";
-import { getRootResource, setRootResource } from "./settings";
+import { getRootResource, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -30,8 +30,12 @@ export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
  * returned by the callback will be stored as output properties on this resulting Stack object.
  */
 export function runInPulumiStack(init: () => any): Promise<Inputs | undefined> {
-    const stack = new Stack(init);
-    return stack.outputs.promise();
+    if (!isQueryMode()) {
+        const stack = new Stack(init);
+        return stack.outputs.promise();
+    } else {
+        return Promise.resolve(init());
+    }
 }
 
 /**
@@ -70,12 +74,19 @@ class Stack extends ComponentResource {
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            const massaged = output(outputs).apply(v => massage(v, new Set()));
-            super.registerOutputs(massaged);
+            super.registerOutputs(outputs === undefined ? undefined : massageOutputs(outputs));
         }
 
         return outputs;
     }
+}
+
+function massageOutputs(outputs: Inputs): Inputs {
+    const result: Inputs = {};
+    for (const k of Object.keys(outputs)) {
+       result[k] = output(outputs[k]).apply(v => massage(v, new Set()));
+    }
+    return result;
 }
 
 async function massage(prop: any, seenObjects: Set<any>): Promise<any> {

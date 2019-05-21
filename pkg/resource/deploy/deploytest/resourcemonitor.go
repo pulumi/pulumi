@@ -29,8 +29,8 @@ type ResourceMonitor struct {
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool, parent resource.URN, protect bool,
 	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
-	propertyDeps map[resource.PropertyKey][]resource.URN,
-	deleteBeforeReplace bool) (resource.URN, resource.ID, resource.PropertyMap, error) {
+	propertyDeps map[resource.PropertyKey][]resource.URN, deleteBeforeReplace bool,
+	version string, ignoreChanges []string) (resource.URN, resource.ID, resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -67,6 +67,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Object:               ins,
 		PropertyDependencies: inputDeps,
 		DeleteBeforeReplace:  deleteBeforeReplace,
+		IgnoreChanges:        ignoreChanges,
+		Version:              version,
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -82,7 +84,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 }
 
 func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider string) (resource.URN, resource.PropertyMap, error) {
+	inputs resource.PropertyMap, provider string, version string) (resource.URN, resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -97,6 +99,7 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 		Parent:     string(parent),
 		Provider:   provider,
 		Properties: ins,
+		Version:    version,
 	})
 	if err != nil {
 		return "", nil, err
@@ -111,8 +114,8 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 	return resource.URN(resp.Urn), outs, nil
 }
 
-func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember,
-	inputs resource.PropertyMap, provider string) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
+func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
+	provider string, version string) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -125,6 +128,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember,
 		Tok:      string(tok),
 		Provider: provider,
 		Args:     ins,
+		Version:  version,
 	})
 	if err != nil {
 		return nil, nil, err

@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/pkg/util/tracing"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -59,10 +60,10 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	if filestate.IsLocalBackendURL(creds.Current) {
-		return filestate.New(cmdutil.Diag(), creds.Current, stackConfigFile)
+	if filestate.IsFileStateBackendURL(creds.Current) {
+		return filestate.New(cmdutil.Diag(), creds.Current)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, stackConfigFile, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -75,18 +76,31 @@ func commandContext() context.Context {
 			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
 		}
 
-		tracingOptions := backend.TracingOptions{
+		tracingOptions := tracing.Options{
 			PropagateSpans: true,
 			TracingHeader:  tracingHeader,
 		}
-		ctx = backend.ContextWithTracingOptions(ctx, tracingOptions)
+		ctx = tracing.ContextWithOptions(ctx, tracingOptions)
 	}
 	return ctx
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
 func createStack(
-	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool) (backend.Stack, error) {
+	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
+	secretsProvider string) (backend.Stack, error) {
+
+	// As part of creating the stack, we also need to configure the secrets provider for the stack. Today, we only
+	// have to do this configuration step when you are using the passphrase provider (which is used for all filestate,
+	// stacks and well as httpstate stacks that opted into this by passing --secrets-provider passphrase
+	// while initialing a stack).  The only other supported provider today (the provider that uses the pulumi service
+	// does not need to be initialized explicitly, as creating the stack inside the Pulumi service does this).
+	if _, ok := b.(filestate.Backend); ok || secretsProvider == "passphrase" {
+		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
+			return nil, pharseErr
+		}
+	}
+
 	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
 		// If it's a StackAlreadyExistsError, don't wrap it.
@@ -142,7 +156,7 @@ func requireStack(
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil, setCurrent)
+		return createStack(b, stackRef, nil, setCurrent, "")
 	}
 
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
@@ -249,7 +263,7 @@ func chooseStack(
 			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil, setCurrent)
+		return createStack(b, stackRef, nil, setCurrent, "")
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -494,30 +508,17 @@ func addCIMetadataToEnvironment(env map[string]string) {
 		}
 	}
 
-	// If CI variables have been set specifically for Pulumi in the environment,
-	// use that in preference to attempting to automatically detect the CI system.
-	// This allows Pulumi to work with any CI system with appropriate configuration,
-	// rather than requiring explicit support for each one.
-	if os.Getenv("PULUMI_CI_SYSTEM") != "" {
-		env[backend.CISystem] = os.Getenv("PULUMI_CI_SYSTEM")
-		addIfSet(backend.CIBuildID, os.Getenv("PULUMI_CI_BUILD_ID"))
-		addIfSet(backend.CIBuildType, os.Getenv("PULUMI_CI_BUILD_TYPE"))
-		addIfSet(backend.CIBuildURL, os.Getenv("PULUMI_CI_BUILD_URL"))
-		addIfSet(backend.CIPRHeadSHA, os.Getenv("PULUMI_CI_PULL_REQUEST_SHA"))
-
-		// Don't proceed with automatic CI detection since we are using the PULUMI_* values.
-		return
-	}
-
 	// Use our built-in CI/CD detection logic.
 	vars := ciutil.DetectVars()
-	if vars.Name != "" {
-		env[backend.CISystem] = string(vars.Name)
-		addIfSet(backend.CIBuildID, vars.BuildID)
-		addIfSet(backend.CIBuildType, vars.BuildType)
-		addIfSet(backend.CIBuildURL, vars.BuildURL)
-		addIfSet(backend.CIPRHeadSHA, vars.SHA)
+	if vars.Name == "" {
+		return
 	}
+	env[backend.CISystem] = string(vars.Name)
+	addIfSet(backend.CIBuildID, vars.BuildID)
+	addIfSet(backend.CIBuildType, vars.BuildType)
+	addIfSet(backend.CIBuildURL, vars.BuildURL)
+	addIfSet(backend.CIPRHeadSHA, vars.SHA)
+	addIfSet(backend.CIPRNumber, vars.PRNumber)
 }
 
 type cancellationScope struct {

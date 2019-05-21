@@ -22,9 +22,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 type MockRegisterResourceEvent struct {
@@ -41,6 +42,10 @@ type MockStackPersister struct {
 func (m *MockStackPersister) Save(snap *deploy.Snapshot) error {
 	m.SavedSnapshots = append(m.SavedSnapshots, snap)
 	return nil
+}
+
+func (m *MockStackPersister) SecretsManager() secrets.Manager {
+	return b64.NewBase64SecretsManager()
 }
 
 func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
@@ -72,7 +77,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, resources, nil)
+	}, b64.NewBase64SecretsManager(), resources, nil)
 }
 
 func TestIdenticalSames(t *testing.T) {
@@ -797,21 +802,4 @@ func TestRegisterOutputs(t *testing.T) {
 	lastSnap := sp.LastSnap()
 	assert.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
-}
-
-func TestSavePlugins(t *testing.T) {
-	snap := NewSnapshot(nil)
-	manager, sp := MockSetup(t, snap)
-
-	err := manager.RecordPlugin(workspace.PluginInfo{
-		Name: "myplugin",
-	})
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
-
-	// RecordPlugin should have written out a new snapshot with the plugin recorded in the manifest.
-	lastSnap := sp.LastSnap()
-	assert.Len(t, lastSnap.Manifest.Plugins, 1)
-	assert.Equal(t, "myplugin", lastSnap.Manifest.Plugins[0].Name)
 }

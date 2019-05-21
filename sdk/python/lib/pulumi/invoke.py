@@ -26,13 +26,24 @@ class InvokeOptions:
     An optional provider to use for this invocation. If no provider is supplied, the default provider for the
     invoked function's package will be used.
     """
+    version: Optional[str]
+    """
+    An optional version. If provided, the provider plugin with exactly this version will be used to service
+    the invocation.
+    """
 
-    def __init__(self, parent: Optional['Resource'] = None, provider: Optional['ProviderResource'] = None) -> None:
+    def __init__(self,
+                 parent: Optional['Resource'] = None,
+                 provider: Optional['ProviderResource'] = None,
+                 version: Optional[str] = "") -> None:
         """
         :param Optional[Resource] parent: An optional parent to use for default options for this invoke (e.g. the
                default provider to use).
         :param Optional[ProviderResource] provider: An optional provider to use for this invocation. If no provider is
                supplied, the default provider for the invoked function's package will be used.
+        :param Optional[str] version: An optional version. If provided, the provider plugin with exactly this version
+               will be used to service the invocation.
         """
         self.parent = parent
         self.provider = provider
+        self.version = version

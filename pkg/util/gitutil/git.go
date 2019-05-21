@@ -54,8 +54,9 @@ const (
 // be sure to update its usage elsewhere in the code as well.
 // The nolint instruction prevents gometalinter from complaining about the length of the line.
 var (
-	cloudSourceControlSSHRegex = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
-	azureSourceControlSSHRegex = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+	cloudSourceControlSSHRegex    = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z]*\.com|[a-zA-Z]*\.org):(?P<owner_and_repo>.*)`)                           //nolint
+	azureSourceControlSSHRegex    = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+	legacyAzureSourceControlRegex = regexp.MustCompile("(?P<owner>[a-zA-Z0-9-]*).visualstudio.com$")
 )
 
 // VCSInfo describes a cloud-hosted version control system.
@@ -171,10 +172,35 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 	// Ex: owner/project/repo.git
 	if vcsKind == AzureDevOpsHostName {
 		azureSplit := strings.SplitN(project, "/", 2)
+
+		// Azure DevOps repo links are in the format `owner/project/_git/repo`. Some remote URLs do
+		// not include the `_git` piece, which results in the reconstructed URL linking to the
+		// project dashboard. To remedy this, we will add the _git portion to the URL if its
+		// missing.
+		project = azureSplit[1]
+		if !strings.Contains(project, "_git") {
+			projectSplit := strings.SplitN(project, "/", 2)
+			project = projectSplit[0] + "/_git/" + projectSplit[1]
+		}
+
 		return &VCSInfo{
 			Owner: azureSplit[0],
-			Repo:  azureSplit[1],
+			Repo:  project,
 			Kind:  vcsKind,
+		}, nil
+	}
+
+	// Legacy Azure URLs have the owner as part of the host name. We will convert the Git info to
+	// reflect the newer Azure DevOps URLs. This allows the UI to properly construct the repo URL
+	// and group it with other projects/stacks that have been pulled with a newer version of the Git
+	// URL.
+	if legacyAzureSourceControlRegex.MatchString(vcsKind) {
+		groups := getMatchedGroupsFromRegex(legacyAzureSourceControlRegex, vcsKind)
+
+		return &VCSInfo{
+			Owner: groups["owner"],
+			Repo:  project,
+			Kind:  AzureDevOpsHostName,
 		}, nil
 	}
 

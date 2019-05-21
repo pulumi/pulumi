@@ -27,14 +27,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/validation"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -53,6 +52,11 @@ func NewClient(apiURL, apiToken string, d diag.Sink) *Client {
 		apiToken: apiAccessToken(apiToken),
 		diag:     d,
 	}
+}
+
+// URL returns the URL of the API endpoint this client interacts with
+func (pc *Client) URL() string {
+	return pc.apiURL
 }
 
 // apiCall makes a raw HTTP request to the Pulumi API using the given method, path, and request body.
@@ -169,6 +173,11 @@ func (pc *Client) ListStacks(ctx context.Context, projectFilter *string) ([]apit
 	return resp.Stacks, nil
 }
 
+var (
+	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
+	ErrNoPreviousDeployment = errors.New("no previous deployment")
+)
+
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
 func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
 	latest := struct {
@@ -178,7 +187,7 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
 		if restErr, ok := err.(*apitype.ErrorResponse); ok {
 			if restErr.Code == http.StatusNotFound {
-				return nil, backend.ErrNoPreviousDeployment
+				return nil, ErrNoPreviousDeployment
 			}
 		}
 
@@ -214,7 +223,7 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 func (pc *Client) CreateStack(
 	ctx context.Context, stackID StackIdentifier, tags map[apitype.StackTagName]string) (apitype.Stack, error) {
 	// Validate names and tags.
-	if err := backend.ValidateStackProperties(stackID.Stack, tags); err != nil {
+	if err := validation.ValidateStackProperties(stackID.Stack, tags); err != nil {
 		return apitype.Stack{}, errors.Wrap(err, "validating stack properties")
 	}
 
@@ -284,23 +293,6 @@ func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphe
 		return nil, err
 	}
 	return resp.Plaintext, nil
-}
-
-// GetStackLogs retrieves the log entries for the indicated stack that match the given query.
-func (pc *Client) GetStackLogs(ctx context.Context, stack StackIdentifier,
-	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
-
-	var response apitype.LogsResult
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "logs"), logQuery, nil, &response); err != nil {
-		return nil, err
-	}
-
-	logs := make([]operations.LogEntry, 0, len(response.Logs))
-	for _, entry := range response.Logs {
-		logs = append(logs, operations.LogEntry(entry))
-	}
-
-	return logs, nil
 }
 
 // GetStackUpdates returns all updates to the indicated stack.
@@ -426,7 +418,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	tags map[apitype.StackTagName]string) (int, string, error) {
 
 	// Validate names and tags.
-	if err := backend.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
+	if err := validation.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
 		return 0, "", errors.Wrap(err, "validating stack properties")
 	}
 
@@ -549,7 +541,7 @@ func (pc *Client) UpdateStackTags(
 	ctx context.Context, stack StackIdentifier, tags map[apitype.StackTagName]string) error {
 
 	// Validate stack tags.
-	if err := backend.ValidateStackTags(tags); err != nil {
+	if err := validation.ValidateStackTags(tags); err != nil {
 		return err
 	}
 
