@@ -8,7 +8,7 @@ cases.push({
     func: async function (a) { await a; },
     expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0) {
   return (function() {
     with({  }) {
 
@@ -26,7 +26,7 @@ cases.push({
     func: async  function (a) { await a; },
     expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0) {
   return (function() {
     with({  }) {
 
@@ -44,7 +44,7 @@ cases.push({
     func: async function foo(a) { await a; },
     expectText: `exports.handler = __foo;
 
-function __foo() {
+function __foo(__0) {
   return (function() {
     with({ foo: __foo }) {
 
@@ -62,7 +62,7 @@ cases.push({
     func: async (a) => { await a; },
     expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0) {
   return (function() {
     with({  }) {
 
