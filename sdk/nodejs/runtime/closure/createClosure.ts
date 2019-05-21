@@ -50,6 +50,12 @@ export interface FunctionInfo extends ObjectInfo {
     // name that the function was declared with.  used only for trying to emit a better
     // name into the serialized code for it.
     name: string | undefined;
+
+    // Number of parameters this function is declared to take.  Used to generate a serialized
+    // function with the same number of parameters.  This is valuable as some 3rd party libraries
+    // (like senchalabs: https://github.com/senchalabs/connect/blob/fa8916e6350e01262e86ccee82f490c65e04c728/index.js#L232-L241)
+    // will introspect function param count to decide what to do.
+    paramCount: number;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
@@ -402,6 +408,7 @@ async function analyzeFunctionInfoAsync(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
+            paramCount: func.length,
         };
 
         const proto = Object.getPrototypeOf(func);
