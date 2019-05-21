@@ -9,6 +9,7 @@
   --outputs:--<{%reset%}>` instead of just `--outputs:--`.
 - Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
   be `undefined` will properly encode and pass along that `undefined` information.
+- Fix an issue where some operations would fail with `error: could not deserialize deployment: unknown secrets provider type`.
 
 ## 0.17.12 (Released May 15, 2019)
 
