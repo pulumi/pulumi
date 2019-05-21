@@ -7,6 +7,8 @@
 - Fix an issue where when using `--diff` or looking at details for a proposed
   updated, the CLI might print text like: `<{%reset%}>
   --outputs:--<{%reset%}>` instead of just `--outputs:--`.
+- Fixes local login on Windows.  Specifically, windows local paths are properly understood and
+  backslashes `\` are not converted to `__5c__` in paths.
 
 ## 0.17.12 (Released May 15, 2019)
 
@@ -66,8 +68,6 @@ Fixes #397
 - Add support for Azure Pipelines in CI environment detection.
 - Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
   repositories when various remote URLs are used to pull the repository.
-- Fixes local login on Windows.  Specifically, windows local paths are properly understood and
-  backslashes `\` are not converted to `__5c__` in paths.
 
 ## 0.17.10 (Released May 2, 2019)
 
