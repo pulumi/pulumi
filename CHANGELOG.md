@@ -1,4 +1,4 @@
-## 0.17.13
+## 0.17.13 (unreleased)
 
 ### Improvements
 
@@ -7,6 +7,8 @@
 - Fix an issue where when using `--diff` or looking at details for a proposed
   updated, the CLI might print text like: `<{%reset%}>
   --outputs:--<{%reset%}>` instead of just `--outputs:--`.
+- Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
+  be `undefined` will properly encode and pass along that `undefined` information.
 
 ## 0.17.12 (Released May 15, 2019)
 
