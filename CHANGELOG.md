@@ -109,6 +109,8 @@ Fixes #397
   Each step includes deeply serialized information about the resource state and step metadata itself. This
   is part of ongoing work tracked in [pulumi/pulumi#2390](https://github.com/pulumi/pulumi/issues/2390).
 
+- `pulumi whoami` now outputs the URL of the currently connected backend
+
 ## 0.17.8 (Released April 23, 2019)
 
 ### Improvements
