@@ -2970,3 +2970,94 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		"b": resource.NewNumberProperty(4),
 	}, []string{"a"}, []deploy.StepOp{deploy.OpUpdate})
 }
+
+func TestDefaultProviderDiff(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.1"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	runProgram := func(base *deploy.Snapshot, version string, expectedStep deploy.StepOp) *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+				resource.PropertyMap{}, nil, false, version, nil)
+			assert.NoError(t, err)
+			return nil
+		})
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{host: host},
+			Steps: []TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+						events []Event, res result.Result) result.Result {
+						for _, event := range events {
+							if event.Type == ResourcePreEvent {
+								payload := event.Payload.(ResourcePreEventPayload)
+								if payload.Metadata.URN.Name() == "resA" {
+									assert.Equal(t, expectedStep, payload.Metadata.Op)
+								}
+							}
+						}
+						return res
+					},
+				},
+			},
+		}
+		return p.Run(t, base)
+	}
+
+	// This test simulates the upgrade scenario of old-style default providers to new-style versioned default providers.
+	//
+	// The first update creates a stack using a language host that does not report a version to the engine. As a result,
+	// the engine makes up a default provider for "pkgA" and calls it "default". It then creates the one resource that
+	// we are creating and associates it with the default provider.
+	snap := runProgram(nil, "", deploy.OpCreate)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default", res.URN.Name().String())
+		case res.URN.Name() == "resA":
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default", provRef.URN().Name().String())
+		}
+	}
+
+	// The second update switches to a language host that does report a version to the engine. As a result, the engine
+	// uses this version to make a new provider, with a different URN, and uses that provider to operate on resA.
+	//
+	// Despite switching out the provider, the engine should still generate a Same step for resA. It is vital that the
+	// engine gracefully react to changes in the default provider in this manner. See pulumi/pulumi#2753 for what
+	// happens when it doesn't.
+	snap = runProgram(snap, "0.17.10", deploy.OpSame)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default_0_17_10", res.URN.Name().String())
+		case res.URN.Name() == "resA":
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_10", provRef.URN().Name().String())
+		}
+	}
+
+	// The third update changes the version that the language host reports to the engine. This simulates a scenario in
+	// which a user updates their SDK to a new version of a provider package.
+	snap = runProgram(snap, "0.17.11", deploy.OpSame)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default_0_17_11", res.URN.Name().String())
+		case res.URN.Name() == "resA":
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_11", provRef.URN().Name().String())
+		}
+	}
+}
