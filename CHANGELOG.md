@@ -7,6 +7,8 @@
 - Fix an issue where when using `--diff` or looking at details for a proposed
   updated, the CLI might print text like: `<{%reset%}>
   --outputs:--<{%reset%}>` instead of just `--outputs:--`.
+- Fixes local login on Windows.  Specifically, windows local paths are properly understood and
+  backslashes `\` are not converted to `__5c__` in paths.
 - Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
   be `undefined` will properly encode and pass along that `undefined` information.
 - Fix an issue where some operations would fail with `error: could not deserialize deployment: unknown secrets provider type`.
@@ -69,8 +71,6 @@ Fixes #397
 - Add support for Azure Pipelines in CI environment detection.
 - Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
   repositories when various remote URLs are used to pull the repository.
-- Fixes local login on Windows.  Specifically, windows local paths are properly understood and
-  backslashes `\` are not converted to `__5c__` in paths.
 
 ## 0.17.10 (Released May 2, 2019)
 
