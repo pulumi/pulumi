@@ -190,7 +190,7 @@ const (
 	UpdateStatusCancelled UpdateStatus = "cancelled"
 )
 
-// CompleteUpdateRequest defines the body of a reqeust to the update completion endpoint of the service API.
+// CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.
 type CompleteUpdateRequest struct {
 	Status UpdateStatus `json:"status"`
 }
