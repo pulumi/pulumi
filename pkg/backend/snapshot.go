@@ -168,13 +168,12 @@ type sameSnapshotMutation struct {
 // step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
 // this step can be elided.
 func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
-	contract.Assert(old.URN == new.URN)
 	contract.Assert(old.Delete == new.Delete)
 	contract.Assert(old.External == new.External)
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
-	if old.Type != new.Type {
+	if old.URN != new.URN {
 		return true
 	}
 

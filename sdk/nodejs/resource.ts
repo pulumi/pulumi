@@ -13,22 +13,32 @@
 // limitations under the License.
 
 import { ResourceError, RunError } from "./errors";
-import { Input, Inputs, Output } from "./output";
+import { all, Input, Inputs, interpolate, Output, output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
 
 /**
- * childUrn computes a derived child URN from the combination of a parent URN, a child type and a child name.
- *
- * Note: In the future, we may want to move this logic into the engine to keep URN construction localized to the engine,
- * so that it can be versioned in a single place.
+ * createUrn computes a URN from the combination of a resource name, resource type, optional parent,
+ * optional project and optional stack.
  */
-function childURN(parentURN: URN, childType: string, childName: string) {
-    const parentType = parentURN.substring(0, parentURN.lastIndexOf("::"));
-    return `${parentType}$${childType}::${childName}`;
+export function createUrn(name: Input<string>, type: Input<string>, parent?: Resource | Input<URN>, project?: string, stack?: string): Output<string> {
+    let parentPrefix: Output<string>;
+    if (parent) {
+        let parentUrn: Output<string>;
+        if (Resource.isInstance(parent)) {
+            parentUrn = parent.urn;
+        } else {
+            parentUrn = output(parent);
+        }
+        parentPrefix = parentUrn.apply(parentUrnString => parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$");
+    } else {
+        parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project ||getProject()}::`);
+    }
+    return interpolate`${parentPrefix}${type}::${name}`;
 }
 
 /**
@@ -108,7 +118,7 @@ export abstract class Resource {
      * A list of aliases applied to this resource.
      */
      // tslint:disable-next-line:variable-name
-    private readonly __aliases: URN[];
+    private readonly __aliases: Input<URN>[];
 
     /**
      * @internal
@@ -181,18 +191,20 @@ export abstract class Resource {
                     opts.aliases = [];
                 }
 
-                let aliasName = name;
+                let aliasName = output(name);
                 // If the child name has the parent name as a prefix, then we make the assumption that it was
                 // constructed from the convention of using `{name}-details` as the name of the child resource.  To
                 // ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
                 // the child resource name.
                 if (name.startsWith(opts.parent.__name)) {
-                    const parentAliasName = parentAlias.substring(parentAlias.lastIndexOf("::")+2);
-                    aliasName = parentAliasName + name.substring(opts.parent.__name.length);
+                    const parentName = opts.parent.__name;
+                    aliasName = output(parentAlias).apply(parentAliasUrn => {
+                        const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::")+2);
+                        return parentAliasName + name.substring(parentName.length);
+                    });
                 }
 
-                const childAlias = childURN(parentAlias, t, aliasName);
-                console.log(`Child alias: ${childAlias}`);
+                const childAlias = createUrn(aliasName, t, parentAlias);
                 opts.aliases.push(childAlias);
             }
 
@@ -274,7 +286,7 @@ export interface ResourceOptions {
     /**
      * An optional list of aliases to treat this resoruce as matching.
      */
-    aliases?: URN[];
+    aliases?: Input<URN>[];
 }
 
 /**
