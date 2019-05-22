@@ -12,9 +12,9 @@ class Resource extends pulumi.ComponentResource {
 }
 
 // Scenario #1 - rename a resource
-// This resource was previously named `one`, we'll alias to the old name.
+// This resource was previously named `res1`, we'll alias to the old name.
 const res1 = new Resource("newres1", {
-    aliases: [`urn:pulumi:${stackName}::${projectName}::my:module:Resource::res1`],
+    aliases: [pulumi.createUrn("res1", "my:module:Resource")],
 });
 
 // Scenario #2 - adopt a resource into a component The component author is the same as the component user, and changes
@@ -29,7 +29,7 @@ class Component extends pulumi.ComponentResource {
             parent: this,
             // But with an alias provided based on knowing where the resource existing before - in this case at top
             // level.
-            aliases: [`urn:pulumi:${stackName}::${projectName}::my:module:Resource::res2`],
+            aliases: [pulumi.createUrn("res2", "my:module:Resource")],
         });
     }
 }
@@ -51,7 +51,7 @@ class ComponentThree extends pulumi.ComponentResource {
 }
 // ...but applying an alias to the instance succesfully renames both the component and the children.
 const comp3 = new ComponentThree("newcomp3", {
-    aliases: [`urn:pulumi:${stackName}::${projectName}::my:module:ComponentThree::comp3`],
+    aliases: [pulumi.createUrn("comp3", "my:module:ComponentThree")],
 });
 
 // Scenario #4 - change the type of a component
@@ -59,10 +59,25 @@ class ComponentFour extends pulumi.ComponentResource {
     resource: Resource;
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         const aliases = (opts && opts.aliases) || [];
-        aliases.push(`urn:pulumi:${stackName}::${projectName}::my:module:ComponentFour::${name}`);
+        aliases.push(pulumi.createUrn(name, "my:module:ComponentFour"));
         super("my:differentmodule:ComponentFourWithADifferentTypeName", name, {}, { ...opts, aliases });
         this.resource = new Resource("otherchild", {parent: this});
     }
 }
 const comp4 = new ComponentFour("comp4");
 
+// Scenario #5 - composing #1 and #3
+class ComponentFive extends pulumi.ComponentResource {
+    resource: Resource;
+    constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
+        super("my:module:ComponentFive", name, {}, opts);
+        this.resource = new Resource("otherchildrenamed", {
+            parent: this,
+            aliases: [ pulumi.createUrn("otherchild", "my:module:Resource", this)],
+        });
+    }
+}
+// ...but applying an alias to the instance succesfully renames both the component and the children.
+const comp5 = new ComponentFive("newcomp5", {
+    aliases: [pulumi.createUrn("comp5", "my:module:ComponentFive")],
+});
