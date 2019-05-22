@@ -494,18 +494,21 @@ func (rm *resmon) getProvider(req providers.ProviderRequest, rawProviderRef stri
 }
 
 func (rm *resmon) parseProviderRequest(pkg tokens.Package, version string) (providers.ProviderRequest, error) {
-	if version == "" {
-		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg), nil
-	}
+	return providers.NewProviderRequest(nil, pkg), nil
 
-	parsedVersion, err := semver.Parse(version)
-	if err != nil {
-		logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
-		return providers.ProviderRequest{}, err
-	}
+	// TODO[pulumi/pulumi#2753]: We should re-enable this code once we have a solution for #2753.
+	// if version == "" {
+	// 	logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
+	// 	return providers.NewProviderRequest(nil, pkg), nil
+	// }
 
-	return providers.NewProviderRequest(&parsedVersion, pkg), nil
+	// parsedVersion, err := semver.Parse(version)
+	// if err != nil {
+	// 	logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
+	// 	return providers.ProviderRequest{}, err
+	// }
+
+	// return providers.NewProviderRequest(&parsedVersion, pkg), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,

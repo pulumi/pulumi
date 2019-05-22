@@ -1,4 +1,8 @@
-## 0.17.13 (unreleased)
+## 0.17.14 (Unreleased)
+
+### Improvements
+
+## 0.17.13 (Released May 21, 2019)
 
 ### Improvements
 
@@ -12,6 +16,7 @@
 - Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
   be `undefined` will properly encode and pass along that `undefined` information.
 - Fix an issue where some operations would fail with `error: could not deserialize deployment: unknown secrets provider type`.
+- Fix an issue where pulumi might try to replace existing resources when upgrading to the newest version of some resource providers.
 
 ## 0.17.12 (Released May 15, 2019)
 
