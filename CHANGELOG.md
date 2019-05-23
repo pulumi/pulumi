@@ -1,5 +1,8 @@
 ## 0.17.15 (Unreleased)
 
+- Pulumi now tolerates changes in default providers in certain cases, which fixes an issue where users would see
+  unexpected replaces when upgrading a Pulumi package.
+
 ### Improvements
 
 - Pulumi now allows Python programs to "read" existing resources instead of just creating them. This feature enables
