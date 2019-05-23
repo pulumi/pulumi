@@ -12,6 +12,7 @@
         "protobufjs": "^6.8.6",
         "read-package-tree": "^5.2.1",
         "require-from-string": "^2.0.1",
+        "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
         "ts-node": "^7.0.0",
         "typescript": "^3.4.1",
