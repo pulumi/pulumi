@@ -54,8 +54,8 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				alias := fileNameWithoutExtension + ".html"
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
-				buf.WriteString(fmt.Sprintf("title: \"%s\"\n", title))
-				buf.WriteString(fmt.Sprintf("aliases: [\"%s\"]\n", alias))
+				buf.WriteString(fmt.Sprintf("title: %q\n", title))
+				buf.WriteString(fmt.Sprintf("aliases: [%q]\n", alias))
 				buf.WriteString("expanded_url: /reference/commands/\n")
 				buf.WriteString("---\n\n")
 				return buf.String()
