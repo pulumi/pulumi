@@ -2972,6 +2972,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 }
 
 func TestDefaultProviderDiff(t *testing.T) {
+	resName := "resA"
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -2983,7 +2984,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 
 	runProgram := func(base *deploy.Snapshot, version string, expectedStep deploy.StepOp) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, "", false, nil, "",
 				resource.PropertyMap{}, nil, false, version, nil)
 			assert.NoError(t, err)
 			return nil
@@ -2999,7 +3000,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload.(ResourcePreEventPayload)
-								if payload.Metadata.URN.Name() == "resA" {
+								if payload.Metadata.URN.Name().String() == resName {
 									assert.Equal(t, expectedStep, payload.Metadata.Op)
 								}
 							}
@@ -3022,7 +3023,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
 			assert.Equal(t, "default", res.URN.Name().String())
-		case res.URN.Name() == "resA":
+		case res.URN.Name().String() == resName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
 			assert.Equal(t, "default", provRef.URN().Name().String())
@@ -3040,7 +3041,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
 			assert.Equal(t, "default_0_17_10", res.URN.Name().String())
-		case res.URN.Name() == "resA":
+		case res.URN.Name().String() == resName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
 			assert.Equal(t, "default_0_17_10", provRef.URN().Name().String())
@@ -3054,7 +3055,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
 			assert.Equal(t, "default_0_17_11", res.URN.Name().String())
-		case res.URN.Name() == "resA":
+		case res.URN.Name().String() == resName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
 			assert.Equal(t, "default_0_17_11", provRef.URN().Name().String())
