@@ -186,14 +186,15 @@ func (r *Registry) label() string {
 
 // CheckConfig validates the configuration for this resource provider.
 func (r *Registry) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	contract.Fail()
 	return nil, nil, errors.New("the provider registry is not configurable")
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (r *Registry) DiffConfig(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+func (r *Registry) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+	allowUnknowns bool) (plugin.DiffResult, error) {
 	contract.Fail()
 	return plugin.DiffResult{}, errors.New("the provider registry is not configurable")
 }
@@ -233,7 +234,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	}
 
 	// Check the provider's config. If the check fails, unload the provider.
-	inputs, failures, err := provider.CheckConfig(urn, olds, news)
+	inputs, failures, err := provider.CheckConfig(urn, olds, news, allowUnknowns)
 	if len(failures) != 0 || err != nil {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
@@ -276,7 +277,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 		provider, ok = r.GetProvider(mustNewReference(urn, id))
 		contract.Assertf(ok, "Provider must have been registered by NewRegistry for DBR Diff (%v::%v)", urn, id)
 
-		diff, err := provider.DiffConfig(urn, olds, news)
+		diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns)
 		if err != nil {
 			return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 		}
@@ -284,7 +285,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	}
 
 	// Diff the properties.
-	diff, err := provider.DiffConfig(urn, olds, news)
+	diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns)
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
