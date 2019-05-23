@@ -2971,13 +2971,12 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}, []string{"a"}, []deploy.StepOp{deploy.OpUpdate})
 }
 
+// TestDefaultProviderDiff tests that the engine can gracefully recover whenever a resource's default provider changes
+// and there is no diff in the provider's inputs.
 func TestDefaultProviderDiff(t *testing.T) {
 	resName := "resA"
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
-		}),
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.1"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
 		}),
 	}
@@ -3059,6 +3058,88 @@ func TestDefaultProviderDiff(t *testing.T) {
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
 			assert.Equal(t, "default_0_17_11", provRef.URN().Name().String())
+		}
+	}
+}
+
+// TestDefaultProviderDiffReplacement tests that, when replacing a default provider for a resource, the engine will
+// replace the resource if DiffConfig on the new provider returns a diff for the provider's new state.
+func TestDefaultProviderDiffReplacement(t *testing.T) {
+	resName := "resA"
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// This implementation of DiffConfig always requests replacement.
+				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					keys := []resource.PropertyKey{}
+					for k := range news {
+						keys = append(keys, k)
+					}
+					return plugin.DiffResult{
+						Changes:     plugin.DiffSome,
+						ReplaceKeys: keys,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	runProgram := func(base *deploy.Snapshot, version string, expectedSteps ...deploy.StepOp) *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, "", false, nil, "",
+				resource.PropertyMap{}, nil, false, version, nil)
+			assert.NoError(t, err)
+			return nil
+		})
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{host: host},
+			Steps: []TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+						events []Event, res result.Result) result.Result {
+						for _, event := range events {
+							if event.Type == ResourcePreEvent {
+								payload := event.Payload.(ResourcePreEventPayload)
+								if payload.Metadata.URN.Name().String() == resName {
+									assert.Subset(t, expectedSteps, []deploy.StepOp{payload.Metadata.Op})
+								}
+							}
+						}
+						return res
+					},
+				},
+			},
+		}
+		return p.Run(t, base)
+	}
+
+	// This test simulates the upgrade scenario of default providers, except that the requested upgrade results in the
+	// provider getting replaced. Because of this, the engine should decide to replace resA.
+	snap := runProgram(nil, "", deploy.OpCreate)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default", res.URN.Name().String())
+		case res.URN.Name().String() == resName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default", provRef.URN().Name().String())
+		}
+	}
+
+	// Upon update, now that the language host is sending a version, DiffConfig reports that there's a diff between the
+	// old and new provider and so we must replace resA.
+	snap = runProgram(snap, "0.17.10", deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default_0_17_10", res.URN.Name().String())
+		case res.URN.Name().String() == resName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_10", provRef.URN().Name().String())
 		}
 	}
 }
