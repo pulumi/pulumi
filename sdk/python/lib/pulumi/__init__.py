@@ -73,3 +73,7 @@ from .log import (
     warn,
     error,
 )
+
+from .stack_reference import (
+    StackReference,
+)

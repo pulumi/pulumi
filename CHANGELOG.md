@@ -4,6 +4,8 @@
 
 - Pulumi now allows Python programs to "read" existing resources instead of just creating them. This feature enables
   Pulumi Python packages to expose ".get()" methods that allow for reading of resources that already exist.
+- Support for referencing the outputs of other Pulumi stacks has been added to the Pulumi Python libraries via the
+  `StackReference` type.
 
 ## 0.17.14 (Released May 28, 2019)
 
