@@ -1,5 +1,8 @@
 ## 0.17.14 (Unreleased)
 
+- `pulumi refresh` now tries to install any missing plugins automatically like
+  `pulumi destroy` and `pulumi update` do (fixes [pulumi/pulumi#2669](https://github.com/pulumi/pulumi/issues/2669)).
+
 ### Improvements
 
 ## 0.17.13 (Released May 21, 2019)
