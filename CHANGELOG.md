@@ -5,7 +5,9 @@
 
 ### Improvements
 
-- `pulumi whoami` now outputs the URL of the currently connected backend
+- `pulumi whoami` now outputs the URL of the currently connected backend.
+- Correctly suppress stack outputs when serializing previews to JSON, i.e. `pulumi preview --json --suppress-outputs`.
+  Fixes [pulumi/pulumi#2765](https://github.com/pulumi/pulumi/issues/2765).
 
 ## 0.17.13 (Released May 21, 2019)
 

@@ -248,6 +248,22 @@ func TestPreviewJSON(t *testing.T) {
 		}
 	}()
 
+	prepareOutput := func(stdout string) string {
+		// Don't diff the provider, since it contains code that may change that we don't want to be sensitive to.
+		providerRegexp := regexp.MustCompile(`"__provider": ".*"`)
+		stdout = providerRegexp.ReplaceAllString(stdout, `"__provider": "..."`)
+
+		// The provider ID isn't necessarily stable, so ignore it during the check.
+		providerInstanceRegexp := regexp.MustCompile(`"provider": ".*"`)
+		stdout = providerInstanceRegexp.ReplaceAllString(stdout, `"provider": "..."`)
+
+		// Ignore this certain warning that fires only on Node.js 11.
+		warningRegexp := regexp.MustCompile(`(?ms)^    "diagnostics": \[.*\],\n`)
+		stdout = warningRegexp.ReplaceAllString(stdout, "")
+
+		return stdout
+	}
+
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex sould not fail with no maximum length is set")
 
@@ -258,14 +274,7 @@ func TestPreviewJSON(t *testing.T) {
 	// Run the preview to get the JSON. Trim out some pieces we don't want to be sensitive to (like
 	// the precise details of dynamic provider serialization), and then ensure the text matches what we expect.
 	stdout, _ := e.RunCommand("pulumi", "preview", "--json")
-
-	// Don't diff the provider, since it contains code that may change that we don't want to be sensitive to.
-	providerRegexp := regexp.MustCompile(`"__provider": ".*",`)
-	stdout = providerRegexp.ReplaceAllString(stdout, `"__provider": "...",`)
-
-	// Ignore this certain warning that fires only on Node.js 11.
-	warningRegexp := regexp.MustCompile(`(?ms)^    "diagnostics": \[.*\],\n`)
-	stdout = warningRegexp.ReplaceAllString(stdout, "")
+	stdout = prepareOutput(stdout)
 
 	// Now check that the result matches.
 	// nolint: lll
@@ -283,7 +292,7 @@ func TestPreviewJSON(t *testing.T) {
         {
             "op": "create",
             "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-            "provider": "urn:pulumi:%[1]s::protect_resources::pulumi:providers:pulumi-nodejs::default::04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+            "provider": "...",
             "newState": {
                 "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
                 "custom": true,
@@ -293,7 +302,7 @@ func TestPreviewJSON(t *testing.T) {
                     "state": 1
                 },
                 "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "provider": "urn:pulumi:%[1]s::protect_resources::pulumi:providers:pulumi-nodejs::default::04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+                "provider": "...",
                 "propertyDependencies": {
                     "__provider": null,
                     "state": null
@@ -308,7 +317,163 @@ func TestPreviewJSON(t *testing.T) {
 `, stackName)
 	assert.Equal(t, expect, stdout)
 
-	// Finally, remove the stack and be done.
+	// Do the actual update.
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+
+	// Now test a zero update, first with the stack outputs.
+	stdout2, _ := e.RunCommand("pulumi", "preview", "--json", "--show-sames")
+	stdout2 = prepareOutput(stdout2)
+
+	// Now check that the result matches.
+	// nolint: lll
+	expect2 := fmt.Sprintf(`{
+    "steps": [
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack",
+                "outputs": {
+                    "o": 1
+                }
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack",
+                "outputs": {
+                    "o": 1
+                }
+            }
+        },
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+            "provider": "...",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            }
+        }
+    ],
+    "changeSummary": {
+        "same": 2
+    }
+}
+`, stackName)
+	assert.Equal(t, expect2, stdout2)
+
+	// Finally, test a zero update, but suppress stack outputs.
+	stdout3, _ := e.RunCommand("pulumi", "preview", "--json", "--show-sames", "--suppress-outputs")
+	stdout3 = prepareOutput(stdout3)
+
+	// Now check that the result matches.
+	// nolint: lll
+	expect3 := fmt.Sprintf(`{
+    "steps": [
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            }
+        },
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+            "provider": "...",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            }
+        }
+    ],
+    "changeSummary": {
+        "same": 2
+    }
+}
+`, stackName)
+	assert.Equal(t, expect3, stdout3)
+
+	// Finally, destroy and remove the stack and be done.
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 

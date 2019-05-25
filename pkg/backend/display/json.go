@@ -69,9 +69,23 @@ func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyM
 	return new
 }
 
-func removeSecrets(s *resource.State) *resource.State {
-	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, MassageSecrets(s.Inputs, false),
-		MassageSecrets(s.Outputs, false), s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
+// stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
+// on the supplied options, in addition to massaging secret fields.
+func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
+	var inputs resource.PropertyMap
+	var outputs resource.PropertyMap
+	if !isRootURN(s.URN) || !opts.SuppressOutputs {
+		// For now, replace any secret properties as the string [secret] and then serialize what we have.
+		inputs = MassageSecrets(s.Inputs, false)
+		outputs = MassageSecrets(s.Outputs, false)
+	} else {
+		// If we're suppressing outputs, don't show the root stack properties.
+		inputs = resource.PropertyMap{}
+		outputs = resource.PropertyMap{}
+	}
+
+	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, inputs,
+		outputs, s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
 		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs)
 }
 
@@ -79,9 +93,7 @@ func removeSecrets(s *resource.State) *resource.State {
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
 // if used interactively, the experience will lead to potentially very long pauses. If run in CI, it is up to the
 // end user to ensure that output is periodically printed to prevent tools from thinking preview has hung.
-func ShowJSONEvents(op string, action apitype.UpdateKind,
-	events <-chan engine.Event, done chan<- bool, opts Options) {
-
+func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
@@ -129,9 +141,10 @@ func ShowJSONEvents(op string, action apitype.UpdateKind,
 					DiffReasons:    m.Diffs,
 					ReplaceReasons: m.Keys,
 				}
-				// For now, replace any secret properties as the string [secret] and then serialize what we have.
+
 				if m.Old != nil {
-					res, err := stack.SerializeResource(removeSecrets(m.Old.State), config.NewPanicCrypter())
+					oldState := stateForJSONOutput(m.Old.State, opts)
+					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter())
 					if err == nil {
 						step.OldState = &res
 					} else {
@@ -139,13 +152,15 @@ func ShowJSONEvents(op string, action apitype.UpdateKind,
 					}
 				}
 				if m.New != nil {
-					res, err := stack.SerializeResource(removeSecrets(m.New.State), config.NewPanicCrypter())
+					newState := stateForJSONOutput(m.New.State, opts)
+					res, err := stack.SerializeResource(newState, config.NewPanicCrypter())
 					if err == nil {
 						step.NewState = &res
 					} else {
 						glog.V(7).Infof("not adding new state as there was an error serialzing: %s", err)
 					}
 				}
+
 				digest.Steps = append(digest.Steps, step)
 			}
 		case engine.ResourceOutputsEvent, engine.ResourceOperationFailed:

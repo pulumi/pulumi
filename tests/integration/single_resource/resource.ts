@@ -20,8 +20,11 @@ export class Provider implements pulumi.dynamic.ResourceProvider {
 }
 
 export class Resource extends pulumi.dynamic.Resource {
+    public readonly state?: any;
+
     constructor(name: string, props: ResourceProps, opts?: pulumi.ResourceOptions) {
         super(Provider.instance, name, props, opts);
+        this.state = props.state;
     }
 }
 
