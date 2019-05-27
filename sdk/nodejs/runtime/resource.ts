@@ -326,9 +326,11 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         propertyToDirectDependencyURNs.set(propertyName, urns);
     }
 
-    // Wait for all aliases
+    // Wait for all aliases. Note that we use `res.__aliases` instead of `opts.aliases` as the former has been processed
+    // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
+    // simplifying aliases down to URNs.
     const aliases = [];
-    for (const alias of opts.aliases || []) {
+    for (const alias of res.__aliases) {
         aliases.push(await output(alias).promise());
     }
 

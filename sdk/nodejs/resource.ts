@@ -36,7 +36,7 @@ export function createUrn(name: Input<string>, type: Input<string>, parent?: Res
         }
         parentPrefix = parentUrn.apply(parentUrnString => parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$");
     } else {
-        parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project ||getProject()}::`);
+        parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
     }
     return interpolate`${parentPrefix}${type}::${name}`;
 }
@@ -49,8 +49,8 @@ export abstract class Resource {
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
-     // tslint:disable-next-line:variable-name
-     public readonly __pulumiResource: boolean = true;
+    // tslint:disable-next-line:variable-name
+    public readonly __pulumiResource: boolean = true;
 
     /**
      * @internal
@@ -117,21 +117,21 @@ export abstract class Resource {
      * @internal
      * A list of aliases applied to this resource.
      */
-     // tslint:disable-next-line:variable-name
-    private readonly __aliases: Input<URN>[];
+    // tslint:disable-next-line:variable-name
+    readonly __aliases: Input<URN>[];
 
     /**
      * @internal
      * The name assigned to the resource at construction.
      */
-     // tslint:disable-next-line:variable-name
-     private readonly __name: string;
+    // tslint:disable-next-line:variable-name
+    private readonly __name: string;
 
     /**
      * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
-     // tslint:disable-next-line:variable-name
+    // tslint:disable-next-line:variable-name
     private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
@@ -199,7 +199,7 @@ export abstract class Resource {
                 if (name.startsWith(opts.parent.__name)) {
                     const parentName = opts.parent.__name;
                     aliasName = output(parentAlias).apply(parentAliasUrn => {
-                        const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::")+2);
+                        const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::") + 2);
                         return parentAliasName + name.substring(parentName.length);
                     });
                 }
@@ -232,7 +232,27 @@ export abstract class Resource {
             }
         }
         this.__protect = !!opts.protect;
-        this.__aliases = opts.aliases || [];
+
+        // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
+        // default `name` and `type` to apply until we are inside the resource constructor.
+        this.__aliases = [];
+        if (opts.aliases) {
+            for (const alias of opts.aliases) {
+                this.__aliases.push(output(alias).apply(a => {
+                    if (typeof a === "string") {
+                        return output(a);
+                    } else {
+                        return createUrn(
+                            output(a.name).apply(n => n || name),
+                            output(a.type).apply(ty => ty || t),
+                            a.parent || opts.parent,
+                            a.project,
+                            a.stack,
+                        );
+                    }
+                }));
+            }
+        }
 
         if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
@@ -252,6 +272,33 @@ export abstract class Resource {
 }
 
 (<any>Resource).doNotCapture = true;
+
+/**
+ * Alias is a partial description of prior named used for a resource. It can be processed in the context of a resource
+ * creation to determine what the full aliased URN would be.
+ */
+export interface Alias {
+    /**
+     * The previous name of the resource.
+     */
+    name?: Input<string>;
+    /**
+     * The previous type of the resource.
+     */
+    type?: Input<string>;
+    /**
+     * The previous parent of the resource.
+     */
+    parent?: Resource | Input<URN>;
+    /**
+     * The previous stack of the resource.
+     */
+    stack?: Input<string>;
+    /**
+     * The previous project of the resource.
+     */
+    project?: Input<string>;
+}
 
 /**
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -286,7 +333,7 @@ export interface ResourceOptions {
     /**
      * An optional list of aliases to treat this resoruce as matching.
      */
-    aliases?: Input<URN>[];
+    aliases?: Input<URN | Alias>[];
 }
 
 /**
