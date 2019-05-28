@@ -409,11 +409,16 @@ function createSimpleOutput(val: any) {
  * In this example, taking a dependency on d3 means a resource will depend on all the resources of
  * d1 and d2.
  */
-// This overload is effectively the same as the next. However, it handles `tuples` properly, instead
-// of treating them as arrays.  Specifically, if you had `[Output<number>, Output<string>]` it would
-// give you `Output<[number, string]>` instead of `Output<(number | string)[]>`.
-export function all<T extends unknown[]>(xs: T | []): Output<UnwrappedObject<T>>;
-export function all<T extends object>(val: T): Output<UnwrappedObject<T>>;
+// tslint:disable:max-line-length
+export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
+export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
+export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
+export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
+export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
+export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>]>;
+export function all<T>(ds: (Input<T> | undefined)[]): Output<Unwrap<T>[]>;
 export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));

@@ -20,8 +20,6 @@
   --outputs:--<{%reset%}>` instead of just `--outputs:--`.
 - Fixes local login on Windows.  Specifically, windows local paths are properly understood and
   backslashes `\` are not converted to `__5c__` in paths.
-- Signature of `Pulumi.all` has been made more accurate.  Calling `.all` on `Output`s that may
-  be `undefined` will properly encode and pass along that `undefined` information.
 - Fix an issue where some operations would fail with `error: could not deserialize deployment: unknown secrets provider type`.
 - Fix an issue where pulumi might try to replace existing resources when upgrading to the newest version of some resource providers.
 
