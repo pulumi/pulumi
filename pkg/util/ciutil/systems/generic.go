@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,29 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ciutil
+package systems
 
 import (
 	"os"
-
-	systems "github.com/pulumi/pulumi/pkg/util/ciutil/systems"
 )
 
-// DetectVars detects and returns the CI variables for the current environment.
-// Not all fields of the `Vars` struct are applicable to every CI system,
-// and may be left blank.
-func DetectVars() systems.Vars {
-	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
-		return systems.Vars{Name: ""}
-	}
+// GenericCISystem represents the Azure Pipelines CI/CD system
+// that belongs to the Azure DevOps product suite.
+type GenericCISystem struct {
+	DefaultCISystem
+}
 
-	var v systems.Vars
-	system := DetectSystem()
-	if system == nil {
-		return v
-	}
-	// Detect the vars for the respective CI system and
-	v = system.DetectVars()
+var _ System = &GenericCISystem{}
+
+// DetectVars detects the env vars from Azure Piplines.
+func (g GenericCISystem) DetectVars() Vars {
+	v := Vars{Name: g.Name}
+	v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
+	v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
+	v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
+	v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
 
 	return v
 }

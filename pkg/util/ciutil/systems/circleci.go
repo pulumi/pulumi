@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,29 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ciutil
+package systems
 
 import (
 	"os"
-
-	systems "github.com/pulumi/pulumi/pkg/util/ciutil/systems"
 )
 
-// DetectVars detects and returns the CI variables for the current environment.
-// Not all fields of the `Vars` struct are applicable to every CI system,
-// and may be left blank.
-func DetectVars() systems.Vars {
-	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
-		return systems.Vars{Name: ""}
-	}
+// CircleCICISystem represents the "Circle CI" CI system.
+type CircleCICISystem struct {
+	DefaultCISystem
+}
 
-	var v systems.Vars
-	system := DetectSystem()
-	if system == nil {
-		return v
-	}
-	// Detect the vars for the respective CI system and
-	v = system.DetectVars()
+// DetectVars detects the Circle CI env vars.
+func (c CircleCICISystem) DetectVars() Vars {
+	v := Vars{Name: c.Name}
+
+	// See: https://circleci.com/docs/2.0/env-vars/
+	v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
+	v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
+	v.SHA = os.Getenv("CIRCLE_SHA1")
+	v.BranchName = os.Getenv("CIRCLE_BRANCH")
 
 	return v
 }
