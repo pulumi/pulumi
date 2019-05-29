@@ -38,8 +38,15 @@ import (
 // providers.MakeProviderType(tokens.Package("pulumi-nodejs")), but does not depend on the providers package
 // (a direct dependency would cause a cyclic import issue.
 //
-// This is needed because we have to handle some buggy behavior that previous versions of this provider implemented
+// This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
 const nodejsDynamicProviderType = "pulumi:providers:pulumi-nodejs"
+
+// The `Type()` for the Kubernetes provider.  Logically, this is the same as calling
+// providers.MakeProviderType(tokens.Package("kubernetes")), but does not depend on the providers package
+// (a direct dependency would cause a cyclic import issue.
+//
+// This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
+const kubernetesProviderType = "pulumi:providers:kubernetes"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
@@ -89,6 +96,31 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
+}
+
+// isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
+// due to a rpc being unimplemented. Due to past mistakes, different providers returned "Unimplemented" in a variaity of
+// different ways that don't always result in an Uimplemented error code.
+func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType tokens.Type) bool {
+	switch string(providerType) {
+	// The NodeJS dynamic provider implementation incorrectly returned an empty message instead of properly implementing
+	// Diff/CheckConfig.  This gets turned into a error with type: "Internal".
+	case nodejsDynamicProviderType:
+		if err.Code() == codes.Internal {
+			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			return true
+		}
+
+	// The Kubernetes provider returned an "Unimplmeneted" message, but it did so by returning a status from a different
+	// package that the provider was expected. That caused the error to be wrapped with an "Unknown" error.
+	case kubernetesProviderType:
+		if err.Code() == codes.Unknown && strings.Contains(err.Message(), "Unimplemented") {
+			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			return true
+		}
+	}
+
+	return false
 }
 
 // CheckConfig validates the configuration for this resource provider.
@@ -141,16 +173,9 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		code := rpcError.Code()
-		if code == codes.Unimplemented {
+		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, urn.Type()) {
 			// For backwards compatibility, just return the news as if the provider was okay with them.
 			logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
-			return news, nil, nil
-		}
-		if code == codes.Internal && urn.Type() == nodejsDynamicProviderType {
-			// Some versions of the dynamic provider incorrectly implemented CheckConfig and returned an
-			// empty object instead of the object with the correct response shape. This leads to an internal error
-			// when calling CheckConfig. If we detect that, just behave as if it had not been implemented at all.
-			logging.V(7).Infof("%s nodejs dynamic provider returned internal error returning news as is", label)
 			return news, nil, nil
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
@@ -206,7 +231,7 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		code := rpcError.Code()
-		if code == codes.Unimplemented {
+		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, urn.Type()) {
 			logging.V(7).Infof("%s unimplemented rpc: returning DiffUnknown with no replaces", label)
 			// In this case, the provider plugin did not implement this and we have to provide some answer:
 			//
@@ -221,14 +246,6 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 			// route here, any change to a provider's configuration (no matter how inconsequential) would cause all of
 			// its resources to be replaced. This is clearly a bad experience, and differs from how things worked prior
 			// to first-class providers.
-			return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
-		}
-		if code == codes.Internal && urn.Type() == nodejsDynamicProviderType {
-			// Some versions of the dynamic provider incorrectly implemented CheckConfig and returned an
-			// empty object instead of the object with the correct response shape. This leads to an internal error
-			// when calling CheckConfig. If we detect that, just behave as if it had not been implemented at all.
-			logging.V(7).Infof("%s nodejs dynamic provider returned internal error returning DiffUnknown with "+
-				"no	replaces", label)
 			return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
