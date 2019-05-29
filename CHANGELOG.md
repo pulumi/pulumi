@@ -1,10 +1,13 @@
-## 0.17.14 (Unreleased)
-
-- `pulumi refresh` now tries to install any missing plugins automatically like
-  `pulumi destroy` and `pulumi update` do (fixes [pulumi/pulumi#2669](https://github.com/pulumi/pulumi/issues/2669)).
+## 0.17.15 (Unreleased)
 
 ### Improvements
 
+## 0.17.14 (Released May 28, 2019)
+
+### Improvements
+
+- `pulumi refresh` now tries to install any missing plugins automatically like
+  `pulumi destroy` and `pulumi update` do (fixes [pulumi/pulumi#2669](https://github.com/pulumi/pulumi/issues/2669)).
 - `pulumi whoami` now outputs the URL of the currently connected backend.
 - Correctly suppress stack outputs when serializing previews to JSON, i.e. `pulumi preview --json --suppress-outputs`.
   Fixes [pulumi/pulumi#2765](https://github.com/pulumi/pulumi/issues/2765).
