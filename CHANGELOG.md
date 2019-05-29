@@ -6,6 +6,7 @@
   Pulumi Python packages to expose ".get()" methods that allow for reading of resources that already exist.
 - Support for referencing the outputs of other Pulumi stacks has been added to the Pulumi Python libraries via the
   `StackReference` type.
+- Add CI system detection for Bitbucket Pipelines.
 
 ## 0.17.14 (Released May 28, 2019)
 
