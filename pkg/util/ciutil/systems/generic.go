@@ -21,7 +21,7 @@ import (
 // GenericCISystem represents the Azure Pipelines CI/CD system
 // that belongs to the Azure DevOps product suite.
 type GenericCISystem struct {
-	DefaultCISystem
+	BaseCISystem
 }
 
 var _ System = &GenericCISystem{}

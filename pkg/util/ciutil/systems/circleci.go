@@ -20,14 +20,13 @@ import (
 
 // CircleCICISystem represents the "Circle CI" CI system.
 type CircleCICISystem struct {
-	DefaultCISystem
+	BaseCISystem
 }
 
 // DetectVars detects the Circle CI env vars.
+// See: https://circleci.com/docs/2.0/env-vars/
 func (c CircleCICISystem) DetectVars() Vars {
 	v := Vars{Name: c.Name}
-
-	// See: https://circleci.com/docs/2.0/env-vars/
 	v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
 	v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
 	v.SHA = os.Getenv("CIRCLE_SHA1")

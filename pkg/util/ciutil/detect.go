@@ -23,43 +23,45 @@ import (
 // detectors contains environment variable names and their values, if applicable, for detecting when we're running in
 // CI. See https://github.com/watson/ci-info/blob/master/index.js
 var detectors = map[systems.SystemName]systems.System{
-	systems.AppVeyor: systems.DefaultCISystem{
+	systems.AppVeyor: systems.BaseCISystem{
 		Name:            systems.AppVeyor,
 		EnvVarsToDetect: []string{"APPVEYOR"},
 	},
-	systems.AWSCodeBuild: systems.DefaultCISystem{
+	systems.AWSCodeBuild: systems.BaseCISystem{
 		Name:            systems.AWSCodeBuild,
 		EnvVarsToDetect: []string{"CODEBUILD_BUILD_ARN"},
 	},
-	systems.AtlassianBamboo: systems.DefaultCISystem{
+	systems.AtlassianBamboo: systems.BaseCISystem{
 		Name:            systems.AtlassianBamboo,
 		EnvVarsToDetect: []string{"bamboo_planKey"},
 	},
-	systems.AtlassianBitbucketPipelines: systems.DefaultCISystem{
-		Name:            systems.AtlassianBitbucketPipelines,
-		EnvVarsToDetect: []string{"BITBUCKET_COMMIT"},
+	systems.AtlassianBitbucketPipelines: systems.BitbucketPipelinesCISystem{
+		BaseCISystem: systems.BaseCISystem{
+			Name:            systems.AtlassianBitbucketPipelines,
+			EnvVarsToDetect: []string{"BITBUCKET_COMMIT"},
+		},
 	},
 	systems.AzurePipelines: systems.AzurePipelinesCISystem{
-		DefaultCISystem: systems.DefaultCISystem{
+		BaseCISystem: systems.BaseCISystem{
 			Name:            systems.AzurePipelines,
 			EnvVarsToDetect: []string{"TF_BUILD"},
 		},
 	},
-	systems.Buildkite: systems.DefaultCISystem{
+	systems.Buildkite: systems.BaseCISystem{
 		Name:            systems.Buildkite,
 		EnvVarsToDetect: []string{"BUILDKITE"},
 	},
 	systems.CircleCI: systems.CircleCICISystem{
-		DefaultCISystem: systems.DefaultCISystem{
+		BaseCISystem: systems.BaseCISystem{
 			Name:            systems.CircleCI,
 			EnvVarsToDetect: []string{"CIRCLECI"},
 		},
 	},
-	systems.Codeship: systems.DefaultCISystem{
+	systems.Codeship: systems.BaseCISystem{
 		Name:              systems.Codeship,
 		EnvValuesToDetect: map[string]string{"CI_NAME": "codeship"},
 	},
-	systems.Drone: systems.DefaultCISystem{
+	systems.Drone: systems.BaseCISystem{
 		Name:            systems.Drone,
 		EnvVarsToDetect: []string{"DRONE"},
 	},
@@ -69,52 +71,52 @@ var detectors = map[systems.SystemName]systems.System{
 	// as a fallback so that the CLI would still pick-up the metadata related
 	// to their CI build.
 	systems.GenericCI: systems.GenericCISystem{
-		DefaultCISystem: systems.DefaultCISystem{
+		BaseCISystem: systems.BaseCISystem{
 			Name:            systems.SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
 			EnvVarsToDetect: []string{"GENERIC_CI_SYSTEM"},
 		},
 	},
 
-	systems.GitHub: systems.DefaultCISystem{
+	systems.GitHub: systems.BaseCISystem{
 		Name:            systems.GitHub,
 		EnvVarsToDetect: []string{"GITHUB_WORKFLOW"},
 	},
 	systems.GitLab: systems.GitLabCISystem{
-		DefaultCISystem: systems.DefaultCISystem{
+		BaseCISystem: systems.BaseCISystem{
 			Name:            systems.GitLab,
 			EnvVarsToDetect: []string{"GITLAB_CI"},
 		},
 	},
-	systems.GoCD: systems.DefaultCISystem{
+	systems.GoCD: systems.BaseCISystem{
 		Name:            systems.GoCD,
 		EnvVarsToDetect: []string{"GO_PIPELINE_LABEL"},
 	},
-	systems.Hudson: systems.DefaultCISystem{
+	systems.Hudson: systems.BaseCISystem{
 		Name:            systems.Hudson,
 		EnvVarsToDetect: []string{"HUDSON_URL"},
 	},
-	systems.Jenkins: systems.DefaultCISystem{
+	systems.Jenkins: systems.BaseCISystem{
 		Name:            systems.Jenkins,
 		EnvVarsToDetect: []string{"JENKINS_URL", "BUILD_ID"},
 	},
-	systems.MagnumCI: systems.DefaultCISystem{
+	systems.MagnumCI: systems.BaseCISystem{
 		Name:            systems.MagnumCI,
 		EnvVarsToDetect: []string{"MAGNUM"},
 	},
-	systems.Semaphore: systems.DefaultCISystem{
+	systems.Semaphore: systems.BaseCISystem{
 		Name:            systems.Semaphore,
 		EnvVarsToDetect: []string{"SEMAPHORE"},
 	},
-	systems.TaskCluster: systems.DefaultCISystem{
+	systems.TaskCluster: systems.BaseCISystem{
 		Name:            systems.TaskCluster,
 		EnvVarsToDetect: []string{"TASK_ID", "RUN_ID"},
 	},
-	systems.TeamCity: systems.DefaultCISystem{
+	systems.TeamCity: systems.BaseCISystem{
 		Name:            systems.TeamCity,
 		EnvVarsToDetect: []string{"TEAMCITY_VERSION"},
 	},
 	systems.Travis: systems.TravisCISystem{
-		DefaultCISystem: systems.DefaultCISystem{
+		BaseCISystem: systems.BaseCISystem{
 			Name:            systems.Travis,
 			EnvVarsToDetect: []string{"TRAVIS"},
 		},

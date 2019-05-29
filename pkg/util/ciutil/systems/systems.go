@@ -81,35 +81,39 @@ type Vars struct {
 	PRNumber string
 }
 
-// DefaultCISystem implements the System interface's functions with base
+// BaseCISystem implements the `System` interface with default
 // implementations.
 //
-// When creating a new CI System implementation, you must implement the
+// When creating a new CI System implementation, implement the
 // DetectVars and any other function you wish to override.
-type DefaultCISystem struct {
-	Name              SystemName
-	EnvVarsToDetect   []string
+type BaseCISystem struct {
+	Name SystemName
+	// EnvVarsToDetect is an array of env vars to check if any of these env vars is set,
+	// which would indicate that the Pulumi CLI is running in that CI system's environment.
+	EnvVarsToDetect []string
+	// EnvValuesToDetect is a map of env vars and their expected values to check for,
+	// in order to see if the Pulumi CLI is running inside a certain CI system's environment.
 	EnvValuesToDetect map[string]string
 }
 
 // DetectVars for a known CI system returns an empty Vars struct.
-func (d DefaultCISystem) DetectVars() Vars {
+func (d BaseCISystem) DetectVars() Vars {
 	return Vars{}
 }
 
 // IsCI returns true if a specific env var of a CI system is set.
-func (d DefaultCISystem) IsCI() bool {
+func (d BaseCISystem) IsCI() bool {
 	for _, e := range d.EnvVarsToDetect {
-		if os.Getenv(e) == "" {
-			return false
+		if os.Getenv(e) != "" {
+			return true
 		}
 	}
 
 	for k, v := range d.EnvValuesToDetect {
-		if os.Getenv(k) != v {
-			return false
+		if os.Getenv(k) == v {
+			return true
 		}
 	}
 
-	return true
+	return false
 }

@@ -20,14 +20,13 @@ import (
 
 // TravisCISystem represents the Travis CI system.
 type TravisCISystem struct {
-	DefaultCISystem
+	BaseCISystem
 }
 
 // DetectVars detects the Travis env vars.
+// See https://docs.travis-ci.com/user/environment-variables/.
 func (t TravisCISystem) DetectVars() Vars {
 	v := Vars{Name: Travis}
-
-	// See https://docs.travis-ci.com/user/environment-variables/.
 	v.BuildID = os.Getenv("TRAVIS_JOB_ID")
 	v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
 	v.BuildURL = os.Getenv("TRAVIS_BUILD_WEB_URL")

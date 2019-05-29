@@ -20,14 +20,13 @@ import (
 
 // GitLabCISystem represents the GitLab CI system.
 type GitLabCISystem struct {
-	DefaultCISystem
+	BaseCISystem
 }
 
 // DetectVars detects the Travis env vars.
+// See https://docs.gitlab.com/ee/ci/variables/.
 func (gl GitLabCISystem) DetectVars() Vars {
 	v := Vars{Name: gl.Name}
-
-	// See https://docs.gitlab.com/ee/ci/variables/.
 	v.BuildID = os.Getenv("CI_JOB_ID")
 	v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
 	v.BuildURL = os.Getenv("CI_JOB_URL")
