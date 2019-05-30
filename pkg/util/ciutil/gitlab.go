@@ -12,28 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package systems
+package ciutil
 
 import (
 	"os"
 )
 
-// TravisCI represents the Travis CI system.
-type TravisCI struct {
-	BaseCI
+// gitlabCI represents the GitLab CI system.
+type gitlabCI struct {
+	baseCI
 }
 
 // DetectVars detects the Travis env vars.
-// See https://docs.travis-ci.com/user/environment-variables/.
-func (t TravisCI) DetectVars() Vars {
-	v := Vars{Name: Travis}
-	v.BuildID = os.Getenv("TRAVIS_JOB_ID")
-	v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
-	v.BuildURL = os.Getenv("TRAVIS_BUILD_WEB_URL")
-	v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
-	v.BranchName = os.Getenv("TRAVIS_BRANCH")
-	v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
-	v.PRNumber = os.Getenv("TRAVIS_PULL_REQUEST")
+// See https://docs.gitlab.com/ee/ci/variables/.
+func (gl gitlabCI) DetectVars() Vars {
+	v := Vars{Name: gl.Name}
+	v.BuildID = os.Getenv("CI_JOB_ID")
+	v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
+	v.BuildURL = os.Getenv("CI_JOB_URL")
+	v.SHA = os.Getenv("CI_COMMIT_SHA")
+	v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
+	v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
+	v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
 
 	return v
 }

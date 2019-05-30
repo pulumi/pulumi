@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package systems
+package ciutil
 
 import (
 	"os"
 )
 
-// GenericCICI represents a generic CI/CD system
-// that belongs to the Azure DevOps product suite.
-type GenericCICI struct {
-	BaseCI
+// circleCICI represents the "Circle CI" CI system.
+type circleCICI struct {
+	baseCI
 }
 
-// DetectVars detects the env vars from Azure Piplines.
-func (g GenericCICI) DetectVars() Vars {
-	v := Vars{Name: g.Name}
-	v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
-	v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
-	v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
-	v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
+// DetectVars detects the Circle CI env vars.
+// See: https://circleci.com/docs/2.0/env-vars/
+func (c circleCICI) DetectVars() Vars {
+	v := Vars{Name: c.Name}
+	v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
+	v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
+	v.SHA = os.Getenv("CIRCLE_SHA1")
+	v.BranchName = os.Getenv("CIRCLE_BRANCH")
 
 	return v
 }

@@ -16,19 +16,17 @@ package ciutil
 
 import (
 	"os"
-
-	systems "github.com/pulumi/pulumi/pkg/util/ciutil/systems"
 )
 
 // DetectVars detects and returns the CI variables for the current environment.
 // Not all fields of the `Vars` struct are applicable to every CI system,
 // and may be left blank.
-func DetectVars() systems.Vars {
+func DetectVars() Vars {
 	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
-		return systems.Vars{Name: ""}
+		return Vars{Name: ""}
 	}
 
-	var v systems.Vars
+	var v Vars
 	system := DetectSystem()
 	if system == nil {
 		return v

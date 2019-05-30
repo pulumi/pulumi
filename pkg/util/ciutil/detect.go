@@ -16,56 +16,54 @@ package ciutil
 
 import (
 	"os"
-
-	"github.com/pulumi/pulumi/pkg/util/ciutil/systems"
 )
 
 // detectors contains environment variable names and their values, if applicable, for detecting when we're running in
 // CI. See https://github.com/watson/ci-info/blob/master/index.js.
-// For any CI system for which we detect additional env vars, the type of `systems.System` is that is
+// For any CI system for which we detect additional env vars, the type of `System` is that is
 // specific to that CI system. The rest, even though we detect if it is that CI system, may not have an
-// implementation that detects all useful env vars, and hence just uses the `systems.BaseCI` struct type.
-var detectors = map[systems.SystemName]systems.System{
-	systems.AppVeyor: systems.BaseCI{
-		Name:            systems.AppVeyor,
+// implementation that detects all useful env vars, and hence just uses the `baseCI` struct type.
+var detectors = map[SystemName]System{
+	AppVeyor: baseCI{
+		Name:            AppVeyor,
 		EnvVarsToDetect: []string{"APPVEYOR"},
 	},
-	systems.AWSCodeBuild: systems.BaseCI{
-		Name:            systems.AWSCodeBuild,
+	AWSCodeBuild: baseCI{
+		Name:            AWSCodeBuild,
 		EnvVarsToDetect: []string{"CODEBUILD_BUILD_ARN"},
 	},
-	systems.AtlassianBamboo: systems.BaseCI{
-		Name:            systems.AtlassianBamboo,
+	AtlassianBamboo: baseCI{
+		Name:            AtlassianBamboo,
 		EnvVarsToDetect: []string{"bamboo_planKey"},
 	},
-	systems.AtlassianBitbucketPipelines: systems.BitbucketPipelinesCI{
-		BaseCI: systems.BaseCI{
-			Name:            systems.AtlassianBitbucketPipelines,
+	AtlassianBitbucketPipelines: bitbucketPipelinesCI{
+		baseCI: baseCI{
+			Name:            AtlassianBitbucketPipelines,
 			EnvVarsToDetect: []string{"BITBUCKET_COMMIT"},
 		},
 	},
-	systems.AzurePipelines: systems.AzurePipelinesCI{
-		BaseCI: systems.BaseCI{
-			Name:            systems.AzurePipelines,
+	AzurePipelines: azurePipelinesCI{
+		baseCI: baseCI{
+			Name:            AzurePipelines,
 			EnvVarsToDetect: []string{"TF_BUILD"},
 		},
 	},
-	systems.Buildkite: systems.BaseCI{
-		Name:            systems.Buildkite,
+	Buildkite: baseCI{
+		Name:            Buildkite,
 		EnvVarsToDetect: []string{"BUILDKITE"},
 	},
-	systems.CircleCI: systems.CircleCICI{
-		BaseCI: systems.BaseCI{
-			Name:            systems.CircleCI,
+	CircleCI: circleCICI{
+		baseCI: baseCI{
+			Name:            CircleCI,
 			EnvVarsToDetect: []string{"CIRCLECI"},
 		},
 	},
-	systems.Codeship: systems.BaseCI{
-		Name:              systems.Codeship,
+	Codeship: baseCI{
+		Name:              Codeship,
 		EnvValuesToDetect: map[string]string{"CI_NAME": "codeship"},
 	},
-	systems.Drone: systems.BaseCI{
-		Name:            systems.Drone,
+	Drone: baseCI{
+		Name:            Drone,
 		EnvVarsToDetect: []string{"DRONE"},
 	},
 
@@ -73,54 +71,54 @@ var detectors = map[systems.SystemName]systems.System{
 	// is not recognized by it. Users can set the relevant env vars
 	// as a fallback so that the CLI would still pick-up the metadata related
 	// to their CI build.
-	systems.GenericCI: systems.GenericCICI{
-		BaseCI: systems.BaseCI{
-			Name:            systems.SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
+	GenericCI: genericCICI{
+		baseCI: baseCI{
+			Name:            SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
 			EnvVarsToDetect: []string{"GENERIC_CI_SYSTEM"},
 		},
 	},
 
-	systems.GitHub: systems.BaseCI{
-		Name:            systems.GitHub,
+	GitHub: baseCI{
+		Name:            GitHub,
 		EnvVarsToDetect: []string{"GITHUB_WORKFLOW"},
 	},
-	systems.GitLab: systems.GitLabCI{
-		BaseCI: systems.BaseCI{
-			Name:            systems.GitLab,
+	GitLab: gitlabCI{
+		baseCI: baseCI{
+			Name:            GitLab,
 			EnvVarsToDetect: []string{"GITLAB_CI"},
 		},
 	},
-	systems.GoCD: systems.BaseCI{
-		Name:            systems.GoCD,
+	GoCD: baseCI{
+		Name:            GoCD,
 		EnvVarsToDetect: []string{"GO_PIPELINE_LABEL"},
 	},
-	systems.Hudson: systems.BaseCI{
-		Name:            systems.Hudson,
+	Hudson: baseCI{
+		Name:            Hudson,
 		EnvVarsToDetect: []string{"HUDSON_URL"},
 	},
-	systems.Jenkins: systems.BaseCI{
-		Name:            systems.Jenkins,
+	Jenkins: baseCI{
+		Name:            Jenkins,
 		EnvVarsToDetect: []string{"JENKINS_URL", "BUILD_ID"},
 	},
-	systems.MagnumCI: systems.BaseCI{
-		Name:            systems.MagnumCI,
+	MagnumCI: baseCI{
+		Name:            MagnumCI,
 		EnvVarsToDetect: []string{"MAGNUM"},
 	},
-	systems.Semaphore: systems.BaseCI{
-		Name:            systems.Semaphore,
+	Semaphore: baseCI{
+		Name:            Semaphore,
 		EnvVarsToDetect: []string{"SEMAPHORE"},
 	},
-	systems.TaskCluster: systems.BaseCI{
-		Name:            systems.TaskCluster,
+	TaskCluster: baseCI{
+		Name:            TaskCluster,
 		EnvVarsToDetect: []string{"TASK_ID", "RUN_ID"},
 	},
-	systems.TeamCity: systems.BaseCI{
-		Name:            systems.TeamCity,
+	TeamCity: baseCI{
+		Name:            TeamCity,
 		EnvVarsToDetect: []string{"TEAMCITY_VERSION"},
 	},
-	systems.Travis: systems.TravisCI{
-		BaseCI: systems.BaseCI{
-			Name:            systems.Travis,
+	Travis: travisCI{
+		baseCI: baseCI{
+			Name:            Travis,
 			EnvVarsToDetect: []string{"TRAVIS"},
 		},
 	},
@@ -133,7 +131,7 @@ func IsCI() bool {
 
 // DetectSystem returns a CI system name when the current system looks like a CI system. Detection is based on
 // environment variables that CI vendors we know about set.
-func DetectSystem() systems.System {
+func DetectSystem() System {
 	// Provide a way to disable CI/CD detection, as it can interfere with the ability to test.
 	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
 		return nil

@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package systems
+package ciutil
 
 import (
 	"fmt"
 	"os"
 )
 
-// BitbucketPipelinesCI represents the Bitbucket CI system.
-type BitbucketPipelinesCI struct {
-	BaseCI
+// bitbucketPipelinesCI represents the Bitbucket CI system.
+type bitbucketPipelinesCI struct {
+	baseCI
 }
 
 // DetectVars detects the Bitbucket env vars.
 // See https://confluence.atlassian.com/bitbucket/environment-variables-794502608.html.
-func (bb BitbucketPipelinesCI) DetectVars() Vars {
+func (bb bitbucketPipelinesCI) DetectVars() Vars {
 	v := Vars{Name: bb.Name}
 
 	buildID := os.Getenv("BITBUCKET_BUILD_NUMBER")

@@ -19,38 +19,36 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	systems "github.com/pulumi/pulumi/pkg/util/ciutil/systems"
 )
 
 func TestDetectVars(t *testing.T) {
 	buildID := "123"
-	systemAndEnvVars := map[systems.SystemName]map[string]string{
+	systemAndEnvVars := map[SystemName]map[string]string{
 		// Since the `pulumi/pulumi` repo runs on Travis,
 		// we set the TRAVIS env var to an empty string for all test cases
 		// except for the Travis one itself.
 		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
-		systems.AzurePipelines: {
+		AzurePipelines: {
 			"TRAVIS":        "",
 			"TF_BUILD":      "true",
 			"BUILD_BUILDID": buildID,
 		},
-		systems.CircleCI: {
+		CircleCI: {
 			"TRAVIS":           "",
 			"CIRCLECI":         "true",
 			"CIRCLE_BUILD_NUM": buildID,
 		},
-		systems.GenericCI: {
+		GenericCI: {
 			"TRAVIS":             "",
 			"GENERIC_CI_SYSTEM":  "true",
 			"PULUMI_CI_BUILD_ID": buildID,
 		},
-		systems.GitLab: {
+		GitLab: {
 			"TRAVIS":    "",
 			"GITLAB_CI": "true",
 			"CI_JOB_ID": buildID,
 		},
-		systems.Travis: {
+		Travis: {
 			"TRAVIS":        "true",
 			"TRAVIS_JOB_ID": buildID,
 		},

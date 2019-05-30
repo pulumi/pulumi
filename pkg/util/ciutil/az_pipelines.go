@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package systems
+package ciutil
 
 import (
 	"fmt"
 	"os"
 )
 
-// AzurePipelinesCI represents the Azure Pipelines CI/CD system
+// azurePipelinesCI represents the Azure Pipelines CI/CD system
 // that belongs to the Azure DevOps product suite.
-type AzurePipelinesCI struct {
-	BaseCI
+type azurePipelinesCI struct {
+	baseCI
 }
 
 // DetectVars detects the env vars from Azure Piplines.
 // See:
 // https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#build-variables
-func (az AzurePipelinesCI) DetectVars() Vars {
+func (az azurePipelinesCI) DetectVars() Vars {
 	v := Vars{Name: AzurePipelines}
 	v.BuildID = os.Getenv("BUILD_BUILDID")
 	v.BuildType = os.Getenv("BUILD_REASON")

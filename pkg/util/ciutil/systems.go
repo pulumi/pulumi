@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package systems
+package ciutil
 
 import (
 	"os"
@@ -81,12 +81,12 @@ type Vars struct {
 	PRNumber string
 }
 
-// BaseCI implements the `System` interface with default
+// baseCI implements the `System` interface with default
 // implementations.
 //
 // When creating a new CI System implementation, implement the
 // DetectVars and any other function you wish to override.
-type BaseCI struct {
+type baseCI struct {
 	Name SystemName
 	// EnvVarsToDetect is an array of env vars to check if any of these env vars is set,
 	// which would indicate that the Pulumi CLI is running in that CI system's environment.
@@ -97,12 +97,12 @@ type BaseCI struct {
 }
 
 // DetectVars for a known CI system returns an empty Vars struct.
-func (d BaseCI) DetectVars() Vars {
+func (d baseCI) DetectVars() Vars {
 	return Vars{}
 }
 
 // IsCI returns true if a specific env var of a CI system is set.
-func (d BaseCI) IsCI() bool {
+func (d baseCI) IsCI() bool {
 	for _, e := range d.EnvVarsToDetect {
 		if os.Getenv(e) != "" {
 			return true
