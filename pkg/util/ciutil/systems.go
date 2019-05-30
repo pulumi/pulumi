@@ -51,8 +51,8 @@ const (
 // SystemName is a recognized CI system.
 type SystemName string
 
-// System represents a CI/CD system.
-type System interface {
+// system represents a CI/CD system.
+type system interface {
 	// DetectVars when called on a specific instance of a CISystem
 	// detects the env vars of the corresponding CI/CD system and
 	// returns `Vars` with those values.

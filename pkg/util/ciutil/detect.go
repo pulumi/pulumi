@@ -23,7 +23,7 @@ import (
 // For any CI system for which we detect additional env vars, the type of `System` is that is
 // specific to that CI system. The rest, even though we detect if it is that CI system, may not have an
 // implementation that detects all useful env vars, and hence just uses the `baseCI` struct type.
-var detectors = map[SystemName]System{
+var detectors = map[SystemName]system{
 	AppVeyor: baseCI{
 		Name:            AppVeyor,
 		EnvVarsToDetect: []string{"APPVEYOR"},
@@ -126,12 +126,12 @@ var detectors = map[SystemName]System{
 
 // IsCI returns true if we are running in a known CI system.
 func IsCI() bool {
-	return DetectSystem() != nil
+	return detectSystem() != nil
 }
 
-// DetectSystem returns a CI system name when the current system looks like a CI system. Detection is based on
+// detectSystem returns a CI system name when the current system looks like a CI system. Detection is based on
 // environment variables that CI vendors we know about set.
-func DetectSystem() System {
+func detectSystem() system {
 	// Provide a way to disable CI/CD detection, as it can interfere with the ability to test.
 	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
 		return nil

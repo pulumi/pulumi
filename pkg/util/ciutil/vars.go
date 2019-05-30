@@ -27,7 +27,7 @@ func DetectVars() Vars {
 	}
 
 	var v Vars
-	system := DetectSystem()
+	system := detectSystem()
 	if system == nil {
 		return v
 	}
