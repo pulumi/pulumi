@@ -26,4 +26,5 @@ message PluginDependency {
     string name = 1;    // the name of the plugin.
     string kind = 2;    // the kind of plugin (e.g., language, etc).
     string version = 3; // the semver for this plugin.
+    string server = 4; // the URL of a sever that can be used to download this plugin, if needed.
 }

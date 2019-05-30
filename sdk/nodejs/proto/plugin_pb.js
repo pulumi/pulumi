@@ -204,7 +204,8 @@ proto.pulumirpc.PluginDependency.toObject = function(includeInstance, msg) {
   var f, obj = {
     name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     kind: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 3, "")
+    version: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    server: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -252,6 +253,10 @@ proto.pulumirpc.PluginDependency.deserializeBinaryFromReader = function(msg, rea
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setVersion(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setServer(value);
       break;
     default:
       reader.skipField();
@@ -303,6 +308,13 @@ proto.pulumirpc.PluginDependency.serializeBinaryToWriter = function(message, wri
       f
     );
   }
+  f = message.getServer();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
 };
 
 
@@ -348,6 +360,21 @@ proto.pulumirpc.PluginDependency.prototype.getVersion = function() {
 /** @param {string} value */
 proto.pulumirpc.PluginDependency.prototype.setVersion = function(value) {
   jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string server = 4;
+ * @return {string}
+ */
+proto.pulumirpc.PluginDependency.prototype.getServer = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.PluginDependency.prototype.setServer = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
