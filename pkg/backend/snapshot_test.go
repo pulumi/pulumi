@@ -186,6 +186,9 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 // This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
 // that the snapshot is written.
 func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
+	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider")
+	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgA", "id"
+
 	resourceP := NewResource("a-unique-urn-resource-p")
 	resourceA := NewResource("a-unique-urn-resource-a")
 
@@ -193,7 +196,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 
 	// Change the "custom" bit.
 	changes = append(changes, NewResource(string(resourceA.URN)))
-	changes[0].Custom = !resourceA.Custom
+	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
 
 	// Change the parent.
 	changes = append(changes, NewResource(string(resourceA.URN)))
@@ -208,6 +211,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 
 	snap := NewSnapshot([]*resource.State{
+		provider,
 		resourceP,
 		resourceA,
 	})
@@ -215,10 +219,22 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	for _, c := range changes {
 		manager, sp := MockSetup(t, snap)
 
+		// Generate a same for the provider.
+		provUpdated := NewResource(string(provider.URN))
+		provUpdated.Custom, provUpdated.Type = true, provider.Type
+		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
+		mutation, err := manager.BeginMutation(provSame)
+		assert.NoError(t, err)
+		_, _, err = provSame.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(provSame, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
 		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
 		pUpdated := NewResource(string(resourceP.URN))
 		pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
-		mutation, err := manager.BeginMutation(pSame)
+		mutation, err = manager.BeginMutation(pSame)
 		assert.NoError(t, err)
 		err = mutation.End(pSame, true)
 		assert.NoError(t, err)
@@ -234,7 +250,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.NotEmpty(t, sp.SavedSnapshots)
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
-		inSnapshot := sp.SavedSnapshots[0].Resources[1]
+		inSnapshot := sp.SavedSnapshots[0].Resources[2]
 		assert.Equal(t, c, inSnapshot)
 
 		err = manager.Close()
