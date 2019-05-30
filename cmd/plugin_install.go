@@ -69,6 +69,8 @@ func newPluginInstallCmd() *cobra.Command {
 				serverURL = cloudURL + "/releases/plugins"
 			}
 
+			// Note we don't presently set this as the default value for `--server` so we can play games like the above
+			// where we want to ensure at most one of `--server` or `--cloud-url` is set.
 			if serverURL == "" {
 				serverURL = "https://api.pulumi.com/releases/plugins"
 			}
@@ -88,9 +90,10 @@ func newPluginInstallCmd() *cobra.Command {
 					return errors.Wrap(err, "invalid plugin semver")
 				}
 				installs = append(installs, workspace.PluginInfo{
-					Kind:    workspace.PluginKind(args[0]),
-					Name:    args[1],
-					Version: &version,
+					Kind:      workspace.PluginKind(args[0]),
+					Name:      args[1],
+					Version:   &version,
+					ServerURL: serverURL,
 				})
 			} else {
 				if file != "" {
@@ -146,11 +149,11 @@ func newPluginInstallCmd() *cobra.Command {
 				if file == "" {
 					if verbose {
 						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s downloading from %s"), label, serverURL)
+							diag.Message("", "%s downloading from %s"), label, install.ServerURL)
 					}
 					var size int64
-					if tarball, size, err = install.Download(serverURL); err != nil {
-						return errors.Wrapf(err, "%s downloading from %s", label, serverURL)
+					if tarball, size, err = install.Download(); err != nil {
+						return errors.Wrapf(err, "%s downloading from %s", label, install.ServerURL)
 					}
 					// If we know the length of the download, show a progress bar.
 					if size != -1 {

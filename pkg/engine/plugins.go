@@ -79,7 +79,8 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 	}
 	for _, plug := range langhostPlugins {
 		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromProgram(): plugin %s %s is required by language host", plug.Name, plug.Version)
+			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
+			plug.Name, plug.Version, plug.ServerURL)
 		set.Add(plug)
 	}
 	return set, nil
@@ -162,7 +163,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
-	stream, _, err := plugin.Download("")
+	stream, _, err := plugin.Download()
 	if err != nil {
 		return err
 	}

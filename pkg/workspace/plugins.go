@@ -83,6 +83,7 @@ type PluginInfo struct {
 	Size         int64           // the size of the plugin, in bytes.
 	InstallTime  time.Time       // the time the plugin was installed.
 	LastUsedTime time.Time       // the last time the plugin was used.
+	ServerURL    string          // an optional server to use when downloading this plugin.
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -167,7 +168,7 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 }
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-func (info PluginInfo) Download(serverURL string) (io.ReadCloser, int64, error) {
+func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
 	var os string
 	switch runtime.GOOS {
@@ -184,6 +185,9 @@ func (info PluginInfo) Download(serverURL string) (io.ReadCloser, int64, error) 
 		return nil, -1, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
 	}
 
+	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
+	// is hosted by Pulumi.
+	serverURL := info.ServerURL
 	if serverURL == "" {
 		serverURL = "https://api.pulumi.com/releases/plugins"
 	}
