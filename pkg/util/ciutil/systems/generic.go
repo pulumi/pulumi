@@ -18,16 +18,14 @@ import (
 	"os"
 )
 
-// GenericCISystem represents the Azure Pipelines CI/CD system
+// GenericCICI represents a generic CI/CD system
 // that belongs to the Azure DevOps product suite.
-type GenericCISystem struct {
-	BaseCISystem
+type GenericCICI struct {
+	BaseCI
 }
 
-var _ System = &GenericCISystem{}
-
 // DetectVars detects the env vars from Azure Piplines.
-func (g GenericCISystem) DetectVars() Vars {
+func (g GenericCICI) DetectVars() Vars {
 	v := Vars{Name: g.Name}
 	v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
 	v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")

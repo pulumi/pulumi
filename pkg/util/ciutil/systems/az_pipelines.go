@@ -19,18 +19,16 @@ import (
 	"os"
 )
 
-// AzurePipelinesCISystem represents the Azure Pipelines CI/CD system
+// AzurePipelinesCI represents the Azure Pipelines CI/CD system
 // that belongs to the Azure DevOps product suite.
-type AzurePipelinesCISystem struct {
-	BaseCISystem
+type AzurePipelinesCI struct {
+	BaseCI
 }
-
-var _ System = &AzurePipelinesCISystem{}
 
 // DetectVars detects the env vars from Azure Piplines.
 // See:
 // https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#build-variables
-func (az AzurePipelinesCISystem) DetectVars() Vars {
+func (az AzurePipelinesCI) DetectVars() Vars {
 	v := Vars{Name: AzurePipelines}
 	v.BuildID = os.Getenv("BUILD_BUILDID")
 	v.BuildType = os.Getenv("BUILD_REASON")

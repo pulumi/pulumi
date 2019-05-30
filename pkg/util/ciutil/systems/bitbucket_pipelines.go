@@ -19,14 +19,14 @@ import (
 	"os"
 )
 
-// BitbucketPipelinesCISystem represents the Bitbucket CI system.
-type BitbucketPipelinesCISystem struct {
-	BaseCISystem
+// BitbucketPipelinesCI represents the Bitbucket CI system.
+type BitbucketPipelinesCI struct {
+	BaseCI
 }
 
 // DetectVars detects the Bitbucket env vars.
 // See https://confluence.atlassian.com/bitbucket/environment-variables-794502608.html.
-func (bb BitbucketPipelinesCISystem) DetectVars() Vars {
+func (bb BitbucketPipelinesCI) DetectVars() Vars {
 	v := Vars{Name: bb.Name}
 
 	buildID := os.Getenv("BITBUCKET_BUILD_NUMBER")

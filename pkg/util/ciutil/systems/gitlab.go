@@ -18,14 +18,14 @@ import (
 	"os"
 )
 
-// GitLabCISystem represents the GitLab CI system.
-type GitLabCISystem struct {
-	BaseCISystem
+// GitLabCI represents the GitLab CI system.
+type GitLabCI struct {
+	BaseCI
 }
 
 // DetectVars detects the Travis env vars.
 // See https://docs.gitlab.com/ee/ci/variables/.
-func (gl GitLabCISystem) DetectVars() Vars {
+func (gl GitLabCI) DetectVars() Vars {
 	v := Vars{Name: gl.Name}
 	v.BuildID = os.Getenv("CI_JOB_ID")
 	v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
