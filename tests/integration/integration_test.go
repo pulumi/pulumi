@@ -878,9 +878,9 @@ func TestGetCreated(t *testing.T) {
 	})
 }
 
-// Tests that stack references work.
-func TestStackReference(t *testing.T) {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+// Tests that stack references work in Node.
+func TestStackReferenceNodeJS(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
 
@@ -888,6 +888,24 @@ func TestStackReference(t *testing.T) {
 		Dir:          "stack_reference",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+func TestStackReferencePython(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
