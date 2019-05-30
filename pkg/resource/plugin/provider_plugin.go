@@ -34,6 +34,20 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
+// The `Type()` for the NodeJS dynamic provider.  Logically, this is the same as calling
+// providers.MakeProviderType(tokens.Package("pulumi-nodejs")), but does not depend on the providers package
+// (a direct dependency would cause a cyclic import issue.
+//
+// This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
+const nodejsDynamicProviderType = "pulumi:providers:pulumi-nodejs"
+
+// The `Type()` for the Kubernetes provider.  Logically, this is the same as calling
+// providers.MakeProviderType(tokens.Package("kubernetes")), but does not depend on the providers package
+// (a direct dependency would cause a cyclic import issue.
+//
+// This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
+const kubernetesProviderType = "pulumi:providers:kubernetes"
+
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
 	ctx           *Context                         // a plugin context for caching, etc.
@@ -84,8 +98,37 @@ func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
 }
 
+// isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
+// due to a rpc being unimplemented. Due to past mistakes, different providers returned "Unimplemented" in a variaity of
+// different ways that don't always result in an Uimplemented error code.
+func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType tokens.Type) bool {
+	switch string(providerType) {
+	// The NodeJS dynamic provider implementation incorrectly returned an empty message instead of properly implementing
+	// Diff/CheckConfig.  This gets turned into a error with type: "Internal".
+	case nodejsDynamicProviderType:
+		if err.Code() == codes.Internal {
+			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			return true
+		}
+
+	// The Kubernetes provider returned an "Unimplmeneted" message, but it did so by returning a status from a different
+	// package that the provider was expected. That caused the error to be wrapped with an "Unknown" error.
+	case kubernetesProviderType:
+		if err.Code() == codes.Unknown && strings.Contains(err.Message(), "Unimplemented") {
+			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			return true
+		}
+	}
+
+	return false
+}
+
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+func (p *provider) CheckConfig(urn resource.URN, olds,
+	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+
 	// Ensure that all config values are strings or unknowns.
 	var failures []CheckFailure
 	for k, v := range news {
@@ -106,23 +149,135 @@ func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 		return nil, failures, nil
 	}
 
-	// If all config values check out, simply return the new values.
-	return news, nil, nil
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: allowUnknowns,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := p.clientRaw.CheckConfig(p.ctx.Request(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, urn.Type()) {
+			// For backwards compatibility, just return the news as if the provider was okay with them.
+			logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
+			return news, nil, nil
+		}
+		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
+			rpcError.Message())
+		return nil, nil, err
+	}
+
+	// Unmarshal the provider inputs.
+	var inputs resource.PropertyMap
+	if ins := resp.GetInputs(); ins != nil {
+		inputs, err = UnmarshalProperties(ins, MarshalOptions{
+			Label:          fmt.Sprintf("%s.inputs", label),
+			KeepUnknowns:   allowUnknowns,
+			RejectUnknowns: !allowUnknowns,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Copy over any secret annotations, since we could not pass any to the provider, and return.
+	annotateSecrets(inputs, news)
+	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	return inputs, failures, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, error) {
-	// There are two interesting scenarios with the present gRPC interface:
-	// 1. Configuration differences in which all properties are known
-	// 2. Configuration differences in which some new property is unknown.
-	//
-	// In both cases, we return a diff result that indicates that the provider _should not_ be replaced. Although this
-	// decision is not conservative--indeed, the conservative decision would be to always require replacement of a
-	// provider if any input has changed--we believe that it results in the best possible user experience for providers
-	// that do not implement DiffConfig functionality. If we took the conservative route here, any change to a
-	// provider's configuration (no matter how inconsequential) would cause all of its resources to be replaced. This
-	// is clearly a bad experience, and differs from how things worked prior to first-class providers.
-	return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
+func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+	allowUnknowns bool) (DiffResult, error) {
+	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	resp, err := p.clientRaw.DiffConfig(p.ctx.Request(), &pulumirpc.DiffRequest{
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, urn.Type()) {
+			logging.V(7).Infof("%s unimplemented rpc: returning DiffUnknown with no replaces", label)
+			// In this case, the provider plugin did not implement this and we have to provide some answer:
+			//
+			// There are two interesting scenarios with the present gRPC interface:
+			// 1. Configuration differences in which all properties are known
+			// 2. Configuration differences in which some new property is unknown.
+			//
+			// In both cases, we return a diff result that indicates that the provider _should not_ be replaced.
+			// Although this decision is not conservative--indeed, the conservative decision would be to always require
+			// replacement of a provider if any input has changed--we believe that it results in the best possible user
+			// experience for providers that do not implement DiffConfig functionality. If we took the conservative
+			// route here, any change to a provider's configuration (no matter how inconsequential) would cause all of
+			// its resources to be replaced. This is clearly a bad experience, and differs from how things worked prior
+			// to first-class providers.
+			return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
+		}
+		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
+			rpcError.Message())
+		return DiffResult{}, nil
+	}
+
+	var replaces []resource.PropertyKey
+	for _, replace := range resp.GetReplaces() {
+		replaces = append(replaces, resource.PropertyKey(replace))
+	}
+	var stables []resource.PropertyKey
+	for _, stable := range resp.GetStables() {
+		stables = append(stables, resource.PropertyKey(stable))
+	}
+	var diffs []resource.PropertyKey
+	for _, diff := range resp.GetDiffs() {
+		diffs = append(diffs, resource.PropertyKey(diff))
+	}
+
+	changes := resp.GetChanges()
+	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
+	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v",
+		label, changes, replaces, stables, deleteBeforeReplace, diffs)
+
+	return DiffResult{
+		Changes:             DiffChanges(changes),
+		ReplaceKeys:         replaces,
+		StableKeys:          stables,
+		ChangedKeys:         diffs,
+		DeleteBeforeReplace: deleteBeforeReplace,
+	}, nil
 }
 
 // getClient returns the client, and ensures that the target provider has been configured.  This just makes it safer
