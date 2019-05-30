@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -96,17 +97,70 @@ const (
 	DiffSome DiffChanges = 2
 )
 
+// DiffKind represents the kind of diff that applies to a particular property.
+type DiffKind int
+
+func (d DiffKind) String() string {
+	switch d {
+	case DiffAdd:
+		return "add"
+	case DiffAddReplace:
+		return "add-replace"
+	case DiffDelete:
+		return "delete"
+	case DiffDeleteReplace:
+		return "delete-replace"
+	case DiffUpdate:
+		return "update"
+	case DiffUpdateReplace:
+		return "update-replace"
+	default:
+		contract.Failf("Unknown diff kind %v", int(d))
+		return ""
+	}
+}
+
+func (d DiffKind) IsReplace() bool {
+	switch d {
+	case DiffAddReplace, DiffDeleteReplace, DiffUpdateReplace:
+		return true
+	default:
+		return false
+	}
+}
+
+const (
+	// DiffAdd indicates that the property was added.
+	DiffAdd DiffKind = 0
+	// DiffAddReplace indicates that the property was added and requires that the resource be replaced.
+	DiffAddReplace DiffKind = 1
+	// DiffDelete indicates that the property was deleted.
+	DiffDelete DiffKind = 2
+	// DiffDeleteReplace indicates that the property was added and requires that the resource be replaced.
+	DiffDeleteReplace DiffKind = 3
+	// DiffUpdate indicates that the property was updated.
+	DiffUpdate DiffKind = 4
+	// DiffUpdateReplace indicates that the property was updated and requires that the resource be replaced.
+	DiffUpdateReplace DiffKind = 5
+)
+
 // DiffResult indicates whether an operation should replace or update an existing resource.
 type DiffResult struct {
 	Changes             DiffChanges            // true if this diff represents a changed resource.
 	ReplaceKeys         []resource.PropertyKey // an optional list of replacement keys.
 	StableKeys          []resource.PropertyKey // an optional list of property keys that are stable.
 	ChangedKeys         []resource.PropertyKey // an optional list of keys that changed.
+	DetailedDiff        map[string]DiffKind    // an optional structured diff
 	DeleteBeforeReplace bool                   // if true, this resource must be deleted before recreating it.
 }
 
 // Replace returns true if this diff represents a replacement.
 func (r DiffResult) Replace() bool {
+	for _, v := range r.DetailedDiff {
+		if v.IsReplace() {
+			return true
+		}
+	}
 	return len(r.ReplaceKeys) > 0
 }
 

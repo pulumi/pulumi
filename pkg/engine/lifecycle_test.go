@@ -3464,5 +3464,137 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
 		},
 	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+}
 
+func TestPersistentDiff(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+
+					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource(
+			"pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false, "", nil, nil)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
+	// provider diffing.
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+			events []Event, res result.Result) result.Result {
+
+			found := false
+			for _, e := range events {
+				if e.Type == ResourcePreEvent {
+					p := e.Payload.(ResourcePreEventPayload).Metadata
+					if p.URN == resURN {
+						assert.Equal(t, deploy.OpUpdate, p.Op)
+						found = true
+					}
+				}
+			}
+			assert.True(t, found)
+			return res
+		})
+	assert.Nil(t, res)
+
+	// Next, enable legacy diff behavior. We should see no changes to the resource.
+	p.Options.UseLegacyDiff = true
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+			events []Event, res result.Result) result.Result {
+
+			found := false
+			for _, e := range events {
+				if e.Type == ResourcePreEvent {
+					p := e.Payload.(ResourcePreEventPayload).Metadata
+					if p.URN == resURN {
+						assert.Equal(t, deploy.OpSame, p.Op)
+						found = true
+					}
+				}
+			}
+			assert.True(t, found)
+			return res
+		})
+	assert.Nil(t, res)
+}
+
+func TestDetailedDiffReplace(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+						DetailedDiff: map[string]plugin.DiffKind{
+							"prop": plugin.DiffAddReplace,
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource(
+			"pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false, "", nil, nil)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
+	// provider diffing.
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+			events []Event, res result.Result) result.Result {
+
+			found := false
+			for _, e := range events {
+				if e.Type == ResourcePreEvent {
+					p := e.Payload.(ResourcePreEventPayload).Metadata
+					if p.URN == resURN && p.Op == deploy.OpReplace {
+						found = true
+					}
+				}
+			}
+			assert.True(t, found)
+			return res
+		})
+	assert.Nil(t, res)
 }

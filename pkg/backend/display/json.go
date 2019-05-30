@@ -134,12 +134,21 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 			// Create the detailed metadata for this step and the initial state of its resource. Later,
 			// if new outputs arrive, we'll search for and swap in those new values.
 			if m := e.Payload.(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
+				var detailedDiff map[string]string
+				if m.DetailedDiff != nil {
+					detailedDiff = make(map[string]string)
+					for k, v := range m.DetailedDiff {
+						detailedDiff[k] = v.String()
+					}
+				}
+
 				step := &previewStep{
 					Op:             m.Op,
 					URN:            m.URN,
 					Provider:       m.Provider,
 					DiffReasons:    m.Diffs,
 					ReplaceReasons: m.Keys,
+					DetailedDiff:   detailedDiff,
 				}
 
 				if m.Old != nil {
@@ -221,6 +230,8 @@ type previewStep struct {
 	DiffReasons []resource.PropertyKey `json:"diffReasons,omitempty"`
 	// ReplaceReasons is a list of keys that are causing replacement (for replacement steps only).
 	ReplaceReasons []resource.PropertyKey `json:"replaceReasons,omitempty"`
+	// DetailedDiff is a structured diff that indicates precise per-property differences.
+	DetailedDiff map[string]string `json:"detailedDiff"`
 }
 
 // previewDiagnostic is a warning or error emitted during the execution of the preview.

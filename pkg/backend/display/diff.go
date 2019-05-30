@@ -263,8 +263,21 @@ func renderDiffResourcePreEvent(
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
-		details := engine.GetResourcePropertiesDetails(
-			payload.Metadata, indent, payload.Planning, opts.SummaryDiff, payload.Debug)
+
+		var details string
+		if payload.Metadata.DetailedDiff != nil {
+			var buf bytes.Buffer
+			if diff := translateDetailedDiff(payload.Metadata); diff != nil {
+				engine.PrintObjectDiff(&buf, *diff, nil /*include*/, payload.Planning, indent, opts.SummaryDiff, payload.Debug)
+			} else {
+				engine.PrintObject(
+					&buf, payload.Metadata.Old.Inputs, payload.Planning, indent, deploy.OpSame, true /*prefix*/, payload.Debug)
+			}
+			details = buf.String()
+		} else {
+			details = engine.GetResourcePropertiesDetails(
+				payload.Metadata, indent, payload.Planning, opts.SummaryDiff, payload.Debug)
+		}
 
 		fprintIgnoreError(out, opts.Color.Colorize(summary))
 		fprintIgnoreError(out, opts.Color.Colorize(details))
