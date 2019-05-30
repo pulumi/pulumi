@@ -35,9 +35,9 @@ class StackReference(CustomResource):
     """
 
     def __init__(self,
-        name: str,
-        stack_name: Optional[str] = None,
-        opts: Optional[ResourceOptions] = None) -> None:
+                 name: str,
+                 stack_name: Optional[str] = None,
+                 opts: Optional[ResourceOptions] = None) -> None:
         """
         :param str name: The unique name of the stack reference.
         :param Optional[str] stack_name: The name of the stack to reference. If not provided, defaults to the name of
@@ -48,12 +48,13 @@ class StackReference(CustomResource):
         target_stack = stack_name if stack_name is not None else name
         opts = deepcopy(opts) if opts is not None else ResourceOptions()
         opts.id = target_stack
+
         super().__init__("pulumi:pulumi:StackReference", name, {
             "name": target_stack,
             "outputs": None,
         }, opts)
 
-    def get_output(name: Input[str]) -> Output[Any]:
+    def get_output(self, name: Input[str]) -> Output[Any]:
         """
         Fetches the value of the named stack output.
 
