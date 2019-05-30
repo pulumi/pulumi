@@ -65,7 +65,7 @@ func newRefreshSource(client deploy.BackendClient, opts planOptions, proj *works
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(client, plugins); err != nil {
+	if err := ensurePluginsAreInstalled(plugins); err != nil {
 		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
 	}
 

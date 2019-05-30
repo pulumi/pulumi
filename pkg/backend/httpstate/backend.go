@@ -26,12 +26,10 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/cheggaaa/pb"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
@@ -102,38 +100,11 @@ func ValueOrDefaultURL(cloudURL string) string {
 	return PulumiCloudURL
 }
 
-// barCloser is an implementation of io.Closer that finishes a progress bar upon Close() as well as closing its
-// underlying readCloser.
-type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
-}
-
-func (bc *barCloser) Read(dest []byte) (int, error) {
-	return bc.readCloser.Read(dest)
-}
-
-func (bc *barCloser) Close() error {
-	bc.bar.Finish()
-	return bc.readCloser.Close()
-}
-
-func newBarProxyReadCloser(bar *pb.ProgressBar, r io.Reader) io.ReadCloser {
-	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(r),
-	}
-}
-
 // Backend extends the base backend interface with specific information about cloud backends.
 type Backend interface {
 	backend.Backend
 
 	CloudURL() string
-
-	DownloadPlugin(
-		ctx context.Context, info workspace.PluginInfo,
-		progress bool, opts display.Options) (io.ReadCloser, error)
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
@@ -463,48 +434,6 @@ func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) str
 // Logout logs out of the target cloud URL.
 func (b *cloudBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.CloudURL())
-}
-
-// DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
-// that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
-// is true, the download will display a progress bar using stdout.
-func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.PluginInfo,
-	progress bool, opts display.Options) (io.ReadCloser, error) {
-
-	// Figure out the OS/ARCH pair for the download URL.
-	var os string
-	switch runtime.GOOS {
-	case "darwin", "linux", "windows":
-		os = runtime.GOOS
-	default:
-		return nil, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
-	}
-	var arch string
-	switch runtime.GOARCH {
-	case "amd64":
-		arch = runtime.GOARCH
-	default:
-		return nil, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
-	}
-
-	// Now make the client request.
-	result, size, err := b.client.DownloadPlugin(ctx, info, os, arch)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to download plugin")
-	}
-
-	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
-	if progress && size != -1 {
-		bar := pb.New(int(size))
-		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading plugin: "))
-		bar.Postfix(opts.Color.Colorize(colors.Reset))
-		bar.SetMaxWidth(80)
-		bar.SetUnits(pb.U_BYTES)
-		bar.Start()
-	}
-
-	return result, nil
 }
 
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
@@ -1287,10 +1216,6 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 	}
 
 	return backend.NewBackendClient(c.backend).GetStackOutputs(ctx, name)
-}
-
-func (c httpstateBackendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
-	return c.backend.DownloadPlugin(ctx, plug, false, display.Options{})
 }
 
 func (c httpstateBackendClient) GetStackResourceOutputs(

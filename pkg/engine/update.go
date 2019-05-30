@@ -95,7 +95,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 }
 
 func installPlugins(
-	client deploy.BackendClient, proj *workspace.Project, pwd, main string, target *deploy.Target,
+	proj *workspace.Project, pwd, main string, target *deploy.Target,
 	plugctx *plugin.Context) (pluginSet, map[tokens.Package]*semver.Version, error) {
 
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
@@ -125,12 +125,11 @@ func installPlugins(
 
 	allPlugins := languagePlugins.Union(snapshotPlugins)
 
-	// If there are any plugins that are not available, we can attempt to install them here. This only works when using
-	// the http backend, since the local backend is not capable of installing plugins on its own.
+	// If there are any plugins that are not available, we can attempt to install them here.
 	//
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing.
-	if err := ensurePluginsAreInstalled(client, allPlugins); err != nil {
+	if err := ensurePluginsAreInstalled(allPlugins); err != nil {
 		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
 
@@ -144,7 +143,7 @@ func newUpdateSource(
 	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
-	allPlugins, defaultProviderVersions, err := installPlugins(client, proj, pwd, main, target,
+	allPlugins, defaultProviderVersions, err := installPlugins(proj, pwd, main, target,
 		plugctx)
 	if err != nil {
 		return nil, err

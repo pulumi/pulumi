@@ -20,17 +20,20 @@ import (
 	"os"
 
 	"github.com/blang/semver"
+	"github.com/cheggaaa/pb"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newPluginInstallCmd() *cobra.Command {
+	var serverURL string
 	var cloudURL string
 	var exact bool
 	var file string
@@ -53,6 +56,21 @@ func newPluginInstallCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			if serverURL != "" && cloudURL != "" {
+				return errors.New("only one of server and cloud-url may be specified")
+			}
+
+			if cloudURL != "" {
+				cmdutil.Diag().Warningf(diag.Message("", "cloud-url is deprecated, please pass '--server "+
+					"%s/releases/plugins' instead."), cloudURL)
+
+				serverURL = cloudURL + "/releases/plugins"
+			}
+
+			if serverURL == "" {
+				serverURL = "https://api.pulumi.com/releases/plugins"
 			}
 
 			// Parse the kind, name, and version, if specified.
@@ -93,16 +111,6 @@ func newPluginInstallCmd() *cobra.Command {
 				}
 			}
 
-			// Target the cloud URL for downloads.
-			var releases httpstate.Backend
-			if len(installs) > 0 && file == "" {
-				r, err := httpstate.New(cmdutil.Diag(), httpstate.ValueOrDefaultURL(cloudURL))
-				if err != nil {
-					return errors.Wrap(err, "creating API client")
-				}
-				releases = r
-			}
-
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
 				label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
@@ -136,13 +144,23 @@ func newPluginInstallCmd() *cobra.Command {
 				var tarball io.ReadCloser
 				var err error
 				if file == "" {
-					source = releases.CloudURL()
 					if verbose {
 						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s downloading from %s"), label, source)
+							diag.Message("", "%s downloading from %s"), label, serverURL)
 					}
-					if tarball, err = releases.DownloadPlugin(commandContext(), install, true, displayOpts); err != nil {
-						return errors.Wrapf(err, "%s downloading from %s", label, source)
+					var size int64
+					if tarball, size, err = install.Download(serverURL); err != nil {
+						return errors.Wrapf(err, "%s downloading from %s", label, serverURL)
+					}
+					// If we know the length of the download, show a progress bar.
+					if size != -1 {
+						bar := pb.New(int(size))
+						tarball = newBarProxyReadCloser(bar, tarball)
+						bar.Prefix(displayOpts.Color.Colorize(colors.SpecUnimportant + "Downloading plugin: "))
+						bar.Postfix(displayOpts.Color.Colorize(colors.Reset))
+						bar.SetMaxWidth(80)
+						bar.SetUnits(pb.U_BYTES)
+						bar.Start()
 					}
 				} else {
 					source = file
@@ -167,6 +185,8 @@ func newPluginInstallCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringVar(&serverURL,
+		"server", "", "A URL to download plugins from")
 	cmd.PersistentFlags().StringVarP(&cloudURL,
 		"cloud-url", "c", "", "A cloud URL to download releases from")
 	cmd.PersistentFlags().BoolVar(&exact,
@@ -178,5 +198,31 @@ func newPluginInstallCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&verbose,
 		"verbose", false, "Print detailed information about the installation steps")
 
+	// We are moving away from supporting this option, for now we mark it hidden.
+	contract.AssertNoError(cmd.PersistentFlags().MarkHidden("cloud-url"))
+
 	return cmd
+}
+
+// barCloser is an implementation of io.Closer that finishes a progress bar upon Close() as well as closing its
+// underlying readCloser.
+type barCloser struct {
+	bar        *pb.ProgressBar
+	readCloser io.ReadCloser
+}
+
+func (bc *barCloser) Read(dest []byte) (int, error) {
+	return bc.readCloser.Read(dest)
+}
+
+func (bc *barCloser) Close() error {
+	bc.bar.Finish()
+	return bc.readCloser.Close()
+}
+
+func newBarProxyReadCloser(bar *pb.ProgressBar, r io.Reader) io.ReadCloser {
+	return &barCloser{
+		bar:        bar,
+		readCloser: bar.NewProxyReader(r),
+	}
 }

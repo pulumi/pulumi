@@ -16,7 +16,6 @@ package deploy
 
 import (
 	"context"
-	"io"
 	"math"
 
 	"github.com/blang/semver"
@@ -31,15 +30,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // BackendClient provides an interface for retrieving information about other stacks.
 type BackendClient interface {
 	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
-
-	DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error)
 
 	// GetStackResourceOutputs returns the resource outputs of type (if any) for a stack, or an
 	// error if the stack cannot be found. Resources are retrieved from the latest stack snapshot,

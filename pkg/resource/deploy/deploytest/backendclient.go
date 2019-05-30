@@ -16,12 +16,8 @@ package deploytest
 
 import (
 	"context"
-	"io"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // BackendClient provides a simple implementation of deploy.BackendClient that defers to a function value.
@@ -33,11 +29,6 @@ type BackendClient struct {
 // GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
 	return b.GetStackOutputsF(ctx, name)
-}
-
-// DownloadPlugin optionally downloads a plugin corresponding to the requested plugin info.
-func (b *BackendClient) DownloadPlugin(ctx context.Context, plugin workspace.PluginInfo) (io.ReadCloser, error) {
-	return nil, errors.New("don't download plugins during unit tests")
 }
 
 // GetStackResourceOutputs returns the resource outputs of type (if any) for a stack, or an error if
