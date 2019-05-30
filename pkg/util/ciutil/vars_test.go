@@ -84,6 +84,52 @@ func TestDetectVars(t *testing.T) {
 	}
 }
 
+func TestDetectVarsBaseCI(t *testing.T) {
+	systemAndEnvVars := map[SystemName]map[string]string{
+		// Since the `pulumi/pulumi` repo runs on Travis,
+		// we set the TRAVIS env var to an empty string for all test cases
+		// except for the Travis one itself.
+		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
+		AppVeyor: {
+			"TRAVIS":   "",
+			"APPVEYOR": "true",
+		},
+		Codeship: {
+			"TRAVIS":  "",
+			"CI_NAME": "codeship",
+		},
+	}
+
+	for system := range systemAndEnvVars {
+		t.Run(fmt.Sprintf("Test_%v_Detection", system), func(t *testing.T) {
+			envVars := systemAndEnvVars[system]
+			originalEnvVars := make(map[string]string)
+			for envVar := range envVars {
+				// Save the original env value
+				if value, isSet := os.LookupEnv(envVar); isSet {
+					originalEnvVars[envVar] = value
+				}
+
+				os.Setenv(envVar, envVars[envVar])
+			}
+			vars := DetectVars()
+			assert.Equal(t,
+				string(system), string(vars.Name),
+				"%v did not set the expected CI system name in the Vars struct.", system)
+
+			// Restore any modified env vars back to their original value
+			// if we previously saved it. Otherwise, just unset it.
+			for envVar := range envVars {
+				if val, ok := originalEnvVars[envVar]; ok {
+					os.Setenv(envVar, val)
+				} else {
+					os.Unsetenv(envVar)
+				}
+			}
+		})
+	}
+}
+
 func TestDetectVarsDisableCIDetection(t *testing.T) {
 	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "nonEmptyString")
 	os.Setenv("TRAVIS", "true")

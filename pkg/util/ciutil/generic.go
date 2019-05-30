@@ -18,13 +18,15 @@ import (
 	"os"
 )
 
-// genericCICI represents a generic CI/CD system
-// that belongs to the Azure DevOps product suite.
+// genericCICI represents a generic CI/CD system.
+// It provides a way for users to workaround the fact that the CLI
+// may not know about their CI system. This is sort of an
+// escape hatch to give the CLI a hint about the CI environment.
 type genericCICI struct {
 	baseCI
 }
 
-// DetectVars detects the env vars from Azure Piplines.
+// DetectVars detects the env vars for a Generic CI system.
 func (g genericCICI) DetectVars() Vars {
 	v := Vars{Name: g.Name}
 	v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")

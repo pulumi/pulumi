@@ -96,9 +96,10 @@ type baseCI struct {
 	EnvValuesToDetect map[string]string
 }
 
-// DetectVars for a known CI system returns an empty Vars struct.
+// DetectVars in the base implementation returns a Vars
+// struct with just the Name property of the CI system.
 func (d baseCI) DetectVars() Vars {
-	return Vars{}
+	return Vars{Name: d.Name}
 }
 
 // IsCI returns true if a specific env var of a CI system is set.
