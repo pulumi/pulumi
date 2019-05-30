@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- Pulumi now allows Python programs to "read" existing resources instead of just creating them. This feature enables
+  Pulumi Python packages to expose ".get()" methods that allow for reading of resources that already exist.
+
 ## 0.17.14 (Released May 28, 2019)
 
 ### Improvements

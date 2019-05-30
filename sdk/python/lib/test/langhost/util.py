@@ -68,8 +68,11 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         id_ = request.id
         parent = request.parent
         state = rpc.deserialize_properties(request.properties)
+        dependencies = sorted(list(request.dependencies))
+        provider = request.provider
+        version = request.version
         outs = self.langhost_test.read_resource(context, type_, name, id_,
-                                                parent, state)
+                                                parent, state, dependencies, provider, version)
         if "properties" in outs:
             loop = asyncio.new_event_loop()
             props_proto = loop.run_until_complete(rpc.serialize_properties(outs["properties"], {}))
