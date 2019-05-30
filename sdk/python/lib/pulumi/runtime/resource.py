@@ -135,7 +135,7 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
     urn_known = asyncio.Future()
     urn_secret = asyncio.Future()
     urn_known.set_result(True)
-    urn_secret.set_result(True)
+    urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
     resolve_urn_exn = urn_future.set_exception
     res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
@@ -220,13 +220,12 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
             log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn_exn(exn)
-            if resolve_id is not None:
-                resolve_id(None, False, exn)
+            resolve_id(None, False, exn)
             raise
 
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
-        resolve_id(resolve_id, True, None) # Read IDs are always known.
+        resolve_id(resolved_id, True, None) # Read IDs are always known.
         await rpc.resolve_outputs(res, props, resp.properties, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
@@ -251,7 +250,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     urn_known = asyncio.Future()
     urn_secret = asyncio.Future()
     urn_known.set_result(True)
-    urn_secret.set_result(True)
+    urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
     resolve_urn_exn = urn_future.set_exception
     res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
