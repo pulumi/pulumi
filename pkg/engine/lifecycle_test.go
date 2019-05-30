@@ -2973,17 +2973,18 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 
 // Resource is an abstract representation of a resource graph
 type Resource struct {
-	t        tokens.Type
-	name     string
-	children []Resource
-	props    resource.PropertyMap
-	aliases  []resource.URN
+	t                   tokens.Type
+	name                string
+	children            []Resource
+	props               resource.PropertyMap
+	aliases             []resource.URN
+	deleteBeforeReplace bool
 }
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
 	for _, r := range resources {
 		_, _, _, err := monitor.RegisterResource(r.t, r.name, true, "", false, nil, "",
-			r.props, nil, false, "", nil, r.aliases)
+			r.props, nil, r.deleteBeforeReplace, "", nil, r.aliases)
 		if err != nil {
 			return err
 		}
@@ -3154,7 +3155,7 @@ func TestAliases(t *testing.T) {
 	}}, []deploy.StepOp{deploy.OpUpdate})
 
 	// Ensure that changing a forceNew property while also changing type and name leads to replacement not delete+create
-	_ = updateProgramWithResource(snap, []Resource{{
+	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t6",
 		name: "n4",
 		props: resource.PropertyMap{
@@ -3162,6 +3163,20 @@ func TestAliases(t *testing.T) {
 		},
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
+		},
+	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+	// Ensure that changing a forceNew property and deleteBeforeReplace while also changing type and name leads to
+	// replacement not delete+create
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t7",
+		name: "n5",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
+		},
+		deleteBeforeReplace: true,
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t6::n4",
 		},
 	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
