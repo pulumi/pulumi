@@ -142,7 +142,6 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
-	contract.Assert(old.Type == new.Type)
 	contract.Assert(!new.External)
 	return &CreateStep{
 		plan:          plan,
@@ -365,7 +364,6 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
-	contract.Assert(old.Type == new.Type)
 	contract.Assert(!new.External)
 	contract.Assert(!old.External)
 	return &UpdateStep{

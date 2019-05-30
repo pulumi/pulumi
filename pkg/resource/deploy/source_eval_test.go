@@ -55,7 +55,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 		for _, s := range steps {
 			g := s.Goal()
 			urn, id, outs, err := resmon.RegisterResource(g.Type, string(g.Name), g.Custom, g.Parent, g.Protect,
-				g.Dependencies, g.Provider, g.Properties, g.PropertyDependencies, false, "", nil)
+				g.Dependencies, g.Provider, g.Properties, g.PropertyDependencies, false, "", nil, nil)
 			if err != nil {
 				return err
 			}
