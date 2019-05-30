@@ -81,7 +81,7 @@ class ResourceOptions:
 
     id: Optional[str]
     """
-    An optional exisitng ID to load, rather than create.
+    An optional existing ID to load, rather than create.
     """
 
     # pylint: disable=redefined-builtin
