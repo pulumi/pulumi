@@ -12,7 +12,10 @@ import (
 // TestAliases tests a case where a resource's name changes but it provides an `alias` pointing to the old URN to ensure
 // the resource is preserved across the update.
 func TestAliases(t *testing.T) {
-	dirs := []string{"rename", "adopt_into_component", "rename_component", "rename_component_and_child", "retype_component"}
+	dirs := []string{
+		"rename", "adopt_into_component", "rename_component",
+		"rename_component_and_child", "retype_component",
+	}
 	for _, dir := range dirs {
 		d := dir
 		t.Run(d, func(t *testing.T) {
