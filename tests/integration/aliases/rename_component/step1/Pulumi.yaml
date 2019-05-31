@@ -1,0 +1,3 @@
+name: aliases_rename_component
+description: A program that replaces a resource with a new name and alias.
+runtime: nodejs

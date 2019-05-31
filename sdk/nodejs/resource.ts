@@ -175,6 +175,9 @@ export abstract class Resource {
 
         this.__name = name;
 
+        // Make a shallow clone of opts to ensure we don't modify the value passed in.
+        opts = Object.assign({}, opts);
+
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
@@ -186,16 +189,22 @@ export abstract class Resource {
                 opts.protect = opts.parent.__protect;
             }
 
+            // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
+            opts.aliases = [...(opts.aliases || [])];
             for (const parentAlias of opts.parent.__aliases) {
-                if (!opts.aliases) {
-                    opts.aliases = [];
-                }
-
                 let aliasName = output(name);
                 // If the child name has the parent name as a prefix, then we make the assumption that it was
                 // constructed from the convention of using `{name}-details` as the name of the child resource.  To
                 // ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
                 // the child resource name.
+                //
+                // For example:
+                // * name: "newapp-function"
+                // * opts.parent.__name: "newapp"
+                // * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+                // * parentAliasName: "app"
+                // * aliasName: "app-function"
+                // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
                 if (name.startsWith(opts.parent.__name)) {
                     const parentName = opts.parent.__name;
                     aliasName = output(parentAlias).apply(parentAliasUrn => {
@@ -279,23 +288,24 @@ export abstract class Resource {
  */
 export interface Alias {
     /**
-     * The previous name of the resource.
+     * The previous name of the resource.  If not provided, the current name of the resource is used.
      */
     name?: Input<string>;
     /**
-     * The previous type of the resource.
+     * The previous type of the resource.  If not provided, the current type of the resource is used.
      */
     type?: Input<string>;
     /**
-     * The previous parent of the resource.
+     * The previous parent of the resource.  If not provided, the current parent of the resource is used
+     * (`opts.parent` if provided, else the implicit stack resource parent).
      */
     parent?: Resource | Input<URN>;
     /**
-     * The previous stack of the resource.
+     * The previous stack of the resource.  If not provided, defaults to `pulumi.getStack()`.
      */
     stack?: Input<string>;
     /**
-     * The previous project of the resource.
+     * The previous project of the resource. If not provided, defaults to `pulumi.getProject()`.
      */
     project?: Input<string>;
 }

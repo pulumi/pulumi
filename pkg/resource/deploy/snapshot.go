@@ -140,6 +140,14 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			}
 
 			urns[urn] = state
+
+			// Also register this state with all of it's alias URNs.  Note that there is a period of time between
+			// registering a parent resoruce and registering it's children where the child's `parent` URN will refer to
+			// the aliased name, not the new name.  By the end of a succesful deployment, these references should all be
+			// updated.
+			for _, alias := range state.Aliases {
+				urns[alias] = state
+			}
 		}
 	}
 

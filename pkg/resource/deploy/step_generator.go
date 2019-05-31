@@ -42,11 +42,11 @@ type stepGenerator struct {
 	creates        map[resource.URN]bool    // set of URNs created in this plan
 	sames          map[resource.URN]bool    // set of URNs that were not changed in this plan
 	pendingDeletes map[*resource.State]bool // set of resources (not URNs!) that are pending deletion
-
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
-	aliased              map[resource.URN]resource.URN // set of URNs that were aliased and shoud not be deleted
+	// a map from old names (aliased URNs) to the new URN that aliased to them.
+	aliased map[resource.URN]resource.URN
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
