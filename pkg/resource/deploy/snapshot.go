@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -74,7 +75,7 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 // of a resource in the resources map.
 //
 // Note: This method modifies the snapshot (and resource.States in the snapshot) in-place.
-func (snap *Snapshot) NormalizeURNReferences() error {
+func (snap *Snapshot) NormalizeURNReferences() {
 	if snap != nil {
 		aliased := make(map[resource.URN]resource.URN)
 		fixUrn := func(urn resource.URN) resource.URN {
@@ -94,17 +95,21 @@ func (snap *Snapshot) NormalizeURNReferences() error {
 					state.PropertyDependencies[k][i] = fixUrn(dep)
 				}
 			}
+			ref, err := providers.ParseReference(state.Provider)
+			contract.AssertNoError(err)
+			ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
+			contract.AssertNoError(err)
+			state.Provider = ref.String()
 
 			// Add to aliased maps
 			for _, alias := range state.Aliases {
 				if otherUrn, has := aliased[alias]; has {
-					return errors.Errorf("two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
+					contract.Assertf(!has, "two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
 				}
 				aliased[alias] = state.URN
 			}
 		}
 	}
-	return nil
 }
 
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,
