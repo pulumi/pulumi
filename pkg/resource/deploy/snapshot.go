@@ -95,11 +95,13 @@ func (snap *Snapshot) NormalizeURNReferences() {
 					state.PropertyDependencies[k][i] = fixUrn(dep)
 				}
 			}
-			ref, err := providers.ParseReference(state.Provider)
-			contract.AssertNoError(err)
-			ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
-			contract.AssertNoError(err)
-			state.Provider = ref.String()
+			if state.Provider != "" {
+				ref, err := providers.ParseReference(state.Provider)
+				contract.AssertNoError(err)
+				ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
+				contract.AssertNoError(err)
+				state.Provider = ref.String()
+			}
 
 			// Add to aliased maps
 			for _, alias := range state.Aliases {
