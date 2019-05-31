@@ -3221,7 +3221,7 @@ func TestAliases(t *testing.T) {
 	}, {
 		t:            "pkgA:index:t2-new",
 		name:         "n2-new",
-		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
+		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1-new::n1-new"},
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t2::n2",
 		},
@@ -3254,7 +3254,7 @@ func TestAliases(t *testing.T) {
 	}, {
 		t:      "pkgA:index:t2-new",
 		name:   "n2-new",
-		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1::n1"),
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
 		},
