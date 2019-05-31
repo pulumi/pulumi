@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,21 +18,22 @@ import (
 	"os"
 )
 
-// DetectVars detects and returns the CI variables for the current environment.
-// Not all fields of the `Vars` struct are applicable to every CI system,
-// and may be left blank.
-func DetectVars() Vars {
-	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
-		return Vars{Name: ""}
-	}
+// gitlabCI represents the GitLab CI system.
+type gitlabCI struct {
+	baseCI
+}
 
-	var v Vars
-	system := detectSystem()
-	if system == nil {
-		return v
-	}
-	// Detect the vars for the respective CI system and
-	v = system.DetectVars()
+// DetectVars detects the Travis env vars.
+// See https://docs.gitlab.com/ee/ci/variables/.
+func (gl gitlabCI) DetectVars() Vars {
+	v := Vars{Name: gl.Name}
+	v.BuildID = os.Getenv("CI_JOB_ID")
+	v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
+	v.BuildURL = os.Getenv("CI_JOB_URL")
+	v.SHA = os.Getenv("CI_COMMIT_SHA")
+	v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
+	v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
+	v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
 
 	return v
 }
