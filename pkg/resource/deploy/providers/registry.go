@@ -218,7 +218,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	contract.Require(IsProviderType(urn.Type()), "urn")
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), urn)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	// Parse the version from the provider properties and load the provider.
 	version, err := GetProviderVersion(news)
@@ -261,7 +261,6 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 // previously been loaded by a call to Check.
 func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 	allowUnknowns bool) (plugin.DiffResult, error) {
-
 	contract.Require(id != "", "id")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), urn, id)
@@ -328,7 +327,7 @@ func (r *Registry) Create(urn resource.URN,
 	contract.Assert(id != UnknownID)
 
 	r.setProvider(mustNewReference(urn, id), provider)
-	return id, resource.PropertyMap{}, resource.StatusOK, nil
+	return id, news, resource.StatusOK, nil
 }
 
 // Update configures the provider with the given URN and ID using the indicated configuration and registers it at the
@@ -353,7 +352,7 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
 
 	// Publish the configured provider.
 	r.setProvider(mustNewReference(urn, id), provider)
-	return resource.PropertyMap{}, resource.StatusOK, nil
+	return news, resource.StatusOK, nil
 }
 
 // Delete unregisters and unloads the provider with the given URN and ID. The provider must have been loaded when the
