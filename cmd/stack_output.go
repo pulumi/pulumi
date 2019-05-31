@@ -105,6 +105,10 @@ func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interf
 		return nil, err
 	}
 
+	if state == nil {
+		return map[string]interface{}{}, nil
+	}
+
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
 	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!

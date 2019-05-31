@@ -13,7 +13,8 @@
   logging in to the s3 backend with a path after the bucket name, you will need to either move the .pulumi
   folder in the bucket to the correct location or log in again without the path prefix to see your previous
   stacks.
-
+- Fix a crash that would happen if you ran `pulumi stack output` against an empty stack (fixes
+  [pulumi/pulumi#2792](https://github.com/pulumi/pulumi/issues/2792)).
 
 ## 0.17.16 (Released June 6, 2019)
 
