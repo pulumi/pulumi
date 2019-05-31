@@ -1,8 +1,5 @@
 ## 0.17.15 (Unreleased)
 
-- Pulumi now tolerates changes in default providers in certain cases, which fixes an issue where users would see
-  unexpected replaces when upgrading a Pulumi package.
-
 ### Improvements
 
 - Pulumi now allows Python programs to "read" existing resources instead of just creating them. This feature enables
@@ -10,6 +7,8 @@
 - Support for referencing the outputs of other Pulumi stacks has been added to the Pulumi Python libraries via the
   `StackReference` type.
 - Add CI system detection for Bitbucket Pipelines.
+- Pulumi now tolerates changes in default providers in certain cases, which fixes an issue where users would see
+  unexpected replaces when upgrading a Pulumi package.
 
 ## 0.17.14 (Released May 28, 2019)
 
