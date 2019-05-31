@@ -2978,12 +2978,14 @@ type Resource struct {
 	children            []Resource
 	props               resource.PropertyMap
 	aliases             []resource.URN
+	dependencies        []resource.URN
+	parent              resource.URN
 	deleteBeforeReplace bool
 }
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
 	for _, r := range resources {
-		_, _, _, err := monitor.RegisterResource(r.t, r.name, true, "", false, nil, "",
+		_, _, _, err := monitor.RegisterResource(r.t, r.name, true, r.parent, false, r.dependencies, "",
 			r.props, nil, r.deleteBeforeReplace, "", nil, r.aliases)
 		if err != nil {
 			return err
@@ -3002,16 +3004,13 @@ func TestAliases(t *testing.T) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
 				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
-					keys := []resource.PropertyKey{}
-					for k, new := range news {
-						if k == resource.PropertyKey("forcesReplacement") {
-							old, hasOld := olds[k]
-							if !hasOld || old != new {
-								keys = append(keys, k)
-							}
-						}
+					replaceKeys := []resource.PropertyKey{}
+					old, hasOld := olds["forcesReplacement"]
+					new, hasNew := news["forcesReplacement"]
+					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
+						replaceKeys = append(replaceKeys, "forcesReplacement")
 					}
-					return plugin.DiffResult{ReplaceKeys: keys}, nil
+					return plugin.DiffResult{ReplaceKeys: replaceKeys}, nil
 				},
 			}, nil
 		}),
@@ -3037,6 +3036,21 @@ func TestAliases(t *testing.T) {
 								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
+
+						for _, entry := range j.Entries {
+							if entry.Step.Type() == "pulumi:providers:pkgA" {
+								continue
+							}
+							switch entry.Kind {
+							case JournalEntrySuccess:
+								assert.Subset(t, allowedOps, []deploy.StepOp{entry.Step.Op()})
+							case JournalEntryFailure:
+								assert.Fail(t, "unexpected failure in journal")
+							case JournalEntryBegin:
+							case JournalEntryOutputs:
+							}
+						}
+
 						return res
 					},
 				},
@@ -3179,5 +3193,71 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t6::n4",
 		},
 	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+	// Start again - this time with two resources with depends on relationship
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+		},
+		deleteBeforeReplace: true,
+	}, {
+		t:            "pkgA:index:t2",
+		name:         "n2",
+		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
+	}}, []deploy.StepOp{deploy.OpCreate})
+
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1-new",
+		name: "n1-new",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+		},
+		deleteBeforeReplace: true,
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:            "pkgA:index:t2-new",
+		name:         "n2-new",
+		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t2::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+	// Start again - this time with two resources with parent relationship
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+		},
+		deleteBeforeReplace: true,
+	}, {
+		t:      "pkgA:index:t2",
+		name:   "n2",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1::n1"),
+	}}, []deploy.StepOp{deploy.OpCreate})
+
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1-new",
+		name: "n1-new",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+		},
+		deleteBeforeReplace: true,
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:      "pkgA:index:t2-new",
+		name:   "n2-new",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1::n1"),
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
 }
