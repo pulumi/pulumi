@@ -67,6 +67,46 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	}
 }
 
+// NormalizeURNReferences fixes up all URN references in a snapshot to use the new URNs instead of potentially-aliased
+// URNs.  This will affect resources that are "old", and which would be expected to be updated to refer to the new names
+// later in the deployment.  But until they are, we still want to ensure that any serialization of the snapshot uses URN
+// references which do not need to be indirected through any alias lookups, and which instead refer directly to the URN
+// of a resource in the resources map.
+//
+// Note: This method modifies the snapshot (and resource.States in the snapshot) in-place.
+func (snap *Snapshot) NormalizeURNReferences() error {
+	if snap != nil {
+		aliased := make(map[resource.URN]resource.URN)
+		fixUrn := func(urn resource.URN) resource.URN {
+			if newUrn, has := aliased[urn]; has {
+				return newUrn
+			}
+			return urn
+		}
+		for _, state := range snap.Resources {
+			// Fix up any references to URNs
+			state.Parent = fixUrn(state.Parent)
+			for i, dependency := range state.Dependencies {
+				state.Dependencies[i] = fixUrn(dependency)
+			}
+			for k, deps := range state.PropertyDependencies {
+				for i, dep := range deps {
+					state.PropertyDependencies[k][i] = fixUrn(dep)
+				}
+			}
+
+			// Add to aliased maps
+			for _, alias := range state.Aliases {
+				if otherUrn, has := aliased[alias]; has {
+					return errors.Errorf("two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
+				}
+				aliased[alias] = state.URN
+			}
+		}
+	}
+	return nil
+}
+
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,
 // integrity verification is only performed on demand, and not automatically during snapshot construction.
 //
@@ -140,14 +180,6 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			}
 
 			urns[urn] = state
-
-			// Also register this state with all of it's alias URNs.  Note that there is a period of time between
-			// registering a parent resoruce and registering it's children where the child's `parent` URN will refer to
-			// the aliased name, not the new name.  By the end of a successful deployment, these references should all
-			// be updated.
-			for _, alias := range state.Aliases {
-				urns[alias] = state
-			}
 		}
 	}
 
