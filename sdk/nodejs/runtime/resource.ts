@@ -14,9 +14,10 @@
 
 import * as grpc from "grpc";
 import * as log from "../log";
-import { Input, Inputs, Output } from "../output";
+import { Input, Inputs, Output, output } from "../output";
 import {
     ComponentResource,
+    createUrn,
     CustomResource,
     CustomResourceOptions,
     ID,
@@ -70,13 +71,8 @@ interface ResourceResolverOperation {
     // the dependency.  All urns in this map must exist in [allDirectDependencyURNs].  These will
     // all be URNs of custom resources, not component resources.
     propertyToDirectDependencyURNs: Map<string, Set<URN>>;
-}
-
-/**
- * Creates a test URN in the case where the engine isn't available to give us one.
- */
-function createTestUrn(t: string, name: string): string {
-    return `urn:pulumi:${getStack()}::${getProject()}::${t}::${name}`;
+    // A list of aliases applied to this resource.
+    aliases: URN[];
 }
 
 /**
@@ -133,8 +129,9 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
                     })), opLabel);
             } else {
                 // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
+                const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
                 resp = {
-                    getUrn: () => createTestUrn(t, name),
+                    getUrn: () => mockurn,
                     getProperties: () => req.getProperties(),
                 };
             }
@@ -183,6 +180,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
+        req.setAliasesList(resop.aliases);
 
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
@@ -218,8 +216,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     })), opLabel);
             } else {
                 // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
+                const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
                 resp = {
-                    getUrn: () => createTestUrn(t, name),
+                    getUrn: () => mockurn,
                     getId: () => undefined,
                     getObject: () => req.getObject(),
                 };
@@ -323,6 +322,14 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         propertyToDirectDependencyURNs.set(propertyName, urns);
     }
 
+    // Wait for all aliases. Note that we use `res.__aliases` instead of `opts.aliases` as the former has been processed
+    // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
+    // simplifying aliases down to URNs.
+    const aliases = [];
+    for (const alias of res.__aliases) {
+        aliases.push(await output(alias).promise());
+    }
+
     return {
         resolveURN: resolveURN!,
         resolveID: resolveID,
@@ -332,6 +339,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef: providerRef,
         allDirectDependencyURNs: allDirectDependencyURNs,
         propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
+        aliases: aliases,
     };
 }
 
