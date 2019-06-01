@@ -17,6 +17,7 @@ import * as log from "../log";
 import { Input, Inputs, Output, output } from "../output";
 import {
     ComponentResource,
+    createUrn,
     CustomResource,
     CustomResourceOptions,
     ID,
@@ -75,13 +76,6 @@ interface ResourceResolverOperation {
 }
 
 /**
- * Creates a test URN in the case where the engine isn't available to give us one.
- */
-function createTestUrn(t: string, name: string): string {
-    return `urn:pulumi:${getStack()}::${getProject()}::${t}::${name}`;
-}
-
-/**
  * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
  * will not be part of the resulting stack's state, as they are presumed to belong to another.
  */
@@ -135,8 +129,9 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
                     })), opLabel);
             } else {
                 // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
+                const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
                 resp = {
-                    getUrn: () => createTestUrn(t, name),
+                    getUrn: () => mockurn,
                     getProperties: () => req.getProperties(),
                 };
             }
@@ -221,8 +216,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     })), opLabel);
             } else {
                 // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
+                const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
                 resp = {
-                    getUrn: () => createTestUrn(t, name),
+                    getUrn: () => mockurn,
                     getId: () => undefined,
                     getObject: () => req.getObject(),
                 };
