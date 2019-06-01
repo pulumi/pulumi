@@ -91,10 +91,12 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 			continue
 		}
 
-		if version != nil && l.version.LT(*version) {
-			continue
-		}
-		if best == nil || l.version.GT(best.version) {
+		if version != nil {
+			if l.version.EQ(*version) {
+				best = l
+				break
+			}
+		} else if best == nil || l.version.GT(best.version) {
 			best = l
 		}
 	}

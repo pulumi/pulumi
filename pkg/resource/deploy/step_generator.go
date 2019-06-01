@@ -579,9 +579,9 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	return antichains
 }
 
-// diffProvider diffs the Provider field of old and new resources, returning a diff indicating whether or not the
-// rest of the step generator should consider there to be a diff between these two resources.
-func (sg *stepGenerator) diffProvider(urn resource.URN, old, new *resource.State) (plugin.DiffResult, error) {
+// providerChanged diffs the Provider field of old and new resources, returning true if the rest of the step generator
+// should consider there to be a diff between these two resources.
+func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.State) (bool, error) {
 	// If a resource's Provider field has changed, we may need to show a diff and we may not. This is subtle. See
 	// pulumi/pulumi#2753 for more details.
 	//
@@ -593,9 +593,7 @@ func (sg *stepGenerator) diffProvider(urn resource.URN, old, new *resource.State
 	// will work correctly together when not the same version.
 
 	if old.Provider == new.Provider {
-		return plugin.DiffResult{
-			Changes: plugin.DiffNone,
-		}, nil
+		return false, nil
 	}
 
 	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): observed provider diff", urn)
@@ -603,11 +601,11 @@ func (sg *stepGenerator) diffProvider(urn resource.URN, old, new *resource.State
 
 	oldRef, err := providers.ParseReference(old.Provider)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return false, err
 	}
 	newRef, err := providers.ParseReference(new.Provider)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return false, err
 	}
 
 	// If one or both of these providers are not default providers, we will need to accept the diff and replace
@@ -621,10 +619,7 @@ func (sg *stepGenerator) diffProvider(urn resource.URN, old, new *resource.State
 		logging.V(stepExecutorLogLevel).Infof(
 			"sg.diffProvider(%s, ...): new provider %q is default: %v",
 			urn, newRef.URN(), providers.IsDefaultProvider(newRef.URN()))
-		return plugin.DiffResult{
-			Changes:     plugin.DiffSome,
-			ReplaceKeys: []resource.PropertyKey{"provider"},
-		}, nil
+		return true, err
 	}
 
 	// If both of these providers are default providers, use the *new provider* to diff the config and determine if
@@ -635,7 +630,7 @@ func (sg *stepGenerator) diffProvider(urn resource.URN, old, new *resource.State
 	// performance problem, this result can be cached.
 	newProv, ok := sg.plan.providers.GetProvider(newRef)
 	if !ok {
-		return plugin.DiffResult{}, errors.Errorf("failed to resolve provider reference: %q", oldRef.String())
+		return false, errors.Errorf("failed to resolve provider reference: %q", oldRef.String())
 	}
 
 	oldRes, ok := sg.plan.olds[oldRef.URN()]
@@ -643,27 +638,22 @@ func (sg *stepGenerator) diffProvider(urn resource.URN, old, new *resource.State
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new plan didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(oldRes.Inputs, newRes.Inputs)
+	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return false, err
 	}
 
 	// If there is a replacement diff, we must also replace this resource.
 	if diff.Replace() {
 		logging.V(stepExecutorLogLevel).Infof(
 			"sg.diffProvider(%s, ...): new provider's DiffConfig reported replacement", urn)
-		return plugin.DiffResult{
-			Changes:     plugin.DiffSome,
-			ReplaceKeys: []resource.PropertyKey{"provider"},
-		}, nil
+		return true, nil
 	}
 
 	// Otherwise, it's safe to allow this new provider to replace our old one.
 	logging.V(stepExecutorLogLevel).Infof(
 		"sg.diffProvider(%s, ...): both providers are default, proceeding with resource diff", urn)
-	return plugin.DiffResult{
-		Changes: plugin.DiffNone,
-	}, nil
+	return false, nil
 }
 
 // diff returns a DiffResult for the given resource.
@@ -672,13 +662,11 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
-	provDiff, err := sg.diffProvider(urn, old, new)
+	providerChanged, err := sg.providerChanged(urn, old, new)
 	if err != nil {
 		return plugin.DiffResult{}, err
-	}
-
-	if provDiff.Changes != plugin.DiffNone {
-		return provDiff, nil
+	} else if providerChanged {
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, nil
 	}
 
 	// Workaround #1251: unexpected replaces.
