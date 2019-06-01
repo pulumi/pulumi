@@ -2990,6 +2990,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, "", false, nil, "",
 				resource.PropertyMap{}, nil, false, versionA, nil)
+			assert.NoError(t, err)
 			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", resBName, true, "", false, nil, "",
 				resource.PropertyMap{}, nil, false, versionB, nil)
 			assert.NoError(t, err)
