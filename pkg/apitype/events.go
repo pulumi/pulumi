@@ -40,9 +40,17 @@ type DiagnosticEvent struct {
 	Message string `json:"message"`
 	Color   string `json:"color"`
 	// Severity is one of "info", "info#err", "warning", or "error".
-	Severity  string `json:"severity"`
-	StreamID  int    `json:"streamID,omitempty"`
-	Ephemeral bool   `json:"ephemeral,omitempty"`
+	Severity        string           `json:"severity"`
+	StreamID        int              `json:"streamID,omitempty"`
+	Ephemeral       bool             `json:"ephemeral,omitempty"`
+	PolicyViolation *PolicyViolation `json:"policyViolation,omitempty"`
+}
+
+// PolicyViolation represents the information related to a Policy violation.
+type PolicyViolation struct {
+	PolicyPack       PolicyPack       `json:"policyPack"`
+	PolicyName       string           `json:"policyName"`
+	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
 }
 
 // PreludeEvent is emitted at the start of an update.
