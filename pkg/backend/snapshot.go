@@ -168,10 +168,20 @@ type sameSnapshotMutation struct {
 // step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
 // this step can be elided.
 func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
-	contract.Assert(old.Type == new.Type)
-	contract.Assert(old.URN == new.URN)
 	contract.Assert(old.Delete == new.Delete)
 	contract.Assert(old.External == new.External)
+
+	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
+	// resource is aliased.
+	if old.URN != new.URN {
+		return true
+	}
+
+	// If the type of this resource has changed, we must write the checkpoint. This should only be possible when a
+	// resource is aliased.
+	if old.Type != new.Type {
+		return true
+	}
 
 	// If the kind of this resource has changed, we must write the checkpoint.
 	if old.Custom != new.Custom {
@@ -509,6 +519,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
 	snap := sm.snap()
+	snap.NormalizeURNReferences()
 	if err := sm.persister.Save(snap); err != nil {
 		return errors.Wrap(err, "failed to save snapshot")
 	}

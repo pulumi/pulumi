@@ -9,6 +9,9 @@
 - Add CI system detection for Bitbucket Pipelines.
 - Pulumi now tolerates changes in default providers in certain cases, which fixes an issue where users would see
   unexpected replaces when upgrading a Pulumi package.
+- Add support for renaming resources via the `aliases` resource option.  Adding aliases allows new resources to match
+  resources from previous deployments which used different names, maintaining the identity of the resource and avoiding
+  replacements or re-creation of the resource.
 
 ## 0.17.14 (Released May 28, 2019)
 

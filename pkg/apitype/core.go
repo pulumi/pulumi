@@ -283,6 +283,8 @@ type ResourceV3 struct {
 	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
 	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
+	// Aliases is a list of previous URNs that this resource may have had in previous deployments
+	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

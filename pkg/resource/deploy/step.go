@@ -142,7 +142,6 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
-	contract.Assert(old.Type == new.Type)
 	contract.Assert(!new.External)
 	return &CreateStep{
 		plan:          plan,
@@ -365,7 +364,6 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
-	contract.Assert(old.Type == new.Type)
 	contract.Assert(!new.External)
 	contract.Assert(!old.External)
 	return &UpdateStep{
@@ -693,7 +691,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	if outputs != nil {
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
-			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs)
+			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases)
 	} else {
 		s.new = nil
 	}

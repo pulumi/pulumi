@@ -111,7 +111,7 @@ export function getProject(): string {
 }
 
 /** @internal Used only for testing purposes. */
-export function _setProject(val: string) {
+export function _setProject(val: string | undefined) {
     (options as any).project = val;
 }
 
@@ -131,7 +131,7 @@ export function getStack(): string {
 }
 
 /** @internal Used only for testing purposes. */
-export function _setStack(val: string) {
+export function _setStack(val: string | undefined) {
     (options as any).stack = val;
 }
 

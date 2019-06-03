@@ -36,20 +36,20 @@ type stepGenerator struct {
 	plan *Plan   // the plan to which this step generator belongs
 	opts Options // options for this step generator
 
-	urns           map[resource.URN]bool    // set of URNs discovered for this plan
-	reads          map[resource.URN]bool    // set of URNs read for this plan
-	deletes        map[resource.URN]bool    // set of URNs deleted in this plan
-	replaces       map[resource.URN]bool    // set of URNs replaced in this plan
-	updates        map[resource.URN]bool    // set of URNs updated in this plan
-	creates        map[resource.URN]bool    // set of URNs created in this plan
-	sames          map[resource.URN]bool    // set of URNs that were not changed in this plan
-	pendingDeletes map[*resource.State]bool // set of resources (not URNs!) that are pending deletion
-
-	providers map[resource.URN]*resource.State // URN map of providers that we have seen so far.
-
+	urns           map[resource.URN]bool            // set of URNs discovered for this plan
+	reads          map[resource.URN]bool            // set of URNs read for this plan
+	deletes        map[resource.URN]bool            // set of URNs deleted in this plan
+	replaces       map[resource.URN]bool            // set of URNs replaced in this plan
+	updates        map[resource.URN]bool            // set of URNs updated in this plan
+	creates        map[resource.URN]bool            // set of URNs created in this plan
+	sames          map[resource.URN]bool            // set of URNs that were not changed in this plan
+	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
+	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
+	// a map from old names (aliased URNs) to the new URN that aliased to them.
+	aliased map[resource.URN]resource.URN
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -71,7 +71,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		event.Provider(),
 		nil,   /* propertyDependencies */
 		false, /* deleteBeforeCreate */
-		event.AdditionalSecretOutputs())
+		event.AdditionalSecretOutputs(),
+		nil, /* aliases */
+	)
 	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
@@ -126,13 +128,27 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 	sg.urns[urn] = true
 
-	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or to diff.
-	old, hasOld := sg.plan.Olds()[urn]
+	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or to diff.  We look
+	// up first by URN and then by any provided aliases.  If it is found using an alias, record that alias so that we do
+	// not delete the aliased resource later.
 	var oldInputs resource.PropertyMap
 	var oldOutputs resource.PropertyMap
-	if hasOld {
-		oldInputs = old.Inputs
-		oldOutputs = old.Outputs
+	var old *resource.State
+	var hasOld bool
+	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
+		old, hasOld = sg.plan.Olds()[urnOrAlias]
+		if hasOld {
+			oldInputs = old.Inputs
+			oldOutputs = old.Outputs
+			if urnOrAlias != urn {
+				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
+					invalid = true
+					sg.plan.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+				}
+				sg.aliased[urnOrAlias] = urn
+			}
+			break
+		}
 	}
 
 	// Create the desired inputs from the goal state
@@ -145,7 +161,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false, goal.AdditionalSecretOutputs)
+		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
+		goal.AdditionalSecretOutputs, goal.Aliases)
 
 	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
 	// of resources that use this provider.
@@ -275,7 +292,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
-		contract.Assert(old != nil && old.Type == new.Type)
+		contract.Assert(old != nil)
 		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
 		if err != nil {
 			// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
@@ -456,7 +473,8 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, false))
-			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
+			} else if _, aliased := sg.aliased[res.URN]; !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
+				!sg.reads[res.URN] && !aliased {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
@@ -872,5 +890,6 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
+		aliased:              make(map[resource.URN]resource.URN),
 	}
 }
