@@ -3025,8 +3025,8 @@ func TestDefaultProviderDiff(t *testing.T) {
 	// This test simulates the upgrade scenario of old-style default providers to new-style versioned default providers.
 	//
 	// The first update creates a stack using a language host that does not report a version to the engine. As a result,
-	// the engine makes up a default provider for "pkgA" and calls it "default". It then creates the one resource that
-	// we are creating and associates it with the default provider.
+	// the engine makes up a default provider for "pkgA" and calls it "default". It then creates the two resources that
+	// we are creating and associates them with the default provider.
 	snap := runProgram(nil, "", "", deploy.OpCreate)
 	for _, res := range snap.Resources {
 		switch {
@@ -3040,7 +3040,8 @@ func TestDefaultProviderDiff(t *testing.T) {
 	}
 
 	// The second update switches to a language host that does report a version to the engine. As a result, the engine
-	// uses this version to make a new provider, with a different URN, and uses that provider to operate on resA.
+	// uses this version to make a new provider, with a different URN, and uses that provider to operate on resA and
+	// resB.
 	//
 	// Despite switching out the provider, the engine should still generate a Same step for resA. It is vital that the
 	// engine gracefully react to changes in the default provider in this manner. See pulumi/pulumi#2753 for what
@@ -3058,7 +3059,8 @@ func TestDefaultProviderDiff(t *testing.T) {
 	}
 
 	// The third update changes the version that the language host reports to the engine. This simulates a scenario in
-	// which a user updates their SDK to a new version of a provider package.
+	// which a user updates their SDK to a new version of a provider package. In order to simulate side-by-side
+	// packages with different versions, this update requests distinct package versions for resA and resB.
 	snap = runProgram(snap, "0.17.11", "0.17.12", deploy.OpSame)
 	for _, res := range snap.Resources {
 		switch {
@@ -3141,7 +3143,8 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 	}
 
 	// This test simulates the upgrade scenario of default providers, except that the requested upgrade results in the
-	// provider getting replaced. Because of this, the engine should decide to replace resA.
+	// provider getting replaced. Because of this, the engine should decide to replace resA. It should not decide to
+	// replace resB, as its change does not require replacement.
 	snap := runProgram(nil, "", "", deploy.OpCreate)
 	for _, res := range snap.Resources {
 		switch {
