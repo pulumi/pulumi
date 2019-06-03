@@ -44,6 +44,11 @@ type Policy struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName"`
 
+	// Identifier is uniquely identified a Policy. It is a Policy Pack name and version as
+	// well as the Policy name encoded as a string.
+	// For example, "aws-security@v5@no-public-s3-buckets"
+	Identifier string `json:"identifier"`
+
 	// Description is used to provide more context about the purpose of the policy.
 	Description      string           `json:"description"`
 	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
