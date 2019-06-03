@@ -89,7 +89,7 @@ func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
 func newQuerySource(cancel context.Context, client deploy.BackendClient, u UpdateInfo,
 	opts QueryOptions) (deploy.QuerySource, error) {
 
-	allPlugins, _, err := installPlugins(client, u.GetProject(), opts.pwd,
+	allPlugins, _, err := installPlugins(u.GetProject(), opts.pwd,
 		opts.main,
 		u.GetTarget(), opts.plugctx)
 	if err != nil {

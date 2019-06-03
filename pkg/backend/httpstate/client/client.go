@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"path"
 	"time"
@@ -57,11 +56,6 @@ func NewClient(apiURL, apiToken string, d diag.Sink) *Client {
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
-}
-
-// apiCall makes a raw HTTP request to the Pulumi API using the given method, path, and request body.
-func (pc *Client) apiCall(ctx context.Context, method, path string, body []byte) (string, *http.Response, error) {
-	return pulumiAPICall(ctx, pc.diag, pc.apiURL, method, path, body, pc.apiToken, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -118,19 +112,6 @@ func (pc *Client) GetPulumiAccountName(ctx context.Context) (string, error) {
 	}
 
 	return pc.apiUser, nil
-}
-
-// DownloadPlugin downloads the indicated plugin from the Pulumi API.
-func (pc *Client) DownloadPlugin(ctx context.Context, info workspace.PluginInfo, os,
-	arch string) (io.ReadCloser, int64, error) {
-
-	endpoint := fmt.Sprintf("/releases/plugins/pulumi-%s-%s-v%s-%s-%s.tar.gz",
-		info.Kind, info.Name, info.Version, os, arch)
-	_, resp, err := pc.apiCall(ctx, "GET", endpoint, nil)
-	if err != nil {
-		return nil, 0, err
-	}
-	return resp.Body, resp.ContentLength, nil
 }
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the

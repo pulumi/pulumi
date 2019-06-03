@@ -10,6 +10,8 @@
 - Add support for renaming resources via the `aliases` resource option.  Adding aliases allows new resources to match
   resources from previous deployments which used different names, maintaining the identity of the resource and avoiding
   replacements or re-creation of the resource.
+- `pulumi plugin install` gained a new optional argument `--server` which can be used to provide a custom server to be
+  used when downloading a plugin.
 
 ## 0.17.14 (Released May 28, 2019)
 

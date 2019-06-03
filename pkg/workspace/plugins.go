@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
@@ -34,7 +35,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/version"
 )
 
 const (
@@ -80,6 +83,7 @@ type PluginInfo struct {
 	Size         int64           // the size of the plugin, in bytes.
 	InstallTime  time.Time       // the time the plugin was installed.
 	LastUsedTime time.Time       // the last time the plugin was used.
+	ServerURL    string          // an optional server to use when downloading this plugin.
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -161,6 +165,52 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 
 	info.LastUsedTime = tinfo.AccessTime()
 	return nil
+}
+
+// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
+func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
+	// Figure out the OS/ARCH pair for the download URL.
+	var os string
+	switch runtime.GOOS {
+	case "darwin", "linux", "windows":
+		os = runtime.GOOS
+	default:
+		return nil, -1, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
+	}
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = runtime.GOARCH
+	default:
+		return nil, -1, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
+	}
+
+	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
+	// is hosted by Pulumi.
+	serverURL := info.ServerURL
+	if serverURL == "" {
+		serverURL = "https://api.pulumi.com/releases/plugins"
+	}
+
+	endpoint := fmt.Sprintf("%s/pulumi-%s-%s-v%s-%s-%s.tar.gz", serverURL, info.Kind, info.Name, info.Version, os, arch)
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, endpoint)
+	}
+
+	return resp.Body, resp.ContentLength, nil
 }
 
 // Install installs a plugin's tarball into the cache.  It validates that plugin names are in the expected format.

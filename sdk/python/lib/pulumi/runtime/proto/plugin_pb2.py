@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pulumirpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0cplugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"?\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\tb\x06proto3')
+  serialized_pb=_b('\n\x0cplugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"O\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\tb\x06proto3')
 )
 
 
@@ -84,6 +84,13 @@ _PLUGINDEPENDENCY = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='server', full_name='pulumirpc.PluginDependency.server', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -97,7 +104,7 @@ _PLUGINDEPENDENCY = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=58,
-  serialized_end=121,
+  serialized_end=137,
 )
 
 DESCRIPTOR.message_types_by_name['PluginInfo'] = _PLUGININFO

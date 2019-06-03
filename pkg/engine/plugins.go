@@ -15,7 +15,6 @@
 package engine
 
 import (
-	"context"
 	"sort"
 
 	"github.com/blang/semver"
@@ -80,7 +79,8 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 	}
 	for _, plug := range langhostPlugins {
 		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromProgram(): plugin %s %s is required by language host", plug.Name, plug.Version)
+			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
+			plug.Name, plug.Version, plug.ServerURL)
 		set.Add(plug)
 	}
 	return set, nil
@@ -121,11 +121,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(client deploy.BackendClient, plugins pluginSet) error {
-	if client == nil {
-		logging.V(preparePluginLog).Infoln("ensurePluginsAreInstalled(): skipping due to nil client")
-		return nil
-	}
+func ensurePluginsAreInstalled(plugins pluginSet) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
@@ -141,7 +137,7 @@ func ensurePluginsAreInstalled(client deploy.BackendClient, plugins pluginSet) e
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
-			return installPlugin(client, info)
+			return installPlugin(info)
 		})
 	}
 
@@ -157,8 +153,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 }
 
 // installPlugin installs a plugin from the given backend client.
-func installPlugin(client deploy.BackendClient, plugin workspace.PluginInfo) error {
-	contract.Assert(client != nil)
+func installPlugin(plugin workspace.PluginInfo) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 	if plugin.Kind == workspace.LanguagePlugin {
 		logging.V(preparePluginLog).Infof(
@@ -168,7 +163,7 @@ func installPlugin(client deploy.BackendClient, plugin workspace.PluginInfo) err
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
-	stream, err := client.DownloadPlugin(context.TODO(), plugin)
+	stream, _, err := plugin.Download()
 	if err != nil {
 		return err
 	}
