@@ -23,10 +23,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
@@ -35,6 +35,8 @@ import (
 type SnapshotPersister interface {
 	// Persists the given snapshot. Returns an error if the persistence failed.
 	Save(snapshot *deploy.Snapshot) error
+	// Gets the secrets manager used by this persister.
+	SecretsManager() secrets.Manager
 }
 
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
@@ -60,7 +62,6 @@ type SnapshotManager struct {
 	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
 	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
 	doVerify         bool                     // If true, verify the snapshot before persisting it
-	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
@@ -120,15 +121,6 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return sm.mutate(func() bool { return true })
 }
 
-// RecordPlugin records that the current plan loaded a plugin and saves it in the snapshot.
-func (sm *SnapshotManager) RecordPlugin(plugin workspace.PluginInfo) error {
-	logging.V(9).Infof("SnapshotManager: RecordPlugin(%v)", plugin)
-	return sm.mutate(func() bool {
-		sm.plugins = append(sm.plugins, plugin)
-		return true
-	})
-}
-
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
 // by performing the given Step. This function gives the SnapshotManager a chance to record the
 // intent to mutate before the mutation occurs.
@@ -176,10 +168,20 @@ type sameSnapshotMutation struct {
 // step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
 // this step can be elided.
 func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
-	contract.Assert(old.Type == new.Type)
-	contract.Assert(old.URN == new.URN)
 	contract.Assert(old.Delete == new.Delete)
 	contract.Assert(old.External == new.External)
+
+	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
+	// resource is aliased.
+	if old.URN != new.URN {
+		return true
+	}
+
+	// If the type of this resource has changed, we must write the checkpoint. This should only be possible when a
+	// resource is aliased.
+	if old.Type != new.Type {
+		return true
+	}
 
 	// If the kind of this resource has changed, we must write the checkpoint.
 	if old.Custom != new.Custom {
@@ -507,16 +509,17 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	manifest := deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
-		Plugins: sm.plugins,
+		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, resources, operations)
+	return deploy.NewSnapshot(manifest, sm.persister.SecretsManager(), resources, operations)
 }
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
 	snap := sm.snap()
+	snap.NormalizeURNReferences()
 	if err := sm.persister.Save(snap); err != nil {
 		return errors.Wrap(err, "failed to save snapshot")
 	}

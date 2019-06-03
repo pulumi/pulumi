@@ -53,7 +53,9 @@ function cancelRPC(call: any, callback: any): void {
 }
 
 function configureRPC(call: any, callback: any): void {
-    callback(undefined, new emptyproto.Empty());
+    const resp = new provproto.ConfigureResponse();
+    resp.setAcceptsecrets(false);
+    callback(undefined, resp);
 }
 
 async function invokeRPC(call: any, callback: any): Promise<void> {
@@ -109,7 +111,10 @@ async function checkRPC(call: any, callback: any): Promise<void> {
 }
 
 function checkConfigRPC(call: any, callback: any): void {
-    callback(undefined, new emptyproto.Empty());
+    callback({
+        code: grpc.status.UNIMPLEMENTED,
+        details: "CheckConfig is not implemented by the dynamic provider",
+    }, undefined);
 }
 
 async function diffRPC(call: any, callback: any): Promise<void> {
@@ -155,7 +160,10 @@ async function diffRPC(call: any, callback: any): Promise<void> {
 }
 
 function diffConfigRPC(call: any, callback: any): void {
-    callback(undefined, new emptyproto.Empty());
+    callback({
+        code: grpc.status.UNIMPLEMENTED,
+        details: "DiffConfig is not implemented by the dynamic provider",
+    }, undefined);
 }
 
 async function createRPC(call: any, callback: any): Promise<void> {

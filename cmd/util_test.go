@@ -70,8 +70,8 @@ func TestReadingGitRepo(t *testing.T) {
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/master")
 		assertEnvValue(t, test, backend.GitDirty, "false")
 
-		assertEnvValue(t, test, backend.GitHubLogin, "owner-name")
-		assertEnvValue(t, test, backend.GitHubRepo, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
 	}
 
 	// Change branch, Commit beta
@@ -95,8 +95,8 @@ func TestReadingGitRepo(t *testing.T) {
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch1")
 		assertEnvValue(t, test, backend.GitDirty, "true") // Because beta-unsubmitted.txt, after commit
 
-		assertEnvValue(t, test, backend.GitHubLogin, "owner-name")
-		assertEnvValue(t, test, backend.GitHubRepo, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
 	}
 
 	// Two branches sharing the same commit. But head ref will differ.

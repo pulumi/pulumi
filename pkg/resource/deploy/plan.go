@@ -16,10 +16,7 @@ package deploy
 
 import (
 	"context"
-	"io"
 	"math"
-
-	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -40,7 +37,12 @@ type BackendClient interface {
 	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
 
-	DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error)
+	// GetStackResourceOutputs returns the resource outputs of type (if any) for a stack, or an
+	// error if the stack cannot be found. Resources are retrieved from the latest stack snapshot,
+	// which may include ongoing updates. They are returned in a `PropertyMap` with members `type`
+	// (containing the Pulumi type ID for the resource) and `outputs` (containing the resource
+	// outputs themselves).
+	GetStackResourceOutputs(ctx context.Context, stackName string) (resource.PropertyMap, error)
 }
 
 // Options controls the planning and deployment process.

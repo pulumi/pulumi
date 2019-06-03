@@ -21,12 +21,15 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackOutputCmd() *cobra.Command {
 	var jsonOut bool
+	var showSecrets bool
 	var stackName string
 
 	cmd := &cobra.Command{
@@ -52,7 +55,10 @@ func newStackOutputCmd() *cobra.Command {
 				return err
 			}
 
-			_, outputs := stack.GetRootStackResource(snap)
+			outputs, err := getStackOutputs(snap, showSecrets)
+			if err != nil {
+				return errors.Wrap(err, "getting outputs")
+			}
 			if outputs == nil {
 				outputs = make(map[string]interface{})
 			}
@@ -87,6 +93,20 @@ func newStackOutputCmd() *cobra.Command {
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
 
 	return cmd
+}
+
+func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {
+	state, err := stack.GetRootStackResource(snap)
+	if err != nil {
+		return nil, err
+	}
+
+	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
+	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
+	// secret values!
+	return stack.SerializeProperties(display.MassageSecrets(state.Outputs, showSecrets), config.NewPanicCrypter())
 }

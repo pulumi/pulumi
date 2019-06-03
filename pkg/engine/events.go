@@ -99,6 +99,7 @@ type ResourcePreEventPayload struct {
 	Debug    bool
 }
 
+// StepEventMetadata contains the metadata associated with a step the engine is performing.
 type StepEventMetadata struct {
 	Op       deploy.StepOp           // the operation performed by this step.
 	URN      resource.URN            // the resource URN (for before and after).
@@ -112,7 +113,10 @@ type StepEventMetadata struct {
 	Provider string                  // the provider that performed this step.
 }
 
+// StepEventStateMetadata contains detailed metadata about a resource's state pertaining to a given step.
 type StepEventStateMetadata struct {
+	// State contains the raw, complete state, for this resource.
+	State *resource.State
 	// the resource's type.
 	Type tokens.Type
 	// the resource's object urn, a human-friendly, unique name for the resource.
@@ -206,6 +210,7 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 	}
 
 	return &StepEventStateMetadata{
+		State:      state,
 		Type:       state.Type,
 		URN:        state.URN,
 		Custom:     state.Custom,
@@ -280,6 +285,8 @@ func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.Pr
 				URI:    t.URI,
 				Assets: filterValue(t.Assets).(map[string]interface{}),
 			}
+		case resource.Secret:
+			return "[secret]"
 		case resource.Computed:
 			return resource.Computed{
 				Element: filterPropertyValue(t.Element),

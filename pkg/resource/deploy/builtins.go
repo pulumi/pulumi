@@ -38,15 +38,15 @@ func (p *builtinProvider) Pkg() tokens.Package {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *builtinProvider) CheckConfig(olds,
-	news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
+	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	return nil, nil, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
-
+func (p *builtinProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+	allowUnknowns bool) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
@@ -142,10 +142,20 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
+const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
+
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	if tok != readStackResourceOutputs {
+		return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
+	}
 
-	return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
+	outs, err := p.readStackResourceOutputs(args)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return outs, nil, nil
 }
 
 func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
@@ -168,6 +178,26 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	}
 
 	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	if err != nil {
+		return nil, err
+	}
+
+	return resource.PropertyMap{
+		"name":    name,
+		"outputs": resource.NewObjectProperty(outputs),
+	}, nil
+}
+
+func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	name, ok := inputs["stackName"]
+	contract.Assert(ok)
+	contract.Assert(name.IsString())
+
+	if p.backendClient == nil {
+		return nil, errors.New("no backend client is available")
+	}
+
+	outputs, err := p.backendClient.GetStackResourceOutputs(p.context, name.StringValue())
 	if err != nil {
 		return nil, err
 	}

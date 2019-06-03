@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -230,6 +231,248 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+}
+
+// TestPreviewJSON tests serializing a preview as JSON using the `pulumi preview --json` option.
+func TestPreviewJSON(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	prepareOutput := func(stdout string) string {
+		// Don't diff the provider, since it contains code that may change that we don't want to be sensitive to.
+		providerRegexp := regexp.MustCompile(`"__provider": ".*"`)
+		stdout = providerRegexp.ReplaceAllString(stdout, `"__provider": "..."`)
+
+		// The provider ID isn't necessarily stable, so ignore it during the check.
+		providerInstanceRegexp := regexp.MustCompile(`"provider": ".*"`)
+		stdout = providerInstanceRegexp.ReplaceAllString(stdout, `"provider": "..."`)
+
+		// Ignore this certain warning that fires only on Node.js 11.
+		warningRegexp := regexp.MustCompile(`(?ms)^    "diagnostics": \[.*\],\n`)
+		stdout = warningRegexp.ReplaceAllString(stdout, "")
+
+		return stdout
+	}
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex sould not fail with no maximum length is set")
+
+	e.ImportDirectory("single_resource")
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+
+	// Run the preview to get the JSON. Trim out some pieces we don't want to be sensitive to (like
+	// the precise details of dynamic provider serialization), and then ensure the text matches what we expect.
+	stdout, _ := e.RunCommand("pulumi", "preview", "--json")
+	stdout = prepareOutput(stdout)
+
+	// Now check that the result matches.
+	// nolint: lll
+	expect := fmt.Sprintf(`{
+    "steps": [
+        {
+            "op": "create",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            }
+        },
+        {
+            "op": "create",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+            "provider": "...",
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            }
+        }
+    ],
+    "changeSummary": {
+        "create": 2
+    }
+}
+`, stackName)
+	assert.Equal(t, expect, stdout)
+
+	// Do the actual update.
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+
+	// Now test a zero update, first with the stack outputs.
+	stdout2, _ := e.RunCommand("pulumi", "preview", "--json", "--show-sames")
+	stdout2 = prepareOutput(stdout2)
+
+	// Now check that the result matches.
+	// nolint: lll
+	expect2 := fmt.Sprintf(`{
+    "steps": [
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack",
+                "outputs": {
+                    "o": 1
+                }
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack",
+                "outputs": {
+                    "o": 1
+                }
+            }
+        },
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+            "provider": "...",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            }
+        }
+    ],
+    "changeSummary": {
+        "same": 2
+    }
+}
+`, stackName)
+	assert.Equal(t, expect2, stdout2)
+
+	// Finally, test a zero update, but suppress stack outputs.
+	stdout3, _ := e.RunCommand("pulumi", "preview", "--json", "--show-sames", "--suppress-outputs")
+	stdout3 = prepareOutput(stdout3)
+
+	// Now check that the result matches.
+	// nolint: lll
+	expect3 := fmt.Sprintf(`{
+    "steps": [
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            }
+        },
+        {
+            "op": "same",
+            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+            "provider": "...",
+            "oldState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            },
+            "newState": {
+                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+                "custom": true,
+                "id": "0",
+                "type": "pulumi-nodejs:dynamic:Resource",
+                "inputs": {
+                    "__provider": "...",
+                    "state": 1
+                },
+                "outputs": {
+                    "__provider": "..."
+                },
+                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+                "provider": "...",
+                "propertyDependencies": {
+                    "__provider": null,
+                    "state": null
+                }
+            }
+        }
+    ],
+    "changeSummary": {
+        "same": 2
+    }
+}
+`, stackName)
+	assert.Equal(t, expect3, stdout3)
+
+	// Finally, destroy and remove the stack and be done.
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
@@ -635,9 +878,9 @@ func TestGetCreated(t *testing.T) {
 	})
 }
 
-// Tests that stack references work.
-func TestStackReference(t *testing.T) {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+// Tests that stack references work in Node.
+func TestStackReferenceNodeJS(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
 
@@ -645,6 +888,24 @@ func TestStackReference(t *testing.T) {
 		Dir:          "stack_reference",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+func TestStackReferencePython(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
@@ -678,5 +939,14 @@ func TestPython3NotInstalled(t *testing.T) {
 			output := stderr.String()
 			assert.Contains(t, output, expectedError)
 		},
+	})
+}
+
+// TestProviderSecretConfig that a first class provider can be created when it has secrets as part of its config.
+func TestProviderSecretConfig(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "provider_secret_config",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
 	})
 }

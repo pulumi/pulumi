@@ -3,18 +3,15 @@ if: branch = master OR branch =~ ^features/ OR tag IS present
 matrix:
   include:
     - os: linux
-      env: NODE_VERSION=v8.11.1 TRAVIS_PUBLISH_PACKAGES=true
+      env: NODE_VERSION=v12.1.0 TRAVIS_PUBLISH_PACKAGES=true
     - if: type IN (cron, push)
       os: osx
-      env: NODE_VERSION=v6.10.3
+      env: NODE_VERSION=v10.15.3
     - if: type = cron
       os: linux
-      env: NODE_VERSION=v11.0.0
-    - if: type = cron
-      os: linux
-      env: NODE_VERSION=v10.7
+      env: NODE_VERSION=v8.16.0
 language: go
-go: 1.11
+go: 1.12
 sudo: true # give us 7.5GB and >2 bursted cores.
 git:
   depth: false
@@ -22,6 +19,8 @@ before_install:
     - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
     - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
+    # Increase the default file descriptor limit on MacOS
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ulimit -n 2048; fi 
 install:
     - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
 before_script:

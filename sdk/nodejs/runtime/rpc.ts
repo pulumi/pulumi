@@ -14,14 +14,14 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { Input, Inputs, Output } from "../output";
+import { Input, Inputs, isSecretOutput, Output } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { excessiveDebugOutput, isDryRun } from "./settings";
+import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
-export type OutputResolvers = Record<string, (value: any, isStable: boolean) => void>;
+export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean) => void>;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
@@ -50,10 +50,12 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 
         let resolveValue: (v: any) => void;
         let resolveIsKnown: (v: boolean) => void;
+        let resolveIsSecret: (v: boolean) => void;
 
-        resolvers[k] = (v: any, isKnown: boolean) => {
+        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean) => {
             resolveValue(v);
             resolveIsKnown(isKnown);
+            resolveIsSecret(isSecret);
         };
 
         const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
@@ -64,7 +66,10 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
                 `transferProperty(${label}, ${k}, ${propString})`),
             debuggablePromise(
                 new Promise<boolean>(resolve => resolveIsKnown = resolve),
-                `transferIsStable(${label}, ${k}, ${propString})`));
+                `transferIsStable(${label}, ${k}, ${propString})`),
+            debuggablePromise(
+                new Promise<boolean>(resolve => resolveIsSecret = resolve),
+                `transferIsSecret(${label}, ${k}, ${props[k]})`));
     }
 
     return resolvers;
@@ -137,7 +142,7 @@ export function deserializeProperties(outputsStruct: any): any {
  * `allProps`represents an unknown value that was returned by an engine operation.
  */
 export function resolveProperties(
-    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean) => void>,
+    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean) => void>,
     t: string, name: string, allProps: any): void {
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
@@ -168,21 +173,27 @@ export function resolveProperties(
             continue;
         }
 
+        // If this value is a secret, unwrap its inner value.
+        let value = allProps[k];
+        const isSecret = value && value[specialSecretSig] === true;
+        if (isSecret) {
+            value = value.value;
+        }
+
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know
             // if it's final.
             if (!isDryRun()) {
-                // normal 'pulumi update'.  resolve the output with the value we got back
+                // normal 'pulumi up'.  resolve the output with the value we got back
                 // from the engine.  That output can always run its .apply calls.
-                resolve(allProps[k], true);
+                resolve(value, true, isSecret);
             }
             else {
                 // We're previewing. If the engine was able to give us a reasonable value back,
                 // then use it. Otherwise, inform the Output that the value isn't known.
-                const value = allProps[k];
                 const isKnown = value !== undefined;
-                resolve(value, isKnown);
+                resolve(value, isKnown, isSecret);
             }
         }
         catch (err) {
@@ -197,7 +208,7 @@ export function resolveProperties(
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
             const resolve = resolvers[k];
-            resolve(undefined, !isDryRun());
+            resolve(undefined, !isDryRun(), false);
         }
     }
 }
@@ -274,8 +285,24 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
         // resolve isKnown to true) and for any resource outputs that were resolved with known values.
         const isKnown = await prop.isKnown;
+
+        // You might think that doing an explict `=== true` here is not needed, but it is for a subtle reason. If the
+        // output we are serializing is a proxy itself, and it comes from a version of the SDK that did not have the
+        // `isSecret` member on `OutputImpl` then the call to `prop.isSecret` here will return an Output itself,
+        // which will wrap undefined, if it were to be resolved (since `Output` has no member named .isSecret).
+        // so we must compare to the literal true instead of just doing await prop.isSecret.
+        const isSecret = await prop.isSecret === true;
         const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
-        return isKnown ? value : unknownValue;
+        if (!isKnown) {
+            return unknownValue;
+        }
+        if (isSecret && await monitorSupportsSecrets()) {
+            return {
+                [specialSigKey]: specialSecretSig,
+                value: value,
+            };
+        }
+        return value;
     }
 
     if (CustomResource.isInstance(prop)) {
@@ -403,16 +430,37 @@ export function deserializeProperty(prop: any): any {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
                 case specialSecretSig:
-                    throw new Error("this version of the Pulumi SDK does not support first-class secrets");
+                    return {
+                        [specialSecretSig]: true,
+                        value: deserializeProperty(prop["value"]),
+                    };
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
         }
 
         // If there isn't a signature, it's not a special type, and we can simply return the object as a map.
+        // However, we want to push secretness up to the top level (since we can't set sub-properties to secret)
+        // values since they are not typed as Output<T>.
         const obj: any = {};
+        let hadSecrets = false;
+
         for (const k of Object.keys(prop)) {
-            obj[k] = deserializeProperty(prop[k]);
+            let o = deserializeProperty(prop[k]);
+
+            if (o && o[specialSecretSig] === true) {
+                hadSecrets = true;
+                o = o.value;
+            }
+
+            obj[k] = o;
+        }
+
+        if (hadSecrets) {
+            return {
+                [specialSecretSig]: true,
+                value: obj,
+            };
         }
         return obj;
     }

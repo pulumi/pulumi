@@ -115,9 +115,10 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
 		results = append(results, workspace.PluginInfo{
-			Name:    info.GetName(),
-			Kind:    workspace.PluginKind(info.GetKind()),
-			Version: version,
+			Name:      info.GetName(),
+			Kind:      workspace.PluginKind(info.GetKind()),
+			Version:   version,
+			ServerURL: info.GetServer(),
 		})
 	}
 
@@ -147,6 +148,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		Stack:          info.Stack,
 		Config:         config,
 		DryRun:         info.DryRun,
+		QueryMode:      info.QueryMode,
 		Parallel:       int32(info.Parallel),
 	})
 	if err != nil {

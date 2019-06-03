@@ -13,30 +13,80 @@
 // limitations under the License.
 
 import { ResourceError, RunError } from "./errors";
-import { Input, Inputs, Output } from "./output";
+import { all, Input, Inputs, interpolate, Output, output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
 
 /**
+ * createUrn computes a URN from the combination of a resource name, resource type, optional parent,
+ * optional project and optional stack.
+ */
+export function createUrn(name: Input<string>, type: Input<string>, parent?: Resource | Input<URN>, project?: string, stack?: string): Output<string> {
+    let parentPrefix: Output<string>;
+    if (parent) {
+        let parentUrn: Output<string>;
+        if (Resource.isInstance(parent)) {
+            parentUrn = parent.urn;
+        } else {
+            parentUrn = output(parent);
+        }
+        parentPrefix = parentUrn.apply(parentUrnString => parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$");
+    } else {
+        parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
+    }
+    return interpolate`${parentPrefix}${type}::${name}`;
+}
+
+// inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
+// This may involve changing the name of the resource in cases where the resource has a named derived from the name of
+// the parent, and the parent name changed.
+function inheritedChildAlias(childName: string, parentName: string, parentAlias: Input<string>, childType: string): Output<string> {
+    // If the child name has the parent name as a prefix, then we make the assumption that it was
+    // constructed from the convention of using `{name}-details` as the name of the child resource.  To
+    // ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
+    // the child resource name.
+    //
+    // For example:
+    // * name: "newapp-function"
+    // * opts.parent.__name: "newapp"
+    // * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+    // * parentAliasName: "app"
+    // * aliasName: "app-function"
+    // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+    let aliasName = output(childName);
+    if (childName.startsWith(parentName)) {
+        aliasName = output(parentAlias).apply(parentAliasUrn => {
+            const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::") + 2);
+            return parentAliasName + childName.substring(parentName.length);
+        });
+    }
+    return createUrn(aliasName, childType, parentAlias);
+}
+
+/**
  * Resource represents a class whose CRUD operations are implemented by a provider plugin.
  */
 export abstract class Resource {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
-     // tslint:disable-next-line:variable-name
-     /* @internal */ public readonly __pulumiResource: boolean = true;
+    // tslint:disable-next-line:variable-name
+    public readonly __pulumiResource: boolean = true;
 
     /**
+     * @internal
      * The optional parent of this resource.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __parentResource: Resource | undefined;
+    public readonly __parentResource: Resource | undefined;
 
     /**
+     * @internal
      * The child resources of this resource.  We use these (only from a ComponentResource) to allow
      * code to dependOn a ComponentResource and have that effectively mean that it is depending on
      * all the CustomResource children of that component.
@@ -74,7 +124,7 @@ export abstract class Resource {
      * pattern failed in practice.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public __childResources: Set<Resource> | undefined;
+    public __childResources: Set<Resource> | undefined;
 
     /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
@@ -83,16 +133,32 @@ export abstract class Resource {
     public readonly urn: Output<URN>;
 
     /**
+     * @internal
      * When set to true, protect ensures this resource cannot be deleted.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __protect: boolean;
+    private readonly __protect: boolean;
 
     /**
+     * @internal
+     * A list of aliases applied to this resource.
+     */
+    // tslint:disable-next-line:variable-name
+    readonly __aliases: Input<URN>[];
+
+    /**
+     * @internal
+     * The name assigned to the resource at construction.
+     */
+    // tslint:disable-next-line:variable-name
+    private readonly __name: string;
+
+    /**
+     * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
-     // tslint:disable-next-line:variable-name
-    /* @internal */ private readonly __providers: Record<string, ProviderResource>;
+    // tslint:disable-next-line:variable-name
+    private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
@@ -133,6 +199,11 @@ export abstract class Resource {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
 
+        this.__name = name;
+
+        // Make a shallow clone of opts to ensure we don't modify the value passed in.
+        opts = Object.assign({}, opts);
+
         if (opts.provider && (<ComponentResourceOptions>opts).providers) {
             throw new ResourceError("Do not supply both 'provider' and 'providers' options to a ComponentResource.", opts.parent);
         }
@@ -146,6 +217,12 @@ export abstract class Resource {
 
             if (opts.protect === undefined) {
                 opts.protect = opts.parent.__protect;
+            }
+
+            // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
+            opts.aliases = [...(opts.aliases || [])];
+            for (const parentAlias of opts.parent.__aliases) {
+                opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
             }
 
             this.__providers = opts.parent.__providers;
@@ -179,6 +256,15 @@ export abstract class Resource {
         }
 
         this.__protect = !!opts.protect;
+
+        // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
+        // default `name` and `type` to apply until we are inside the resource constructor.
+        this.__aliases = [];
+        if (opts.aliases) {
+            for (const alias of opts.aliases) {
+                this.__aliases.push(collapseAliasToUrn(alias, name, t, opts.parent));
+            }
+        }
 
         if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
@@ -217,6 +303,54 @@ function convertToProvidersMap(providers: Record<string, ProviderResource> | Pro
 (<any>Resource).doNotCapture = true;
 
 /**
+ * Alias is a partial description of prior named used for a resource. It can be processed in the context of a resource
+ * creation to determine what the full aliased URN would be.
+ */
+export interface Alias {
+    /**
+     * The previous name of the resource.  If not provided, the current name of the resource is used.
+     */
+    name?: Input<string>;
+    /**
+     * The previous type of the resource.  If not provided, the current type of the resource is used.
+     */
+    type?: Input<string>;
+    /**
+     * The previous parent of the resource.  If not provided, the current parent of the resource is used
+     * (`opts.parent` if provided, else the implicit stack resource parent).
+     */
+    parent?: Resource | Input<URN>;
+    /**
+     * The previous stack of the resource.  If not provided, defaults to `pulumi.getStack()`.
+     */
+    stack?: Input<string>;
+    /**
+     * The previous project of the resource. If not provided, defaults to `pulumi.getProject()`.
+     */
+    project?: Input<string>;
+}
+
+// collapseAliasToUrn turns an Alias into a URN given a set of default data
+function collapseAliasToUrn(
+    alias: Input<Alias | string>, defaultName: string, defaultType: string,
+    defaultParent: Resource | undefined): Output<URN> {
+
+    return output(alias).apply(a => {
+        if (typeof a === "string") {
+            return output(a);
+        } else {
+            return createUrn(
+                output(a.name).apply(n => n || defaultName),
+                output(a.type).apply(ty => ty || defaultType),
+                a.parent || defaultParent,
+                a.project,
+                a.stack,
+            );
+        }
+    });
+}
+
+/**
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
  */
 export interface ResourceOptions {
@@ -236,7 +370,20 @@ export interface ResourceOptions {
      * When set to true, protect ensures this resource cannot be deleted.
      */
     protect?: boolean;
-
+    /**
+     * Ignore changes to any of the specified properties.
+     */
+    ignoreChanges?: string[];
+    /**
+     * An optional version, corresponding to the version of the provider plugin that should be used when operating on
+     * this resource. This version overrides the version information inferred from the current package and should
+     * rarely be used.
+     */
+    version?: string;
+    /**
+     * An optional list of aliases to treat this resource as matching.
+     */
+    aliases?: Input<URN | Alias>[];
     /**
      * An optional provider to use for this resource's CRUD operations. If no provider is supplied,
      * the default provider for the resource's package will be used. The default provider is pulled
@@ -256,6 +403,13 @@ export interface CustomResourceOptions extends ResourceOptions {
      * is created when replacement is necessary.
      */
     deleteBeforeReplace?: boolean;
+
+    /**
+     * The names of outputs for this resource that should be treated as secrets. This augments the list that
+     * the resource provider and pulumi engine already determine based on inputs to your resource. It can be used
+     * to mark certain ouputs as a secrets on a per resource basis.
+     */
+    additionalSecretOutputs?: string[];
 }
 
 /**
@@ -282,10 +436,11 @@ export interface ComponentResourceOptions extends ResourceOptions {
  */
 export abstract class CustomResource extends Resource {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiCustomResource: boolean;
+    public readonly __pulumiCustomResource: boolean;
 
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
@@ -355,10 +510,11 @@ export abstract class ProviderResource extends CustomResource {
  */
 export class ComponentResource extends Resource {
     /**
+     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    /* @internal */ public readonly __pulumiComponentResource: boolean;
+    public readonly __pulumiComponentResource: boolean;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -408,7 +564,7 @@ export class ComponentResource extends Resource {
 (<any>ComponentResource).doNotCapture = true;
 (<any>ComponentResource.prototype).registerOutputs.doNotCapture = true;
 
-/* @internal */
+/** @internal */
 export const testingOptions = {
     isDryRun: false,
 };

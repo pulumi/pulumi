@@ -15,6 +15,7 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -61,7 +62,7 @@ func getEndpointName(method, path string) string {
 		return "unknown"
 	}
 
-	return match.Route.GetName()
+	return fmt.Sprintf("api/%s", match.Route.GetName())
 }
 
 // routes is the canonical muxer we use to determine friendly names for Pulumi APIs.
@@ -72,6 +73,7 @@ func init() {
 	routes = mux.NewRouter()
 
 	// addEndpoint registers the endpoint with the indicated method, path, and friendly name with the route table.
+	// We use this to provide more user-friendly names for the endpoints for annotating trace logs.
 	addEndpoint := func(method, path, name string) {
 		routes.Path(path).Methods(method).Name(name)
 	}
@@ -80,31 +82,28 @@ func init() {
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
 	addEndpoint("GET", "/api/stacks/{orgName}", "listOrganizationStacks")
 	addEndpoint("POST", "/api/stacks/{orgName}", "createStack")
-	addEndpoint("DELETE", "/api/stacks/{orgName}/{stackName}", "deleteStack")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}", "getStack")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/export", "exportStack")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/import", "importStack")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/encrypt", "encryptValue")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/decrypt", "decryptValue")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/logs", "getStackLogs")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/updates", "getStackUpdates")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/updates/latest", "getLatestStackUpdate")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/updates/{version}", "getStackUpdate")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/updates/{version}/contents/files", "getUpdateContentsFiles")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/updates/{version}/contents/file/{path:.*}", "getUpdateContentsFilePath")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy", "destroyStack")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}", "getDestroyStatus")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}", "startDestroy")
-	addEndpoint("PATCH", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}/checkpoint", "patchUpdateCheckpoint")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}/complete", "completeUpdate")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/destroy/{updateID}/renew_lease", "renewUpdateLease")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/preview", "previewUpdate")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/preview/{updateID}", "getPreviewStatus")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/preview/{updateID}", "startPreview")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update", "updateStack")
-	addEndpoint("GET", "/api/stacks/{orgName}/{stackName}/update/{updateID}", "getUpdateStatus")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}", "startUpdate")
-	addEndpoint("PATCH", "/api/stacks/{orgName}/{stackName}/update/{updateID}/checkpoint", "patchUpdateCheckpoint")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/complete", "completeUpdate")
-	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/renew_lease", "renewUpdateLease")
+	addEndpoint("DELETE", "/api/stacks/{orgName}/{projectName}/{stackName}", "deleteStack")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}", "getStack")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/export", "exportStack")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/import", "importStack")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/encrypt", "encryptValue")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/decrypt", "decryptValue")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/logs", "getStackLogs")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates", "getStackUpdates")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/latest", "getLatestStackUpdate")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}", "getStackUpdate")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/files", "getUpdateContentsFiles")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/file/{path:.*}", "getUpdateContentsFilePath")
+
+	// The APIs for performing updates of various kind all have the same set of API endpoints. Only
+	// differentiate the "create update of kind X" APIs, and introduce a pseudo route param "updateKind".
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/destroy", "createDestroy")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/preview", "createPreview")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/update", "createUpdate")
+
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}", "getUpdateStatus")
+	addEndpoint("PATCH", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/checkpoint", "patchCheckpoint")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/complete", "completeUpdate")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/events", "postEngineEvent")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/renew_lease", "renewLease")
 }

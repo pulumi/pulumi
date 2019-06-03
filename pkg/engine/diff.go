@@ -17,6 +17,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"reflect"
 	"sort"
 	"strconv"
@@ -54,7 +55,7 @@ func GetIndent(step StepEventMetadata, seen map[resource.URN]StepEventMetadata) 
 	return indent
 }
 
-func printStepHeader(b *bytes.Buffer, step StepEventMetadata) {
+func printStepHeader(b io.StringWriter, step StepEventMetadata) {
 	var extra string
 	old := step.Old
 	new := step.New
@@ -94,27 +95,27 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 	return result[:len(result)-2] + rp
 }
 
-func writeString(b *bytes.Buffer, s string) {
+func writeString(b io.StringWriter, s string) {
 	_, err := b.WriteString(s)
 	contract.IgnoreError(err)
 }
 
-func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
+func writeWithIndent(b io.StringWriter, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
 	writeString(b, op.Color())
 	writeString(b, getIndentationString(indent, op, prefix))
 	writeString(b, fmt.Sprintf(format, a...))
 	writeString(b, colors.Reset)
 }
 
-func writeWithIndentNoPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
+func writeWithIndentNoPrefix(b io.StringWriter, indent int, op deploy.StepOp, format string, a ...interface{}) {
 	writeWithIndent(b, indent, op, false, format, a...)
 }
 
-func write(b *bytes.Buffer, op deploy.StepOp, format string, a ...interface{}) {
+func write(b io.StringWriter, op deploy.StepOp, format string, a ...interface{}) {
 	writeWithIndentNoPrefix(b, 0, op, format, a...)
 }
 
-func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
+func writeVerbatim(b io.StringWriter, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
@@ -350,7 +351,7 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	return true
 }
 
-func printPropertyTitle(b *bytes.Buffer, name string, align int, indent int, op deploy.StepOp, prefix bool) {
+func printPropertyTitle(b io.StringWriter, name string, align int, indent int, op deploy.StepOp, prefix bool) {
 	writeWithIndent(b, indent, op, prefix, "%-"+strconv.Itoa(align)+"s: ", name)
 }
 
@@ -590,7 +591,7 @@ func isPrimitive(value resource.PropertyValue) bool {
 		value.IsBool() || value.IsComputed() || value.IsOutput()
 }
 
-func printPrimitivePropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool, op deploy.StepOp) {
+func printPrimitivePropertyValue(b io.StringWriter, v resource.PropertyValue, planning bool, op deploy.StepOp) {
 	contract.Assert(isPrimitive(v))
 
 	if v.IsNull() {

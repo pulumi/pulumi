@@ -58,6 +58,8 @@
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
         "tests/output.spec.ts",
+        "tests/resource.spec.ts",
+        "tests/testmode.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/closureLoader.spec.ts",

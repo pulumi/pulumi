@@ -185,13 +185,16 @@ func (r *Registry) label() string {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (r *Registry) CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (r *Registry) CheckConfig(urn resource.URN, olds,
+	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+
 	contract.Fail()
 	return nil, nil, errors.New("the provider registry is not configurable")
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (r *Registry) DiffConfig(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+func (r *Registry) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+	allowUnknowns bool) (plugin.DiffResult, error) {
 	contract.Fail()
 	return plugin.DiffResult{}, errors.New("the provider registry is not configurable")
 }
@@ -215,7 +218,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	contract.Require(IsProviderType(urn.Type()), "urn")
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), urn)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	// Parse the version from the provider properties and load the provider.
 	version, err := GetProviderVersion(news)
@@ -231,7 +234,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	}
 
 	// Check the provider's config. If the check fails, unload the provider.
-	inputs, failures, err := provider.CheckConfig(olds, news)
+	inputs, failures, err := provider.CheckConfig(urn, olds, news, allowUnknowns)
 	if len(failures) != 0 || err != nil {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
@@ -258,7 +261,6 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 // previously been loaded by a call to Check.
 func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 	allowUnknowns bool) (plugin.DiffResult, error) {
-
 	contract.Require(id != "", "id")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), urn, id)
@@ -274,7 +276,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 		provider, ok = r.GetProvider(mustNewReference(urn, id))
 		contract.Assertf(ok, "Provider must have been registered by NewRegistry for DBR Diff (%v::%v)", urn, id)
 
-		diff, err := provider.DiffConfig(olds, news)
+		diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns)
 		if err != nil {
 			return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 		}
@@ -282,7 +284,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	}
 
 	// Diff the properties.
-	diff, err := provider.DiffConfig(olds, news)
+	diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns)
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
@@ -325,7 +327,7 @@ func (r *Registry) Create(urn resource.URN,
 	contract.Assert(id != UnknownID)
 
 	r.setProvider(mustNewReference(urn, id), provider)
-	return id, resource.PropertyMap{}, resource.StatusOK, nil
+	return id, news, resource.StatusOK, nil
 }
 
 // Update configures the provider with the given URN and ID using the indicated configuration and registers it at the
@@ -350,7 +352,7 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
 
 	// Publish the configured provider.
 	r.setProvider(mustNewReference(urn, id), provider)
-	return resource.PropertyMap{}, resource.StatusOK, nil
+	return news, resource.StatusOK, nil
 }
 
 // Delete unregisters and unloads the provider with the given URN and ID. The provider must have been loaded when the

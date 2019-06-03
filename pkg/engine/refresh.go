@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -54,6 +55,19 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 func newRefreshSource(client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
+
+	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.
+	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described
+	// in the snapshot.
+	plugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	if err != nil {
+		return nil, err
+	}
+
+	// Like Update, if we're missing plugins, attempt to download the missing plugins.
+	if err := ensurePluginsAreInstalled(plugins); err != nil {
+		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
+	}
 
 	// Just return an error source. Refresh doesn't use its source.
 	return deploy.NewErrorSource(proj.Name), nil

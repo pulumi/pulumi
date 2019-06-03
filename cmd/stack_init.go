@@ -23,6 +23,7 @@ import (
 )
 
 func newStackInitCmd() *cobra.Command {
+	var secretsProvider string
 	var stackName string
 
 	cmd := &cobra.Command{
@@ -54,6 +55,11 @@ func newStackInitCmd() *cobra.Command {
 				stackName = args[0]
 			}
 
+			// Validate secrets provider type
+			if err := validateSecretsProvider(secretsProvider); err != nil {
+				return err
+			}
+
 			if stackName == "" && cmdutil.Interactive() {
 				name, nameErr := cmdutil.ReadConsole("Please enter your desired stack name.\n" +
 					"To create a stack in an organization, " +
@@ -74,11 +80,14 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/)
+			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
 			return err
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to create")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+			"decrypt secrets (possible choices: default, passphrase)")
 	return cmd
 }

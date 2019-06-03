@@ -34,15 +34,30 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
+// The `Type()` for the NodeJS dynamic provider.  Logically, this is the same as calling
+// providers.MakeProviderType(tokens.Package("pulumi-nodejs")), but does not depend on the providers package
+// (a direct dependency would cause a cyclic import issue.
+//
+// This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
+const nodejsDynamicProviderType = "pulumi:providers:pulumi-nodejs"
+
+// The `Type()` for the Kubernetes provider.  Logically, this is the same as calling
+// providers.MakeProviderType(tokens.Package("kubernetes")), but does not depend on the providers package
+// (a direct dependency would cause a cyclic import issue.
+//
+// This is needed because we have to handle some buggy behavior that previous versions of this provider implemented.
+const kubernetesProviderType = "pulumi:providers:kubernetes"
+
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx       *Context                         // a plugin context for caching, etc.
-	pkg       tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug      *plugin                          // the actual plugin process wrapper.
-	clientRaw pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr    error                            // non-nil if a configure call fails.
-	cfgknown  bool                             // true if all configuration values are known.
-	cfgdone   chan bool                        // closed when configuration has completed.
+	ctx           *Context                         // a plugin context for caching, etc.
+	pkg           tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug          *plugin                          // the actual plugin process wrapper.
+	clientRaw     pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr        error                            // non-nil if a configure call fails.
+	cfgknown      bool                             // true if all configuration values are known.
+	cfgdone       chan bool                        // closed when configuration has completed.
+	acceptSecrets bool                             // true if this provider plugin can consume strongly typed secret.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -83,11 +98,46 @@ func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
 }
 
+// isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
+// due to a rpc being unimplemented. Due to past mistakes, different providers returned "Unimplemented" in a variaity of
+// different ways that don't always result in an Uimplemented error code.
+func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType tokens.Type) bool {
+	switch string(providerType) {
+	// The NodeJS dynamic provider implementation incorrectly returned an empty message instead of properly implementing
+	// Diff/CheckConfig.  This gets turned into a error with type: "Internal".
+	case nodejsDynamicProviderType:
+		if err.Code() == codes.Internal {
+			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			return true
+		}
+
+	// The Kubernetes provider returned an "Unimplmeneted" message, but it did so by returning a status from a different
+	// package that the provider was expected. That caused the error to be wrapped with an "Unknown" error.
+	case kubernetesProviderType:
+		if err.Code() == codes.Unknown && strings.Contains(err.Message(), "Unimplemented") {
+			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			return true
+		}
+	}
+
+	return false
+}
+
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+func (p *provider) CheckConfig(urn resource.URN, olds,
+	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+
 	// Ensure that all config values are strings or unknowns.
 	var failures []CheckFailure
 	for k, v := range news {
+		// The configure method has to accept strings, so we go through and strip off all the secret markers before
+		// doing our checks (this mimics stripping code we have in Configure itself).
+		for v.IsSecret() {
+			v = v.SecretValue().Element
+		}
+
 		if !v.IsString() && !v.IsComputed() {
 			failures = append(failures, CheckFailure{
 				Property: k,
@@ -99,23 +149,135 @@ func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 		return nil, failures, nil
 	}
 
-	// If all config values check out, simply return the new values.
-	return news, nil, nil
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: allowUnknowns,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := p.clientRaw.CheckConfig(p.ctx.Request(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, urn.Type()) {
+			// For backwards compatibility, just return the news as if the provider was okay with them.
+			logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
+			return news, nil, nil
+		}
+		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
+			rpcError.Message())
+		return nil, nil, err
+	}
+
+	// Unmarshal the provider inputs.
+	var inputs resource.PropertyMap
+	if ins := resp.GetInputs(); ins != nil {
+		inputs, err = UnmarshalProperties(ins, MarshalOptions{
+			Label:          fmt.Sprintf("%s.inputs", label),
+			KeepUnknowns:   allowUnknowns,
+			RejectUnknowns: !allowUnknowns,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Copy over any secret annotations, since we could not pass any to the provider, and return.
+	annotateSecrets(inputs, news)
+	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	return inputs, failures, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, error) {
-	// There are two interesting scenarios with the present gRPC interface:
-	// 1. Configuration differences in which all properties are known
-	// 2. Configuration differences in which some new property is unknown.
-	//
-	// In both cases, we return a diff result that indicates that the provider _should not_ be replaced. Although this
-	// decision is not conservative--indeed, the conservative decision would be to always require replacement of a
-	// provider if any input has changed--we believe that it results in the best possible user experience for providers
-	// that do not implement DiffConfig functionality. If we took the conservative route here, any change to a
-	// provider's configuration (no matter how inconsequential) would cause all of its resources to be replaced. This
-	// is clearly a bad experience, and differs from how things worked prior to first-class providers.
-	return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
+func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+	allowUnknowns bool) (DiffResult, error) {
+	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	resp, err := p.clientRaw.DiffConfig(p.ctx.Request(), &pulumirpc.DiffRequest{
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, urn.Type()) {
+			logging.V(7).Infof("%s unimplemented rpc: returning DiffUnknown with no replaces", label)
+			// In this case, the provider plugin did not implement this and we have to provide some answer:
+			//
+			// There are two interesting scenarios with the present gRPC interface:
+			// 1. Configuration differences in which all properties are known
+			// 2. Configuration differences in which some new property is unknown.
+			//
+			// In both cases, we return a diff result that indicates that the provider _should not_ be replaced.
+			// Although this decision is not conservative--indeed, the conservative decision would be to always require
+			// replacement of a provider if any input has changed--we believe that it results in the best possible user
+			// experience for providers that do not implement DiffConfig functionality. If we took the conservative
+			// route here, any change to a provider's configuration (no matter how inconsequential) would cause all of
+			// its resources to be replaced. This is clearly a bad experience, and differs from how things worked prior
+			// to first-class providers.
+			return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
+		}
+		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
+			rpcError.Message())
+		return DiffResult{}, nil
+	}
+
+	var replaces []resource.PropertyKey
+	for _, replace := range resp.GetReplaces() {
+		replaces = append(replaces, resource.PropertyKey(replace))
+	}
+	var stables []resource.PropertyKey
+	for _, stable := range resp.GetStables() {
+		stables = append(stables, resource.PropertyKey(stable))
+	}
+	var diffs []resource.PropertyKey
+	for _, diff := range resp.GetDiffs() {
+		diffs = append(diffs, resource.PropertyKey(diff))
+	}
+
+	changes := resp.GetChanges()
+	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
+	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v",
+		label, changes, replaces, stables, deleteBeforeReplace, diffs)
+
+	return DiffResult{
+		Changes:             DiffChanges(changes),
+		ReplaceKeys:         replaces,
+		StableKeys:          stables,
+		ChangedKeys:         diffs,
+		DeleteBeforeReplace: deleteBeforeReplace,
+	}, nil
 }
 
 // getClient returns the client, and ensures that the target provider has been configured.  This just makes it safer
@@ -135,21 +297,57 @@ func (p *provider) ensureConfigured() error {
 	return p.cfgerr
 }
 
+// annotateSecrets copies the "secretness" from the ins to the outs. If there are values with the same keys for the
+// outs and the ins, if they are both objects, they are transformed recursively. Otherwise, if the value in the ins
+// contains a secret, the entire out value is marked as a secret.  This is very close to how we project secrets
+// in the programming model, with one small difference, which is how we treat the case where both are objects. In the
+// programming model, we would say the entire output object is a secret. Here, we actually recur in. We do this because
+// we don't want a single secret value in a rich structure to taint the entire object. Doing so would mean things like
+// the entire value in the deployment would be encrypted instead of a small chunk. It also means the entire property
+// would be displayed as `[secret]` in the CLI instead of a small part.
+//
+// NOTE: This means that for an array, if any value in the input version is a secret, the entire output array is
+// marked as a secret. This is actually a very nice result, because often arrays are treated like sets by providers
+// and the order may not be preserved across an operation. This means we do end up encrypting the entire array
+// but that's better than accidentally leaking a value which just moved to a different location.
+func annotateSecrets(outs, ins resource.PropertyMap) {
+	if outs == nil || ins == nil {
+		return
+	}
+
+	for key, inValue := range ins {
+		outValue, has := outs[key]
+		if !has {
+			continue
+		}
+		if outValue.IsObject() && inValue.IsObject() {
+			annotateSecrets(outValue.ObjectValue(), inValue.ObjectValue())
+		} else if !outValue.IsSecret() && inValue.ContainsSecrets() {
+			outs[key] = resource.MakeSecret(outValue)
+		}
+	}
+}
+
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(inputs))
 
-	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leavce
+	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
 	config := make(map[string]string)
 	for k, v := range inputs {
 		if k == "version" {
 			continue
 		}
+		// The configure method has to accept strings, so we go through and strip off all the secret markers before
+		// calling configure.
+		for v.IsSecret() {
+			v = v.SecretValue().Element
+		}
 		switch {
 		case v.IsComputed():
-			p.cfgknown = false
+			p.cfgknown, p.acceptSecrets = false, false
 			close(p.cfgdone)
 			return nil
 		case v.IsString():
@@ -166,14 +364,17 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
-		_, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
+		resp, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{
+			AcceptSecrets: true,
+			Variables:     config,
+		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfgknown, p.cfgerr = true, err
+		p.cfgknown, p.acceptSecrets, p.cfgerr = true, resp.GetAcceptSecrets(), err
 		close(p.cfgdone)
 	}()
 
@@ -198,13 +399,19 @@ func (p *provider) Check(urn resource.URN,
 		return news, nil, nil
 	}
 
-	molds, err := MarshalProperties(olds, MarshalOptions{Label: fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: allowUnknowns})
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -224,10 +431,21 @@ func (p *provider) Check(urn resource.URN,
 	var inputs resource.PropertyMap
 	if ins := resp.GetInputs(); ins != nil {
 		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: allowUnknowns, RejectUnknowns: !allowUnknowns})
+			Label:          fmt.Sprintf("%s.inputs", label),
+			KeepUnknowns:   allowUnknowns,
+			RejectUnknowns: !allowUnknowns,
+			KeepSecrets:    true,
+		})
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(inputs, news)
 	}
 
 	// And now any properties that failed verification.
@@ -268,12 +486,19 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
+		Label:              fmt.Sprintf("%s.olds", label),
+		ElideAssetContents: true,
+		KeepUnknowns:       allowUnknowns,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
+	})
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -326,7 +551,10 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{Label: fmt.Sprintf("%s.inputs", label)})
+	mprops, err := MarshalProperties(props, MarshalOptions{
+		Label:       fmt.Sprintf("%s.inputs", label),
+		KeepSecrets: p.acceptSecrets,
+	})
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
@@ -367,9 +595,19 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.outputs", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return "", nil, resourceStatus, err
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(outs, props)
 	}
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
@@ -407,13 +645,21 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	// Marshal the resource inputs and state so we can perform the RPC.
 	var minputs *_struct.Struct
 	if inputs != nil {
-		m, err := MarshalProperties(inputs, MarshalOptions{Label: label, ElideAssetContents: true})
+		m, err := MarshalProperties(inputs, MarshalOptions{
+			Label:              label,
+			ElideAssetContents: true,
+			KeepSecrets:        p.acceptSecrets,
+		})
 		if err != nil {
 			return ReadResult{}, resource.StatusUnknown, err
 		}
 		minputs = m
 	}
-	mstate, err := MarshalProperties(state, MarshalOptions{Label: label, ElideAssetContents: true})
+	mstate, err := MarshalProperties(state, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
 	}
@@ -454,7 +700,10 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 	// Finally, unmarshal the resulting state properties and return them.
 	newState, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.outputs", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return ReadResult{}, resourceStatus, err
 	}
@@ -462,10 +711,21 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	var newInputs resource.PropertyMap
 	if liveInputs != nil {
 		newInputs, err = UnmarshalProperties(liveInputs, MarshalOptions{
-			Label: label + ".inputs", RejectUnknowns: true})
+			Label:          label + ".inputs",
+			RejectUnknowns: true,
+			KeepSecrets:    true,
+		})
 		if err != nil {
 			return ReadResult{}, resourceStatus, err
 		}
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(newInputs, inputs)
+		annotateSecrets(newState, state)
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
@@ -487,11 +747,17 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true})
+		Label:              fmt.Sprintf("%s.olds", label),
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label)})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:       fmt.Sprintf("%s.news", label),
+		KeepSecrets: p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
@@ -527,9 +793,19 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.outputs", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return nil, resourceStatus, err
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !p.acceptSecrets {
+		annotateSecrets(outs, news)
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
@@ -547,7 +823,11 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
+	mprops, err := MarshalProperties(props, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+	})
 	if err != nil {
 		return resource.StatusOK, err
 	}
@@ -594,7 +874,10 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		return resource.PropertyMap{}, nil, nil
 	}
 
-	margs, err := MarshalProperties(args, MarshalOptions{Label: fmt.Sprintf("%s.args", label)})
+	margs, err := MarshalProperties(args, MarshalOptions{
+		Label:       fmt.Sprintf("%s.args", label),
+		KeepSecrets: p.acceptSecrets,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -608,7 +891,10 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	// Unmarshal any return values.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label: fmt.Sprintf("%s.returns", label), RejectUnknowns: true})
+		Label:          fmt.Sprintf("%s.returns", label),
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+	})
 	if err != nil {
 		return nil, nil, err
 	}

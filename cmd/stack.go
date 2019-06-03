@@ -24,13 +24,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackCmd() *cobra.Command {
 	var showIDs bool
 	var showURNs bool
+	var showSecrets bool
 	var stackName string
 
 	cmd := &cobra.Command{
@@ -93,14 +93,8 @@ func newStackCmd() *cobra.Command {
 					fmt.Printf("    Plugin %s [%s] version: %s\n", plugin.Name, plugin.Kind, plugver)
 				}
 			} else {
-				fmt.Printf("    No updates yet; run 'pulumi update'\n")
+				fmt.Printf("    No updates yet; run 'pulumi up'\n")
 			}
-
-			cfg := s.Config()
-			if cfg != nil && len(cfg) > 0 {
-				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(cfg))
-			}
-			fmt.Printf("\n")
 
 			// Now show the resources.
 			var rescnt int
@@ -135,8 +129,8 @@ func newStackCmd() *cobra.Command {
 					Prefix:  "    ",
 				})
 
-				// Print out the output properties for the stack, if present.
-				if res, outputs := stack.GetRootStackResource(snap); res != nil {
+				outputs, err := getStackOutputs(snap, showSecrets)
+				if err != nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
@@ -164,6 +158,8 @@ func newStackCmd() *cobra.Command {
 		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.PersistentFlags().BoolVarP(
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())

@@ -15,7 +15,11 @@
 package deploy
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -69,6 +73,7 @@ func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
 	return &SameStep{
 		plan: plan,
@@ -80,17 +85,16 @@ func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new
 
 func (s *SameStep) Op() StepOp           { return OpSame }
 func (s *SameStep) Plan() *Plan          { return s.plan }
-func (s *SameStep) Type() tokens.Type    { return s.old.Type }
-func (s *SameStep) Provider() string     { return s.old.Provider }
-func (s *SameStep) URN() resource.URN    { return s.old.URN }
+func (s *SameStep) Type() tokens.Type    { return s.new.Type }
+func (s *SameStep) Provider() string     { return s.new.Provider }
+func (s *SameStep) URN() resource.URN    { return s.new.URN }
 func (s *SameStep) Old() *resource.State { return s.old }
 func (s *SameStep) New() *resource.State { return s.new }
 func (s *SameStep) Res() *resource.State { return s.new }
 func (s *SameStep) Logical() bool        { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Retain the URN, ID, and outputs:
-	s.new.URN = s.old.URN
+	// Retain the ID, and outputs:
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new, Stable: true}) }
@@ -138,7 +142,6 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
-	contract.Assert(old.Type == new.Type)
 	contract.Assert(!new.External)
 	return &CreateStep{
 		plan:          plan,
@@ -298,7 +301,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			if err != nil {
 				return resource.StatusOK, nil, err
 			}
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.All()); err != nil {
+			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs); err != nil {
 				return rst, nil, err
 			}
 		}
@@ -359,8 +362,8 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
-	contract.Assert(old.Type == new.Type)
 	contract.Assert(!new.External)
 	contract.Assert(!old.External)
 	return &UpdateStep{
@@ -375,9 +378,9 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 
 func (s *UpdateStep) Op() StepOp                    { return OpUpdate }
 func (s *UpdateStep) Plan() *Plan                   { return s.plan }
-func (s *UpdateStep) Type() tokens.Type             { return s.old.Type }
-func (s *UpdateStep) Provider() string              { return s.old.Provider }
-func (s *UpdateStep) URN() resource.URN             { return s.old.URN }
+func (s *UpdateStep) Type() tokens.Type             { return s.new.Type }
+func (s *UpdateStep) Provider() string              { return s.new.Provider }
+func (s *UpdateStep) URN() resource.URN             { return s.new.URN }
 func (s *UpdateStep) Old() *resource.State          { return s.old }
 func (s *UpdateStep) New() *resource.State          { return s.new }
 func (s *UpdateStep) Res() *resource.State          { return s.new }
@@ -385,8 +388,7 @@ func (s *UpdateStep) Logical() bool                 { return true }
 func (s *UpdateStep) Diffs() []resource.PropertyKey { return s.diffs }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Always propagate the URN and ID, even in previews and refreshes.
-	s.new.URN = s.old.URN
+	// Always propagate the ID, even in previews and refreshes.
 	s.new.ID = s.old.ID
 
 	var resourceError error
@@ -399,8 +401,8 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), s.new.Inputs)
+			// Update to the combination of the old "all" state, but overwritten with new inputs.
+			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, upderr
@@ -463,9 +465,9 @@ func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 
 func (s *ReplaceStep) Op() StepOp                    { return OpReplace }
 func (s *ReplaceStep) Plan() *Plan                   { return s.plan }
-func (s *ReplaceStep) Type() tokens.Type             { return s.old.Type }
-func (s *ReplaceStep) Provider() string              { return s.old.Provider }
-func (s *ReplaceStep) URN() resource.URN             { return s.old.URN }
+func (s *ReplaceStep) Type() tokens.Type             { return s.new.Type }
+func (s *ReplaceStep) Provider() string              { return s.new.Provider }
+func (s *ReplaceStep) URN() resource.URN             { return s.new.URN }
 func (s *ReplaceStep) Old() *resource.State          { return s.old }
 func (s *ReplaceStep) New() *resource.State          { return s.new }
 func (s *ReplaceStep) Res() *resource.State          { return s.new }
@@ -667,6 +669,15 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		}
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 			initErrors = initErr.Reasons
+
+			// Partial failure SHOULD NOT cause refresh to fail. Instead:
+			//
+			// 1. Warn instead that during refresh we noticed the resource has become unhealthy.
+			// 2. Make sure the initialization errors are persisted in the state, so that the next
+			//    `pulumi up` will surface them to the user.
+			err = nil
+			msg := fmt.Sprintf("Refreshed resource is in an unhealthy state:\n* %s", strings.Join(initErrors, "\n* "))
+			s.Plan().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}
 	outputs := refreshed.Outputs
@@ -680,7 +691,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	if outputs != nil {
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
-			s.old.PropertyDependencies, s.old.PendingReplacement)
+			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases)
 	} else {
 		s.new = nil
 	}

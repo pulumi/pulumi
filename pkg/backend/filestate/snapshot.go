@@ -18,6 +18,7 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -26,23 +27,24 @@ import (
 type localSnapshotPersister struct {
 	name    tokens.QName
 	backend *localBackend
+	sm      secrets.Manager
 }
 
-func (sm *localSnapshotPersister) Invalidate() error {
-	return nil
+func (sp *localSnapshotPersister) SecretsManager() secrets.Manager {
+	return sp.sm
 }
 
-func (sm *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	config, _, _, err := sm.backend.getStack(sm.name)
+func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
+	_, _, err := sp.backend.getStack(sp.name)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	_, err = sm.backend.saveStack(sm.name, config, snapshot)
+	_, err = sp.backend.saveStack(sp.name, snapshot, sp.sm)
 	return err
 
 }
 
-func (b *localBackend) newSnapshotPersister(stackName tokens.QName) *localSnapshotPersister {
-	return &localSnapshotPersister{name: stackName, backend: b}
+func (b *localBackend) newSnapshotPersister(stackName tokens.QName, sm secrets.Manager) *localSnapshotPersister {
+	return &localSnapshotPersister{name: stackName, backend: b, sm: sm}
 }

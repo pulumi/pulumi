@@ -16,6 +16,11 @@ class ResourceMonitorStub(object):
     Args:
       channel: A grpc.Channel.
     """
+    self.SupportsFeature = channel.unary_unary(
+        '/pulumirpc.ResourceMonitor/SupportsFeature',
+        request_serializer=resource__pb2.SupportsFeatureRequest.SerializeToString,
+        response_deserializer=resource__pb2.SupportsFeatureResponse.FromString,
+        )
     self.Invoke = channel.unary_unary(
         '/pulumirpc.ResourceMonitor/Invoke',
         request_serializer=provider__pb2.InvokeRequest.SerializeToString,
@@ -41,6 +46,13 @@ class ResourceMonitorStub(object):
 class ResourceMonitorServicer(object):
   """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
   """
+
+  def SupportsFeature(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
 
   def Invoke(self, request, context):
     # missing associated documentation comment in .proto file
@@ -73,6 +85,11 @@ class ResourceMonitorServicer(object):
 
 def add_ResourceMonitorServicer_to_server(servicer, server):
   rpc_method_handlers = {
+      'SupportsFeature': grpc.unary_unary_rpc_method_handler(
+          servicer.SupportsFeature,
+          request_deserializer=resource__pb2.SupportsFeatureRequest.FromString,
+          response_serializer=resource__pb2.SupportsFeatureResponse.SerializeToString,
+      ),
       'Invoke': grpc.unary_unary_rpc_method_handler(
           servicer.Invoke,
           request_deserializer=provider__pb2.InvokeRequest.FromString,

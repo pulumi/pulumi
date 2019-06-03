@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -102,6 +103,24 @@ func (ts *tokenSource) GetToken() (string, error) {
 	return resp.token, resp.err
 }
 
+type cloudQuery struct {
+	root   string
+	proj   *workspace.Project
+	target *deploy.Target
+}
+
+func (q *cloudQuery) GetRoot() string {
+	return q.root
+}
+
+func (q *cloudQuery) GetProject() *workspace.Project {
+	return q.proj
+}
+
+func (q *cloudQuery) GetTarget() *deploy.Target {
+	return q.target
+}
+
 // cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
 type cloudUpdate struct {
 	context context.Context
@@ -165,7 +184,7 @@ func isDebugDiagEvent(e engine.Event) bool {
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
-// posting them to the Pulumi service. Any failures will post DiaogEvents to be displayed in the CLI.
+// posting them to the Pulumi service.
 func (u *cloudUpdate) RecordAndDisplayEvents(
 	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
 	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
@@ -173,7 +192,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// Create a new channel to synchronize with the event renderer.
 	innerDone := make(chan bool)
 	defer func() {
-		// Wait for the display routime to exit, then notify any listeners that this routine is finished.
+		// Wait for the display goroutine to exit, then notify any listeners that this goroutine is finished.
 		<-innerDone
 		close(done)
 	}()
@@ -189,8 +208,8 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	eventIdx := 0
 
 	// We start the requests to record engine events in separate Go routines since they can
-	// all be done independently, and updates with a "chatty" event stream can have serious
-	// perf problems when issuing the requests serially.
+	// all be done independently. Updates with a "chatty" event stream can have serious
+	// perf problems if issued serially.
 	var wg sync.WaitGroup
 	recordEngineEvent := func(event engine.Event, eventIdx int) {
 		defer wg.Done()
@@ -225,8 +244,19 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	wg.Wait()
 }
 
-func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, proj *workspace.Project,
-	root string, update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
+func (b *cloudBackend) newQuery(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) (*cloudQuery, error) {
+	// Construct the query target.
+	target, err := b.getTarget(ctx, stackRef, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cloudQuery{root: op.Root, proj: op.Proj, target: target}, nil
+}
+
+func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
+	update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
 
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
@@ -239,7 +269,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	// Construct the deployment target.
-	target, err := b.getTarget(ctx, stackRef)
+	target, err := b.getTarget(ctx, stackRef, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -250,8 +280,8 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 		backend:     b,
 		update:      update,
 		tokenSource: tokenSource,
-		root:        root,
-		proj:        proj,
+		root:        op.Root,
+		proj:        op.Proj,
 		target:      target,
 	}, nil
 }
@@ -270,25 +300,8 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	return snapshot, nil
 }
 
-func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
-	// Pull the local stack info so we can get at its configuration bag.
-	stackConfigFile := b.stackConfigFile
-	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackRef.Name())
-		if err != nil {
-			return nil, err
-		}
-		stackConfigFile = f
-	}
-	stk, err := workspace.LoadProjectStack(stackConfigFile)
-	if err != nil {
-		return nil, err
-	}
-
-	decrypter, err := b.GetStackCrypter(stackRef)
-	if err != nil {
-		return nil, err
-	}
+func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
+	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
 	snapshot, err := b.getSnapshot(ctx, stackRef)
 	if err != nil {
 		switch err {
@@ -305,8 +318,8 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 
 	return &deploy.Target{
 		Name:      stackRef.Name(),
-		Config:    stk.Config,
-		Decrypter: decrypter,
+		Config:    cfg,
+		Decrypter: dec,
 		Snapshot:  snapshot,
 	}, nil
 }
@@ -328,7 +341,6 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 
 		Old: convertStepEventStateMetadata(md.Old),
 		New: convertStepEventStateMetadata(md.New),
-		Res: convertStepEventStateMetadata(md.Res),
 
 		Keys:     keys,
 		Diffs:    diffs,

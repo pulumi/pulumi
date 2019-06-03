@@ -18,52 +18,21 @@ import (
 	"os"
 )
 
-// Vars contains a set of metadata variables about a CI system.
-type Vars struct {
-	// Name is a required friendly name of the CI system.
-	Name System
-	// BuildID is an optional unique identifier for the current build/job.
-	BuildID string
-	// BuildType is an optional friendly type name of the build/job type.
-	BuildType string
-	// BuildURL is an optional URL for this build/job's webpage.
-	BuildURL string
-	// SHA is the SHA hash of the code repo at which this build/job is running.
-	SHA string
-	// BranchName is the name of the feature branch currently being built.
-	BranchName string
-	// CommitMessage is the full message of the Git commit being built.
-	CommitMessage string
-}
-
 // DetectVars detects and returns the CI variables for the current environment.
+// Not all fields of the `Vars` struct are applicable to every CI system,
+// and may be left blank.
 func DetectVars() Vars {
-	v := Vars{Name: DetectSystem()}
-	// All CI systems have a name (that's how we know we're in a CI system). After detecting one, we will
-	// try to detect some additional CI-specific metadata that the CLI will use. It's okay if we can't,
-	// we'll just have reduced functionality for our various CI integrations.
-	switch v.Name {
-	case GitLab:
-		// See https://docs.gitlab.com/ee/ci/variables/.
-		v.BuildID = os.Getenv("CI_JOB_ID")
-		v.BuildURL = os.Getenv("CI_JOB_URL")
-		v.SHA = os.Getenv("CI_COMMIT_SHA")
-		v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
-		v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
-	case Travis:
-		// See https://docs.travis-ci.com/user/environment-variables/.
-		// NOTE: Travis doesn't set a build URL in its environment, https://github.com/travis-ci/travis-ci/issues/8935.
-		v.BuildID = os.Getenv("TRAVIS_JOB_ID")
-		v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
-		v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
-		v.BranchName = os.Getenv("TRAVIS_BRANCH")
-		v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
-	case CircleCI:
-		// See: https://circleci.com/docs/2.0/env-vars/
-		v.BuildID = os.Getenv("CIRCLE_BUILD_NUM")
-		v.BuildURL = os.Getenv("CIRCLE_BUILD_URL")
-		v.SHA = os.Getenv("CIRCLE_SHA1")
-		v.BranchName = os.Getenv("CIRCLE_BRANCH")
+	if os.Getenv("PULUMI_DISABLE_CI_DETECTION") != "" {
+		return Vars{Name: ""}
 	}
+
+	var v Vars
+	system := detectSystem()
+	if system == nil {
+		return v
+	}
+	// Detect the vars for the respective CI system and
+	v = system.DetectVars()
+
 	return v
 }

@@ -262,7 +262,7 @@ func getPluginsFromDir(
 				pulumiPackagePathToVersionMap[curr] = version
 			}
 
-			ok, name, version, err := getPackageInfo(info)
+			ok, name, version, server, err := getPackageInfo(info)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "unmarshaling package.json %s", curr))
 			} else if ok {
@@ -270,6 +270,7 @@ func getPluginsFromDir(
 					Name:    name,
 					Kind:    "resource",
 					Version: version,
+					Server:  server,
 				})
 			}
 		}
@@ -282,26 +283,29 @@ type packageJSON struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 	Pulumi  struct {
-		Resource bool `json:"resource"`
+		Resource bool   `json:"resource"`
+		Server   string `json:"server"`
 	} `json:"pulumi"`
 }
 
 // getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
-// resource provider plugin.  If it does, two strings are returned, the plugin name, and its semantic version.
-func getPackageInfo(info packageJSON) (bool, string, string, error) {
+// resource provider plugin.  If it does, thre strings are returned, the plugin name, and its semantic version and
+// an optional server that can be used to download the plugin (this may be empty, in which case the "default" location
+// should be used).
+func getPackageInfo(info packageJSON) (bool, string, string, string, error) {
 	if info.Pulumi.Resource {
 		name, err := getPluginName(info)
 		if err != nil {
-			return false, "", "", err
+			return false, "", "", "", err
 		}
 		version, err := getPluginVersion(info)
 		if err != nil {
-			return false, "", "", err
+			return false, "", "", "", err
 		}
-		return true, name, version, nil
+		return true, name, version, info.Pulumi.Server, nil
 	}
 
-	return false, "", "", nil
+	return false, "", "", "", nil
 }
 
 // getPluginName takes a parsed package.json file and returns the corresponding Pulumi plugin name.
@@ -419,6 +423,7 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []st
 		args = append(args, "--dry-run")
 	}
 
+	maybeAppendArg("query-mode", fmt.Sprint(req.GetQueryMode()))
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendArg("tracing", host.tracing)
 	if req.GetProgram() == "" {

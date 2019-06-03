@@ -15,10 +15,12 @@
 """
 Runtime settings and configuration.
 """
-from typing import Optional, TYPE_CHECKING
+import asyncio
+import sys
+from typing import Optional, Awaitable, TYPE_CHECKING
 
 import grpc
-from ..runtime.proto import engine_pb2_grpc, resource_pb2_grpc
+from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ..errors import RunError
 
 if TYPE_CHECKING:
@@ -32,6 +34,7 @@ class Settings:
     stack: Optional[str]
     parallel: Optional[str]
     dry_run: Optional[bool]
+    test_mode_enabled: Optional[bool]
 
     """
     A bag of properties for configuring the Pulumi Python language runtime.
@@ -42,12 +45,14 @@ class Settings:
                  project: Optional[str] = None,
                  stack: Optional[str] = None,
                  parallel: Optional[str] = None,
-                 dry_run: Optional[bool] = None):
+                 dry_run: Optional[bool] = None,
+                 test_mode_enabled: Optional[bool] = None):
         # Save the metadata information.
         self.project = project
         self.stack = stack
         self.parallel = parallel
         self.dry_run = dry_run
+        self.test_mode_enabled = test_mode_enabled
 
         # Actually connect to the monitor/engine over gRPC.
         if monitor:
@@ -81,18 +86,60 @@ def is_dry_run() -> bool:
     return True if SETTINGS.dry_run else False
 
 
+def is_test_mode_enabled() -> bool:
+    """
+    Returns true if test mode is enabled (PULUMI_TEST_MODE).
+    """
+    return True if SETTINGS.test_mode_enabled else False
+
+
+def _set_test_mode_enabled(v: Optional[bool]):
+    """
+    Enable or disable testing mode programmatically -- meant for testing only.
+    """
+    SETTINGS.test_mode_enabled = v
+
+
+def require_test_mode_enabled():
+    if not is_test_mode_enabled():
+        raise RunError('Program run without the `pulumi` CLI; this may not be what you want '+
+                       '(enable PULUMI_TEST_MODE to disable this error)')
+
+
 def get_project() -> Optional[str]:
     """
     Returns the current project name.
     """
-    return SETTINGS.project
+    project = SETTINGS.project
+    if not project:
+        require_test_mode_enabled()
+        raise RunError('Missing project name; for test mode, please set PULUMI_NODEJS_PROJECT')
+    return project
+
+
+def _set_project(v: Optional[str]):
+    """
+    Set the project name programmatically -- meant for testing only.
+    """
+    SETTINGS.project = v
 
 
 def get_stack() -> Optional[str]:
     """
     Returns the current stack name.
     """
-    return SETTINGS.stack
+    stack = SETTINGS.stack
+    if not stack:
+        require_test_mode_enabled()
+        raise RunError('Missing stack name; for test mode, please set PULUMI_NODEJS_STACK')
+    return stack
+
+
+def _set_stack(v: Optional[str]):
+    """
+    Set the stack name programmatically -- meant for testing only.
+    """
+    SETTINGS.stack = v
 
 
 def get_monitor() -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
@@ -101,7 +148,7 @@ def get_monitor() -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
     """
     monitor = SETTINGS.monitor
     if not monitor:
-        raise RunError('Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?')
+        require_test_mode_enabled()
     return monitor
 
 
@@ -129,3 +176,27 @@ def set_root_resource(root: 'Resource'):
     """
     global ROOT
     ROOT = root
+
+
+async def monitor_supports_secrets() -> bool:
+    monitor = SETTINGS.monitor
+    if not monitor:
+        return False
+
+    req = resource_pb2.SupportsFeatureRequest(id="secrets")
+    def do_rpc_call():
+        try:
+            resp = monitor.SupportsFeature(req)
+            return resp.hasSupport
+        except grpc.RpcError as exn:
+            # See the comment on invoke for the justification for disabling
+            # this warning
+            # pylint: disable=no-member
+            if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                sys.exit(0)
+            if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+                return False
+            details = exn.details()
+        raise Exception(details)
+
+    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)

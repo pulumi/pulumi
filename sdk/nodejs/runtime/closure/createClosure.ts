@@ -16,7 +16,7 @@
 
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
-import { Input, Output } from "../../output";
+import { Input, isSecretOutput, Output } from "../../output";
 import * as resource from "../../resource";
 import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
@@ -50,6 +50,12 @@ export interface FunctionInfo extends ObjectInfo {
     // name that the function was declared with.  used only for trying to emit a better
     // name into the serialized code for it.
     name: string | undefined;
+
+    // Number of parameters this function is declared to take.  Used to generate a serialized
+    // function with the same number of parameters.  This is valuable as some 3rd party libraries
+    // (like senchalabs: https://github.com/senchalabs/connect/blob/fa8916e6350e01262e86ccee82f490c65e04c728/index.js#L232-L241)
+    // will introspect function param count to decide what to do.
+    paramCount: number;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
@@ -402,6 +408,7 @@ async function analyzeFunctionInfoAsync(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
+            paramCount: func.length,
         };
 
         const proto = Object.getPrototypeOf(func);
@@ -844,6 +851,8 @@ async function getOrCreateEntryAsync(
     }
 
     async function dispatchAnyAsync(): Promise<void> {
+        const typeofObj: string = typeof obj;
+
         if (doNotCapture()) {
             // We do not want to capture this object.  Explicit set .json to undefined so
             // that we will see that the property is set and we will simply roundtrip this
@@ -854,14 +863,14 @@ async function getOrCreateEntryAsync(
 
         if (obj === undefined ||
             obj === null ||
-            typeof obj === "boolean" ||
-            typeof obj === "string") {
+            typeofObj === "boolean" ||
+            typeofObj === "string") {
 
             // Serialize primitives as-is.
             entry.json = obj;
             return;
         }
-        else if (typeof obj === "bigint") {
+        else if (typeofObj === "bigint") {
             entry.expr = `${obj}n`;
             return;
         }
@@ -878,7 +887,10 @@ async function getOrCreateEntryAsync(
             // Serialize functions recursively, and store them in a closure property.
             entry.function = await analyzeFunctionInfoAsync(obj, context, serialize, logInfo);
         }
-        else if (await isOutputAsync(obj)) {
+        else if (Output.isInstance(obj)) {
+            if (await isSecretOutput(obj)) {
+                throw new Error("Secret outputs cannot be captured by a closure.");
+            }
             entry.output = await createOutputEntryAsync(obj);
         }
         else if (obj instanceof Promise) {

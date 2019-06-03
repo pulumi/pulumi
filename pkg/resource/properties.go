@@ -86,6 +86,11 @@ type Output struct {
 	Element PropertyValue // the eventual value (type) of the output property.
 }
 
+// Secret indicates that the underlying value should be persisted securely.
+type Secret struct {
+	Element PropertyValue
+}
+
 type ReqError struct {
 	K PropertyKey
 }
@@ -111,6 +116,16 @@ func (m PropertyMap) HasValue(k PropertyKey) bool {
 func (m PropertyMap) ContainsUnknowns() bool {
 	for _, v := range m {
 		if v.ContainsUnknowns() {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsSecrets returns true if the property map contains at least one secret value.
+func (m PropertyMap) ContainsSecrets() bool {
+	for _, v := range m {
+		if v.ContainsSecrets() {
 			return true
 		}
 	}
@@ -148,20 +163,6 @@ func (m PropertyMap) Copy() PropertyMap {
 	return new
 }
 
-// Merge simply merges in another map atop another, and returns the result.
-func (m PropertyMap) Merge(other PropertyMap) PropertyMap {
-	new := m.Copy()
-	for k, v := range other {
-		if !v.IsNull() {
-			if mv, ok := m[k]; ok {
-				v = mv.merge(v)
-			}
-			new[k] = v
-		}
-	}
-	return new
-}
-
 // StableKeys returns all of the map's keys in a stable order.
 func (m PropertyMap) StableKeys() []PropertyKey {
 	sorted := make([]PropertyKey, 0, len(m))
@@ -182,6 +183,7 @@ func NewArchiveProperty(v *Archive) PropertyValue      { return PropertyValue{v}
 func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
+func NewSecretProperty(v Secret) PropertyValue         { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
 	return NewComputedProperty(Computed{Element: v})
@@ -189,6 +191,10 @@ func MakeComputed(v PropertyValue) PropertyValue {
 
 func MakeOutput(v PropertyValue) PropertyValue {
 	return NewOutputProperty(Output{Element: v})
+}
+
+func MakeSecret(v PropertyValue) PropertyValue {
+	return NewSecretProperty(Secret{Element: v})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
@@ -242,6 +248,8 @@ func NewPropertyValueRepl(v interface{},
 		return NewComputedProperty(t)
 	case Output:
 		return NewOutputProperty(t)
+	case Secret:
+		return NewSecretProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
@@ -317,6 +325,26 @@ func (v PropertyValue) ContainsUnknowns() bool {
 	return false
 }
 
+// ContainsSecrets returns true if the property value contains at least one secret (deeply).
+func (v PropertyValue) ContainsSecrets() bool {
+	if v.IsSecret() {
+		return true
+	} else if v.IsComputed() {
+		return v.Input().Element.ContainsSecrets()
+	} else if v.IsOutput() {
+		return v.OutputValue().Element.ContainsSecrets()
+	} else if v.IsArray() {
+		for _, e := range v.ArrayValue() {
+			if e.ContainsSecrets() {
+				return true
+			}
+		}
+	} else if v.IsObject() {
+		return v.ObjectValue().ContainsSecrets()
+	}
+	return false
+}
+
 // BoolValue fetches the underlying bool value (panicking if it isn't a bool).
 func (v PropertyValue) BoolValue() bool { return v.V.(bool) }
 
@@ -343,6 +371,9 @@ func (v PropertyValue) Input() Computed { return v.V.(Computed) }
 
 // OutputValue fetches the underlying output value (panicking if it isn't a output).
 func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
+
+// SecretValue fetches the underlying secret value (panicking if it isn't a secret).
+func (v PropertyValue) SecretValue() Secret { return v.V.(Secret) }
 
 // IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
@@ -403,6 +434,12 @@ func (v PropertyValue) IsOutput() bool {
 	return is
 }
 
+// IsSecret returns true if the underlying value is a secret value.
+func (v PropertyValue) IsSecret() bool {
+	_, is := v.V.(Secret)
+	return is
+}
+
 // TypeString returns a type representation of the property value's holder type.
 func (v PropertyValue) TypeString() string {
 	if v.IsNull() {
@@ -425,6 +462,8 @@ func (v PropertyValue) TypeString() string {
 		return "output<" + v.Input().Element.TypeString() + ">"
 	} else if v.IsOutput() {
 		return "output<" + v.OutputValue().Element.TypeString() + ">"
+	} else if v.IsSecret() {
+		return "secret<" + v.SecretValue().Element.TypeString() + ">"
 	}
 	contract.Failf("Unrecognized PropertyValue type")
 	return ""
@@ -466,45 +505,11 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 		return v.Input()
 	} else if v.IsOutput() {
 		return v.OutputValue()
+	} else if v.IsSecret() {
+		return v.SecretValue()
 	}
 	contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 	return v.ObjectValue().MapRepl(replk, replv)
-}
-
-// merge simply merges the value of other into v. Merging proceeds as follows:
-// - If other is null, v is returned.
-// - If v and other are both arrays, the corresponding elements are recurively merged. Any unmerged elements in v or
-//   other are then appended to the result.
-// - If v and other are both maps, the corresponding key-value pairs are recursively merged.
-// - Otherwise, other is returned.
-func (v PropertyValue) merge(other PropertyValue) PropertyValue {
-	switch {
-	case other.IsNull():
-		return v
-	case v.IsArray() && other.IsArray():
-		left, right, merged := v.ArrayValue(), other.ArrayValue(), []PropertyValue{}
-		for len(left) > 0 && len(right) > 0 {
-			merged = append(merged, left[0].merge(right[0]))
-			left, right = left[1:], right[1:]
-		}
-		switch {
-		case len(left) > 0:
-			contract.Assert(len(right) == 0)
-			for ; len(left) > 0; left = left[1:] {
-				merged = append(merged, left[0])
-			}
-		case len(right) > 0:
-			contract.Assert(len(left) == 0)
-			for ; len(right) > 0; right = right[1:] {
-				merged = append(merged, right[0])
-			}
-		}
-		return NewArrayProperty(merged)
-	case v.IsObject() && other.IsObject():
-		return NewObjectProperty(v.ObjectValue().Merge(other.ObjectValue()))
-	default:
-		return other
-	}
 }
 
 // String implements the fmt.Stringer interface to add slightly more information to the output.

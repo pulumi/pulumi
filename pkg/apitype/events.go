@@ -35,14 +35,14 @@ type StdoutEngineEvent struct {
 // DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
 // a cloud resource provider while trying to create or update a resource.
 type DiagnosticEvent struct {
-	URN     string `json:"urn"`
-	Prefix  string `json:"prefix"`
+	URN     string `json:"urn,omitempty"`
+	Prefix  string `json:"prefix,omitempty"`
 	Message string `json:"message"`
 	Color   string `json:"color"`
 	// Severity is one of "info", "info#err", "warning", or "error".
 	Severity  string `json:"severity"`
-	StreamID  int    `json:"streamID"`
-	Ephemeral bool   `json:"ephemeral"`
+	StreamID  int    `json:"streamID,omitempty"`
+	Ephemeral bool   `json:"ephemeral,omitempty"`
 }
 
 // PreludeEvent is emitted at the start of an update.
@@ -75,16 +75,14 @@ type StepEventMetadata struct {
 	Old *StepEventStateMetadata `json:"old"`
 	// New is the state of the resource after performing the step.
 	New *StepEventStateMetadata `json:"new"`
-	// Res is the current state of the resource as known. (e.g. equal to old or new depending on
-	// circumstance.)
-	Res *StepEventStateMetadata `json:"res"`
+	// Omitted from the type sent to the Pulumi Service is "Res", which may be either Old or New.
 
 	// Keys causing a replacement (only applicable for "create" and "replace" Ops).
 	Keys []string `json:"keys,omitempty"`
 	// Keys that changed with this step.
-	Diffs []string `json:"diffs"`
+	Diffs []string `json:"diffs,omitempty"`
 	// Logical is set if the step is a logical operation in the program.
-	Logical bool `json:"logical"`
+	Logical bool `json:"logical,omitempty"`
 	// Provider actually performing the step.
 	Provider string `json:"provider"`
 }
@@ -96,15 +94,15 @@ type StepEventStateMetadata struct {
 	URN  string `json:"urn"`
 
 	// Custom indicates if the resource is managed by a plugin.
-	Custom bool `json:"custom"`
+	Custom bool `json:"custom,omitempty"`
 	// Delete is true when the resource is pending deletion due to a replacement.
-	Delete bool `json:"delete"`
+	Delete bool `json:"delete,omitempty"`
 	// ID is the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
 	ID string `json:"id"`
 	// Parent is an optional parent URN that this resource belongs to.
 	Parent string `json:"parent"`
 	// Protect is true to "protect" this resource (protected resources cannot be deleted).
-	Protect bool `json:"protect"`
+	Protect bool `json:"protect,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have
 	// filtered out, and large assets have been replaced by hashes as applicable.
 	Inputs map[string]interface{} `json:"inputs"`
@@ -113,19 +111,19 @@ type StepEventStateMetadata struct {
 	// Provider is the resource's provider reference
 	Provider string `json:"provider"`
 	// InitErrors is the set of errors encountered in the process of initializing resource.
-	InitErrors []string `json:"initErrors"`
+	InitErrors []string `json:"initErrors,omitempty"`
 }
 
 // ResourcePreEvent is emitted before a resource is modified.
 type ResourcePreEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
-	Planning bool              `json:"planning"`
+	Planning bool              `json:"planning,omitempty"`
 }
 
 // ResOutputsEvent is emitted when a resource is finished being provisioned.
 type ResOutputsEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
-	Planning bool              `json:"planning"`
+	Planning bool              `json:"planning,omitempty"`
 }
 
 // ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is

@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
@@ -34,18 +36,20 @@ type stepGenerator struct {
 	plan *Plan   // the plan to which this step generator belongs
 	opts Options // options for this step generator
 
-	urns           map[resource.URN]bool    // set of URNs discovered for this plan
-	reads          map[resource.URN]bool    // set of URNs read for this plan
-	deletes        map[resource.URN]bool    // set of URNs deleted in this plan
-	replaces       map[resource.URN]bool    // set of URNs replaced in this plan
-	updates        map[resource.URN]bool    // set of URNs updated in this plan
-	creates        map[resource.URN]bool    // set of URNs created in this plan
-	sames          map[resource.URN]bool    // set of URNs that were not changed in this plan
-	pendingDeletes map[*resource.State]bool // set of resources (not URNs!) that are pending deletion
-
+	urns           map[resource.URN]bool            // set of URNs discovered for this plan
+	reads          map[resource.URN]bool            // set of URNs read for this plan
+	deletes        map[resource.URN]bool            // set of URNs deleted in this plan
+	replaces       map[resource.URN]bool            // set of URNs replaced in this plan
+	updates        map[resource.URN]bool            // set of URNs updated in this plan
+	creates        map[resource.URN]bool            // set of URNs created in this plan
+	sames          map[resource.URN]bool            // set of URNs that were not changed in this plan
+	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
+	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
+	// a map from old names (aliased URNs) to the new URN that aliased to them.
+	aliased map[resource.URN]resource.URN
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -65,8 +69,11 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		event.Dependencies(),
 		nil, /* initErrors */
 		event.Provider(),
-		nil, /* propertyDependencies */
-		false)
+		nil,   /* propertyDependencies */
+		false, /* deleteBeforeCreate */
+		event.AdditionalSecretOutputs(),
+		nil, /* aliases */
+	)
 	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
@@ -121,20 +128,47 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 	sg.urns[urn] = true
 
-	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or to diff.
-	old, hasOld := sg.plan.Olds()[urn]
+	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or to diff.  We look
+	// up first by URN and then by any provided aliases.  If it is found using an alias, record that alias so that we do
+	// not delete the aliased resource later.
 	var oldInputs resource.PropertyMap
 	var oldOutputs resource.PropertyMap
+	var old *resource.State
+	var hasOld bool
+	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
+		old, hasOld = sg.plan.Olds()[urnOrAlias]
+		if hasOld {
+			oldInputs = old.Inputs
+			oldOutputs = old.Outputs
+			if urnOrAlias != urn {
+				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
+					invalid = true
+					sg.plan.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+				}
+				sg.aliased[urnOrAlias] = urn
+			}
+			break
+		}
+	}
+
+	// Create the desired inputs from the goal state
+	inputs := goal.Properties
 	if hasOld {
-		oldInputs = old.Inputs
-		oldOutputs = old.Outputs
+		// Set inputs back to their old values (if any) for any "ignored" properties
+		inputs = sg.processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
-	inputs := goal.Properties
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
-		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false)
+		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
+		goal.AdditionalSecretOutputs, goal.Aliases)
+
+	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
+	// of resources that use this provider.
+	if providers.IsProviderType(goal.Type) {
+		sg.providers[urn] = new
+	}
 
 	// Fetch the provider for this resource.
 	prov, res := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
@@ -258,25 +292,18 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
-		contract.Assert(old != nil && old.Type == new.Type)
-
-		var diff plugin.DiffResult
-		if old.Provider != new.Provider {
-			diff = plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}
-		} else {
-			// Determine whether the change resulted in a diff.
-			d, diffErr := sg.diff(urn, old.ID, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
-			if diffErr != nil {
-				// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
-				// report the message contained in the error.
-				if _, ok := diffErr.(plugin.DiffUnavailableError); ok {
-					d = plugin.DiffResult{Changes: plugin.DiffSome}
-					sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, diffErr.Error()))
-				} else {
-					return nil, result.FromError(diffErr)
-				}
+		contract.Assert(old != nil)
+		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
+		if err != nil {
+			// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
+			// report the message contained in the error.
+			if _, ok := err.(plugin.DiffUnavailableError); ok {
+				diff = plugin.DiffResult{Changes: plugin.DiffSome}
+				sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
+			} else {
+				return nil, result.FromError(err)
 			}
-			diff = d
+
 		}
 
 		// Ensure that we received a sensible response.
@@ -446,7 +473,8 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, false))
-			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
+			} else if _, aliased := sg.aliased[res.URN]; !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
+				!sg.reads[res.URN] && !aliased {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
@@ -568,9 +596,95 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	return antichains
 }
 
+// providerChanged diffs the Provider field of old and new resources, returning true if the rest of the step generator
+// should consider there to be a diff between these two resources.
+func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.State) (bool, error) {
+	// If a resource's Provider field has changed, we may need to show a diff and we may not. This is subtle. See
+	// pulumi/pulumi#2753 for more details.
+	//
+	// Recent versions of Pulumi allow for language hosts to pass a plugin version to the engine. The purpose of this is
+	// to ensure that the plugin that the engine uses for a particular resource is *exactly equal* to the version of the
+	// SDK that the language host used to produce the resource registration. This is critical for correct versioning
+	// semantics; it is generally an error for a language SDK to produce a registration that is serviced by a
+	// differently versioned plugin, since the two version in complete lockstep and there is no guarantee that the two
+	// will work correctly together when not the same version.
+
+	if old.Provider == new.Provider {
+		return false, nil
+	}
+
+	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): observed provider diff", urn)
+	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): %s => %s", urn, old.Provider, new.Provider)
+
+	oldRef, err := providers.ParseReference(old.Provider)
+	if err != nil {
+		return false, err
+	}
+	newRef, err := providers.ParseReference(new.Provider)
+	if err != nil {
+		return false, err
+	}
+
+	// If one or both of these providers are not default providers, we will need to accept the diff and replace
+	// everything. This might not be strictly necessary, but it is conservatively correct.
+	if !providers.IsDefaultProvider(oldRef.URN()) || !providers.IsDefaultProvider(newRef.URN()) {
+		logging.V(stepExecutorLogLevel).Infof(
+			"sg.diffProvider(%s, ...): reporting provider diff due to change in default provider status", urn)
+		logging.V(stepExecutorLogLevel).Infof(
+			"sg.diffProvider(%s, ...): old provider %q is default: %v",
+			urn, oldRef.URN(), providers.IsDefaultProvider(oldRef.URN()))
+		logging.V(stepExecutorLogLevel).Infof(
+			"sg.diffProvider(%s, ...): new provider %q is default: %v",
+			urn, newRef.URN(), providers.IsDefaultProvider(newRef.URN()))
+		return true, err
+	}
+
+	// If both of these providers are default providers, use the *new provider* to diff the config and determine if
+	// this provider requires replacement.
+	//
+	// Note that, if we have many resources managed by the same provider that is getting replaced in this manner,
+	// this will call DiffConfig repeatedly with the same arguments for every resource. If this becomes a
+	// performance problem, this result can be cached.
+	newProv, ok := sg.plan.providers.GetProvider(newRef)
+	if !ok {
+		return false, errors.Errorf("failed to resolve provider reference: %q", oldRef.String())
+	}
+
+	oldRes, ok := sg.plan.olds[oldRef.URN()]
+	contract.Assertf(ok, "old state didn't have provider, despite resource using it?")
+	newRes, ok := sg.providers[newRef.URN()]
+	contract.Assertf(ok, "new plan didn't have provider, despite resource using it?")
+
+	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true)
+	if err != nil {
+		return false, err
+	}
+
+	// If there is a replacement diff, we must also replace this resource.
+	if diff.Replace() {
+		logging.V(stepExecutorLogLevel).Infof(
+			"sg.diffProvider(%s, ...): new provider's DiffConfig reported replacement", urn)
+		return true, nil
+	}
+
+	// Otherwise, it's safe to allow this new provider to replace our old one.
+	logging.V(stepExecutorLogLevel).Infof(
+		"sg.diffProvider(%s, ...): both providers are default, proceeding with resource diff", urn)
+	return false, nil
+}
+
 // diff returns a DiffResult for the given resource.
-func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
+func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
+	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
+
+	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
+	// not need to replace the resource.
+	providerChanged, err := sg.providerChanged(urn, old, new)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	} else if providerChanged {
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, nil
+	}
 
 	// Workaround #1251: unexpected replaces.
 	//
@@ -591,7 +705,7 @@ func (sg *stepGenerator) diff(urn resource.URN, id resource.ID, oldInputs, oldOu
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns)
+	diff, err := prov.Diff(urn, old.ID, oldOutputs, newInputs, allowUnknowns)
 	if err != nil {
 		return diff, err
 	}
@@ -618,6 +732,23 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 		}
 	}
 	return true
+}
+
+// processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
+// the effect of ensuring that no changes will be made for the corresponding property.
+func (sg *stepGenerator) processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
+	ignoreChanges []string) resource.PropertyMap {
+
+	ignoredInputs := inputs.Copy()
+	for _, ignoreChange := range ignoreChanges {
+		ignoreChangePropertyKey := resource.PropertyKey(ignoreChange)
+		if oldValue, has := oldInputs[ignoreChangePropertyKey]; has {
+			ignoredInputs[ignoreChangePropertyKey] = oldValue
+		} else {
+			delete(ignoredInputs, ignoreChangePropertyKey)
+		}
+	}
+	return ignoredInputs
 }
 
 func (sg *stepGenerator) loadResourceProvider(
@@ -757,6 +888,8 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
+		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
+		aliased:              make(map[resource.URN]resource.URN),
 	}
 }

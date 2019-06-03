@@ -30,7 +30,7 @@ class ResourceProviderStub(object):
     self.Configure = channel.unary_unary(
         '/pulumirpc.ResourceProvider/Configure',
         request_serializer=provider__pb2.ConfigureRequest.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        response_deserializer=provider__pb2.ConfigureResponse.FromString,
         )
     self.Invoke = channel.unary_unary(
         '/pulumirpc.ResourceProvider/Invoke',
@@ -190,7 +190,7 @@ def add_ResourceProviderServicer_to_server(servicer, server):
       'Configure': grpc.unary_unary_rpc_method_handler(
           servicer.Configure,
           request_deserializer=provider__pb2.ConfigureRequest.FromString,
-          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+          response_serializer=provider__pb2.ConfigureResponse.SerializeToString,
       ),
       'Invoke': grpc.unary_unary_rpc_method_handler(
           servicer.Invoke,

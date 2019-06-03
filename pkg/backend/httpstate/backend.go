@@ -17,7 +17,6 @@ package httpstate
 import (
 	"context"
 	cryptorand "crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -27,12 +26,10 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/cheggaaa/pb"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
@@ -94,7 +91,7 @@ func ValueOrDefaultURL(cloudURL string) string {
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
 	// to ignore the local cloud.
 	if creds, err := workspace.GetStoredCredentials(); err == nil {
-		if creds.Current != "" && !filestate.IsLocalBackendURL(creds.Current) {
+		if creds.Current != "" && !filestate.IsFileStateBackendURL(creds.Current) {
 			return creds.Current
 		}
 	}
@@ -103,53 +100,26 @@ func ValueOrDefaultURL(cloudURL string) string {
 	return PulumiCloudURL
 }
 
-// barCloser is an implementation of io.Closer that finishes a progress bar upon Close() as well as closing its
-// underlying readCloser.
-type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
-}
-
-func (bc *barCloser) Read(dest []byte) (int, error) {
-	return bc.readCloser.Read(dest)
-}
-
-func (bc *barCloser) Close() error {
-	bc.bar.Finish()
-	return bc.readCloser.Close()
-}
-
-func newBarProxyReadCloser(bar *pb.ProgressBar, r io.Reader) io.ReadCloser {
-	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(r),
-	}
-}
-
 // Backend extends the base backend interface with specific information about cloud backends.
 type Backend interface {
 	backend.Backend
 
 	CloudURL() string
 
-	DownloadPlugin(
-		ctx context.Context, info workspace.PluginInfo,
-		progress bool, opts display.Options) (io.ReadCloser, error)
-
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
+	Client() *client.Client
 }
 
 type cloudBackend struct {
-	d               diag.Sink
-	url             string
-	stackConfigFile string
-	client          *client.Client
-	currentProject  *workspace.Project
+	d              diag.Sink
+	url            string
+	client         *client.Client
+	currentProject *workspace.Project
 }
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
+func New(d diag.Sink, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	apiToken, err := workspace.GetAccessToken(cloudURL)
 	if err != nil {
@@ -163,16 +133,15 @@ func New(d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
 	}
 
 	return &cloudBackend{
-		d:               d,
-		url:             cloudURL,
-		stackConfigFile: stackConfigFile,
-		client:          client.NewClient(cloudURL, apiToken, d),
-		currentProject:  currentProject,
+		d:              d,
+		url:            cloudURL,
+		client:         client.NewClient(cloudURL, apiToken, d),
+		currentProject: currentProject,
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -244,11 +213,11 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL, stackConfigFil
 		return nil, err
 	}
 
-	return New(d, cloudURL, stackConfigFile)
+	return New(d, cloudURL)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, opts display.Options) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -260,7 +229,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 				return nil, err
 			}
 
-			return New(d, cloudURL, stackConfigFile)
+			return New(d, cloudURL)
 		}
 	}
 
@@ -327,7 +296,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL, stackConfigFile)
+				return loginWithBrowser(ctx, d, cloudURL)
 			}
 		}
 	}
@@ -345,7 +314,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL, stackConfigFile string, o
 		return nil, err
 	}
 
-	return New(d, cloudURL, stackConfigFile)
+	return New(d, cloudURL)
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -467,48 +436,6 @@ func (b *cloudBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.CloudURL())
 }
 
-// DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
-// that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
-// is true, the download will display a progress bar using stdout.
-func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.PluginInfo,
-	progress bool, opts display.Options) (io.ReadCloser, error) {
-
-	// Figure out the OS/ARCH pair for the download URL.
-	var os string
-	switch runtime.GOOS {
-	case "darwin", "linux", "windows":
-		os = runtime.GOOS
-	default:
-		return nil, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
-	}
-	var arch string
-	switch runtime.GOARCH {
-	case "amd64":
-		arch = runtime.GOARCH
-	default:
-		return nil, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
-	}
-
-	// Now make the client request.
-	result, size, err := b.client.DownloadPlugin(ctx, info, os, arch)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to download plugin")
-	}
-
-	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
-	if progress && size != -1 {
-		bar := pb.New(int(size))
-		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading plugin: "))
-		bar.Postfix(opts.Color.Colorize(colors.Reset))
-		bar.SetMaxWidth(80)
-		bar.SetUnits(pb.U_BYTES)
-		bar.Start()
-	}
-
-	return result, nil
-}
-
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -600,41 +527,6 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	return b.client.RenameStack(ctx, stack, string(newName))
 }
 
-// cloudCrypter is an encrypter/decrypter that uses the Pulumi cloud to encrypt/decrypt a stack's secrets.
-type cloudCrypter struct {
-	backend *cloudBackend
-	stack   client.StackIdentifier
-}
-
-func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
-	ciphertext, err := c.backend.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
-	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
-	if err != nil {
-		return "", err
-	}
-	plaintext, err := c.backend.client.DecryptValue(context.Background(), c.stack, ciphertext)
-	if err != nil {
-		return "", err
-	}
-	return string(plaintext), nil
-}
-
-func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	stack, err := b.getCloudStackIdentifier(stackRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cloudCrypter{backend: b, stack: stack}, nil
-}
-
 func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
@@ -689,6 +581,17 @@ func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackRefere
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
+func (b *cloudBackend) Query(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) result.Result {
+
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	return b.query(ctx, stack, op, nil /*events*/)
+}
+
 func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
@@ -699,24 +602,12 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	stackConfigFile := b.stackConfigFile
-	if stackConfigFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackRef.Name())
-		if err != nil {
-			return client.UpdateIdentifier{}, 0, "", err
-		}
-		stackConfigFile = f
-	}
-	workspaceStack, err := workspace.LoadProjectStack(stackConfigFile)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
-	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
 	update, err := b.client.CreateUpdate(
-		ctx, action, stackID, op.Proj, workspaceStack.Config, metadata, op.Opts.Engine, dryRun)
+		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -745,10 +636,13 @@ func (b *cloudBackend) apply(
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
 
-	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
-	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+
+	if !op.Opts.Display.JSONDisplay {
+		// Print a banner so it's clear this is going to the cloud.
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+	}
 
 	// Create an update object to persist results.
 	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
@@ -756,7 +650,7 @@ func (b *cloudBackend) apply(
 		return nil, result.FromError(err)
 	}
 
-	if opts.ShowLink {
+	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Print a URL at the end of the update pointing to the Pulumi Service.
 		var link string
 		base := b.cloudConsoleStackPath(update.StackIdentifier)
@@ -767,15 +661,74 @@ func (b *cloudBackend) apply(
 		}
 		if link != "" {
 			defer func() {
-				fmt.Printf(
-					op.Opts.Display.Color.Colorize(
-						colors.SpecHeadline+"Permalink: "+
-							colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+				fmt.Printf(op.Opts.Display.Color.Colorize(
+					colors.SpecHeadline+"Permalink: "+
+						colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 			}()
 		}
 	}
 
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+}
+
+// query executes a query program against the resource outputs of a stack hosted in the Pulumi
+// Cloud.
+func (b *cloudBackend) query(
+	ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
+	callerEventsOpt chan<- engine.Event) result.Result {
+
+	stackRef := stack.Ref()
+
+	q, err := b.newQuery(ctx, stackRef, op)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	// Render query output to CLI.
+	displayEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+	go display.ShowQueryEvents("running query", displayEvents, displayDone, op.Opts.Display)
+
+	// The engineEvents channel receives all events from the engine, which we then forward onto other
+	// channels for actual processing. (displayEvents and callerEventsOpt.)
+	engineEvents := make(chan engine.Event)
+	eventsDone := make(chan bool)
+	go func() {
+		for e := range engineEvents {
+			displayEvents <- e
+			if callerEventsOpt != nil {
+				callerEventsOpt <- e
+			}
+		}
+
+		close(eventsDone)
+	}()
+
+	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
+	// return error conditions, because we will do so below after waiting for the display channels to close.
+	cancellationScope := op.Scopes.NewScope(engineEvents, true /*dryRun*/)
+	engineCtx := &engine.Context{
+		Cancel:        cancellationScope.Context(),
+		Events:        engineEvents,
+		BackendClient: httpstateBackendClient{backend: b},
+	}
+	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
+		engineCtx.ParentSpan = parentSpan.Context()
+	}
+
+	res := engine.Query(engineCtx, q, op.Opts.Engine)
+
+	// Wait for dependent channels to finish processing engineEvents before closing.
+	<-displayDone
+	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
+	close(engineEvents)
+
+	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
+	// has exited before proceeding
+	<-eventsDone
+	close(displayEvents)
+
+	return res
 }
 
 func (b *cloudBackend) runEngineAction(
@@ -784,7 +737,7 @@ func (b *cloudBackend) runEngineAction(
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op.Proj, op.Root, update, token)
+	u, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -814,7 +767,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
 	// the Snapshot (checkpoint file) in the HTTP backend.
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, op.SecretsManager)
 	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
@@ -937,7 +890,15 @@ func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 		return nil, err
 	}
 
-	return b.client.GetLatestConfiguration(ctx, stackID)
+	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
+	switch {
+	case err == client.ErrNoPreviousDeployment:
+		return nil, backend.ErrNoPreviousDeployment
+	case err != nil:
+		return nil, err
+	default:
+		return cfg, nil
+	}
 }
 
 // convertResourceChanges converts the apitype version of engine.ResourceChanges into the internal version.
@@ -966,7 +927,7 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 	return c, nil
 }
 
-func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackReference, cfg backend.StackConfiguration,
 	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stack, err := b.GetStack(ctx, stackRef)
@@ -977,7 +938,7 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 		return nil, errors.New("stack not found")
 	}
 
-	target, targetErr := b.getTarget(ctx, stackRef)
+	target, targetErr := b.getTarget(ctx, stackRef, cfg.Config, cfg.Decrypter)
 	if targetErr != nil {
 		return nil, targetErr
 	}
@@ -1048,6 +1009,11 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 		Project: cleanProjectName(cloudBackendStackRef.project),
 		Stack:   string(cloudBackendStackRef.name),
 	}, nil
+}
+
+// Client returns a client object that may be used to interact with this backend.
+func (b *cloudBackend) Client() *client.Client {
+	return b.client
 }
 
 type DisplayEventType string
@@ -1252,6 +1218,7 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 	return backend.NewBackendClient(c.backend).GetStackOutputs(ctx, name)
 }
 
-func (c httpstateBackendClient) DownloadPlugin(ctx context.Context, plug workspace.PluginInfo) (io.ReadCloser, error) {
-	return c.backend.DownloadPlugin(ctx, plug, false, display.Options{})
+func (c httpstateBackendClient) GetStackResourceOutputs(
+	ctx context.Context, name string) (resource.PropertyMap, error) {
+	return backend.NewBackendClient(c.backend).GetStackResourceOutputs(ctx, name)
 }

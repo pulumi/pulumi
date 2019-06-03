@@ -66,6 +66,17 @@ function deserialize_pulumirpc_ConfigureRequest(buffer_arg) {
   return provider_pb.ConfigureRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConfigureResponse(arg) {
+  if (!(arg instanceof provider_pb.ConfigureResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ConfigureResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConfigureResponse(buffer_arg) {
+  return provider_pb.ConfigureResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_CreateRequest(arg) {
   if (!(arg instanceof provider_pb.CreateRequest)) {
     throw new Error('Expected argument of type pulumirpc.CreateRequest');
@@ -232,11 +243,11 @@ var ResourceProviderService = exports.ResourceProviderService = {
     requestStream: false,
     responseStream: false,
     requestType: provider_pb.ConfigureRequest,
-    responseType: google_protobuf_empty_pb.Empty,
+    responseType: provider_pb.ConfigureResponse,
     requestSerialize: serialize_pulumirpc_ConfigureRequest,
     requestDeserialize: deserialize_pulumirpc_ConfigureRequest,
-    responseSerialize: serialize_google_protobuf_Empty,
-    responseDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_pulumirpc_ConfigureResponse,
+    responseDeserialize: deserialize_pulumirpc_ConfigureResponse,
   },
   // Invoke dynamically executes a built-in function in the provider.
   invoke: {

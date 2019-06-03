@@ -16,7 +16,7 @@
 from typing import Optional, List, Any, Mapping, Union, TYPE_CHECKING
 
 from .runtime import known_types
-from .runtime.resource import register_resource, register_resource_outputs
+from .runtime.resource import register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
 
 if TYPE_CHECKING:
@@ -60,14 +60,42 @@ class ResourceOptions:
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
 
+    ignore_changes: Optional[List[str]]
+    """
+    If provided, ignore changes to any of the specified properties.
+    """
 
+    version: Optional[str]
+    """
+    An optional version. If provided, the engine loads a provider with exactly the requested version to operate on this
+    resource. This version overrides the version information inferred from the current package and should rarely be
+    used.
+    """
+
+    additional_secret_outputs: [List[str]]
+    """
+    The names of outputs for this resource that should be treated as secrets. This augments the list that
+    the resource provider and pulumi engine already determine based on inputs to your resource. It can be used
+    to mark certain ouputs as a secrets on a per resource basis.
+    """
+
+    id: Optional[str]
+    """
+    An optional existing ID to load, rather than create.
+    """
+
+    # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
                  depends_on: Optional[List['Resource']] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Mapping[str, 'ProviderResource']] = None,
-                 delete_before_replace: Optional[bool] = None) -> None:
+                 delete_before_replace: Optional[bool] = None,
+                 ignore_changes: Optional[List[str]] = None,
+                 version: Optional[str] = None,
+                 additional_secret_outputs: Optional[List[str]] = None,
+                 id: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -80,6 +108,11 @@ class ResourceOptions:
         :param Optional[Mapping[str,ProviderResource]] providers: An optional set of providers to use for child resources. Keyed
                by package name (e.g. "aws")
         :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
+        :param Optional[List[string]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
+               or replacements.
+        :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
+               also be treated as secret.
+        :param Optional[str] id: If provided, an existing resource ID to read, rather than create.
         """
         self.parent = parent
         self.depends_on = depends_on
@@ -87,6 +120,10 @@ class ResourceOptions:
         self.provider = provider
         self.providers = providers
         self.delete_before_replace = delete_before_replace
+        self.ignore_changes = ignore_changes
+        self.version = version
+        self.additional_secret_outputs = additional_secret_outputs
+        self.id = id
 
         if depends_on is not None:
             for dep in depends_on:
@@ -169,7 +206,14 @@ class Resource:
             self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
-        register_resource(self, t, name, custom, props, opts)
+
+        if opts.id is not None:
+            # If this resource already exists, read its state rather than registering it anow.
+            if not custom:
+                raise Exception("Cannot read an existing resource unless it has a custom provider")
+            read_resource(self, t, name, props, opts)
+        else:
+            register_resource(self, t, name, custom, props, opts)
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:

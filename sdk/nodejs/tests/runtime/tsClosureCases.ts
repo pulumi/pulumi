@@ -160,7 +160,7 @@ Function code:
 
     const awaiterCode =
 `
-function __f1() {
+function __f1(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -312,7 +312,7 @@ return function () { () => { console.log(this + arguments); }; };
 
 var __task = {run: __f2};
 
-function __f1() {
+function __f1(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -376,7 +376,7 @@ Object.defineProperty(__task_proto, "constructor", { configurable: true, writabl
 var __task = Object.create(__task_proto);
 __task.run = __f3;
 
-function __f1() {
+function __f1(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -451,7 +451,7 @@ return function () {
 
 var __task = {run: __f2};
 
-function __f1() {
+function __f1(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -525,7 +525,7 @@ Function code:
         func: function (x: any, y: any, z: any) { },
         expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0, __1, __2) {
   return (function() {
     with({  }) {
 
@@ -542,7 +542,7 @@ return function (x, y, z) { };
         func: (x: any, y: any, z: any) => { },
         expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0, __1, __2) {
   return (function() {
     with({  }) {
 
@@ -679,7 +679,7 @@ return () => { console.log(wcap + \`\${xcap}\` + ycap.length + eval(zcap.a + zca
             func: eval(functext),
             expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0, __1) {
   return (function() {
     with({ cap1: 100, cap2: 200, cap3: 300, cap4: 400, cap5: 500, cap6: 600, cap7: 700, cap8: 800 }) {
 
@@ -872,7 +872,7 @@ return () => os;
                    },
             expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0, __1, __2) {
   return (function() {
     with({ os: require("os") }) {
 
@@ -936,7 +936,7 @@ Object.defineProperty(__util, "__esModule", { value: true });
 __util.asyncTest = __asyncTest;
 __util.assertAsyncThrows = __assertAsyncThrows;
 
-function __f1() {
+function __f1(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -953,7 +953,7 @@ return function (thisArg, _arguments, P, generator) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __asyncTest() {
+function __asyncTest(__0) {
   return (function() {
     with({ __awaiter: __f1, asyncTest: __asyncTest }) {
 
@@ -979,7 +979,7 @@ return function /*asyncTest*/(test) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __assertAsyncThrows() {
+function __assertAsyncThrows(__0) {
   return (function() {
     with({ __awaiter: __f1, assert: require("assert"), assertAsyncThrows: __assertAsyncThrows }) {
 
@@ -1083,7 +1083,7 @@ return () => { console.log(ggg); };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f3(__0, __1) {
   return (function() {
     with({  }) {
 
@@ -1210,7 +1210,7 @@ var __v_d = Object.create(__v_d_proto);
 __v_d.value = 4;
 __v.d = __v_d;
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({  }) {
 
@@ -1222,7 +1222,7 @@ return function /*constructor*/(value) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -1291,7 +1291,7 @@ var __v_d4_value = {a: 1, b: true};
 __v_d4.value = __v_d4_value;
 __v.d4 = __v_d4;
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({  }) {
 
@@ -1303,7 +1303,7 @@ return function /*constructor*/(value) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -1370,7 +1370,7 @@ __v_d2_value.b = __v_d2_value_b;
 __v_d2.value = __v_d2_value;
 __v.d2 = __v_d2;
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({  }) {
 
@@ -1382,7 +1382,7 @@ return function /*constructor*/(value) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -1588,7 +1588,7 @@ __v_o6_value.d_1 = __v_o6_value_d_1;
 __v_o6.value = __v_o6_value;
 __v.o6 = __v_o6;
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({  }) {
 
@@ -1600,7 +1600,7 @@ return function /*constructor*/(value) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -2672,7 +2672,7 @@ return function /*foo*/() {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -2725,7 +2725,7 @@ return function /*constructor*/() { };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -2792,7 +2792,7 @@ return function /*getSym*/() { return sym; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -2844,7 +2844,7 @@ return function /*constructor*/() { };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -2910,7 +2910,7 @@ Object.defineProperty(__f1_prototype, "dVirtual", { configurable: true, writable
 __f1.prototype = __f1_prototype;
 Object.setPrototypeOf(__f1, __f2);
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -2923,7 +2923,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -2943,7 +2943,7 @@ return function /*dVirtual*/() { return 1; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({ __super: __f2 }) {
 
@@ -3038,7 +3038,7 @@ Object.defineProperty(__f1_prototype, "method", { configurable: true, writable: 
 __f1.prototype = __f1_prototype;
 Object.setPrototypeOf(__f1, __f2);
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -3051,7 +3051,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f4() {
+function __f4(__0) {
   return (function() {
     with({  }) {
 
@@ -3061,7 +3061,7 @@ return function /*method*/(x) { return x; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({ __super: __f3 }) {
 
@@ -3074,7 +3074,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f5() {
+function __f5(__0) {
   return (function() {
     with({ __super: __f3 }) {
 
@@ -3084,7 +3084,7 @@ return function /*method*/(n) { return 1 + __super.prototype.method.call(this, n
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({ __super: __f2 }) {
 
@@ -3097,7 +3097,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f6() {
+function __f6(__0) {
   return (function() {
     with({ __super: __f2 }) {
 
@@ -3168,7 +3168,7 @@ Object.defineProperty(__f1_prototype, __f3_prototype_sym, { configurable: true, 
 __f1.prototype = __f1_prototype;
 Object.setPrototypeOf(__f1, __f2);
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -3181,7 +3181,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f4() {
+function __f4(__0) {
   return (function() {
     with({  }) {
 
@@ -3191,7 +3191,7 @@ return function (x) { return x; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({ __super: __f3 }) {
 
@@ -3204,7 +3204,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f5() {
+function __f5(__0) {
   return (function() {
     with({ sym: __f3_prototype_sym, __super: __f3 }) {
 
@@ -3214,7 +3214,7 @@ return function /*__computed*/(n) { return 1 + __super.prototype[sym].call(this,
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({ __super: __f2 }) {
 
@@ -3227,7 +3227,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f6() {
+function __f6(__0) {
   return (function() {
     with({ sym: __f3_prototype_sym, __super: __f2 }) {
 
@@ -3283,7 +3283,7 @@ __f1.method = __f5;
 __f1[__f2_sym] = __f6;
 Object.setPrototypeOf(__f1, __f2);
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({  }) {
 
@@ -3296,7 +3296,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -3306,7 +3306,7 @@ return function /*method*/(x) { return x; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f4() {
+function __f4(__0) {
   return (function() {
     with({  }) {
 
@@ -3316,7 +3316,7 @@ return function (x) { return x * x; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({ __super: __f2 }) {
 
@@ -3329,7 +3329,7 @@ return function /*constructor*/(n) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f5() {
+function __f5(__0) {
   return (function() {
     with({ __super: __f2 }) {
 
@@ -3339,7 +3339,7 @@ return function /*method*/(n) { return 1 + __super.method.call(this, n + 1); };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f6() {
+function __f6(__0) {
   return (function() {
     with({ sym: __f2_sym, __super: __f2 }) {
 
@@ -4093,7 +4093,7 @@ return function () { o.m(); };
 
 var __table1 = {insert: __f1, primaryKey: 1};
 
-function __f0() {
+function __f0(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -4276,7 +4276,7 @@ return function /*f3*/() {
             func: f3,
             expectText: `exports.handler = __f3;
 
-function __f0() {
+function __f0(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -5392,7 +5392,7 @@ Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writa
 var __testConfig = Object.create(__testConfig_proto);
 __testConfig.name = "test";
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({  }) {
 
@@ -5407,7 +5407,7 @@ return function /*constructor*/(name) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __getConfig() {
+function __getConfig(__0) {
   return (function() {
     with({ config: __config, getConfig: __getConfig }) {
 
@@ -5419,7 +5419,7 @@ return function /*getConfig*/(k) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({ runtimeConfig_1: __runtimeConfig_1 }) {
 
@@ -5435,7 +5435,7 @@ return function /*get*/(key) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -5477,7 +5477,7 @@ Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable:
 __f1.prototype = __f1_prototype;
 var __deploymentOnlyModule = {Config: __f1};
 
-function __f1() {
+function __f1(__0) {
   return (function() {
     with({  }) {
 
@@ -5492,7 +5492,7 @@ return function /*constructor*/(name) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __getConfig() {
+function __getConfig(__0) {
   return (function() {
     with({ config: __config, getConfig: __getConfig }) {
 
@@ -5504,7 +5504,7 @@ return function /*getConfig*/(k) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f2(__0) {
   return (function() {
     with({ runtimeConfig_1: __runtimeConfig_1 }) {
 
@@ -5520,7 +5520,7 @@ return function /*get*/(key) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f3(__0) {
   return (function() {
     with({  }) {
 
@@ -5666,7 +5666,7 @@ exports.handler = __f0();`,
         func: function f({ whatever }) { },
         expectText: `exports.handler = __f;
 
-function __f() {
+function __f(__0) {
   return (function() {
     with({ f: __f }) {
 
@@ -5684,7 +5684,7 @@ return function /*f*/({ whatever }) { };
         func: async function f({ whatever }) { },
         expectText: `exports.handler = __f;
 
-function __f0() {
+function __f0(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -5701,7 +5701,7 @@ return function (thisArg, _arguments, P, generator) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f() {
+function __f(__0) {
   return (function() {
     with({ __awaiter: __f0, f: __f }) {
 
@@ -5721,7 +5721,7 @@ return function /*f*/({ whatever }) {
         func: ({ whatever }) => { },
         expectText: `exports.handler = __f0;
 
-function __f0() {
+function __f0(__0) {
   return (function() {
     with({  }) {
 
@@ -5739,7 +5739,7 @@ return ({ whatever }) => { };
         func: async ({ whatever }) => { },
         expectText: `exports.handler = __f0;
 
-function __f1() {
+function __f1(__0, __1, __2, __3) {
   return (function() {
     with({  }) {
 
@@ -5756,7 +5756,7 @@ return function (thisArg, _arguments, P, generator) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f0(__0) {
   return (function() {
     with({ __awaiter: __f1 }) {
 
@@ -5869,6 +5869,18 @@ return function () { console.log(regex); foo(); };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 `,
+        });
+    }
+
+    {
+        const s = pulumi.secret("can't capture me");
+
+        cases.push({
+            title: "Can't capture secrets",
+            func: function() {
+                console.log(s.get());
+            },
+            error: "Secret outputs cannot be captured by a closure.",
         });
     }
 

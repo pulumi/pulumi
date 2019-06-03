@@ -443,7 +443,8 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
     dryrun: jspb.Message.getFieldWithDefault(msg, 7, false),
     parallel: jspb.Message.getFieldWithDefault(msg, 8, 0),
-    monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, "")
+    monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, ""),
+    querymode: jspb.Message.getFieldWithDefault(msg, 10, false)
   };
 
   if (includeInstance) {
@@ -517,6 +518,10 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 9:
       var value = /** @type {string} */ (reader.readString());
       msg.setMonitorAddress(value);
+      break;
+    case 10:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setQuerymode(value);
       break;
     default:
       reader.skipField();
@@ -604,6 +609,13 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeString(
       9,
+      f
+    );
+  }
+  f = message.getQuerymode();
+  if (f) {
+    writer.writeBool(
+      10,
       f
     );
   }
@@ -761,6 +773,23 @@ proto.pulumirpc.RunRequest.prototype.getMonitorAddress = function() {
 /** @param {string} value */
 proto.pulumirpc.RunRequest.prototype.setMonitorAddress = function(value) {
   jspb.Message.setProto3StringField(this, 9, value);
+};
+
+
+/**
+ * optional bool queryMode = 10;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.RunRequest.prototype.getQuerymode = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 10, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.RunRequest.prototype.setQuerymode = function(value) {
+  jspb.Message.setProto3BooleanField(this, 10, value);
 };
 
 

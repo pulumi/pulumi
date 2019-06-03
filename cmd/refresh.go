@@ -68,6 +68,11 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			var displayType = display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
 			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
@@ -75,7 +80,7 @@ func newRefreshCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
-				DiffDisplay:          diffDisplay,
+				Type:                 displayType,
 				Debug:                debug,
 			}
 
@@ -94,6 +99,16 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
 
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			}
+
+			cfg, err := getStackConfiguration(s, sm)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			}
+
 			opts.Engine = engine.UpdateOptions{
 				Analyzers: analyzers,
 				Parallel:  parallel,
@@ -101,11 +116,13 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			changes, res := s.Refresh(commandContext(), backend.UpdateOperation{
-				Proj:   proj,
-				Root:   root,
-				M:      m,
-				Opts:   opts,
-				Scopes: cancellationScopes,
+				Proj:               proj,
+				Root:               root,
+				M:                  m,
+				Opts:               opts,
+				StackConfiguration: cfg,
+				SecretsManager:     sm,
+				Scopes:             cancellationScopes,
 			})
 
 			switch {

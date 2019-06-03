@@ -21,7 +21,7 @@ class TestOutputsFuture(LanghostTest):
             program=path.join(self.base_path(), "outputs_future"),
             expected_resource_count=0)
 
-    def invoke(self, _ctx, token, args, _provider):
+    def invoke(self, _ctx, token, args, _provider, _version):
         self.assertEqual("test:index:MyFunction", token)
         self.assertDictEqual({
             "value": 41,

@@ -75,6 +75,9 @@ type EditDir struct {
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
 
+	// ExpectNoChanges is true if the edit is expected to not propose any changes.
+	ExpectNoChanges bool
+
 	// Stdout is the writer to use for all stdout messages.
 	Stdout io.Writer
 	// Stderr is the writer to use for all stderr messages.
@@ -151,7 +154,7 @@ type ProgramTestOptions struct {
 	Quick bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
 	PreviewCommandlineFlags []string
-	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
+	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
 	RunBuild bool
@@ -187,7 +190,7 @@ type ProgramTestOptions struct {
 	// equivalent to `--logtostderr -v=N`, where N is the value of DebugLogLevel.  This may also be enabled by setting
 	// the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
 	DebugLogLevel int
-	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi update`, and
+	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi up`, and
 	// `pulumi destroy`.  This may also be enabled by setting the environment variable PULUMI_TEST_DEBUG_UPDATES.
 	DebugUpdates bool
 
@@ -385,17 +388,10 @@ func GetLogs(
 	stackInfo RuntimeValidationStackInfo,
 	query operations.LogQuery) *[]operations.LogEntry {
 
-	var states []*resource.State
-	for _, res := range stackInfo.Deployment.Resources {
-		state, err := stack.DeserializeResource(res)
-		if !assert.NoError(t, err) {
-			return nil
-		}
+	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment)
+	assert.NoError(t, err)
 
-		states = append(states, state)
-	}
-
-	tree := operations.NewResourceTree(states)
+	tree := operations.NewResourceTree(snap.Resources)
 	if !assert.NotNil(t, tree) {
 		return nil
 	}
@@ -426,11 +422,11 @@ func GetLogs(
 //   pulumi config set <each opts.Config>
 //   pulumi config set --secret <each opts.Secrets>
 //   pulumi preview
-//   pulumi update
+//   pulumi up
 //   pulumi stack export --file stack.json
 //   pulumi stack import --file stack.json
 //   pulumi preview (expected to be empty)
-//   pulumi update (expected to be empty)
+//   pulumi up (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
 //
@@ -770,6 +766,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
 	// Login as needed.
+	stackInitName := string(pt.opts.GetStackNameWithOwner())
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" && pt.opts.CloudURL == "" {
 		fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
 	} else {
@@ -780,13 +778,18 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		loginArgs := []string{"login"}
 		loginArgs = addFlagIfNonNil(loginArgs, "--cloud-url", pt.opts.CloudURL)
 
+		// If this is a local login, then don't attach the owner to the stack-name.
+		if strings.HasPrefix(pt.opts.CloudURL, "file://") {
+			stackInitName = string(pt.opts.GetStackName())
+		}
+
 		if err := pt.runPulumiCommand("pulumi-login", loginArgs, dir); err != nil {
 			return err
 		}
 	}
 
 	// Stack init
-	stackInitArgs := []string{"stack", "init", string(pt.opts.GetStackNameWithOwner())}
+	stackInitArgs := []string{"stack", "init", stackInitName}
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
@@ -1049,7 +1052,8 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure, false, false); err != nil {
+	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i),
+		edit.ExpectFailure, edit.ExpectNoChanges, edit.ExpectNoChanges); err != nil {
 		return err
 	}
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
