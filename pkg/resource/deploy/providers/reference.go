@@ -41,6 +41,11 @@ func IsProviderType(typ tokens.Type) bool {
 	return typ.Module() == "pulumi:providers" && typ.Name() != ""
 }
 
+// IsDefaultProvider returns true if this URN refers to a default Pulumi provider.
+func IsDefaultProvider(urn resource.URN) bool {
+	return IsProviderType(urn.Type()) && strings.HasPrefix(urn.Name().String(), "default")
+}
+
 // MakeProviderType returns the provider type token for the given package.
 func MakeProviderType(pkg tokens.Package) tokens.Type {
 	return tokens.Type("pulumi:providers:" + pkg)

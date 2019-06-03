@@ -58,9 +58,8 @@ const (
 )
 
 type JournalEntry struct {
-	Kind     JournalEntryKind
-	Step     deploy.Step
-	Resource *resource.State
+	Kind JournalEntryKind
+	Step deploy.Step
 }
 
 type Journal struct {
@@ -166,7 +165,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 					dones[e.Step.Old()] = true
 				}
 			case deploy.OpRemovePendingReplace:
-				dones[e.Resource] = true
+				dones[e.Step.Old()] = true
 			}
 		}
 	}
@@ -2969,6 +2968,212 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
 		"b": resource.NewNumberProperty(4),
 	}, []string{"a"}, []deploy.StepOp{deploy.OpUpdate})
+}
+
+// TestDefaultProviderDiff tests that the engine can gracefully recover whenever a resource's default provider changes
+// and there is no diff in the provider's inputs.
+func TestDefaultProviderDiff(t *testing.T) {
+	const resName, resBName = "resA", "resB"
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.11"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.12"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	runProgram := func(base *deploy.Snapshot, versionA, versionB string, expectedStep deploy.StepOp) *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, "", false, nil, "",
+				resource.PropertyMap{}, nil, false, versionA, nil, nil)
+			assert.NoError(t, err)
+			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", resBName, true, "", false, nil, "",
+				resource.PropertyMap{}, nil, false, versionB, nil, nil)
+			assert.NoError(t, err)
+			return nil
+		})
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{host: host},
+			Steps: []TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+						events []Event, res result.Result) result.Result {
+						for _, entry := range j.Entries {
+							if entry.Kind != JournalEntrySuccess {
+								continue
+							}
+
+							switch entry.Step.URN().Name().String() {
+							case resName, resBName:
+								assert.Equal(t, expectedStep, entry.Step.Op())
+							}
+						}
+						return res
+					},
+				},
+			},
+		}
+		return p.Run(t, base)
+	}
+
+	// This test simulates the upgrade scenario of old-style default providers to new-style versioned default providers.
+	//
+	// The first update creates a stack using a language host that does not report a version to the engine. As a result,
+	// the engine makes up a default provider for "pkgA" and calls it "default". It then creates the two resources that
+	// we are creating and associates them with the default provider.
+	snap := runProgram(nil, "", "", deploy.OpCreate)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default", res.URN.Name().String())
+		case res.URN.Name().String() == resName || res.URN.Name().String() == resBName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default", provRef.URN().Name().String())
+		}
+	}
+
+	// The second update switches to a language host that does report a version to the engine. As a result, the engine
+	// uses this version to make a new provider, with a different URN, and uses that provider to operate on resA and
+	// resB.
+	//
+	// Despite switching out the provider, the engine should still generate a Same step for resA. It is vital that the
+	// engine gracefully react to changes in the default provider in this manner. See pulumi/pulumi#2753 for what
+	// happens when it doesn't.
+	snap = runProgram(snap, "0.17.10", "0.17.10", deploy.OpSame)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default_0_17_10", res.URN.Name().String())
+		case res.URN.Name().String() == resName || res.URN.Name().String() == resBName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_10", provRef.URN().Name().String())
+		}
+	}
+
+	// The third update changes the version that the language host reports to the engine. This simulates a scenario in
+	// which a user updates their SDK to a new version of a provider package. In order to simulate side-by-side
+	// packages with different versions, this update requests distinct package versions for resA and resB.
+	snap = runProgram(snap, "0.17.11", "0.17.12", deploy.OpSame)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.True(t, res.URN.Name().String() == "default_0_17_11" || res.URN.Name().String() == "default_0_17_12")
+		case res.URN.Name().String() == resName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_11", provRef.URN().Name().String())
+		case res.URN.Name().String() == resBName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_12", provRef.URN().Name().String())
+		}
+	}
+}
+
+// TestDefaultProviderDiffReplacement tests that, when replacing a default provider for a resource, the engine will
+// replace the resource if DiffConfig on the new provider returns a diff for the provider's new state.
+func TestDefaultProviderDiffReplacement(t *testing.T) {
+	const resName, resBName = "resA", "resB"
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// This implementation of DiffConfig always requests replacement.
+				DiffConfigF: func(_ resource.URN, olds, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
+					keys := []resource.PropertyKey{}
+					for k := range news {
+						keys = append(keys, k)
+					}
+					return plugin.DiffResult{
+						Changes:     plugin.DiffSome,
+						ReplaceKeys: keys,
+					}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.11"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	runProgram := func(base *deploy.Snapshot, versionA, versionB string, expectedSteps ...deploy.StepOp) *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, "", false, nil, "",
+				resource.PropertyMap{}, nil, false, versionA, nil, nil)
+			assert.NoError(t, err)
+			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", resBName, true, "", false, nil, "",
+				resource.PropertyMap{}, nil, false, versionB, nil, nil)
+			assert.NoError(t, err)
+			return nil
+		})
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{host: host},
+			Steps: []TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+						events []Event, res result.Result) result.Result {
+						for _, entry := range j.Entries {
+							if entry.Kind != JournalEntrySuccess {
+								continue
+							}
+
+							switch entry.Step.URN().Name().String() {
+							case resName:
+								assert.Subset(t, expectedSteps, []deploy.StepOp{entry.Step.Op()})
+							case resBName:
+								assert.Subset(t,
+									[]deploy.StepOp{deploy.OpCreate, deploy.OpSame}, []deploy.StepOp{entry.Step.Op()})
+							}
+						}
+						return res
+					},
+				},
+			},
+		}
+		return p.Run(t, base)
+	}
+
+	// This test simulates the upgrade scenario of default providers, except that the requested upgrade results in the
+	// provider getting replaced. Because of this, the engine should decide to replace resA. It should not decide to
+	// replace resB, as its change does not require replacement.
+	snap := runProgram(nil, "", "", deploy.OpCreate)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.Equal(t, "default", res.URN.Name().String())
+		case res.URN.Name().String() == resName || res.URN.Name().String() == resBName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default", provRef.URN().Name().String())
+		}
+	}
+
+	// Upon update, now that the language host is sending a version, DiffConfig reports that there's a diff between the
+	// old and new provider and so we must replace resA.
+	snap = runProgram(snap, "0.17.10", "0.17.11", deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced)
+	for _, res := range snap.Resources {
+		switch {
+		case providers.IsDefaultProvider(res.URN):
+			assert.True(t, res.URN.Name().String() == "default_0_17_10" || res.URN.Name().String() == "default_0_17_11")
+		case res.URN.Name().String() == resName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_10", provRef.URN().Name().String())
+		case res.URN.Name().String() == resBName:
+			provRef, err := providers.ParseReference(res.Provider)
+			assert.NoError(t, err)
+			assert.Equal(t, "default_0_17_11", provRef.URN().Name().String())
+		}
+	}
 }
 
 // Resource is an abstract representation of a resource graph
