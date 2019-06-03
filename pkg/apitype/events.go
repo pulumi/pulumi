@@ -48,8 +48,10 @@ type DiagnosticEvent struct {
 
 // PolicyViolation represents the information related to a Policy violation.
 type PolicyViolation struct {
-	PolicyPack       PolicyPack       `json:"policyPack"`
-	PolicyName       string           `json:"policyName"`
+	// PackIdentifier is a policy pack name and version encoded as a string.
+	// For example, "aws-security@v5".
+	PackIdentifier   string           `json:"packIdentifier"`
+	Name             string           `json:"name"`
 	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
 }
 

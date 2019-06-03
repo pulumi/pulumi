@@ -18,11 +18,14 @@ package apitype
 // Pack for an organization. The request contains the metadata related to the
 // Policy Pack.
 type CreatePolicyPackRequest struct {
-	PolicyPack
-	Policies []Policy `json:"policies"`
+	Name        string   `json:"name"`
+	Version     int      `json:"version"`
+	DisplayName string   `json:"displayName"`
+	Policies    []Policy `json:"policies"`
 }
 
-// CreatePolicyPackResponse returns a URI to upload the Policy Pack zip file to.
+// CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
+// a URI to upload the Policy Pack zip file to.
 type CreatePolicyPackResponse struct {
 	UploadURI string `json:"uploadURI"`
 }
@@ -30,24 +33,24 @@ type CreatePolicyPackResponse struct {
 // RequiredPolicy is the information regarding a particular Policy that is required
 // by an organization.
 type RequiredPolicy struct {
-	PolicyPack
+	Name         string `json:"name"`
+	Version      int    `json:"version"`
+	DisplayName  string `json:"displayName"`
 	PackLocation string `json:"packLocation"`
-}
-
-// PolicyPack defines a Policy Pack for an organization.
-type PolicyPack struct {
-	Name        string `json:"name"`
-	Version     int    `json:"version"`
-	DisplayName string `json:"displayName"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
 type Policy struct {
-	Name             string           `json:"name"`
-	DisplayName      string           `json:"displayName"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+
+	// Description is used to provide more context about the purpose of the policy.
 	Description      string           `json:"description"`
 	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
-	Message          string           `json:"message"`
+
+	// Message is the message that will be displayed to end users when they violate
+	// this policy.
+	Message string `json:"message"`
 }
 
 // EnforcementLevel is an enum to determine the enforcement level for a Policy.
@@ -56,8 +59,8 @@ type EnforcementLevel int
 const (
 	// Warning is an enforcement level where the resource is still created, but a
 	// message is displayed to the user for informational / warning purposes.
-	Warning EnforcementLevel = 0
+	Warning EnforcementLevel = 1
 
 	// Mandatory is an enforcement level that prevents a resource from being created.
-	Mandatory EnforcementLevel = 100
+	Mandatory EnforcementLevel = 2
 )

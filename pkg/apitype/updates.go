@@ -93,7 +93,7 @@ type StartUpdateResponse struct {
 	// Token is the lease token (if any) to be used to authorize operations on this update.
 	Token string `json:"token,omitempty"`
 
-	// RequiredPolicies is a list of required Policy Packs to run.
+	// RequiredPolicies is a list of required Policy Packs to run during the update.
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
 
