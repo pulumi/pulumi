@@ -498,6 +498,7 @@ export abstract class ProviderResource extends CustomResource {
         super(`pulumi:providers:${pkg}`, name, props, opts);
     }
 
+    /** @internal */
     public getPackage() {
         return this.pkg;
     }
