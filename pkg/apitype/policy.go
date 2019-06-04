@@ -18,37 +18,50 @@ package apitype
 // Pack for an organization. The request contains the metadata related to the
 // Policy Pack.
 type CreatePolicyPackRequest struct {
-	Name        string   `json:"name"`
-	Version     int      `json:"version"`
-	DisplayName string   `json:"displayName"`
-	Policies    []Policy `json:"policies"`
+	// Name is a unique URL-safe identifier (at the org level) for the package.
+	// If the name has already been used by the organization, then the request will
+	// create a new version of the Policy Pack (incremented by one). This is supplied
+	// by the CLI.
+	Name string `json:"name"`
+
+	// A pretty name for the Policy Pack that is supplied by the package.
+	DisplayName string `json:"displayName"`
+
+	// The Policies outline the specific Policies in the package, and are derived
+	// from the package by the CLI.
+	Policies []Policy `json:"policies"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
 // a URI to upload the Policy Pack zip file to.
 type CreatePolicyPackResponse struct {
+	Version   int    `json:"version"`
 	UploadURI string `json:"uploadURI"`
 }
 
 // RequiredPolicy is the information regarding a particular Policy that is required
 // by an organization.
 type RequiredPolicy struct {
-	Name         string `json:"name"`
-	Version      int    `json:"version"`
-	DisplayName  string `json:"displayName"`
+
+	// The name (unique and URL-safe) of the required Policy Pack.
+	Name string `json:"name"`
+
+	// The version of the required Policy Pack.
+	Version int `json:"version"`
+
+	// The pretty name of the required Policy Pack.
+	DisplayName string `json:"displayName"`
+
+	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
 type Policy struct {
+	// Unique URL-safe name for the policy.  This is unique to a specific version
+	// of a Policy Pack.
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName"`
-
-	// Identifier is uniquely identified a Policy. It is a Policy Pack name and version as
-	// well as the Policy name encoded as a string in the following format:
-	// `<policyPackName>/<policyPackVersion>/<policyName>`
-	// For example, "aws-security/5/no-public-s3-buckets"
-	Identifier string `json:"identifier"`
 
 	// Description is used to provide more context about the purpose of the policy.
 	Description      string           `json:"description"`

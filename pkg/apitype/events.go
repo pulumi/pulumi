@@ -40,17 +40,20 @@ type DiagnosticEvent struct {
 	Message string `json:"message"`
 	Color   string `json:"color"`
 	// Severity is one of "info", "info#err", "warning", or "error".
-	Severity        string           `json:"severity"`
-	StreamID        int              `json:"streamID,omitempty"`
-	Ephemeral       bool             `json:"ephemeral,omitempty"`
-	PolicyViolation *PolicyViolation `json:"policyViolation,omitempty"`
+	Severity  string `json:"severity"`
+	StreamID  int    `json:"streamID,omitempty"`
+	Ephemeral bool   `json:"ephemeral,omitempty"`
 }
 
-// PolicyViolation represents the information related to a Policy violation.
-type PolicyViolation struct {
-	// Identifier is uniquely identified a Policy. It is a Policy Pack name and version as
-	// well as the Policy name encoded as a string in the following format:
-	// `<policyPackName>/<policyPackVersion>/<policyName>`
+// PolicyEvent is emitted whenever there is Policy violation.
+type PolicyEvent struct {
+	URN     string `json:"urn,omitempty"`
+	Message string `json:"message"`
+	Color   string `json:"color"`
+
+	// Identifier is used to  uniquely identify a Policy at the org level. It is a
+	// Policy Pack name and version as well as the Policy name encoded as a string
+	// in the following format: `<policyPackName>/<policyPackVersion>/<policyName>`
 	// For example, "aws-security/5/no-public-s3-buckets"
 	Identifier       string           `json:"identifier"`
 	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
@@ -169,4 +172,5 @@ type EngineEvent struct {
 	ResourcePreEvent *ResourcePreEvent  `json:"resourcePreEvent,omitempty"`
 	ResOutputsEvent  *ResOutputsEvent   `json:"resOutputsEvent,omitempty"`
 	ResOpFailedEvent *ResOpFailedEvent  `json:"resOpFailedEvent,omitempty"`
+	PolicyEvent      *PolicyEvent       `json:"policyEvent,omitempty"`
 }
