@@ -31,10 +31,11 @@ func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	return b.GetStackOutputsF(ctx, name)
 }
 
-// GetStackResourceOutputs returns the resource outputs of type (if any) for a stack, or an error if
-// the stack cannot be found. Resources are retrieved from the latest stack snapshot, which may
-// include ongoing updates. They are returned in a `PropertyMap` with members `type` (containing the
-// Pulumi type ID for the resource) and `outputs` (containing the resource outputs themselves).
+// GetStackResourceOutputs returns the resource outputs for a stack, or an error if the stack
+// cannot be found. Resources are retrieved from the latest stack snapshot, which may include
+// ongoing updates. They are returned in a `PropertyMap` mapping resource URN to another
+// `Propertymap` with members `type` (containing the Pulumi type ID for the resource) and
+// `outputs` (containing the resource outputs themselves).
 func (b *BackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string) (resource.PropertyMap, error) {
 	return b.GetStackResourceOutputsF(ctx, name)
