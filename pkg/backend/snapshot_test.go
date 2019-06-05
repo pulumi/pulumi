@@ -256,6 +256,67 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		err = manager.Close()
 		assert.NoError(t, err)
 	}
+
+	// Set up a second provider and change the resource's provider reference.
+	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2")
+	provider2.Custom, provider2.Type, provider2.ID = true, "pulumi:providers:pkgA", "id2"
+
+	resourceA.Custom, resourceA.ID, resourceA.Provider = true, "id", "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
+
+	snap = NewSnapshot([]*resource.State{
+		provider,
+		provider2,
+		resourceA,
+	})
+
+	changes = []*resource.State{NewResource(string(resourceA.URN))}
+	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
+
+	for _, c := range changes {
+		manager, sp := MockSetup(t, snap)
+
+		// Generate sames for the providers.
+		provUpdated := NewResource(string(provider.URN))
+		provUpdated.Custom, provUpdated.Type = true, provider.Type
+		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
+		mutation, err := manager.BeginMutation(provSame)
+		assert.NoError(t, err)
+		_, _, err = provSame.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(provSame, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
+		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
+		prov2Updated := NewResource(string(provider2.URN))
+		prov2Updated.Custom, prov2Updated.Type = true, provider.Type
+		prov2Same := deploy.NewSameStep(nil, nil, provider2, prov2Updated)
+		mutation, err = manager.BeginMutation(prov2Same)
+		assert.NoError(t, err)
+		_, _, err = prov2Same.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(prov2Same, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
+		// The engine generates a Same for a. Because this is a meaningful change, the snapshot is written:
+		aSame := deploy.NewSameStep(nil, nil, resourceA, c)
+		mutation, err = manager.BeginMutation(aSame)
+		assert.NoError(t, err)
+		_, _, err = aSame.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(aSame, true)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, sp.SavedSnapshots)
+		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
+
+		inSnapshot := sp.SavedSnapshots[0].Resources[2]
+		assert.Equal(t, c, inSnapshot)
+
+		err = manager.Close()
+		assert.NoError(t, err)
+	}
 }
 
 // This test exercises the merge operation with a particularly vexing deployment

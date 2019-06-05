@@ -189,7 +189,12 @@ func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
 	}
 
 	contract.Assert(old.ID == new.ID)
-	contract.Assert(old.Provider == new.Provider)
+
+	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
+	// aliased providers or upgrades to default providers.
+	if old.Provider != new.Provider {
+		return true
+	}
 
 	// If this resource's parent has changed, we must write the checkpoint.
 	if old.Parent != new.Parent {
