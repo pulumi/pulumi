@@ -2,7 +2,7 @@
 
 ### Improvements
 
-## 0.17.15 (Released June 4, 2019)
+## 0.17.15 (Released June 5, 2019)
 
 ### Improvements
 
