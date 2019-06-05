@@ -261,7 +261,8 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2")
 	provider2.Custom, provider2.Type, provider2.ID = true, "pulumi:providers:pkgA", "id2"
 
-	resourceA.Custom, resourceA.ID, resourceA.Provider = true, "id", "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
+	resourceA.Custom, resourceA.ID, resourceA.Provider =
+		true, "id", "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
 
 	snap = NewSnapshot([]*resource.State{
 		provider,
