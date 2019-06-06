@@ -1,6 +1,12 @@
-## 0.17.16 (Unreleased)
+## 0.17.17 (Unreleased)
 
 ### Improvements
+
+## 0.17.16 (Released June 6, 2019)
+
+### Improvements
+
+- Fixed a bug that caused an assertion when dealing with unchanged resources across version upgrades.
 
 ## 0.17.15 (Released June 5, 2019)
 
