@@ -29,8 +29,9 @@ class ComponentResourceSingleProviderTest(LanghostTest):
             program=path.join(self.base_path(), "component_resource_single_provider"),
             expected_resource_count=240)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, custom, protect, provider, _property_deps, _delete_before_replace):
+    def register_resource(self, _ctx, _dry_run, ty, name, resource,
+                          _dependencies, _parent, custom, protect, provider, _property_deps, _delete_before_replace,
+                          _ignore_changes, _version):
         if custom and not ty.startswith("pulumi:providers:"):
             expect_protect = False
             expect_provider_name = ""
