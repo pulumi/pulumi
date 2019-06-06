@@ -29,6 +29,7 @@ setup(name='pulumi',
       packages=find_packages(),
       install_requires=[
           'protobuf>=3.6.0',
-          'grpcio>=1.9.1'
+          'grpcio>=1.21.1',
+          'grpcio-reflection>=1.21.1'
       ],
       zip_safe=False)
