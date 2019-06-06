@@ -210,8 +210,6 @@ class LanghostTest(unittest.TestCase):
             # Now we'll launch the language host, which will in turn launch code that drives
             # the test.
             langhost = self._create_language_host(monitor.port)
-            print("monitor addr: localhost:%d" % monitor.port)
-            print("langhost port: localhost:%d" % langhost.port)
 
             # Run the program with the langhost we just launched.
             with grpc.insecure_channel("localhost:%d" % langhost.port) as channel:
