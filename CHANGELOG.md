@@ -2,6 +2,10 @@
 
 ### Improvements
 
+- The API for passing along a custom provider to a ComponentResource has been simplified.  You can
+  now just say `new SomeComponentResource(name, props, { provider: awsProvider })` instead of `new
+  SomeComponentResource(name, props, { providers: { "aws" : awsProvider } })`
+
 ## 0.17.16 (Released June 6, 2019)
 
 ### Improvements
@@ -24,9 +28,6 @@
   replacements or re-creation of the resource.
 - `pulumi plugin install` gained a new optional argument `--server` which can be used to provide a custom server to be
   used when downloading a plugin.
-- The API for passing along a custom provider to a ComponentResource has been simplified.  You can
-  now just say `new SomeComponentResource(name, props, { provider: awsProvider })` instead of `new
-  SomeComponentResource(name, props, { providers: { "aws" : awsProvider } })`
 
 ## 0.17.14 (Released May 28, 2019)
 
