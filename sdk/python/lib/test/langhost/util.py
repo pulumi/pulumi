@@ -25,9 +25,8 @@ import subprocess
 from os import path
 import grpc
 from pulumi.runtime import proto, rpc
-from pulumi.runtime.proto import resource_pb2_grpc, resource_pb2, language_pb2_grpc, engine_pb2_grpc, engine_pb2, provider_pb2
+from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc, engine_pb2_grpc, engine_pb2, provider_pb2
 from google.protobuf import empty_pb2, struct_pb2
-from grpc_reflection.v1alpha import reflection
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful
@@ -300,18 +299,9 @@ class LanghostTest(unittest.TestCase):
         monitor = LanghostMockResourceMonitor(self, dryrun)
         engine = MockEngine()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
-        resource_pb2_grpc.add_ResourceMonitorServicer_to_server(
-            monitor, server)
 
+        resource_pb2_grpc.add_ResourceMonitorServicer_to_server(monitor, server)
         engine_pb2_grpc.add_EngineServicer_to_server(engine, server)
-
-        SERVICE_NAMES = (
-            resource_pb2.DESCRIPTOR.services_by_name['ResourceMonitor'].full_name,
-            engine_pb2.DESCRIPTOR.services_by_name['Engine'].full_name,
-            reflection.SERVICE_NAME,
-        )
-
-        reflection.enable_server_reflection(SERVICE_NAMES, server)
 
         port = server.add_insecure_port(address="0.0.0.0:0")
         server.start()

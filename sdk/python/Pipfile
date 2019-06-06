@@ -5,8 +5,7 @@ name = "pypi"
 
 [packages]
 protobuf = ">=3.6.0"
-grpcio = ">=1.21.1"
-grpcio-reflection = ">=1.21.1"
+grpcio = ">=1.9.1"
 
 [dev-packages]
 pylint = ">=2.1"
