@@ -315,7 +315,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 ignoreChanges=ignore_changes,
                 version=opts.version or "",
                 acceptSecrets=True,
-                additionalSecretOutputs=additional_secret_outputs
+                additionalSecretOutputs=additional_secret_outputs,
+                aliases=[]
             )
 
             def do_rpc_call():

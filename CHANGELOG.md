@@ -2,6 +2,10 @@
 
 ### Improvements
 
+- The API for passing along a custom provider to a ComponentResource has been simplified.  You can
+  now just say `new SomeComponentResource(name, props, { provider: awsProvider })` instead of `new
+  SomeComponentResource(name, props, { providers: { "aws" : awsProvider } })`
+
 ## 0.17.16 (Released June 6, 2019)
 
 ### Improvements
@@ -172,7 +176,6 @@ Fixes #397
 ## 0.17.5 (Released April 8, 2019)
 
 ### Improvements
-
 - Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
 - Make `Config`'s constructor's `name` argument optional in Python, for consistency with our Node.js SDK. If it isn't
     supplied, the current project name is used as the default.

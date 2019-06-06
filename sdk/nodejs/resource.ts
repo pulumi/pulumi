@@ -204,6 +204,10 @@ export abstract class Resource {
         // Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = Object.assign({}, opts);
 
+        if (opts.provider && (<ComponentResourceOptions>opts).providers) {
+            throw new ResourceError("Do not supply both 'provider' and 'providers' options to a ComponentResource.", opts.parent);
+        }
+
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
@@ -238,12 +242,19 @@ export abstract class Resource {
                 }
             }
         }
+
         if (!custom) {
-            const providers = (<ComponentResourceOptions>opts).providers;
-            if (providers) {
-                this.__providers = { ...this.__providers, ...providers };
-            }
+            // Note: we checked above that at most one of opts.provider or opts.providers is set.
+
+            // If opts.provider is set, treat that as if we were given a array of provider with that
+            // single value in it.  Otherwise, take the array or map of providers, convert it to a
+            // map and combine with any providers we've already set from our parent.
+            const providers = opts.provider
+                ? convertToProvidersMap([opts.provider])
+                : convertToProvidersMap((<ComponentResourceOptions>opts).providers);
+            this.__providers = { ...this.__providers, ...providers };
         }
+
         this.__protect = !!opts.protect;
 
         // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
@@ -270,6 +281,23 @@ export abstract class Resource {
             registerResource(this, t, name, custom, props, opts);
         }
     }
+}
+
+function convertToProvidersMap(providers: Record<string, ProviderResource> | ProviderResource[] | undefined) {
+    if (!providers) {
+        return {};
+    }
+
+    if (!Array.isArray(providers)) {
+        return providers;
+    }
+
+    const result: Record<string, ProviderResource> = {};
+    for (const provider of providers) {
+        result[provider.getPackage()] = provider;
+    }
+
+    return result;
 }
 
 (<any>Resource).doNotCapture = true;
@@ -353,22 +381,23 @@ export interface ResourceOptions {
      */
     version?: string;
     /**
-     * An optional list of aliases to treat this resoruce as matching.
+     * An optional list of aliases to treat this resource as matching.
      */
     aliases?: Input<URN | Alias>[];
+    /**
+     * An optional provider to use for this resource's CRUD operations. If no provider is supplied,
+     * the default provider for the resource's package will be used. The default provider is pulled
+     * from the parent's provider bag (see also ComponentResourceOptions.providers).
+     *
+     * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
+     */
+    provider?: ProviderResource;
 }
 
 /**
  * CustomResourceOptions is a bag of optional settings that control a custom resource's behavior.
  */
 export interface CustomResourceOptions extends ResourceOptions {
-    /**
-     * An optional provider to use for this resource's CRUD operations. If no provider is supplied, the default
-     * provider for the resource's package will be used. The default provider is pulled from the parent's
-     * provider bag (see also ComponentResourceOptions.providers).
-     */
-    provider?: ProviderResource;
-
     /**
      * When set to true, deleteBeforeReplace indicates that this resource should be deleted before its replacement
      * is created when replacement is necessary.
@@ -388,9 +417,15 @@ export interface CustomResourceOptions extends ResourceOptions {
  */
 export interface ComponentResourceOptions extends ResourceOptions {
     /**
-     * An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
+     * An optional set of providers to use for child resources. Either keyed by package name (e.g.
+     * "aws"), or just provided as an array.  In the latter case, the package name will be retrieved
+     * from the provider itself.
+     *
+     * In the case of a single provider, the options can be simplified to just pass along `provider: theProvider`
+     *
+     * Note: do not provide both [provider] and [providers];
      */
-    providers?: Record<string, ProviderResource>;
+    providers?: Record<string, ProviderResource> | ProviderResource[];
 }
 
 /**
@@ -468,8 +503,13 @@ export abstract class ProviderResource extends CustomResource {
      * @param props The configuration to use for this provider.
      * @param opts A bag of options that control this provider's behavior.
      */
-    constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
+    constructor(private readonly pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
         super(`pulumi:providers:${pkg}`, name, props, opts);
+    }
+
+    /** @internal */
+    public getPackage() {
+        return this.pkg;
     }
 }
 
@@ -508,10 +548,6 @@ export class ComponentResource extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
-        if ((<CustomResourceOptions>opts).provider) {
-            throw new ResourceError("Do not supply 'provider' option to a ComponentResource. Did you mean 'providers' instead?", opts.parent);
-        }
-
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
         // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
         // only as a container for other resources.  Another way to think about this is that a normal
