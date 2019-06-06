@@ -102,7 +102,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
             outs = self.langhost_test.register_resource(
-                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider, 
+                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider,
                 property_dependencies, delete_before_replace, ignore_changes, version)
             if outs.get("urn"):
                 urn = outs["urn"]
@@ -156,8 +156,8 @@ class MockEngine(proto.EngineServicer):
 
 
 ResourceMonitorEndpoint = namedtuple('ResourceMonitorEndpoint',
-                                     ['monitor', 'server', 'addr'])
-LanguageHostEndpoint = namedtuple('LanguageHostEndpoint', ['process', 'addr'])
+                                     ['monitor', 'server', 'port'])
+LanguageHostEndpoint = namedtuple('LanguageHostEndpoint', ['process', 'port'])
 
 
 class LanghostTest(unittest.TestCase):
@@ -209,10 +209,13 @@ class LanghostTest(unittest.TestCase):
 
             # Now we'll launch the language host, which will in turn launch code that drives
             # the test.
-            langhost = self._create_language_host(monitor.addr)
+            langhost = self._create_language_host(monitor.port)
+            print("monitor addr: localhost:%d" % monitor.port)
+            print("langhost port: localhost:%d" % langhost.port)
 
             # Run the program with the langhost we just launched.
-            with grpc.insecure_channel(langhost.addr) as channel:
+            with grpc.insecure_channel("localhost:%d" % langhost.port) as channel:
+                grpc.channel_ready_future(channel).result()
                 stub = language_pb2_grpc.LanguageRuntimeStub(channel)
                 result = self._run_program(stub, monitor, project, stack,
                                            program, pwd, args, config, dryrun)
@@ -296,23 +299,24 @@ class LanghostTest(unittest.TestCase):
         monitor = LanghostMockResourceMonitor(self, dryrun)
         engine = MockEngine()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
-        resource_pb2_grpc.add_ResourceMonitorServicer_to_server(
-            monitor, server)
+
+        resource_pb2_grpc.add_ResourceMonitorServicer_to_server(monitor, server)
         engine_pb2_grpc.add_EngineServicer_to_server(engine, server)
+
         port = server.add_insecure_port(address="0.0.0.0:0")
         server.start()
-        return ResourceMonitorEndpoint(monitor, server, "0.0.0.0:%d" % port)
+        return ResourceMonitorEndpoint(monitor, server, port)
 
-    def _create_language_host(self, engine_addr):
+    def _create_language_host(self, port):
         exec_path = path.join(path.dirname(__file__), "..", "..", "..", "cmd", "pulumi-language-python-exec")
         proc = subprocess.Popen(
-            ["pulumi-language-python", "--use-executor", exec_path, engine_addr],
+            ["pulumi-language-python", "--use-executor", exec_path, "localhost:%d" % port],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         # The first line of output is the port that the language host gRPC server is listening on.
         first_line = proc.stdout.readline()
         try:
-            return LanguageHostEndpoint(proc, "0.0.0.0:%d" % int(first_line))
+            return LanguageHostEndpoint(proc, int(first_line))
         except ValueError:
             proc.kill()
             stdout, stderr = proc.communicate()
@@ -326,7 +330,7 @@ class LanghostTest(unittest.TestCase):
     def _run_program(self, stub, monitor, project, stack, program, pwd, args,
                      config, dryrun):
         args = {}
-        args["monitor_address"] = monitor.addr
+        args["monitor_address"] = "localhost:%d" % monitor.port
         args["project"] = project or "project"
         args["stack"] = stack or "stack"
         args["program"] = program
