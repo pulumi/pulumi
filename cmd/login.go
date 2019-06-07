@@ -44,27 +44,42 @@ func newLoginCmd() *cobra.Command {
 			"    $ pulumi login\n" +
 			"\n" +
 			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
-			"easily obtain one. You can script by using PULUMI_ACCESS_TOKEN environment variable.\n" +
+			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
 			"\n" +
-			"By default, this will log into app.pulumi.com. If you prefer to log into a separate instance\n" +
-			"of the Pulumi service, such as Pulumi Enterprise, specify a <url>. For example, run\n" +
+			"By default, this will log into `app.pulumi.com`. If you prefer to log into a separate instance\n" +
+			"of the Pulumi service, such as Pulumi Enterprise, specify a URL. For example, run\n" +
 			"\n" +
 			"    $ pulumi login https://pulumi.acmecorp.com\n" +
 			"\n" +
 			"to log in to a Pulumi Enterprise server running at the pulumi.acmecorp.com domain.\n" +
 			"\n" +
-			"For https:// URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
+			"For `https://` URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
 			"If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
-			"pass file://<path>, where <path> will be where state checkpoints will be stored. For instance,\n" +
+			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
 			"\n" +
 			"    $ pulumi login file://~\n" +
 			"\n" +
-			"will store your state information on your computer underneath ~/.pulumi. It is then up to you to\n" +
+			"will store your state information on your computer underneath `~/.pulumi`. It is then up to you to\n" +
 			"manage this state, including backing it up, using it in a team environment, and so on.\n" +
 			"\n" +
-			"As a shortcut, you may pass --local to use your home directory (this is an alias for file://~):\n" +
+			"As a shortcut, you may pass --local to use your home directory (this is an alias for `file://~`):\n" +
 			"\n" +
-			"    $ pulumi login --local\n",
+			"    $ pulumi login --local\n" +
+			"\n" +
+			"Additionally, you may leverage supported object storage backends from one of the cloud providers " +
+			"to manage the state independent of the service. For instance,\n" +
+			"\n" +
+			"AWS S3:\n" +
+			"\n" +
+			"    $ pulumi login s3://my-pulumi-state-bucket\n" +
+			"\n" +
+			"GCP GCS:\n" +
+			"\n" +
+			"    $ pulumi login gs://my-pulumi-state-bucket\n" +
+			"\n" +
+			"Azure Blob:\n" +
+			"\n" +
+			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOptions := display.Options{

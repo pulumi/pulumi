@@ -2,6 +2,8 @@
 
 ### Improvements
 
+- docs(login): escape codeblocks, and add object store state instructions
+  [#2810](https://github.com/pulumi/pulumi/pull/2810)
 - The API for passing along a custom provider to a ComponentResource has been simplified.  You can
   now just say `new SomeComponentResource(name, props, { provider: awsProvider })` instead of `new
   SomeComponentResource(name, props, { providers: { "aws" : awsProvider } })`
