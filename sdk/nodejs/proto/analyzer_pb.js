@@ -14,7 +14,8 @@ var proto = { pulumirpc: {} }, global = proto;
 var plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
-goog.exportSymbol('proto.pulumirpc.AnalyzeFailure', null, global);
+goog.exportSymbol('proto.pulumirpc.AnalyzeDiagnostic', null, global);
+goog.exportSymbol('proto.pulumirpc.AnalyzeDiagnostic.LogSeverity', null, global);
 goog.exportSymbol('proto.pulumirpc.AnalyzeRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.AnalyzeResponse', null, global);
 
@@ -257,8 +258,8 @@ proto.pulumirpc.AnalyzeResponse.prototype.toObject = function(opt_includeInstanc
  */
 proto.pulumirpc.AnalyzeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
-    proto.pulumirpc.AnalyzeFailure.toObject, includeInstance)
+    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+    proto.pulumirpc.AnalyzeDiagnostic.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -296,9 +297,9 @@ proto.pulumirpc.AnalyzeResponse.deserializeBinaryFromReader = function(msg, read
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = new proto.pulumirpc.AnalyzeFailure;
-      reader.readMessage(value,proto.pulumirpc.AnalyzeFailure.deserializeBinaryFromReader);
-      msg.addFailures(value);
+      var value = new proto.pulumirpc.AnalyzeDiagnostic;
+      reader.readMessage(value,proto.pulumirpc.AnalyzeDiagnostic.deserializeBinaryFromReader);
+      msg.addDiagnostics(value);
       break;
     default:
       reader.skipField();
@@ -329,45 +330,45 @@ proto.pulumirpc.AnalyzeResponse.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.AnalyzeResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getFailuresList();
+  f = message.getDiagnosticsList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
       1,
       f,
-      proto.pulumirpc.AnalyzeFailure.serializeBinaryToWriter
+      proto.pulumirpc.AnalyzeDiagnostic.serializeBinaryToWriter
     );
   }
 };
 
 
 /**
- * repeated AnalyzeFailure failures = 1;
- * @return {!Array.<!proto.pulumirpc.AnalyzeFailure>}
+ * repeated AnalyzeDiagnostic diagnostics = 1;
+ * @return {!Array.<!proto.pulumirpc.AnalyzeDiagnostic>}
  */
-proto.pulumirpc.AnalyzeResponse.prototype.getFailuresList = function() {
-  return /** @type{!Array.<!proto.pulumirpc.AnalyzeFailure>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.AnalyzeFailure, 1));
+proto.pulumirpc.AnalyzeResponse.prototype.getDiagnosticsList = function() {
+  return /** @type{!Array.<!proto.pulumirpc.AnalyzeDiagnostic>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.AnalyzeDiagnostic, 1));
 };
 
 
-/** @param {!Array.<!proto.pulumirpc.AnalyzeFailure>} value */
-proto.pulumirpc.AnalyzeResponse.prototype.setFailuresList = function(value) {
+/** @param {!Array.<!proto.pulumirpc.AnalyzeDiagnostic>} value */
+proto.pulumirpc.AnalyzeResponse.prototype.setDiagnosticsList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 1, value);
 };
 
 
 /**
- * @param {!proto.pulumirpc.AnalyzeFailure=} opt_value
+ * @param {!proto.pulumirpc.AnalyzeDiagnostic=} opt_value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.AnalyzeFailure}
+ * @return {!proto.pulumirpc.AnalyzeDiagnostic}
  */
-proto.pulumirpc.AnalyzeResponse.prototype.addFailures = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.pulumirpc.AnalyzeFailure, opt_index);
+proto.pulumirpc.AnalyzeResponse.prototype.addDiagnostics = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.pulumirpc.AnalyzeDiagnostic, opt_index);
 };
 
 
-proto.pulumirpc.AnalyzeResponse.prototype.clearFailuresList = function() {
-  this.setFailuresList([]);
+proto.pulumirpc.AnalyzeResponse.prototype.clearDiagnosticsList = function() {
+  this.setDiagnosticsList([]);
 };
 
 
@@ -382,13 +383,20 @@ proto.pulumirpc.AnalyzeResponse.prototype.clearFailuresList = function() {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.pulumirpc.AnalyzeFailure = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+proto.pulumirpc.AnalyzeDiagnostic = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.AnalyzeDiagnostic.repeatedFields_, null);
 };
-goog.inherits(proto.pulumirpc.AnalyzeFailure, jspb.Message);
+goog.inherits(proto.pulumirpc.AnalyzeDiagnostic, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
-  proto.pulumirpc.AnalyzeFailure.displayName = 'proto.pulumirpc.AnalyzeFailure';
+  proto.pulumirpc.AnalyzeDiagnostic.displayName = 'proto.pulumirpc.AnalyzeDiagnostic';
 }
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.AnalyzeDiagnostic.repeatedFields_ = [4];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -402,8 +410,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     for transitional soy proto support: http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.pulumirpc.AnalyzeFailure.prototype.toObject = function(opt_includeInstance) {
-  return proto.pulumirpc.AnalyzeFailure.toObject(opt_includeInstance, this);
+proto.pulumirpc.AnalyzeDiagnostic.prototype.toObject = function(opt_includeInstance) {
+  return proto.pulumirpc.AnalyzeDiagnostic.toObject(opt_includeInstance, this);
 };
 
 
@@ -412,14 +420,17 @@ proto.pulumirpc.AnalyzeFailure.prototype.toObject = function(opt_includeInstance
  * @param {boolean|undefined} includeInstance Whether to include the JSPB
  *     instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.pulumirpc.AnalyzeFailure} msg The msg instance to transform.
+ * @param {!proto.pulumirpc.AnalyzeDiagnostic} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.pulumirpc.AnalyzeFailure.toObject = function(includeInstance, msg) {
+proto.pulumirpc.AnalyzeDiagnostic.toObject = function(includeInstance, msg) {
   var f, obj = {
-    property: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    reason: jspb.Message.getFieldWithDefault(msg, 2, "")
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    description: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    message: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    tagsList: jspb.Message.getRepeatedField(msg, 4),
+    enforcementlevel: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -433,23 +444,23 @@ proto.pulumirpc.AnalyzeFailure.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.pulumirpc.AnalyzeFailure}
+ * @return {!proto.pulumirpc.AnalyzeDiagnostic}
  */
-proto.pulumirpc.AnalyzeFailure.deserializeBinary = function(bytes) {
+proto.pulumirpc.AnalyzeDiagnostic.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.pulumirpc.AnalyzeFailure;
-  return proto.pulumirpc.AnalyzeFailure.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.pulumirpc.AnalyzeDiagnostic;
+  return proto.pulumirpc.AnalyzeDiagnostic.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.pulumirpc.AnalyzeFailure} msg The message object to deserialize into.
+ * @param {!proto.pulumirpc.AnalyzeDiagnostic} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.pulumirpc.AnalyzeFailure}
+ * @return {!proto.pulumirpc.AnalyzeDiagnostic}
  */
-proto.pulumirpc.AnalyzeFailure.deserializeBinaryFromReader = function(msg, reader) {
+proto.pulumirpc.AnalyzeDiagnostic.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -458,11 +469,23 @@ proto.pulumirpc.AnalyzeFailure.deserializeBinaryFromReader = function(msg, reade
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setProperty(value);
+      msg.setName(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setReason(value);
+      msg.setDescription(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMessage(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addTags(value);
+      break;
+    case 5:
+      var value = /** @type {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity} */ (reader.readEnum());
+      msg.setEnforcementlevel(value);
       break;
     default:
       reader.skipField();
@@ -477,9 +500,9 @@ proto.pulumirpc.AnalyzeFailure.deserializeBinaryFromReader = function(msg, reade
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.pulumirpc.AnalyzeFailure.prototype.serializeBinary = function() {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.pulumirpc.AnalyzeFailure.serializeBinaryToWriter(this, writer);
+  proto.pulumirpc.AnalyzeDiagnostic.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -487,23 +510,44 @@ proto.pulumirpc.AnalyzeFailure.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.pulumirpc.AnalyzeFailure} message
+ * @param {!proto.pulumirpc.AnalyzeDiagnostic} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.pulumirpc.AnalyzeFailure.serializeBinaryToWriter = function(message, writer) {
+proto.pulumirpc.AnalyzeDiagnostic.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getProperty();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getReason();
+  f = message.getDescription();
   if (f.length > 0) {
     writer.writeString(
       2,
+      f
+    );
+  }
+  f = message.getMessage();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+  f = message.getTagsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      4,
+      f
+    );
+  }
+  f = message.getEnforcementlevel();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      5,
       f
     );
   }
@@ -511,32 +555,99 @@ proto.pulumirpc.AnalyzeFailure.serializeBinaryToWriter = function(message, write
 
 
 /**
- * optional string property = 1;
+ * @enum {number}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.LogSeverity = {
+  WARNING: 0,
+  MANDATORY: 2
+};
+
+/**
+ * optional string name = 1;
  * @return {string}
  */
-proto.pulumirpc.AnalyzeFailure.prototype.getProperty = function() {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.pulumirpc.AnalyzeFailure.prototype.setProperty = function(value) {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setName = function(value) {
   jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string reason = 2;
+ * optional string description = 2;
  * @return {string}
  */
-proto.pulumirpc.AnalyzeFailure.prototype.getReason = function() {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getDescription = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.pulumirpc.AnalyzeFailure.prototype.setReason = function(value) {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setDescription = function(value) {
   jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string message = 3;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getMessage = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setMessage = function(value) {
+  jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * repeated string tags = 4;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getTagsList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 4));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setTagsList = function(value) {
+  jspb.Message.setField(this, 4, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.addTags = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 4, value, opt_index);
+};
+
+
+proto.pulumirpc.AnalyzeDiagnostic.prototype.clearTagsList = function() {
+  this.setTagsList([]);
+};
+
+
+/**
+ * optional LogSeverity enforcementLevel = 5;
+ * @return {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getEnforcementlevel = function() {
+  return /** @type {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/** @param {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity} value */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setEnforcementlevel = function(value) {
+  jspb.Message.setProto3EnumField(this, 5, value);
 };
 
 

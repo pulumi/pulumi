@@ -35,10 +35,19 @@ message AnalyzeRequest {
 }
 
 message AnalyzeResponse {
-    repeated AnalyzeFailure failures = 1; // the failures (or empty if none).
+    repeated AnalyzeDiagnostic diagnostics = 1; // information about policy violations.
 }
 
-message AnalyzeFailure {
-    string property = 1; // the property that the analyzer rejected (or "" if general).
-    string reason = 2;   // the reason that the analyzer rejected the request.
+message AnalyzeDiagnostic {
+    string name = 1;                  // ID for the policy.
+    string description = 2;           // Description of policy rule. e.g., "encryption enabled."
+    string message = 3;               // Message to display on policy violation, e.g., remediation steps.
+    repeated string tags = 4;         // Keywords/terms to associate with a policy, e.g., "cost".
+    LogSeverity enforcementLevel = 5; // Severity of the policy violation.
+
+    // EnforcementLevel indicates the severity of a policy violation.
+    enum LogSeverity {
+        WARNING = 0;  // Displayed to users, but does not block deployment.
+        MANDATORY = 2; // Stops deployment, cannot be overridden.
+    }
 }
