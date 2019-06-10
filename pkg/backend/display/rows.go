@@ -22,12 +22,13 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type Row interface {
@@ -58,6 +59,7 @@ type ResourceRow interface {
 
 	DiagInfo() *DiagInfo
 	RecordDiagEvent(diagEvent engine.Event)
+	RecordPolicyViolationEvent(diagEvent engine.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -187,9 +189,12 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 }
 
 func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
-	diagInfo := data.diagInfo
 	payload := event.Payload.(engine.DiagEventPayload)
+	data.recordDiagEventPayload(payload)
+}
 
+func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayload) {
+	diagInfo := data.diagInfo
 	diagInfo.LastDiag = &payload
 
 	switch payload.Severity {
@@ -227,6 +232,33 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 			diagInfo.DebugCount++
 		}
 	}
+}
+
+func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
+
+	//
+	// NOTE: The display code only understands DiagEvents. We convert the policy violation events
+	// accordingly so they can be displayed.
+	//
+
+	pePayload := event.Payload.(engine.PolicyViolationEventPayload)
+
+	payload := engine.DiagEventPayload{
+		URN:     pePayload.URN,
+		Prefix:  pePayload.Prefix,
+		Message: pePayload.Message,
+		Color:   pePayload.Color}
+
+	switch pePayload.EnforcementLevel {
+	case apitype.Mandatory:
+		payload.Severity = diag.Error
+	case apitype.Warning:
+		payload.Severity = diag.Warning
+	default:
+		contract.Failf("Unknown enforcement level %q", pePayload.EnforcementLevel)
+	}
+
+	data.recordDiagEventPayload(payload)
 }
 
 type column int

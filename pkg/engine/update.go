@@ -349,3 +349,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	// We need to perform another snapshot write to ensure they get written out.
 	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }
+
+func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+	acts.Opts.Events.policyViolationEvent(urn, d)
+}
