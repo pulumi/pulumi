@@ -1,5 +1,6 @@
 ## 0.17.18 (Unreleased)
 
+- Allow setting backend URL explicitly in `Pulumi.yaml` file
 
 ## 0.17.17 (Released June 12, 2019)
 
