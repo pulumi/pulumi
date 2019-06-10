@@ -30,7 +30,7 @@ func (m *PluginInfo) Reset()         { *m = PluginInfo{} }
 func (m *PluginInfo) String() string { return proto.CompactTextString(m) }
 func (*PluginInfo) ProtoMessage()    {}
 func (*PluginInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_plugin_4b6c08323e53eb83, []int{0}
+	return fileDescriptor_plugin_672c97695d141058, []int{0}
 }
 func (m *PluginInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PluginInfo.Unmarshal(m, b)
@@ -72,7 +72,7 @@ func (m *PluginDependency) Reset()         { *m = PluginDependency{} }
 func (m *PluginDependency) String() string { return proto.CompactTextString(m) }
 func (*PluginDependency) ProtoMessage()    {}
 func (*PluginDependency) Descriptor() ([]byte, []int) {
-	return fileDescriptor_plugin_4b6c08323e53eb83, []int{1}
+	return fileDescriptor_plugin_672c97695d141058, []int{1}
 }
 func (m *PluginDependency) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PluginDependency.Unmarshal(m, b)
@@ -125,9 +125,9 @@ func init() {
 	proto.RegisterType((*PluginDependency)(nil), "pulumirpc.PluginDependency")
 }
 
-func init() { proto.RegisterFile("plugin.proto", fileDescriptor_plugin_4b6c08323e53eb83) }
+func init() { proto.RegisterFile("plugin.proto", fileDescriptor_plugin_672c97695d141058) }
 
-var fileDescriptor_plugin_4b6c08323e53eb83 = []byte{
+var fileDescriptor_plugin_672c97695d141058 = []byte{
 	// 145 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x29, 0xc8, 0x29, 0x4d,
 	0xcf, 0xcc, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2c, 0x28, 0xcd, 0x29, 0xcd, 0xcd,
