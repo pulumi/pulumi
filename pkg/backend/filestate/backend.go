@@ -88,25 +88,40 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
-func New(d diag.Sink, url string) (Backend, error) {
-	if !IsFileStateBackendURL(url) {
+func New(d diag.Sink, u string) (Backend, error) {
+	if !IsFileStateBackendURL(u) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
-			url, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
+			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	url, err := massageBlobPath(url)
+	u, err := massageBlobPath(u)
 	if err != nil {
 		return nil, err
 	}
 
-	bucket, err := blob.OpenBucket(context.TODO(), url)
+	bucket, err := blob.OpenBucket(context.TODO(), u)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to open bucket %s", url)
+		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
+	}
+
+	if !strings.HasPrefix(u, FilePathPrefix) {
+		p, err := url.Parse(u)
+		if err != nil {
+			return nil, err
+		}
+		bucketSubDir := strings.TrimLeft(p.Path, "/")
+		if bucketSubDir != "" {
+			if !strings.HasSuffix(bucketSubDir, "/") {
+				bucketSubDir += "/"
+			}
+
+			bucket = blob.PrefixedBucket(bucket, bucketSubDir)
+		}
 	}
 
 	return &localBackend{
 		d:      d,
-		url:    url,
+		url:    u,
 		bucket: &wrappedBucket{bucket: bucket},
 	}, nil
 }

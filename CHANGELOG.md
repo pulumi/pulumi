@@ -7,6 +7,13 @@
 - The API for passing along a custom provider to a ComponentResource has been simplified.  You can
   now just say `new SomeComponentResource(name, props, { provider: awsProvider })` instead of `new
   SomeComponentResource(name, props, { providers: { "aws" : awsProvider } })`
+- Fix a bug where the path provided to a URL in `pulumi login` is lost are dropped, so if you `pulumi login
+  s3://bucketname/afolder`, the Pulumi files will be inside of `s3://bucketname/afolder/.pulumi` rather than
+  `s3://bucketname/.pulumi` (thanks, [@bigkraig](https://github.com/bigkraig)!).  **NOTE**: If you have been
+  logging in to the s3 backend with a path after the bucket name, you will need to either move the .pulumi
+  folder in the bucket to the correct location or log in again without the path prefix to see your previous
+  stacks.
+
 
 ## 0.17.16 (Released June 6, 2019)
 
