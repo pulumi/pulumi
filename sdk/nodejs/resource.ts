@@ -144,14 +144,14 @@ export abstract class Resource {
      * A list of aliases applied to this resource.
      */
     // tslint:disable-next-line:variable-name
-    readonly __aliases: Input<URN>[];
+    readonly __aliases?: Input<URN>[];
 
     /**
      * @internal
      * The name assigned to the resource at construction.
      */
     // tslint:disable-next-line:variable-name
-    private readonly __name: string;
+    private readonly __name?: string;
 
     /**
      * @internal
@@ -217,8 +217,10 @@ export abstract class Resource {
 
             // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
             opts.aliases = [...(opts.aliases || [])];
-            for (const parentAlias of opts.parent.__aliases) {
-                opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+            for (const parentAlias of (opts.parent.__aliases || [])) {
+                if (opts.parent.__name) {
+                    opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+                }
             }
 
             this.__providers = opts.parent.__providers;
