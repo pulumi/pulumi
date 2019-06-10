@@ -15,14 +15,17 @@
 package engine
 
 import (
+	"bytes"
 	"reflect"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -47,6 +50,7 @@ const (
 	ResourcePreEvent        EventType = "resource-pre"
 	ResourceOutputsEvent    EventType = "resource-outputs"
 	ResourceOperationFailed EventType = "resource-operationfailed"
+	PolicyViolationEvent    EventType = "policy-violation"
 )
 
 func cancelEvent() Event {
@@ -62,6 +66,16 @@ type DiagEventPayload struct {
 	Severity  diag.Severity
 	StreamID  int32
 	Ephemeral bool
+}
+
+// PolicyViolationEventPayload is the payload for an event with type `policy-violation`.
+type PolicyViolationEventPayload struct {
+	URN              resource.URN
+	Message          string
+	Color            colors.Colorization
+	ID               string
+	EnforcementLevel apitype.EnforcementLevel
+	Prefix           string
 }
 
 type StdoutEventPayload struct {
@@ -424,6 +438,47 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 			MaybeCorrupt:    maybeCorrupt,
 			Duration:        duration,
 			ResourceChanges: resourceChanges,
+		},
+	}
+}
+
+func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	// Write prefix.
+	var prefix bytes.Buffer
+	switch d.EnforcementLevel {
+	case apitype.Mandatory:
+		prefix.WriteString(colors.SpecError)
+	case apitype.Warning:
+		prefix.WriteString(colors.SpecWarning)
+	default:
+		contract.Failf("Unrecognized diagnostic severity: %v", d)
+	}
+
+	prefix.WriteString(string(d.EnforcementLevel))
+	prefix.WriteString(": ")
+	prefix.WriteString(colors.Reset)
+
+	// Write the message itself.
+	var buffer bytes.Buffer
+	buffer.WriteString(colors.SpecNote)
+
+	buffer.WriteString(d.Message)
+
+	buffer.WriteString(colors.Reset)
+	buffer.WriteRune('\n')
+
+	e.Chan <- Event{
+		Type: PolicyViolationEvent,
+		Payload: PolicyViolationEventPayload{
+			URN:              urn,
+			Message:          logging.FilterString(buffer.String()),
+			Color:            colors.Raw,
+			ID:               d.ID,
+			EnforcementLevel: d.EnforcementLevel,
+			Prefix:           logging.FilterString(prefix.String()),
 		},
 	}
 }

@@ -344,6 +344,10 @@ func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
 	return nil
 }
 
+func (acts *planActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+	acts.Opts.Events.policyViolationEvent(urn, d)
+}
+
 func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
 	_, has := seen[step.URN()]
 	contract.Assertf(has, "URN '%v' had not been marked as seen", step.URN())

@@ -68,11 +68,22 @@ func (o Options) InfiniteParallelism() bool {
 	return o.Parallel == math.MaxInt32
 }
 
-// Events is an interface that can be used to hook interesting engine/planning events.
-type Events interface {
+// StepExecutorEvents is an interface that can be used to hook resource lifecycle events.
+type StepExecutorEvents interface {
 	OnResourceStepPre(step Step) (interface{}, error)
 	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error
+}
+
+// PolicyEvents is an interface that can be used to hook policy violation events.
+type PolicyEvents interface {
+	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
+}
+
+// Events is an interface that can be used to hook interesting engine/planning events.
+type Events interface {
+	StepExecutorEvents
+	PolicyEvents
 }
 
 // PlanPendingOperationsError is an error returned from `NewPlan` if there exist pending operations in the

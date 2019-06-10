@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/apitype"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -216,15 +217,18 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		} else if analyzer == nil {
 			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
-		var failures []plugin.AnalyzeFailure
-		failures, err = analyzer.Analyze(new.Type, inputs)
+		var diagnostics []plugin.AnalyzeDiagnostic
+		diagnostics, err = analyzer.Analyze(new.Type, inputs)
 		if err != nil {
 			return nil, result.FromError(err)
 		}
-		for _, failure := range failures {
-			invalid = true
-			sg.plan.Diag().Errorf(
-				diag.GetAnalyzeResourceFailureError(urn), a, urn, failure.Property, failure.Reason)
+		for _, d := range diagnostics {
+			// TODO(hausdorff): Batch up failures and report them all at once during preview. This
+			// will cause them to fail eagerly.
+			if d.EnforcementLevel == apitype.Mandatory {
+				invalid = true
+			}
+			sg.opts.Events.OnPolicyViolation(new.URN, d)
 		}
 	}
 

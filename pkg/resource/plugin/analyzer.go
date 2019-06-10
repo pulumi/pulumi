@@ -17,6 +17,7 @@ package plugin
 import (
 	"io"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -31,13 +32,17 @@ type Analyzer interface {
 	// Name fetches an analyzer's qualified name.
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
-	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error)
+	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeDiagnostic, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 }
 
-// AnalyzeFailure indicates that resource analysis failed; it contains the property and reason for the failure.
-type AnalyzeFailure struct {
-	Property resource.PropertyKey // the property that failed the analysis.
-	Reason   string               // the reason the property failed the analysis.
+// AnalyzeDiagnostic indicates that resource analysis failed; it contains the property and reason
+// for the failure.
+type AnalyzeDiagnostic struct {
+	ID               string
+	Description      string
+	Message          string
+	Tags             []string
+	EnforcementLevel apitype.EnforcementLevel
 }
