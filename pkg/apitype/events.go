@@ -55,8 +55,10 @@ type PolicyEvent struct {
 	// Policy Pack name and version as well as the Policy name encoded as a string
 	// in the following format: `<policyPackName>/<policyPackVersion>/<policyName>`
 	// For example, "aws-security/5/no-public-s3-buckets"
-	Identifier       string           `json:"identifier"`
-	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
+	Identifier string `json:"identifier"`
+
+	// Severity is one of "warning" or "mandatory".
+	EnforcementLevel string `json:"enforcementLevel"`
 }
 
 // PreludeEvent is emitted at the start of an update.

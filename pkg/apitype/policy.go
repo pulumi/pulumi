@@ -72,14 +72,14 @@ type Policy struct {
 	Message string `json:"message"`
 }
 
-// EnforcementLevel is an enum to determine the enforcement level for a Policy.
-type EnforcementLevel int
+// EnforcementLevel indicates how a policy should be enforced
+type EnforcementLevel string
 
 const (
 	// Warning is an enforcement level where the resource is still created, but a
 	// message is displayed to the user for informational / warning purposes.
-	Warning EnforcementLevel = 1
+	Warning EnforcementLevel = "warning"
 
 	// Mandatory is an enforcement level that prevents a resource from being created.
-	Mandatory EnforcementLevel = 2
+	Mandatory EnforcementLevel = "mandatory"
 )

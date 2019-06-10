@@ -415,6 +415,18 @@ func convertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			Ephemeral: p.Ephemeral,
 		}
 
+	case engine.PolicyViolationEvent:
+		p, ok := e.Payload.(engine.PolicyViolationEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyEvent = &apitype.PolicyEvent{
+			URN:              string(p.URN),
+			Message:          p.Message,
+			Color:            string(p.Color),
+			EnforcementLevel: string(p.EnforcementLevel),
+		}
+
 	case engine.PreludeEvent:
 		p, ok := e.Payload.(engine.PreludeEventPayload)
 		if !ok {

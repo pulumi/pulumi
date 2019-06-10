@@ -41,14 +41,6 @@ func GetResourcePropertyInvalidValueError(urn resource.URN) *Diag {
 	return newError(urn, 2003, "%v resource '%v's property '%v' value %v has a problem: %v")
 }
 
-func GetAnalyzeResourceFailureError(urn resource.URN) *Diag {
-	return newError(urn, 2004,
-		"Analyzer '%v' reported a resource error:\n"+
-			"\tResource: %v\n"+
-			"\tProperty: %v\n"+
-			"\tReason: %v")
-}
-
 func GetPreviewFailedError(urn resource.URN) *Diag {
 	return newError(urn, 2005, "Preview failed: %v")
 }
