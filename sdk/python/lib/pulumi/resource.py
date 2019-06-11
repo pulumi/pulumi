@@ -189,19 +189,22 @@ class Resource:
 
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
-            if custom:
-                provider = opts.provider
-                if provider is None:
-                    opts.provider = opts.parent.get_provider(t)
-                else:
-                    # If a provider was specified, add it to the providers map under this type's package so that
-                    # any children of this resource inherit its provider.
-                    type_components = t.split(":")
-                    if len(type_components) == 3:
-                        [pkg, _, _] = type_components
-                        self._providers = {**self._providers, pkg: provider}
 
-        if not custom:
+        if custom:
+            provider = opts.provider
+            if provider is None:
+                if not opts.parent is None:
+                    # If no provider was given, but we have a parent, then inherit the
+                    # provider from our parent.
+                    opts.provider = opts.parent.get_provider(t)
+            else:
+                # If a provider was specified, add it to the providers map under this type's package so that
+                # any children of this resource inherit its provider.
+                type_components = t.split(":")
+                if len(type_components) == 3:
+                    [pkg, _, _] = type_components
+                    self._providers = {**self._providers, pkg: provider}
+        else:
             providers = self._convert_providers(opts.provider, opts.providers)
             self._providers = {**self._providers, **providers}
 
