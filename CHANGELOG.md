@@ -15,6 +15,7 @@
   stacks.
 - Fix a crash that would happen if you ran `pulumi stack output` against an empty stack (fixes
   [pulumi/pulumi#2792](https://github.com/pulumi/pulumi/issues/2792)).
+- Unparented Pulumi `CustomResource`s now support calling `.getProvider(...)` on them.
 
 ## 0.17.16 (Released June 6, 2019)
 

@@ -27,3 +27,5 @@ prov = Provider("testprov")
 
 # Use this Provider to create a resource.
 res = Resource("testres", ResourceOptions(provider=prov))
+
+assert prov == res.get_provider("test:index:Resource")
