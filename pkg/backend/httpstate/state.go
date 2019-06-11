@@ -218,6 +218,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 		// engine events just mean that the logs display on the Pulumi Service could look
 		// weird. It won't have any impact on correctness of checkpoint data.
 		err := u.recordEngineEvent(event, eventIdx)
+		fmt.Println("ERR:", event.Type, err)
 		contract.IgnoreError(err)
 	}
 

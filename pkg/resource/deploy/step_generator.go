@@ -208,22 +208,24 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
-	for _, a := range sg.plan.analyzers {
-		var analyzer plugin.Analyzer
-		analyzer, err = sg.plan.ctx.Host.Analyzer(a)
-		if err != nil {
-			return nil, result.FromError(err)
-		} else if analyzer == nil {
-			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
-		}
-		var diagnostics []plugin.AnalyzeDiagnostic
-		diagnostics, err = analyzer.Analyze(new.Type, inputs)
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		for _, d := range diagnostics {
-			invalid = true
-			sg.opts.Events.OnPolicyViolation(new, d)
+	if !sg.plan.preview {
+		for _, a := range sg.plan.analyzers {
+			var analyzer plugin.Analyzer
+			analyzer, err = sg.plan.ctx.Host.Analyzer(a)
+			if err != nil {
+				return nil, result.FromError(err)
+			} else if analyzer == nil {
+				return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
+			}
+			var diagnostics []plugin.AnalyzeDiagnostic
+			diagnostics, err = analyzer.Analyze(new.Type, inputs)
+			if err != nil {
+				return nil, result.FromError(err)
+			}
+			for _, d := range diagnostics {
+				invalid = true
+				sg.opts.Events.OnPolicyViolation(new, d)
+			}
 		}
 	}
 
