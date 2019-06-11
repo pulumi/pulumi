@@ -226,24 +226,27 @@ export abstract class Resource {
             }
 
             this.__providers = opts.parent.__providers;
+        }
 
-            if (custom) {
-                const provider = (<CustomResourceOptions>opts).provider;
-                if (provider === undefined) {
+        if (custom) {
+            const provider = (<CustomResourceOptions>opts).provider;
+            if (provider === undefined) {
+                if (opts.parent) {
+                    // If no provider was given, but we have a parent, then inherit the
+                    // provider from our parent.
                     (<CustomResourceOptions>opts).provider = opts.parent.getProvider(t);
-                } else {
-                    // If a provider was specified, add it to the providers map under this type's package so that
-                    // any children of this resource inherit its provider.
-                    const typeComponents = t.split(":");
-                    if (typeComponents.length === 3) {
-                        const pkg = typeComponents[0];
-                        this.__providers = { ...this.__providers, [pkg]: provider };
-                    }
+                }
+            } else {
+                // If a provider was specified, add it to the providers map under this type's package so that
+                // any children of this resource inherit its provider.
+                const typeComponents = t.split(":");
+                if (typeComponents.length === 3) {
+                    const pkg = typeComponents[0];
+                    this.__providers = { ...this.__providers, [pkg]: provider };
                 }
             }
         }
-
-        if (!custom) {
+        else {
             // Note: we checked above that at most one of opts.provider or opts.providers is set.
 
             // If opts.provider is set, treat that as if we were given a array of provider with that
