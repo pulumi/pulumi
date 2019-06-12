@@ -1,4 +1,7 @@
-## 0.17.17 (Unreleased)
+## 0.17.18 (Unreleased)
+
+
+## 0.17.17 (Released June 12, 2019)
 
 ### Improvements
 
