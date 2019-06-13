@@ -62,6 +62,9 @@ export class StackReference extends CustomResource {
      * Fetches the value promptly of the named stack output.  May return undefined if the value is
      * not known for some reason.
      *
+     * This operation is not supported (and will throw) if any exported values of the StackReference
+     * are secrets.
+     *
      * @param name The name of the stack output to fetch.
      */
     public getOutputSync(name: string): any {
