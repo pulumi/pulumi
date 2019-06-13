@@ -16,6 +16,7 @@
 Runtime settings and configuration.
 """
 import asyncio
+import os
 import sys
 from typing import Optional, Awaitable, TYPE_CHECKING
 
@@ -54,6 +55,9 @@ class Settings:
         self.dry_run = dry_run
         self.test_mode_enabled = test_mode_enabled
 
+        if self.test_mode_enabled is None:
+            self.test_mode_enabled = os.getenv("PULUMI_TEST_MODE", "false") == "true"
+
         # Actually connect to the monitor/engine over gRPC.
         if monitor:
             self.monitor = resource_pb2_grpc.ResourceMonitorStub(grpc.insecure_channel(monitor))
@@ -63,7 +67,6 @@ class Settings:
             self.engine = engine_pb2_grpc.EngineStub(grpc.insecure_channel(engine))
         else:
             self.engine = None
-
 
 # default to "empty" settings.
 SETTINGS = Settings()
