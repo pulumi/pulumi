@@ -395,7 +395,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.AnalyzeDiagnostic.repeatedFields_ = [4];
+proto.pulumirpc.AnalyzeDiagnostic.repeatedFields_ = [6];
 
 
 
@@ -426,11 +426,13 @@ proto.pulumirpc.AnalyzeDiagnostic.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.AnalyzeDiagnostic.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    description: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    message: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    tagsList: jspb.Message.getRepeatedField(msg, 4),
-    enforcementlevel: jspb.Message.getFieldWithDefault(msg, 5, 0)
+    policyname: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    policypackname: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    policypackversion: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    description: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    message: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    tagsList: jspb.Message.getRepeatedField(msg, 6),
+    enforcementlevel: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -469,21 +471,29 @@ proto.pulumirpc.AnalyzeDiagnostic.deserializeBinaryFromReader = function(msg, re
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setId(value);
+      msg.setPolicyname(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setDescription(value);
+      msg.setPolicypackname(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setMessage(value);
+      msg.setPolicypackversion(value);
       break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
-      msg.addTags(value);
+      msg.setDescription(value);
       break;
     case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMessage(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addTags(value);
+      break;
+    case 7:
       var value = /** @type {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity} */ (reader.readEnum());
       msg.setEnforcementlevel(value);
       break;
@@ -516,38 +526,52 @@ proto.pulumirpc.AnalyzeDiagnostic.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.AnalyzeDiagnostic.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getId();
+  f = message.getPolicyname();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getDescription();
+  f = message.getPolicypackname();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
-  f = message.getMessage();
+  f = message.getPolicypackversion();
   if (f.length > 0) {
     writer.writeString(
       3,
       f
     );
   }
+  f = message.getDescription();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
+  f = message.getMessage();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
+      f
+    );
+  }
   f = message.getTagsList();
   if (f.length > 0) {
     writer.writeRepeatedString(
-      4,
+      6,
       f
     );
   }
   f = message.getEnforcementlevel();
   if (f !== 0.0) {
     writer.writeEnum(
-      5,
+      7,
       f
     );
   }
@@ -563,62 +587,92 @@ proto.pulumirpc.AnalyzeDiagnostic.LogSeverity = {
 };
 
 /**
- * optional string id = 1;
+ * optional string policyName = 1;
  * @return {string}
  */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.getId = function() {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getPolicyname = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.setId = function(value) {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setPolicyname = function(value) {
   jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string description = 2;
+ * optional string policyPackName = 2;
  * @return {string}
  */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.getDescription = function() {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getPolicypackname = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.setDescription = function(value) {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setPolicypackname = function(value) {
   jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional string message = 3;
+ * optional string policyPackVersion = 3;
  * @return {string}
  */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.getMessage = function() {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getPolicypackversion = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /** @param {string} value */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.setMessage = function(value) {
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setPolicypackversion = function(value) {
   jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
- * repeated string tags = 4;
+ * optional string description = 4;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getDescription = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setDescription = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional string message = 5;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getMessage = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setMessage = function(value) {
+  jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * repeated string tags = 6;
  * @return {!Array.<string>}
  */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.getTagsList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 4));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 6));
 };
 
 
 /** @param {!Array.<string>} value */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.setTagsList = function(value) {
-  jspb.Message.setField(this, 4, value || []);
+  jspb.Message.setField(this, 6, value || []);
 };
 
 
@@ -627,7 +681,7 @@ proto.pulumirpc.AnalyzeDiagnostic.prototype.setTagsList = function(value) {
  * @param {number=} opt_index
  */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.addTags = function(value, opt_index) {
-  jspb.Message.addToRepeatedField(this, 4, value, opt_index);
+  jspb.Message.addToRepeatedField(this, 6, value, opt_index);
 };
 
 
@@ -637,17 +691,17 @@ proto.pulumirpc.AnalyzeDiagnostic.prototype.clearTagsList = function() {
 
 
 /**
- * optional LogSeverity enforcementLevel = 5;
+ * optional LogSeverity enforcementLevel = 7;
  * @return {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity}
  */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.getEnforcementlevel = function() {
-  return /** @type {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+  return /** @type {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
 };
 
 
 /** @param {!proto.pulumirpc.AnalyzeDiagnostic.LogSeverity} value */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.setEnforcementlevel = function(value) {
-  jspb.Message.setProto3EnumField(this, 5, value);
+  jspb.Message.setProto3EnumField(this, 7, value);
 };
 
 
