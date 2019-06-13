@@ -71,7 +71,7 @@ export class StackReference extends CustomResource {
         const out = this.getOutput(name);
         const isSecret = promiseResult(out.isSecret);
         if (isSecret) {
-            throw new Error("Cannot call [getOutputSync] on a StackReference containing secrets.  Only [getOutput] is supported.");
+            throw new Error("Cannot call [getOutputSync] if the referenced stack has secret outputs. Use [getOutput] instead.");
         }
 
         return promiseResult(out.promise());
