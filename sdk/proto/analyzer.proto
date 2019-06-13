@@ -39,11 +39,13 @@ message AnalyzeResponse {
 }
 
 message AnalyzeDiagnostic {
-    string id = 1;                    // ID for the policy.
-    string description = 2;           // Description of policy rule. e.g., "encryption enabled."
-    string message = 3;               // Message to display on policy violation, e.g., remediation steps.
-    repeated string tags = 4;         // Keywords/terms to associate with a policy, e.g., "cost".
-    LogSeverity enforcementLevel = 5; // Severity of the policy violation.
+    string policyName = 1;            // Name of the violated policy.
+    string policyPackName = 2;        // Name of the policy pack the policy is in.
+    string policyPackVersion = 3;     // Version of the policy pack.
+    string description = 4;           // Description of policy rule. e.g., "encryption enabled."
+    string message = 5;               // Message to display on policy violation, e.g., remediation steps.
+    repeated string tags = 6;         // Keywords/terms to associate with a policy, e.g., "cost".
+    LogSeverity enforcementLevel = 7; // Severity of the policy violation.
 
     // EnforcementLevel indicates the severity of a policy violation.
     enum LogSeverity {
