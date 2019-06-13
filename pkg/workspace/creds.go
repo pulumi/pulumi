@@ -115,7 +115,9 @@ func GetCurrentCloudURL() (string, error) {
 			return "", errors.Wrap(err, "could not load current project")
 		}
 
-		url = proj.Backend.URL
+		if proj.Backend != nil {
+			url = proj.Backend.URL
+		}
 	}
 
 	if url == "" {
