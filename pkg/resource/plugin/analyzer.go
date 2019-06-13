@@ -40,9 +40,11 @@ type Analyzer interface {
 // AnalyzeDiagnostic indicates that resource analysis failed; it contains the property and reason
 // for the failure.
 type AnalyzeDiagnostic struct {
-	ID               string
-	Description      string
-	Message          string
-	Tags             []string
-	EnforcementLevel apitype.EnforcementLevel
+	PolicyName        string
+	PolicyPackName    string
+	PolicyPackVersion string
+	Description       string
+	Message           string
+	Tags              []string
+	EnforcementLevel  apitype.EnforcementLevel
 }

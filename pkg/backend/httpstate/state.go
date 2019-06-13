@@ -421,10 +421,13 @@ func convertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.PolicyEvent = &apitype.PolicyEvent{
-			URN:              string(p.URN),
-			Message:          p.Message,
-			Color:            string(p.Color),
-			EnforcementLevel: string(p.EnforcementLevel),
+			ResourceURN:       string(p.ResourceURN),
+			Message:           p.Message,
+			Color:             string(p.Color),
+			PolicyName:        p.PolicyName,
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			EnforcementLevel:  string(p.EnforcementLevel),
 		}
 
 	case engine.PreludeEvent:

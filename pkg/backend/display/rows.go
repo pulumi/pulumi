@@ -244,7 +244,7 @@ func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
 	pePayload := event.Payload.(engine.PolicyViolationEventPayload)
 
 	payload := engine.DiagEventPayload{
-		URN:     pePayload.URN,
+		URN:     pePayload.ResourceURN,
 		Prefix:  pePayload.Prefix,
 		Message: pePayload.Message,
 		Color:   pePayload.Color}
