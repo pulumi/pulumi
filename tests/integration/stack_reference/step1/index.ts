@@ -7,4 +7,9 @@ let org = config.require("org");
 let slug = `${org}/${pulumi.getProject()}/${pulumi.getStack()}`;
 let a = new pulumi.StackReference(slug);
 
-export const val = ["a", "b"];
+const oldVal: string[] = a.getOutputSync("val");
+if (oldVal.length !== 2 || oldVal[0] !== "a" || oldVal[1] !== "b") {
+    throw new Error("Invalid result");
+}
+
+export const val2 = pulumi.secret(["a", "b"]);
