@@ -65,7 +65,13 @@ export class StackReference extends CustomResource {
      * @param name The name of the stack output to fetch.
      */
     public getOutputSync(name: string): any {
-        return promiseResult(this.getOutput(name).promise());
+        const out = this.getOutput(name);
+        const isSecret = promiseResult(out.isSecret);
+        if (isSecret) {
+            throw new Error("Cannot call [getOutputSync] on a StackReference containing secrets.  Only [getOutput] is supported.");
+        }
+
+        return promiseResult(out.promise());
     }
 }
 
