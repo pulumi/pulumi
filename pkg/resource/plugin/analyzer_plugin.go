@@ -111,11 +111,13 @@ func (a *analyzer) Analyze(
 			return nil, fmt.Errorf("Invalid enforcement level %d", failure.EnforcementLevel)
 		}
 		diags = append(diags, AnalyzeDiagnostic{
-			ID:               failure.Id,
-			Description:      failure.Description,
-			Message:          failure.Message,
-			Tags:             failure.Tags,
-			EnforcementLevel: enforcementLevel,
+			PolicyName:        failure.PolicyName,
+			PolicyPackName:    failure.PolicyPackName,
+			PolicyPackVersion: failure.PolicyPackVersion,
+			Description:       failure.Description,
+			Message:           failure.Message,
+			Tags:              failure.Tags,
+			EnforcementLevel:  enforcementLevel,
 		})
 	}
 

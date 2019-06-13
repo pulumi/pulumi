@@ -70,12 +70,14 @@ type DiagEventPayload struct {
 
 // PolicyViolationEventPayload is the payload for an event with type `policy-violation`.
 type PolicyViolationEventPayload struct {
-	URN              resource.URN
-	Message          string
-	Color            colors.Colorization
-	ID               string
-	EnforcementLevel apitype.EnforcementLevel
-	Prefix           string
+	ResourceURN       resource.URN
+	Message           string
+	Color             colors.Colorization
+	PolicyName        string
+	PolicyPackName    string
+	PolicyPackVersion string
+	EnforcementLevel  apitype.EnforcementLevel
+	Prefix            string
 }
 
 type StdoutEventPayload struct {
@@ -473,12 +475,14 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	e.Chan <- Event{
 		Type: PolicyViolationEvent,
 		Payload: PolicyViolationEventPayload{
-			URN:              urn,
-			Message:          logging.FilterString(buffer.String()),
-			Color:            colors.Raw,
-			ID:               d.ID,
-			EnforcementLevel: d.EnforcementLevel,
-			Prefix:           logging.FilterString(prefix.String()),
+			ResourceURN:       urn,
+			Message:           logging.FilterString(buffer.String()),
+			Color:             colors.Raw,
+			PolicyName:        d.PolicyName,
+			PolicyPackName:    d.PolicyPackName,
+			PolicyPackVersion: d.PolicyPackVersion,
+			EnforcementLevel:  d.EnforcementLevel,
+			Prefix:            logging.FilterString(prefix.String()),
 		},
 	}
 }
