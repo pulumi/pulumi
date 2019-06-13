@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as deasync from "deasync";
+
 /**
  * Common code for doing RTTI typechecks.  RTTI is done by having a boolean property on an object
  * with a special name (like "__resource" or "__asset").  This function checks that the object
@@ -38,4 +40,43 @@ export function hasTrueBooleanMember(obj: any, memberName: string | number | sym
     }
 
     return val === true;
+}
+
+/**
+ * Synchronously blocks until the result of this promise is computed.  If the promise is rejected,
+ * this will throw the error the promise was rejected with.  If this promise does not complete this
+ * will block indefinitely.
+ *
+ * Be very careful with this function.  Only wait on a promise if you are certain it is safe to do
+ * so.
+ *
+ * @internal
+ */
+export function promiseResult<T>(promise: Promise<T>): T {
+    enum State {
+        running,
+        finishedSuccessfully,
+        finishedWithError,
+    }
+
+    let result: T;
+    let error = undefined;
+    let state = <State>State.running;
+
+    promise.then(
+        val => {
+            result = val;
+            state = State.finishedSuccessfully;
+        },
+        err => {
+            error = err;
+            state = State.finishedWithError;
+        });
+
+    deasync.loopWhile(() => state === State.running);
+    if (state === State.finishedWithError) {
+        throw error;
+    }
+
+    return result!;
 }
