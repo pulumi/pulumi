@@ -1,5 +1,6 @@
 <a href="https://pulumi.io" title="Pulumi Cloud Development Platform - AWS Azure Kubernetes Containers Serverless"><img src="https://pulumi.io/images/logo/logo.svg" width="350"></a>
 
+[![Build Status](https://travis-ci.com/pulumi/pulumi.svg?branch=master)](https://travis-ci.com/pulumi/pulumi)
 [![Slack](https://pulumi.io/images/badges/slack.svg)](https://slack.pulumi.io)
 [![NPM version](https://badge.fury.io/js/%40pulumi%2Fpulumi.svg)](https://npmjs.com/package/@pulumi/pulumi)
 [![Python version](https://badge.fury.io/py/pulumi.svg)](https://pypi.org/project/pulumi)
