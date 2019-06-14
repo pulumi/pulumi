@@ -58,12 +58,11 @@ func newLogoutCmd() *cobra.Command {
 			}
 
 			if cloudURL == "" {
-				creds, err := workspace.GetStoredCredentials()
+				var err error
+				cloudURL, err = workspace.GetCurrentCloudURL()
 				if err != nil {
 					return errors.Wrap(err, "could not determine current cloud")
 				}
-
-				cloudURL = creds.Current
 			}
 
 			var be backend.Backend

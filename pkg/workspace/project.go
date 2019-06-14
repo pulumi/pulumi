@@ -52,6 +52,12 @@ type ProjectTemplateConfigValue struct {
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
+// ProjectBackend is a configuration for backend used by project
+type ProjectBackend struct {
+	// URL is optional field to explicitly set backend url
+	URL string `json:"url,omitempty" yaml:"url,omitempty"`
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -84,6 +90,9 @@ type Project struct {
 
 	// Template is an optional template manifest, if this project is a template.
 	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`
+
+	// Backend is an optional backend configuration
+	Backend *ProjectBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
 }
 
 func (proj *Project) Validate() error {

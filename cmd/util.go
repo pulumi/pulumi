@@ -56,14 +56,15 @@ func hasDebugCommands() bool {
 }
 
 func currentBackend(opts display.Options) (backend.Backend, error) {
-	creds, err := workspace.GetStoredCredentials()
+	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not get cloud url")
 	}
-	if filestate.IsFileStateBackendURL(creds.Current) {
-		return filestate.New(cmdutil.Diag(), creds.Current)
+
+	if filestate.IsFileStateBackendURL(url) {
+		return filestate.New(cmdutil.Diag(), url)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), url, opts)
 }
 
 // This is used to control the contents of the tracing header.
