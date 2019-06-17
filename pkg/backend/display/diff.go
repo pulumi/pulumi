@@ -112,6 +112,8 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 		return renderDiffResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
+	case engine.PolicyViolationEvent:
+		return renderDiffPolicyViolationEvent(event.Payload.(engine.PolicyViolationEventPayload), opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -123,6 +125,10 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
+	return opts.Color.Colorize(payload.Prefix + payload.Message)
+}
+
+func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 

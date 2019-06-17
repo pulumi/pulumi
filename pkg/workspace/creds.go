@@ -106,12 +106,29 @@ func getCredsFilePath() (string, error) {
 // GetCurrentCloudURL returns the URL of the cloud we are currently connected to. This may be empty if we
 // have not logged in.
 func GetCurrentCloudURL() (string, error) {
-	creds, err := GetStoredCredentials()
-	if err != nil {
-		return "", err
+	var url string
+	// Try detecting backend from config
+	projPath, err := DetectProjectPath()
+	if err == nil && projPath != "" {
+		proj, err := LoadProject(projPath)
+		if err != nil {
+			return "", errors.Wrap(err, "could not load current project")
+		}
+
+		if proj.Backend != nil {
+			url = proj.Backend.URL
+		}
 	}
 
-	return creds.Current, nil
+	if url == "" {
+		creds, err := GetStoredCredentials()
+		if err != nil {
+			return "", err
+		}
+		url = creds.Current
+	}
+
+	return url, nil
 }
 
 // GetStoredCredentials returns any credentials stored on the local machine.

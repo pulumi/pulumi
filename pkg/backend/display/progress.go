@@ -923,6 +923,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
+	} else if event.Type == engine.PolicyViolationEvent {
+		// also record this policy violation so we print it at the end.
+		row.RecordPolicyViolationEvent(event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}

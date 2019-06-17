@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newLoginCmd() *cobra.Command {
@@ -107,6 +108,14 @@ func newLoginCmd() *cobra.Command {
 			// what the gocloud blob system requires.
 			if strings.HasPrefix(cloudURL, filestate.FilePathPrefix) && os.PathSeparator != '/' {
 				cloudURL = filepath.ToSlash(cloudURL)
+			}
+
+			if cloudURL == "" {
+				var err error
+				cloudURL, err = workspace.GetCurrentCloudURL()
+				if err != nil {
+					return errors.Wrap(err, "could not determine current cloud")
+				}
 			}
 
 			var be backend.Backend

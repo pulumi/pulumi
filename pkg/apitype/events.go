@@ -47,16 +47,15 @@ type DiagnosticEvent struct {
 
 // PolicyEvent is emitted whenever there is Policy violation.
 type PolicyEvent struct {
-	URN     string `json:"urn,omitempty"`
-	Message string `json:"message"`
-	Color   string `json:"color"`
+	ResourceURN       string `json:"resourceUrn,omitempty"`
+	Message           string `json:"message"`
+	Color             string `json:"color"`
+	PolicyName        string `json:"policyName"`
+	PolicyPackName    string `json:"policyPackName"`
+	PolicyPackVersion string `json:"policyPackVersion"`
 
-	// Identifier is used to  uniquely identify a Policy at the org level. It is a
-	// Policy Pack name and version as well as the Policy name encoded as a string
-	// in the following format: `<policyPackName>/<policyPackVersion>/<policyName>`
-	// For example, "aws-security/5/no-public-s3-buckets"
-	Identifier       string           `json:"identifier"`
-	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
+	// EnforcementLevel is one of "warning" or "mandatory".
+	EnforcementLevel string `json:"enforcementLevel"`
 }
 
 // PreludeEvent is emitted at the start of an update.
