@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { util } from "protobufjs";
 import { ResourceError, RunError } from "./errors";
 import { all, Input, Inputs, interpolate, Output, output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
+import float = util.float;
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -448,6 +450,25 @@ export interface ResourceOptions {
      * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
      */
     provider?: ProviderResource;
+    /**
+     * An optional customTimeouts configuration block.
+     */
+    customTimeouts?: CustomTimeouts;
+}
+
+export interface CustomTimeouts {
+    /**
+     * The optional create timeout in minutes
+     */
+    create?: number;
+    /**
+     * The optional update timeout in minutes
+     */
+    update?: number;
+    /**
+     * The optional delete timeout in minutes
+     */
+    delete?: number;
 }
 
 /**

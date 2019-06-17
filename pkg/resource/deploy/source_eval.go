@@ -298,7 +298,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil, nil, ""),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil, nil, "", nil),
 		done: done,
 	}
 	return event, done, nil

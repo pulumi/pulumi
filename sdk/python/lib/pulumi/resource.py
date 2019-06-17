@@ -23,6 +23,33 @@ if TYPE_CHECKING:
     from .output import Output, Inputs
 
 
+class CustomTimeouts:
+    create: float
+    """
+    create is the optional create timout in minutes.
+    """
+
+    update: float
+    """
+    update is the optional update timout in minutes.
+    """
+
+    delete: float
+    """
+    delete is the optional delete timout in minutes.
+    """
+
+    def __init__(self,
+                 create: Optional[float] = None,
+                 update: Optional[float] = None,
+                 delete: Optional[float] = None) -> None:
+
+        self.create = create
+        self.update = update
+        self.delete = delete
+
+
+
 class ResourceOptions:
     """
     ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -79,6 +106,11 @@ class ResourceOptions:
     to mark certain ouputs as a secrets on a per resource basis.
     """
 
+    custom_timeouts: Optional['CustomTimeouts']
+    """
+    An optional customTimeouts config block.
+    """
+
     id: Optional[str]
     """
     An optional existing ID to load, rather than create.
@@ -103,7 +135,8 @@ class ResourceOptions:
                  version: Optional[str] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
                  id: Optional[str] = None,
-                 import_: Optional[str] = None) -> None:
+                 import_: Optional[str] = None,
+                 custom_timeouts: Optional['CustomTimeouts'] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -120,6 +153,7 @@ class ResourceOptions:
                or replacements.
         :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
+        :param Optional[CustomTimeouts] customTimeouts: If provided, a config block for custom timeout information.
         :param Optional[str] id: If provided, an existing resource ID to read, rather than create.
         :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
                import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
@@ -135,6 +169,7 @@ class ResourceOptions:
         self.ignore_changes = ignore_changes
         self.version = version
         self.additional_secret_outputs = additional_secret_outputs
+        self.custom_timeouts = custom_timeouts
         self.id = id
         self.import_ = import_
 

@@ -187,6 +187,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");
+        req.setCustomtimeouts(opts.customTimeouts);
 
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
