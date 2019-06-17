@@ -158,9 +158,9 @@ Please head on over to [the project website](https://pulumi.io) for much more in
 
 |    | Language | Status | Runtime |
 | -- | -------- | ------ | ------- |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-js.png" height=38 /> | [JavaScript](./sdk/nodejs) | Stable | Node.js 6.x-10.x |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-ts.png" height=38 /> | [TypeScript](./sdk/nodejs) | Stable | Node.js 6.x-10.x |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python) | Preview | Python 3.6 |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-js.png" height=38 /> | [JavaScript](./sdk/nodejs) | Stable | Node.js 8+ |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-ts.png" height=38 /> | [TypeScript](./sdk/nodejs) | Stable | Node.js 8+ |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python) | Preview | Python 3.6+ |
 | <img src="https://www.pulumi.com/assets/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go) | Preview | Go 1.x |
 
 ### Clouds

@@ -38,7 +38,7 @@
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
-    "resolutions": {
-        "grpc/node-pre-gyp": "^0.11.0"
+    "engines": {
+        "node": ">=8.0.0"
     }
 }
