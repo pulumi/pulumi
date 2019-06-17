@@ -14,6 +14,7 @@
 
 import { all, Input, Output, output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
+import { promiseResult } from "./utils";
 
 /**
  * Manages a reference to a Pulumi stack. The referenced stack's outputs are available via the
@@ -55,6 +56,25 @@ export class StackReference extends CustomResource {
      */
     public getOutput(name: Input<string>): Output<any> {
         return all([output(name), this.outputs]).apply(([n, os]) => os[n]);
+    }
+
+    /**
+     * Fetches the value promptly of the named stack output.  May return undefined if the value is
+     * not known for some reason.
+     *
+     * This operation is not supported (and will throw) if any exported values of the StackReference
+     * are secrets.
+     *
+     * @param name The name of the stack output to fetch.
+     */
+    public getOutputSync(name: string): any {
+        const out = this.getOutput(name);
+        const isSecret = promiseResult(out.isSecret);
+        if (isSecret) {
+            throw new Error("Cannot call [getOutputSync] if the referenced stack has secret outputs. Use [getOutput] instead.");
+        }
+
+        return promiseResult(out.promise());
     }
 }
 

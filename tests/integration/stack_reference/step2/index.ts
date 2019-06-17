@@ -7,4 +7,16 @@ let org = config.require("org");
 let slug = `${org}/${pulumi.getProject()}/${pulumi.getStack()}`;
 let a = new pulumi.StackReference(slug);
 
-export const val = ["a", "b"];
+let gotError = false;
+try
+{
+    a.getOutputSync("val2");
+}
+catch (err)
+{
+    gotError = true;
+}
+
+if (!gotError) {
+    throw new Error("Expected to get error trying to read secret from stack reference.");
+}

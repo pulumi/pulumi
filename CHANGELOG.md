@@ -2,6 +2,12 @@
 
 - Allow setting backend URL explicitly in `Pulumi.yaml` file
 
+- `StackReference` now has a `.getOutputSync` function to retrieve exported values from an existing
+  stack synchronously.  This can be valuable when creating another stack that wants to base
+  flow-control off of the values of an existing stack (i.e. importing the information about all AZs
+  and basing logic off of that in a new stack). Note: this only works for importing values from
+  Stacks that have not exported `secrets`.
+
 ## 0.17.17 (Released June 12, 2019)
 
 ### Improvements

@@ -891,6 +891,16 @@ func TestStackReferenceNodeJS(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
+		},
 	}
 	integration.ProgramTest(t, opts)
 }
