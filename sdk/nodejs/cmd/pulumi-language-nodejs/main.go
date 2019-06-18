@@ -84,7 +84,7 @@ func main() {
 
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-langauge-nodejs", tracing)
+	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 
 	nodePath, err := exec.LookPath("node")
 	if err != nil {

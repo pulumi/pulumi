@@ -223,7 +223,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	}()
 
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
-	contract.AssertNoErrorf(err, "resource.NewUniqueHex sould not fail with no maximum length is set")
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
@@ -265,7 +265,7 @@ func TestPreviewJSON(t *testing.T) {
 	}
 
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
-	contract.AssertNoErrorf(err, "resource.NewUniqueHex sould not fail with no maximum length is set")
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)

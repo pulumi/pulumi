@@ -103,7 +103,7 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 			continue
 		}
 
-		assert.Truef(t, reflect.DeepEqual(fromVal, val), "expected properites %s to be deeply equal", key)
+		assert.Truef(t, reflect.DeepEqual(fromVal, val), "expected properties %s to be deeply equal", key)
 	}
 
 	_, has := to["extraFromValue"]
