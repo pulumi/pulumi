@@ -498,6 +498,9 @@ export abstract class CustomResource extends Resource {
  * managed similarly to other resources, including the usual diffing and update semantics.
  */
 export abstract class ProviderResource extends CustomResource {
+    /** @internal */
+    private readonly pkg: string;
+
     /**
      * Creates and registers a new provider resource for a particular package.
      *
@@ -506,8 +509,9 @@ export abstract class ProviderResource extends CustomResource {
      * @param props The configuration to use for this provider.
      * @param opts A bag of options that control this provider's behavior.
      */
-    constructor(private readonly pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
+    constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
         super(`pulumi:providers:${pkg}`, name, props, opts);
+        this.pkg = pkg;
     }
 
     /** @internal */
