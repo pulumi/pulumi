@@ -7,7 +7,7 @@
 # hence error prone.
 #
 # This script relies only on Docker. The container holds the installation of gRPC, tools, etc., for
-# different langauges, so nothing is else required to be installed on your machine.
+# different languages, so nothing is else required to be installed on your machine.
 set -e
 
 # First build our Protobuf/gRPC compiler Docker image, so dev machines don't need it.
