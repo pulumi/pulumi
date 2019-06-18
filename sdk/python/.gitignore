@@ -3,3 +3,4 @@
 *.pyc
 /env/
 /*.egg-info
+.venv/
