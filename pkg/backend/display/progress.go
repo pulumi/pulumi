@@ -882,7 +882,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if metadata != nil {
 		if metadata.Op == deploy.OpReadDiscard || metadata.Op == deploy.OpReadReplacement {
 			// just flat out ignore read discards/replace.  They're only relevant in the context of
-			// 'reads', and we filter out all reads from the display anyways.
+			// 'reads', and we only present reads as an ephemeral diagnostic anyways.
 			return
 		}
 
