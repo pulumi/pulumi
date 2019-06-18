@@ -153,7 +153,14 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 
 	// Now summarize all of the changes; we print sames a little differently.
 	for _, op := range deploy.StepOps {
-		if op != deploy.OpSame {
+		// Ignore anything that didn't change, or is related to 'reads'.  'reads' are just an
+		// indication of the operations we were performing, and are not indicative of any sort of
+		// change to the system.
+		if op != deploy.OpSame &&
+			op != deploy.OpRead &&
+			op != deploy.OpReadDiscard &&
+			op != deploy.OpReadReplacement {
+
 			if c := changes[op]; c > 0 {
 				opDescription := string(op)
 				if !event.IsPreview {

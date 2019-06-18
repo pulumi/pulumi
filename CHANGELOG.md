@@ -1,15 +1,22 @@
 ## 0.17.18 (Unreleased)
 
 - Allow setting backend URL explicitly in `Pulumi.yaml` file
+
 - `StackReference` now has a `.getOutputSync` function to retrieve exported values from an existing
   stack synchronously.  This can be valuable when creating another stack that wants to base
   flow-control off of the values of an existing stack (i.e. importing the information about all AZs
   and basing logic off of that in a new stack). Note: this only works for importing values from
   Stacks that have not exported `secrets`.
+
 - When the environment variaible `PULUMI_TEST_MODE` is set to `true`, the
   Python runtime will now behave as if
   `pulumi.runtime.settings._set_test_mode_enabled(True)` had been called. This
-  mirrors the behavior for NodeJS programs (fixes [#2818](https://github.com/pulumi/pulumi/issues/2818)). 
+  mirrors the behavior for NodeJS programs (fixes [#2818](https://github.com/pulumi/pulumi/issues/2818)).
+
+- Resources that are only 'read' will no longer be displayed in the terminal tree-display anymore.
+  These ended up heavily cluttering the display and often meant that programs without updates still
+  showed a bunch of resources that weren't important.  There will still be a message displayed
+  indicating that a 'read' has happened to help know that these are going on and that the program is making progress.
 
 ## 0.17.17 (Released June 12, 2019)
 

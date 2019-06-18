@@ -282,6 +282,13 @@ func (data *resourceRowData) IsDone() bool {
 		return true
 	}
 
+	if isRootStack(data.step) {
+		// the root stack only becomes 'done' once the program has completed (i.e. the condition
+		// checked just above this).  If the program is not finished, then always show the root
+		// stack as not done so the user sees "running..." presented for it.
+		return false
+	}
+
 	// We're done if we have the output-step for whatever step operation we're performing
 	return data.ContainsOutputsStep(data.step.Op)
 }

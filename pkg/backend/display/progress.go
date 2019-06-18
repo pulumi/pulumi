@@ -879,6 +879,32 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	// At this point, all events should relate to resources.
 	eventUrn, metadata := getEventUrnAndMetadata(event)
+	if metadata != nil {
+		if metadata.Op == deploy.OpReadDiscard || metadata.Op == deploy.OpReadReplacement {
+			// just flat out ignore read discards/replace.  They're only relevant in the context of
+			// 'reads', and we only present reads as an ephemeral diagnostic anyways.
+			return
+		}
+
+		if metadata.Op == deploy.OpRead {
+			// Don't show reads as operations on a specific resource.  It's an underlying detail
+			// that we don't want to clutter up the display with.  However, to help users know
+			// what's going on, we can show them as ephemeral diagnostic messages that are
+			// associated at the top level with the stack.  That way if things are taking a while,
+			// there's insight in the display as to what's going on.
+			display.processNormalEvent(engine.Event{
+				Type: engine.DiagEvent,
+				Payload: engine.DiagEventPayload{
+					Ephemeral: true,
+					Severity:  diag.Info,
+					Color:     cmdutil.GetGlobalColorization(),
+					Message:   fmt.Sprintf("read %v %v", simplifyTypeName(eventUrn.Type()), eventUrn.Name()),
+				},
+			})
+			return
+		}
+	}
+
 	if eventUrn == "" {
 		// If this event has no URN, associate it with the stack. Note that there may not yet be a stack resource, in
 		// which case this is a no-op.
