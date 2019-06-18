@@ -898,7 +898,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 					Ephemeral: true,
 					Severity:  diag.Info,
 					Color:     cmdutil.GetGlobalColorization(),
-					Message:   fmt.Sprintf("Reading %v %v", simplifyTypeName(eventUrn.Type()), eventUrn.Name()),
+					Message:   fmt.Sprintf("read %v %v", simplifyTypeName(eventUrn.Type()), eventUrn.Name()),
 				},
 			})
 			return
