@@ -20,7 +20,7 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 You can easily get all required dependencies with brew
 
 ```bash
-brew install node pipenv python@3 typescript yarn pandoc go
+brew install node pipenv python@3 typescript yarn pandoc go golangci/tap/golangci-lint
 ```
 
 ## Make build system
