@@ -75,6 +75,9 @@ type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
 	// well as poll for its progress.
 	UpdateID string `json:"updateID"`
+
+	// RequiredPolicies is a list of required Policy Packs to run during the update.
+	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
@@ -92,9 +95,6 @@ type StartUpdateResponse struct {
 
 	// Token is the lease token (if any) to be used to authorize operations on this update.
 	Token string `json:"token,omitempty"`
-
-	// RequiredPolicies is a list of required Policy Packs to run during the update.
-	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
