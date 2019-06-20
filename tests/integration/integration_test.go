@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
+	// "time"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -28,33 +28,33 @@ import (
 
 // assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
 // failures when a scenario exceeds the provided threshold.
-type assertPerfBenchmark struct {
-	T                  *testing.T
-	MaxPreviewDuration time.Duration
-	MaxUpdateDuration  time.Duration
-}
+// type assertPerfBenchmark struct {
+// 	T                  *testing.T
+// 	MaxPreviewDuration time.Duration
+// 	MaxUpdateDuration  time.Duration
+// }
 
-func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
-	var maxDuration *time.Duration
-	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
-		maxDuration = &t.MaxPreviewDuration
-	}
-	if strings.HasPrefix(stats.StepName, "pulumi-update") {
-		maxDuration = &t.MaxUpdateDuration
-	}
+// func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
+// 	var maxDuration *time.Duration
+// 	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
+// 		maxDuration = &t.MaxPreviewDuration
+// 	}
+// 	if strings.HasPrefix(stats.StepName, "pulumi-update") {
+// 		maxDuration = &t.MaxUpdateDuration
+// 	}
 
-	if maxDuration != nil && *maxDuration != 0 {
-		if stats.ElapsedSeconds < maxDuration.Seconds() {
-			t.T.Logf(
-				"Test step %q was under threshold. %.2f (max %.2fs)",
-				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-		} else {
-			t.T.Errorf(
-				"Test step %q took longer than expected. %.2f vs. max %.2fs",
-				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-		}
-	}
-}
+// 	if maxDuration != nil && *maxDuration != 0 {
+// 		if stats.ElapsedSeconds < maxDuration.Seconds() {
+// 			t.T.Logf(
+// 				"Test step %q was under threshold. %.2f (max %.2fs)",
+// 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+// 		} else {
+// 			t.T.Errorf(
+// 				"Test step %q took longer than expected. %.2f vs. max %.2fs",
+// 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+// 		}
+// 	}
+// }
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
