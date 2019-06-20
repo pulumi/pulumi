@@ -85,26 +85,26 @@ func TestEmptyGo(t *testing.T) {
 }
 
 // Tests emitting many engine events doesn't result in a performance problem.
-func TestEngineEventPerf(t *testing.T) {
-	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
-	// Since then, it should now be down to ~4s, with additional padding,
-	// since some travis machines (especially the OSX ones) seem quite slow
-	// to begin with.
-	benchmarkEnforcer := &assertPerfBenchmark{
-		T:                  t,
-		MaxPreviewDuration: 8 * time.Second,
-		MaxUpdateDuration:  8 * time.Second,
-	}
+// func TestEngineEventPerf(t *testing.T) {
+// 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
+// 	// Since then, it should now be down to ~4s, with additional padding,
+// 	// since some travis machines (especially the OSX ones) seem quite slow
+// 	// to begin with.
+// 	benchmarkEnforcer := &assertPerfBenchmark{
+// 		T:                  t,
+// 		MaxPreviewDuration: 8 * time.Second,
+// 		MaxUpdateDuration:  8 * time.Second,
+// 	}
 
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "ee_perf",
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		ReportStats:  benchmarkEnforcer,
-		// Don't run in parallel since it is sensitive to system resources.
-		NoParallel: true,
-	})
-}
+// 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+// 		Dir:          "ee_perf",
+// 		Dependencies: []string{"@pulumi/pulumi"},
+// 		Quick:        true,
+// 		ReportStats:  benchmarkEnforcer,
+// 		// Don't run in parallel since it is sensitive to system resources.
+// 		NoParallel: true,
+// 	})
+// }
 
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
