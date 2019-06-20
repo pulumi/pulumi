@@ -27,3 +27,16 @@ class Component extends pulumi.ComponentResource {
 }
 // The creation of the component is unchanged.
 const comp2 = new Component("comp2");
+
+// Scenario 3, adopt this resource into a new parent.
+class Component2 extends pulumi.ComponentResource {
+    constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
+        super("my:module:Component2", name, {}, opts);
+    }
+}
+
+// validate that "parent: undefined" means "i didn't have a parent previously"
+const unparentedComponent = new Component2("unparented", {
+    aliases: [{ parent: undefined }],
+    parent: comp2,
+});
