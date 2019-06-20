@@ -37,6 +37,6 @@ class Component2 extends pulumi.ComponentResource {
 
 // validate that "parent: undefined" means "i didn't have a parent previously"
 const unparentedComponent = new Component2("unparented", {
-    aliases: [{ parent: undefined }],
+    aliases: [{ parent: pulumi.rootStackResource }],
     parent: comp2,
 });
