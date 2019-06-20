@@ -49,7 +49,7 @@ new Component2("unparented", {
 class Component3 extends pulumi.ComponentResource {
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         super("my:module:Component2", name, {}, opts = {});
-        new Component2("child", { aliases: [{ parent: opts.parent}], parent: this });
+        new Component2(name + "-child", { aliases: [{ parent: opts.parent}], parent: this });
     }
 }
 

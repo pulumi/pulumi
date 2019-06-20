@@ -33,7 +33,7 @@ new Component2("unparented");
 class Component3 extends pulumi.ComponentResource {
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         super("my:module:Component2", name, {}, opts);
-        new Component2("child", opts);
+        new Component2(name + "-child", opts);
     }
 }
 
