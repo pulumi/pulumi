@@ -306,21 +306,46 @@ function convertToProvidersMap(providers: Record<string, ProviderResource> | Pro
 (<any>Resource).doNotCapture = true;
 
 /**
+ * Constant to represent the 'root stack' resource for a Pulumi application.  The purpose of this is
+ * solely to make it easy to write an [Alias] like so:
+ *
+ * `aliases: [{ parent: rootStackResource }]`.
+ *
+ * This indicates that the prior name for a resource was created based on it being parented directly
+ * by the stack itself and no other resources.  Note: this is equivalent to:
+ *
+ * `aliases: [{ parent: undefined }]`
+ *
+ * However, the former form is preferable as it is more self-descriptive, while the latter may look
+ * a bit confusing and may incorrectly look like something that could be removed without changing
+ * semantics.
+ */
+export const rootStackResource: Resource = undefined!;
+
+/**
  * Alias is a partial description of prior named used for a resource. It can be processed in the
  * context of a resource creation to determine what the full aliased URN would be.
  *
- * Note that the semantics of the properties of this type are subtle.  Specifically, there is a
- * difference between:
+ * Note there is a semantic difference between properties being absent from this type and properties
+ * having the `undefined` value. Specifically, there is a difference between:
  *
  * ```ts
  * { name: "foo", parent: undefined } // and
  * { name: "foo" }
  * ```
  *
- * Specifically, the presence of a property indicates if its value should be used.  If absent, then
- * the value is not used.  So, in the above while `alias.parent` is `undefined` for both, the first
- * alias means "the original urn had no parent" while the second alias means "use the current
- * parent".
+ * The presence of a property indicates if its value should be used.  If absent, then the value is
+ * not used.  So, in the above while `alias.parent` is `undefined` for both, the first alias means
+ * "the original urn had no parent" while the second alias means "use the current parent".
+ *
+ * Note: to indicate that a resource was previously parented by the root stack, it is recommended
+ * that you use:
+ *
+ * `aliases: [{ parent: pulumi.rootStackResource }]`
+ *
+ * This form is self-descriptive and makes the intent clearer than using:
+ *
+ * `aliases: [{ parent: undefined }]`
  */
 export interface Alias {
     /**
@@ -338,7 +363,7 @@ export interface Alias {
      * parent of the resource is used (`opts.parent` if provided, else the implicit stack resource
      * parent).
      *
-     * To specify no original parent, use `{ parent: undefined }`.
+     * To specify no original parent, use `{ parent: pulumi.rootStackResource }`.
      */
     parent?: Resource | Input<URN>;
     /**
