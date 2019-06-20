@@ -306,21 +306,64 @@ function convertToProvidersMap(providers: Record<string, ProviderResource> | Pro
 (<any>Resource).doNotCapture = true;
 
 /**
- * Alias is a partial description of prior named used for a resource. It can be processed in the context of a resource
- * creation to determine what the full aliased URN would be.
+ * Constant to represent the 'root stack' resource for a Pulumi application.  The purpose of this is
+ * solely to make it easy to write an [Alias] like so:
+ *
+ * `aliases: [{ parent: rootStackResource }]`.
+ *
+ * This indicates that the prior name for a resource was created based on it being parented directly
+ * by the stack itself and no other resources.  Note: this is equivalent to:
+ *
+ * `aliases: [{ parent: undefined }]`
+ *
+ * However, the former form is preferable as it is more self-descriptive, while the latter may look
+ * a bit confusing and may incorrectly look like something that could be removed without changing
+ * semantics.
+ */
+export const rootStackResource: Resource = undefined!;
+
+/**
+ * Alias is a partial description of prior named used for a resource. It can be processed in the
+ * context of a resource creation to determine what the full aliased URN would be.
+ *
+ * Note there is a semantic difference between properties being absent from this type and properties
+ * having the `undefined` value. Specifically, there is a difference between:
+ *
+ * ```ts
+ * { name: "foo", parent: undefined } // and
+ * { name: "foo" }
+ * ```
+ *
+ * The presence of a property indicates if its value should be used.  If absent, then the value is
+ * not used.  So, in the above while `alias.parent` is `undefined` for both, the first alias means
+ * "the original urn had no parent" while the second alias means "use the current parent".
+ *
+ * Note: to indicate that a resource was previously parented by the root stack, it is recommended
+ * that you use:
+ *
+ * `aliases: [{ parent: pulumi.rootStackResource }]`
+ *
+ * This form is self-descriptive and makes the intent clearer than using:
+ *
+ * `aliases: [{ parent: undefined }]`
  */
 export interface Alias {
     /**
-     * The previous name of the resource.  If not provided, the current name of the resource is used.
+     * The previous name of the resource.  If not provided, the current name of the resource is
+     * used.
      */
     name?: Input<string>;
     /**
      * The previous type of the resource.  If not provided, the current type of the resource is used.
      */
     type?: Input<string>;
+
     /**
-     * The previous parent of the resource.  If not provided, the current parent of the resource is used
-     * (`opts.parent` if provided, else the implicit stack resource parent).
+     * The previous parent of the resource.  If not provided (i.e. `{ name: "foo" }`), the current
+     * parent of the resource is used (`opts.parent` if provided, else the implicit stack resource
+     * parent).
+     *
+     * To specify no original parent, use `{ parent: pulumi.rootStackResource }`.
      */
     parent?: Resource | Input<URN>;
     /**
@@ -335,21 +378,31 @@ export interface Alias {
 
 // collapseAliasToUrn turns an Alias into a URN given a set of default data
 function collapseAliasToUrn(
-    alias: Input<Alias | string>, defaultName: string, defaultType: string,
-    defaultParent: Resource | undefined): Output<URN> {
+        alias: Input<Alias | string>,
+        defaultName: string,
+        defaultType: string,
+        defaultParent: Resource | undefined): Output<URN> {
 
     return output(alias).apply(a => {
         if (typeof a === "string") {
             return output(a);
-        } else {
-            return createUrn(
-                output(a.name).apply(n => n || defaultName),
-                output(a.type).apply(ty => ty || defaultType),
-                a.parent || defaultParent,
-                a.project,
-                a.stack,
-            );
         }
+
+        const name = a.hasOwnProperty("name") ? a.name : defaultName;
+        const type = a.hasOwnProperty("type") ? a.type : defaultType;
+        const parent = a.hasOwnProperty("parent") ? a.parent : defaultParent;
+        const project = a.hasOwnProperty("project") ? a.project : getProject();
+        const stack = a.hasOwnProperty("stack") ? a.stack : getStack();
+
+        if (name === undefined) {
+            throw new Error("No valid 'name' passed in for alias.");
+        }
+
+        if (type === undefined) {
+            throw new Error("No valid 'type' passed in for alias.");
+        }
+
+        return createUrn(name, type, parent, project, stack);
     });
 }
 
