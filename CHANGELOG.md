@@ -1,4 +1,6 @@
-## 0.17.18 (Unreleased)
+## 0.17.19 (Unreleased)
+
+## 0.17.18 (Released June 20, 2019)
 
 - Allow setting backend URL explicitly in `Pulumi.yaml` file
 
@@ -8,7 +10,7 @@
   and basing logic off of that in a new stack). Note: this only works for importing values from
   Stacks that have not exported `secrets`.
 
-- When the environment variaible `PULUMI_TEST_MODE` is set to `true`, the
+- When the environment variable `PULUMI_TEST_MODE` is set to `true`, the
   Python runtime will now behave as if
   `pulumi.runtime.settings._set_test_mode_enabled(True)` had been called. This
   mirrors the behavior for NodeJS programs (fixes [#2818](https://github.com/pulumi/pulumi/issues/2818)).
