@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 	// "time"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -28,33 +29,33 @@ import (
 
 // assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
 // failures when a scenario exceeds the provided threshold.
-// type assertPerfBenchmark struct {
-// 	T                  *testing.T
-// 	MaxPreviewDuration time.Duration
-// 	MaxUpdateDuration  time.Duration
-// }
+type assertPerfBenchmark struct {
+	T                  *testing.T
+	MaxPreviewDuration time.Duration
+	MaxUpdateDuration  time.Duration
+}
 
-// func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
-// 	var maxDuration *time.Duration
-// 	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
-// 		maxDuration = &t.MaxPreviewDuration
-// 	}
-// 	if strings.HasPrefix(stats.StepName, "pulumi-update") {
-// 		maxDuration = &t.MaxUpdateDuration
-// 	}
+func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
+	var maxDuration *time.Duration
+	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
+		maxDuration = &t.MaxPreviewDuration
+	}
+	if strings.HasPrefix(stats.StepName, "pulumi-update") {
+		maxDuration = &t.MaxUpdateDuration
+	}
 
-// 	if maxDuration != nil && *maxDuration != 0 {
-// 		if stats.ElapsedSeconds < maxDuration.Seconds() {
-// 			t.T.Logf(
-// 				"Test step %q was under threshold. %.2f (max %.2fs)",
-// 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-// 		} else {
-// 			t.T.Errorf(
-// 				"Test step %q took longer than expected. %.2f vs. max %.2fs",
-// 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-// 		}
-// 	}
-// }
+	if maxDuration != nil && *maxDuration != 0 {
+		if stats.ElapsedSeconds < maxDuration.Seconds() {
+			t.T.Logf(
+				"Test step %q was under threshold. %.2fs (max %.2fs)",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		} else {
+			t.T.Errorf(
+				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		}
+	}
+}
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
@@ -85,26 +86,26 @@ func TestEmptyGo(t *testing.T) {
 }
 
 // Tests emitting many engine events doesn't result in a performance problem.
-// func TestEngineEventPerf(t *testing.T) {
-// 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
-// 	// Since then, it should now be down to ~4s, with additional padding,
-// 	// since some travis machines (especially the OSX ones) seem quite slow
-// 	// to begin with.
-// 	benchmarkEnforcer := &assertPerfBenchmark{
-// 		T:                  t,
-// 		MaxPreviewDuration: 8 * time.Second,
-// 		MaxUpdateDuration:  8 * time.Second,
-// 	}
+func TestEngineEventPerf(t *testing.T) {
+	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
+	// Since then, it should now be down to ~4s, with additional padding,
+	// since some Travis machines (especially the macOS ones) seem quite slow
+	// to begin with.
+	benchmarkEnforcer := &assertPerfBenchmark{
+		T:                  t,
+		MaxPreviewDuration: 8 * time.Second,
+		MaxUpdateDuration:  8 * time.Second,
+	}
 
-// 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-// 		Dir:          "ee_perf",
-// 		Dependencies: []string{"@pulumi/pulumi"},
-// 		Quick:        true,
-// 		ReportStats:  benchmarkEnforcer,
-// 		// Don't run in parallel since it is sensitive to system resources.
-// 		NoParallel: true,
-// 	})
-// }
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "ee_perf",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ReportStats:  benchmarkEnforcer,
+		// Don't run in parallel since it is sensitive to system resources.
+		NoParallel: true,
+	})
+}
 
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
