@@ -173,3 +173,8 @@ type EngineEvent struct {
 	ResOpFailedEvent *ResOpFailedEvent  `json:"resOpFailedEvent,omitempty"`
 	PolicyEvent      *PolicyEvent       `json:"policyEvent,omitempty"`
 }
+
+// EngineEventBatch is a group of engine events.
+type EngineEventBatch struct {
+	Events []EngineEvent `json:"events"`
+}
