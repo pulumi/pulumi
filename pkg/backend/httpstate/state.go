@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -156,31 +157,32 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
 }
 
-// recordEngineEvent will record the event with the Pulumi Service, enabling things like viewing
+// recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
 // the update logs or drilling into the timeline of an update.
-func (u *cloudUpdate) recordEngineEvent(event engine.Event, sequenceNumber int) error {
+func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.Event) error {
 	contract.Assert(u.tokenSource != nil)
 	token, err := u.tokenSource.GetToken()
 	if err != nil {
 		return err
 	}
 
-	apiEvent, convErr := convertEngineEvent(event)
-	if convErr != nil {
-		return errors.Wrap(convErr, "converting engine event")
+	var apiEvents apitype.EngineEventBatch
+	for idx, event := range events {
+		apiEvent, convErr := convertEngineEvent(event)
+		if convErr != nil {
+			return errors.Wrap(convErr, "converting engine event")
+		}
+
+		// Each event within an update must have a unique sequence number. Any request to
+		// emit an update with the same sequence number will fail. (Read: the caller needs
+		// to be accurate about this.)
+		apiEvent.Sequence = idx + startingSeqNumber
+		apiEvent.Timestamp = int(time.Now().Unix())
+
+		apiEvents.Events = append(apiEvents.Events, apiEvent)
 	}
 
-	// Each event within an update must have a unique sequence number. Any request to
-	// emit an update with the same sequence number will fail. (Read: use a mutex to
-	// increment if needed.)
-	apiEvent.Sequence = sequenceNumber
-	apiEvent.Timestamp = int(time.Now().Unix())
-
-	return u.backend.client.RecordEngineEvent(u.context, u.update, apiEvent, token)
-}
-
-func isDebugDiagEvent(e engine.Event) bool {
-	return e.Type == engine.DiagEvent && (e.Payload.(engine.DiagEventPayload)).Severity == diag.Debug
+	return u.backend.client.RecordEngineEvents(u.context, u.update, apiEvents, token)
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
@@ -188,60 +190,43 @@ func isDebugDiagEvent(e engine.Event) bool {
 func (u *cloudUpdate) RecordAndDisplayEvents(
 	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
 	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
+	// We take the channel of engine events and pass them to separate components that will display
+	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
+	// they see a CancelEvent, and when finished, close the "done" channel.
+	displayEvents := make(chan engine.Event, 100)
+	displayEventsDone := make(chan bool)
 
-	// Create a new channel to synchronize with the event renderer.
-	innerDone := make(chan bool)
+	persistEvents := make(chan engine.Event, 100)
+	persistEventsDone := make(chan bool)
+
+	// We close our own done channel when both of the dependent components have finished.
 	defer func() {
-		// Wait for the display goroutine to exit, then notify any listeners that this goroutine is finished.
-		<-innerDone
+		<-displayEventsDone
+		<-persistEventsDone
 		close(done)
 	}()
 
-	// Start the local display processor.  Display things however the options have been
-	// set to display (i.e. diff vs progress).
-	displayEvents := make(chan engine.Event)
-	go display.ShowEvents(label, action, stackRef.Name(), op.Proj.Name, displayEvents, innerDone, opts, isPreview)
-
-	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
-	// ensure events can be reconstructured in the same order they were emitted. (And not
-	// out of order from parallel writes and/or network delays.)
-	eventIdx := 0
-
-	// We start the requests to record engine events in separate Go routines since they can
-	// all be done independently. Updates with a "chatty" event stream can have serious
-	// perf problems if issued serially.
-	var wg sync.WaitGroup
-	recordEngineEvent := func(event engine.Event, eventIdx int) {
-		defer wg.Done()
-		// We just silently drop any errors recording the events. Obviously not great, but
-		// we cannot tell for certain what state the displayEvents channel is in. Dropped
-		// engine events just mean that the logs display on the Pulumi Service could look
-		// weird. It won't have any impact on correctness of checkpoint data.
-		err := u.recordEngineEvent(event, eventIdx)
-		contract.IgnoreError(err)
-	}
+	// Start the Go-routines for displaying and persisting events.
+	go display.ShowEvents(
+		label, action, stackRef.Name(), op.Proj.Name,
+		displayEvents, displayEventsDone, opts, isPreview)
+	go persistEngineEvents(
+		u, opts.Debug, /* persist debug events */
+		persistEvents, persistEventsDone)
 
 	for e := range events {
-		// First echo the event to the local display.
 		displayEvents <- e
+		persistEvents <- e
 
-		if isDebugDiagEvent(e) && !opts.Debug {
-			// Don't send diagnostics events to the service unless `--debug` was requested.
-			continue
-		}
-
-		// Then render and record the event for posterity.
-		eventIdx++
-		wg.Add(1)
-		go recordEngineEvent(e, eventIdx)
-
+		// We stop reading from the event stream as soon as we see the CancelEvent,
+		// which will also signal the display/persist components to shutdown too.
 		if e.Type == engine.CancelEvent {
 			break
 		}
 	}
 
-	// Block until all of the spawned Go-routines complete.
-	wg.Wait()
+	// Note that we don't return immediately, the defer'd function will block until
+	// the display and persistence go-routines are finished processing events.
 }
 
 func (b *cloudBackend) newQuery(ctx context.Context, stackRef backend.StackReference,
@@ -496,4 +481,102 @@ func convertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 	}
 
 	return apiEvent, nil
+}
+
+func isDebugDiagEvent(e engine.Event) bool {
+	return e.Type == engine.DiagEvent && (e.Payload.(engine.DiagEventPayload)).Severity == diag.Debug
+}
+
+// persistEngineEvents reads from a channel of engine events and persists them on the
+// Pulumi Service. This is the data that powers the logs display.
+func persistEngineEvents(
+	update *cloudUpdate, persistDebugEvents bool,
+	events <-chan engine.Event, done chan<- bool) {
+	// A single update can emit hundreds, if not thousands, or tens of thousands of
+	// engine events. We transmit engine events in large batches to reduce the overhead
+	// associated with each HTTP request to the service. We also don't block on any
+	// individual HTTP request, sending as many concurrent requests as needed, to avoid
+	// slowing down the update.
+
+	// Maximum number of events to batch up before transmitting.
+	const maxEventsToTransmit = 50
+	// Maximum wait time before sending all batched events.
+	const maxTransmissionDelay = 4 * time.Second
+
+	// We don't want to indicate that we are done processing every engine event in the
+	// provided channel until every HTTP request has completed. We use a wait group to
+	// track all of those requests.
+	var wg sync.WaitGroup
+
+	defer func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	var eventBatch []engine.Event
+	maxDelayTicker := time.NewTicker(maxTransmissionDelay)
+
+	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
+	// ensure events can be reconstructured in the same order they were emitted. (And not
+	// out of order from parallel writes and/or network delays.)
+	eventIdx := 0
+
+	// transmitBatch sends off a batch of engine events to be persisted. Will mutate the eventIdx
+	// and eventBatch values.
+	transmitBatch := func() {
+		if len(eventBatch) == 0 {
+			return
+		}
+
+		wg.Add(1)
+		go func(startEventIdx int, eventsToRecord []engine.Event) {
+			defer wg.Done()
+			err := update.recordEngineEvents(startEventIdx, eventsToRecord)
+			if err != nil {
+				glog.V(3).Infof("error recording engine events: %s", err)
+			}
+		}(eventIdx, eventBatch)
+
+		// With the values of eventIdx and eventBatch copied as params
+		// into the Goroutine that will start the actual HTTP request,
+		// we now modify their values for the next time transmitBatch
+		// is called.
+		eventIdx += len(eventBatch)
+		eventBatch = nil
+	}
+
+	var sawCancelEvent bool
+	for {
+		select {
+		case e := <-events:
+			// Ignore debug events unless asked to.
+			if isDebugDiagEvent(e) && !persistDebugEvents {
+				break
+			}
+
+			// Stop processing once we see the CancelEvent.
+			if e.Type == engine.CancelEvent {
+				sawCancelEvent = true
+				break
+			}
+
+			eventBatch = append(eventBatch, e)
+			if len(eventBatch) >= maxEventsToTransmit {
+				transmitBatch()
+			}
+
+		case <-maxDelayTicker.C:
+			// If the ticker has fired, send any batched events. This sets an upper bound for
+			// the delay between the event being observed and persisted.
+			transmitBatch()
+		}
+
+		if sawCancelEvent {
+			break
+		}
+	}
+
+	// Transmit any lingering events. The defer'd function will wait for any
+	// outstanding HTTP requests and close the done channel.
+	transmitBatch()
 }

@@ -504,16 +504,16 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }
 
-// RecordEngineEvent posts an engine event to the Pulumi service.
-func (pc *Client) RecordEngineEvent(
-	ctx context.Context, update UpdateIdentifier, event apitype.EngineEvent, token string) error {
+// RecordEngineEvents posts a batch of engine events to the Pulumi service.
+func (pc *Client) RecordEngineEvents(
+	ctx context.Context, update UpdateIdentifier, batch apitype.EngineEventBatch, token string) error {
 	callOpts := httpCallOptions{
 		GzipCompress:    true,
 		RetryAllMethods: true,
 	}
 	return pc.updateRESTCall(
-		ctx, "POST", getUpdatePath(update, "events"),
-		nil, event, nil,
+		ctx, "POST", getUpdatePath(update, "event-batch"),
+		nil, batch, nil,
 		updateAccessToken(token), callOpts)
 }
 

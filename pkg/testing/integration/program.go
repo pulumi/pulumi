@@ -172,7 +172,7 @@ type ProgramTestOptions struct {
 	// environment during tests.
 	StackName string
 
-	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocatoions.
+	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocations.
 	Tracing string
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
@@ -208,7 +208,7 @@ type ProgramTestOptions struct {
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
 	PipenvBin string
 
-	// Additional environment variaibles to pass for each command we run.
+	// Additional environment variables to pass for each command we run.
 	Env []string
 }
 
