@@ -1,6 +1,9 @@
-## 0.17.19 (Unreleased)
+CHANGELOG
+=========
 
-## 0.17.18 (Released June 20, 2019)
+## HEAD (Unreleased)
+
+## 0.17.18 (2019-06-20)
 
 - Allow setting backend URL explicitly in `Pulumi.yaml` file
 
@@ -20,7 +23,7 @@
   showed a bunch of resources that weren't important.  There will still be a message displayed
   indicating that a 'read' has happened to help know that these are going on and that the program is making progress.
 
-## 0.17.17 (Released June 12, 2019)
+## 0.17.17 (2019-06-12)
 
 ### Improvements
 
@@ -39,13 +42,13 @@
   [pulumi/pulumi#2792](https://github.com/pulumi/pulumi/issues/2792)).
 - Unparented Pulumi `CustomResource`s now support calling `.getProvider(...)` on them.
 
-## 0.17.16 (Released June 6, 2019)
+## 0.17.16 (2019-06-06)
 
 ### Improvements
 
 - Fixed a bug that caused an assertion when dealing with unchanged resources across version upgrades.
 
-## 0.17.15 (Released June 5, 2019)
+## 0.17.15 (2019-06-05)
 
 ### Improvements
 
@@ -62,7 +65,7 @@
 - `pulumi plugin install` gained a new optional argument `--server` which can be used to provide a custom server to be
   used when downloading a plugin.
 
-## 0.17.14 (Released May 28, 2019)
+## 0.17.14 (2019-05-28)
 
 ### Improvements
 
@@ -72,7 +75,7 @@
 - Correctly suppress stack outputs when serializing previews to JSON, i.e. `pulumi preview --json --suppress-outputs`.
   Fixes [pulumi/pulumi#2765](https://github.com/pulumi/pulumi/issues/2765).
 
-## 0.17.13 (Released May 21, 2019)
+## 0.17.13 (2019-05-21)
 
 ### Improvements
 
@@ -86,7 +89,7 @@
 - Fix an issue where some operations would fail with `error: could not deserialize deployment: unknown secrets provider type`.
 - Fix an issue where pulumi might try to replace existing resources when upgrading to the newest version of some resource providers.
 
-## 0.17.12 (Released May 15, 2019)
+## 0.17.12 (2019-05-15)
 
 ### Improvements
 
@@ -99,7 +102,7 @@
   would not be stored correctly.
 - Fix a panic during property diffing when comparing two secret arrays.
 
-## 0.17.11 (Released May 13, 2019)
+## 0.17.11 (2019-05-13)
 
 ### Major Changes
 
@@ -114,9 +117,9 @@
   It will be encrypted, just like values added to config with `pulumi config set --secret`.
 
   You can verify that values are being stored as you expect by running `pulumi stack export`, When values are encrypted
-  in the state file, they appear as an object with a special signiture key and a ciphertext property.
+  in the state file, they appear as an object with a special signature key and a ciphertext property.
 
-  When ouputs of a stack are secrets, `pulumi stack output` will show `[secret]` as the value, by default.  You can
+  When outputs of a stack are secrets, `pulumi stack output` will show `[secret]` as the value, by default.  You can
   pass `--show-secrets` to `pulumi stack output` in order to see the actual raw value.
 
 - When storing state with the Pulumi Service, you may now elect to use the passphrase based encryption for both secret
@@ -145,7 +148,7 @@ Fixes #397
 - Minor fix to how Azure repository information is extracted to allow proper grouping of Azure
   repositories when various remote URLs are used to pull the repository.
 
-## 0.17.10 (Released May 2, 2019)
+## 0.17.10 (2019-05-02)
 
 ### Improvements
 
@@ -158,7 +161,7 @@ Fixes #397
   prebuilt binaries for Node 12, which should make installing `@pulumi/pulumi`
   more reliable when running on Node 12.
 
-## 0.17.9 (Released April 30, 2019)
+## 0.17.9 (2019-04-30)
 
 ### Improvements
 
@@ -177,7 +180,7 @@ Fixes #397
   Each step includes deeply serialized information about the resource state and step metadata itself. This
   is part of ongoing work tracked in [pulumi/pulumi#2390](https://github.com/pulumi/pulumi/issues/2390).
 
-## 0.17.8 (Released April 23, 2019)
+## 0.17.8 (2019-04-23)
 
 ### Improvements
 
@@ -187,7 +190,7 @@ Fixes #397
   unexpected Update, Replace or Delete operations being scheduled. [#2650]https://github.com/pulumi/pulumi/issues/2650)
 - Build/push `pulumi/actions` container to [DockerHub](https://hub.docker.com/r/pulumi/actions) with new SDK releases [#2646](https://github.com/pulumi/pulumi/pull/2646)
 
-## 0.17.7 (Released April 17, 2019)
+## 0.17.7 (2019-04-17)
 
 ### Improvements
 
@@ -199,14 +202,14 @@ Fixes #397
   `PULUMI_CONFIG`, `PULUMI_NODEJS_PROJECT`, and `PULUMI_NODEJS_STACK` environment variables to control settings
   the CLI would have otherwise managed for you.
 
-## 0.17.6 (Released April 11, 2019)
+## 0.17.6 (2019-04-11)
 
 ### Improvements
 
 - `refresh` will now warn instead of returning an error when it notices a resource is in an
   unhealthy state. This is in service of https://github.com/pulumi/pulumi/issues/2633.
 
-## 0.17.5 (Released April 8, 2019)
+## 0.17.5 (2019-04-08)
 
 ### Improvements
 - Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
@@ -214,7 +217,7 @@ Fixes #397
     supplied, the current project name is used as the default.
 - `pulumi logs` will now display log messages from Google Cloud Functions.
 
-## 0.17.4 (Released March 26, 2019)
+## 0.17.4 (2019-03-26)
 
 ### Improvements
 
@@ -222,7 +225,7 @@ Fixes #397
 - Fix issue where `Outputs` produced by `pulumi.interpolate` might have values which could
   cause validation errors due to them containing the text `<computed>` during previews.
 
-## 0.17.3 (Released March 26, 2019)
+## 0.17.3 (2019-03-26)
 
 ### Improvements
 
@@ -234,7 +237,7 @@ Fixes #397
 - Add support for serializing JavaScript function that capture [BigInts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt).
 - Support serializing arrow-functions with deconstructed parameters.
 
-## 0.17.2 (Released March 15, 2019)
+## 0.17.2 (2019-03-15)
 
 ### Improvements
 
@@ -250,13 +253,13 @@ Fixes #397
 - Pulumi will now install missing plugins on startup. Previously, Pulumi would error if a required plugin was not
   present and a bug in the Pulumi CLI made it common for users using Pulumi in their continuous integration setup to have problems with missing plugins. Starting with 0.17.2, if Pulumi detects that required plugins are missing, it will make an attempt to install the missing plugins before proceeding with the update.
 
-## 0.17.1 (Released March 6, 2019)
+## 0.17.1 (2019-03-06)
 
 ### Improvements
 
 - Slight tweak to `Output.apply` signature to help TypeScript infer types better.
 
-## 0.17.0 (Released March 5, 2019)
+## 0.17.0 (2019-03-05)
 
 This update includes several changes to core `@pulumi/pulumi` constructs that will not play nicely
 in side-by-side applications that pull in prior versions of this package.  As such, we are rev'ing
@@ -290,12 +293,12 @@ Similarly, this only happens for properties.  Functions are not lifted.
   that consider that CustomResource to be a parent.
 
 
-## 0.16.19 (Released March 4, 2019)
+## 0.16.19 (2019-03-04)
 
 - Rolled back change where calling toString/toJSON on an Output would cause a message
   to be logged to the `pulumi` diagnostics stream.
 
-## 0.16.18 (Released March 1, 2019)
+## 0.16.18 (2019-03-01)
 
 - Fix an issue where the Pulumi CLI would load the newest plugin for a resource provider instead of the version that was
   requested, which could result in the Pulumi CLI loading a resource provider plugin that is incompatible with the
@@ -319,23 +322,23 @@ Similarly, this only happens for properties.  Functions are not lifted.
   not something that will be blocked, but it is discouraged as it may lead to subtle problems if one
   version of `@pulumi/pulumi` is loaded and passes objects to/from an incompatible version.
 
-## 0.16.17 (Released February 27th, 2019)
+## 0.16.17 (2019-02-27)
 
 ### Improvements
 
 - Rolling back the change:
     "Depending on a Resource will now depend on all other Resource's parented by that Resource."
 
-  Unforseen problems cropped up that caused deadlocks.  Removing this change until we can
+  Unforeseen problems cropped up that caused deadlocks.  Removing this change until we can
   have a high quality solution without these issues.
 
-## 0.16.16 (Released February 24th, 2019)
+## 0.16.16 (2019-02-24)
 
 ### Improvements
 
 - Fix deadlock with resource dependencies (https://github.com/pulumi/pulumi/issues/2470)
 
-## 0.16.15 (Released February 22nd, 2019)
+## 0.16.15 (2019-02-22)
 
 ### Improvements
 
@@ -349,7 +352,7 @@ Similarly, this only happens for properties.  Functions are not lifted.
   depend on a Component and have that automatically depend on all the child Resources created
   by that Component.
 
-## 0.16.14 (Released January 31st, 2019)
+## 0.16.14 (2019-01-31)
 
 ### Improvements
 
@@ -371,11 +374,11 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Individual resources may now be explicitly marked as requiring delete-before-replace behavior. This can be used e.g. to handle explicitly-named resources that may not be able to be replaced in the usual manner.
 
-## 0.16.13 (Released January 31st, 2019)
+## 0.16.13 (2019-01-31)
 
 ### Major Changes
 
-- When used in conjuction with the latest versions of the various language SDKs, the Pulumi CLI is now more precise about the dependent resources that must be deleted when a given resource must be deleted before it can be replaced (fixes [pulumi/pulumi#2167](https://github.com/pulumi/pulumi/issues/2167)).
+- When used in conjunction with the latest versions of the various language SDKs, the Pulumi CLI is now more precise about the dependent resources that must be deleted when a given resource must be deleted before it can be replaced (fixes [pulumi/pulumi#2167](https://github.com/pulumi/pulumi/issues/2167)).
 
 **NOTE**: As part of the above change, once a stack is updated with v0.16.13, previous versions of `pulumi` will be unable to manage it.
 
@@ -383,7 +386,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Issue a more prescriptive error when using StackReference and the name of the stack to reference is not of the form `<organization>/<project>/<stack>`.
 
-## 0.16.12 (Released January 25th, 2019)
+## 0.16.12 (2019-01-25)
 
 ### Major Changes
 
@@ -397,7 +400,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Changes to `pulumi new`'s output to improve the experience.
 
-## 0.16.11 (Released January 16th, 2019)
+## 0.16.11 (2019-01-16)
 
 ### Improvements
 
@@ -411,7 +414,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Python programs will no longer deadlock due to exceptions in functions run during applies.
 
-## 0.16.10 (Released January 11th, 2019)
+## 0.16.10 (2019-01-11)
 
 ### Improvements
 
@@ -425,7 +428,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Exporting a Resource from an application Stack now exports it as a rich recursive pojo instead of just being an opaque URN (fixes https://github.com/pulumi/pulumi/issues/1858).
 
-## 0.16.9 (Released December 24th, 2018)
+## 0.16.9 (2018-12-24)
 
 ### Improvements
 
@@ -437,15 +440,15 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - During previews and updates, read operations (i.e. calls to `.get` methods) are no longer shown in the output unless they cause any changes.
 
-- Fix a performance regression where `pulumi preview` and `pulumi up` would hang for a few moments at the end of a preview or update, in additon to the overall operation being slower.
+- Fix a performance regression where `pulumi preview` and `pulumi up` would hang for a few moments at the end of a preview or update, in addition to the overall operation being slower.
 
-## 0.16.8 (Released December 14th, 2018)
+## 0.16.8 (2018-12-14)
 
 ### Improvements
 
 - Fix an issue that caused panics due to shutting the Jaeger tracing infrastructure down before all traces had finished ([pulumi/pulumi#1850](https://github.com/pulumi/pulumi/issues/1850))
 
-## 0.16.7 (Released December 5th, 2018)
+## 0.16.7 (2018-12-05)
 
 ### Improvements
 
@@ -457,7 +460,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - The dynamic provider would fail to launch if your `node_modules` folder was non in the default location or had a non standard layout. This has been fixed so we correctly find your `node_modules` folder in the same way node does. (fixes [pulumi/pulumi#2261](https://github.com/pulumi/pulumi/issues/2261))
 
-## 0.16.6 (Released November 28th, 2018)
+## 0.16.6 (2018-11-28)
 
 ### Major Changes
 
@@ -485,13 +488,13 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 - Fix an issue where passing a key of the form `foo:config:bar:baz` to `pulumi config set` would succeed but cause errors later when trying to interact with the stack. Setting this value is now blocked eagerly (fixes [pulumi/pulumi#2171](https://github.com/pulumi/pulumi/issues/2171))
 
-## 0.16.5 (Released November 16th, 2018)
+## 0.16.5 (2018-11-16)
 
 ### Improvements
 
 - Fix an issue where `pulumi plugin install` would fail on Windows with an access deined message.
 
-## 0.16.4 (Released November 12th, 2018)
+## 0.16.4 (2018-11-12)
 
 ### Major Changes
 
