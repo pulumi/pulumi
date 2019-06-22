@@ -331,7 +331,6 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     const aliases = [];
     const uniqueAliases = new Set<string>();
     for (const alias of res.__aliases) {
-        console.log("Deduping aliases.");
         const aliasVal = await output(alias).promise();
         if (!uniqueAliases.has(aliasVal)) {
             uniqueAliases.add(aliasVal);
