@@ -28,8 +28,7 @@ build_package::
 		echo "warning: pandoc not found, generating empty README.rst"; \
 		echo "" > "$(PYENVSRC)/README.rst"; \
 	fi
-	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal --bdist-dir /tmp/bdisttmp
-#	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
+	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 
 build_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
