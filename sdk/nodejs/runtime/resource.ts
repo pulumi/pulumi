@@ -329,14 +329,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
     // simplifying aliases down to URNs.
     const aliases = [];
-    const uniqueAliases = new Set<string>();
     for (const alias of res.__aliases) {
-        console.log("Deduping aliases.");
-        const aliasVal = await output(alias).promise();
-        if (!uniqueAliases.has(aliasVal)) {
-            uniqueAliases.add(aliasVal);
-            aliases.push(aliasVal);
-        }
+        aliases.push(await output(alias).promise());
     }
 
     return {

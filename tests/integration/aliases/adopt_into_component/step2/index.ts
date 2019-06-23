@@ -55,3 +55,18 @@ class Component3 extends pulumi.ComponentResource {
 
 new Component3("parentedbystack");
 new Component3("parentedbycomponent", { parent: comp2 });
+
+// Scenario 5: Allow multiple aliases to the same resource.
+class Component4 extends pulumi.ComponentResource {
+    constructor(name: string, opts: pulumi.ComponentResourceOptions = {}) {
+        super("my:module:Component4", name, {}, {
+            aliases: [
+                { parent: pulumi.rootStackResource },
+                { parent: pulumi.rootStackResource },
+            ],
+            ...opts,
+        });
+    }
+}
+
+new Component4("duplicateAliases", { parent: comp2 });

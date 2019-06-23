@@ -105,7 +105,10 @@ func (snap *Snapshot) NormalizeURNReferences() {
 
 			// Add to aliased maps
 			for _, alias := range state.Aliases {
-				if otherUrn, has := aliased[alias]; has {
+				// For ease of implementation, some SDKs may end up creating the same alias to the
+				// same resource multiple times.  That's fine, only error if we see the same alias,
+				// but it maps to *different* resources.
+				if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
 					contract.Assertf(!has, "two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
 				}
 				aliased[alias] = state.URN
