@@ -541,3 +541,4 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 - Pulumi now uses compression when uploading your checkpoint file to the Pulumi service, which should speed up updates where your stack has many resources.
 
 - "First Class" providers used to be shown as changing during previews. This is no longer the case.
+
