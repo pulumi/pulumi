@@ -3,6 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 0.17.19 (2019-06-23)
+
+- Fixes crash that could occasionally happen if there were multiple identical aliases to the same
+  Resource.
+
 ## 0.17.18 (2019-06-20)
 
 - Allow setting backend URL explicitly in `Pulumi.yaml` file
@@ -541,4 +546,3 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 - Pulumi now uses compression when uploading your checkpoint file to the Pulumi service, which should speed up updates where your stack has many resources.
 
 - "First Class" providers used to be shown as changing during previews. This is no longer the case.
-
