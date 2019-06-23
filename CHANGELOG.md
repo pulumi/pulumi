@@ -3,10 +3,15 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 0.17.20 (2019-06-23)
+
+- SDK fix for crash that could occasionally happen if there were multiple identical aliases to the
+  same Resource.
+
 ## 0.17.19 (2019-06-23)
 
-- Fixes crash that could occasionally happen if there were multiple identical aliases to the same
-  Resource.
+- Engine fix for crash that could occasionally happen if there were multiple identical aliases to
+  the same Resource.
 
 ## 0.17.18 (2019-06-20)
 
