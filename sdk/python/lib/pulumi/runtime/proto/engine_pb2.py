@@ -241,39 +241,39 @@ DESCRIPTOR.message_types_by_name['SetRootResourceResponse'] = _SETROOTRESOURCERE
 DESCRIPTOR.enum_types_by_name['LogSeverity'] = _LOGSEVERITY
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-LogRequest = _reflection.GeneratedProtocolMessageType('LogRequest', (_message.Message,), {
-  'DESCRIPTOR' : _LOGREQUEST,
-  '__module__' : 'engine_pb2'
+LogRequest = _reflection.GeneratedProtocolMessageType('LogRequest', (_message.Message,), dict(
+  DESCRIPTOR = _LOGREQUEST,
+  __module__ = 'engine_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.LogRequest)
-  })
+  ))
 _sym_db.RegisterMessage(LogRequest)
 
-GetRootResourceRequest = _reflection.GeneratedProtocolMessageType('GetRootResourceRequest', (_message.Message,), {
-  'DESCRIPTOR' : _GETROOTRESOURCEREQUEST,
-  '__module__' : 'engine_pb2'
+GetRootResourceRequest = _reflection.GeneratedProtocolMessageType('GetRootResourceRequest', (_message.Message,), dict(
+  DESCRIPTOR = _GETROOTRESOURCEREQUEST,
+  __module__ = 'engine_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.GetRootResourceRequest)
-  })
+  ))
 _sym_db.RegisterMessage(GetRootResourceRequest)
 
-GetRootResourceResponse = _reflection.GeneratedProtocolMessageType('GetRootResourceResponse', (_message.Message,), {
-  'DESCRIPTOR' : _GETROOTRESOURCERESPONSE,
-  '__module__' : 'engine_pb2'
+GetRootResourceResponse = _reflection.GeneratedProtocolMessageType('GetRootResourceResponse', (_message.Message,), dict(
+  DESCRIPTOR = _GETROOTRESOURCERESPONSE,
+  __module__ = 'engine_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.GetRootResourceResponse)
-  })
+  ))
 _sym_db.RegisterMessage(GetRootResourceResponse)
 
-SetRootResourceRequest = _reflection.GeneratedProtocolMessageType('SetRootResourceRequest', (_message.Message,), {
-  'DESCRIPTOR' : _SETROOTRESOURCEREQUEST,
-  '__module__' : 'engine_pb2'
+SetRootResourceRequest = _reflection.GeneratedProtocolMessageType('SetRootResourceRequest', (_message.Message,), dict(
+  DESCRIPTOR = _SETROOTRESOURCEREQUEST,
+  __module__ = 'engine_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.SetRootResourceRequest)
-  })
+  ))
 _sym_db.RegisterMessage(SetRootResourceRequest)
 
-SetRootResourceResponse = _reflection.GeneratedProtocolMessageType('SetRootResourceResponse', (_message.Message,), {
-  'DESCRIPTOR' : _SETROOTRESOURCERESPONSE,
-  '__module__' : 'engine_pb2'
+SetRootResourceResponse = _reflection.GeneratedProtocolMessageType('SetRootResourceResponse', (_message.Message,), dict(
+  DESCRIPTOR = _SETROOTRESOURCERESPONSE,
+  __module__ = 'engine_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.SetRootResourceResponse)
-  })
+  ))
 _sym_db.RegisterMessage(SetRootResourceResponse)
 
 

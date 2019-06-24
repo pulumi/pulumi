@@ -66,11 +66,11 @@ _ERRORCAUSE = _descriptor.Descriptor(
 DESCRIPTOR.message_types_by_name['ErrorCause'] = _ERRORCAUSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-ErrorCause = _reflection.GeneratedProtocolMessageType('ErrorCause', (_message.Message,), {
-  'DESCRIPTOR' : _ERRORCAUSE,
-  '__module__' : 'errors_pb2'
+ErrorCause = _reflection.GeneratedProtocolMessageType('ErrorCause', (_message.Message,), dict(
+  DESCRIPTOR = _ERRORCAUSE,
+  __module__ = 'errors_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.ErrorCause)
-  })
+  ))
 _sym_db.RegisterMessage(ErrorCause)
 
 
