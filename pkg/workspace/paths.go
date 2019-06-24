@@ -48,6 +48,9 @@ const (
 	// WorkspaceDir is the name of the directory that holds workspace information for projects.
 	WorkspaceDir = "workspaces"
 
+	// IgnoreFile is the name of the file that we use to control what to upload to the service.
+	IgnoreFile = ".pulumiignore"
+
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
 	// RepoFile is the name of the file that holds information specific to the entire repository.
