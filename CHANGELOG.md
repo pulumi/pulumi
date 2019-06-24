@@ -5,6 +5,10 @@ CHANGELOG
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
 
+- Fix an issue where a secret would not be encrypted in the state file if it was
+  a property of a resource which was used as a stack output (fixes
+  [#2862](https://github.com/pulumi/pulumi/issues/2862))
+
 ## 0.17.20 (2019-06-23)
 
 - SDK fix for crash that could occasionally happen if there were multiple identical aliases to the
