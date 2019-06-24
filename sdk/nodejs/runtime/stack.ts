@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
-import { Inputs, Output, output } from "../output";
+import { Inputs, Output, output, secret } from "../output";
 import { ComponentResource, Resource } from "../resource";
 import { getRootResource, isQueryMode, setRootResource } from "./settings";
 
@@ -104,7 +104,17 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
     }
 
     if (Output.isInstance(prop)) {
-        return await massage(await prop.promise(), seenObjects);
+        // If the output itself is a secret, we don't want to lose the secretness by returning the underlying
+        // value. So instead, we massage the underlying value and then wrap it back up in an Output which is
+        // marked as secret.
+        const isSecret = await (prop.isSecret || Promise.resolve(false));
+        const value = await massage(await prop.promise(), seenObjects);
+
+        if (isSecret) {
+            return secret(value);
+        }
+
+        return value;
     }
 
     // from this point on, we have complex objects.  If we see them again, we don't want to emit

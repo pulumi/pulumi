@@ -960,3 +960,30 @@ func TestProviderSecretConfig(t *testing.T) {
 		Quick:        true,
 	})
 }
+
+func TestResourceWithSecretSerialization(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "secret_outputs",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// The program exports two resources, one named `withSecret` who's prefix property should be secret
+			// and one named `withoutSecret` which should not. We serialize both of the these as POJO objects, so
+			// they appear as maps in the output.
+			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			// The secret prop should have been serialized as a secret
+			secretPropValue, ok := withSecretProps["prefix"].(map[string]interface{})
+			assert.Truef(t, ok, "secret output was not serialized as a secret")
+			assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+
+			// And here, the prop was not set, it should just be a string value
+			_, isString := withoutSecretProps["prefix"].(string)
+			assert.Truef(t, isString, "non-secret output was not a string")
+		},
+	})
+}
