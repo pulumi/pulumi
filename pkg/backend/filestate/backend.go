@@ -198,6 +198,12 @@ func (b *localBackend) StateDir() string {
 	return workspace.BookkeepingDir
 }
 
+func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
+	d diag.Sink) (backend.PolicyPack, error) {
+
+	return nil, fmt.Errorf("File state backend does not support resource policy")
+}
+
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
 }
@@ -331,6 +337,14 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	}
 
 	return hist[0].Config, nil
+}
+
+func (b *localBackend) PackPolicies(
+	ctx context.Context, policyPackRef backend.PolicyPackReference,
+	cancellationScopes backend.CancellationScopeSource,
+	callerEventsOpt chan<- engine.Event) result.Result {
+
+	return result.Error("File state backend does not support resource policy")
 }
 
 func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackReference,
