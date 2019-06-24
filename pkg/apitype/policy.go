@@ -76,9 +76,9 @@ type Policy struct {
 type EnforcementLevel string
 
 const (
-	// Warning is an enforcement level where the resource is still created, but a
+	// Advisory is an enforcement level where the resource is still created, but a
 	// message is displayed to the user for informational / warning purposes.
-	Warning EnforcementLevel = "warning"
+	Advisory EnforcementLevel = "advisory"
 
 	// Mandatory is an enforcement level that prevents a resource from being created.
 	Mandatory EnforcementLevel = "mandatory"

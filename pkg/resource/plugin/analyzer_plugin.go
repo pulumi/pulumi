@@ -38,6 +38,8 @@ type analyzer struct {
 	client pulumirpc.AnalyzerClient
 }
 
+var _ Analyzer = (*analyzer)(nil)
+
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
@@ -100,16 +102,11 @@ func (a *analyzer) Analyze(
 
 	diags := []AnalyzeDiagnostic{}
 	for _, failure := range failures {
-		var enforcementLevel apitype.EnforcementLevel
-		switch failure.EnforcementLevel {
-		case pulumirpc.AnalyzeDiagnostic_WARNING:
-			enforcementLevel = apitype.Warning
-		case pulumirpc.AnalyzeDiagnostic_MANDATORY:
-			enforcementLevel = apitype.Mandatory
-
-		default:
-			return nil, fmt.Errorf("Invalid enforcement level %d", failure.EnforcementLevel)
+		enforcementLevel, err := convertEnforcementLevel(failure.EnforcementLevel)
+		if err != nil {
+			return nil, err
 		}
+
 		diags = append(diags, AnalyzeDiagnostic{
 			PolicyName:        failure.PolicyName,
 			PolicyPackName:    failure.PolicyPackName,
@@ -122,6 +119,40 @@ func (a *analyzer) Analyze(
 	}
 
 	return diags, nil
+}
+
+// GetPluginInfo returns this plugin's information.
+func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
+	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
+	logging.V(7).Infof("%s executing", label)
+	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
+		return AnalyzerInfo{}, rpcError
+	}
+
+	policies := []apitype.Policy{}
+	for _, p := range resp.GetPolicies() {
+		enforcementLevel, err := convertEnforcementLevel(p.EnforcementLevel)
+		if err != nil {
+			return AnalyzerInfo{}, err
+		}
+
+		policies = append(policies, apitype.Policy{
+			Name:             p.GetName(),
+			DisplayName:      p.GetDisplayName(),
+			Description:      p.GetDescription(),
+			EnforcementLevel: enforcementLevel,
+			Message:          p.GetMessage(),
+		})
+	}
+
+	return AnalyzerInfo{
+		Name:        resp.GetName(),
+		DisplayName: resp.GetDisplayName(),
+		Policies:    policies,
+	}, nil
 }
 
 // GetPluginInfo returns this plugin's information.
@@ -155,4 +186,16 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (a *analyzer) Close() error {
 	return a.plug.Close()
+}
+
+func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {
+	switch el {
+	case pulumirpc.EnforcementLevel_ADVISORY:
+		return apitype.Advisory, nil
+	case pulumirpc.EnforcementLevel_MANDATORY:
+		return apitype.Mandatory, nil
+
+	default:
+		return "", fmt.Errorf("Invalid enforcement level %d", el)
+	}
 }
