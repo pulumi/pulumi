@@ -112,18 +112,18 @@ DESCRIPTOR.message_types_by_name['PluginInfo'] = _PLUGININFO
 DESCRIPTOR.message_types_by_name['PluginDependency'] = _PLUGINDEPENDENCY
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-PluginInfo = _reflection.GeneratedProtocolMessageType('PluginInfo', (_message.Message,), {
-  'DESCRIPTOR' : _PLUGININFO,
-  '__module__' : 'plugin_pb2'
+PluginInfo = _reflection.GeneratedProtocolMessageType('PluginInfo', (_message.Message,), dict(
+  DESCRIPTOR = _PLUGININFO,
+  __module__ = 'plugin_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.PluginInfo)
-  })
+  ))
 _sym_db.RegisterMessage(PluginInfo)
 
-PluginDependency = _reflection.GeneratedProtocolMessageType('PluginDependency', (_message.Message,), {
-  'DESCRIPTOR' : _PLUGINDEPENDENCY,
-  '__module__' : 'plugin_pb2'
+PluginDependency = _reflection.GeneratedProtocolMessageType('PluginDependency', (_message.Message,), dict(
+  DESCRIPTOR = _PLUGINDEPENDENCY,
+  __module__ = 'plugin_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.PluginDependency)
-  })
+  ))
 _sym_db.RegisterMessage(PluginDependency)
 
 

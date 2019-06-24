@@ -282,40 +282,40 @@ DESCRIPTOR.message_types_by_name['RunRequest'] = _RUNREQUEST
 DESCRIPTOR.message_types_by_name['RunResponse'] = _RUNRESPONSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-GetRequiredPluginsRequest = _reflection.GeneratedProtocolMessageType('GetRequiredPluginsRequest', (_message.Message,), {
-  'DESCRIPTOR' : _GETREQUIREDPLUGINSREQUEST,
-  '__module__' : 'language_pb2'
+GetRequiredPluginsRequest = _reflection.GeneratedProtocolMessageType('GetRequiredPluginsRequest', (_message.Message,), dict(
+  DESCRIPTOR = _GETREQUIREDPLUGINSREQUEST,
+  __module__ = 'language_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.GetRequiredPluginsRequest)
-  })
+  ))
 _sym_db.RegisterMessage(GetRequiredPluginsRequest)
 
-GetRequiredPluginsResponse = _reflection.GeneratedProtocolMessageType('GetRequiredPluginsResponse', (_message.Message,), {
-  'DESCRIPTOR' : _GETREQUIREDPLUGINSRESPONSE,
-  '__module__' : 'language_pb2'
+GetRequiredPluginsResponse = _reflection.GeneratedProtocolMessageType('GetRequiredPluginsResponse', (_message.Message,), dict(
+  DESCRIPTOR = _GETREQUIREDPLUGINSRESPONSE,
+  __module__ = 'language_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.GetRequiredPluginsResponse)
-  })
+  ))
 _sym_db.RegisterMessage(GetRequiredPluginsResponse)
 
-RunRequest = _reflection.GeneratedProtocolMessageType('RunRequest', (_message.Message,), {
+RunRequest = _reflection.GeneratedProtocolMessageType('RunRequest', (_message.Message,), dict(
 
-  'ConfigEntry' : _reflection.GeneratedProtocolMessageType('ConfigEntry', (_message.Message,), {
-    'DESCRIPTOR' : _RUNREQUEST_CONFIGENTRY,
-    '__module__' : 'language_pb2'
+  ConfigEntry = _reflection.GeneratedProtocolMessageType('ConfigEntry', (_message.Message,), dict(
+    DESCRIPTOR = _RUNREQUEST_CONFIGENTRY,
+    __module__ = 'language_pb2'
     # @@protoc_insertion_point(class_scope:pulumirpc.RunRequest.ConfigEntry)
-    })
+    ))
   ,
-  'DESCRIPTOR' : _RUNREQUEST,
-  '__module__' : 'language_pb2'
+  DESCRIPTOR = _RUNREQUEST,
+  __module__ = 'language_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.RunRequest)
-  })
+  ))
 _sym_db.RegisterMessage(RunRequest)
 _sym_db.RegisterMessage(RunRequest.ConfigEntry)
 
-RunResponse = _reflection.GeneratedProtocolMessageType('RunResponse', (_message.Message,), {
-  'DESCRIPTOR' : _RUNRESPONSE,
-  '__module__' : 'language_pb2'
+RunResponse = _reflection.GeneratedProtocolMessageType('RunResponse', (_message.Message,), dict(
+  DESCRIPTOR = _RUNRESPONSE,
+  __module__ = 'language_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.RunResponse)
-  })
+  ))
 _sym_db.RegisterMessage(RunResponse)
 
 
