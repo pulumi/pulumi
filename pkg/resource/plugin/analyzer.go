@@ -33,6 +33,8 @@ type Analyzer interface {
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeDiagnostic, error)
+	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
+	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 }
@@ -47,4 +49,11 @@ type AnalyzeDiagnostic struct {
 	Message           string
 	Tags              []string
 	EnforcementLevel  apitype.EnforcementLevel
+}
+
+// AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
+type AnalyzerInfo struct {
+	Name        string
+	DisplayName string
+	Policies    []apitype.Policy
 }

@@ -252,7 +252,7 @@ func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
 	switch pePayload.EnforcementLevel {
 	case apitype.Mandatory:
 		payload.Severity = diag.Error
-	case apitype.Warning:
+	case apitype.Advisory:
 		payload.Severity = diag.Warning
 	default:
 		contract.Failf("Unknown enforcement level %q", pePayload.EnforcementLevel)
