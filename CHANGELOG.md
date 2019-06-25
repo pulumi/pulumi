@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
+
 ## 0.17.20 (2019-06-23)
 
 - SDK fix for crash that could occasionally happen if there were multiple identical aliases to the
