@@ -223,7 +223,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
     if had_secret:
         return {
             _special_sig_key: _special_secret_sig,
-            value: output
+            "value": output
         }
 
     return output
