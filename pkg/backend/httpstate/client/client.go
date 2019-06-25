@@ -512,7 +512,7 @@ func (pc *Client) RecordEngineEvents(
 		RetryAllMethods: true,
 	}
 	return pc.updateRESTCall(
-		ctx, "POST", getUpdatePath(update, "event-batch"),
+		ctx, "POST", getUpdatePath(update, "events/batch"),
 		nil, batch, nil,
 		updateAccessToken(token), callOpts)
 }

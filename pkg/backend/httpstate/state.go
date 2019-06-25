@@ -487,6 +487,11 @@ func isDebugDiagEvent(e engine.Event) bool {
 	return e.Type == engine.DiagEvent && (e.Payload.(engine.DiagEventPayload)).Severity == diag.Debug
 }
 
+type engineEventBatch struct {
+	sequenceStart int
+	events        []engine.Event
+}
+
 // persistEngineEvents reads from a channel of engine events and persists them on the
 // Pulumi Service. This is the data that powers the logs display.
 func persistEngineEvents(
@@ -494,14 +499,16 @@ func persistEngineEvents(
 	events <-chan engine.Event, done chan<- bool) {
 	// A single update can emit hundreds, if not thousands, or tens of thousands of
 	// engine events. We transmit engine events in large batches to reduce the overhead
-	// associated with each HTTP request to the service. We also don't block on any
-	// individual HTTP request, sending as many concurrent requests as needed, to avoid
-	// slowing down the update.
+	// associated with each HTTP request to the service. We also send multiple HTTP
+	// requests concurrently, as to not block processing subsequent engine events.
 
 	// Maximum number of events to batch up before transmitting.
 	const maxEventsToTransmit = 50
 	// Maximum wait time before sending all batched events.
 	const maxTransmissionDelay = 4 * time.Second
+	// Maximum number of concurrent requests to the Pulumi Service to persist
+	// engine events.
+	const maxConcurrentRequests = 3
 
 	// We don't want to indicate that we are done processing every engine event in the
 	// provided channel until every HTTP request has completed. We use a wait group to
@@ -521,26 +528,49 @@ func persistEngineEvents(
 	// out of order from parallel writes and/or network delays.)
 	eventIdx := 0
 
-	// transmitBatch sends off a batch of engine events to be persisted. Will mutate the eventIdx
-	// and eventBatch values.
+	// As we identify batches of engine events to transmit, we put them into a channel.
+	// This will allow us to issue HTTP requests concurrently, but also limit the maximum
+	// number of requests in-flight at any one time.
+	//
+	// This channel isn't buffered, so adding a new batch of events to persist will block
+	// until a go-routine is available to send the batch.
+	batchesToTransmit := make(chan engineEventBatch)
+
+	transmitBatchLoop := func() {
+		wg.Add(1)
+		defer wg.Done()
+
+		for eventBatch := range batchesToTransmit {
+			err := update.recordEngineEvents(eventBatch.sequenceStart, eventBatch.events)
+			if err != nil {
+				glog.V(3).Infof("error recording engine events: %s", err)
+			}
+		}
+	}
+	// Start N different go-routines which will all pull from the batchesToTransmit channel
+	// and persist those engine events until the channel is closed.
+	for i := 0; i < maxConcurrentRequests; i++ {
+		go transmitBatchLoop()
+	}
+
+	// transmitBatch sends off the current batch of engine events (eventIdx, eventBatch) to the
+	// batchesToTransmit channel. Will mutate eventIdx, eventBatch as a side effect.
 	transmitBatch := func() {
 		if len(eventBatch) == 0 {
 			return
 		}
 
-		wg.Add(1)
-		go func(startEventIdx int, eventsToRecord []engine.Event) {
-			defer wg.Done()
-			err := update.recordEngineEvents(startEventIdx, eventsToRecord)
-			if err != nil {
-				glog.V(3).Infof("error recording engine events: %s", err)
-			}
-		}(eventIdx, eventBatch)
+		batch := engineEventBatch{
+			sequenceStart: eventIdx,
+			events:        eventBatch,
+		}
+		// This will block until one of the spawned go-routines is available to read the data.
+		// Effectively providing a global rate limit for how quickly we can send data to the
+		// Pulumi Service, if an update is particularly chatty.
+		batchesToTransmit <- batch
 
-		// With the values of eventIdx and eventBatch copied as params
-		// into the Goroutine that will start the actual HTTP request,
-		// we now modify their values for the next time transmitBatch
-		// is called.
+		// With the values of eventIdx and eventBatch copied into engineEventBatch,
+		// we now modify their values for the next time transmitBatch is called.
 		eventIdx += len(eventBatch)
 		eventBatch = nil
 	}
@@ -576,7 +606,11 @@ func persistEngineEvents(
 		}
 	}
 
-	// Transmit any lingering events. The defer'd function will wait for any
-	// outstanding HTTP requests and close the done channel.
+	// Transmit any lingering events.
 	transmitBatch()
+	// Closing the batchesToTransmit channel will signal the worker persistence routines to
+	// terminate, which will trigger the `wg` WaitGroup to be marked as complete, which will
+	// finally close the `done` channel so the caller knows we are finished processing the
+	// engine event stream.
+	close(batchesToTransmit)
 }

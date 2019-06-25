@@ -153,6 +153,9 @@ type ProgramTestOptions struct {
 	ExpectRefreshChanges bool
 	// SkipRefresh indicates that the refresh step should be skipped entirely.
 	SkipRefresh bool
+	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
+	// in the Pulumi Service after the test has completed.)
+	SkipStackRemoval bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
@@ -330,6 +333,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.SkipRefresh {
 		opts.SkipRefresh = overrides.SkipRefresh
+	}
+	if overrides.SkipStackRemoval {
+		opts.SkipStackRemoval = overrides.SkipStackRemoval
 	}
 	if overrides.AllowEmptyPreviewChanges {
 		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
@@ -832,7 +838,10 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return nil
 	}
 
-	return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
+	if !pt.opts.SkipStackRemoval {
+		return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
+	}
+	return nil
 }
 
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
