@@ -53,6 +53,8 @@
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
         "cmd/run/run.ts",
+        "cmd/run-policy-pack/index.ts",
+        "cmd/run-policy-pack/run.ts",
 
         "tests/config.spec.ts",
         "tests/init.spec.ts",
