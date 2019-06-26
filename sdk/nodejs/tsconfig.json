@@ -21,6 +21,7 @@
         "errors.ts",
         "metadata.ts",
         "output.ts",
+        "none.ts",
         "resource.ts",
         "stackReference.ts",
         "utils.ts",
