@@ -55,7 +55,8 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 		})
 	}
 
-	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (analyzer)", name), []string{host.ServerAddr()})
+	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (analyzer)", name),
+		[]string{host.ServerAddr(), ctx.Pwd})
 	if err != nil {
 		return nil, err
 	}
