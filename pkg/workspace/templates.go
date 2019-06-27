@@ -152,8 +152,8 @@ func IsTemplateURL(templateNamePathOrURL string) bool {
 
 // isTemplateFileOrDirectory returns true if templateNamePathOrURL is the name of a valid file or directory.
 func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
-    _, err := os.Stat(templateNamePathOrURL)
-    return err == nil
+	_, err := os.Stat(templateNamePathOrURL)
+	return err == nil
 }
 
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
