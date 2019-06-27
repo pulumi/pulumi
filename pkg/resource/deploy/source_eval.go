@@ -17,7 +17,6 @@ package deploy
 import (
 	"context"
 	"fmt"
-
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -675,6 +674,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	deleteBeforeReplace := req.GetDeleteBeforeReplace()
 	ignoreChanges := req.GetIgnoreChanges()
 	id := resource.ID(req.GetImportId())
+	customTimeouts := req.GetCustomTimeouts()
 	var t tokens.Type
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -748,15 +748,32 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}
 
+	var timeouts resource.CustomTimeouts
+	if customTimeouts != nil {
+
+		if customTimeouts.Create != 0 {
+			timeouts.Create = customTimeouts.Create
+		}
+
+		if customTimeouts.Delete != 0 {
+			timeouts.Delete = customTimeouts.Delete
+		}
+
+		if customTimeouts.Update != 0 {
+			timeouts.Update = customTimeouts.Update
+		}
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
-			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v",
-		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace, ignoreChanges)
+			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v",
+		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace, ignoreChanges,
+		aliases, customTimeouts)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs, aliases, id),
+			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs, aliases, id, &timeouts),
 		done: make(chan *RegisterResult),
 	}
 

@@ -16,7 +16,6 @@ package deploytest
 
 import (
 	"context"
-
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -69,8 +68,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		timeouts.Delete = customTimeouts.Delete
 	}
 
-	// submit request
-	resp, err := rm.resmon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
+	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                 string(t),
 		Name:                 name,
 		Custom:               custom,
@@ -86,11 +84,13 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Aliases:              aliasStrings,
 		ImportId:             string(importID),
 		CustomTimeouts:		  &timeouts,
-	})
+	}
+
+	// submit request
+	resp, err := rm.resmon.RegisterResource(context.Background(), requestInput)
 	if err != nil {
 		return "", "", nil, err
 	}
-
 	// unmarshal outputs
 	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
