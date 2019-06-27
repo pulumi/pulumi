@@ -1,4 +1,4 @@
-<a href="https://pulumi.io" title="Pulumi Cloud Development Platform - AWS Azure Kubernetes Containers Serverless"><img src="https://pulumi.io/images/logo/logo.svg" width="350"></a>
+<a href="https://pulumi.io" title="Pulumi - Modern Infrastructure as Code - AWS Azure Kubernetes Containers Serverless"><img src="https://pulumi.io/images/logo/logo.svg" width="350"></a>
 
 [![Slack](https://pulumi.io/images/badges/slack.svg)](https://slack.pulumi.io)
 [![NPM version](https://badge.fury.io/js/%40pulumi%2Fpulumi.svg)](https://npmjs.com/package/@pulumi/pulumi)
@@ -6,7 +6,7 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-**Pulumi's Cloud Native SDK** is the easiest way to create and deploy cloud programs that use
+**Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that use
 containers, serverless functions, hosted services, and infrastructure, on any cloud.
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your
