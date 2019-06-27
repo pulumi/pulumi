@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"runtime"
 	"strings"
 
@@ -287,8 +288,17 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 	}
 
 	if respObj != nil {
-		if err = json.Unmarshal(respBody, respObj); err != nil {
-			return errors.Wrapf(err, "unmarshalling response object")
+		bytes := reflect.TypeOf([]byte(nil))
+		if typ := reflect.TypeOf(respObj); typ == reflect.PtrTo(bytes) {
+			// Return the raw bytes of the response body.
+			*respObj.(*[]byte) = append([]byte(nil), respBody...)
+		} else if typ == bytes {
+			return fmt.Errorf("Can't unmarshal response body to []byte. Try *[]byte")
+		} else {
+			// Else, unmarshal as JSON.
+			if err = json.Unmarshal(respBody, respObj); err != nil {
+				return errors.Wrapf(err, "unmarshalling response object")
+			}
 		}
 	}
 
