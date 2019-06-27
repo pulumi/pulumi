@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- `pulumi new` allows specifying a local path to templates (resolves
+   [#2672](https://github.com/pulumi/pulumi/issues/2672))
+
 ## 0.17.21 (2019-06-26)
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
