@@ -37,6 +37,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54
 	github.com/russross/blackfriday v1.5.2 // indirect
+	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.0.0
 	github.com/sirupsen/logrus v1.3.0 // indirect
