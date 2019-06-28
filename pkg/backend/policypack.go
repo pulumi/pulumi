@@ -28,6 +28,12 @@ type PublishOperation struct {
 	Scopes  CancellationScopeSource
 }
 
+// ApplyOperation publishes a PolicyPack to the backend.
+type ApplyOperation struct {
+	Version int
+	Scopes  CancellationScopeSource
+}
+
 // PolicyPack is a set of policies associated with a particular backend implementation.
 type PolicyPack interface {
 	// Ref returns a reference to this PolicyPack.
@@ -36,4 +42,6 @@ type PolicyPack interface {
 	Backend() Backend
 	// Publish the PolicyPack to the service.
 	Publish(ctx context.Context, op PublishOperation) result.Result
+	// Apply the PolicyPack to an organization.
+	Apply(ctx context.Context, op ApplyOperation) error
 }
