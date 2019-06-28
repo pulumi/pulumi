@@ -334,12 +334,12 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 	for _, v := range md.Diffs {
 		diffs = append(diffs, string(v))
 	}
-	var detailedDiff map[string]apitype.DiffKind
+	var detailedDiff map[string]apitype.PropertyDiff
 	if md.DetailedDiff != nil {
-		detailedDiff = make(map[string]apitype.DiffKind)
+		detailedDiff = make(map[string]apitype.PropertyDiff)
 		for k, v := range md.DetailedDiff {
 			var d apitype.DiffKind
-			switch v {
+			switch v.Kind {
 			case plugin.DiffAdd:
 				d = apitype.DiffAdd
 			case plugin.DiffAddReplace:
@@ -355,7 +355,10 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 			default:
 				contract.Failf("unrecognized diff kind %v", v)
 			}
-			detailedDiff[k] = d
+			detailedDiff[k] = apitype.PropertyDiff{
+				Kind:      d,
+				InputDiff: v.InputDiff,
+			}
 		}
 	}
 

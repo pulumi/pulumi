@@ -117,17 +117,17 @@ type ResourcePreEventPayload struct {
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
 type StepEventMetadata struct {
-	Op           deploy.StepOp              // the operation performed by this step.
-	URN          resource.URN               // the resource URN (for before and after).
-	Type         tokens.Type                // the type affected by this step.
-	Old          *StepEventStateMetadata    // the state of the resource before performing this step.
-	New          *StepEventStateMetadata    // the state of the resource after performing this step.
-	Res          *StepEventStateMetadata    // the latest state for the resource that is known (worst case, old).
-	Keys         []resource.PropertyKey     // the keys causing replacement (only for CreateStep and ReplaceStep).
-	Diffs        []resource.PropertyKey     // the keys causing diffs
-	DetailedDiff map[string]plugin.DiffKind // the rich, structured diff
-	Logical      bool                       // true if this step represents a logical operation in the program.
-	Provider     string                     // the provider that performed this step.
+	Op           deploy.StepOp                  // the operation performed by this step.
+	URN          resource.URN                   // the resource URN (for before and after).
+	Type         tokens.Type                    // the type affected by this step.
+	Old          *StepEventStateMetadata        // the state of the resource before performing this step.
+	New          *StepEventStateMetadata        // the state of the resource after performing this step.
+	Res          *StepEventStateMetadata        // the latest state for the resource that is known (worst case, old).
+	Keys         []resource.PropertyKey         // the keys causing replacement (only for CreateStep and ReplaceStep).
+	Diffs        []resource.PropertyKey         // the keys causing diffs
+	DetailedDiff map[string]plugin.PropertyDiff // the rich, structured diff
+	Logical      bool                           // true if this step represents a logical operation in the program.
+	Provider     string                         // the provider that performed this step.
 }
 
 // StepEventStateMetadata contains detailed metadata about a resource's state pertaining to a given step.
@@ -207,9 +207,9 @@ func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepE
 		diffs = differ.Diffs()
 	}
 
-	var detailedDiff map[string]plugin.DiffKind
+	var detailedDiff map[string]plugin.PropertyDiff
 	if detailedDiffer, hasDetailedDiff := step.(interface {
-		DetailedDiff() map[string]plugin.DiffKind
+		DetailedDiff() map[string]plugin.PropertyDiff
 	}); hasDetailedDiff {
 		detailedDiff = detailedDiffer.DetailedDiff()
 	}

@@ -94,6 +94,14 @@ const (
 	DiffUpdateReplace DiffKind = "update-replace"
 )
 
+// PropertyDiff describes the difference between a single property's old and new values.
+type PropertyDiff struct {
+	// Kind is the kind of difference.
+	Kind DiffKind `json:"diffKind"`
+	// InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
+	InputDiff bool `json:"inputDiff"`
+}
+
 // StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
 // to migrate a set of cloud resources from one state to another.
 type StepEventMetadata struct {
@@ -113,7 +121,7 @@ type StepEventMetadata struct {
 	// Keys that changed with this step.
 	Diffs []string `json:"diffs,omitempty"`
 	// The diff for this step as a list of property paths and difference types.
-	DetailedDiff map[string]DiffKind `json:"detailedDiff,omitempty"`
+	DetailedDiff map[string]PropertyDiff `json:"detailedDiff,omitempty"`
 	// Logical is set if the step is a logical operation in the program.
 	Logical bool `json:"logical,omitempty"`
 	// Provider actually performing the step.

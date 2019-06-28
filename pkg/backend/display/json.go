@@ -134,11 +134,14 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 			// Create the detailed metadata for this step and the initial state of its resource. Later,
 			// if new outputs arrive, we'll search for and swap in those new values.
 			if m := e.Payload.(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
-				var detailedDiff map[string]string
+				var detailedDiff map[string]propertyDiff
 				if m.DetailedDiff != nil {
-					detailedDiff = make(map[string]string)
+					detailedDiff = make(map[string]propertyDiff)
 					for k, v := range m.DetailedDiff {
-						detailedDiff[k] = v.String()
+						detailedDiff[k] = propertyDiff{
+							Kind:      v.Kind.String(),
+							InputDiff: v.InputDiff,
+						}
 					}
 				}
 
@@ -214,6 +217,14 @@ type previewDigest struct {
 	MaybeCorrupt bool `json:"maybeCorrupt,omitempty"`
 }
 
+// propertyDiff contains information about the difference in a single property value.
+type propertyDiff struct {
+	// Kind is the kind of difference.
+	Kind string `json:"kind"`
+	// InputDiff is true if this is a difference between old and new inputs instead of old state and new inputs.
+	InputDiff bool `json:"inputDiff"`
+}
+
 // previewStep is a detailed overview of a step the engine intends to take.
 type previewStep struct {
 	// Op is the kind of operation being performed.
@@ -231,7 +242,7 @@ type previewStep struct {
 	// ReplaceReasons is a list of keys that are causing replacement (for replacement steps only).
 	ReplaceReasons []resource.PropertyKey `json:"replaceReasons,omitempty"`
 	// DetailedDiff is a structured diff that indicates precise per-property differences.
-	DetailedDiff map[string]string `json:"detailedDiff"`
+	DetailedDiff map[string]propertyDiff `json:"detailedDiff"`
 }
 
 // previewDiagnostic is a warning or error emitted during the execution of the preview.

@@ -115,6 +115,7 @@ message DiffRequest {
 
 message PropertyDiff {
     Kind kind = 1; // The kind of diff asdsociated with this property.
+    bool inputDiff = 2; // The difference is between old and new inputs, not old and new state.
 
     enum Kind {
         ADD = 0;            // this property was added

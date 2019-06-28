@@ -2101,7 +2101,8 @@ proto.pulumirpc.PropertyDiff.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.PropertyDiff.toObject = function(includeInstance, msg) {
   var f, obj = {
-    kind: jspb.Message.getFieldWithDefault(msg, 1, 0)
+    kind: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    inputdiff: jspb.Message.getFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -2142,6 +2143,10 @@ proto.pulumirpc.PropertyDiff.deserializeBinaryFromReader = function(msg, reader)
       var value = /** @type {!proto.pulumirpc.PropertyDiff.Kind} */ (reader.readEnum());
       msg.setKind(value);
       break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setInputdiff(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2178,6 +2183,13 @@ proto.pulumirpc.PropertyDiff.serializeBinaryToWriter = function(message, writer)
       f
     );
   }
+  f = message.getInputdiff();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -2205,6 +2217,23 @@ proto.pulumirpc.PropertyDiff.prototype.getKind = function() {
 /** @param {!proto.pulumirpc.PropertyDiff.Kind} value */
 proto.pulumirpc.PropertyDiff.prototype.setKind = function(value) {
   jspb.Message.setProto3EnumField(this, 1, value);
+};
+
+
+/**
+ * optional bool inputDiff = 2;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.PropertyDiff.prototype.getInputdiff = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 2, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.PropertyDiff.prototype.setInputdiff = function(value) {
+  jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
 

@@ -84,16 +84,17 @@ func TestParseDiffPath(t *testing.T) {
 }
 
 func TestTranslateDetailedDiff(t *testing.T) {
-	const (
-		A = plugin.DiffAdd
-		D = plugin.DiffDelete
-		U = plugin.DiffUpdate
+	var (
+		A = plugin.PropertyDiff{Kind: plugin.DiffAdd}
+		D = plugin.PropertyDiff{Kind: plugin.DiffDelete}
+		U = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	)
 
 	cases := []struct {
 		state        map[string]interface{}
+		oldInputs    map[string]interface{}
 		inputs       map[string]interface{}
-		detailedDiff map[string]plugin.DiffKind
+		detailedDiff map[string]plugin.PropertyDiff
 		expected     *resource.ObjectDiff
 	}{
 		{
@@ -103,7 +104,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]interface{}{
 				"foo": 24,
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -125,7 +126,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]interface{}{
 				"foo": 42,
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -149,7 +150,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"foo": 24,
 				"bar": "hello",
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -173,7 +174,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"foo": 24,
 				"bar": "world",
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -193,7 +194,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]interface{}{
 				"foo": 24,
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": A,
 			},
 			expected: &resource.ObjectDiff{
@@ -210,13 +211,36 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"foo": 24,
 			},
 			inputs: map[string]interface{}{},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo": D,
 			},
 			expected: &resource.ObjectDiff{
 				Adds: resource.PropertyMap{},
 				Deletes: resource.PropertyMap{
 					"foo": resource.NewNumberProperty(24),
+				},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{},
+			},
+		},
+		{
+			state: map[string]interface{}{
+				"foo": 24,
+			},
+			oldInputs: map[string]interface{}{
+				"foo": 42,
+			},
+			inputs: map[string]interface{}{},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo": {
+					Kind:      plugin.DiffDelete,
+					InputDiff: true,
+				},
+			},
+			expected: &resource.ObjectDiff{
+				Adds: resource.PropertyMap{},
+				Deletes: resource.PropertyMap{
+					"foo": resource.NewNumberProperty(42),
 				},
 				Sames:   resource.PropertyMap{},
 				Updates: map[resource.PropertyKey]resource.ValueDiff{},
@@ -235,7 +259,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[1]": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -271,7 +295,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"baz",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[1]": A,
 			},
 			expected: &resource.ObjectDiff{
@@ -304,7 +328,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"bar",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[1]": D,
 			},
 			expected: &resource.ObjectDiff{
@@ -338,7 +362,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[100]": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -375,7 +399,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[100][200]": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -419,7 +443,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]interface{}{
 				"foo": []interface{}{},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[0].baz": D,
 			},
 			expected: &resource.ObjectDiff{
@@ -455,7 +479,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo.qux": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -491,7 +515,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo.qux": A,
 			},
 			expected: &resource.ObjectDiff{
@@ -524,7 +548,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"bar": "baz",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo.qux": D,
 			},
 			expected: &resource.ObjectDiff{
@@ -558,7 +582,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo.missing": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -595,7 +619,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo.nested.missing": U,
 			},
 			expected: &resource.ObjectDiff{
@@ -639,7 +663,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]interface{}{
 				"foo": []interface{}{},
 			},
-			detailedDiff: map[string]plugin.DiffKind{
+			detailedDiff: map[string]plugin.PropertyDiff{
 				"foo[0].baz": D,
 			},
 			expected: &resource.ObjectDiff{
@@ -665,10 +689,11 @@ func TestTranslateDetailedDiff(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		oldInputs := resource.NewPropertyMapFromMap(c.oldInputs)
 		state := resource.NewPropertyMapFromMap(c.state)
 		inputs := resource.NewPropertyMapFromMap(c.inputs)
 		diff := translateDetailedDiff(engine.StepEventMetadata{
-			Old:          &engine.StepEventStateMetadata{Outputs: state},
+			Old:          &engine.StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
 			New:          &engine.StepEventStateMetadata{Inputs: inputs},
 			DetailedDiff: c.detailedDiff,
 		})

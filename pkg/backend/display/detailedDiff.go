@@ -208,12 +208,15 @@ func translateDetailedDiff(step engine.StepEventMetadata) *resource.ObjectDiff {
 	// values are always taken from a step's Outputs; new values are always taken from its Inputs.
 
 	var diff resource.ValueDiff
-	for path, kind := range step.DetailedDiff {
+	for path, pdiff := range step.DetailedDiff {
 		elements, err := parseDiffPath(path)
 		contract.Assert(err == nil)
 
-		addDiff(elements, kind, &diff, resource.NewObjectProperty(step.Old.Outputs),
-			resource.NewObjectProperty(step.New.Inputs))
+		olds := resource.NewObjectProperty(step.Old.Outputs)
+		if pdiff.InputDiff {
+			olds = resource.NewObjectProperty(step.Old.Inputs)
+		}
+		addDiff(elements, pdiff.Kind, &diff, olds, resource.NewObjectProperty(step.New.Inputs))
 	}
 
 	return diff.Object

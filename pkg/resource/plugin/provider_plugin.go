@@ -202,15 +202,15 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	return inputs, failures, nil
 }
 
-func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]DiffKind {
+func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 	if !resp.GetHasDetailedDiff() {
 		return nil
 	}
 
-	detailedDiff := make(map[string]DiffKind)
+	detailedDiff := make(map[string]PropertyDiff)
 	for k, v := range resp.GetDetailedDiff() {
 		var d DiffKind
-		switch v.Kind {
+		switch v.GetKind() {
 		case pulumirpc.PropertyDiff_ADD:
 			d = DiffAdd
 		case pulumirpc.PropertyDiff_ADD_REPLACE:
@@ -227,7 +227,10 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]DiffKind {
 			// Consider unknown diff kinds to be simple updates.
 			d = DiffUpdate
 		}
-		detailedDiff[k] = d
+		detailedDiff[k] = PropertyDiff{
+			Kind:      d,
+			InputDiff: v.GetInputDiff(),
+		}
 	}
 
 	return detailedDiff

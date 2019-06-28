@@ -3550,8 +3550,8 @@ func TestDetailedDiffReplace(t *testing.T) {
 
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.DiffKind{
-							"prop": plugin.DiffAddReplace,
+						DetailedDiff: map[string]plugin.PropertyDiff{
+							"prop": {Kind: plugin.DiffAddReplace},
 						},
 					}, nil
 				},

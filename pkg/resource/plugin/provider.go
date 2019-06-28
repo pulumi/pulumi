@@ -144,20 +144,26 @@ const (
 	DiffUpdateReplace DiffKind = 5
 )
 
+// PropertyDiff records the difference between a single property's old and new values.
+type PropertyDiff struct {
+	Kind      DiffKind // The kind of diff.
+	InputDiff bool     // True if this is a diff between old and new inputs rather than old state and new inputs.
+}
+
 // DiffResult indicates whether an operation should replace or update an existing resource.
 type DiffResult struct {
-	Changes             DiffChanges            // true if this diff represents a changed resource.
-	ReplaceKeys         []resource.PropertyKey // an optional list of replacement keys.
-	StableKeys          []resource.PropertyKey // an optional list of property keys that are stable.
-	ChangedKeys         []resource.PropertyKey // an optional list of keys that changed.
-	DetailedDiff        map[string]DiffKind    // an optional structured diff
-	DeleteBeforeReplace bool                   // if true, this resource must be deleted before recreating it.
+	Changes             DiffChanges             // true if this diff represents a changed resource.
+	ReplaceKeys         []resource.PropertyKey  // an optional list of replacement keys.
+	StableKeys          []resource.PropertyKey  // an optional list of property keys that are stable.
+	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
+	DetailedDiff        map[string]PropertyDiff // an optional structured diff
+	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
 }
 
 // Replace returns true if this diff represents a replacement.
 func (r DiffResult) Replace() bool {
 	for _, v := range r.DetailedDiff {
-		if v.IsReplace() {
+		if v.Kind.IsReplace() {
 			return true
 		}
 	}
