@@ -15,6 +15,8 @@
 package workspace
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,4 +73,66 @@ func getValidProjectNamePrefixes() []string {
 	results = append(results, "_")
 	results = append(results, ".")
 	return results
+}
+
+func TestRetrieveNonExistingTemplate(t *testing.T) {
+	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
+	_, err := RetrieveTemplates(templateName, false)
+	assert.NotNil(t, err)
+}
+
+func TestRetrieveStandardTemplate(t *testing.T) {
+	templateName := "typescript"
+	repository, err := RetrieveTemplates(templateName, false)
+	assert.Nil(t, err)
+	assert.Equal(t, false, repository.ShouldDelete)
+
+	// Root should point to Pulumi templates directory (e.g. ~/.pulumi/templates)
+	templateDir, _ := GetTemplateDir()
+	assert.Equal(t, templateDir, repository.Root)
+
+	// SubDirectory should be a direct subfolder of Root with the name of the template
+	expectedPath := filepath.Join(repository.Root, templateName)
+	assert.Equal(t, expectedPath, repository.SubDirectory)
+}
+
+func TestRetrieveHttpsTemplate(t *testing.T) {
+	templateUrl := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
+	repository, err := RetrieveTemplates(templateUrl, false)
+	assert.Nil(t, err)
+	assert.Equal(t, true, repository.ShouldDelete)
+
+	// Root should point to a subfolder of a Temp Dir
+	tempDir := os.TempDir()
+	pattern := filepath.Join(tempDir, "*")
+	matched, _ := filepath.Match(pattern, repository.Root)
+	assert.True(t, matched)
+
+	// SubDirectory follows the path of the template in the Git repo
+	expectedPath := filepath.Join(repository.Root, "examples", "minimal")
+	assert.Equal(t, expectedPath, repository.SubDirectory)
+
+	// SubDirectory should exist and contain the template files
+	yamlPath := filepath.Join(repository.SubDirectory, "Pulumi.yaml")
+	_, err = os.Stat(yamlPath)
+	assert.Nil(t, err)
+
+	// Clean Up
+	repository.Delete()
+}
+
+func TestRetrieveHttpsTemplateOffline(t *testing.T) {
+	templateUrl := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
+	_, err := RetrieveTemplates(templateUrl, true)
+	assert.NotNil(t, err)
+}
+
+func TestRetrieveFileTemplate(t *testing.T) {
+	repository, err := RetrieveTemplates(".", false)
+	assert.Nil(t, err)
+	assert.Equal(t, false, repository.ShouldDelete)
+
+	// Both Root and SubDirectory just point to the (existing) specified folder
+	assert.Equal(t, ".", repository.Root)
+	assert.Equal(t, ".", repository.SubDirectory)
 }
