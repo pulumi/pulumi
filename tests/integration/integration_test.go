@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	// "time"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -958,5 +957,20 @@ func TestProviderSecretConfig(t *testing.T) {
 		Dir:          "provider_secret_config",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+	})
+}
+
+// Tests dynamic provider in Python.
+func TestDynamicPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:         true,
+		Verbose:       true,
+		DebugLogLevel: 8,
+		// DebugUpdates:  true,
+		Bin: "/opt/pulumi/bin/pulumi",
 	})
 }

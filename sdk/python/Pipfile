@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 protobuf = ">=3.6.0"
 grpcio = ">=1.9.1"
+cloudpickle = ">=1.2.1"
 
 [dev-packages]
 pylint = ">=2.1"

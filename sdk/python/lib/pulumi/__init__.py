@@ -19,7 +19,7 @@ resources.
 """
 
 # Make subpackages available.
-__all__ = ['runtime']
+__all__ = ['runtime', 'dynamic']
 
 # Make all module members inside of this package available as package members.
 from .asset import (
