@@ -97,8 +97,8 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 }
 
 func TestRetrieveHttpsTemplate(t *testing.T) {
-	templateUrl := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
-	repository, err := RetrieveTemplates(templateUrl, false)
+	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
+	repository, err := RetrieveTemplates(templateURL, false)
 	assert.Nil(t, err)
 	assert.Equal(t, true, repository.ShouldDelete)
 
@@ -118,12 +118,13 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Clean Up
-	repository.Delete()
+	err = repository.Delete()
+	assert.Nil(t, err)
 }
 
 func TestRetrieveHttpsTemplateOffline(t *testing.T) {
-	templateUrl := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
-	_, err := RetrieveTemplates(templateUrl, true)
+	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
+	_, err := RetrieveTemplates(templateURL, true)
 	assert.NotNil(t, err)
 }
 
