@@ -1,0 +1,124 @@
+{
+    "rules": {
+        "align": [
+            true,
+            "parameters",
+            "statements"
+        ],
+        "ban": false,
+        "class-name": true,
+        "comment-format": [
+            true,
+            "check-space"
+        ],
+        "curly": true,
+        "eofline": true,
+        "file-header": [
+            true,
+            "Copyright \\d{4}-\\d{4}, Pulumi Corporation."
+        ],
+        "forin": true,
+        "indent": [
+            true,
+            "spaces"
+        ],
+        "interface-name": false,
+        "jsdoc-format": false,
+        "label-position": true,
+        "member-access": false,
+        "member-ordering": [
+            true,
+            "static-before-instance",
+            "variables-before-functions"
+        ],
+        "no-any": false,
+        "no-arg": true,
+        "no-bitwise": false,
+        "no-conditional-assignment": false,
+        "no-consecutive-blank-lines": false,
+        "no-console": [
+            true,
+            "debug",
+            "info",
+            "time",
+            "timeEnd",
+            "trace"
+        ],
+        "no-construct": true,
+        "no-debugger": true,
+        "no-duplicate-variable": true,
+        "no-empty": true,
+        "no-eval": true,
+        "no-inferrable-types": false,
+        "no-internal-module": true,
+        "no-parameter-properties": false,
+        "no-require-imports": false,
+        "no-shadowed-variable": true,
+        "no-string-literal": false,
+        "no-switch-case-fall-through": true,
+        "no-trailing-whitespace": true,
+        "no-unused-expression": true,
+        "no-use-before-declare": false,
+        "no-var-keyword": true,
+        "no-var-requires": false,
+        "object-literal-sort-keys": false,
+        "one-line": [
+            true,
+            "check-open-brace",
+            "check-whitespace"
+        ],
+        "ordered-imports": true,
+        "prefer-const": true,
+        "quotemark": [
+            true,
+            "double",
+            "avoid-escape"
+        ],
+        "radix": true,
+        "semicolon": true,
+        "switch-default": true,
+        "trailing-comma": [
+            true,
+            {
+                "multiline": "always",
+                "singleline": "never"
+            }
+        ],
+        "triple-equals": [
+            true,
+            "allow-null-check"
+        ],
+        "typedef": [
+            false,
+            "call-signature",
+            "parameter",
+            "property-declaration",
+            "variable-declaration",
+            "member-variable-declaration"
+        ],
+        "typedef-whitespace": [
+            true,
+            {
+                "call-signature": "nospace",
+                "index-signature": "nospace",
+                "parameter": "nospace",
+                "property-declaration": "nospace",
+                "variable-declaration": "nospace"
+            }
+        ],
+        "variable-name": [
+            true,
+            "check-format",
+            "allow-leading-underscore",
+            "ban-keywords"
+        ],
+        "whitespace": [
+            true,
+            "check-branch",
+            "check-decl",
+            "check-module",
+            "check-separator",
+            "check-type"
+        ]
+    }
+}

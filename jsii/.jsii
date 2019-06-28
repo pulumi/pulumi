@@ -1,0 +1,39 @@
+{
+  "author": {
+    "name": "Pulumi",
+    "roles": [
+      "author"
+    ]
+  },
+  "description": "Pulumi's Node.js SDK",
+  "homepage": "https://github.com/pulumi/pulumi#readme",
+  "jsiiVersion": "0.13.0 (build 8de3f42)",
+  "license": "Apache-2.0",
+  "name": "@pulumi/jsii",
+  "repository": {
+    "directory": "sdk/nodejs",
+    "type": "git",
+    "url": "git+https://github.com/pulumi/pulumi.git"
+  },
+  "schema": "jsii/0.10.0",
+  "targets": {
+    "dotnet": {
+      "namespace": "Acme.HelloNamespace",
+      "packageId": "Acme.HelloPackage"
+    },
+    "java": {
+      "maven": {
+        "artifactId": "hello-jsii",
+        "groupId": "com.acme.hello"
+      },
+      "package": "com.acme.hello"
+    },
+    "js": {
+      "npm": "@pulumi/jsii"
+    },
+    "sphinx": {}
+  },
+  "types": {},
+  "version": "0.0.1",
+  "fingerprint": "AvjjmUoQKd41wXgdMM/LwEvhfWUvyAdU1eCZaZKSgU0="
+}
