@@ -89,3 +89,7 @@ func (pack *cloudPolicyPack) Publish(
 
 	return nil
 }
+
+func (pack *cloudPolicyPack) Apply(ctx context.Context, op backend.ApplyOperation) error {
+	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), op.Version)
+}

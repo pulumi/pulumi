@@ -92,3 +92,9 @@ type GetPolicyPackResponse struct {
 	Version     int      `json:"version"`
 	Policies    []Policy `json:"policies"`
 }
+
+// ApplyPolicyPackRequest is the request to apply a Policy Pack to an organization.
+type ApplyPolicyPackRequest struct {
+	Name    string `json:"name"`
+	Version int    `json:"version"`
+}

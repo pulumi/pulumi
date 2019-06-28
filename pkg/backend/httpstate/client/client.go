@@ -96,6 +96,12 @@ func publishPolicyPackPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
 }
 
+// appyPolicyPackPath returns the path for an API call to the Pulumi service to apply a PolicyPack
+// to a Pulumi organization.
+func applyPolicyPackPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/policypacks/apply", orgName)
+}
+
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the update root.
 func getUpdatePath(update UpdateIdentifier, components ...string) string {
@@ -458,6 +464,21 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	_, err = http.DefaultClient.Do(putS3Req)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+	}
+
+	return nil
+}
+
+// ApplyPolicyPack applies a `PolicyPack` to the Pulumi organization.
+func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyPackName string,
+	version int) error {
+
+	// TODO: Figure out why the name is being passed in weirdly.
+	req := apitype.ApplyPolicyPackRequest{Name: "k8s-sec-rules", Version: version}
+
+	err := pc.restCall(ctx, "POST", applyPolicyPackPath(orgName), nil, req, nil)
+	if err != nil {
+		return errors.Wrapf(err, "HTTP POST to apply policy pack failed")
 	}
 
 	return nil
