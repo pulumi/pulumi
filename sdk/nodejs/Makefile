@@ -34,6 +34,7 @@ build:: build_package build_plugin
 
 install_package::
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
+	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"
 	mkdir -p "$(PULUMI_BIN)/v6.10.2"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
 
@@ -61,3 +62,4 @@ test_all:: sxs_tests instanbul_tests
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
+	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
