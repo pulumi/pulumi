@@ -631,7 +631,7 @@ func (b *cloudBackend) Query(ctx context.Context, stackRef backend.StackReferenc
 
 func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
+	op *backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
 	stackRef := stack.Ref()
 
@@ -643,10 +643,27 @@ func (b *cloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-	update, err := b.client.CreateUpdate(
+	update, reqdPolicies, err := b.client.CreateUpdate(
 		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
+	}
+
+	//
+	// NOTE: HACK. Move this to the plugin-gathering routine when we have a dedicated service API
+	// when for getting a list of the required policies to run.
+	//
+	// For now, this list is given to us when we start an update; yet, the list of analyzers to boot
+	// is given to us by CLI flag, and passed to the step generator (which lazily instantiates the
+	// plugins) via `op.Opts.Engine.Analyzers`. Since the "start update" API request is sent well
+	// after this field is populated, we instead populate the `RequiredPlugins` field here.
+	//
+	// Once this API is implemented, we can safely move these lines to the plugin-gathering code,
+	// which is much closer to being the "correct" place for this stuff.
+	//
+	for _, policy := range reqdPolicies {
+		op.Opts.Engine.RequiredPolicies = append(
+			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy))
 	}
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
@@ -682,7 +699,8 @@ func (b *cloudBackend) apply(
 	}
 
 	// Create an update object to persist results.
-	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
+	update, version, token, err :=
+		b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
 		return nil, result.FromError(err)
 	}

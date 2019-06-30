@@ -225,7 +225,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
+	// Get all Analyzers -- if any -- and give each a chance to inspect the resource too.
+	analyzers := sg.plan.ctx.Host.ListAnalyzers()
 	for _, a := range sg.plan.analyzers {
 		var analyzer plugin.Analyzer
 		analyzer, err = sg.plan.ctx.Host.Analyzer(a)
@@ -234,6 +235,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		} else if analyzer == nil {
 			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
+		analyzers = append(analyzers, analyzer)
+	}
+
+	for _, analyzer := range analyzers {
 		var diagnostics []plugin.AnalyzeDiagnostic
 		diagnostics, err = analyzer.Analyze(new.Type, inputs)
 		if err != nil {

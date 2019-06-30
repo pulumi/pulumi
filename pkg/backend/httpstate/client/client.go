@@ -98,8 +98,9 @@ func publishPolicyPackPath(orgName string) string {
 
 // appyPolicyPackPath returns the path for an API call to the Pulumi service to apply a PolicyPack
 // to a Pulumi organization.
-func applyPolicyPackPath(orgName string) string {
-	return fmt.Sprintf("/api/orgs/%s/policypacks/apply", orgName)
+func applyPolicyPackPath(orgName, policyPackName string, version int) string {
+	return fmt.Sprintf(
+		"/api/orgs/%s/policypacks/%s/versions/%d/apply", orgName, policyPackName, version)
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -333,8 +334,9 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
-	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project, cfg config.Map,
-	m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool) (UpdateIdentifier, error) {
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
+	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
+	dryRun bool) (UpdateIdentifier, []apitype.RequiredPolicy, error) {
 
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -389,14 +391,14 @@ func (pc *Client) CreateUpdate(
 	path := getStackPath(stack, endpoint)
 	var updateResponse apitype.UpdateProgramResponse
 	if err := pc.restCall(ctx, "POST", path, nil, &updateRequest, &updateResponse); err != nil {
-		return UpdateIdentifier{}, err
+		return UpdateIdentifier{}, []apitype.RequiredPolicy{}, err
 	}
 
 	return UpdateIdentifier{
 		StackIdentifier: stack,
 		UpdateKind:      kind,
 		UpdateID:        updateResponse.UpdateID,
-	}, nil
+	}, updateResponse.RequiredPolicies, nil
 }
 
 func (pc *Client) RenameStack(ctx context.Context, stack StackIdentifier, newName string) error {
@@ -445,11 +447,15 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Policies:    analyzerInfo.Policies,
 	}
 
+	fmt.Println("Publishing as", analyzerInfo.Name)
+
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
 		return errors.Wrapf(err, "HTTP POST to publish policy pack failed")
 	}
+
+	fmt.Printf("Published as version %d\n", resp.Version)
 
 	//
 	// Step 2 or 2: Upload the compressed PolicyPack directory to the presigned S3 URL. The
@@ -474,14 +480,28 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyPac
 	version int) error {
 
 	// TODO: Figure out why the name is being passed in weirdly.
-	req := apitype.ApplyPolicyPackRequest{Name: "k8s-sec-rules", Version: version}
+	req := apitype.ApplyPolicyPackRequest{Name: policyPackName, Version: version}
 
-	err := pc.restCall(ctx, "POST", applyPolicyPackPath(orgName), nil, req, nil)
+	err := pc.restCall(
+		ctx, "POST", applyPolicyPackPath(orgName, policyPackName, version), nil, req, nil)
 	if err != nil {
 		return errors.Wrapf(err, "HTTP POST to apply policy pack failed")
 	}
 
 	return nil
+}
+
+// DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
+func (pc *Client) DownloadPolicyPack(ctx context.Context, locationPath string) ([]byte, error) {
+	fmt.Println("Downloading policy pack from", locationPath)
+
+	pack := []byte{}
+	err := pc.restCall(ctx, "GET", "/api/"+locationPath, nil, nil, &pack)
+	if err != nil {
+		return nil, errors.Wrapf(err, "HTTP GET to download policy pack at %q failed", locationPath)
+	}
+
+	return pack, nil
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
