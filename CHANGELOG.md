@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix an issue where emojis are printed in non-interactive mode. (fixes
+  [#2871](https://github.com/pulumi/pulumi/issues/2871))
+
 ## 0.17.21 (2019-06-26)
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
