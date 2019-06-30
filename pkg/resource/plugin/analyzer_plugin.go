@@ -70,6 +70,39 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
+const policyAnalyzerName = "policy"
+
+// NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
+func NewPolicyAnalyzer(
+	host Host, ctx *Context, name tokens.QName, policyPackPath string) (Analyzer, error) {
+
+	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
+	_, pluginPath, err := workspace.GetPluginPath(
+		workspace.AnalyzerPlugin, policyAnalyzerName, nil)
+	if err != nil {
+		return nil, rpcerror.Convert(err)
+	} else if pluginPath == "" {
+		return nil, workspace.NewMissingError(workspace.PluginInfo{
+			Kind: workspace.AnalyzerPlugin,
+			Name: string(name),
+		})
+	}
+
+	plug, err := newPlugin(ctx, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		[]string{host.ServerAddr(), policyPackPath})
+	if err != nil {
+		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
+
+	return &analyzer{
+		ctx:    ctx,
+		name:   name,
+		plug:   plug,
+		client: pulumirpc.NewAnalyzerClient(plug.Conn),
+	}, nil
+}
+
 func (a *analyzer) Name() tokens.QName { return a.name }
 
 // label returns a base label for tracing functions.
@@ -88,6 +121,7 @@ func (a *analyzer) Analyze(
 		return nil, err
 	}
 
+	fmt.Println("Analyzing")
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Type:       string(t),
 		Properties: mprops,

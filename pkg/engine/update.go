@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -30,6 +31,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// RequiredPolicy represents a set of policies to apply during an update.
+type RequiredPolicy interface {
+	// Name provides the user-specified name of the PolicyPack.
+	Name() string
+	// Version of the PolicyPack.
+	Version() string
+	// Install will install the PolicyPack locally, returning the path it was installed to.
+	Install(ctx context.Context) (string, error)
+}
+
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
 // This structre is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
@@ -38,6 +49,9 @@ import (
 type UpdateOptions struct {
 	// an optional set of analyzers to run as part of this deployment.
 	Analyzers []string
+
+	// RequiredPolicies is the set of policies that are required to run as part of the update.
+	RequiredPolicies []RequiredPolicy
 
 	// the degree of parallelism for resource operations (<=1 for serial).
 	Parallel int
@@ -142,9 +156,29 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
+func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy) error {
+	for _, policy := range policies {
+		policyPath, err := policy.Install(context.Background())
+		if err != nil {
+			return err
+		}
+
+		_, err = plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func newUpdateSource(
 	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
+
+	//
+	// Step 1: Install and load plugins.
+	//
 
 	allPlugins, defaultProviderVersions, err := installPlugins(proj, pwd, main, target,
 		plugctx)
@@ -157,6 +191,14 @@ func newUpdateSource(
 	// need to be loaded here.
 	const kinds = plugin.AnalyzerPlugins | plugin.LanguagePlugins
 	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
+		return nil, err
+	}
+
+	//
+	// Step 2: Install and load policy plugins.
+	//
+
+	if err := installAndLoadPolicyPlugins(plugctx, opts.RequiredPolicies); err != nil {
 		return nil, err
 	}
 

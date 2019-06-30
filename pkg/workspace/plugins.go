@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -367,6 +368,38 @@ func HasPluginGTE(plug PluginInfo) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// GetPolicyDir returns the directory in which policies on the current machine are managed.
+func GetPolicyDir() (string, error) {
+	u, err := user.Current()
+	if u == nil || err != nil {
+		return "", errors.Wrapf(err, "getting user home directory")
+	}
+	return filepath.Join(u.HomeDir, BookkeepingDir, PolicyDir), nil
+}
+
+// GetPolicyPath finds a PolicyPack by its name version, as well as a bool marked true if the path
+// already exists and is a directory.
+func GetPolicyPath(name, version string) (string, bool, error) {
+	policiesDir, err := GetPolicyDir()
+	if err != nil {
+		return "", false, err
+	}
+
+	policyPackPath := path.Join(policiesDir, fmt.Sprintf("pulumi-analyzer-%s%s", name, version))
+
+	file, err := os.Stat(policyPackPath)
+	if err == nil && file.IsDir() {
+		// PolicyPack exists. Return.
+		return policyPackPath, true, nil
+	} else if err != nil && !os.IsNotExist(err) {
+		// Error trying to inspect PolicyPack FS entry. Return error.
+		return "", false, err
+	}
+
+	// Not found. Return empty path.
+	return policyPackPath, false, nil
 }
 
 // GetPluginDir returns the directory in which plugins on the current machine are managed.

@@ -23,6 +23,8 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -55,6 +57,49 @@ func Process(path string, useDefaultExcludes bool) (*bytes.Buffer, error) {
 	logging.V(5).Infof("project archive is %v bytes", buffer.Len())
 
 	return buffer, nil
+}
+
+// Unzip a zip file into a specific directory.
+func Unzip(archive []byte, dir string) error {
+	r, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	if err != nil {
+		return err
+	}
+
+	sort.Slice(r.File, func(i, j int) bool { return r.File[i].Name < r.File[j].Name })
+
+	for _, file := range r.File {
+		path := filepath.Join(dir, file.Name)
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(path, file.Mode())
+			continue
+		} else {
+			os.MkdirAll(filepath.Dir(path), 0700)
+		}
+
+		fileReader, err := file.Open()
+		if err != nil {
+			return errors.Wrapf(err, "Failed to open file")
+		}
+		defer fileReader.Close()
+
+		targetFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return errors.Wrapf(err, "Failed to open target file")
+		}
+		defer targetFile.Close()
+
+		if _, err := io.Copy(targetFile, fileReader); err != nil {
+			return err
+		}
+
+		// Eagerly try to close to avoid having too many open file descriptors for big archives. We
+		// simply ignore double-close errors.
+		fileReader.Close()
+		targetFile.Close()
+	}
+
+	return nil
 }
 
 func addDirectoryToZip(writer *zip.Writer, root string, dir string,
