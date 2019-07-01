@@ -754,6 +754,9 @@ func (r *directoryArchiveReader) Next() (string, *Blob, error) {
 	}
 	name = filepath.Clean(name)
 
+	// Replace Windows separators with Linux ones (ToSlash is a no-op on Linux)
+	name = filepath.ToSlash(name)
+
 	// Open and return the blob.
 	blob, err := (&Asset{Path: assetPath}).Read()
 	if err != nil {
