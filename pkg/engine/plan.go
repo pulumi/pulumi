@@ -190,6 +190,7 @@ func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, pre
 			Refresh:           planResult.Options.Refresh,
 			RefreshOnly:       planResult.Options.isRefresh,
 			TrustDependencies: planResult.Options.trustDependencies,
+			UseLegacyDiff:     planResult.Options.UseLegacyDiff,
 		}
 		walkResult = planResult.Plan.Execute(ctx, opts, preview)
 		close(done)

@@ -191,16 +191,16 @@ func GetResourcePropertiesDetails(
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
-			printObject(&b, new.Outputs, planning, indent, step.Op, false, debug)
+			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, debug)
 		} else {
-			printObject(&b, new.Inputs, planning, indent, step.Op, false, debug)
+			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, debug)
 		}
 	} else if new == nil && old != nil {
 		// in summary view, we don't have to print out the entire object that is getting deleted.
 		// note, the caller will have already printed out the type/name/id/urn of the resource,
 		// and that's sufficient for a summarized deletion view.
 		if !summary {
-			printObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
+			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
 	} else if len(new.Outputs) > 0 {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, debug)
@@ -221,7 +221,7 @@ func maxKey(keys []resource.PropertyKey) int {
 	return maxkey
 }
 
-func printObject(
+func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
@@ -420,7 +420,7 @@ func printPropertyValue(
 			writeVerbatim(b, op, "{}")
 		} else {
 			writeVerbatim(b, op, "{\n")
-			printObject(b, obj, planning, indent+1, op, prefix, debug)
+			PrintObject(b, obj, planning, indent+1, op, prefix, debug)
 			writeWithIndentNoPrefix(b, indent, op, "}")
 		}
 	}
@@ -459,15 +459,15 @@ func printOldNewDiffs(
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news, IsInternalPropertyKey); diff != nil {
-		printObjectDiff(b, *diff, include, planning, indent, summary, debug)
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, debug)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
-		printObject(b, news, planning, indent, deploy.OpSame, true, debug)
+		PrintObject(b, news, planning, indent, deploy.OpSame, true, debug)
 	}
 }
 
-func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
+func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, debug bool) {
 
 	contract.Assert(indent > 0)
@@ -549,7 +549,7 @@ func printPropertyValueDiff(
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, nil, planning, indent+1, summary, debug)
+		PrintObjectDiff(b, *diff.Object, nil, planning, indent+1, summary, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)

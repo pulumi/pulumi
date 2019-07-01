@@ -96,7 +96,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		sg.replaces[urn] = true
 		return []Step{
 			NewReadReplacementStep(sg.plan, event, old, newState),
-			NewReplaceStep(sg.plan, old, newState, nil, nil, true),
+			NewReplaceStep(sg.plan, old, newState, nil, nil, nil, true),
 		}, nil
 	}
 
@@ -260,8 +260,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		sg.replaces[urn] = true
 		keys := sg.dependentReplaceKeys[urn]
 		return []Step{
-			NewReplaceStep(sg.plan, old, new, nil, nil, false),
-			NewCreateReplacementStep(sg.plan, event, old, new, keys, nil, false),
+			NewReplaceStep(sg.plan, old, new, nil, nil, nil, false),
+			NewCreateReplacementStep(sg.plan, event, old, new, keys, nil, nil, false),
 		}, nil
 	}
 
@@ -281,8 +281,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 
 		return []Step{
-			NewCreateReplacementStep(sg.plan, event, old, new, nil, nil, true),
-			NewReplaceStep(sg.plan, old, new, nil, nil, true),
+			NewCreateReplacementStep(sg.plan, event, old, new, nil, nil, nil, true),
+			NewReplaceStep(sg.plan, old, new, nil, nil, nil, true),
 		}, nil
 	}
 
@@ -394,14 +394,16 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 					return append(steps,
 						NewDeleteReplacementStep(sg.plan, old, true),
-						NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, false),
-						NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, false),
+						NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
+						NewCreateReplacementStep(
+							sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
 					), nil
 				}
 
 				return []Step{
-					NewCreateReplacementStep(sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, true),
-					NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, true),
+					NewCreateReplacementStep(
+						sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
+					NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
 					// note that the delete step is generated "later" on, after all creates/updates finish.
 				}, nil
 			}
@@ -411,14 +413,16 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			if logging.V(7) {
 				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 			}
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys)}, nil
+			return []Step{
+				NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff),
+			}, nil
 		}
 
 		// If resource was unchanged, but there were initialization errors, generate an empty update
 		// step to attempt to "continue" awaiting initialization.
 		if len(old.InitErrors) > 0 {
 			sg.updates[urn] = true
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil)}, nil
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -690,20 +694,18 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, nil
 	}
 
-	// Workaround #1251: unexpected replaces.
-	//
-	// The legacy/desired behavior here is that if the provider-calculated inputs for a resource did not change,
-	// then the resource itself should not change. Unfortunately, we (correctly?) pass the entire current state
-	// of the resource to Diff, which includes calculated/output properties that may differ from those present
-	// in the input properties. This can cause unexpected diffs.
-	//
-	// For now, simply apply the legacy diffing behavior before deferring to the provider.
-	if oldInputs.DeepEquals(newInputs) {
+	// Apply legacy diffing behavior if requested. In this mode, if the provider-calculated inputs for a resource did
+	// not change, then the resource is considered to have no diff between its desired and actual state.
+	if sg.opts.UseLegacyDiff && oldInputs.DeepEquals(newInputs) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
 
-	// If there is no provider for this resource, simply return a "diffs exist" result.
+	// If there is no provider for this resource (which should only happen for component resources), simply return a
+	// "diffs exist" result.
 	if prov == nil {
+		if oldInputs.DeepEquals(newInputs) {
+			return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+		}
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	}
 
@@ -714,7 +716,11 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 		return diff, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		diff.Changes = plugin.DiffSome
+		if oldInputs.DeepEquals(newInputs) {
+			diff.Changes = plugin.DiffNone
+		} else {
+			diff.Changes = plugin.DiffSome
+		}
 	}
 	return diff, nil
 }

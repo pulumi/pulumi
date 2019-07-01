@@ -113,12 +113,59 @@ message DiffRequest {
     google.protobuf.Struct news = 4; // the new values of provider inputs to diff.
 }
 
+message PropertyDiff {
+    Kind kind = 1; // The kind of diff asdsociated with this property.
+    bool inputDiff = 2; // The difference is between old and new inputs, not old and new state.
+
+    enum Kind {
+        ADD = 0;            // this property was added
+        ADD_REPLACE = 1;    // this property was added, and this change requires a replace
+        DELETE = 2;         // this property was removed
+        DELETE_REPLACE = 3; // this property was removed, and this change requires a replace
+        UPDATE = 4;         // this property's value was changed
+        UPDATE_REPLACE = 5; // this property's value was changed, and this change requires a replace
+    }
+}
+
 message DiffResponse {
     repeated string replaces = 1; // if this update requires a replacement, the set of properties triggering it.
     repeated string stables = 2;  // an optional list of properties that will not ever change.
     bool deleteBeforeReplace = 3; // if true, this resource must be deleted before replacing it.
     DiffChanges changes = 4;      // if true, this diff represents an actual difference and thus requires an update.
     repeated string diffs = 5;    // a list of the properties that changed.
+
+    // detailedDiff is an optional field that contains map from each changed property to the type of the change.
+    //
+    // The keys of this map are property paths. These paths are essentially Javascript property access expressions
+    // in which all elements are literals, and obey the following EBNF-ish grammar:
+    //
+    //   propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
+    //   quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
+    //   arrayIndex := { [0-9] }
+    //
+    //   propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
+    //   rootProperty := ( propertyName | propertyIndex )
+    //   propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
+    //   path := rootProperty { propertyAccessor }
+    //
+    // Examples of valid keys:
+    // - root
+    // - root.nested
+    // - root["nested"]
+    // - root.double.nest
+    // - root["double"].nest
+    // - root["double"]["nest"]
+    // - root.array[0]
+    // - root.array[100]
+    // - root.array[0].nested
+    // - root.array[0][1].nested
+    // - root.nested.array[0].double[1]
+    // - root["key with \"escaped\" quotes"]
+    // - root["key with a ."]
+    // - ["root key with \"escaped\" quotes"].nested
+    // - ["root key with a ."][100]
+    map<string, PropertyDiff> detailedDiff = 6; // a detailed diff appropriate for display.
+    bool hasDetailedDiff = 7; // true if this response contains a detailed diff.
 
     enum DiffChanges {
         DIFF_UNKNOWN = 0; // unknown whether there are changes or not (legacy behavior).

@@ -2,9 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-
 - `pulumi new` allows specifying a local path to templates (resolves
    [#2672](https://github.com/pulumi/pulumi/issues/2672))
+- Fix an issue where a file archive created on Windows would contain back-slashes
+  [#2784](https://github.com/pulumi/pulumi/issues/2784))
 
 ## 0.17.21 (2019-06-26)
 
@@ -13,6 +14,12 @@ CHANGELOG
 - Fix an issue where a secret would not be encrypted in the state file if it was
   a property of a resource which was used as a stack output (fixes
   [#2862](https://github.com/pulumi/pulumi/issues/2862))
+
+- Defer to resource providers in all cases where the engine must determine whether or not a resource
+  has changed. Note that this can expose bugs in the resources providers that cause diffs to be
+  present even if the desired configuration matches the actual state of the resource: in these cases,
+  users can set the `PULUMI_ENABLE_LEGACY_DIFF` environment variable to `1` or `true` to enable the
+  old diff behavior.
 
 ## 0.17.20 (2019-06-23)
 

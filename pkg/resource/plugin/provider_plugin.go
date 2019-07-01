@@ -202,6 +202,40 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	return inputs, failures, nil
 }
 
+func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
+	if !resp.GetHasDetailedDiff() {
+		return nil
+	}
+
+	detailedDiff := make(map[string]PropertyDiff)
+	for k, v := range resp.GetDetailedDiff() {
+		var d DiffKind
+		switch v.GetKind() {
+		case pulumirpc.PropertyDiff_ADD:
+			d = DiffAdd
+		case pulumirpc.PropertyDiff_ADD_REPLACE:
+			d = DiffAddReplace
+		case pulumirpc.PropertyDiff_DELETE:
+			d = DiffDelete
+		case pulumirpc.PropertyDiff_DELETE_REPLACE:
+			d = DiffDeleteReplace
+		case pulumirpc.PropertyDiff_UPDATE:
+			d = DiffUpdate
+		case pulumirpc.PropertyDiff_UPDATE_REPLACE:
+			d = DiffUpdateReplace
+		default:
+			// Consider unknown diff kinds to be simple updates.
+			d = DiffUpdate
+		}
+		detailedDiff[k] = PropertyDiff{
+			Kind:      d,
+			InputDiff: v.GetInputDiff(),
+		}
+	}
+
+	return detailedDiff
+}
+
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool) (DiffResult, error) {
@@ -276,6 +310,7 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 		ReplaceKeys:         replaces,
 		StableKeys:          stables,
 		ChangedKeys:         diffs,
+		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
 	}, nil
 }
@@ -538,6 +573,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		ReplaceKeys:         replaces,
 		StableKeys:          stables,
 		ChangedKeys:         diffs,
+		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
 	}, nil
 }
