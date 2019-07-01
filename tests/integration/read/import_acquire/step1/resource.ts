@@ -61,7 +61,7 @@ export class Provider implements dynamic.ResourceProvider {
 export class Resource extends pulumi.dynamic.Resource {
     public readonly state: pulumi.Output<any>;
 
-    constructor(name: string, props: any, opts?: pulumi.ResourceOptions) {
+    constructor(name: string, props: any, opts?: pulumi.CustomResourceOptions) {
         super(Provider.instance, name, props, opts);
     }
 }
