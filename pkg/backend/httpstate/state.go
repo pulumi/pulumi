@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -318,6 +319,33 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 	for _, v := range md.Diffs {
 		diffs = append(diffs, string(v))
 	}
+	var detailedDiff map[string]apitype.PropertyDiff
+	if md.DetailedDiff != nil {
+		detailedDiff = make(map[string]apitype.PropertyDiff)
+		for k, v := range md.DetailedDiff {
+			var d apitype.DiffKind
+			switch v.Kind {
+			case plugin.DiffAdd:
+				d = apitype.DiffAdd
+			case plugin.DiffAddReplace:
+				d = apitype.DiffAddReplace
+			case plugin.DiffDelete:
+				d = apitype.DiffDelete
+			case plugin.DiffDeleteReplace:
+				d = apitype.DiffDeleteReplace
+			case plugin.DiffUpdate:
+				d = apitype.DiffUpdate
+			case plugin.DiffUpdateReplace:
+				d = apitype.DiffUpdateReplace
+			default:
+				contract.Failf("unrecognized diff kind %v", v)
+			}
+			detailedDiff[k] = apitype.PropertyDiff{
+				Kind:      d,
+				InputDiff: v.InputDiff,
+			}
+		}
+	}
 
 	return apitype.StepEventMetadata{
 		Op:   string(md.Op),
@@ -327,10 +355,11 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 		Old: convertStepEventStateMetadata(md.Old),
 		New: convertStepEventStateMetadata(md.New),
 
-		Keys:     keys,
-		Diffs:    diffs,
-		Logical:  md.Logical,
-		Provider: md.Provider,
+		Keys:         keys,
+		Diffs:        diffs,
+		DetailedDiff: detailedDiff,
+		Logical:      md.Logical,
+		Provider:     md.Provider,
 	}
 }
 

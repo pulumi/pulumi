@@ -103,14 +103,15 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
-	plan          *Plan                  // the current plan.
-	reg           RegisterResourceEvent  // the registration intent to convey a URN back to.
-	old           *resource.State        // the state of the existing resource (only for replacements).
-	new           *resource.State        // the state of the resource after this step.
-	keys          []resource.PropertyKey // the keys causing replacement (only for replacements).
-	diffs         []resource.PropertyKey // the keys causing a diff (only for replacements).
-	replacing     bool                   // true if this is a create due to a replacement.
-	pendingDelete bool                   // true if this replacement should create a pending delete.
+	plan          *Plan                          // the current plan.
+	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
+	old           *resource.State                // the state of the existing resource (only for replacements).
+	new           *resource.State                // the state of the resource after this step.
+	keys          []resource.PropertyKey         // the keys causing replacement (only for replacements).
+	diffs         []resource.PropertyKey         // the keys causing a diff (only for replacements).
+	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff (only for replacements).
+	replacing     bool                           // true if this is a create due to a replacement.
+	pendingDelete bool                           // true if this replacement should create a pending delete.
 }
 
 var _ Step = (*CreateStep)(nil)
@@ -130,8 +131,9 @@ func NewCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) S
 	}
 }
 
-func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
-	old *resource.State, new *resource.State, keys, diffs []resource.PropertyKey, pendingDelete bool) Step {
+func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent, old, new *resource.State,
+	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
+
 	contract.Assert(reg != nil)
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -150,6 +152,7 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 		new:           new,
 		keys:          keys,
 		diffs:         diffs,
+		detailedDiff:  detailedDiff,
 		replacing:     true,
 		pendingDelete: pendingDelete,
 	}
@@ -161,16 +164,17 @@ func (s *CreateStep) Op() StepOp {
 	}
 	return OpCreate
 }
-func (s *CreateStep) Plan() *Plan                   { return s.plan }
-func (s *CreateStep) Type() tokens.Type             { return s.new.Type }
-func (s *CreateStep) Provider() string              { return s.new.Provider }
-func (s *CreateStep) URN() resource.URN             { return s.new.URN }
-func (s *CreateStep) Old() *resource.State          { return s.old }
-func (s *CreateStep) New() *resource.State          { return s.new }
-func (s *CreateStep) Res() *resource.State          { return s.new }
-func (s *CreateStep) Keys() []resource.PropertyKey  { return s.keys }
-func (s *CreateStep) Diffs() []resource.PropertyKey { return s.diffs }
-func (s *CreateStep) Logical() bool                 { return !s.replacing }
+func (s *CreateStep) Plan() *Plan                                  { return s.plan }
+func (s *CreateStep) Type() tokens.Type                            { return s.new.Type }
+func (s *CreateStep) Provider() string                             { return s.new.Provider }
+func (s *CreateStep) URN() resource.URN                            { return s.new.URN }
+func (s *CreateStep) Old() *resource.State                         { return s.old }
+func (s *CreateStep) New() *resource.State                         { return s.new }
+func (s *CreateStep) Res() *resource.State                         { return s.new }
+func (s *CreateStep) Keys() []resource.PropertyKey                 { return s.keys }
+func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.diffs }
+func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
@@ -342,18 +346,19 @@ func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCom
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
-	plan    *Plan                  // the current plan.
-	reg     RegisterResourceEvent  // the registration intent to convey a URN back to.
-	old     *resource.State        // the state of the existing resource.
-	new     *resource.State        // the newly computed state of the resource after updating.
-	stables []resource.PropertyKey // an optional list of properties that won't change during this update.
-	diffs   []resource.PropertyKey // the keys causing a diff.
+	plan         *Plan                          // the current plan.
+	reg          RegisterResourceEvent          // the registration intent to convey a URN back to.
+	old          *resource.State                // the state of the existing resource.
+	new          *resource.State                // the newly computed state of the resource after updating.
+	stables      []resource.PropertyKey         // an optional list of properties that won't change during this update.
+	diffs        []resource.PropertyKey         // the keys causing a diff.
+	detailedDiff map[string]plugin.PropertyDiff // the structured diff.
 }
 
 var _ Step = (*UpdateStep)(nil)
 
 func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
-	new *resource.State, stables, diffs []resource.PropertyKey) Step {
+	new *resource.State, stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -367,25 +372,27 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(!new.External)
 	contract.Assert(!old.External)
 	return &UpdateStep{
-		plan:    plan,
-		reg:     reg,
-		old:     old,
-		new:     new,
-		stables: stables,
-		diffs:   diffs,
+		plan:         plan,
+		reg:          reg,
+		old:          old,
+		new:          new,
+		stables:      stables,
+		diffs:        diffs,
+		detailedDiff: detailedDiff,
 	}
 }
 
-func (s *UpdateStep) Op() StepOp                    { return OpUpdate }
-func (s *UpdateStep) Plan() *Plan                   { return s.plan }
-func (s *UpdateStep) Type() tokens.Type             { return s.new.Type }
-func (s *UpdateStep) Provider() string              { return s.new.Provider }
-func (s *UpdateStep) URN() resource.URN             { return s.new.URN }
-func (s *UpdateStep) Old() *resource.State          { return s.old }
-func (s *UpdateStep) New() *resource.State          { return s.new }
-func (s *UpdateStep) Res() *resource.State          { return s.new }
-func (s *UpdateStep) Logical() bool                 { return true }
-func (s *UpdateStep) Diffs() []resource.PropertyKey { return s.diffs }
+func (s *UpdateStep) Op() StepOp                                   { return OpUpdate }
+func (s *UpdateStep) Plan() *Plan                                  { return s.plan }
+func (s *UpdateStep) Type() tokens.Type                            { return s.new.Type }
+func (s *UpdateStep) Provider() string                             { return s.new.Provider }
+func (s *UpdateStep) URN() resource.URN                            { return s.new.URN }
+func (s *UpdateStep) Old() *resource.State                         { return s.old }
+func (s *UpdateStep) New() *resource.State                         { return s.new }
+func (s *UpdateStep) Res() *resource.State                         { return s.new }
+func (s *UpdateStep) Logical() bool                                { return true }
+func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
+func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the ID, even in previews and refreshes.
@@ -433,18 +440,19 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
 type ReplaceStep struct {
-	plan          *Plan                  // the current plan.
-	old           *resource.State        // the state of the existing resource.
-	new           *resource.State        // the new state snapshot.
-	keys          []resource.PropertyKey // the keys causing replacement.
-	diffs         []resource.PropertyKey // the keys causing a diff.
-	pendingDelete bool                   // true if a pending deletion should happen.
+	plan          *Plan                          // the current plan.
+	old           *resource.State                // the state of the existing resource.
+	new           *resource.State                // the new state snapshot.
+	keys          []resource.PropertyKey         // the keys causing replacement.
+	diffs         []resource.PropertyKey         // the keys causing a diff.
+	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
+	pendingDelete bool                           // true if a pending deletion should happen.
 }
 
 var _ Step = (*ReplaceStep)(nil)
 
 func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
-	keys, diffs []resource.PropertyKey, pendingDelete bool) Step {
+	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -459,21 +467,23 @@ func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 		new:           new,
 		keys:          keys,
 		diffs:         diffs,
+		detailedDiff:  detailedDiff,
 		pendingDelete: pendingDelete,
 	}
 }
 
-func (s *ReplaceStep) Op() StepOp                    { return OpReplace }
-func (s *ReplaceStep) Plan() *Plan                   { return s.plan }
-func (s *ReplaceStep) Type() tokens.Type             { return s.new.Type }
-func (s *ReplaceStep) Provider() string              { return s.new.Provider }
-func (s *ReplaceStep) URN() resource.URN             { return s.new.URN }
-func (s *ReplaceStep) Old() *resource.State          { return s.old }
-func (s *ReplaceStep) New() *resource.State          { return s.new }
-func (s *ReplaceStep) Res() *resource.State          { return s.new }
-func (s *ReplaceStep) Keys() []resource.PropertyKey  { return s.keys }
-func (s *ReplaceStep) Diffs() []resource.PropertyKey { return s.diffs }
-func (s *ReplaceStep) Logical() bool                 { return true }
+func (s *ReplaceStep) Op() StepOp                                   { return OpReplace }
+func (s *ReplaceStep) Plan() *Plan                                  { return s.plan }
+func (s *ReplaceStep) Type() tokens.Type                            { return s.new.Type }
+func (s *ReplaceStep) Provider() string                             { return s.new.Provider }
+func (s *ReplaceStep) URN() resource.URN                            { return s.new.URN }
+func (s *ReplaceStep) Old() *resource.State                         { return s.old }
+func (s *ReplaceStep) New() *resource.State                         { return s.new }
+func (s *ReplaceStep) Res() *resource.State                         { return s.new }
+func (s *ReplaceStep) Keys() []resource.PropertyKey                 { return s.keys }
+func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.diffs }
+func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+func (s *ReplaceStep) Logical() bool                                { return true }
 
 func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.

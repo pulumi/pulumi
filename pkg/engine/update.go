@@ -48,6 +48,9 @@ type UpdateOptions struct {
 	// true if the plan should refresh before executing.
 	Refresh bool
 
+	// true if the engine should use legacy diffing behavior during an update.
+	UseLegacyDiff bool
+
 	// true if we should report events for steps that involve default providers.
 	reportDefaultProviderSteps bool
 

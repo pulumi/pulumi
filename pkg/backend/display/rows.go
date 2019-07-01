@@ -427,7 +427,9 @@ func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
-		if data.diffOutputs {
+		if step.DetailedDiff != nil {
+			diff = translateDetailedDiff(step)
+		} else if data.diffOutputs {
 			if step.Old.Outputs != nil && step.New.Outputs != nil {
 				diff = step.Old.Outputs.Diff(step.New.Outputs)
 			}

@@ -109,10 +109,11 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Analyzers: analyzers,
-				Parallel:  parallel,
-				Debug:     debug,
-				Refresh:   refresh,
+				Analyzers:     analyzers,
+				Parallel:      parallel,
+				Debug:         debug,
+				Refresh:       refresh,
+				UseLegacyDiff: useLegacyDiff(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{

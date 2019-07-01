@@ -288,7 +288,8 @@ func TestPreviewJSON(t *testing.T) {
                 "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
                 "custom": false,
                 "type": "pulumi:pulumi:Stack"
-            }
+            },
+            "detailedDiff": null
         },
         {
             "op": "create",
@@ -308,7 +309,8 @@ func TestPreviewJSON(t *testing.T) {
                     "__provider": null,
                     "state": null
                 }
-            }
+            },
+            "detailedDiff": null
         }
     ],
     "changeSummary": {
@@ -347,7 +349,8 @@ func TestPreviewJSON(t *testing.T) {
                 "outputs": {
                     "o": 1
                 }
-            }
+            },
+            "detailedDiff": null
         },
         {
             "op": "same",
@@ -390,7 +393,8 @@ func TestPreviewJSON(t *testing.T) {
                     "__provider": null,
                     "state": null
                 }
-            }
+            },
+            "detailedDiff": null
         }
     ],
     "changeSummary": {
@@ -420,7 +424,8 @@ func TestPreviewJSON(t *testing.T) {
                 "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
                 "custom": false,
                 "type": "pulumi:pulumi:Stack"
-            }
+            },
+            "detailedDiff": null
         },
         {
             "op": "same",
@@ -463,7 +468,8 @@ func TestPreviewJSON(t *testing.T) {
                     "__provider": null,
                     "state": null
                 }
-            }
+            },
+            "detailedDiff": null
         }
     ],
     "changeSummary": {
