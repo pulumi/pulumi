@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-
+- `pulumi new` allows specifying a local path to templates (resolves
+   [#2672](https://github.com/pulumi/pulumi/issues/2672))
 - Fix an issue where a file archive created on Windows would contain back-slashes
   [#2784](https://github.com/pulumi/pulumi/issues/2784))
 

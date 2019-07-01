@@ -145,17 +145,26 @@ func cleanupLegacyTemplateDir() error {
 	return nil
 }
 
-// IsTemplateURL returns true if templateNameOrURL starts with "https://".
-func IsTemplateURL(templateNameOrURL string) bool {
-	return strings.HasPrefix(templateNameOrURL, "https://")
+// IsTemplateURL returns true if templateNamePathOrURL starts with "https://".
+func IsTemplateURL(templateNamePathOrURL string) bool {
+	return strings.HasPrefix(templateNamePathOrURL, "https://")
 }
 
-// RetrieveTemplates retrieves a "template repository" based on the specified name or URL.
-func RetrieveTemplates(templateNameOrURL string, offline bool) (TemplateRepository, error) {
-	if IsTemplateURL(templateNameOrURL) {
-		return retrieveURLTemplates(templateNameOrURL, offline)
+// isTemplateFileOrDirectory returns true if templateNamePathOrURL is the name of a valid file or directory.
+func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
+	_, err := os.Stat(templateNamePathOrURL)
+	return err == nil
+}
+
+// RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
+func RetrieveTemplates(templateNamePathOrURL string, offline bool) (TemplateRepository, error) {
+	if IsTemplateURL(templateNamePathOrURL) {
+		return retrieveURLTemplates(templateNamePathOrURL, offline)
 	}
-	return retrievePulumiTemplates(templateNameOrURL, offline)
+	if isTemplateFileOrDirectory(templateNamePathOrURL) {
+		return retrieveFileTemplates(templateNamePathOrURL)
+	}
+	return retrievePulumiTemplates(templateNamePathOrURL, offline)
 }
 
 // retrieveURLTemplates retrieves the "template repository" at the specified URL.
@@ -181,6 +190,15 @@ func retrieveURLTemplates(rawurl string, offline bool) (TemplateRepository, erro
 		Root:         temp,
 		SubDirectory: fullPath,
 		ShouldDelete: true,
+	}, nil
+}
+
+// retrieveFileTemplates points to the "template repository" at the specified location in the file system.
+func retrieveFileTemplates(path string) (TemplateRepository, error) {
+	return TemplateRepository{
+		Root:         path,
+		SubDirectory: path,
+		ShouldDelete: false,
 	}, nil
 }
 
