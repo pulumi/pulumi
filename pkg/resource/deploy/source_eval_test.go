@@ -61,7 +61,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 			}
 			s.Done(&RegisterResult{
 				State: resource.NewState(g.Type, urn, g.Custom, false, id, g.Properties, outs, g.Parent, g.Protect,
-					false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil),
+					false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil),
 			})
 		}
 		return nil
@@ -198,7 +198,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
 				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-				false, nil, nil),
+				false, nil, nil, nil),
 		})
 
 		processed++
@@ -310,7 +310,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
 				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-				false, nil, nil),
+				false, nil, nil, nil),
 		})
 
 		processed++
@@ -400,7 +400,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		read.Done(&ReadResult{
 			State: resource.NewState(read.Type(), urn, true, false, read.ID(), read.Properties(),
 				resource.PropertyMap{}, read.Parent(), false, false, read.Dependencies(), nil, read.Provider(), nil,
-				false, nil, nil),
+				false, nil, nil, nil),
 		})
 		reads++
 	}
@@ -485,7 +485,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			e.Done(&RegisterResult{
 				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
 					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-					false, nil, nil),
+					false, nil, nil, nil),
 			})
 			registers++
 
@@ -494,7 +494,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			e.Done(&ReadResult{
 				State: resource.NewState(e.Type(), urn, true, false, e.ID(), e.Properties(),
 					resource.PropertyMap{}, e.Parent(), false, false, e.Dependencies(), nil, e.Provider(), nil, false,
-					nil, nil),
+					nil, nil, nil),
 			})
 			reads++
 		}

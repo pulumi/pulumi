@@ -2102,7 +2102,8 @@ func TestProviderCancellation(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN,
-					inputs resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					inputs resource.PropertyMap, timeout float32) (resource.ID, resource.PropertyMap,
+					resource.Status, error) {
 
 					// Inform the waiter that we've entered a provider op and wait for cancellation.
 					ops.Done()
@@ -2222,7 +2223,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds,
-					news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+					news resource.PropertyMap, timeout float32) (resource.PropertyMap, resource.Status, error) {
 					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 						"output_prop": 42,
 					})
@@ -3489,7 +3490,7 @@ func TestPersistentDiff(t *testing.T) {
 	inputs := resource.PropertyMap{}
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource(
-			"pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false, "", nil, nil, "")
+			"pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false, "", nil, nil, "", nil)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -3569,7 +3570,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	inputs := resource.PropertyMap{}
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource(
-			"pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false, "", nil, nil, "")
+			"pkgA:m:typA", "resA", true, "", false, nil, "", inputs, nil, false, "", nil, nil, "", nil)
 		assert.NoError(t, err)
 		return nil
 	})

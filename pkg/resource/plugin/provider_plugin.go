@@ -579,7 +579,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
+func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float32) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
@@ -611,6 +611,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
+		Timeout:    timeout,
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, resourceError = parseError(err)
@@ -773,7 +774,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float32) (resource.PropertyMap, resource.Status,
+	error) {
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -811,10 +813,11 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	var resourceError error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
-		Id:   string(id),
-		Urn:  string(urn),
-		Olds: molds,
-		News: mnews,
+		Id:      string(id),
+		Urn:     string(urn),
+		Olds:    molds,
+		News:    mnews,
+		Timeout: timeout,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)
@@ -852,7 +855,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+	timeout float32) (resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 
@@ -881,6 +885,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mprops,
+		Timeout:    timeout,
 	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcErr)

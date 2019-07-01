@@ -291,6 +291,7 @@ func SerializeResource(res *resource.State, enc config.Encrypter) (apitype.Resou
 		PendingReplacement:      res.PendingReplacement,
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 		Aliases:                 res.Aliases,
+		CustomTimeouts:          res.CustomTimeouts,
 	}, nil
 }
 
@@ -396,7 +397,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
-		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases), nil
+		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts), nil
 }
 
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter) (resource.Operation, error) {

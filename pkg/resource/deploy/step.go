@@ -186,7 +186,13 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			if err != nil {
 				return resource.StatusOK, nil, err
 			}
-			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs)
+
+			var timeout float32
+			if s.new.CustomTimeouts != nil {
+				timeout = s.new.CustomTimeouts.Create
+			}
+
+			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, timeout)
 			if err != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, err
@@ -305,7 +311,13 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			if err != nil {
 				return resource.StatusOK, nil, err
 			}
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs); err != nil {
+
+			var timeout float32
+			if s.old.CustomTimeouts != nil {
+				timeout = s.old.CustomTimeouts.Delete
+			}
+
+			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, timeout); err != nil {
 				return rst, nil, err
 			}
 		}
@@ -408,8 +420,13 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
+			var timeout float32
+			if s.new.CustomTimeouts != nil {
+				timeout = s.new.CustomTimeouts.Update
+			}
+
 			// Update to the combination of the old "all" state, but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs)
+			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs, timeout)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, upderr
@@ -701,7 +718,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	if outputs != nil {
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
-			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases)
+			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
+			s.old.CustomTimeouts)
 	} else {
 		s.new = nil
 	}
