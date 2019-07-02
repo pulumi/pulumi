@@ -33,7 +33,7 @@ var Emoji = (runtime.GOOS == "darwin")
 
 // EmojiOr returns the emoji string e if emojis are enabled, or the string or if emojis are disabled.
 func EmojiOr(e, or string) string {
-	if Emoji {
+	if Emoji && Interactive() {
 		return e
 	}
 	return or
