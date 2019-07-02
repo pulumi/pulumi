@@ -175,10 +175,8 @@ export function resolveProperties(
 
         // If this value is a secret, unwrap its inner value.
         let value = allProps[k];
-        const isSecret = value && value[specialSecretSig] === true;
-        if (isSecret) {
-            value = value.value;
-        }
+        const isSecret = isRpcSecret(value);
+        value = unwrapRpcSecret(value);
 
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
@@ -370,6 +368,23 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 }
 
 /**
+ * isRpcSecret returns true if obj is a wrapped secret value (i.e. it's an object with the special key set).
+ */
+function isRpcSecret(obj: any): boolean {
+    return obj && obj[specialSigKey] === specialSecretSig;
+}
+
+/**
+ * unwrapRpcSecret returns the underlying value for a secret, or the value itself if it was not a secret.
+ */
+function unwrapRpcSecret(obj: any): any {
+    if (!isRpcSecret(obj)) {
+        return obj;
+    }
+    return obj.value;
+}
+
+/**
  * deserializeProperty unpacks some special types, reversing the above process.
  */
 export function deserializeProperty(prop: any): any {
@@ -383,10 +398,24 @@ export function deserializeProperty(prop: any): any {
         return prop;
     }
     else if (prop instanceof Array) {
+        // We can just deserialize all the elements of the underyling array and return it.
+        // However, we want to push secretness up to the top level (since we can't set sub-properties to secret)
+        // values since they are not typed as Output<T>.
+        let hadSecret = false;
         const elems: any[] = [];
         for (const e of prop) {
-            elems.push(deserializeProperty(e));
+            prop = deserializeProperty(e);
+            hadSecret = hadSecret || isRpcSecret(prop);
+            elems.push(unwrapRpcSecret(prop));
         }
+
+        if (hadSecret) {
+            return {
+                [specialSigKey]: specialSecretSig,
+                value: elems,
+            };
+        }
+
         return elems;
     }
     else {
@@ -431,7 +460,7 @@ export function deserializeProperty(prop: any): any {
                     }
                 case specialSecretSig:
                     return {
-                        [specialSecretSig]: true,
+                        [specialSigKey]: specialSecretSig,
                         value: deserializeProperty(prop["value"]),
                     };
                 default:
@@ -446,19 +475,14 @@ export function deserializeProperty(prop: any): any {
         let hadSecrets = false;
 
         for (const k of Object.keys(prop)) {
-            let o = deserializeProperty(prop[k]);
-
-            if (o && o[specialSecretSig] === true) {
-                hadSecrets = true;
-                o = o.value;
-            }
-
-            obj[k] = o;
+            const o = deserializeProperty(prop[k]);
+            hadSecrets = hadSecrets || isRpcSecret(o);
+            obj[k] = unwrapRpcSecret(o);
         }
 
         if (hadSecrets) {
             return {
-                [specialSecretSig]: true,
+                [specialSigKey]: specialSecretSig,
                 value: obj,
             };
         }
