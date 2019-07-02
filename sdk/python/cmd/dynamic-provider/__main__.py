@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import base64
+import json
 import asyncio
 from concurrent import futures
 import time
@@ -61,14 +62,6 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         context.set_details('Diff not implemented!')
         raise NotImplementedError('Diff not implemented!')
 
-    def Create(self, request, context):
-        """Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-        must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Create not implemented!')
-        raise NotImplementedError('Create not implemented!')
-
     def Read(self, request, context):
         """Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
         identify the resource; this is typically just the resource ID, but may also include some properties.
@@ -98,6 +91,21 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         context.set_details('Cancel not implemented!')
         raise NotImplementedError('Cancel not implemented!')
 
+    def Create(self, request, context):
+        props = rpc.deserialize_properties(request.properties)
+        print(json.dumps(props, indent = 4))
+        provider = get_provider(props)
+        result = provider.create(props)
+        outs = result['outs']
+        # outs[PROVIDER_KEY] = provider
+
+        loop = asyncio.new_event_loop()
+        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        loop.close()
+
+        fields = {'id': result['id'], 'properties': outs_proto}
+        return proto.CreateResponse(**fields)
+        
     def Check(self, request, context):
         olds = rpc.deserialize_properties(request.olds)
         news = rpc.deserialize_properties(request.news)

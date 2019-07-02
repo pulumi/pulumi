@@ -967,10 +967,9 @@ func TestDynamicPython(t *testing.T) {
 		Dependencies: []string{
 			path.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:         true,
-		Verbose:       true,
-		DebugLogLevel: 8,
-		// DebugUpdates:  true,
+		Quick: true,
+		// Verbose:       true,
+		// DebugLogLevel: 8,
 		Bin: "/opt/pulumi/bin/pulumi",
 	})
 }

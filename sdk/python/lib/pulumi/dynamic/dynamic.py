@@ -25,9 +25,12 @@ if TYPE_CHECKING:
 PROVIDER_KEY = "__provider"
 
 class ResourceProvider:
+    def create(self, props):
+        raise Exception("Subclass of ResourceProvider must implement 'create'")
     def check(self, _olds, news):
-        print("Calling Check!!!!")
         return {'inputs': news, 'failures': []}
+    def read(self, id, props):
+        return {'id': id, 'pros'}
     def __init__(self):
         pass
 
