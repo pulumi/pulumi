@@ -60,6 +60,8 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZm
 github.com/dimchansky/utfbom v1.1.0/go.mod h1:rO41eb7gLfo8SF1jd9F8HplJm1Fewwi4mQvIirEdv+8=
 github.com/djherbis/times v1.0.1 h1:nVRrVOTFd2r0C7wCQdIDz/fqt8yO0EEzr5f6aXfXiS0=
 github.com/djherbis/times v1.0.1/go.mod h1:CGMZlo255K5r4Yw0b9RRfFQpM2y7uOmxg4jm9HsaVf8=
+github.com/docker/docker v0.0.0-20170504205632-89658bed64c2 h1:kHRF20b5JAKgm0QPXsIlq7y0YfkcwORvqo6489vlVfo=
+github.com/docker/docker v0.0.0-20170504205632-89658bed64c2/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker v1.13.1 h1:IkZjBSIc8hBjLpqeAbeE5mca5mNgeatLHBy3GO78BWo=
 github.com/docker/docker v1.13.1/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
