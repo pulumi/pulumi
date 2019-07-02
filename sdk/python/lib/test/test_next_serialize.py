@@ -246,3 +246,38 @@ class DeserializationTests(unittest.TestCase):
         except  AssertionError as err:
             error = err
         self.assertIsNotNone(error)
+
+    def test_secret_push_up(self):
+        secret_value = {rpc._special_sig_key: rpc._special_secret_sig, "value": "a secret value" }
+        all_props = struct_pb2.Struct()
+        all_props["regular"] = "a normal value"
+        all_props["list"] = ["a normal value", "another value", secret_value]
+        all_props["map"] = {"regular": "a normal value", "secret": secret_value}
+        all_props["mapWithList"] = {"regular": "a normal value", "list": ["a normal value", secret_value]}
+        all_props["listWithMap"] = [{"regular": "a normal value", "secret": secret_value}]
+
+
+        val = rpc.deserialize_properties(all_props)
+        self.assertEqual(all_props["regular"], val["regular"])
+
+        self.assertIsInstance(val["list"], dict)
+        self.assertEqual(val["list"][rpc._special_sig_key], rpc._special_secret_sig)
+        self.assertEqual(val["list"]["value"][0], "a normal value")
+        self.assertEqual(val["list"]["value"][1], "another value")
+        self.assertEqual(val["list"]["value"][2], "a secret value")
+
+        self.assertIsInstance(val["map"], dict)
+        self.assertEqual(val["map"][rpc._special_sig_key], rpc._special_secret_sig)
+        self.assertEqual(val["map"]["value"]["regular"], "a normal value")
+        self.assertEqual(val["map"]["value"]["secret"], "a secret value")
+
+        self.assertIsInstance(val["mapWithList"], dict)
+        self.assertEqual(val["mapWithList"][rpc._special_sig_key], rpc._special_secret_sig)
+        self.assertEqual(val["mapWithList"]["value"]["regular"], "a normal value")
+        self.assertEqual(val["mapWithList"]["value"]["list"][0], "a normal value")
+        self.assertEqual(val["mapWithList"]["value"]["list"][1], "a secret value")
+
+        self.assertIsInstance(val["listWithMap"], dict)
+        self.assertEqual(val["listWithMap"][rpc._special_sig_key], rpc._special_secret_sig)
+        self.assertEqual(val["listWithMap"]["value"][0]["regular"], "a normal value")
+        self.assertEqual(val["listWithMap"]["value"][0]["secret"], "a secret value")

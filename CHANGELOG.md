@@ -6,6 +6,8 @@ CHANGELOG
    [#2672](https://github.com/pulumi/pulumi/issues/2672))
 - Fix an issue where a file archive created on Windows would contain back-slashes
   [#2784](https://github.com/pulumi/pulumi/issues/2784))
+- Fix an issue where output values of a resource would not be present when they
+  contained secret values, when using Python.
 
 - Fix an issue where emojis are printed in non-interactive mode. (fixes
   [#2871](https://github.com/pulumi/pulumi/issues/2871))
