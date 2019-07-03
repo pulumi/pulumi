@@ -335,7 +335,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		if diff.Changes == plugin.DiffSome {
 			if diff.Replace() {
 				// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
-				// therefore incompativle with the goal state.
+				// therefore incompatible with the goal state.
 				if goal.ID != "" {
 					const message = "previously-imported resources that still specify an ID may not be replaced; " +
 						"please remove the `import` declaration from your program"
