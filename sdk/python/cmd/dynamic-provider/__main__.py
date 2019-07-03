@@ -22,6 +22,7 @@ import time
 from pulumi.runtime import proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider
+from google.protobuf import empty_pb2
 import grpc
 import cloudpickle
 
@@ -35,25 +36,17 @@ def get_provider(props) -> ResourceProvider:
 
 class MyResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
-        """CheckConfig validates the configuration for this resource provider.
-        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('CheckConfig not implemented!')
-        raise NotImplementedError('CheckConfig not implemented!')
+        context.set_details('CheckConfig is not implemented by the dynamic provider')
+        raise NotImplementedError('CheckConfig is not implemented by the dynamic provider')
 
     def DiffConfig(self, request, context):
-        """DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
-        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('DiffConfig not implemented!')
-        raise NotImplementedError('DiffConfig not implemented!')
+        context.set_details('DiffConfig is not implemented by the dynamic provider')
+        raise NotImplementedError('DiffConfig is not implemented by the dynamic provider')
 
     def Invoke(self, request, context):
-        """Invoke dynamically executes a built-in function in the provider.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Invoke not implemented!')
-        raise NotImplementedError('Invoke not implemented!')
+        raise NotImplementedError('unknown function ' % request.token)
 
     def Diff(self, request, context):
         """Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -61,14 +54,6 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Diff not implemented!')
         raise NotImplementedError('Diff not implemented!')
-
-    def Read(self, request, context):
-        """Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
-        identify the resource; this is typically just the resource ID, but may also include some properties.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Read not implemented!')
-        raise NotImplementedError('Read not implemented!')
 
     def Update(self, request, context):
         """Update updates an existing resource with new values.
@@ -78,26 +63,21 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         raise NotImplementedError('Update not implemented!')
 
     def Delete(self, request, context):
-        """Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Delete not implemented!')
-        raise NotImplementedError('Delete not implemented!')
+        id_ = request.id
+        props = rpc.deserialize_properties(request.properties)
+        provider = get_provider(props)
+        provider.delete(id_, props)
+        return empty_pb2.Empty()
 
     def Cancel(self, request, context):
-        """Cancel signals the provider to abort all outstanding resource operations.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Cancel not implemented!')
-        raise NotImplementedError('Cancel not implemented!')
+        return empty_pb2.Empty()
 
     def Create(self, request, context):
         props = rpc.deserialize_properties(request.properties)
-        print(json.dumps(props, indent = 4))
         provider = get_provider(props)
         result = provider.create(props)
         outs = result['outs']
-        # outs[PROVIDER_KEY] = provider
+        outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
         loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
@@ -135,6 +115,21 @@ class MyResourceProviderServicer(ResourceProviderServicer):
     def GetPluginInfo(self, request, context):
         fields = {"version": "0.1.0"}
         return proto.PluginInfo(**fields)
+
+    def Read(self, request, context):
+        id_ = request.id
+        props = rpc.deserialize_properties(request.properties)
+        provider = get_provider(props)
+        result = provider.read(id_, props)
+        outs = result['props']
+        outs[PROVIDER_KEY] = props[PROVIDER_KEY]
+
+        loop = asyncio.new_event_loop()
+        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        loop.close()
+
+        fields = {'id': result['id'], 'properties': outs_proto}
+        return proto.ReadResponse(**fields)
 
     def __init__(self):
         return

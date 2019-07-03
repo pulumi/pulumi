@@ -29,8 +29,10 @@ class ResourceProvider:
         raise Exception("Subclass of ResourceProvider must implement 'create'")
     def check(self, _olds, news):
         return {'inputs': news, 'failures': []}
-    def read(self, id, props):
-        return {'id': id, 'pros'}
+    def read(self, id_, props):
+        return {'id': id_, 'props': props}
+    def delete(self, id_, props):
+        pass
     def __init__(self):
         pass
 
