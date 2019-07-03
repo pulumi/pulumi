@@ -20,11 +20,11 @@ import time
 
 # from google.protobuf import struct_pb2
 from pulumi.runtime import proto, rpc
-from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
+from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer, provider_pb2
 from pulumi.dynamic import ResourceProvider
 from google.protobuf import empty_pb2
 import grpc
-import cloudpickle
+import dill
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -32,7 +32,7 @@ PROVIDER_KEY = "__provider"
 
 def get_provider(props) -> ResourceProvider:
     byts = base64.b64decode(props[PROVIDER_KEY])
-    return cloudpickle.loads(byts)()
+    return dill.loads(byts)()
 
 class MyResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
@@ -49,18 +49,44 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         raise NotImplementedError('unknown function ' % request.token)
 
     def Diff(self, request, context):
-        """Diff checks what impacts a hypothetical update will have on the resource's properties.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Diff not implemented!')
-        raise NotImplementedError('Diff not implemented!')
+        olds = rpc.deserialize_properties(request.olds)
+        news = rpc.deserialize_properties(request.news)
+        if news[PROVIDER_KEY] == rpc.UNKNOWN:
+            provider = get_provider(olds)
+        else:
+            provider = get_provider(news)
+        result = provider.diff(request.id, olds, news)
+        fields = {}
+        if 'changes' in result:
+            if result['changes']:
+                fields['changes'] = proto.DiffResponse.DIFF_SOME
+            else:
+                fields['changes'] = proto.DiffResponse.DIFF_NONE
+        else:
+            fields['changes'] = proto.DiffResponse.DIFF_UNKNOWN
+        if 'replaces' in result and len(result['replaces']) != 0:
+            fields['replaces'] = result['replaces']
+        if 'deleteBeforeReplace' in result and result['deleteBeforeReplace']:
+            fields['deleteBeforeReplace'] = result['deleteBeforeReplace']
+        return proto.DiffResponse(**fields)
 
     def Update(self, request, context):
-        """Update updates an existing resource with new values.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Update not implemented!')
-        raise NotImplementedError('Update not implemented!')
+        olds = rpc.deserialize_properties(request.olds)
+        news = rpc.deserialize_properties(request.news)
+        provider = get_provider(news)
+
+        result = provider.update(request.id, olds, news)
+        outs = {}
+        if 'outs' in result:
+            outs = result['outs']
+        outs[PROVIDER_KEY] = news[PROVIDER_KEY]
+    
+        loop = asyncio.new_event_loop()
+        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        loop.close()
+
+        fields = {"properties": outs_proto}
+        return proto.UpdateResponse(**fields)
 
     def Delete(self, request, context):
         id_ = request.id

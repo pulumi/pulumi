@@ -37,7 +37,3 @@ from .stack import (
 from .invoke import (
     invoke,
 )
-
-from .closure import (
-    serialize_function,
-)

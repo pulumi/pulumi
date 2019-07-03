@@ -14,10 +14,11 @@
 
 import base64
 import asyncio
+import pickle
 from typing import Optional, List, Any, Mapping, Union, TYPE_CHECKING, Awaitable
 
+import dill
 from .. import CustomResource, ResourceOptions
-from ..runtime import closure
 
 if TYPE_CHECKING:
     from ..output import Output, Inputs
@@ -25,19 +26,23 @@ if TYPE_CHECKING:
 PROVIDER_KEY = "__provider"
 
 class ResourceProvider:
-    def create(self, props):
-        raise Exception("Subclass of ResourceProvider must implement 'create'")
     def check(self, _olds, news):
         return {'inputs': news, 'failures': []}
+    def diff(self, _id, _olds, _news):
+        return {}
+    def create(self, props):
+        raise Exception("Subclass of ResourceProvider must implement 'create'")
     def read(self, id_, props):
         return {'id': id_, 'props': props}
-    def delete(self, id_, props):
+    def update(self, _id, _olds, _news):
+        return {}
+    def delete(self, _id, _props):
         pass
     def __init__(self):
         pass
 
 def serialize_provider(provider: ResourceProvider) -> str:
-    byts = closure.serialize_function(lambda: provider)
+    byts = dill.dumps(lambda: provider, pickle.DEFAULT_PROTOCOL)
     return base64.b64encode(byts).decode('utf-8')
 
 class Resource(CustomResource):
@@ -60,8 +65,7 @@ class Resource(CustomResource):
 
         if PROVIDER_KEY in props:
             raise  Exception("A dynamic resource must not define the __provider key")
-        
+
         props[PROVIDER_KEY] = serialize_provider(provider)
 
         super(Resource, self).__init__("pulumi-python:dynamic:Resource", name, props, opts)
-
