@@ -358,10 +358,12 @@ func (data *resourceRowData) getInfoColumn() string {
 			}
 		}
 
-	case deploy.OpImport:
+	case deploy.OpImport, deploy.OpImportReplacement:
 		// If we're doing an import, see if we have the imported state to diff.
-		if len(data.outputSteps) != 0 {
-			step = data.outputSteps[0]
+		for _, outputStep := range data.outputSteps {
+			if outputStep.Op == step.Op {
+				step = outputStep
+			}
 		}
 	}
 
