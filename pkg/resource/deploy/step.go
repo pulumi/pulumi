@@ -798,7 +798,9 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 	s.new.Outputs = read.Outputs
 
-	// Magic up an old state so the frontend can display a proper diff.
+	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
+	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
+	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil)
