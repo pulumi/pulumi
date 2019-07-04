@@ -30,7 +30,7 @@ import (
 )
 
 func readPassphrase(prompt string) (string, error) {
-	if phrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE"); phrase != "" {
+	if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
 		return phrase, nil
 	}
 	return cmdutil.ReadConsoleNoEcho(prompt)
