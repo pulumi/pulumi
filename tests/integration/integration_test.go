@@ -967,6 +967,5 @@ func TestDynamicPython(t *testing.T) {
 		Dependencies: []string{
 			path.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		// Bin: "/opt/pulumi/bin/pulumi",
 	})
 }

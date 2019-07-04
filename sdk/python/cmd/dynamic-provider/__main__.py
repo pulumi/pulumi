@@ -12,22 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
-import json
 import asyncio
+import base64
 from concurrent import futures
+import json
 import time
 
-# from google.protobuf import struct_pb2
-from pulumi.runtime import proto, rpc
-from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer, provider_pb2
-from pulumi.dynamic import ResourceProvider
-from google.protobuf import empty_pb2
-import grpc
 import dill
+import grpc
+from google.protobuf import empty_pb2
+from pulumi.runtime import proto, rpc
+from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
+from pulumi.dynamic import ResourceProvider
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
-
 PROVIDER_KEY = "__provider"
 
 def get_provider(props) -> ResourceProvider:
@@ -37,16 +35,16 @@ def get_provider(props) -> ResourceProvider:
 class MyResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('CheckConfig is not implemented by the dynamic provider')
-        raise NotImplementedError('CheckConfig is not implemented by the dynamic provider')
+        context.set_details("CheckConfig is not implemented by the dynamic provider")
+        raise NotImplementedError("CheckConfig is not implemented by the dynamic provider")
 
     def DiffConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('DiffConfig is not implemented by the dynamic provider')
-        raise NotImplementedError('DiffConfig is not implemented by the dynamic provider')
+        context.set_details("DiffConfig is not implemented by the dynamic provider")
+        raise NotImplementedError("DiffConfig is not implemented by the dynamic provider")
 
     def Invoke(self, request, context):
-        raise NotImplementedError('unknown function ' % request.token)
+        raise NotImplementedError("unknown function " % request.token)
 
     def Diff(self, request, context):
         olds = rpc.deserialize_properties(request.olds)
@@ -57,17 +55,17 @@ class MyResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(news)
         result = provider.diff(request.id, olds, news)
         fields = {}
-        if 'changes' in result:
-            if result['changes']:
-                fields['changes'] = proto.DiffResponse.DIFF_SOME
+        if "changes" in result:
+            if result["changes"]:
+                fields["changes"] = proto.DiffResponse.DIFF_SOME
             else:
-                fields['changes'] = proto.DiffResponse.DIFF_NONE
+                fields["changes"] = proto.DiffResponse.DIFF_NONE
         else:
-            fields['changes'] = proto.DiffResponse.DIFF_UNKNOWN
-        if 'replaces' in result and len(result['replaces']) != 0:
-            fields['replaces'] = result['replaces']
-        if 'deleteBeforeReplace' in result and result['deleteBeforeReplace']:
-            fields['deleteBeforeReplace'] = result['deleteBeforeReplace']
+            fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN
+        if "replaces" in result and len(result["replaces"]) != 0:
+            fields["replaces"] = result["replaces"]
+        if "deleteBeforeReplace" in result and result["deleteBeforeReplace"]:
+            fields["deleteBeforeReplace"] = result["deleteBeforeReplace"]
         return proto.DiffResponse(**fields)
 
     def Update(self, request, context):
@@ -77,8 +75,8 @@ class MyResourceProviderServicer(ResourceProviderServicer):
 
         result = provider.update(request.id, olds, news)
         outs = {}
-        if 'outs' in result:
-            outs = result['outs']
+        if "outs" in result:
+            outs = result["outs"]
         outs[PROVIDER_KEY] = news[PROVIDER_KEY]
     
         loop = asyncio.new_event_loop()
@@ -102,14 +100,14 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         result = provider.create(props)
-        outs = result['outs']
+        outs = result["outs"]
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
         loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
         loop.close()
 
-        fields = {'id': result['id'], 'properties': outs_proto}
+        fields = {"id": result["id"], "properties": outs_proto}
         return proto.CreateResponse(**fields)
         
     def Check(self, request, context):
@@ -121,9 +119,8 @@ class MyResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(news)
 
         result = provider.check(olds, news)
-        inputs = result['inputs']
-        # TODO failures
-        # failures = result['failures']
+        inputs = result["inputs"]
+        failures = result["failures"]
 
         inputs[PROVIDER_KEY] = news[PROVIDER_KEY]
         
@@ -131,7 +128,9 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
         loop.close()
 
-        fields = {"inputs": inputs_proto}
+        failures_proto = [proto.CheckFailure(property=f.property, reason=f.reason) for f in failures]
+
+        fields = {"inputs": inputs_proto, "failures": failures_proto}
         return proto.CheckResponse(**fields)
 
     def Configure(self, request, context):
@@ -147,14 +146,14 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         result = provider.read(id_, props)
-        outs = result['props']
+        outs = result["props"]
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
         loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
         loop.close()
 
-        fields = {'id': result['id'], 'properties': outs_proto}
+        fields = {"id": result["id"], "properties": outs_proto}
         return proto.ReadResponse(**fields)
 
     def __init__(self):

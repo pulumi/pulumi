@@ -4,6 +4,7 @@ CHANGELOG
 ## HEAD (Unreleased)
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
+- Support for Dynamic Providers in Python.
 
 ## 0.17.20 (2019-06-23)
 

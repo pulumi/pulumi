@@ -12,20 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import asyncio
+import base64
 import pickle
-from typing import Optional, List, Any, Mapping, Union, TYPE_CHECKING, Awaitable
+from typing import Optional, TYPE_CHECKING
 
 import dill
-from .. import CustomResource, ResourceOptions
+from .. import CustomResource
 
 if TYPE_CHECKING:
+    from .. import ResourceOptions
     from ..output import Output, Inputs
 
 PROVIDER_KEY = "__provider"
 
 class ResourceProvider:
+    """
+    ResourceProvider is a Dynamic Resource Provider which allows defining new kinds of resources
+    whose CRUD operations are implemented inside your Python program.
+    """
+
     def check(self, _olds, news):
         return {'inputs': news, 'failures': []}
     def diff(self, _id, _olds, _news):
