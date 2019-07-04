@@ -51,12 +51,10 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				// Add some front matter to each file.
 				fileNameWithoutExtension := strings.TrimSuffix(filepath.Base(s), ".md")
 				title := strings.Replace(fileNameWithoutExtension, "_", " ", -1)
-				alias := fileNameWithoutExtension + ".html"
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
 				buf.WriteString(fmt.Sprintf("title: %q\n", title))
-				buf.WriteString(fmt.Sprintf("aliases: [%q]\n", alias))
-				buf.WriteString("expanded_url: /reference/commands/\n")
+				buf.WriteString("expanded_url: /docs/reference/commands/\n")
 				buf.WriteString("---\n\n")
 				return buf.String()
 			}
@@ -64,7 +62,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 			// linkHandler emits pretty URL links.
 			linkHandler := func(s string) string {
 				link := strings.TrimSuffix(s, ".md")
-				return fmt.Sprintf("/reference/cli/%s/", link)
+				return fmt.Sprintf("/docs/reference/cli/%s/", link)
 			}
 
 			// Generate the .md files.
