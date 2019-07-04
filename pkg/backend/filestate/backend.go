@@ -26,6 +26,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+
+	"gocloud.dev/blob/gcsblob"
+
 	"github.com/pkg/errors"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
@@ -102,12 +106,11 @@ func New(d diag.Sink, u string) (Backend, error) {
 
 	blobmux := blob.DefaultURLMux()
 
-	if googleCredentials := os.Getenv("GOOGLE_CREDENTIALS"); googleCredentials != "" {
-		googleCredentialsMux, err := GoogleCredentialsMux(googleCredentials)
+	if strings.HasPrefix(u, gcsblob.Scheme) {
+		blobmux, err = GoogleCredentialsMux()
 		if err != nil {
 			return nil, err
 		}
-		blobmux = googleCredentialsMux
 	}
 
 	bucket, err := blobmux.OpenBucket(context.TODO(), u)
@@ -536,7 +539,7 @@ func (b *localBackend) apply(
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
-				return changes, result.FromError(errors.Wrap(err, "Could not get signed url for stack location"))
+				cmdutil.Diag().Warningf(diag.Message("", "Could not get signed url for stack location: %v"), err)
 			}
 		}
 
