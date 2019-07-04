@@ -50,6 +50,7 @@ require (
 	gocloud.dev v0.15.0
 	golang.org/x/crypto v0.0.0-20190422183909-d864b10871cd
 	golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6
+	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/api v0.5.0
 	google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8

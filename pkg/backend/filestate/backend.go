@@ -30,8 +30,9 @@ import (
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+
+	// driver for gs://
+	_ "gocloud.dev/blob/s3blob" // driver for s3://
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -99,7 +100,17 @@ func New(d diag.Sink, u string) (Backend, error) {
 		return nil, err
 	}
 
-	bucket, err := blob.OpenBucket(context.TODO(), u)
+	blobmux := blob.DefaultURLMux()
+
+	if googleCredentials := os.Getenv("GOOGLE_CREDENTIALS"); googleCredentials != "" {
+		googleCredentialsMux, err := GoogleCredentialsMux(googleCredentials)
+		if err != nil {
+			return nil, err
+		}
+		blobmux = googleCredentialsMux
+	}
+
+	bucket, err := blobmux.OpenBucket(context.TODO(), u)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
 	}
