@@ -4,10 +4,13 @@ CHANGELOG
 ## HEAD (Unreleased)
 - `pulumi new` allows specifying a local path to templates (resolves
    [#2672](https://github.com/pulumi/pulumi/issues/2672))
+   
 - Fix an issue where a file archive created on Windows would contain back-slashes
   [#2784](https://github.com/pulumi/pulumi/issues/2784))
+
 - Fix an issue where output values of a resource would not be present when they
   contained secret values, when using Python.
+
 - Fix an issue where emojis are printed in non-interactive mode. (fixes
   [#2871](https://github.com/pulumi/pulumi/issues/2871))
 - Promises/Outputs can now be directly exported as the top-level (i.e. not-named) output of a Stack.
@@ -21,6 +24,9 @@ CHANGELOG
 
 - Improve update performance in cases where a large number of log messages are
   reported during an update.
+
+- Add the ability to pass a customTimeouts object from the providers across the engine
+  to resource management. (fixes [#2665](https://github.com/pulumi/pulumi/issues/2665))
 
 ## 0.17.21 (2019-06-26)
 

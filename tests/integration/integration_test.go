@@ -280,21 +280,21 @@ func TestPreviewJSON(t *testing.T) {
 	// Now check that the result matches.
 	// nolint: lll
 	expect := fmt.Sprintf(`{
-  "steps": [{
-    "op": "create",
-    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-    "newState": {
+    "steps": [{
+      "op": "create",
       "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-      "custom": false,
-      "type": "pulumi:pulumi:Stack",
-      "customTimeouts": {
-        "Create": "",
-        "Update": "",
-        "Delete": ""
-      }
+      "newState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "custom": false,
+        "type": "pulumi:pulumi:Stack",
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
+        }
+      },
+      "detailedDiff": null
     },
-    "detailedDiff": null
-  },
     {
       "op": "create",
       "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
@@ -339,37 +339,37 @@ func TestPreviewJSON(t *testing.T) {
 	// Now check that the result matches.
 	// nolint: lll
 	expect2 := fmt.Sprintf(`{
-  "steps": [{
-    "op": "same",
-    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-    "oldState": {
+    "steps": [{
+      "op": "same",
       "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-      "custom": false,
-      "type": "pulumi:pulumi:Stack",
-      "outputs": {
-        "o": 1
+      "oldState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "custom": false,
+        "type": "pulumi:pulumi:Stack",
+        "outputs": {
+          "o": 1
+        },
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
+        }
       },
-      "customTimeouts": {
-        "Create": "",
-        "Update": "",
-        "Delete": ""
-      }
-    },
-    "newState": {
-      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-      "custom": false,
-      "type": "pulumi:pulumi:Stack",
-      "outputs": {
-        "o": 1
+      "newState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "custom": false,
+        "type": "pulumi:pulumi:Stack",
+        "outputs": {
+          "o": 1
+        },
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
+        }
       },
-      "customTimeouts": {
-        "Create": "",
-        "Update": "",
-        "Delete": ""
-      }
+      "detailedDiff": null
     },
-    "detailedDiff": null
-  },
     {
       "op": "same",
       "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
@@ -439,31 +439,31 @@ func TestPreviewJSON(t *testing.T) {
 	// Now check that the result matches.
 	// nolint: lll
 	expect3 := fmt.Sprintf(`{
-  "steps": [{
-    "op": "same",
-    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-    "oldState": {
-      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-      "custom": false,
-      "type": "pulumi:pulumi:Stack",
-      "customTimeouts": {
-        "Create": "",
-        "Update": "",
-        "Delete": ""
-      }
+    "steps": [{
+	  "op": "same",
+	  "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+	  "oldState": {
+	    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+	    "custom": false,
+	    "type": "pulumi:pulumi:Stack",
+	    "customTimeouts": {
+		  "Create": "",
+		  "Update": "",
+		  "Delete": ""
+	    }
+	  },
+	  "newState": {
+	    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+	    "custom": false,
+	    "type": "pulumi:pulumi:Stack",
+	    "customTimeouts": {
+		  "Create": "",
+		  "Update": "",
+		  "Delete": ""
+	    }
+	  },
+	  "detailedDiff": null
     },
-    "newState": {
-      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-      "custom": false,
-      "type": "pulumi:pulumi:Stack",
-      "customTimeouts": {
-        "Create": "",
-        "Update": "",
-        "Delete": ""
-      }
-    },
-    "detailedDiff": null
-  },
     {
       "op": "same",
       "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
