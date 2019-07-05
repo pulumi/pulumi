@@ -15,7 +15,6 @@
 import asyncio
 import base64
 from concurrent import futures
-import json
 import time
 
 import dill
@@ -32,7 +31,7 @@ def get_provider(props) -> ResourceProvider:
     byts = base64.b64decode(props[PROVIDER_KEY])
     return dill.loads(byts)()
 
-class MyResourceProviderServicer(ResourceProviderServicer):
+class DynamicResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("CheckConfig is not implemented by the dynamic provider")
@@ -44,7 +43,9 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         raise NotImplementedError("DiffConfig is not implemented by the dynamic provider")
 
     def Invoke(self, request, context):
-        raise NotImplementedError("unknown function " % request.token)
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Invoke is not implemented by the dynamic provider")
+        raise NotImplementedError("unknown function %s" % request.token)
 
     def Diff(self, request, context):
         olds = rpc.deserialize_properties(request.olds)
@@ -157,10 +158,10 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         return proto.ReadResponse(**fields)
 
     def __init__(self):
-        return
+        pass
 
 def main():
-    monitor = MyResourceProviderServicer()
+    monitor = DynamicResourceProviderServicer()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
     port = server.add_insecure_port(address="0.0.0.0:0")
