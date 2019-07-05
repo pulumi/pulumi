@@ -666,7 +666,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
-
 	name := tokens.QName(req.GetName())
 	custom := req.GetCustom()
 	parent := resource.URN(req.GetParent())
@@ -750,15 +749,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	var timeouts resource.CustomTimeouts
 	if customTimeouts != nil {
-
 		if customTimeouts.Create != 0 {
 			timeouts.Create = customTimeouts.Create
 		}
-
 		if customTimeouts.Delete != 0 {
 			timeouts.Delete = customTimeouts.Delete
 		}
-
 		if customTimeouts.Update != 0 {
 			timeouts.Update = customTimeouts.Update
 		}
@@ -768,7 +764,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v",
 		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, customTimeouts)
+		aliases, timeouts)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
