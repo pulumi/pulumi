@@ -55,7 +55,7 @@ type Provider interface {
 	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
 		allowUnknowns bool) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(urn resource.URN, news resource.PropertyMap, timeout float32) (resource.ID, resource.PropertyMap,
+	Create(urn resource.URN, news resource.PropertyMap, timeout string) (resource.ID, resource.PropertyMap,
 		resource.Status, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
@@ -64,9 +64,9 @@ type Provider interface {
 		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
-		olds resource.PropertyMap, news resource.PropertyMap, timeout float32) (resource.PropertyMap, resource.Status, error)
+		olds resource.PropertyMap, news resource.PropertyMap, timeout string) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
-	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float32) (resource.Status, error)
+	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout string) (resource.Status, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// GetPluginInfo returns this plugin's information.

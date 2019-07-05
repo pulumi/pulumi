@@ -1514,9 +1514,9 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.toObject = func
  */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject = function(includeInstance, msg) {
   var f, obj = {
-    create: +jspb.Message.getFieldWithDefault(msg, 1, 0.0),
-    update: +jspb.Message.getFieldWithDefault(msg, 2, 0.0),
-    pb_delete: +jspb.Message.getFieldWithDefault(msg, 3, 0.0)
+    create: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    update: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    pb_delete: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -1554,15 +1554,15 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.deserializeBinaryFromRead
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {number} */ (reader.readFloat());
+      var value = /** @type {string} */ (reader.readString());
       msg.setCreate(value);
       break;
     case 2:
-      var value = /** @type {number} */ (reader.readFloat());
+      var value = /** @type {string} */ (reader.readString());
       msg.setUpdate(value);
       break;
     case 3:
-      var value = /** @type {number} */ (reader.readFloat());
+      var value = /** @type {string} */ (reader.readString());
       msg.setDelete(value);
       break;
     default:
@@ -1595,22 +1595,22 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.serializeBinary
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getCreate();
-  if (f !== 0.0) {
-    writer.writeFloat(
+  if (f.length > 0) {
+    writer.writeString(
       1,
       f
     );
   }
   f = message.getUpdate();
-  if (f !== 0.0) {
-    writer.writeFloat(
+  if (f.length > 0) {
+    writer.writeString(
       2,
       f
     );
   }
   f = message.getDelete();
-  if (f !== 0.0) {
-    writer.writeFloat(
+  if (f.length > 0) {
+    writer.writeString(
       3,
       f
     );
@@ -1619,47 +1619,47 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.serializeBinaryToWriter =
 
 
 /**
- * optional float create = 1;
- * @return {number}
+ * optional string create = 1;
+ * @return {string}
  */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.getCreate = function() {
-  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 1, 0.0));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
-/** @param {number} value */
+/** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.setCreate = function(value) {
-  jspb.Message.setProto3FloatField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional float update = 2;
- * @return {number}
+ * optional string update = 2;
+ * @return {string}
  */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.getUpdate = function() {
-  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 2, 0.0));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
-/** @param {number} value */
+/** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.setUpdate = function(value) {
-  jspb.Message.setProto3FloatField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional float delete = 3;
- * @return {number}
+ * optional string delete = 3;
+ * @return {string}
  */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.getDelete = function() {
-  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 3, 0.0));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
-/** @param {number} value */
+/** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.setDelete = function(value) {
-  jspb.Message.setProto3FloatField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

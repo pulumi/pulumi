@@ -17,6 +17,7 @@ package deploy
 import (
 	"context"
 	"fmt"
+
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -749,13 +750,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	var timeouts resource.CustomTimeouts
 	if customTimeouts != nil {
-		if customTimeouts.Create != 0 {
+		if customTimeouts.Create != "" {
 			timeouts.Create = customTimeouts.Create
 		}
-		if customTimeouts.Delete != 0 {
+		if customTimeouts.Delete != "" {
 			timeouts.Delete = customTimeouts.Delete
 		}
-		if customTimeouts.Update != 0 {
+		if customTimeouts.Update != "" {
 			timeouts.Update = customTimeouts.Update
 		}
 	}

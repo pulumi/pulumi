@@ -78,7 +78,7 @@ type InvokeOpt struct {
 }
 
 type CustomTimeouts struct {
-	Create float32
-	Update float32
-	Delete float32
+	Create string
+	Update string
+	Delete string
 }

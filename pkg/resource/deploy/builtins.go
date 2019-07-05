@@ -97,7 +97,7 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs r
 }
 
 func (p *builtinProvider) Create(urn resource.URN,
-	inputs resource.PropertyMap, timeout float32) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	inputs resource.PropertyMap, timeout string) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
@@ -110,7 +110,7 @@ func (p *builtinProvider) Create(urn resource.URN,
 }
 
 func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state,
-	inputs resource.PropertyMap, timeout float32) (resource.PropertyMap, resource.Status, error) {
+	inputs resource.PropertyMap, timeout string) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Failf("unexpected update for builtin resource %v", urn)
 	contract.Assert(urn.Type() == stackReferenceType)
@@ -119,7 +119,7 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state,
 }
 
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
-	state resource.PropertyMap, timeout float32) (resource.Status, error) {
+	state resource.PropertyMap, timeout string) (resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 

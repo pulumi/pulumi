@@ -308,7 +308,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 //
 // The provider must have been loaded by a prior call to Check.
 func (r *Registry) Create(urn resource.URN,
-	news resource.PropertyMap, timeout float32) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	news resource.PropertyMap, timeout string) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(!r.isPreview)
 
@@ -335,7 +335,7 @@ func (r *Registry) Create(urn resource.URN,
 //
 // THe provider must have been loaded by a prior call to Check.
 func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
-	news resource.PropertyMap, timeout float32) (resource.PropertyMap, resource.Status, error) {
+	news resource.PropertyMap, timeout string) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(!r.isPreview)
 
@@ -358,7 +358,7 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
 // Delete unregisters and unloads the provider with the given URN and ID. The provider must have been loaded when the
 // registry was created (i.e. it must have been present in the state handed to NewRegistry).
 func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
-	timeout float32) (resource.Status, error) {
+	timeout string) (resource.Status, error) {
 	contract.Assert(!r.isPreview)
 
 	ref := mustNewReference(urn, id)

@@ -227,45 +227,25 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		// Register a component resource.
 		&testRegEvent{
 			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", false,
-<<<<<<< HEAD
-				nil, "", []string{}, nil, false, nil, nil, nil, ""),
-=======
-				nil, "", []string{}, nil, false, nil, nil, nil, nil),
->>>>>>> e4351140... Plumbing the CustomTimeouts through to the engine and adding test to show this
+				nil, "", []string{}, nil, false, nil, nil, nil, "", nil),
 		},
 		// Register a couple resources from package A.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res1", true, resource.PropertyMap{},
-<<<<<<< HEAD
-				componentURN, false, nil, "", []string{}, nil, false, nil, nil, nil, ""),
+				componentURN, false, nil, "", []string{}, nil, false, nil, nil, nil, "", nil),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res2", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil, false, nil, nil, nil, ""),
-=======
-				componentURN, false, nil, "", []string{}, nil, false, nil, nil, nil, nil),
-		},
-		&testRegEvent{
-			goal: resource.NewGoal("pkgA:m:typA", "res2", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil, false, nil, nil, nil, nil),
->>>>>>> e4351140... Plumbing the CustomTimeouts through to the engine and adding test to show this
+				componentURN, false, nil, "", []string{}, nil, false, nil, nil, nil, "", nil),
 		},
 		// Register a few resources from other packages.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgB:m:typB", "res3", true, resource.PropertyMap{}, "", false,
-<<<<<<< HEAD
-				nil, "", []string{}, nil, false, nil, nil, nil, ""),
+				nil, "", []string{}, nil, false, nil, nil, nil, "", nil),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil, false, nil, nil, nil, ""),
-=======
-				nil, "", []string{}, nil, false, nil, nil, nil, nil),
-		},
-		&testRegEvent{
-			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil, false, nil, nil, nil, nil),
->>>>>>> e4351140... Plumbing the CustomTimeouts through to the engine and adding test to show this
+				nil, "", []string{}, nil, false, nil, nil, nil, "", nil),
 		},
 	}
 

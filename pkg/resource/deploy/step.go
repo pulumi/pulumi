@@ -187,7 +187,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			var timeout float32
+			var timeout string
 			if s.new.CustomTimeouts != nil {
 				timeout = s.new.CustomTimeouts.Create
 			}
@@ -312,7 +312,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			var timeout float32
+			var timeout string
 			if s.old.CustomTimeouts != nil {
 				timeout = s.old.CustomTimeouts.Delete
 			}
@@ -420,7 +420,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			var timeout float32
+			var timeout string
 			if s.new.CustomTimeouts != nil {
 				timeout = s.new.CustomTimeouts.Update
 			}
@@ -821,7 +821,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil)
+		s.new.PropertyDependencies, false, nil, nil, s.new.CustomTimeouts)
 
 	// Check the user inputs using the provider inputs for defaults.
 	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)

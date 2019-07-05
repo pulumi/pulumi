@@ -18,7 +18,6 @@ import { all, Input, Inputs, interpolate, Output, output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
-import float = util.float;
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -458,17 +457,17 @@ export interface ResourceOptions {
 
 export interface CustomTimeouts {
     /**
-     * The optional create timeout in minutes
+     * The optional create timeout represented as a string e.g. 5m.
      */
-    create?: number;
+    create?: string;
     /**
-     * The optional update timeout in minutes
+     * The optional update timeout represented as a string e.g. 5m.
      */
-    update?: number;
+    update?: string;
     /**
-     * The optional delete timeout in minutes
+     * The optional delete timeout represented as a string e.g. 5m.
      */
-    delete?: number;
+    delete?: string;
 }
 
 /**

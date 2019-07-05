@@ -280,42 +280,51 @@ func TestPreviewJSON(t *testing.T) {
 	// Now check that the result matches.
 	// nolint: lll
 	expect := fmt.Sprintf(`{
-    "steps": [
-        {
-            "op": "create",
-            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-            "newState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "custom": false,
-                "type": "pulumi:pulumi:Stack"
-            },
-            "detailedDiff": null
+  "steps": [{
+    "op": "create",
+    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+    "newState": {
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+      "custom": false,
+      "type": "pulumi:pulumi:Stack",
+      "customTimeouts": {
+        "Create": "",
+        "Update": "",
+        "Delete": ""
+      }
+    },
+    "detailedDiff": null
+  },
+    {
+      "op": "create",
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+      "provider": "...",
+      "newState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+        "custom": true,
+        "type": "pulumi-nodejs:dynamic:Resource",
+        "inputs": {
+          "__provider": "...",
+          "state": 1
         },
-        {
-            "op": "create",
-            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-            "provider": "...",
-            "newState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-                "custom": true,
-                "type": "pulumi-nodejs:dynamic:Resource",
-                "inputs": {
-                    "__provider": "...",
-                    "state": 1
-                },
-                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "provider": "...",
-                "propertyDependencies": {
-                    "__provider": null,
-                    "state": null
-                }
-            },
-            "detailedDiff": null
+        "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "provider": "...",
+        "propertyDependencies": {
+          "__provider": null,
+          "state": null
+        },
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
         }
-    ],
-    "changeSummary": {
-        "create": 2
+      },
+      "detailedDiff": null
     }
+  ],
+  "changeSummary": {
+    "create": 2
+  }
 }
 `, stackName)
 	assert.Equal(t, expect, stdout)
@@ -330,76 +339,95 @@ func TestPreviewJSON(t *testing.T) {
 	// Now check that the result matches.
 	// nolint: lll
 	expect2 := fmt.Sprintf(`{
-    "steps": [
-        {
-            "op": "same",
-            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-            "oldState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "custom": false,
-                "type": "pulumi:pulumi:Stack",
-                "outputs": {
-                    "o": 1
-                }
-            },
-            "newState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "custom": false,
-                "type": "pulumi:pulumi:Stack",
-                "outputs": {
-                    "o": 1
-                }
-            },
-            "detailedDiff": null
+  "steps": [{
+    "op": "same",
+    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+    "oldState": {
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+      "custom": false,
+      "type": "pulumi:pulumi:Stack",
+      "outputs": {
+        "o": 1
+      },
+      "customTimeouts": {
+        "Create": "",
+        "Update": "",
+        "Delete": ""
+      }
+    },
+    "newState": {
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+      "custom": false,
+      "type": "pulumi:pulumi:Stack",
+      "outputs": {
+        "o": 1
+      },
+      "customTimeouts": {
+        "Create": "",
+        "Update": "",
+        "Delete": ""
+      }
+    },
+    "detailedDiff": null
+  },
+    {
+      "op": "same",
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+      "provider": "...",
+      "oldState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+        "custom": true,
+        "id": "0",
+        "type": "pulumi-nodejs:dynamic:Resource",
+        "inputs": {
+          "__provider": "...",
+          "state": 1
         },
-        {
-            "op": "same",
-            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-            "provider": "...",
-            "oldState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-                "custom": true,
-                "id": "0",
-                "type": "pulumi-nodejs:dynamic:Resource",
-                "inputs": {
-                    "__provider": "...",
-                    "state": 1
-                },
-                "outputs": {
-                    "__provider": "..."
-                },
-                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "provider": "...",
-                "propertyDependencies": {
-                    "__provider": null,
-                    "state": null
-                }
-            },
-            "newState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-                "custom": true,
-                "id": "0",
-                "type": "pulumi-nodejs:dynamic:Resource",
-                "inputs": {
-                    "__provider": "...",
-                    "state": 1
-                },
-                "outputs": {
-                    "__provider": "..."
-                },
-                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "provider": "...",
-                "propertyDependencies": {
-                    "__provider": null,
-                    "state": null
-                }
-            },
-            "detailedDiff": null
+        "outputs": {
+          "__provider": "..."
+        },
+        "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "provider": "...",
+        "propertyDependencies": {
+          "__provider": null,
+          "state": null
+        },
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
         }
-    ],
-    "changeSummary": {
-        "same": 2
+      },
+      "newState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+        "custom": true,
+        "id": "0",
+        "type": "pulumi-nodejs:dynamic:Resource",
+        "inputs": {
+          "__provider": "...",
+          "state": 1
+        },
+        "outputs": {
+          "__provider": "..."
+        },
+        "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "provider": "...",
+        "propertyDependencies": {
+          "__provider": null,
+          "state": null
+        },
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
+        }
+      },
+      "detailedDiff": null
     }
+  ],
+  "changeSummary": {
+    "same": 2
+  }
 }
 `, stackName)
 	assert.Equal(t, expect2, stdout2)
@@ -411,70 +439,89 @@ func TestPreviewJSON(t *testing.T) {
 	// Now check that the result matches.
 	// nolint: lll
 	expect3 := fmt.Sprintf(`{
-    "steps": [
-        {
-            "op": "same",
-            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-            "oldState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "custom": false,
-                "type": "pulumi:pulumi:Stack"
-            },
-            "newState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "custom": false,
-                "type": "pulumi:pulumi:Stack"
-            },
-            "detailedDiff": null
+  "steps": [{
+    "op": "same",
+    "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+    "oldState": {
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+      "custom": false,
+      "type": "pulumi:pulumi:Stack",
+      "customTimeouts": {
+        "Create": "",
+        "Update": "",
+        "Delete": ""
+      }
+    },
+    "newState": {
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+      "custom": false,
+      "type": "pulumi:pulumi:Stack",
+      "customTimeouts": {
+        "Create": "",
+        "Update": "",
+        "Delete": ""
+      }
+    },
+    "detailedDiff": null
+  },
+    {
+      "op": "same",
+      "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+      "provider": "...",
+      "oldState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+        "custom": true,
+        "id": "0",
+        "type": "pulumi-nodejs:dynamic:Resource",
+        "inputs": {
+          "__provider": "...",
+          "state": 1
         },
-        {
-            "op": "same",
-            "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-            "provider": "...",
-            "oldState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-                "custom": true,
-                "id": "0",
-                "type": "pulumi-nodejs:dynamic:Resource",
-                "inputs": {
-                    "__provider": "...",
-                    "state": 1
-                },
-                "outputs": {
-                    "__provider": "..."
-                },
-                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "provider": "...",
-                "propertyDependencies": {
-                    "__provider": null,
-                    "state": null
-                }
-            },
-            "newState": {
-                "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
-                "custom": true,
-                "id": "0",
-                "type": "pulumi-nodejs:dynamic:Resource",
-                "inputs": {
-                    "__provider": "...",
-                    "state": 1
-                },
-                "outputs": {
-                    "__provider": "..."
-                },
-                "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
-                "provider": "...",
-                "propertyDependencies": {
-                    "__provider": null,
-                    "state": null
-                }
-            },
-            "detailedDiff": null
+        "outputs": {
+          "__provider": "..."
+        },
+        "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "provider": "...",
+        "propertyDependencies": {
+          "__provider": null,
+          "state": null
+        },
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
         }
-    ],
-    "changeSummary": {
-        "same": 2
+      },
+      "newState": {
+        "urn": "urn:pulumi:%[1]s::protect_resources::pulumi-nodejs:dynamic:Resource::res",
+        "custom": true,
+        "id": "0",
+        "type": "pulumi-nodejs:dynamic:Resource",
+        "inputs": {
+          "__provider": "...",
+          "state": 1
+        },
+        "outputs": {
+          "__provider": "..."
+        },
+        "parent": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
+        "provider": "...",
+        "propertyDependencies": {
+          "__provider": null,
+          "state": null
+        },
+        "customTimeouts": {
+          "Create": "",
+          "Update": "",
+          "Delete": ""
+        }
+      },
+      "detailedDiff": null
     }
+  ],
+  "changeSummary": {
+    "same": 2
+  }
 }
 `, stackName)
 	assert.Equal(t, expect3, stdout3)

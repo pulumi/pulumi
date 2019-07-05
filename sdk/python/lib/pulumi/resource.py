@@ -24,25 +24,25 @@ if TYPE_CHECKING:
 
 
 class CustomTimeouts:
-    create: float
+    create: str
     """
-    create is the optional create timout in minutes.
-    """
-
-    update: float
-    """
-    update is the optional update timout in minutes.
+    create is the optional create timout represented as a string e.g. 5m.
     """
 
-    delete: float
+    update: str
     """
-    delete is the optional delete timout in minutes.
+    update is the optional update timout represented as a string e.g. 5m.
+    """
+
+    delete: str
+    """
+    delete is the optional delete timout represented as a string e.g. 5m.
     """
 
     def __init__(self,
-                 create: Optional[float] = None,
-                 update: Optional[float] = None,
-                 delete: Optional[float] = None) -> None:
+                 create: Optional[str] = None,
+                 update: Optional[str] = None,
+                 delete: Optional[str] = None) -> None:
 
         self.create = create
         self.update = update

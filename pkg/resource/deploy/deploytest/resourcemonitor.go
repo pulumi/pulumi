@@ -16,6 +16,7 @@ package deploytest
 
 import (
 	"context"
+
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -30,7 +31,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
 	propertyDeps map[resource.PropertyKey][]resource.URN, deleteBeforeReplace bool,
 	version string, ignoreChanges []string,
-	aliases []resource.URN, importID resource.ID, customTimeouts *resource.CustomTimeouts) (resource.URN, resource.ID, resource.PropertyMap, error) {
+	aliases []resource.URN, importID resource.ID, customTimeouts *resource.CustomTimeouts) (resource.URN, resource.ID,
+	resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -83,7 +85,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Version:              version,
 		Aliases:              aliasStrings,
 		ImportId:             string(importID),
-		CustomTimeouts:		  &timeouts,
+		CustomTimeouts:       &timeouts,
 	}
 
 	// submit request

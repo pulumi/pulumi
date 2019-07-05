@@ -74,9 +74,9 @@ message RegisterResourceRequest {
     }
     // CustomTimeouts allows a user to be able to create a set of custom timeout parameters.
     message CustomTimeouts {
-        float create = 1; // The create resource timeout in minutes.
-        float update = 2; // The update resource timeout in minutes.
-        float delete = 3; // The delete resource timeout in minutes.
+        string create = 1; // The create resource timeout represented as a string e.g. 5m.
+        string update = 2; // The update resource timeout represented as a string e.g. 5m.
+        string delete = 3; // The delete resource timeout represented as a string e.g. 5m.
     }
 
     string type = 1;                                            // the type of the object allocated.

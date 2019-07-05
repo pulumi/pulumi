@@ -111,7 +111,7 @@ func (prov *testProvider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float32) (resource.ID,
+func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout string) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
@@ -124,12 +124,12 @@ func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float32) (resource.PropertyMap,
+	olds resource.PropertyMap, news resource.PropertyMap, timeout string) (resource.PropertyMap,
 	resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap, timeout float32) (resource.Status, error) {
+	id resource.ID, props resource.PropertyMap, timeout string) (resource.Status, error) {
 	return resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Invoke(tok tokens.ModuleMember,
@@ -415,7 +415,7 @@ func TestCRUD(t *testing.T) {
 		typ := MakeProviderType(l.pkg)
 		urn := resource.NewURN("test", "test", "", typ, "b")
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
-		timeout := float32(2)
+		timeout := "2m"
 
 		// Check
 		inputs, failures, err := r.Check(urn, olds, news, false)
@@ -446,7 +446,7 @@ func TestCRUD(t *testing.T) {
 	{
 		urn, id := olds[0].URN, olds[0].ID
 		olds, news := olds[0].Inputs, olds[0].Inputs
-		timeout := float32(2)
+		timeout := "2m"
 
 		// Fetch the old provider instance.
 		old, ok := r.GetProvider(Reference{urn: urn, id: id})
@@ -489,7 +489,7 @@ func TestCRUD(t *testing.T) {
 	// Delete the existingv provider for the last entry in olds.
 	{
 		urn, id := olds[len(olds)-1].URN, olds[len(olds)-1].ID
-		timeout := float32(2)
+		timeout := "2m"
 
 		// Fetch the old provider instance.
 		_, ok := r.GetProvider(Reference{urn: urn, id: id})
