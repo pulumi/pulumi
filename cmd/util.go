@@ -55,6 +55,10 @@ func hasDebugCommands() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
 }
 
+func useLegacyDiff() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
+}
+
 func currentBackend(opts display.Options) (backend.Backend, error) {
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {

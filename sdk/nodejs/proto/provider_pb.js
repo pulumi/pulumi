@@ -30,6 +30,8 @@ goog.exportSymbol('proto.pulumirpc.DiffResponse.DiffChanges', null, global);
 goog.exportSymbol('proto.pulumirpc.ErrorResourceInitFailed', null, global);
 goog.exportSymbol('proto.pulumirpc.InvokeRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.InvokeResponse', null, global);
+goog.exportSymbol('proto.pulumirpc.PropertyDiff', null, global);
+goog.exportSymbol('proto.pulumirpc.PropertyDiff.Kind', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.UpdateRequest', null, global);
@@ -2063,6 +2065,189 @@ proto.pulumirpc.DiffRequest.prototype.hasNews = function() {
  * @extends {jspb.Message}
  * @constructor
  */
+proto.pulumirpc.PropertyDiff = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.pulumirpc.PropertyDiff, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.pulumirpc.PropertyDiff.displayName = 'proto.pulumirpc.PropertyDiff';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.pulumirpc.PropertyDiff.prototype.toObject = function(opt_includeInstance) {
+  return proto.pulumirpc.PropertyDiff.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.pulumirpc.PropertyDiff} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.pulumirpc.PropertyDiff.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    kind: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    inputdiff: jspb.Message.getFieldWithDefault(msg, 2, false)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.pulumirpc.PropertyDiff}
+ */
+proto.pulumirpc.PropertyDiff.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.pulumirpc.PropertyDiff;
+  return proto.pulumirpc.PropertyDiff.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.pulumirpc.PropertyDiff} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.pulumirpc.PropertyDiff}
+ */
+proto.pulumirpc.PropertyDiff.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {!proto.pulumirpc.PropertyDiff.Kind} */ (reader.readEnum());
+      msg.setKind(value);
+      break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setInputdiff(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.PropertyDiff.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.pulumirpc.PropertyDiff.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.pulumirpc.PropertyDiff} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.pulumirpc.PropertyDiff.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getKind();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      1,
+      f
+    );
+  }
+  f = message.getInputdiff();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
+    );
+  }
+};
+
+
+/**
+ * @enum {number}
+ */
+proto.pulumirpc.PropertyDiff.Kind = {
+  ADD: 0,
+  ADD_REPLACE: 1,
+  DELETE: 2,
+  DELETE_REPLACE: 3,
+  UPDATE: 4,
+  UPDATE_REPLACE: 5
+};
+
+/**
+ * optional Kind kind = 1;
+ * @return {!proto.pulumirpc.PropertyDiff.Kind}
+ */
+proto.pulumirpc.PropertyDiff.prototype.getKind = function() {
+  return /** @type {!proto.pulumirpc.PropertyDiff.Kind} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
+};
+
+
+/** @param {!proto.pulumirpc.PropertyDiff.Kind} value */
+proto.pulumirpc.PropertyDiff.prototype.setKind = function(value) {
+  jspb.Message.setProto3EnumField(this, 1, value);
+};
+
+
+/**
+ * optional bool inputDiff = 2;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.PropertyDiff.prototype.getInputdiff = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 2, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.PropertyDiff.prototype.setInputdiff = function(value) {
+  jspb.Message.setProto3BooleanField(this, 2, value);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
 proto.pulumirpc.DiffResponse = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.DiffResponse.repeatedFields_, null);
 };
@@ -2110,7 +2295,9 @@ proto.pulumirpc.DiffResponse.toObject = function(includeInstance, msg) {
     stablesList: jspb.Message.getRepeatedField(msg, 2),
     deletebeforereplace: jspb.Message.getFieldWithDefault(msg, 3, false),
     changes: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    diffsList: jspb.Message.getRepeatedField(msg, 5)
+    diffsList: jspb.Message.getRepeatedField(msg, 5),
+    detaileddiffMap: (f = msg.getDetaileddiffMap()) ? f.toObject(includeInstance, proto.pulumirpc.PropertyDiff.toObject) : [],
+    hasdetaileddiff: jspb.Message.getFieldWithDefault(msg, 7, false)
   };
 
   if (includeInstance) {
@@ -2166,6 +2353,16 @@ proto.pulumirpc.DiffResponse.deserializeBinaryFromReader = function(msg, reader)
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.addDiffs(value);
+      break;
+    case 6:
+      var value = msg.getDetaileddiffMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.PropertyDiff.deserializeBinaryFromReader);
+         });
+      break;
+    case 7:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setHasdetaileddiff(value);
       break;
     default:
       reader.skipField();
@@ -2228,6 +2425,17 @@ proto.pulumirpc.DiffResponse.serializeBinaryToWriter = function(message, writer)
   if (f.length > 0) {
     writer.writeRepeatedString(
       5,
+      f
+    );
+  }
+  f = message.getDetaileddiffMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.PropertyDiff.serializeBinaryToWriter);
+  }
+  f = message.getHasdetaileddiff();
+  if (f) {
+    writer.writeBool(
+      7,
       f
     );
   }
@@ -2359,6 +2567,41 @@ proto.pulumirpc.DiffResponse.prototype.addDiffs = function(value, opt_index) {
 
 proto.pulumirpc.DiffResponse.prototype.clearDiffsList = function() {
   this.setDiffsList([]);
+};
+
+
+/**
+ * map<string, PropertyDiff> detailedDiff = 6;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,!proto.pulumirpc.PropertyDiff>}
+ */
+proto.pulumirpc.DiffResponse.prototype.getDetaileddiffMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,!proto.pulumirpc.PropertyDiff>} */ (
+      jspb.Message.getMapField(this, 6, opt_noLazyCreate,
+      proto.pulumirpc.PropertyDiff));
+};
+
+
+proto.pulumirpc.DiffResponse.prototype.clearDetaileddiffMap = function() {
+  this.getDetaileddiffMap().clear();
+};
+
+
+/**
+ * optional bool hasDetailedDiff = 7;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.DiffResponse.prototype.getHasdetaileddiff = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 7, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.DiffResponse.prototype.setHasdetaileddiff = function(value) {
+  jspb.Message.setProto3BooleanField(this, 7, value);
 };
 
 

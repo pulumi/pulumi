@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -27,33 +28,33 @@ import (
 
 // assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
 // failures when a scenario exceeds the provided threshold.
-// type assertPerfBenchmark struct {
-// 	T                  *testing.T
-// 	MaxPreviewDuration time.Duration
-// 	MaxUpdateDuration  time.Duration
-// }
+type assertPerfBenchmark struct {
+	T                  *testing.T
+	MaxPreviewDuration time.Duration
+	MaxUpdateDuration  time.Duration
+}
 
-// func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
-// 	var maxDuration *time.Duration
-// 	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
-// 		maxDuration = &t.MaxPreviewDuration
-// 	}
-// 	if strings.HasPrefix(stats.StepName, "pulumi-update") {
-// 		maxDuration = &t.MaxUpdateDuration
-// 	}
+func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
+	var maxDuration *time.Duration
+	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
+		maxDuration = &t.MaxPreviewDuration
+	}
+	if strings.HasPrefix(stats.StepName, "pulumi-update") {
+		maxDuration = &t.MaxUpdateDuration
+	}
 
-// 	if maxDuration != nil && *maxDuration != 0 {
-// 		if stats.ElapsedSeconds < maxDuration.Seconds() {
-// 			t.T.Logf(
-// 				"Test step %q was under threshold. %.2f (max %.2fs)",
-// 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-// 		} else {
-// 			t.T.Errorf(
-// 				"Test step %q took longer than expected. %.2f vs. max %.2fs",
-// 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-// 		}
-// 	}
-// }
+	if maxDuration != nil && *maxDuration != 0 {
+		if stats.ElapsedSeconds < maxDuration.Seconds() {
+			t.T.Logf(
+				"Test step %q was under threshold. %.2fs (max %.2fs)",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		} else {
+			t.T.Errorf(
+				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		}
+	}
+}
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
@@ -84,26 +85,26 @@ func TestEmptyGo(t *testing.T) {
 }
 
 // Tests emitting many engine events doesn't result in a performance problem.
-// func TestEngineEventPerf(t *testing.T) {
-// 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
-// 	// Since then, it should now be down to ~4s, with additional padding,
-// 	// since some travis machines (especially the OSX ones) seem quite slow
-// 	// to begin with.
-// 	benchmarkEnforcer := &assertPerfBenchmark{
-// 		T:                  t,
-// 		MaxPreviewDuration: 8 * time.Second,
-// 		MaxUpdateDuration:  8 * time.Second,
-// 	}
+func TestEngineEventPerf(t *testing.T) {
+	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
+	// Since then, it should now be down to ~4s, with additional padding,
+	// since some Travis machines (especially the macOS ones) seem quite slow
+	// to begin with.
+	benchmarkEnforcer := &assertPerfBenchmark{
+		T:                  t,
+		MaxPreviewDuration: 8 * time.Second,
+		MaxUpdateDuration:  8 * time.Second,
+	}
 
-// 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-// 		Dir:          "ee_perf",
-// 		Dependencies: []string{"@pulumi/pulumi"},
-// 		Quick:        true,
-// 		ReportStats:  benchmarkEnforcer,
-// 		// Don't run in parallel since it is sensitive to system resources.
-// 		NoParallel: true,
-// 	})
-// }
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "ee_perf",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ReportStats:  benchmarkEnforcer,
+		// Don't run in parallel since it is sensitive to system resources.
+		NoParallel: true,
+	})
+}
 
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
@@ -286,7 +287,8 @@ func TestPreviewJSON(t *testing.T) {
                 "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
                 "custom": false,
                 "type": "pulumi:pulumi:Stack"
-            }
+            },
+            "detailedDiff": null
         },
         {
             "op": "create",
@@ -306,7 +308,8 @@ func TestPreviewJSON(t *testing.T) {
                     "__provider": null,
                     "state": null
                 }
-            }
+            },
+            "detailedDiff": null
         }
     ],
     "changeSummary": {
@@ -345,7 +348,8 @@ func TestPreviewJSON(t *testing.T) {
                 "outputs": {
                     "o": 1
                 }
-            }
+            },
+            "detailedDiff": null
         },
         {
             "op": "same",
@@ -388,7 +392,8 @@ func TestPreviewJSON(t *testing.T) {
                     "__provider": null,
                     "state": null
                 }
-            }
+            },
+            "detailedDiff": null
         }
     ],
     "changeSummary": {
@@ -418,7 +423,8 @@ func TestPreviewJSON(t *testing.T) {
                 "urn": "urn:pulumi:%[1]s::protect_resources::pulumi:pulumi:Stack::protect_resources-%[1]s",
                 "custom": false,
                 "type": "pulumi:pulumi:Stack"
-            }
+            },
+            "detailedDiff": null
         },
         {
             "op": "same",
@@ -461,7 +467,8 @@ func TestPreviewJSON(t *testing.T) {
                     "__provider": null,
                     "state": null
                 }
-            }
+            },
+            "detailedDiff": null
         }
     ],
     "changeSummary": {
@@ -966,6 +973,33 @@ func TestDynamicPython(t *testing.T) {
 		Dir: filepath.Join("dynamic", "python"),
 		Dependencies: []string{
 			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+	})
+}
+
+func TestResourceWithSecretSerialization(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "secret_outputs",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// The program exports two resources, one named `withSecret` who's prefix property should be secret
+			// and one named `withoutSecret` which should not. We serialize both of the these as POJO objects, so
+			// they appear as maps in the output.
+			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			// The secret prop should have been serialized as a secret
+			secretPropValue, ok := withSecretProps["prefix"].(map[string]interface{})
+			assert.Truef(t, ok, "secret output was not serialized as a secret")
+			assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+
+			// And here, the prop was not set, it should just be a string value
+			_, isString := withoutSecretProps["prefix"].(string)
+			assert.Truef(t, isString, "non-secret output was not a string")
 		},
 	})
 }

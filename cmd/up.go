@@ -104,10 +104,11 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			Analyzers: analyzers,
-			Parallel:  parallel,
-			Debug:     debug,
-			Refresh:   refresh,
+			Analyzers:     analyzers,
+			Parallel:      parallel,
+			Debug:         debug,
+			Refresh:       refresh,
+			UseLegacyDiff: useLegacyDiff(),
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{

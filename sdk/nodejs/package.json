@@ -15,7 +15,7 @@
         "minimist": "^1.2.0",
         "normalize-package-data": "^2.4.0",
         "protobufjs": "^6.8.6",
-        "read-package-tree": "^5.2.1",
+        "read-package-tree": "^5.3.1",
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",

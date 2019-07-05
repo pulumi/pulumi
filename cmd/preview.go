@@ -66,9 +66,10 @@ func newPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					Analyzers: analyzers,
-					Parallel:  parallel,
-					Debug:     debug,
+					Analyzers:     analyzers,
+					Parallel:      parallel,
+					Debug:         debug,
+					UseLegacyDiff: useLegacyDiff(),
 				},
 				Display: display.Options{
 					Color:                cmdutil.GetGlobalColorization(),

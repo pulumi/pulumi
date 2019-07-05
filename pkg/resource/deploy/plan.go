@@ -52,6 +52,7 @@ type Options struct {
 	Refresh           bool   // whether or not to refresh before executing the plan.
 	RefreshOnly       bool   // whether or not to exit after refreshing.
 	TrustDependencies bool   // whether or not to trust the resource dependency graph.
+	UseLegacyDiff     bool   // whether or not to use legacy diffing behavior.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
