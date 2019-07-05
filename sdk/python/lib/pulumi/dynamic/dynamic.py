@@ -15,16 +15,143 @@
 import asyncio
 import base64
 import pickle
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, List, TYPE_CHECKING
 
 import dill
-from .. import CustomResource
+from .. import CustomResource, ResourceOptions
 
 if TYPE_CHECKING:
-    from .. import ResourceOptions
     from ..output import Output, Inputs
 
 PROVIDER_KEY = "__provider"
+
+class CheckResult:
+    """
+    CheckResult represents the results of a call to `ResourceProvider.check`.
+    """
+
+    inputs: Any
+    """
+    The inputs to use, if any.
+    """
+
+    failures: List['CheckFailure']
+    """
+    Any validation failures that occurred.
+    """
+
+    def __init__(self, inputs: Any, failures: List['CheckFailure']) -> None:
+        self.inputs = inputs
+        self.failures = failures
+
+class CheckFailure:
+    """
+    CheckFailure represents a single failure in the results of a call to `ResourceProvider.check`
+    """
+
+    property: str
+    """
+    The property that failed validation.
+    """
+
+    reason: str
+    """
+    The reason that the property failed validation.
+    """
+
+    def __init__(self, property_: str, reason: str) -> None:
+        self.property = property_
+        self.reason = reason
+
+class DiffResult:
+    """
+    DiffResult represents the results of a call to `ResourceProvider.diff`.
+    """
+
+    changes: Optional[bool]
+    """
+    If true, this diff detected changes and suggests an update.
+    """
+
+    replaces: Optional[List[str]]
+    """
+    If this update requires a replacement, the set of properties triggering it.
+    """
+
+    stables: Optional[List[str]]
+    """
+    An optional list of properties that will not ever change.
+    """
+
+    delete_before_replace: Optional[bool]
+    """
+    If true, and a replacement occurs, the resource will first be deleted before being recreated.
+    This is to void potential side-by-side issues with the default create before delete behavior.
+    """
+
+    def __init__(self,
+                 changes: Optional[bool] = None,
+                 replaces: Optional[List[str]] = None,
+                 stables: Optional[List[str]] = None,
+                 delete_before_replace: Optional[bool] = None) -> None:
+        self.changes = changes
+        self.replaces = replaces
+        self.stables = stables
+        self.delete_before_replace = delete_before_replace
+
+class CreateResult:
+    """
+    CreateResult represents the results of a call to `ResourceProvider.create`.
+    """
+
+    id: str
+    """
+    The ID of the created resource.
+    """
+
+    outs: Optional[Any]
+    """
+    Any properties that were computed during creation.
+    """
+
+    def __init__(self, id_: str, outs: Optional[Any] = None) -> None:
+        self.id = id_
+        self.outs = outs
+
+class ReadResult:
+    """
+    The ID of the resource ready back (or blank if missing).
+    """
+
+    id: Optional[str]
+    """
+    The ID of the resource ready back (or blank if missing).
+    """
+
+    outs: Optional[Any]
+    """
+    The current property state read from the live environment.
+    """
+
+    def __init__(self,
+                 id_: Optional[str] = None,
+                 outs: Optional[Any] = None) -> None:
+        self.id = id_
+        self.outs = outs
+
+class UpdateResult:
+    """
+    UpdateResult represents the results of a call to `ResourceProvider.update`.
+    """
+
+    outs: Optional[Any]
+    """
+    Any properties that were computed during updating.
+    """
+
+    def __init__(self,
+                 outs: Optional[Any] = None) -> None:
+        self.outs = outs
 
 class ResourceProvider:
     """
@@ -32,19 +159,48 @@ class ResourceProvider:
     whose CRUD operations are implemented inside your Python program.
     """
 
-    def check(self, _olds, news):
-        return {'inputs': news, 'failures': []}
-    def diff(self, _id, _olds, _news):
-        return {}
-    def create(self, props):
+    def check(self, _olds: Any, news: Any) -> CheckResult:
+        """
+        Check validates that the given property bag is valid for a resource of the given type.
+        """
+        return CheckResult(news, [])
+
+    def diff(self, _id: str, _olds: Any, _news: Any) -> DiffResult:
+        """
+        Diff checks what impacts a hypothetical update will have on the resource's properties.
+        """
+        return DiffResult()
+
+    def create(self, props: Any) -> CreateResult:
+        """
+        Create allocates a new instance of the provided resource and returns its unique ID
+        afterwards. If this call fails, the resource must not have been created (i.e., it is
+        "transacational").
+        """
         raise Exception("Subclass of ResourceProvider must implement 'create'")
-    def read(self, id_, props):
-        return {'id': id_, 'props': props}
-    def update(self, _id, _olds, _news):
-        return {}
-    def delete(self, _id, _props):
+
+    def read(self, id_: str, props: Any) -> ReadResult:
+        """
+        Reads the current live state associated with a resource.  Enough state must be included in
+        the inputs to uniquely identify the resource; this is typically just the resource ID, but it
+        may also include some properties.
+        """
+        return ReadResult(id_, props)
+
+    def update(self, _id: str, _olds: Any, _news: Any) -> UpdateResult:
+        """
+        Update updates an existing resource with new values.
+        """
+        return UpdateResult()
+
+    def delete(self, _id: str, _props: Any) -> None:
+        """
+        Delete tears down an existing resource with the given ID.  If it fails, the resource is
+        assumed to still exist.
+        """
         pass
-    def __init__(self):
+
+    def __init__(self) -> None:
         pass
 
 def serialize_provider(provider: ResourceProvider) -> str:

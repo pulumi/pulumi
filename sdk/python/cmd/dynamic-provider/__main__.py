@@ -55,17 +55,17 @@ class MyResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(news)
         result = provider.diff(request.id, olds, news)
         fields = {}
-        if "changes" in result:
-            if result["changes"]:
+        if result.changes is not None:
+            if result.changes:
                 fields["changes"] = proto.DiffResponse.DIFF_SOME
             else:
                 fields["changes"] = proto.DiffResponse.DIFF_NONE
         else:
             fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN
-        if "replaces" in result and len(result["replaces"]) != 0:
-            fields["replaces"] = result["replaces"]
-        if "deleteBeforeReplace" in result and result["deleteBeforeReplace"]:
-            fields["deleteBeforeReplace"] = result["deleteBeforeReplace"]
+        if result.replaces is not None and len(result.replaces) != 0:
+            fields["replaces"] = result.replaces
+        if result.delete_before_replace is not None:
+            fields["deleteBeforeReplace"] = result.delete_before_replace
         return proto.DiffResponse(**fields)
 
     def Update(self, request, context):
@@ -75,8 +75,8 @@ class MyResourceProviderServicer(ResourceProviderServicer):
 
         result = provider.update(request.id, olds, news)
         outs = {}
-        if "outs" in result:
-            outs = result["outs"]
+        if result.outs is not None:
+            outs = result.outs
         outs[PROVIDER_KEY] = news[PROVIDER_KEY]
     
         loop = asyncio.new_event_loop()
@@ -100,14 +100,14 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         result = provider.create(props)
-        outs = result["outs"]
+        outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
         loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
         loop.close()
 
-        fields = {"id": result["id"], "properties": outs_proto}
+        fields = {"id": result.id, "properties": outs_proto}
         return proto.CreateResponse(**fields)
         
     def Check(self, request, context):
@@ -119,8 +119,8 @@ class MyResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(news)
 
         result = provider.check(olds, news)
-        inputs = result["inputs"]
-        failures = result["failures"]
+        inputs = result.inputs
+        failures = result.failures
 
         inputs[PROVIDER_KEY] = news[PROVIDER_KEY]
         
@@ -146,14 +146,14 @@ class MyResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         result = provider.read(id_, props)
-        outs = result["props"]
+        outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
         loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
         loop.close()
 
-        fields = {"id": result["id"], "properties": outs_proto}
+        fields = {"id": result.id, "properties": outs_proto}
         return proto.ReadResponse(**fields)
 
     def __init__(self):

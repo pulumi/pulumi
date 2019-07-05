@@ -18,6 +18,12 @@ Dynamic Providers for Python.
 
 # Make all module members inside of this package available as package members.
 from .dynamic import (
+    CheckResult,
+    CheckFailure,
+    DiffResult,
+    CreateResult,
+    ReadResult,
+    UpdateResult,
     Resource,
     ResourceProvider,
 )
