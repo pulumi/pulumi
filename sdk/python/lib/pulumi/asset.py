@@ -26,7 +26,6 @@ class Asset:
     Asset represents a single blob of text or data that is managed as a first
     class entity.
     """
-    pass
 
 
 @known_types.file_asset
@@ -77,7 +76,6 @@ class Archive:
     """
     Asset represents a collection of named assets.
     """
-    pass
 
 
 @known_types.asset_archive

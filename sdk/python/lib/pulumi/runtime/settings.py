@@ -86,14 +86,14 @@ def is_dry_run() -> bool:
     """
     Returns whether or not we are currently doing a preview.
     """
-    return True if SETTINGS.dry_run else False
+    return bool(SETTINGS.dry_run)
 
 
 def is_test_mode_enabled() -> bool:
     """
     Returns true if test mode is enabled (PULUMI_TEST_MODE).
     """
-    return True if SETTINGS.test_mode_enabled else False
+    return bool(SETTINGS.test_mode_enabled)
 
 
 def _set_test_mode_enabled(v: Optional[bool]):

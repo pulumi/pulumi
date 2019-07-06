@@ -198,7 +198,6 @@ class ResourceProvider:
         Delete tears down an existing resource with the given ID.  If it fails, the resource is
         assumed to still exist.
         """
-        pass
 
     def __init__(self) -> None:
         pass

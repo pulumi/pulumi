@@ -189,7 +189,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
             if "uri" in props_struct:
                 return known_types.new_remote_asset(props_struct["uri"])
             raise AssertionError("Invalid asset encountered when unmarshaling resource property")
-        elif props_struct[_special_sig_key] == _special_archive_sig:
+        if props_struct[_special_sig_key] == _special_archive_sig:
             # This is an archive. Re-hydrate this object into an Archive.
             if "assets" in props_struct:
                 return known_types.new_asset_archive(deserialize_property(props_struct["assets"]))
@@ -197,7 +197,8 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
                 return known_types.new_file_archive(props_struct["path"])
             if "uri" in props_struct:
                 return known_types.new_remote_archive(props_struct["uri"])
-        elif props_struct[_special_sig_key] == _special_secret_sig:
+            raise AssertionError("Invalid archive encountered when unmarshaling resource property")
+        if props_struct[_special_sig_key] == _special_secret_sig:
             return {
                 _special_sig_key: _special_secret_sig,
                 "value": deserialize_property(props_struct["value"])
