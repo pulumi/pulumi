@@ -58,12 +58,12 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         fields = {}
         if result.changes is not None:
             if result.changes:
-                fields["changes"] = proto.DiffResponse.DIFF_SOME
+                fields["changes"] = proto.DiffResponse.DIFF_SOME # pylint: disable=no-member
             else:
-                fields["changes"] = proto.DiffResponse.DIFF_NONE
+                fields["changes"] = proto.DiffResponse.DIFF_NONE # pylint: disable=no-member
         else:
-            fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN
-        if result.replaces is not None and len(result.replaces) != 0:
+            fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN # pylint: disable=no-member
+        if result.replaces is not None:
             fields["replaces"] = result.replaces
         if result.delete_before_replace is not None:
             fields["deleteBeforeReplace"] = result.delete_before_replace
@@ -79,7 +79,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         if result.outs is not None:
             outs = result.outs
         outs[PROVIDER_KEY] = news[PROVIDER_KEY]
-    
+
         loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
         loop.close()
@@ -110,7 +110,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
         fields = {"id": result.id, "properties": outs_proto}
         return proto.CreateResponse(**fields)
-        
+
     def Check(self, request, context):
         olds = rpc.deserialize_properties(request.olds)
         news = rpc.deserialize_properties(request.news)
@@ -124,12 +124,12 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         failures = result.failures
 
         inputs[PROVIDER_KEY] = news[PROVIDER_KEY]
-        
+
         loop = asyncio.new_event_loop()
         inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
         loop.close()
 
-        failures_proto = [proto.CheckFailure(property=f.property, reason=f.reason) for f in failures]
+        failures_proto = [proto.CheckFailure(f.property, f.reason) for f in failures]
 
         fields = {"inputs": inputs_proto, "failures": failures_proto}
         return proto.CheckResponse(**fields)
