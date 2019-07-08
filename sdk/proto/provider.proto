@@ -107,10 +107,11 @@ message CheckFailure {
 }
 
 message DiffRequest {
-    string id = 1;                   // the ID of the resource to diff.
-    string urn = 2;                  // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3; // the old values of provider inputs to diff.
-    google.protobuf.Struct news = 4; // the new values of provider inputs to diff.
+    string id = 1;                     // the ID of the resource to diff.
+    string urn = 2;                    // the Pulumi URN for this resource.
+    google.protobuf.Struct olds = 3;   // the old values of provider inputs to diff.
+    google.protobuf.Struct news = 4;   // the new values of provider inputs to diff.
+    repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
 }
 
 message PropertyDiff {
@@ -203,11 +204,12 @@ message ReadResponse {
 message UpdateRequest {
     // NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
 
-    string id = 1;                   // the ID of the resource to update.
-    string urn = 2;                  // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3; // the old values of provider inputs for the resource to update.
-    google.protobuf.Struct news = 4; // the new values of provider inputs for the resource to update.
-    double timeout = 5;              // the update request timeout represented in seconds.
+    string id = 1;                     // the ID of the resource to update.
+    string urn = 2;                    // the Pulumi URN for this resource.
+    google.protobuf.Struct olds = 3;   // the old values of provider inputs for the resource to update.
+    google.protobuf.Struct news = 4;   // the new values of provider inputs for the resource to update.
+    double timeout = 5;                // the update request timeout represented in seconds.
+    repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
 }
 
 message UpdateResponse {
