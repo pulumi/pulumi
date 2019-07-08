@@ -287,6 +287,54 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			state: map[string]interface{}{
 				"foo": []interface{}{
 					"bar",
+					"baz",
+				},
+			},
+			inputs: map[string]interface{}{
+				"foo": []interface{}{
+					"bar",
+					"qux",
+				},
+			},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo": U,
+			},
+			expected: &resource.ObjectDiff{
+				Adds:    resource.PropertyMap{},
+				Deletes: resource.PropertyMap{},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"foo": {
+						Old: resource.NewPropertyValue([]interface{}{
+							"bar",
+							"baz",
+						}),
+						New: resource.NewPropertyValue([]interface{}{
+							"bar",
+							"qux",
+						}),
+						Array: &resource.ArrayDiff{
+							Adds:    map[int]resource.PropertyValue{},
+							Deletes: map[int]resource.PropertyValue{},
+							Sames: map[int]resource.PropertyValue{
+								0: resource.NewPropertyValue("bar"),
+							},
+							Updates: map[int]resource.ValueDiff{
+								1: {
+									Old: resource.NewStringProperty("baz"),
+									New: resource.NewStringProperty("qux"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+
+		{
+			state: map[string]interface{}{
+				"foo": []interface{}{
+					"bar",
 				},
 			},
 			inputs: map[string]interface{}{
@@ -492,6 +540,53 @@ func TestTranslateDetailedDiff(t *testing.T) {
 							Adds:    resource.PropertyMap{},
 							Deletes: resource.PropertyMap{},
 							Sames:   resource.PropertyMap{},
+							Updates: map[resource.PropertyKey]resource.ValueDiff{
+								"qux": {
+									Old: resource.NewStringProperty("zed"),
+									New: resource.NewStringProperty("alpha"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			state: map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+					"qux": "zed",
+				},
+			},
+			inputs: map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+					"qux": "alpha",
+				},
+			},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo": U,
+			},
+			expected: &resource.ObjectDiff{
+				Adds:    resource.PropertyMap{},
+				Deletes: resource.PropertyMap{},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"foo": {
+						Old: resource.NewPropertyValue(map[string]interface{}{
+							"bar": "baz",
+							"qux": "zed",
+						}),
+						New: resource.NewPropertyValue(map[string]interface{}{
+							"bar": "baz",
+							"qux": "alpha",
+						}),
+						Object: &resource.ObjectDiff{
+							Adds:    resource.PropertyMap{},
+							Deletes: resource.PropertyMap{},
+							Sames: resource.PropertyMap{
+								"bar": resource.NewPropertyValue("baz"),
+							},
 							Updates: map[resource.PropertyKey]resource.ValueDiff{
 								"qux": {
 									Old: resource.NewStringProperty("zed"),
