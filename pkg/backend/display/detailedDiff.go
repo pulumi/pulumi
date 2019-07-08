@@ -143,7 +143,11 @@ func addDiff(path []interface{}, kind plugin.DiffKind, parent *resource.ValueDif
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
 				parent.Array.Deletes[element] = old
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
-				parent.Array.Updates[element] = resource.ValueDiff{Old: old, New: new}
+				valueDiff := resource.ValueDiff{Old: old, New: new}
+				if d := old.Diff(new); d != nil {
+					valueDiff = *d
+				}
+				parent.Array.Updates[element] = valueDiff
 			default:
 				contract.Failf("unexpected diff kind %v", kind)
 			}
@@ -177,7 +181,11 @@ func addDiff(path []interface{}, kind plugin.DiffKind, parent *resource.ValueDif
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
 				parent.Object.Deletes[e] = old
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
-				parent.Object.Updates[e] = resource.ValueDiff{Old: old, New: new}
+				valueDiff := resource.ValueDiff{Old: old, New: new}
+				if d := old.Diff(new); d != nil {
+					valueDiff = *d
+				}
+				parent.Object.Updates[e] = valueDiff
 			default:
 				contract.Failf("unexpected diff kind %v", kind)
 			}
