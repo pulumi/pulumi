@@ -68,15 +68,13 @@ class Stack extends ComponentResource {
         await setRootResource(this);
         let out: any;
         try {
-            // Execute the actual initialization function.  If it returns a promise, await it
-            // so that all values actually compute before we attempt to understand the result.
             out = init();
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            super.registerOutputs(out === undefined ? undefined : massage(output(out), new Set()));
+            super.registerOutputs(out === undefined ? undefined : massage(out, new Set()));
         }
 
         return out;
