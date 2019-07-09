@@ -268,10 +268,10 @@ func renderDiffResourcePreEvent(
 		if payload.Metadata.DetailedDiff != nil {
 			var buf bytes.Buffer
 			if diff := translateDetailedDiff(payload.Metadata); diff != nil {
-				engine.PrintObjectDiff(&buf, *diff, nil /*include*/, payload.Planning, indent, opts.SummaryDiff, payload.Debug)
+				engine.PrintObjectDiff(&buf, *diff, nil /*include*/, payload.Planning, indent+1, opts.SummaryDiff, payload.Debug)
 			} else {
 				engine.PrintObject(
-					&buf, payload.Metadata.Old.Inputs, payload.Planning, indent, deploy.OpSame, true /*prefix*/, payload.Debug)
+					&buf, payload.Metadata.Old.Inputs, payload.Planning, indent+1, deploy.OpSame, true /*prefix*/, payload.Debug)
 			}
 			details = buf.String()
 		} else {
