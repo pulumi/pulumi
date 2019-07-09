@@ -48,7 +48,7 @@ class Stack extends ComponentResource {
      */
     public readonly outputs: Output<Inputs | undefined>;
 
-    constructor(init: () => Inputs) {
+    constructor(init: () => any) {
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
         this.outputs = output(this.runInit(init));
     }
@@ -59,34 +59,28 @@ class Stack extends ComponentResource {
      *
      * @param init The callback to run in the context of this Pulumi stack
      */
-    private async runInit(init: () => Inputs): Promise<Inputs | undefined> {
+    private async runInit(init: () => any): Promise<any> {
         const parent = await getRootResource();
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
 
         await setRootResource(this);
-        let outputs: Inputs | undefined;
+        let out: any;
         try {
-            outputs = init();
+            // Execute the actual initialization function.  If it returns a promise, await it
+            // so that all values actually compute before we attempt to understand the result.
+            out = init();
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            super.registerOutputs(outputs === undefined ? undefined : massageOutputs(outputs));
+            super.registerOutputs(out === undefined ? undefined : massage(output(out), new Set()));
         }
 
-        return outputs;
+        return out;
     }
-}
-
-function massageOutputs(outputs: Inputs): Inputs {
-    const result: Inputs = {};
-    for (const k of Object.keys(outputs)) {
-       result[k] = output(outputs[k]).apply(v => massage(v, new Set()));
-    }
-    return result;
 }
 
 async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
