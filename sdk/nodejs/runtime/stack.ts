@@ -48,7 +48,7 @@ class Stack extends ComponentResource {
      */
     public readonly outputs: Output<Inputs | undefined>;
 
-    constructor(init: () => any) {
+    constructor(init: () => Inputs) {
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
         this.outputs = output(this.runInit(init));
     }
@@ -59,14 +59,14 @@ class Stack extends ComponentResource {
      *
      * @param init The callback to run in the context of this Pulumi stack
      */
-    private async runInit(init: () => any): Promise<any> {
+    private async runInit(init: () => Inputs): Promise<Inputs | undefined> {
         const parent = await getRootResource();
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
 
         await setRootResource(this);
-        let outputs: any;
+        let outputs: Inputs | undefined;
         try {
             outputs = init();
         } finally {
