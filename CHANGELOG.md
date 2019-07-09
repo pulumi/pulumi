@@ -12,6 +12,9 @@ CHANGELOG
 - Fix an issue where emojis are printed in non-interactive mode. (fixes
   [#2871](https://github.com/pulumi/pulumi/issues/2871))
 
+- Promises/Outputs can now be directly exported as the top-level (i.e. not-named) output of a Stack.
+  (fixes [#2910](https://github.com/pulumi/pulumi/issues/2910))
+
 ## 0.17.21 (2019-06-26)
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
