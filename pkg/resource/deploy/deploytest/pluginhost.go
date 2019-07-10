@@ -179,3 +179,11 @@ func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
 	return nil, nil
 }
+
+func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string) (plugin.Analyzer, error) {
+	return nil, errors.New("unsupported")
+}
+
+func (host *pluginHost) ListAnalyzers() []plugin.Analyzer {
+	return nil
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -128,6 +129,7 @@ func liveState(typ, name string, outs resource.PropertyMap) *resource.State {
 type mockBackend struct {
 	NameF                   func() string
 	URLF                    func() string
+	GetPolicyPackF          func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 	ParseStackReferenceF    func(s string) (StackReference, error)
 	GetStackF               func(context.Context, StackReference) (Stack, error)
 	CreateStackF            func(context.Context, StackReference, interface{}) (Stack, error)
@@ -168,6 +170,15 @@ func (be *mockBackend) Name() string {
 func (be *mockBackend) URL() string {
 	if be.URLF != nil {
 		return be.URLF()
+	}
+	panic("not implemented")
+}
+
+func (be *mockBackend) GetPolicyPack(
+	ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error) {
+
+	if be.GetPolicyPackF != nil {
+		return be.GetPolicyPackF(ctx, policyPack, d)
 	}
 	panic("not implemented")
 }

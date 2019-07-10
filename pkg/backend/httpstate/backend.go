@@ -386,7 +386,7 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 
 	return &cloudPolicyPack{
 		ref: newCloudBackendPolicyPackReference(
-			policyPackRef.OrgName(), tokens.QName(policyPackRef.Name())),
+			policyPackRef.OrgName(), policyPackRef.Name()),
 		b:  b,
 		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
 }

@@ -69,12 +69,12 @@ func Unzip(archive []byte, dir string) error {
 	sort.Slice(r.File, func(i, j int) bool { return r.File[i].Name < r.File[j].Name })
 
 	for _, file := range r.File {
-		path := filepath.Join(dir, file.Name)
+		path := filepath.Join(dir, file.Name) // #nosec
 		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
+			contract.IgnoreError(os.MkdirAll(path, file.Mode()))
 			continue
 		} else {
-			os.MkdirAll(filepath.Dir(path), 0700)
+			contract.IgnoreError(os.MkdirAll(filepath.Dir(path), 0700))
 		}
 
 		fileReader, err := file.Open()
