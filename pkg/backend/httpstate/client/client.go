@@ -15,10 +15,10 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"path"
 	"time"
@@ -434,7 +434,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
-	analyzerInfo plugin.AnalyzerInfo, dirArchive *bytes.Buffer) error {
+	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) error {
 
 	//
 	// Step 1 of 2: Send POST containing policy metadata to service. This begins process of creating
