@@ -74,19 +74,11 @@ class Stack extends ComponentResource {
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            super.registerOutputs(outputs === undefined ? undefined : massageOutputs(outputs));
+            super.registerOutputs(massage(outputs, new Set()));
         }
 
         return outputs;
     }
-}
-
-function massageOutputs(outputs: Inputs): Inputs {
-    const result: Inputs = {};
-    for (const k of Object.keys(outputs)) {
-       result[k] = output(outputs[k]).apply(v => massage(v, new Set()));
-    }
-    return result;
 }
 
 async function massage(prop: any, seenObjects: Set<any>): Promise<any> {

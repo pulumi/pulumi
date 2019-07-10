@@ -8,9 +8,10 @@ CHANGELOG
   [#2784](https://github.com/pulumi/pulumi/issues/2784))
 - Fix an issue where output values of a resource would not be present when they
   contained secret values, when using Python.
-
 - Fix an issue where emojis are printed in non-interactive mode. (fixes
   [#2871](https://github.com/pulumi/pulumi/issues/2871))
+- Promises/Outputs can now be directly exported as the top-level (i.e. not-named) output of a Stack.
+  (fixes [#2910](https://github.com/pulumi/pulumi/issues/2910))
 
 ## 0.17.21 (2019-06-26)
 
