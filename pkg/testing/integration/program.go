@@ -1293,7 +1293,7 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 
-		overrides := make(map[string]interface{})
+		resolutions := make(map[string]interface{})
 
 		for packageName, packageVersion := range pt.opts.Overrides {
 			for _, section := range []string{"dependencies", "devDependencies"} {
@@ -1308,11 +1308,11 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 			}
 
 			fprintf(pt.opts.Stdout, "adding resolution for %s to version %s\n", packageName, packageVersion)
-			overrides["**/"+packageName] = packageVersion
+			resolutions["**/"+packageName] = packageVersion
 		}
 
-		// Wack any existing overrides section with our newly computed one.
-		packageJSON["overrides"] = overrides
+		// Wack any existing resolutions section with our newly computed one.
+		packageJSON["resolutions"] = resolutions
 
 		if err := writePackageJSON(cwd, packageJSON); err != nil {
 			return err
