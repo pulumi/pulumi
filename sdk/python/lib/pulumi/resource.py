@@ -84,6 +84,13 @@ class ResourceOptions:
     An optional existing ID to load, rather than create.
     """
 
+    import_: Optional[str]
+    """
+    When provided with a resource ID, import indicates that this resource's provider should import its state from the
+    cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's current
+    state. Once a resource has been imported, the import property must be removed from the resource's options.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -95,7 +102,8 @@ class ResourceOptions:
                  ignore_changes: Optional[List[str]] = None,
                  version: Optional[str] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
-                 id: Optional[str] = None) -> None:
+                 id: Optional[str] = None,
+                 import_: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -113,6 +121,10 @@ class ResourceOptions:
         :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
         :param Optional[str] id: If provided, an existing resource ID to read, rather than create.
+        :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
+               import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
+               with the resource's current state. Once a resource has been imported, the import property must be removed from
+               the resource's options.
         """
         self.parent = parent
         self.depends_on = depends_on
@@ -124,6 +136,7 @@ class ResourceOptions:
         self.version = version
         self.additional_secret_outputs = additional_secret_outputs
         self.id = id
+        self.import_ = import_
 
         if depends_on is not None:
             for dep in depends_on:

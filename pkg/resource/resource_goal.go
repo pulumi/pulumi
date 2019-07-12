@@ -35,13 +35,14 @@ type Goal struct {
 	IgnoreChanges           []string              // a list of property names to ignore during changes.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
 	Aliases                 []URN                 // additional URNs that should be aliased to this resource.
+	ID                      ID                    // the expected ID of the resource, if any.
 }
 
 // NewGoal allocates a new resource goal state.
 func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace bool, ignoreChanges []string,
-	additionalSecretOutputs []PropertyKey, aliases []URN) *Goal {
+	additionalSecretOutputs []PropertyKey, aliases []URN, id ID) *Goal {
 
 	return &Goal{
 		Type:                    t,
@@ -58,5 +59,6 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 		IgnoreChanges:           ignoreChanges,
 		AdditionalSecretOutputs: additionalSecretOutputs,
 		Aliases:                 aliases,
+		ID:                      id,
 	}
 }

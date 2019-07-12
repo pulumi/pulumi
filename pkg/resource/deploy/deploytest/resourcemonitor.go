@@ -31,7 +31,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
 	propertyDeps map[resource.PropertyKey][]resource.URN, deleteBeforeReplace bool,
 	version string, ignoreChanges []string,
-	aliases []resource.URN) (resource.URN, resource.ID, resource.PropertyMap, error) {
+	aliases []resource.URN, importID resource.ID) (resource.URN, resource.ID, resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -77,6 +77,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		IgnoreChanges:        ignoreChanges,
 		Version:              version,
 		Aliases:              aliasStrings,
+		ImportId:             string(importID),
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -104,6 +105,7 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 	resp, err := rm.resmon.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
 		Type:       string(t),
 		Name:       name,
+		Id:         string(id),
 		Parent:     string(parent),
 		Provider:   provider,
 		Properties: ins,
