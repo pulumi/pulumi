@@ -13,6 +13,11 @@ CHANGELOG
 - Promises/Outputs can now be directly exported as the top-level (i.e. not-named) output of a Stack.
   (fixes [#2910](https://github.com/pulumi/pulumi/issues/2910))
 
+## 0.17.22 (2019-07-11)
+
+- Improve update performance in cases where a large number of log messages are
+  reported during an update.
+
 ## 0.17.21 (2019-06-26)
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
