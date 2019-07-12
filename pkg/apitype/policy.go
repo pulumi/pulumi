@@ -83,3 +83,12 @@ const (
 	// Mandatory is an enforcement level that prevents a resource from being created.
 	Mandatory EnforcementLevel = "mandatory"
 )
+
+// GetPolicyPackResponse is the response to get a specific Policy Pack's
+// metadata and policies.
+type GetPolicyPackResponse struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Version     int      `json:"version"`
+	Policies    []Policy `json:"policies"`
+}
