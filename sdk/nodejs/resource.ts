@@ -457,15 +457,15 @@ export interface ResourceOptions {
 
 export interface CustomTimeouts {
     /**
-     * The optional create timeout represented as a string e.g. 5m.
+     * The optional create timeout represented as a string e.g. 5m, 40s, 1d.
      */
     create?: string;
     /**
-     * The optional update timeout represented as a string e.g. 5m.
+     * The optional update timeout represented as a string e.g. 5m, 40s, 1d.
      */
     update?: string;
     /**
-     * The optional delete timeout represented as a string e.g. 5m.
+     * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
      */
     delete?: string;
 }

@@ -1,7 +1,7 @@
 package resource
 
 type CustomTimeouts struct {
-	Create string
-	Update string
-	Delete string
+	Create float64
+	Update float64
+	Delete float64
 }

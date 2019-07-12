@@ -187,12 +187,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			var timeout string
-			if s.new.CustomTimeouts != nil {
-				timeout = s.new.CustomTimeouts.Create
-			}
-
-			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, timeout)
+			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create)
 			if err != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, err
@@ -312,12 +307,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			var timeout string
-			if s.old.CustomTimeouts != nil {
-				timeout = s.old.CustomTimeouts.Delete
-			}
-
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, timeout); err != nil {
+			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
 				return rst, nil, err
 			}
 		}
@@ -420,13 +410,8 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			var timeout string
-			if s.new.CustomTimeouts != nil {
-				timeout = s.new.CustomTimeouts.Update
-			}
-
 			// Update to the combination of the old "all" state, but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs, timeout)
+			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs, s.new.CustomTimeouts.Update)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, upderr
@@ -719,7 +704,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			s.old.CustomTimeouts)
+			&s.old.CustomTimeouts)
 	} else {
 		s.new = nil
 	}
@@ -821,7 +806,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, s.new.CustomTimeouts)
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts)
 
 	// Check the user inputs using the provider inputs for defaults.
 	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)

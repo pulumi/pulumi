@@ -291,7 +291,7 @@ func SerializeResource(res *resource.State, enc config.Encrypter) (apitype.Resou
 		PendingReplacement:      res.PendingReplacement,
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 		Aliases:                 res.Aliases,
-		CustomTimeouts:          res.CustomTimeouts,
+		CustomTimeouts:          &res.CustomTimeouts,
 	}, nil
 }
 

@@ -2102,7 +2102,7 @@ func TestProviderCancellation(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN,
-					inputs resource.PropertyMap, timeout string) (resource.ID, resource.PropertyMap,
+					inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap,
 					resource.Status, error) {
 
 					// Inform the waiter that we've entered a provider op and wait for cancellation.
@@ -2223,7 +2223,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds,
-					news resource.PropertyMap, timeout string) (resource.PropertyMap, resource.Status, error) {
+					news resource.PropertyMap, timeout float64) (resource.PropertyMap, resource.Status, error) {
 					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 						"output_prop": 42,
 					})
@@ -3631,7 +3631,7 @@ func TestImport(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout string) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -3863,7 +3863,7 @@ func TestCustomTimeouts(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 			resource.PropertyMap{}, nil, false, "", nil, nil, "", &resource.CustomTimeouts{
-				Create: "1m", Delete: "1m", Update: "4m",
+				Create: 60, Delete: 60, Update: 240,
 			})
 		assert.NoError(t, err)
 		return nil
@@ -3872,7 +3872,16 @@ func TestCustomTimeouts(t *testing.T) {
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
-		Steps:   MakeBasicLifecycleSteps(t, 2),
 	}
-	p.Run(t, nil)
+
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default")
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.NotNil(t, snap.Resources[1].CustomTimeouts)
+	assert.Equal(t, snap.Resources[1].CustomTimeouts.Create, float64(60))
+	assert.Equal(t, snap.Resources[1].CustomTimeouts.Update, float64(240))
+	assert.Equal(t, snap.Resources[1].CustomTimeouts.Delete, float64(60))
 }

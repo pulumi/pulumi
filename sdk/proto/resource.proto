@@ -88,13 +88,13 @@ message RegisterResourceRequest {
     repeated string dependencies = 7;                           // a list of URNs that this resource depends on, as observed by the language host.
     string provider = 8;                                        // an optional reference to the provider to manage this resource's CRUD operations.
     map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
-    bool deleteBeforeReplace = 10;     // true if this resource should be deleted before replacement.
-    string version = 11;               // the version of the provider to use when servicing this request.
-    repeated string ignoreChanges = 12; // a list of property selectors to ignore during updates.
-    bool acceptSecrets = 13;           // when true operations should return secrets as strongly typed.
-    repeated string additionalSecretOutputs = 14;  // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 15;      // a list of additional URNs that shoud be considered the same.
-    string importId = 16;              // if set, this resource's state should be imported from the given ID.
+    bool deleteBeforeReplace = 10;                              // true if this resource should be deleted before replacement.
+    string version = 11;                                        // the version of the provider to use when servicing this request.
+    repeated string ignoreChanges = 12;                         // a list of property selectors to ignore during updates.
+    bool acceptSecrets = 13;                                    // when true operations should return secrets as strongly typed.
+    repeated string additionalSecretOutputs = 14;               // a list of output properties that should also be treated as secret, in addition to ones we detect.
+    repeated string aliases = 15;                               // a list of additional URNs that shoud be considered the same.
+    string importId = 16;                                       // if set, this resource's state should be imported from the given ID.
     CustomTimeouts customTimeouts = 17;                         // ability to pass a custom Timeout block.
 }
 

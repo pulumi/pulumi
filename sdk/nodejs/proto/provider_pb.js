@@ -2654,7 +2654,7 @@ proto.pulumirpc.CreateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: jspb.Message.getFieldWithDefault(msg, 3, "")
+    timeout: +jspb.Message.getFieldWithDefault(msg, 3, 0.0)
   };
 
   if (includeInstance) {
@@ -2701,7 +2701,7 @@ proto.pulumirpc.CreateRequest.deserializeBinaryFromReader = function(msg, reader
       msg.setProperties(value);
       break;
     case 3:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {number} */ (reader.readDouble());
       msg.setTimeout(value);
       break;
     default:
@@ -2749,8 +2749,8 @@ proto.pulumirpc.CreateRequest.serializeBinaryToWriter = function(message, writer
     );
   }
   f = message.getTimeout();
-  if (f.length > 0) {
-    writer.writeString(
+  if (f !== 0.0) {
+    writer.writeDouble(
       3,
       f
     );
@@ -2804,17 +2804,17 @@ proto.pulumirpc.CreateRequest.prototype.hasProperties = function() {
 
 
 /**
- * optional string timeout = 3;
- * @return {string}
+ * optional double timeout = 3;
+ * @return {number}
  */
 proto.pulumirpc.CreateRequest.prototype.getTimeout = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 3, 0.0));
 };
 
 
-/** @param {string} value */
+/** @param {number} value */
 proto.pulumirpc.CreateRequest.prototype.setTimeout = function(value) {
-  jspb.Message.setProto3StringField(this, 3, value);
+  jspb.Message.setProto3FloatField(this, 3, value);
 };
 
 
@@ -3542,7 +3542,7 @@ proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: jspb.Message.getFieldWithDefault(msg, 5, "")
+    timeout: +jspb.Message.getFieldWithDefault(msg, 5, 0.0)
   };
 
   if (includeInstance) {
@@ -3598,7 +3598,7 @@ proto.pulumirpc.UpdateRequest.deserializeBinaryFromReader = function(msg, reader
       msg.setNews(value);
       break;
     case 5:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {number} */ (reader.readDouble());
       msg.setTimeout(value);
       break;
     default:
@@ -3661,8 +3661,8 @@ proto.pulumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer
     );
   }
   f = message.getTimeout();
-  if (f.length > 0) {
-    writer.writeString(
+  if (f !== 0.0) {
+    writer.writeDouble(
       5,
       f
     );
@@ -3761,17 +3761,17 @@ proto.pulumirpc.UpdateRequest.prototype.hasNews = function() {
 
 
 /**
- * optional string timeout = 5;
- * @return {string}
+ * optional double timeout = 5;
+ * @return {number}
  */
 proto.pulumirpc.UpdateRequest.prototype.getTimeout = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 5, 0.0));
 };
 
 
-/** @param {string} value */
+/** @param {number} value */
 proto.pulumirpc.UpdateRequest.prototype.setTimeout = function(value) {
-  jspb.Message.setProto3StringField(this, 5, value);
+  jspb.Message.setProto3FloatField(this, 5, value);
 };
 
 
@@ -3984,7 +3984,7 @@ proto.pulumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: jspb.Message.getFieldWithDefault(msg, 4, "")
+    timeout: +jspb.Message.getFieldWithDefault(msg, 4, 0.0)
   };
 
   if (includeInstance) {
@@ -4035,7 +4035,7 @@ proto.pulumirpc.DeleteRequest.deserializeBinaryFromReader = function(msg, reader
       msg.setProperties(value);
       break;
     case 4:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {number} */ (reader.readDouble());
       msg.setTimeout(value);
       break;
     default:
@@ -4090,8 +4090,8 @@ proto.pulumirpc.DeleteRequest.serializeBinaryToWriter = function(message, writer
     );
   }
   f = message.getTimeout();
-  if (f.length > 0) {
-    writer.writeString(
+  if (f !== 0.0) {
+    writer.writeDouble(
       4,
       f
     );
@@ -4160,17 +4160,17 @@ proto.pulumirpc.DeleteRequest.prototype.hasProperties = function() {
 
 
 /**
- * optional string timeout = 4;
- * @return {string}
+ * optional double timeout = 4;
+ * @return {number}
  */
 proto.pulumirpc.DeleteRequest.prototype.getTimeout = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 4, 0.0));
 };
 
 
-/** @param {string} value */
+/** @param {number} value */
 proto.pulumirpc.DeleteRequest.prototype.setTimeout = function(value) {
-  jspb.Message.setProto3StringField(this, 4, value);
+  jspb.Message.setProto3FloatField(this, 4, value);
 };
 
 

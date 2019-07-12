@@ -579,7 +579,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout string) (resource.ID,
+func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
@@ -774,7 +774,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout string) (resource.PropertyMap, resource.Status,
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64) (resource.PropertyMap, resource.Status,
 	error) {
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
@@ -856,7 +856,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 // Delete tears down an existing resource.
 func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
-	timeout string) (resource.Status, error) {
+	timeout float64) (resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 

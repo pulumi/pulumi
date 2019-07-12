@@ -16,6 +16,7 @@ package deploytest
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -65,9 +66,9 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	var timeouts pulumirpc.RegisterResourceRequest_CustomTimeouts
 	if customTimeouts != nil {
-		timeouts.Create = customTimeouts.Create
-		timeouts.Update = customTimeouts.Update
-		timeouts.Delete = customTimeouts.Delete
+		timeouts.Create = prepareTestTimeout(customTimeouts.Create)
+		timeouts.Update = prepareTestTimeout(customTimeouts.Update)
+		timeouts.Delete = prepareTestTimeout(customTimeouts.Delete)
 	}
 
 	requestInput := &pulumirpc.RegisterResourceRequest{
@@ -166,4 +167,10 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	return outs, nil, nil
+}
+
+func prepareTestTimeout(timeout float64) string {
+	mins := int(timeout) / 60
+
+	return fmt.Sprintf("%dm", mins)
 }

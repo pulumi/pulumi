@@ -164,7 +164,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, goal.CustomTimeouts)
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts)
 
 	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
 	// of resources that use this provider.

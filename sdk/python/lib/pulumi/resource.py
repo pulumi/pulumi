@@ -26,17 +26,17 @@ if TYPE_CHECKING:
 class CustomTimeouts:
     create: str
     """
-    create is the optional create timout represented as a string e.g. 5m.
+    create is the optional create timout represented as a string e.g. 5m, 40s, 1d.
     """
 
     update: str
     """
-    update is the optional update timout represented as a string e.g. 5m.
+    update is the optional update timout represented as a string e.g. 5m, 40s, 1d.
     """
 
     delete: str
     """
-    delete is the optional delete timout represented as a string e.g. 5m.
+    delete is the optional delete timout represented as a string e.g. 5m, 40s, 1d.
     """
 
     def __init__(self,

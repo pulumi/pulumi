@@ -177,7 +177,7 @@ message DiffResponse {
 message CreateRequest {
     string urn = 1;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
-    string timeout = 3;                    // the create request timeout represented as a string e.g. 5m.
+    double timeout = 3;                    // the create request timeout represented in seconds.
 }
 
 message CreateResponse {
@@ -207,7 +207,7 @@ message UpdateRequest {
     string urn = 2;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3; // the old values of provider inputs for the resource to update.
     google.protobuf.Struct news = 4; // the new values of provider inputs for the resource to update.
-    string timeout = 5;              // the update request timeout represented as a string e.g. 5m.
+    double timeout = 5;              // the update request timeout represented in seconds.
 }
 
 message UpdateResponse {
@@ -218,7 +218,7 @@ message DeleteRequest {
     string id = 1;                         // the ID of the resource to delete.
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current properties on the resource.
-    string timeout = 4;                    // the delete request timeout represented as a string e.g. 5m.
+    double timeout = 4;                    // the delete request timeout represented in seconds.
 }
 
 // ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a

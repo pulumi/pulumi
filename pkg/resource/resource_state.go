@@ -41,7 +41,7 @@ type State struct {
 	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
 	Aliases                 []URN                 // TODO
-	CustomTimeouts          *CustomTimeouts       // A config block that will be used to configure timeouts for CRUD operations
+	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations
 }
 
 // NewState creates a new resource value from existing resource state information.
@@ -54,7 +54,8 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
 	contract.Assertf(inputs != nil, "inputs was non-nil")
-	return &State{
+
+	s := &State{
 		Type:                    t,
 		URN:                     urn,
 		Custom:                  custom,
@@ -72,6 +73,11 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		PendingReplacement:      pendingReplacement,
 		AdditionalSecretOutputs: additionalSecretOutputs,
 		Aliases:                 aliases,
-		CustomTimeouts:          timeouts,
 	}
+
+	if timeouts != nil {
+		s.CustomTimeouts = *timeouts
+	}
+
+	return s
 }
