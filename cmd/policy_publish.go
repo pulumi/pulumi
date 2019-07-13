@@ -87,7 +87,7 @@ func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
 	cloudURL, err := workspace.GetCurrentCloudURL()
 	if err != nil {
 		return nil, errors.Wrap(err,
-			"`policy` command requires the user to be logged into the Pulumi service")
+			"`pulumi policy` command requires the user to be logged into the Pulumi service")
 	}
 
 	displayOptions := display.Options{
@@ -110,8 +110,6 @@ func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
 	if policy != nil {
 		return policy, nil
 	}
-
-	// TODO(hausdorff): Post MVP, prompt the user to create the PolicyPack if it does not exist.
 
 	return nil, fmt.Errorf("Could not find PolicyPack %q", policyPack)
 }

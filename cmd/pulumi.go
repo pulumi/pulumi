@@ -160,8 +160,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newUpCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDestroyCmd())
-	//     - Policy Management Commands:
-	cmd.AddCommand(newPolicyCmd())
 	//     - Stack Management Commands:
 	cmd.AddCommand(newStackCmd())
 	cmd.AddCommand(newConfigCmd())
@@ -189,6 +187,8 @@ func NewPulumiCmd() *cobra.Command {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
 		cmd.AddCommand(newQueryCmd())
+		//     - Policy Management Commands:
+		cmd.AddCommand(newPolicyCmd())
 	}
 
 	return cmd

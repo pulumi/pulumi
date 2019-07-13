@@ -246,35 +246,6 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 	return analyzers
 }
 
-func (host *defaultHost) PackagingPolicyAnalyzer(name tokens.QName) (Analyzer, error) {
-	plugin, err := host.loadPlugin(func() (interface{}, error) {
-		// First see if we already loaded this plugin.
-		if plug, has := host.analyzerPlugins[name]; has {
-			contract.Assert(plug != nil)
-			return plug.Plugin, nil
-		}
-
-		// If not, try to load and bind to a plugin.
-		plug, err := NewPolicyAnalyzer(host, host.ctx, name, host.ctx.Pwd)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo()
-			if infoerr != nil {
-				return nil, infoerr
-			}
-
-			// Memoize the result.
-			host.plugins = append(host.plugins, info)
-			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
-		}
-
-		return plug, err
-	})
-	if plugin == nil || err != nil {
-		return nil, err
-	}
-	return plugin.(Analyzer), nil
-}
-
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
 	plugin, err := host.loadPlugin(func() (interface{}, error) {
 		// Try to load and bind to a plugin.

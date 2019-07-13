@@ -20,12 +20,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/diag"
-
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource"
