@@ -447,7 +447,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Policies:    analyzerInfo.Policies,
 	}
 
-	fmt.Println("Publishing as", analyzerInfo.Name)
+	fmt.Printf("Publishing as %s\n", analyzerInfo.Name)
 
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
@@ -479,7 +479,6 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyPackName string,
 	version int) error {
 
-	// TODO: Figure out why the name is being passed in weirdly.
 	req := apitype.ApplyPolicyPackRequest{Name: policyPackName, Version: version}
 
 	err := pc.restCall(

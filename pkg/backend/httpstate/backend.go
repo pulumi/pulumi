@@ -650,8 +650,8 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 
 	//
-	// NOTE: HACK. Move this to the plugin-gathering routine when we have a dedicated service API
-	// when for getting a list of the required policies to run.
+	// TODO[pulumi-service#3745]: Move this to the plugin-gathering routine when we have a dedicated
+	// service API when for getting a list of the required policies to run.
 	//
 	// For now, this list is given to us when we start an update; yet, the list of analyzers to boot
 	// is given to us by CLI flag, and passed to the step generator (which lazily instantiates the

@@ -23,7 +23,6 @@ func newPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy",
 		Short: "Manage resource policies",
-		Long:  "Manage language and resource provider plugins.\n",
 		Args:  cmdutil.NoArgs,
 	}
 

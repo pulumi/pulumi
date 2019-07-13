@@ -121,7 +121,6 @@ func (a *analyzer) Analyze(
 		return nil, err
 	}
 
-	fmt.Println("Analyzing")
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Type:       string(t),
 		Properties: mprops,
@@ -156,7 +155,7 @@ func (a *analyzer) Analyze(
 	return diags, nil
 }
 
-// GetPluginInfo returns this plugin's information.
+// GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
 	logging.V(7).Infof("%s executing", label)

@@ -291,7 +291,7 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 		bytes := reflect.TypeOf([]byte(nil))
 		if typ := reflect.TypeOf(respObj); typ == reflect.PtrTo(bytes) {
 			// Return the raw bytes of the response body.
-			*respObj.(*[]byte) = append([]byte(nil), respBody...)
+			*respObj.(*[]byte) = respBody
 		} else if typ == bytes {
 			return fmt.Errorf("Can't unmarshal response body to []byte. Try *[]byte")
 		} else {
