@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { util } from "protobufjs";
 import { ResourceError, RunError } from "./errors";
 import { all, Input, Inputs, interpolate, Output, output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
@@ -448,6 +449,25 @@ export interface ResourceOptions {
      * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
      */
     provider?: ProviderResource;
+    /**
+     * An optional customTimeouts configuration block.
+     */
+    customTimeouts?: CustomTimeouts;
+}
+
+export interface CustomTimeouts {
+    /**
+     * The optional create timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    create?: string;
+    /**
+     * The optional update timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    update?: string;
+    /**
+     * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    delete?: string;
 }
 
 /**

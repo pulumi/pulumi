@@ -190,6 +190,11 @@ func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
 		return true
 	}
 
+	// We need to persist the changes if CustomTimes have changed
+	if old.CustomTimeouts != new.CustomTimeouts {
+		return true
+	}
+
 	contract.Assert(old.ID == new.ID)
 
 	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving

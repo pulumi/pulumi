@@ -16,6 +16,7 @@ package deploytest
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -31,7 +32,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
 	propertyDeps map[resource.PropertyKey][]resource.URN, deleteBeforeReplace bool,
 	version string, ignoreChanges []string,
-	aliases []resource.URN, importID resource.ID) (resource.URN, resource.ID, resource.PropertyMap, error) {
+	aliases []resource.URN, importID resource.ID, customTimeouts *resource.CustomTimeouts) (resource.URN, resource.ID,
+	resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
@@ -62,8 +64,14 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		}
 	}
 
-	// submit request
-	resp, err := rm.resmon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
+	var timeouts pulumirpc.RegisterResourceRequest_CustomTimeouts
+	if customTimeouts != nil {
+		timeouts.Create = prepareTestTimeout(customTimeouts.Create)
+		timeouts.Update = prepareTestTimeout(customTimeouts.Update)
+		timeouts.Delete = prepareTestTimeout(customTimeouts.Delete)
+	}
+
+	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                 string(t),
 		Name:                 name,
 		Custom:               custom,
@@ -78,11 +86,14 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Version:              version,
 		Aliases:              aliasStrings,
 		ImportId:             string(importID),
-	})
+		CustomTimeouts:       &timeouts,
+	}
+
+	// submit request
+	resp, err := rm.resmon.RegisterResource(context.Background(), requestInput)
 	if err != nil {
 		return "", "", nil, err
 	}
-
 	// unmarshal outputs
 	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
@@ -156,4 +167,10 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	return outs, nil, nil
+}
+
+func prepareTestTimeout(timeout float64) string {
+	mins := int(timeout) / 60
+
+	return fmt.Sprintf("%dm", mins)
 }

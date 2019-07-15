@@ -285,6 +285,8 @@ type ResourceV3 struct {
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
 	// Aliases is a list of previous URNs that this resource may have had in previous deployments
 	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
+	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

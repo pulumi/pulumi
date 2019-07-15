@@ -41,10 +41,10 @@ type Provider struct {
 		olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 	DiffF   func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error)
 	CreateF func(urn resource.URN,
-		inputs resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
+		inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error)
 	UpdateF func(urn resource.URN, id resource.ID,
-		olds, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
-	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap) (resource.Status, error)
+		olds, news resource.PropertyMap, timeout float64) (resource.PropertyMap, resource.Status, error)
+	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
 
 	ReadF func(urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
@@ -107,12 +107,12 @@ func (prov *Provider) Check(urn resource.URN,
 	}
 	return prov.CheckF(urn, olds, news)
 }
-func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
+func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	if prov.CreateF == nil {
 		return resource.ID(uuid.NewV4().String()), resource.PropertyMap{}, resource.StatusOK, nil
 	}
-	return prov.CreateF(urn, props)
+	return prov.CreateF(urn, props, timeout)
 }
 func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
@@ -122,18 +122,19 @@ func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	return prov.DiffF(urn, id, olds, news)
 }
 func (prov *Provider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64) (resource.PropertyMap,
+	resource.Status, error) {
 	if prov.UpdateF == nil {
 		return news, resource.StatusOK, nil
 	}
-	return prov.UpdateF(urn, id, olds, news)
+	return prov.UpdateF(urn, id, olds, news, timeout)
 }
 func (prov *Provider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
 	if prov.DeleteF == nil {
 		return resource.StatusOK, nil
 	}
-	return prov.DeleteF(urn, id, props)
+	return prov.DeleteF(urn, id, props, timeout)
 }
 
 func (prov *Provider) Read(urn resource.URN, id resource.ID,

@@ -2653,7 +2653,8 @@ proto.pulumirpc.CreateRequest.prototype.toObject = function(opt_includeInstance)
 proto.pulumirpc.CreateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    timeout: +jspb.Message.getFieldWithDefault(msg, 3, 0.0)
   };
 
   if (includeInstance) {
@@ -2699,6 +2700,10 @@ proto.pulumirpc.CreateRequest.deserializeBinaryFromReader = function(msg, reader
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = /** @type {number} */ (reader.readDouble());
+      msg.setTimeout(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2741,6 +2746,13 @@ proto.pulumirpc.CreateRequest.serializeBinaryToWriter = function(message, writer
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getTimeout();
+  if (f !== 0.0) {
+    writer.writeDouble(
+      3,
+      f
     );
   }
 };
@@ -2788,6 +2800,21 @@ proto.pulumirpc.CreateRequest.prototype.clearProperties = function() {
  */
 proto.pulumirpc.CreateRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional double timeout = 3;
+ * @return {number}
+ */
+proto.pulumirpc.CreateRequest.prototype.getTimeout = function() {
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 3, 0.0));
+};
+
+
+/** @param {number} value */
+proto.pulumirpc.CreateRequest.prototype.setTimeout = function(value) {
+  jspb.Message.setProto3FloatField(this, 3, value);
 };
 
 
@@ -3514,7 +3541,8 @@ proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    timeout: +jspb.Message.getFieldWithDefault(msg, 5, 0.0)
   };
 
   if (includeInstance) {
@@ -3568,6 +3596,10 @@ proto.pulumirpc.UpdateRequest.deserializeBinaryFromReader = function(msg, reader
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setNews(value);
+      break;
+    case 5:
+      var value = /** @type {number} */ (reader.readDouble());
+      msg.setTimeout(value);
       break;
     default:
       reader.skipField();
@@ -3626,6 +3658,13 @@ proto.pulumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer
       4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getTimeout();
+  if (f !== 0.0) {
+    writer.writeDouble(
+      5,
+      f
     );
   }
 };
@@ -3718,6 +3757,21 @@ proto.pulumirpc.UpdateRequest.prototype.clearNews = function() {
  */
 proto.pulumirpc.UpdateRequest.prototype.hasNews = function() {
   return jspb.Message.getField(this, 4) != null;
+};
+
+
+/**
+ * optional double timeout = 5;
+ * @return {number}
+ */
+proto.pulumirpc.UpdateRequest.prototype.getTimeout = function() {
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 5, 0.0));
+};
+
+
+/** @param {number} value */
+proto.pulumirpc.UpdateRequest.prototype.setTimeout = function(value) {
+  jspb.Message.setProto3FloatField(this, 5, value);
 };
 
 
@@ -3929,7 +3983,8 @@ proto.pulumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    timeout: +jspb.Message.getFieldWithDefault(msg, 4, 0.0)
   };
 
   if (includeInstance) {
@@ -3978,6 +4033,10 @@ proto.pulumirpc.DeleteRequest.deserializeBinaryFromReader = function(msg, reader
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
+      break;
+    case 4:
+      var value = /** @type {number} */ (reader.readDouble());
+      msg.setTimeout(value);
       break;
     default:
       reader.skipField();
@@ -4028,6 +4087,13 @@ proto.pulumirpc.DeleteRequest.serializeBinaryToWriter = function(message, writer
       3,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getTimeout();
+  if (f !== 0.0) {
+    writer.writeDouble(
+      4,
+      f
     );
   }
 };
@@ -4090,6 +4156,21 @@ proto.pulumirpc.DeleteRequest.prototype.clearProperties = function() {
  */
 proto.pulumirpc.DeleteRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional double timeout = 4;
+ * @return {number}
+ */
+proto.pulumirpc.DeleteRequest.prototype.getTimeout = function() {
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 4, 0.0));
+};
+
+
+/** @param {number} value */
+proto.pulumirpc.DeleteRequest.prototype.setTimeout = function(value) {
+  jspb.Message.setProto3FloatField(this, 4, value);
 };
 
 

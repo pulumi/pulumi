@@ -111,7 +111,7 @@ func (prov *testProvider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
+func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
@@ -124,11 +124,12 @@ func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64) (resource.PropertyMap,
+	resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
 	return resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Invoke(tok tokens.ModuleMember,
@@ -414,6 +415,7 @@ func TestCRUD(t *testing.T) {
 		typ := MakeProviderType(l.pkg)
 		urn := resource.NewURN("test", "test", "", typ, "b")
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
+		timeout := float64(120)
 
 		// Check
 		inputs, failures, err := r.Check(urn, olds, news, false)
@@ -427,7 +429,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Create
-		id, outs, status, err := r.Create(urn, inputs)
+		id, outs, status, err := r.Create(urn, inputs, timeout)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", id)
 		assert.NotEqual(t, UnknownID, id)
@@ -444,6 +446,7 @@ func TestCRUD(t *testing.T) {
 	{
 		urn, id := olds[0].URN, olds[0].ID
 		olds, news := olds[0].Inputs, olds[0].Inputs
+		timeout := float64(120)
 
 		// Fetch the old provider instance.
 		old, ok := r.GetProvider(Reference{urn: urn, id: id})
@@ -472,7 +475,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, olds, inputs)
+		outs, status, err := r.Update(urn, id, olds, inputs, timeout)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -486,13 +489,14 @@ func TestCRUD(t *testing.T) {
 	// Delete the existingv provider for the last entry in olds.
 	{
 		urn, id := olds[len(olds)-1].URN, olds[len(olds)-1].ID
+		timeout := float64(120)
 
 		// Fetch the old provider instance.
 		_, ok := r.GetProvider(Reference{urn: urn, id: id})
 		assert.True(t, ok)
 
 		// Delete
-		status, err := r.Delete(urn, id, resource.PropertyMap{})
+		status, err := r.Delete(urn, id, resource.PropertyMap{}, timeout)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, status)
 

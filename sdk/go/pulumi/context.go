@@ -294,6 +294,7 @@ func (ctx *Context) RegisterResource(
 			PropertyDependencies: inputs.rpcPropertyDeps,
 			DeleteBeforeReplace:  inputs.deleteBeforeReplace,
 			ImportId:             inputs.importID,
+			CustomTimeouts:       inputs.customTimeouts,
 		})
 		if err != nil {
 			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -414,6 +415,7 @@ type resourceInputs struct {
 	rpcPropertyDeps     map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
 	deleteBeforeReplace bool
 	importID            string
+	customTimeouts      *pulumirpc.RegisterResourceRequest_CustomTimeouts
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
@@ -424,6 +426,8 @@ func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving options")
 	}
+
+	timeouts := ctx.getTimeouts(opts...)
 
 	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
 	rpcProps, propertyDeps, rpcDeps, err := marshalInputs(props)
@@ -469,6 +473,7 @@ func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...
 		rpcPropertyDeps:     rpcPropertyDeps,
 		deleteBeforeReplace: deleteBeforeReplace,
 		importID:            string(importID),
+		customTimeouts:      timeouts,
 	}, nil
 }
 
@@ -476,6 +481,19 @@ type resourceOutput struct {
 	out     *Output
 	resolve func(interface{}, bool)
 	reject  func(error)
+}
+
+func (ctx *Context) getTimeouts(opts ...ResourceOpt) *pulumirpc.RegisterResourceRequest_CustomTimeouts {
+	var timeouts pulumirpc.RegisterResourceRequest_CustomTimeouts
+	for _, opt := range opts {
+		if opt.CustomTimeouts != nil {
+			timeouts.Update = opt.CustomTimeouts.Update
+			timeouts.Create = opt.CustomTimeouts.Create
+			timeouts.Delete = opt.CustomTimeouts.Delete
+		}
+	}
+
+	return &timeouts
 }
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,

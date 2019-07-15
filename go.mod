@@ -16,6 +16,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/gofrs/flock v0.7.0
+	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.1
 	github.com/google/go-querystring v1.0.0
@@ -24,8 +25,7 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20171105060200-01f8541d5372
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/mattn/go-colorable v0.0.9 // indirect
-	github.com/mattn/go-isatty v0.0.4 // indirect
+	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-runewidth v0.0.3 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mitchellh/copystructure v1.0.0
@@ -55,9 +55,7 @@ require (
 	google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8
 	google.golang.org/grpc v1.20.1
 	gopkg.in/AlecAivazis/survey.v1 v1.4.1
-	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
-	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/src-d/go-git-fixtures.v3 v3.4.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.8.1
 	gopkg.in/yaml.v2 v2.2.2

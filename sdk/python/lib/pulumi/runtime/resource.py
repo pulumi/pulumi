@@ -317,7 +317,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 acceptSecrets=True,
                 additionalSecretOutputs=additional_secret_outputs,
                 aliases=[],
-                importId=opts.import_
+                importId=opts.import_,
+                customTimeouts=opts.custom_timeouts
             )
 
             def do_rpc_call():

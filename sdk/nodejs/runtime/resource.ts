@@ -188,6 +188,14 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");
 
+        const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
+        if (opts.customTimeouts != null) {
+            customTimeouts.setCreate(opts.customTimeouts.create);
+            customTimeouts.setUpdate(opts.customTimeouts.update);
+            customTimeouts.setDelete(opts.customTimeouts.delete);
+        }
+        req.setCustomtimeouts(customTimeouts);
+
         const propertyDependencies = req.getPropertydependenciesMap();
         for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
             const deps = new resproto.RegisterResourceRequest.PropertyDependencies();
