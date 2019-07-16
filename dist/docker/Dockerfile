@@ -1,4 +1,4 @@
-FROM python:3.7-slim
+FROM python:3.7-slim-stretch
 # TODO[pulumi/pulumi#1986]: consider switching to, or supporting, Alpine Linux for smaller image sizes.
 
 LABEL "repository"="https://github.com/pulumi/pulumi"
