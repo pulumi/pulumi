@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 0.17.23 (2019-07-16)
 - `pulumi new` allows specifying a local path to templates (resolves
    [#2672](https://github.com/pulumi/pulumi/issues/2672))
    
