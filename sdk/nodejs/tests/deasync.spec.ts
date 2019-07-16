@@ -20,26 +20,20 @@ import { promiseResult, liftProperties } from "../utils";
 
 describe("deasync", () => {
     it("handles simple promise", () => {
-        let res: (value: number) => void;
-        const promise = new Promise<number>((resolve) => {
-            res = resolve;
-        })
-
         const actual = 4;
-        res!(actual);
+        const promise = new Promise<number>((resolve) => {
+            resolve(actual);
+        });
 
         const result = promiseResult(promise);
         assert.equal(result, actual);
     });
 
     it("handles rejected promise", () => {
-        let rej: (reason: any) => void;
-        const promise = new Promise<number>((resolve, reject) => {
-            rej = reject;
-        })
-
         const message = "etc";
-        rej!(new Error(message));
+        const promise = new Promise<number>((resolve, reject) => {
+            reject(new Error(message));
+        });
 
         try {
             const result = promiseResult(promise);
@@ -54,13 +48,10 @@ describe("deasync", () => {
     });
 
     it("handles pumping", () => {
-        let res: (value: number) => void;
-        const promise = new Promise<number>((resolve) => {
-            res = resolve;
-        })
-
         const actual = 4;
-        setTimeout(res!, 500 /*ms*/, actual);
+        const promise = new Promise<number>((resolve) => {
+            setTimeout(resolve, 500 /*ms*/, actual);
+        });
 
         const result = promiseResult(promise);
         assert.equal(result, actual);
@@ -69,12 +60,9 @@ describe("deasync", () => {
     it("lift properties", asyncTest(async () => {
         const actual = { a: "foo", b: 4, c: true, d: [function() {}] };
 
-        let res: (value: typeof actual) => void;
         const promise = new Promise<typeof actual>((resolve) => {
-            res = resolve;
-        })
-
-        res!(actual);
+            resolve(actual);
+        });
 
         const combinedResult = liftProperties(promise);
 
@@ -101,13 +89,10 @@ describe("deasync", () => {
     }));
 
     it("lift properties throws", asyncTest(async () => {
-        let rej: (reason: any) => void;
-        const promise = new Promise<number>((resolve, reject) => {
-            rej = reject;
-        })
-
         const message = "etc";
-        rej!(new Error(message));
+        const promise = new Promise<number>((resolve, reject) => {
+            reject(new Error(message));
+        });
 
         try {
             const result = liftProperties(promise);
