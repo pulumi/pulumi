@@ -15,62 +15,8 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { output, Output, Resource } from "../index";
 import { asyncTest } from "./util";
 import { promiseResult, liftProperties } from "../utils";
-
-// function test(val: any, expected: any) {
-//     return asyncTest(async () => {
-//         const unwrapped = output(val);
-//         const actual = await unwrapped.promise();
-//         assert.deepStrictEqual(actual, expected);
-//     });
-// }
-
-// function testUntouched(val: any) {
-//     return test(val, val);
-// }
-
-// function testPromise(val: any) {
-//     return test(Promise.resolve(val), val);
-// }
-
-// function testOutput(val: any) {
-//     return test(output(val), val);
-// }
-
-// function testResources(val: any, expected: any, resources: TestResource[]) {
-//     return asyncTest(async () => {
-//         const unwrapped = output(val);
-//         const actual = await unwrapped.promise();
-
-//         assert.deepStrictEqual(actual, expected);
-//         assert.deepStrictEqual(unwrapped.resources(), new Set(resources));
-
-//         const unwrappedResources: TestResource[] = <any>[...unwrapped.resources()];
-//         unwrappedResources.sort((r1, r2) => r1.name.localeCompare(r2.name));
-
-//         resources.sort((r1, r2) => r1.name.localeCompare(r2.name));
-//         assert.equal(
-//             JSON.stringify(unwrappedResources),
-//             JSON.stringify(resources));
-//     });
-// }
-
-// class TestResource {
-//     // fake being a pulumi resource.  We can't actually derive from Resource as that then needs an
-//     // engine and whatnot.  All things we don't want during simple unit tests.
-//     private readonly __pulumiResource: boolean = true;
-
-//     constructor(public name: string) {
-//     }
-// }
-
-// // Helper type to try to do type asserts.  Note that it's not totally safe.  If TS thinks a type is
-// // the 'any' type, it will succeed here.  Talking to the TS team, it does not look like there's a
-// // way to write a totally airtight type assertion.
-
-// type EqualsType<X, Y> = X extends Y ? Y extends X ? X : never : never;
 
 describe("deasync", () => {
     it("handles simple promise", () => {
@@ -152,5 +98,26 @@ describe("deasync", () => {
                 assert.deepStrictEqual(value, (<any>v)[key]);
             }
         });
+    }));
+
+    it("lift properties throws", asyncTest(async () => {
+        let rej: (reason: any) => void;
+        const promise = new Promise<number>((resolve, reject) => {
+            rej = reject;
+        })
+
+        const message = "etc";
+        rej!(new Error(message));
+
+        try {
+            const result = liftProperties(promise);
+            assert.fail("Should not be able to reach here 1.")
+        }
+        catch (err) {
+            assert.equal(err.message, message);
+            return;
+        }
+
+        assert.fail("Should not be able to reach here 2.")
     }));
 });
