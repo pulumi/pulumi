@@ -6,7 +6,7 @@ CHANGELOG
    [#2672](https://github.com/pulumi/pulumi/issues/2672))
    
 - Fix an issue where a file archive created on Windows would contain back-slashes
-  [#2784](https://github.com/pulumi/pulumi/issues/2784))
+  [#2784](https://github.com/pulumi/pulumi/issues/2784)
 
 - Fix an issue where output values of a resource would not be present when they
   contained secret values, when using Python.
@@ -23,6 +23,10 @@ CHANGELOG
   
 - Add the ability to pass a customTimeouts object from the providers across the engine
   to resource management. (fixes [#2665](https://github.com/pulumi/pulumi/issues/2665))
+
+- Fix a crash when two different versions of `@pulumi/pulumi` are used in the same Pulumi program
+  [#2942](https://github.com/pulumi/pulumi/issues/2942)
+
 
 ## 0.17.22 (2019-07-11)
 
