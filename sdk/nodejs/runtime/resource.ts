@@ -346,7 +346,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // simplifying aliases down to URNs.
     const aliases = [];
     const uniqueAliases = new Set<string>();
-    for (const alias of res.__aliases) {
+    for (const alias of (res.__aliases || [])) {
         const aliasVal = await output(alias).promise();
         if (!uniqueAliases.has(aliasVal)) {
             uniqueAliases.add(aliasVal);
@@ -563,6 +563,7 @@ export function listResourceOutputs<U extends Resource>(
     if (typeFilter === undefined) {
         typeFilter = isAny;
     }
+
 
     return query
         .from(
