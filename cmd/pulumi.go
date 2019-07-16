@@ -76,7 +76,7 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi config   : Alter your stack's configuration or secrets\n" +
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
-			"For more information, please visit the project page: https://pulumi.io",
+			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
@@ -315,7 +315,7 @@ func getUpgradeMessage(latest semver.Version, current semver.Version) string {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
-	msg += "visit https://pulumi.io/install for manual instructions and release notes."
+	msg += "visit https://pulumi.com/docs/reference/install/ for manual instructions and release notes."
 	return msg
 }
 
