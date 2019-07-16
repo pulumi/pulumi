@@ -80,3 +80,18 @@ export function promiseResult<T>(promise: Promise<T>): T {
 
     return result!;
 }
+
+/**
+ * Lifts the properties of the value a promise resolves to and adds them to the promise itself. This
+ * can be used to take a function that was previously async (i.e. Promise-returning) and make it
+ * synchronous in a backward compatible fashion.  Specifically, because the function now returns a
+ * `Promise<T> & T` all properties on it will be available for sync consumers, while async consumers
+ * can still use `await` on it or call `.then(...)` on it.
+ *
+ * This is an advanced compat function for libraries and should not generally be used by normal
+ * Pulumi application.
+ */
+export function liftProperties<T>(promise: Promise<T>): Promise<T> & T {
+    const value = promiseResult(promise);
+    return Object.assign(promise, value);
+}

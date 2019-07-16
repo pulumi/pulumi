@@ -43,7 +43,7 @@ install_plugin::
 
 install:: install_package install_plugin
 
-instanbul_tests::
+istanbul_tests::
 	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
@@ -53,10 +53,10 @@ sxs_tests::
 # will be renabled once that goes in.
 #	pushd tests/sxs && yarn && tsc && popd
 
-test_fast:: sxs_tests instanbul_tests
+test_fast:: sxs_tests istanbul_tests
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: sxs_tests instanbul_tests
+test_all:: sxs_tests istanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
