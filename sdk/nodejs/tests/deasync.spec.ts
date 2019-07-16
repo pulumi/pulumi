@@ -88,7 +88,7 @@ describe("deasync", () => {
         });
     }));
 
-    it("lift properties throws", asyncTest(async () => {
+    it("lift properties throws", () => {
         const message = "etc";
         const promise = new Promise<number>((resolve, reject) => {
             reject(new Error(message));
@@ -104,5 +104,5 @@ describe("deasync", () => {
         }
 
         assert.fail("Should not be able to reach here 2.")
-    }));
+    });
 });
