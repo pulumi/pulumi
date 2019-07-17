@@ -13,7 +13,7 @@
 # limitations under the License.
 import asyncio
 import traceback
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Tuple, Any
 from .. import log
 
 
@@ -46,7 +46,7 @@ class RPCManager:
         self.count = 0
         self.exception_future = asyncio.Future()
 
-    def do_rpc(self, name: str, rpc_function: Callable[..., Awaitable[None]]) -> Callable[..., Awaitable[None]]:
+    def do_rpc(self, name: str, rpc_function: Callable[..., Awaitable[Tuple[Any, Exception]]]) -> Callable[..., Awaitable[Tuple[Any, Exception]]]:
         """
         Wraps a given RPC function by producing an awaitable function suitable to be run in the asyncio
         event loop. The wrapped function catches all unhandled exceptions and reports them to the exception
@@ -66,12 +66,14 @@ class RPCManager:
 
             try:
                 result = await rpc_function(*args, **kwargs)
+                exception = None
             except Exception as exn:
                 log.debug(f"RPC failed with exception:")
                 log.debug(traceback.format_exc())
                 if not self.exception_future.done():
                     self.exception_future.set_exception(exn)
                 result = None
+                exception = exn
 
             async with self.zero_cond:
                 self.count -= 1
@@ -82,7 +84,7 @@ class RPCManager:
                     self.zero_cond.notify_all()
                 log.debug(f"recorded RPC completion, {self.count} RPCs outstanding")
 
-            return result
+            return result, exception
 
         return rpc_wrapper
 
