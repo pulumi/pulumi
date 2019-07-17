@@ -57,7 +57,7 @@ func GoogleCredentialsMux() (*blob.URLMux, error) {
 
 	account := GoogleCredentials{}
 	err = json.Unmarshal(credentials.JSON, &account)
-	if err != nil && account.ClientEmail != "" && account.PrivateKey != "" {
+	if err == nil && account.ClientEmail != "" && account.PrivateKey != "" {
 		options.GoogleAccessID = account.ClientEmail
 		options.PrivateKey = []byte(account.PrivateKey)
 	} else {
