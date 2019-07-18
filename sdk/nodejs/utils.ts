@@ -52,8 +52,7 @@ export function hasTrueBooleanMember(obj: any, memberName: string | number | sym
  * Be very careful with this function.  Only wait on a promise if you are certain it is safe to do
  * so.
  *
- * This is an advanced compat function for libraries and should not generally be used by normal
- * Pulumi application.
+ * @internal
  */
 export function promiseResult<T>(promise: Promise<T>): T {
     enum State {
