@@ -97,6 +97,12 @@ export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {})
     if (opts.async) {
         // Caller just wants the async side of the result.  That's what we have, so just return it
         // as is.
+        //
+        // Note: this cast isn't actually safe (since 'promise' doesn't actually provide the T side
+        // of things).  That's ok.  By default the return signature will be correct, and users will
+        // only get into this code path when specifically trying to force asynchrony.  Given that,
+        // it's fine to expect them to have to know what they're doing and that they shoud only use
+        // the Promise side of things.
         return <Promise<T> & T>promise;
     }
 
