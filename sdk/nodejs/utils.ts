@@ -14,6 +14,8 @@
 
 import * as deasync from "deasync";
 
+import { InvokeOptions } from "./invoke";
+
 /**
  * Common code for doing RTTI typechecks.  RTTI is done by having a boolean property on an object
  * with a special name (like "__resource" or "__asset").  This function checks that the object
@@ -50,7 +52,8 @@ export function hasTrueBooleanMember(obj: any, memberName: string | number | sym
  * Be very careful with this function.  Only wait on a promise if you are certain it is safe to do
  * so.
  *
- * @internal
+ * This is an advanced compat function for libraries and should not generally be used by normal
+ * Pulumi application.
  */
 export function promiseResult<T>(promise: Promise<T>): T {
     enum State {
@@ -91,7 +94,16 @@ export function promiseResult<T>(promise: Promise<T>): T {
  * This is an advanced compat function for libraries and should not generally be used by normal
  * Pulumi application.
  */
-export function liftProperties<T>(promise: Promise<T>): Promise<T> & T {
+export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {}): Promise<T> & T {
+    if (opts.async) {
+        // Caller just wants the async side of the result.  That's what we have, so just return it
+        // as is.
+        return <Promise<T> & T>promise;
+    }
+
+    // Caller wants the async side and the sync side merged.  Block on getting the underlying
+    // promise value, then take all the properties from it and copy over onto the promise itself and
+    // return the combined set of each.
     const value = promiseResult(promise);
     return Object.assign(promise, value);
 }
