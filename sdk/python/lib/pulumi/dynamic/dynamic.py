@@ -219,13 +219,12 @@ def serialize_provider(provider: ResourceProvider) -> str:
     pickle.Pickler.save_dict = save_dict_sorted
 
     # Use dill to recursively pickle the provider and store base64 encoded form
-    byts = dill.dumps(provider, protocol=pickle.DEFAULT_PROTOCOL, recurse=True)
-    serialized = base64.b64encode(byts).decode('utf-8')
-
-    # Restore the original pickler
-    pickle.Pickler = old_pickler
-
-    return serialized
+    try:
+        byts = dill.dumps(provider, protocol=pickle.DEFAULT_PROTOCOL, recurse=True)
+        return base64.b64encode(byts).decode('utf-8')
+    finally:
+        # Restore the original pickler
+        pickle.Pickler = old_pickler
 
 class Resource(CustomResource):
     """
