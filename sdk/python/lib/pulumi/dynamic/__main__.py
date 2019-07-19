@@ -29,7 +29,7 @@ PROVIDER_KEY = "__provider"
 
 def get_provider(props) -> ResourceProvider:
     byts = base64.b64decode(props[PROVIDER_KEY])
-    return dill.loads(byts)()
+    return dill.loads(byts)
 
 class DynamicResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):

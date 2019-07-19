@@ -203,7 +203,22 @@ class ResourceProvider:
         pass
 
 def serialize_provider(provider: ResourceProvider) -> str:
-    byts = dill.dumps(lambda: provider, pickle.DEFAULT_PROTOCOL)
+    # We need to customize our Pickler to ensure we sort dictionaries before serializing to try to
+    # ensure we get a deterministic result.  Without this we would see changes to our serialized
+    # provider even when there are no actual changes.
+    pickle.Pickler = pickle._Pickler # pylint: disable=protected-access
+    def save_dict_sorted(self, obj):
+        if self.bin:
+            self.write(pickle.EMPTY_DICT)
+        else:   # proto 0 -- can't use EMPTY_DICT
+            self.write(pickle.MARK + pickle.DICT)
+
+        self.memoize(obj)
+        self._batch_setitems(sorted(obj.items())) # pylint: disable=protected-access
+    pickle.Pickler.save_dict = save_dict_sorted
+
+    # Use dill to recursively pickle the provider and store base64 encoded form
+    byts = dill.dumps(provider, protocol=pickle.DEFAULT_PROTOCOL, recurse=True)
     return base64.b64encode(byts).decode('utf-8')
 
 class Resource(CustomResource):
