@@ -14,6 +14,8 @@
 
 import * as deasync from "deasync";
 
+import { InvokeOptions } from "./invoke";
+
 /**
  * Common code for doing RTTI typechecks.  RTTI is done by having a boolean property on an object
  * with a special name (like "__resource" or "__asset").  This function checks that the object
@@ -91,7 +93,22 @@ export function promiseResult<T>(promise: Promise<T>): T {
  * This is an advanced compat function for libraries and should not generally be used by normal
  * Pulumi application.
  */
-export function liftProperties<T>(promise: Promise<T>): Promise<T> & T {
+export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {}): Promise<T> & T {
+    if (opts.async) {
+        // Caller just wants the async side of the result.  That's what we have, so just return it
+        // as is.
+        //
+        // Note: this cast isn't actually safe (since 'promise' doesn't actually provide the T side
+        // of things).  That's ok.  By default the return signature will be correct, and users will
+        // only get into this code path when specifically trying to force asynchrony.  Given that,
+        // it's fine to expect them to have to know what they're doing and that they shoud only use
+        // the Promise side of things.
+        return <Promise<T> & T>promise;
+    }
+
+    // Caller wants the async side and the sync side merged.  Block on getting the underlying
+    // promise value, then take all the properties from it and copy over onto the promise itself and
+    // return the combined set of each.
     const value = promiseResult(promise);
     return Object.assign(promise, value);
 }
