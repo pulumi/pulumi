@@ -20,7 +20,7 @@ import { Resource } from "../resource";
  * is useful primarily when we're querying over resource outputs (e.g., using
  * `pulumi.runtime.listResourceOutputs`), and we expect all values to be present and fully-resolved.
  */
-export type ResolvedResource<T extends Resource> = Omit<Resolved<T>, "urn" | "getProvider">;
+export type ResolvedResource<T extends Resource> = PulumiOmit<Resolved<T>, "urn" | "getProvider">;
 
 type Resolved<T> = T extends Promise<infer U1>
     ? ResolvedSimple<U1>
@@ -50,7 +50,5 @@ type OptionalKeys<T> = { [P in keyof T]: undefined extends T[P] ? P : never }[ke
 type ModifyOptionalProperties<T> = { [P in RequiredKeys<T>]: T[P] } &
     { [P in OptionalKeys<T>]?: T[P] };
 
-type KeyOf = string | number | symbol;
-type Diff<T extends KeyOf, U extends KeyOf> = ({ [P in T]: P } &
-    { [P in U]: never } & { [x: string]: never })[T];
-type Omit<T, K extends KeyOf> = Pick<T, Diff<keyof T, K>>;
+type PulumiExclude<T, U> = T extends U ? never : T;
+type PulumiOmit<T, K extends keyof any> = Pick<T, PulumiExclude<keyof T, K>>;

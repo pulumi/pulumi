@@ -44,7 +44,7 @@ const uncaughtHandler = (err: Error) => {
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
 // nodejs here:
 // https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
-export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
+const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
 process.on("uncaughtException", uncaughtHandler);
 process.on("unhandledRejection", uncaughtHandler);
