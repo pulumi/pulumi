@@ -601,9 +601,11 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		}
 	}
 
-	// If we're doing a preview or an update and this project is a Python project, we need to run the command in the
-	// context of the virtual environment that Pipenv created in order to pick up the correct version of Python.
-	if args[0] == "preview" || args[0] == "up" {
+	// If we're doing a preview or an update and this project is a Python project, we need to run
+	// the command in the context of the virtual environment that Pipenv created in order to pick up
+	// the correct version of Python.  We also need to do this for destroy and refresh so that
+	// dynamic providers are run in the right virtual environment.
+	if args[0] == "preview" || args[0] == "up" || args[0] == "destroy" || args[0] == "refresh" {
 		projinfo, err := pt.getProjinfo(wd)
 		if err != nil {
 			return nil

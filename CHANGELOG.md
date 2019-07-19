@@ -36,6 +36,7 @@ CHANGELOG
 ## 0.17.21 (2019-06-26)
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
+- Support for Dynamic Providers in Python.
 
 - Fix an issue where a secret would not be encrypted in the state file if it was
   a property of a resource which was used as a stack output (fixes

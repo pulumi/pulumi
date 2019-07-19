@@ -197,22 +197,23 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
             )
 
             def do_rpc_call():
-                if monitor:
-                    # If there is a monitor available, make the true RPC request to the engine.
-                    try:
-                        return monitor.ReadResource(req)
-                    except grpc.RpcError as exn:
-                        # See the comment on invoke for the justification for disabling
-                        # this warning
-                        # pylint: disable=no-member
-                        if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                            sys.exit(0)
-
-                        details = exn.details()
-                    raise Exception(details)
-                else:
+                if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(create_test_urn(ty, name), None, resolver.serialized_props)
+                    test_urn = create_test_urn(ty, name)
+                    return RegisterResponse(test_urn, None, resolver.serialized_props)
+
+                # If there is a monitor available, make the true RPC request to the engine.
+                try:
+                    return monitor.ReadResource(req)
+                except grpc.RpcError as exn:
+                    # See the comment on invoke for the justification for disabling
+                    # this warning
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
+
+                    details = exn.details()
+                raise Exception(details)
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
@@ -322,22 +323,23 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             )
 
             def do_rpc_call():
-                if monitor:
-                    # If there is a monitor available, make the true RPC request to the engine.
-                    try:
-                        return monitor.RegisterResource(req)
-                    except grpc.RpcError as exn:
-                        # See the comment on invoke for the justification for disabling
-                        # this warning
-                        # pylint: disable=no-member
-                        if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                            sys.exit(0)
-
-                        details = exn.details()
-                    raise Exception(details)
-                else:
+                if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(create_test_urn(ty, name), None, resolver.serialized_props)
+                    test_urn = create_test_urn(ty, name)
+                    return RegisterResponse(test_urn, None, resolver.serialized_props)
+
+                # If there is a monitor available, make the true RPC request to the engine.
+                try:
+                    return monitor.RegisterResource(req)
+                except grpc.RpcError as exn:
+                    # See the comment on invoke for the justification for disabling
+                    # this warning
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
+
+                    details = exn.details()
+                raise Exception(details)
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
@@ -371,21 +373,21 @@ def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Awaitable
         req = resource_pb2.RegisterResourceOutputsRequest(urn=urn, outputs=serialized_props)
 
         def do_rpc_call():
-            if monitor:
-                # If there's an engine attached, perform the RPC. Otherwise, simply ignore it.
-                try:
-                    return monitor.RegisterResourceOutputs(req)
-                except grpc.RpcError as exn:
-                    # See the comment on invoke for the justification for disabling
-                    # this warning
-                    # pylint: disable=no-member
-                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                        sys.exit(0)
-
-                    details = exn.details()
-                raise Exception(details)
-            else:
+            if monitor is None:
+                # If there's no engine attached, simply ignore it.
                 return None
+
+            try:
+                return monitor.RegisterResourceOutputs(req)
+            except grpc.RpcError as exn:
+                # See the comment on invoke for the justification for disabling
+                # this warning
+                # pylint: disable=no-member
+                if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                    sys.exit(0)
+
+                details = exn.details()
+            raise Exception(details)
 
         await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(f"resource registration successful: urn={urn}, props={serialized_props}")

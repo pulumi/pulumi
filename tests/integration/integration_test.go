@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	// "time"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -716,6 +715,27 @@ func TestProviderSecretConfig(t *testing.T) {
 		Dir:          "provider_secret_config",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+	})
+}
+
+// Tests dynamic provider in Python.
+func TestDynamicPython(t *testing.T) {
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      "step1",
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+			},
+		}},
 	})
 }
 

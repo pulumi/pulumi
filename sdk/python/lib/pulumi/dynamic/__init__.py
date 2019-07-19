@@ -12,24 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The Pulumi Python SDK."""
+"""
+Dynamic Providers for Python.
+"""
 
-from setuptools import setup, find_packages
-
-def readme():
-    with open('README.rst') as f:
-        return f.read()
-
-setup(name='pulumi',
-      version='${VERSION}',
-      description='Pulumi\'s Python SDK',
-      long_description=readme(),
-      url='https://github.com/pulumi/pulumi',
-      license='Apache 2.0',
-      packages=find_packages(),
-      install_requires=[
-          'protobuf>=3.6.0',
-          'dill>=0.3.0',
-          'grpcio>=1.9.1'
-      ],
-      zip_safe=False)
+# Make all module members inside of this package available as package members.
+from .dynamic import (
+    CheckResult,
+    CheckFailure,
+    DiffResult,
+    CreateResult,
+    ReadResult,
+    UpdateResult,
+    Resource,
+    ResourceProvider,
+)
