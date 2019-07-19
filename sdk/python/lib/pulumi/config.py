@@ -22,7 +22,7 @@ from . import errors
 from .output import Output
 from .runtime.config import get_config
 from .metadata import get_project
- 
+
 class Config:
     """
     Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by
