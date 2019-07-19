@@ -116,7 +116,7 @@ func (a *analyzer) Analyze(
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
-	mprops, err := MarshalProperties(props, MarshalOptions{})
+	mprops, err := MarshalProperties(props, MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}
