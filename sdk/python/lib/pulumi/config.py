@@ -22,7 +22,7 @@ from . import errors
 from .output import Output
 from .runtime.config import get_config
 from .metadata import get_project
-
+ 
 class Config:
     """
     Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by
@@ -330,7 +330,7 @@ class Config:
         legal JSON string, an error is thrown.
         """
         return Output.secret(self.require_object(key))
-        
+
     def full_key(self, key: str) -> str:
         """
         Turns a simple configuration key into a fully resolved one, by prepending the bag's name.
