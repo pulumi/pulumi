@@ -5,6 +5,11 @@ CHANGELOG
 
 - Internal changes to improve certain downstream scenarios around calling data-sources.
 
+- Fix a crash when two different versions of `@pulumi/pulumi` are used in the same Pulumi program
+  [#2942](https://github.com/pulumi/pulumi/issues/2942)
+
+- Support for Dynamic Providers in Python [#2900](https://github.com/pulumi/pulumi/pull/2900)
+
 ## 0.17.23 (2019-07-16)
 - `pulumi new` allows specifying a local path to templates (resolves
    [#2672](https://github.com/pulumi/pulumi/issues/2672))
@@ -17,6 +22,7 @@ CHANGELOG
 
 - Fix an issue where emojis are printed in non-interactive mode. (fixes
   [#2871](https://github.com/pulumi/pulumi/issues/2871))
+
 - Promises/Outputs can now be directly exported as the top-level (i.e. not-named) output of a Stack.
   (fixes [#2910](https://github.com/pulumi/pulumi/issues/2910))
 
@@ -28,10 +34,6 @@ CHANGELOG
 - Add the ability to pass a customTimeouts object from the providers across the engine
   to resource management. (fixes [#2665](https://github.com/pulumi/pulumi/issues/2665))
 
-- Fix a crash when two different versions of `@pulumi/pulumi` are used in the same Pulumi program
-  [#2942](https://github.com/pulumi/pulumi/issues/2942)
-
-
 ## 0.17.22 (2019-07-11)
 
 - Improve update performance in cases where a large number of log messages are
@@ -40,7 +42,6 @@ CHANGELOG
 ## 0.17.21 (2019-06-26)
 
 - Python SDK fix for a crash resulting from a KeyError if secrets were used in configuration.
-- Support for Dynamic Providers in Python.
 
 - Fix an issue where a secret would not be encrypted in the state file if it was
   a property of a resource which was used as a stack output (fixes
