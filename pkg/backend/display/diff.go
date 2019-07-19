@@ -17,6 +17,7 @@ package display
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"sort"
@@ -249,39 +250,49 @@ func renderDiffResourceOperationFailedEvent(
 	return ""
 }
 
+func renderDiff(
+	out io.Writer,
+	metadata engine.StepEventMetadata,
+	planning, debug bool,
+	seen map[resource.URN]engine.StepEventMetadata,
+	opts Options) {
+
+	indent := engine.GetIndent(metadata, seen)
+	summary := engine.GetResourcePropertiesSummary(metadata, indent)
+
+	var details string
+	if metadata.DetailedDiff != nil {
+		var buf bytes.Buffer
+		if diff := translateDetailedDiff(metadata); diff != nil {
+			engine.PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, debug)
+		} else {
+			engine.PrintObject(
+				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, debug)
+		}
+		details = buf.String()
+	} else {
+		details = engine.GetResourcePropertiesDetails(
+			metadata, indent, planning, opts.SummaryDiff, debug)
+	}
+
+	fprintIgnoreError(out, opts.Color.Colorize(summary))
+	fprintIgnoreError(out, opts.Color.Colorize(details))
+	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
+}
+
 func renderDiffResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
-	if payload.Metadata.Op == deploy.OpRefresh {
+	if payload.Metadata.Op == deploy.OpRefresh || payload.Metadata.Op == deploy.OpImport {
 		return ""
 	}
 
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		indent := engine.GetIndent(payload.Metadata, seen)
-		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
-
-		var details string
-		if payload.Metadata.DetailedDiff != nil {
-			var buf bytes.Buffer
-			if diff := translateDetailedDiff(payload.Metadata); diff != nil {
-				engine.PrintObjectDiff(&buf, *diff, nil /*include*/, payload.Planning, indent, opts.SummaryDiff, payload.Debug)
-			} else {
-				engine.PrintObject(
-					&buf, payload.Metadata.Old.Inputs, payload.Planning, indent, deploy.OpSame, true /*prefix*/, payload.Debug)
-			}
-			details = buf.String()
-		} else {
-			details = engine.GetResourcePropertiesDetails(
-				payload.Metadata, indent, payload.Planning, opts.SummaryDiff, payload.Debug)
-		}
-
-		fprintIgnoreError(out, opts.Color.Colorize(summary))
-		fprintIgnoreError(out, opts.Color.Colorize(details))
-		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
+		renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
 	}
 	return out.String()
 }
@@ -293,6 +304,12 @@ func renderDiffResourceOutputsEvent(
 
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
+		// If this is the output step for an import, we actually want to display the diff at this point.
+		if payload.Metadata.Op == deploy.OpImport {
+			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
+			return out.String()
+		}
+
 		indent := engine.GetIndent(payload.Metadata, seen)
 
 		refresh := false // are these outputs from a refresh?

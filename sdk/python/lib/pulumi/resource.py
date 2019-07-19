@@ -23,6 +23,33 @@ if TYPE_CHECKING:
     from .output import Output, Inputs
 
 
+class CustomTimeouts:
+    create: str
+    """
+    create is the optional create timout represented as a string e.g. 5m, 40s, 1d.
+    """
+
+    update: str
+    """
+    update is the optional update timout represented as a string e.g. 5m, 40s, 1d.
+    """
+
+    delete: str
+    """
+    delete is the optional delete timout represented as a string e.g. 5m, 40s, 1d.
+    """
+
+    def __init__(self,
+                 create: Optional[str] = None,
+                 update: Optional[str] = None,
+                 delete: Optional[str] = None) -> None:
+
+        self.create = create
+        self.update = update
+        self.delete = delete
+
+
+
 class ResourceOptions:
     """
     ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -79,9 +106,21 @@ class ResourceOptions:
     to mark certain ouputs as a secrets on a per resource basis.
     """
 
+    custom_timeouts: Optional['CustomTimeouts']
+    """
+    An optional customTimeouts config block.
+    """
+
     id: Optional[str]
     """
     An optional existing ID to load, rather than create.
+    """
+
+    import_: Optional[str]
+    """
+    When provided with a resource ID, import indicates that this resource's provider should import its state from the
+    cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's current
+    state. Once a resource has been imported, the import property must be removed from the resource's options.
     """
 
     # pylint: disable=redefined-builtin
@@ -95,7 +134,9 @@ class ResourceOptions:
                  ignore_changes: Optional[List[str]] = None,
                  version: Optional[str] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
-                 id: Optional[str] = None) -> None:
+                 id: Optional[str] = None,
+                 import_: Optional[str] = None,
+                 custom_timeouts: Optional['CustomTimeouts'] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -112,7 +153,12 @@ class ResourceOptions:
                or replacements.
         :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
+        :param Optional[CustomTimeouts] customTimeouts: If provided, a config block for custom timeout information.
         :param Optional[str] id: If provided, an existing resource ID to read, rather than create.
+        :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
+               import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
+               with the resource's current state. Once a resource has been imported, the import property must be removed from
+               the resource's options.
         """
         self.parent = parent
         self.depends_on = depends_on
@@ -123,7 +169,9 @@ class ResourceOptions:
         self.ignore_changes = ignore_changes
         self.version = version
         self.additional_secret_outputs = additional_secret_outputs
+        self.custom_timeouts = custom_timeouts
         self.id = id
+        self.import_ = import_
 
         if depends_on is not None:
             for dep in depends_on:

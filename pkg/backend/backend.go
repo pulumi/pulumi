@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -64,6 +64,20 @@ type StackReference interface {
 	Name() tokens.QName
 }
 
+// PolicyPackReference is an opaque type that refers to a PolicyPack managedby a backend. The CLI
+// uses the ParsePolicyPackReference method to turn a string like "myOrg/mySecurityRules" into a
+// PolicyPackReference that can be used to interact with the PolicyPack via the backend.
+// PolicyPackReferences are specific to a given backend and different back ends may interpret the
+// string passed to ParsePolicyPackReference differently.
+type PolicyPackReference interface {
+	// fmt.Stringer's String() method returns a string of the stack identity, suitable for display in the CLI
+	fmt.Stringer
+	// OrgName is the name of the organization that is managing the PolicyPack.
+	OrgName() string
+	// Name is the name of the PolicyPack being referenced.
+	Name() tokens.QName
+}
+
 // StackSummary provides a basic description of a stack, without the ability to inspect its resources or make changes.
 type StackSummary interface {
 	Name() StackReference
@@ -81,6 +95,9 @@ type Backend interface {
 	Name() string
 	// URL returns a URL at which information about this backend may be seen.
 	URL() string
+
+	// GetPolicyPack returns a PolicyPack object tied to this backend, or nil if it cannot be found.
+	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.

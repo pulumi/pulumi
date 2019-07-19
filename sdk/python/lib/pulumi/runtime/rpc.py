@@ -210,25 +210,28 @@ def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
     # that if the struct had any secret properties, we push the secretness of the object up to us
     # since we can only set secret outputs on top level properties.
     output = {}
-    had_secret = False
     for k, v in list(props_struct.items()):
         value = deserialize_property(v)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
-            if isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig:
-                had_secret = True
-                value = value["value"]
-
             output[k] = value
-
-    if had_secret:
-        return {
-            _special_sig_key: _special_secret_sig,
-            "value": output
-        }
 
     return output
 
+def is_rpc_secret(value: Any) -> bool:
+    """
+    Returns if a given python value is actually a wrapped secret
+    """
+    return isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig
+
+def unwrap_rpc_secret(value: Any) -> Any:
+    """
+    Given a value, if it is a wrapped secret value, return the underlying, otherwise return the value unmodified.
+    """
+    if is_rpc_secret(value):
+        return value["value"]
+
+    return value
 
 def deserialize_property(value: Any) -> Any:
     """
@@ -240,11 +243,31 @@ def deserialize_property(value: Any) -> Any:
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
-        return [deserialize_property(v) for v in value]
+        values = [deserialize_property(v) for v in value]
+        # If there are any secret values in the list, push the secretness "up" a level by returning
+        # an array that is marked as a secret with raw values inside.
+        if any(is_rpc_secret(v) for v in values):
+            return {
+                _special_sig_key: _special_secret_sig,
+                "value": [unwrap_rpc_secret(v) for v in values]
+            }
+
+        return values
 
     # Structs are projected to dictionaries
     if isinstance(value, struct_pb2.Struct):
-        return deserialize_properties(value)
+        props = deserialize_properties(value)
+        # If there are any secret values in the dictionary, push the secretness "up" a level by returning
+        # a dictionary that is marked as a secret with raw values inside. Note: thje isinstance check here is
+        # important, since deserialize_properties will return either a dictionary or a concret type (in the case of
+        # assets).
+        if isinstance(props, dict) and any(is_rpc_secret(v) for v in props.values()):
+            return {
+                _special_sig_key: _special_secret_sig,
+                "value": {k: unwrap_rpc_secret(v) for k, v in props.items()}
+            }
+
+        return props
 
     # Everything else is identity projected.
     return value

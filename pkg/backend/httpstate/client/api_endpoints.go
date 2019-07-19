@@ -106,4 +106,7 @@ func init() {
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/complete", "completeUpdate")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/events", "postEngineEvent")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/renew_lease", "renewLease")
+
+	// APIs for managing `PolicyPack`s.
+	addEndpoint("POST", "/api/orgs/{orgName}/policypacks", "publishPolicyPack")
 }

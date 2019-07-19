@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { util } from "protobufjs";
 import { ResourceError, RunError } from "./errors";
 import { all, Input, Inputs, interpolate, Output, output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
@@ -142,16 +143,24 @@ export abstract class Resource {
     /**
      * @internal
      * A list of aliases applied to this resource.
+     *
+     * Note: This is marked optional only because older versions of this library may not have had
+     * this property, and marking optional forces conumers of the property to defensively handle
+     * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
-    readonly __aliases: Input<URN>[];
+    readonly __aliases?: Input<URN>[];
 
     /**
      * @internal
      * The name assigned to the resource at construction.
+     *
+     * Note: This is marked optional only because older versions of this library may not have had
+     * this property, and marking optional forces conumers of the property to defensively handle
+     * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
-    private readonly __name: string;
+    private readonly __name?: string;
 
     /**
      * @internal
@@ -221,8 +230,10 @@ export abstract class Resource {
 
             // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
             opts.aliases = [...(opts.aliases || [])];
-            for (const parentAlias of opts.parent.__aliases) {
-                opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+            if (opts.parent.__name) {
+                for (const parentAlias of (opts.parent.__aliases || [])) {
+                    opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+                }
             }
 
             this.__providers = opts.parent.__providers;
@@ -448,6 +459,25 @@ export interface ResourceOptions {
      * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
      */
     provider?: ProviderResource;
+    /**
+     * An optional customTimeouts configuration block.
+     */
+    customTimeouts?: CustomTimeouts;
+}
+
+export interface CustomTimeouts {
+    /**
+     * The optional create timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    create?: string;
+    /**
+     * The optional update timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    update?: string;
+    /**
+     * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    delete?: string;
 }
 
 /**
@@ -466,6 +496,14 @@ export interface CustomResourceOptions extends ResourceOptions {
      * to mark certain ouputs as a secrets on a per resource basis.
      */
     additionalSecretOutputs?: string[];
+
+    /**
+     * When provided with a resource ID, import indicates that this resource's provider should import its state from
+     * the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
+     * current state. Once a resource has been imported, the import property must be removed from the resource's
+     * options.
+     */
+    import?: ID;
 }
 
 /**

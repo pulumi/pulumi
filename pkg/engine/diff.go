@@ -202,7 +202,7 @@ func GetResourcePropertiesDetails(
 		if !summary {
 			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
-	} else if len(new.Outputs) > 0 {
+	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, debug)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, debug)
@@ -246,12 +246,17 @@ func GetResourceOutputsPropertiesString(
 	//   1) not doing a preview
 	//   2) doing a refresh
 	//   3) doing a read
+	//   4) doing an import
 	//
-	// Technically, 2 and 3 are the same, since they're both bottoming out at a provider's implementation of Read, but
+	// Technically, 2-4 are the same, since they're all bottoming out at a provider's implementation of Read, but
 	// the upshot is that either way we're ending up with outputs that are exactly accurate. If we are not sure that we
 	// are in one of the above states, we shouldn't try to print outputs.
 	if planning {
-		printOutputDuringPlanning := refresh || step.Op == deploy.OpRead || step.Op == deploy.OpReadReplacement
+		printOutputDuringPlanning := refresh ||
+			step.Op == deploy.OpRead ||
+			step.Op == deploy.OpReadReplacement ||
+			step.Op == deploy.OpImport ||
+			step.Op == deploy.OpImportReplacement
 		if !printOutputDuringPlanning {
 			return ""
 		}

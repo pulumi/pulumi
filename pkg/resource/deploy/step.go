@@ -19,8 +19,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
 
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
@@ -186,7 +186,8 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			if err != nil {
 				return resource.StatusOK, nil, err
 			}
-			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs)
+
+			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create)
 			if err != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, err
@@ -305,7 +306,8 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			if err != nil {
 				return resource.StatusOK, nil, err
 			}
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs); err != nil {
+
+			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
 				return rst, nil, err
 			}
 		}
@@ -409,7 +411,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			}
 
 			// Update to the combination of the old "all" state, but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs)
+			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs, s.new.CustomTimeouts.Update)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, upderr
@@ -701,9 +703,141 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	if outputs != nil {
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
-			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases)
+			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
+			&s.old.CustomTimeouts)
 	} else {
 		s.new = nil
+	}
+
+	return rst, complete, err
+}
+
+type ImportStep struct {
+	plan         *Plan                          // the current plan.
+	reg          RegisterResourceEvent          // the registration intent to convey a URN back to.
+	original     *resource.State                // the original resource, if this is an import-replace.
+	old          *resource.State                // the state of the resource fetched from the provider.
+	new          *resource.State                // the newly computed state of the resource after importing.
+	replacing    bool                           // true if we are replacing a Pulumi-managed resource.
+	diffs        []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
+	detailedDiff map[string]plugin.PropertyDiff // the structured property diff.
+}
+
+func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) Step {
+	contract.Assert(new != nil)
+	contract.Assert(new.URN != "")
+	contract.Assert(new.ID != "")
+	contract.Assert(new.Custom)
+	contract.Assert(!new.Delete)
+	contract.Assert(!new.External)
+
+	return &ImportStep{
+		plan: plan,
+		reg:  reg,
+		new:  new,
+	}
+}
+
+func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, new *resource.State) Step {
+	contract.Assert(original != nil)
+	contract.Assert(new != nil)
+	contract.Assert(new.URN != "")
+	contract.Assert(new.ID != "")
+	contract.Assert(new.Custom)
+	contract.Assert(!new.Delete)
+	contract.Assert(!new.External)
+
+	return &ImportStep{
+		plan:      plan,
+		reg:       reg,
+		original:  original,
+		new:       new,
+		replacing: true,
+	}
+}
+
+func (s *ImportStep) Op() StepOp {
+	if s.replacing {
+		return OpImportReplacement
+	}
+	return OpImport
+}
+
+func (s *ImportStep) Plan() *Plan                                  { return s.plan }
+func (s *ImportStep) Type() tokens.Type                            { return s.new.Type }
+func (s *ImportStep) Provider() string                             { return s.new.Provider }
+func (s *ImportStep) URN() resource.URN                            { return s.new.URN }
+func (s *ImportStep) Old() *resource.State                         { return s.old }
+func (s *ImportStep) New() *resource.State                         { return s.new }
+func (s *ImportStep) Res() *resource.State                         { return s.new }
+func (s *ImportStep) Logical() bool                                { return !s.replacing }
+func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.diffs }
+func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+
+func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+
+	// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
+	// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
+	prov, err := getProvider(s)
+	if err != nil {
+		return resource.StatusOK, nil, err
+	}
+	read, rst, err := prov.Read(s.new.URN, s.new.ID, nil, nil)
+	if err != nil {
+		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+			s.new.InitErrors = initErr.Reasons
+		} else {
+			return rst, nil, err
+		}
+	}
+	if read.Outputs == nil {
+		return rst, nil, errors.Errorf("resource '%v' does not exist", s.new.ID)
+	}
+	if read.Inputs == nil {
+		return resource.StatusOK, nil, errors.Errorf(
+			"provider does not support importing resources; please try updating the '%v' plugin",
+			s.new.URN.Type().Package())
+	}
+	s.new.Outputs = read.Outputs
+
+	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
+	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
+	// differences between the old and new states are between the inputs and outputs.
+	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
+		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts)
+
+	// Check the user inputs using the provider inputs for defaults.
+	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)
+	if err != nil {
+		return rst, nil, err
+	}
+	if issueCheckErrors(s.plan, s.new, s.new.URN, failures) {
+		return rst, nil, errors.New("one or more inputs failed to validate")
+	}
+	s.new.Inputs = inputs
+
+	// Diff the user inputs against the provider inputs. If there are any differences, fail the import.
+	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview)
+	if err != nil {
+		return rst, nil, err
+	}
+	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
+
+	if diff.Changes != plugin.DiffNone {
+		const message = "inputs to import do not match the existing resource"
+
+		if preview {
+			s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; importing this resource will fail", 0))
+		} else {
+			err = errors.New(message)
+		}
+	}
+
+	// If we were asked to replace an existing, non-External resource, pend the deletion here.
+	if err == nil && s.replacing {
+		s.original.Delete = true
 	}
 
 	return rst, complete, err
@@ -726,6 +860,8 @@ const (
 	OpReadDiscard          StepOp = "discard"                // removing a resource that was read.
 	OpDiscardReplaced      StepOp = "discard-replaced"       // discarding a read resource that was replaced.
 	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
+	OpImport               StepOp = "import"                 // import an existing resource.
+	OpImportReplacement    StepOp = "import-replacement"     // replace an existing resource with an imported resource.
 )
 
 // StepOps contains the full set of step operation types.
@@ -743,6 +879,8 @@ var StepOps = []StepOp{
 	OpReadDiscard,
 	OpDiscardReplaced,
 	OpRemovePendingReplace,
+	OpImport,
+	OpImportReplacement,
 }
 
 // Color returns a suggested color for lines of this op type.
@@ -750,7 +888,7 @@ func (op StepOp) Color() string {
 	switch op {
 	case OpSame:
 		return colors.SpecUnimportant
-	case OpCreate:
+	case OpCreate, OpImport:
 		return colors.SpecCreate
 	case OpDelete:
 		return colors.SpecDelete
@@ -764,7 +902,7 @@ func (op StepOp) Color() string {
 		return colors.SpecDeleteReplaced
 	case OpRead:
 		return colors.SpecCreate
-	case OpReadReplacement:
+	case OpReadReplacement, OpImportReplacement:
 		return colors.SpecReplace
 	case OpRefresh:
 		return colors.SpecUpdate
@@ -808,6 +946,10 @@ func (op StepOp) RawPrefix() string {
 		return "< "
 	case OpDiscardReplaced:
 		return "<<"
+	case OpImport:
+		return "= "
+	case OpImportReplacement:
+		return "=>"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -824,6 +966,8 @@ func (op StepOp) PastTense() string {
 		return "read"
 	case OpReadDiscard, OpDiscardReplaced:
 		return "discarded"
+	case OpImport, OpImportReplacement:
+		return "imported"
 	default:
 		contract.Failf("Unexpected resource step op: %v", op)
 		return ""
@@ -832,7 +976,8 @@ func (op StepOp) PastTense() string {
 
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
-	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace || op == OpReadReplacement || op == OpRefresh {
+	switch op {
+	case OpCreateReplacement, OpUpdate, OpReplace, OpReadReplacement, OpRefresh, OpImportReplacement:
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""
