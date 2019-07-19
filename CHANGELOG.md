@@ -1,9 +1,11 @@
 CHANGELOG
 =========
 
-## 0.17.24 (2019-07-19)
+## 0.17.25 (2019-07-19)
 
 - Internal changes to improve certain downstream scenarios around calling data-sources.
+
+## 0.17.24 (2019-07-19)
 
 - Fix a crash when two different versions of `@pulumi/pulumi` are used in the same Pulumi program
   [#2942](https://github.com/pulumi/pulumi/issues/2942)
