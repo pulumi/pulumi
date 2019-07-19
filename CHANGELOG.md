@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## Unreleased
+
+- Add `get_object`, `require_object`, `get_secret_object` and `require_secret_object` APIs to Python
+  `config` module [#2959](https://github.com/pulumi/pulumi/pull/2959)
+
 ## 0.17.24 (2019-07-19)
 
 - Internal changes to improve certain downstream scenarios around calling data-sources.
