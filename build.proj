@@ -112,6 +112,11 @@
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
          fails. Otherwise, the AppVeyor job would hang until it reached the timeout -->
+    <Exec Command="go test -count=1 -timeout 10m -cover -parallel $(TestParallelism) .\pkg\..."
+          IgnoreExitCode="true"
+          WorkingDirectory="$(RepoRootDirectory)">
+      <Output TaskParameter="ExitCode" PropertyName="GoTestExitCode" />
+    </Exec>
     <Exec Command="go test -count=1 -timeout 10m -cover -parallel $(TestParallelism) .\examples"
           IgnoreExitCode="true"
           WorkingDirectory="$(RepoRootDirectory)">

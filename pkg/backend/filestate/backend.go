@@ -131,11 +131,11 @@ func New(d diag.Sink, u string) (Backend, error) {
 // file:// paths which have a few oddities around them that we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
-		// not a file:// path.  Keep this untouched and pass directly to gocloud.
+		// Not a file:// path.  Keep this untouched and pass directly to gocloud.
 		return path, nil
 	}
 
-	// Strip off the "file://"" portion so we can examine and determine what to do with the rest.
+	// Strip off the "file://" portion so we can examine and determine what to do with the rest.
 	path = strings.TrimPrefix(path, FilePathPrefix)
 
 	// We need to specially handle ~.  The shell doesn't take care of this for us, and later
@@ -162,7 +162,7 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
-	// On Windows, convert "\" to "/" and add a leading "/":
+	// On Windows, convert "\" to "/" and add a leading "/". (See https://gocloud.dev/howto/blob/#local)
 	path = filepath.ToSlash(path)
 	if os.PathSeparator != '/' && !strings.HasPrefix(path, "/") {
 		path = "/" + path
