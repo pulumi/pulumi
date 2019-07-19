@@ -28,7 +28,7 @@ import { runInPulumiStack } from "../../runtime/stack";
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
 // nodejs here:
 // https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
-export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
+const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
 /**
  * Attempts to provide a detailed error message for module load failure if the
