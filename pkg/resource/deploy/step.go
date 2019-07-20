@@ -294,8 +294,13 @@ func (s *DeleteStep) Logical() bool        { return !s.replacing }
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources.
 	if s.old.Protect {
-		return resource.StatusOK, nil,
-			errors.Errorf("refusing to delete protected resource '%s'", s.old.URN)
+		message := fmt.Sprintf("refusing to delete protected resource '%s'", s.old.URN)
+		if !preview {
+			return resource.StatusOK, nil, errors.New(message)
+		}
+
+		s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.old.URN, message, 0))
+		return resource.StatusOK, func() {}, nil
 	}
 
 	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.

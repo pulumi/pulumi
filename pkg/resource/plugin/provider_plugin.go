@@ -943,6 +943,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	// And now any properties that failed verification.
 	var failures []CheckFailure
 	for _, failure := range resp.GetFailures() {
+		logging.V(7).Infof("failure %v %v\n", failure.Property, failure.Reason)
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
