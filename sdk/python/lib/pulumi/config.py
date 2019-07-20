@@ -15,7 +15,8 @@
 """
 The config module contains all configuration management functionality.
 """
-from typing import Optional
+import json
+from typing import Optional, Any
 
 from . import errors
 from .output import Output
@@ -174,6 +175,31 @@ class Config:
 
         return Output.secret(v)
 
+    def get_object(self, key: str) -> Optional[Any]:
+        """
+        Returns an optional configuration value, as an object, by its key, or undefined if it
+        doesn't exist. This routine simply JSON parses and doesn't validate the shape of the
+        contents.
+        """
+        v = self.get(key)
+        if v is None:
+            return None
+        try:
+            return json.loads(v)
+        except:
+            raise ConfigTypeError(self.full_key(key), v, "JSON object")
+
+    def get_secret_object(self, key: str) -> Optional[Output[Any]]:
+        """
+        Returns an optional configuration value, as an object, by its key, marking it as a secret or
+        undefined if it doesn't exist. This routine simply JSON parses and doesn't validate the
+        shape of the contents.
+        """
+        v = self.get_object(key)
+        if v is None:
+            return None
+        return Output.secret(v)
+
     def require(self, key: str) -> str:
         """
         Returns a configuration value by its given key.  If it doesn't exist, an error is thrown.
@@ -285,6 +311,25 @@ class Config:
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
         return Output.secret(self.require_float(key))
+
+    def require_object(self, key: str) -> Any:
+        """
+        Returns a configuration value as a JSON string and deserializes the JSON into a Python
+        object. If it doesn't exist, or the configuration value is not a legal JSON string, an error
+        is thrown.
+        """
+        v = self.get_object(key)
+        if v is None:
+            raise ConfigMissingError(self.full_key(key))
+        return v
+
+    def require_secret_object(self, key: str) -> Output[Any]:
+        """
+        Returns a configuration value as a JSON string and deserializes the JSON into a Python
+        object, marking it as a secret. If it doesn't exist, or the configuration value is not a
+        legal JSON string, an error is thrown.
+        """
+        return Output.secret(self.require_object(key))
 
     def full_key(self, key: str) -> str:
         """
