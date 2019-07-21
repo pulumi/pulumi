@@ -37,7 +37,7 @@ CHANGELOG
   actual configuration (i.e. its state) as calculated by the resource's provider.
 
 - Add the ability to pass a customTimeouts object from the providers across the engine
-  to resource management. (fixes [#2665](https://github.com/pulumi/pulumi/issues/2665))
+  to resource management. (fixes [#2655](https://github.com/pulumi/pulumi/issues/2655))
 
 ## 0.17.22 (2019-07-11)
 
