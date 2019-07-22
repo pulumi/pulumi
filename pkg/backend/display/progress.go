@@ -189,6 +189,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return payload.Metadata.URN, &payload.Metadata
 	} else if event.Type == engine.DiagEvent {
 		return event.Payload.(engine.DiagEventPayload).URN, nil
+	} else if event.Type == engine.PolicyViolationEvent {
+		return event.Payload.(engine.PolicyViolationEventPayload).ResourceURN, nil
 	}
 
 	return "", nil
@@ -919,6 +921,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// always show the root 'stack' resource so we can indicate that it's still running, and
 	// also so we have something to attach unparented diagnostic events to.
 	hideRowIfUnnecessary := metadata != nil && !shouldShow(*metadata, display.opts) && !isRootEvent
+	// Always show row if there's a policy violation event. Policy violations prevent resource
+	// registration, so if we don't show the row, the violation gets attributed to the stack
+	// resource rather than the resources whose policy failed.
+	hideRowIfUnnecessary = hideRowIfUnnecessary || event.Type == engine.PolicyViolationEvent
 	if !hideRowIfUnnecessary {
 		row.SetHideRowIfUnnecessary(false)
 	}
