@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 )
 
-// validateStackName checks if s is a valid stack name, otherwise returns a descritive error.
+// validateStackName checks if s is a valid stack name, otherwise returns a descriptive error.
 // This should match the stack naming rules enforced by the Pulumi Service.
 func validateStackName(s string) error {
 	stackNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
