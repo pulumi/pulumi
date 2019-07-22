@@ -39,6 +39,15 @@ CHANGELOG
 - Add the ability to pass a customTimeouts object from the providers across the engine
   to resource management. (fixes [#2655](https://github.com/pulumi/pulumi/issues/2655))
 
+### Breaking Changes
+
+- Defer to resource providers in all cases where the engine must determine whether or not a resource
+  has changed. Note that this can expose bugs in the resources providers that cause diffs to be
+  present even if the desired configuration matches the actual state of the resource: in these cases,
+  users can set the `PULUMI_ENABLE_LEGACY_DIFF` environment variable to `1` or `true` to enable the
+  old diff behavior. https://github.com/pulumi/pulumi/issues/2971 lists the known provider bugs
+  exposed by these changes and links to appropriate workarounds or tracking issues.
+
 ## 0.17.22 (2019-07-11)
 
 - Improve update performance in cases where a large number of log messages are
@@ -51,12 +60,6 @@ CHANGELOG
 - Fix an issue where a secret would not be encrypted in the state file if it was
   a property of a resource which was used as a stack output (fixes
   [#2862](https://github.com/pulumi/pulumi/issues/2862))
-
-- Defer to resource providers in all cases where the engine must determine whether or not a resource
-  has changed. Note that this can expose bugs in the resources providers that cause diffs to be
-  present even if the desired configuration matches the actual state of the resource: in these cases,
-  users can set the `PULUMI_ENABLE_LEGACY_DIFF` environment variable to `1` or `true` to enable the
-  old diff behavior.
 
 ## 0.17.20 (2019-06-23)
 
