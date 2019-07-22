@@ -176,7 +176,7 @@ func Login(d diag.Sink, url string) (Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return be, workspace.StoreAccessToken(url, "", true)
+	return be, workspace.StoreAccessToken(be.URL(), "", true)
 }
 
 func (b *localBackend) local() {}
