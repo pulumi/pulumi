@@ -163,11 +163,12 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 			contract.Assert(err == nil)
 
 			provider := &resource.State{
-				Type:   urn.Type(),
-				URN:    urn,
-				Custom: true,
-				ID:     id,
-				Inputs: inputs,
+				Type:    urn.Type(),
+				URN:     urn,
+				Custom:  true,
+				ID:      id,
+				Inputs:  inputs,
+				Outputs: inputs,
 			}
 			defaultProviders = append(defaultProviders, provider)
 			defaultProviderRefs[pkg] = ref
@@ -206,6 +207,20 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	// accurate as possible.
 	if err := addDefaultProviders(target, source, prev); err != nil {
 		return nil, err
+	}
+
+	// Migrate provider resources from the old, output-less format to the new format where all inputs are reflected as
+	// outputs.
+	if prev != nil {
+		for _, res := range prev.Resources {
+			// If we have no old outputs for a provider, use its old inputs as its old outputs. This handles the
+			// scenario where the CLI is being upgraded from a version that did not reflect provider inputs to
+			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
+			// a version that does.
+			if providers.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
+				res.Outputs = res.Inputs
+			}
+		}
 	}
 
 	var depGraph *graph.DependencyGraph
