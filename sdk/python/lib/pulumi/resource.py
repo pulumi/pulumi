@@ -216,18 +216,15 @@ def collapse_alias_to_urn(
     collapse_alias_to_urn turns an Alias into a URN given a set of default data
     """
 
-    return Output.from_input(alias).apply(
-        lambda a: collapse_alias_to_urn_worker(a))
+    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
+        if isinstance(inner, str):
+            return Output.from_input(inner)
 
-    def collapse_alias_to_urn_worker(a: Union[Alias, str]) -> 'Output[str]':
-        if isinstance(a, str):
-            return Output.from_input(a)
-
-        name = a.name if a.name is not ABSENT_VALUE else defaultName
-        typ = a.type if a.type is not ABSENT_VALUE else defaultType
-        parent = a.parent if a.parent is not ABSENT_VALUE else defaultParent
-        project = a.project if a.project is not ABSENT_VALUE else get_project()
-        stack = a.stack if a.stack is not ABSENT_VALUE else get_stack()
+        name = inner.name if inner.name is not ABSENT_VALUE else defaultName
+        typ = inner.type if inner.type is not ABSENT_VALUE else defaultType
+        parent = inner.parent if inner.parent is not ABSENT_VALUE else defaultParent
+        project = inner.project if inner.project is not ABSENT_VALUE else get_project()
+        stack = inner.stack if inner.stack is not ABSENT_VALUE else get_stack()
 
         if name is None:
             raise Exception("No valid 'name' passed in for alias.")
@@ -236,6 +233,8 @@ def collapse_alias_to_urn(
             raise Exception("No valid 'type' passed in for alias.")
 
         return create_urn(name, typ, parent, project, stack)
+
+    return Output.from_input(alias).apply(collapse_alias_to_urn_worker)
 
 
 class ResourceOptions:
