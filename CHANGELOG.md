@@ -6,6 +6,9 @@ CHANGELOG
 - Add `get_object`, `require_object`, `get_secret_object` and `require_secret_object` APIs to Python
   `config` module [#2959](https://github.com/pulumi/pulumi/pull/2959)
 
+- Fix unexpected provider replacements when upgrading from older CLIs and older providers
+  [pulumi/pulumi-kubernetes#645](https://github.com/pulumi/pulumi-kubernetes/issues/645)
+
 ## 0.17.25 (2019-07-19)
 
 - Support for Dynamic Providers in Python [#2900](https://github.com/pulumi/pulumi/pull/2900)
