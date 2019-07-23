@@ -51,7 +51,12 @@ class CustomTimeouts:
         self.delete = delete
 
 
-def create_urn(name, typ, parent=None, project=None, stack=None):
+def create_urn(
+        name: Input[str],
+        typ: Input[str],
+        parent: Optional[Union[Resource, Input[str]]] = None,
+        project: str = None,
+        stack: str = None) -> Output[str]:
     """
     createUrn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
@@ -86,30 +91,7 @@ def create_urn(name, typ, parent=None, project=None, stack=None):
         lambda arr:
         arr[0] + arr[1] + "::" + arr[2])
 
-#     parentPrefix = None
-#     if parent:
-
-
-# /**
-#  * createUrn computes a URN from the combination of a resource name, resource type, optional parent,
-#  * optional project and optional stack.
-#  */
-# export function createUrn(name: Input<string>, type: Input<string>, parent?: Resource | Input<URN>, project?: string, stack?: string): Output<string> {
-#     let parentPrefix: Output<string>;
-#     if (parent) {
-#         let parentUrn: Output<string>;
-#         if (Resource.isInstance(parent)) {
-#             parentUrn = parent.urn;
-#         } else {
-#             parentUrn = output(parent);
-#         }
-#         parentPrefix = parentUrn.apply(parentUrnString => parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$");
-#     } else {
-#         parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
-#     }
-#     return interpolate`${parentPrefix}${type}::${name}`;
-# }
-
+# def inherited_child_alias(child_name, parent_name, parent_alias, child_type)
 # // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
 # // This may involve changing the name of the resource in cases where the resource has a named derived from the name of
 # // the parent, and the parent name changed.
