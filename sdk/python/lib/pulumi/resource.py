@@ -286,6 +286,11 @@ class ResourceOptions:
     used.
     """
 
+    aliases: Optional[List['Input[Union[str, Alias]]']]
+    """
+    An optional list of aliases to treat this resource as matching.
+    """
+
     additional_secret_outputs: [List[str]]
     """
     The names of outputs for this resource that should be treated as secrets. This augments the list that
@@ -320,6 +325,7 @@ class ResourceOptions:
                  delete_before_replace: Optional[bool] = None,
                  ignore_changes: Optional[List[str]] = None,
                  version: Optional[str] = None,
+                 aliases: Optional[List['Input[Union[str, Alias]]']] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
                  id: Optional[str] = None,
                  import_: Optional[str] = None,
@@ -355,6 +361,7 @@ class ResourceOptions:
         self.delete_before_replace = delete_before_replace
         self.ignore_changes = ignore_changes
         self.version = version
+        self.aliases = aliases
         self.additional_secret_outputs = additional_secret_outputs
         self.custom_timeouts = custom_timeouts
         self.id = id
