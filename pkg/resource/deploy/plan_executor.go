@@ -199,7 +199,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if res != nil || pe.stepExec.Errored() {
+	if res != nil || pe.stepExec.Errored() || pe.stepGen.hasPolicyViolations {
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
 		pe.reportExecResult("failed", preview)
