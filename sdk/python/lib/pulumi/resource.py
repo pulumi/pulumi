@@ -445,7 +445,8 @@ class Resource:
             if opts.protect is None:
                 opts.protect = opts.parent._protect
 
-            # Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
+            # Make a copy of the aliases array, and add to it any implicit aliases inherited from
+            # its parent
             if opts.aliases is None:
                 opts.aliases = []
 
@@ -464,8 +465,8 @@ class Resource:
                     # provider from our parent.
                     opts.provider = opts.parent.get_provider(t)
             else:
-                # If a provider was specified, add it to the providers map under this type's package so that
-                # any children of this resource inherit its provider.
+                # If a provider was specified, add it to the providers map under this type's package
+                # so that any children of this resource inherit its provider.
                 type_components = t.split(":")
                 if len(type_components) == 3:
                     [pkg, _, _] = type_components
