@@ -18,7 +18,7 @@ from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, TYPE_CH
 from google.protobuf import struct_pb2
 import grpc
 
-from . import rpc, settings, known_types
+from . import rpc, settings, known_types, create_urn
 from .. import log
 from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
@@ -56,6 +56,11 @@ class ResourceResolverOperations(NamedTuple):
     property_dependencies: Dict[str, List[str]]
     """
     A map from property name to the URNs of the resources the property depends on.
+    """
+
+    aliases: List[str]
+    """
+    A list of aliases applied to this resource.
     """
 
 
@@ -199,8 +204,8 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
             def do_rpc_call():
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    test_urn = create_test_urn(ty, name)
-                    return RegisterResponse(test_urn, None, resolver.serialized_props)
+                    mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
+                    return RegisterResponse(mock_urn, None, resolver.serialized_props)
 
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
@@ -234,9 +239,10 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
 # pylint: disable=too-many-locals,too-many-statements
 def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
     """
-    registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
-    URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
-    objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
+    registerResource registers a new resource object with a given type t and name.  It returns the
+    auto-generated URN and the ID that will resolve after the deployment has completed.  All
+    properties will be initialized to property objects that the registration operation will resolve
+    at the right time (or remain unresolved for deployments).
     """
     log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
     monitor = settings.get_monitor()
@@ -302,6 +308,14 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
                 additional_secret_outputs = map(res.translate_input_property, opts.additional_secret_outputs)
 
+            # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
+            # former has been processed in the Resource constructor prior to calling
+            # `register_resource` - both adding new inherited aliases and simplifying aliases down
+            # to URNs.
+            aliases = []
+            for alias of res._aliases:
+                aliases.push(await Output.from_input(alias).future())
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -319,14 +333,15 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 additionalSecretOutputs=additional_secret_outputs,
                 aliases=[],
                 importId=opts.import_,
-                customTimeouts=opts.custom_timeouts
+                customTimeouts=opts.custom_timeouts,
+                aliasesList=aliases,
             )
 
             def do_rpc_call():
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    test_urn = create_test_urn(ty, name)
-                    return RegisterResponse(test_urn, None, resolver.serialized_props)
+                    mock_urn  = await create_urn(name, ty, resolver.parent_urn).future()
+                    return RegisterResponse(mock_urn, None, resolver.serialized_props)
 
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
