@@ -37,6 +37,11 @@ type stepGenerator struct {
 	plan *Plan   // the plan to which this step generator belongs
 	opts Options // options for this step generator
 
+	// signals that one or more PolicyViolationEvents have been reported to the user, and the plan
+	// should terminate in error. This primarily allows `preview` to aggregate many policy violation
+	// events and report them all at once.
+	hasPolicyViolations bool
+
 	urns           map[resource.URN]bool            // set of URNs discovered for this plan
 	reads          map[resource.URN]bool            // set of URNs read for this plan
 	deletes        map[resource.URN]bool            // set of URNs deleted in this plan
@@ -248,7 +253,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			// TODO(hausdorff): Batch up failures and report them all at once during preview. This
 			// will cause them to fail eagerly.
 			if d.EnforcementLevel == apitype.Mandatory {
-				invalid = true
+				if !sg.plan.preview {
+					invalid = true
+				}
+				sg.hasPolicyViolations = true
 			}
 			sg.opts.Events.OnPolicyViolation(new.URN, d)
 		}
