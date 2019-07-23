@@ -9,6 +9,11 @@ CHANGELOG
 - Fix unexpected provider replacements when upgrading from older CLIs and older providers
   [pulumi/pulumi-kubernetes#645](https://github.com/pulumi/pulumi-kubernetes/issues/645)
 
+- Add *Python* support for renaming resources via the `aliases` resource option.  Adding aliases
+  allows new resources to match resources from previous deployments which used different names,
+  maintaining the identity of the resource and avoiding replacements or re-creation of the resource.
+  This was previously added to the *JavaScript* sdk in 0.17.15.
+
 ## 0.17.25 (2019-07-19)
 
 - Support for Dynamic Providers in Python [#2900](https://github.com/pulumi/pulumi/pull/2900)
