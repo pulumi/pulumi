@@ -86,43 +86,36 @@ def create_urn(
         arr[0] + arr[1] + "::" + arr[2])
 
 
-# def inherited_child_alias(
-#         child_name: str,
-#         parent_name: str,
-#         parent_alias: 'Input[str]',
-#         child_type: str) -> 'Output[str]':
-#     """
-#     inheritedChildAlias computes the alias that should be applied to a child based on an alias
-#     applied to it's parent. This may involve changing the name of the resource in cases where the
-#     resource has a named derived from the name of the parent, and the parent name changed.
-#     """
+def inherited_child_alias(
+        child_name: str,
+        parent_name: str,
+        parent_alias: 'Input[str]',
+        child_type: str) -> 'Output[str]':
+    """
+    inheritedChildAlias computes the alias that should be applied to a child based on an alias
+    applied to it's parent. This may involve changing the name of the resource in cases where the
+    resource has a named derived from the name of the parent, and the parent name changed.
+    """
 
-# #   If the child name has the parent name as a prefix, then we make the assumption that it was
-# #   constructed from the convention of using `{name}-details` as the name of the child resource.  To
-# #   ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
-# #   the child resource name.
-# #
-# #   For example:
-# #   * name: "newapp-function"
-# #   * opts.parent.__name: "newapp"
-# #   * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
-# #   * parentAliasName: "app"
-# #   * aliasName: "app-function"
-# #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-#     alias_name = Output.from_input(child_name)
-#     if child_name.startswith(parent_name):
-#         alias_name = Output.from_input(parent_alias).apply(
-#             lambda u:
-#             u.
-# #     let aliasName = output(childName);
-# #     if (childName.startsWith(parentName)) {
-# #         aliasName = output(parentAlias).apply(parentAliasUrn => {
-# #             const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::") + 2);
-# #             return parentAliasName + childName.substring(parentName.length);
-# #         });
-# #     }
-# #     return createUrn(aliasName, childType, parentAlias);
-# # }
+#   If the child name has the parent name as a prefix, then we make the assumption that it was
+#   constructed from the convention of using `{name}-details` as the name of the child resource.  To
+#   ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
+#   the child resource name.
+#
+#   For example:
+#   * name: "newapp-function"
+#   * opts.parent.__name: "newapp"
+#   * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+#   * parentAliasName: "app"
+#   * aliasName: "app-function"
+#   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+    alias_name = Output.from_input(child_name)
+    if child_name.startswith(parent_name):
+        alias_name = Output.from_input(parent_alias).apply(
+            lambda u:
+            u[parent_alias.rfind("::") + 2] + child_name[len(parent_name)])
+
+    return create_urn(alias_name, child_type, parent_alias)
 
 
 class ResourceOptions:
