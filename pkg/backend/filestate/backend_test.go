@@ -42,6 +42,7 @@ func TestMassageBlobPath(t *testing.T) {
 
 			newHomeDir := "/" + filepath.ToSlash(homeDir)
 			t.Logf("Changed homeDir to expect from %q to %q", homeDir, newHomeDir)
+			homeDir = newHomeDir
 		}
 
 		testMassagePath(t, FilePathPrefix+"~", FilePathPrefix+homeDir)
