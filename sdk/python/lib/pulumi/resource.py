@@ -19,6 +19,8 @@ from .runtime import known_types
 from .runtime.resource import register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
 
+from .metadata import get_project, get_stack
+
 if TYPE_CHECKING:
     from .output import Output, Input, Inputs
 
@@ -48,6 +50,7 @@ class CustomTimeouts:
         self.update = update
         self.delete = delete
 
+
 def create_urn(name, typ, parent=None, project=None, stack=None):
     """
     createUrn computes a URN from the combination of a resource name, resource type, optional
@@ -59,7 +62,29 @@ def create_urn(name, typ, parent=None, project=None, stack=None):
     :param Optional[str] project
     :param Optional[str] stack
     """
-    print("" + name + typ + parent + project + stack)
+    parent_prefix = None
+    if parent is not None:
+        parent_urn = None
+        if isinstance(parent, Resource):
+            parent_urn = parent.urn
+        else:
+            parent_urn = Output.from_input(parent)
+
+        parent_prefix = parent_urn.apply(
+            lambda u:
+            u[0:u.rfind("::")] + "$")
+    else:
+        if stack is None:
+            stack = get_stack()
+
+        if project is None:
+            project = get_project()
+
+        parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
+
+    return Output.all([parent_prefix, typ, name]).apply(
+        lambda arr:
+        arr[0] + arr[1] + "::" + arr[2])
 
 #     parentPrefix = None
 #     if parent:
