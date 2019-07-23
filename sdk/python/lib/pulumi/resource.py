@@ -20,7 +20,7 @@ from .runtime.resource import register_resource, register_resource_outputs, read
 from .runtime.settings import get_root_resource
 
 if TYPE_CHECKING:
-    from .output import Output, Inputs
+    from .output import Output, Input, Inputs
 
 
 class CustomTimeouts:
@@ -48,6 +48,68 @@ class CustomTimeouts:
         self.update = update
         self.delete = delete
 
+def create_urn(name, typ, parent=None, project=None, stack=None):
+    """
+    createUrn computes a URN from the combination of a resource name, resource type, optional
+    parent, optional project and optional stack.
+
+    :param Input[str] name
+    :param Input[str] typ
+    :param Optional[Union[Resource,Input[str]]] parent
+    :param Optional[str] project
+    :param Optional[str] stack
+    """
+    print("" + name + typ + parent + project + stack)
+
+#     parentPrefix = None
+#     if parent:
+
+
+# /**
+#  * createUrn computes a URN from the combination of a resource name, resource type, optional parent,
+#  * optional project and optional stack.
+#  */
+# export function createUrn(name: Input<string>, type: Input<string>, parent?: Resource | Input<URN>, project?: string, stack?: string): Output<string> {
+#     let parentPrefix: Output<string>;
+#     if (parent) {
+#         let parentUrn: Output<string>;
+#         if (Resource.isInstance(parent)) {
+#             parentUrn = parent.urn;
+#         } else {
+#             parentUrn = output(parent);
+#         }
+#         parentPrefix = parentUrn.apply(parentUrnString => parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$");
+#     } else {
+#         parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
+#     }
+#     return interpolate`${parentPrefix}${type}::${name}`;
+# }
+
+# // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
+# // This may involve changing the name of the resource in cases where the resource has a named derived from the name of
+# // the parent, and the parent name changed.
+# function inheritedChildAlias(childName: string, parentName: string, parentAlias: Input<string>, childType: string): Output<string> {
+#     // If the child name has the parent name as a prefix, then we make the assumption that it was
+#     // constructed from the convention of using `{name}-details` as the name of the child resource.  To
+#     // ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
+#     // the child resource name.
+#     //
+#     // For example:
+#     // * name: "newapp-function"
+#     // * opts.parent.__name: "newapp"
+#     // * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+#     // * parentAliasName: "app"
+#     // * aliasName: "app-function"
+#     // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+#     let aliasName = output(childName);
+#     if (childName.startsWith(parentName)) {
+#         aliasName = output(parentAlias).apply(parentAliasUrn => {
+#             const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::") + 2);
+#             return parentAliasName + childName.substring(parentName.length);
+#         });
+#     }
+#     return createUrn(aliasName, childType, parentAlias);
+# }
 
 
 class ResourceOptions:
