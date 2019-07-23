@@ -15,6 +15,8 @@
 """The Resource module, containing all resource-related definitions."""
 from typing import Optional, List, Any, Mapping, Union, TYPE_CHECKING
 
+import copy
+
 from .runtime import known_types
 from .runtime.resource import register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
@@ -54,7 +56,7 @@ class CustomTimeouts:
 def create_urn(
         name: 'Input[str]',
         typ: 'Input[str]',
-        parent: Optional[Union[Resource, 'Input[str]']] = None,
+        parent: Optional[Union['Resource', 'Input[str]']] = None,
         project: str = None,
         stack: str = None) -> 'Output[str]':
     """
@@ -116,6 +118,124 @@ def inherited_child_alias(
             u[parent_alias.rfind("::") + 2] + child_name[len(parent_name)])
 
     return create_urn(alias_name, child_type, parent_alias)
+
+ABSENT_VALUE = object()
+
+ROOT_STACK_RESOURCE = None
+"""
+Constant to represent the 'root stack' resource for a Pulumi application.  The purpose of this is
+solely to make it easy to write an [Alias] like so:
+
+`aliases=[Alias(parent=pulumi.ROOT_STACK_RESOURCE)]`.
+
+This indicates that the prior name for a resource was created based on it being parented directly by
+the stack itself and no other resources.  Note: this is equivalent to:
+
+`aliases=[Alias(parent=None)]`
+
+However, the former form is preferable as it is more self-descriptive, while the latter may look a
+bit confusing and may incorrectly look like something that could be removed without changing
+semantics.
+"""
+
+class Alias:
+    """
+    Alias is a partial description of prior named used for a resource. It can be processed in the
+    context of a resource creation to determine what the full aliased URN would be.
+
+    Note there is a semantic difference between properties being absent from this type and
+    properties having the `undefined` value. Specifically, there is a difference between:
+
+    ```ts
+    Alias(name="foo", parent=None) // and
+    Alias(name="foo")
+    ```
+
+    So the first alias means "the original urn had no parent" while the second alias means "use the
+    current parent".
+
+    Note: to indicate that a resource was previously parented by the root stack, it is recommended
+    that you use:
+
+    `aliases=[Alias(parent=pulumi.ROOT_STACK_RESOURCE)]`
+
+    This form is self-descriptive and makes the intent clearer than using:
+
+    `aliases=[Alias(parent=None)]`
+    """
+
+    name: Optional[str]
+    """
+    The previous name of the resource.  If not provided, the current name of the resource is used.
+    """
+
+    typ: Optional[str]
+    """
+    The previous type of the resource.  If not provided, the current type of the resource is used.
+    """
+
+    parent: Optional[Union['Resource', 'Input[str]']]
+    """
+    The previous parent of the resource.  If not provided (i.e. `Alias(name="foo")`), the current
+    parent of the resource is used (`opts.parent` if provided, else the implicit stack resource
+    parent).
+
+    To specify no original parent, use `Alias(parent=pulumi.rootStackResource)`.
+    """
+
+    stack: Optional['Input[str]']
+    """
+    The previous stack of the resource.  If not provided, defaults to `pulumi.getStack()`.
+    """
+
+    project: Optional['Input[str]']
+    """
+    The previous project of the resource. If not provided, defaults to `pulumi.getProject()`.
+    """
+
+    def __init__(self,
+                 name: Optional[str] = ABSENT_VALUE,
+                 typ: Optional[str] = ABSENT_VALUE,
+                 parent: Optional[Union['Resource', 'Input[str]']] = ABSENT_VALUE,
+                 stack: Optional['Input[str]'] = ABSENT_VALUE,
+                 project: Optional['Input[str]'] = ABSENT_VALUE) -> None:
+
+        self.name = name
+        self.typ = typ
+        self.parent = parent
+        self.stack = stack
+        self.project = project
+
+
+def collapse_alias_to_urn(
+        alias: 'Input[Union[Alias, str]]',
+        defaultName: str,
+        defaultType: str,
+        defaultParent: Optional['Resource']) -> 'Output[str]':
+    """
+    collapse_alias_to_urn turns an Alias into a URN given a set of default data
+    """
+
+    return Output.from_input(alias).apply(
+        lambda a: collapse_alias_to_urn_worker(a))
+
+    def collapse_alias_to_urn_worker(a: Union[Alias, str]) -> 'Output[str]':
+        if isinstance(a, str):
+            return Output.from_input(a)
+
+        name = a.name if a.name is not ABSENT_VALUE else defaultName
+        typ = a.type if a.type is not ABSENT_VALUE else defaultType
+        parent = a.parent if a.parent is not ABSENT_VALUE else defaultParent
+        project = a.project if a.project is not ABSENT_VALUE else get_project()
+        stack = a.stack if a.stack is not ABSENT_VALUE else get_stack()
+
+        if name is None:
+            raise Exception("No valid 'name' passed in for alias.")
+
+        if typ is None:
+            raise Exception("No valid 'type' passed in for alias.")
+
+        return create_urn(name, typ, parent, project, stack)
 
 
 class ResourceOptions:
@@ -253,7 +373,8 @@ class Resource:
 
     urn: 'Output[str]'
     """
-    The stable, logical URN used to distinctly address a resource, both before and after deployments.
+    The stable, logical URN used to distinctly address a resource, both before and after
+    deployments.
     """
 
     _providers: Mapping[str, 'ProviderResource']
@@ -264,6 +385,16 @@ class Resource:
     _protect: bool
     """
     When set to true, protect ensures this resource cannot be deleted.
+    """
+
+    _aliases: 'Input[str]'
+    """
+    A list of aliases applied to this resource.
+    """
+
+    _name: str
+    """
+    The name assigned to the resource at construction.
     """
 
     def __init__(self,
@@ -293,6 +424,11 @@ class Resource:
         if opts is None:
             opts = ResourceOptions()
 
+        self._name = name
+
+        # Make a shallow clone of opts to ensure we don't modify the value passed in.
+        opts = copy.copy(opts)
+
         self._providers = {}
         # Check the parent type if one exists and fill in any default options.
         if opts.parent is not None:
@@ -302,6 +438,14 @@ class Resource:
             # Infer protection from parent, if one was provided.
             if opts.protect is None:
                 opts.protect = opts.parent._protect
+
+            # Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
+            if opts.aliases is None:
+                opts.aliases = []
+
+            opts.aliases = opts.aliases.copy()
+            for parent_alias in opts.parent._aliases:
+                opts.aliases.append(inherited_child_alias(name, opts.parent._name, parent_alias, t))
 
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
@@ -326,6 +470,14 @@ class Resource:
 
         self._protect = bool(opts.protect)
 
+        # Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we
+        # do not know the default `name` and `type` to apply until we are inside the resource
+        # constructor.
+        self._aliases = []
+        if opts.aliases is not None:
+            for alias in opts.aliases:
+                self._aliases.append(collapse_alias_to_urn(alias, name, t, opts.parent))
+
         if opts.id is not None:
             # If this resource already exists, read its state rather than registering it anow.
             if not custom:
@@ -333,6 +485,7 @@ class Resource:
             read_resource(self, t, name, props, opts)
         else:
             register_resource(self, t, name, custom, props, opts)
+
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
