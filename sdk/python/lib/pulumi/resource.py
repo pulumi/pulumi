@@ -182,8 +182,10 @@ def collapse_alias_to_urn(
     """
 
     def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
+        from .output import Output as Op
+
         if isinstance(inner, str):
-            return Output.from_input(inner)
+            return Op.from_input(inner)
 
         name = inner.name if inner.name is not ABSENT_VALUE else defaultName
         typ = inner.type if inner.type is not ABSENT_VALUE else defaultType
@@ -199,7 +201,7 @@ def collapse_alias_to_urn(
 
         return create_urn(name, typ, parent, project, stack)
 
-    return Output.from_input(alias).apply(collapse_alias_to_urn_worker)
+    return Op.from_input(alias).apply(collapse_alias_to_urn_worker)
 
 
 class ResourceOptions:
