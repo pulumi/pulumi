@@ -31,6 +31,7 @@ import (
 func newStateDeleteCommand() *cobra.Command {
 	var force bool // Force deletion of protected resources
 	var stack string
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:   "delete <resource URN>",
@@ -51,7 +52,10 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 		Args: cmdutil.ExactArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			urn := resource.URN(args[0])
-			res := runStateEdit(stack, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
+			showPrompt := !yes
+
+			res := runStateEdit(stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 				if !force {
 					return edit.DeleteResource(snap, res)
 				}
@@ -91,5 +95,6 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&force, "force", false, "Force deletion of protected resources")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 	return cmd
 }
