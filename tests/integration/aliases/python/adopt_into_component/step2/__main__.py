@@ -11,7 +11,7 @@ class Resource1(ComponentResource):
 # Scenario #2 - adopt a resource into a component.  The component author is the same as the
 # component user, and changes the component to be able to adopt the resource that was previously
 # defined separately...
-class Component1(pulumi.ComponentResource):
+class Component1(ComponentResource):
     def __init__(self, name, opts=None):
         super().__init__("my:module:Component", name, None, opts)
         # The resource creation was moved from top level to inside the component.
