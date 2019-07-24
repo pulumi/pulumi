@@ -19,7 +19,8 @@ from google.protobuf import struct_pb2
 import grpc
 
 from . import rpc, settings, known_types
-from .. import log, create_urn
+from .. import log
+from ..resource import create_urn
 from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
 
