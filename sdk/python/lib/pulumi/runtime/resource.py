@@ -316,9 +316,9 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 ignore_changes = map(
                     res.translate_input_property, opts.ignore_changes)
 
-            # Note that while `additional_secret_outputs` lists property names that are outputs, we call
-            # `translate_input_property` because it is the method that converts from the language projection
-            # name to the provider name, which is what we want.
+            # Note that while `additional_secret_outputs` lists property names that are outputs, we
+            # call `translate_input_property` because it is the method that converts from the
+            # language projection name to the provider name, which is what we want.
             additional_secret_outputs = opts.additional_secret_outputs
             if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
                 additional_secret_outputs = map(
