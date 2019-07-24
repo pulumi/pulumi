@@ -80,8 +80,7 @@ def inherited_child_alias(
     alias_name = Op.from_input(child_name)
     if child_name.startswith(parent_name):
         alias_name = Op.from_input(parent_alias).apply(
-            lambda u:
-            u[u.rfind("::") + 2:] + child_name[len(parent_name):])
+            lambda u: u[u.rfind("::") + 2:] + child_name[len(parent_name):])
 
     return create_urn(alias_name, child_type, parent_alias)
 
@@ -658,8 +657,7 @@ def create_urn(
             parent_urn = Op.from_input(parent)
 
         parent_prefix = parent_urn.apply(
-            lambda u:
-            u[0:u.rfind("::")] + "$")
+            lambda u: u[0:u.rfind("::")] + "$")
     else:
         if stack is None:
             stack = get_stack()
@@ -670,5 +668,4 @@ def create_urn(
         parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
 
     return Op.all(parent_prefix, typ, name).apply(
-        lambda arr:
-        arr[0] + arr[1] + "::" + arr[2])
+        lambda arr: arr[0] + arr[1] + "::" + arr[2])
