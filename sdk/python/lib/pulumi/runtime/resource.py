@@ -14,7 +14,8 @@
 import asyncio
 import sys
 import traceback
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, TYPE_CHECKING
+
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING
 from google.protobuf import struct_pb2
 import grpc
 
@@ -22,6 +23,7 @@ from . import rpc, settings, known_types
 from .. import log
 from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
+from ..metadata import get_project, get_stack
 
 if TYPE_CHECKING:
     from .. import Resource, ResourceOptions
@@ -115,13 +117,24 @@ async def prepare_resource(res: 'Resource',
             dependencies.add(urn)
         property_dependencies[key] = list(urns)
 
+    # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
+    # former has been processed in the Resource constructor prior to calling
+    # `register_resource` - both adding new inherited aliases and simplifying aliases down
+    # to URNs.
+    aliases = []
+    for alias in res._aliases:
+        alias_val = await Output.from_input(alias).future()
+        if not alias_val in aliases:
+            aliases.append(alias_val)
+
     log.debug(f"resource {props} prepared")
     return ResourceResolverOperations(
         parent_urn,
         serialized_props,
         dependencies,
         provider_ref,
-        property_dependencies
+        property_dependencies,
+        aliases,
     )
 
 # pylint: disable=too-many-locals,too-many-statements
@@ -207,6 +220,7 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
+            from ..resource import create_urn
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -323,14 +337,6 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 additional_secret_outputs = map(
                     res.translate_input_property, opts.additional_secret_outputs)
 
-            # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
-            # former has been processed in the Resource constructor prior to calling
-            # `register_resource` - both adding new inherited aliases and simplifying aliases down
-            # to URNs.
-            aliases = []
-            for alias in res._aliases:
-                aliases.append(await Output.from_input(alias).future())
-
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -346,12 +352,12 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 version=opts.version or "",
                 acceptSecrets=True,
                 additionalSecretOutputs=additional_secret_outputs,
-                aliases=[],
                 importId=opts.import_,
                 customTimeouts=opts.custom_timeouts,
-                aliasesList=aliases,
+                aliases=resolver.aliases,
             )
 
+            from ..resource import create_urn
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -442,38 +448,3 @@ class RegisterResponse:
         self.urn = urn
         self.id = id
         self.object = object
-
-
-def create_urn(
-        name: 'Input[str]',
-        typ: 'Input[str]',
-        parent: Optional[Union['Resource', 'Input[str]']] = None,
-        project: str = None,
-        stack: str = None) -> 'Output[str]':
-    """
-    create_urn computes a URN from the combination of a resource name, resource type, optional
-    parent, optional project and optional stack.
-    """
-    parent_prefix = None
-    if parent is not None:
-        parent_urn = None
-        if isinstance(parent, Resource):
-            parent_urn = parent.urn
-        else:
-            parent_urn = Output.from_input(parent)
-
-        parent_prefix = parent_urn.apply(
-            lambda u:
-            u[0:u.rfind("::")] + "$")
-    else:
-        if stack is None:
-            stack = get_stack()
-
-        if project is None:
-            project = get_project()
-
-        parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
-
-    return Output.all([parent_prefix, typ, name]).apply(
-        lambda arr:
-        arr[0] + arr[1] + "::" + arr[2])
