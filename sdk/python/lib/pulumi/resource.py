@@ -81,7 +81,7 @@ def inherited_child_alias(
     if child_name.startswith(parent_name):
         alias_name = Op.from_input(parent_alias).apply(
             lambda u:
-            u[parent_alias.rfind("::") + 2] + child_name[len(parent_name)])
+            u[u.rfind("::") + 2] + child_name[len(parent_name)])
 
     return create_urn(alias_name, child_type, parent_alias)
 
