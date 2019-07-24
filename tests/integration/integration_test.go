@@ -257,6 +257,35 @@ func TestEmptyPython(t *testing.T) {
 // 	})
 // }
 
+var aliasDirs = []string{
+	"rename", "adopt_into_component", "rename_component",
+	"rename_component_and_child", "retype_component",
+}
+
+func TestPythonAliases(t *testing.T) {
+	for _, dir := range aliasDirs {
+		if dir == "adopt_into_component" {
+			d := path.Join("python", dir)
+			t.Run(d, func(t *testing.T) {
+				integration.ProgramTest(t, &integration.ProgramTestOptions{
+					Dir: path.Join("python", d, "step1"),
+					Dependencies: []string{
+						filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					},
+					Quick: true,
+					EditDirs: []integration.EditDir{
+						{
+							Dir:             path.Join("python", d, "step2"),
+							Additive:        true,
+							ExpectNoChanges: true,
+						},
+					},
+				})
+			})
+		}
+	}
+}
+
 // func TestStackOutputsPython(t *testing.T) {
 // 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 // 		Dir: filepath.Join("stack_outputs", "python"),
