@@ -11,8 +11,11 @@ import (
 )
 
 var dirs = []string{
-	"rename", "adopt_into_component", "rename_component",
-	"rename_component_and_child", "retype_component",
+	"rename",
+	"adopt_into_component",
+	"rename_component_and_child",
+	"retype_component",
+	"rename_component",
 }
 
 // TestNodejsAliases tests a case where a resource's name changes but it provides an `alias`
