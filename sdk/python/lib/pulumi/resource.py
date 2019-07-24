@@ -181,9 +181,9 @@ def collapse_alias_to_urn(
     collapse_alias_to_urn turns an Alias into a URN given a set of default data
     """
 
-    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
-        from .output import Output as Op
+    from .output import Output as Op
 
+    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
         if isinstance(inner, str):
             return Op.from_input(inner)
 
