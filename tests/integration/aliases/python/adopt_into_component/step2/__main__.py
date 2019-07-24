@@ -63,4 +63,4 @@ class Component4(ComponentResource):
 
         super().__init__("my:module:Component4", name, None, child_opts)
 
-comp4 = Component4("duplicateAliases1", ResourceOptions(parent=comp2))
+comp4 = Component4("duplicateAliases", ResourceOptions(parent=comp2))
