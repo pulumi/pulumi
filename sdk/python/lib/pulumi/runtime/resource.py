@@ -117,13 +117,15 @@ async def prepare_resource(res: 'Resource',
             dependencies.add(urn)
         property_dependencies[key] = list(urns)
 
+    from ..output import Output as Op
+
     # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
     # former has been processed in the Resource constructor prior to calling
     # `register_resource` - both adding new inherited aliases and simplifying aliases down
     # to URNs.
     aliases = []
     for alias in res._aliases:
-        alias_val = await Output.from_input(alias).future()
+        alias_val = await Op.from_input(alias).future()
         if not alias_val in aliases:
             aliases.append(alias_val)
 
