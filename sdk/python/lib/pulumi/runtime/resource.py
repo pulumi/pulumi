@@ -208,10 +208,11 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
+            mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
+
             def do_rpc_call():
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
                     return RegisterResponse(mock_urn, None, resolver.serialized_props)
 
                 # If there is a monitor available, make the true RPC request to the engine.
@@ -352,10 +353,11 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 aliasesList=aliases,
             )
 
+            mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
+
             def do_rpc_call():
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
                     return RegisterResponse(mock_urn, None, resolver.serialized_props)
 
                 # If there is a monitor available, make the true RPC request to the engine.
