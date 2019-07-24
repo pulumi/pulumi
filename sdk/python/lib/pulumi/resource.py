@@ -76,9 +76,10 @@ def inherited_child_alias(
 #   * parentAliasName: "app"
 #   * aliasName: "app-function"
 #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-    alias_name = Output.from_input(child_name)
+    from .output import Output as Op
+    alias_name = Op.from_input(child_name)
     if child_name.startswith(parent_name):
-        alias_name = Output.from_input(parent_alias).apply(
+        alias_name = Op.from_input(parent_alias).apply(
             lambda u:
             u[parent_alias.rfind("::") + 2] + child_name[len(parent_name)])
 
