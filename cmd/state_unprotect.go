@@ -34,6 +34,7 @@ import (
 func newStateUnprotectCommand() *cobra.Command {
 	var unprotectAll bool
 	var stack string
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:   "unprotect <resource URN>",
@@ -43,8 +44,11 @@ func newStateUnprotectCommand() *cobra.Command {
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
+			showPrompt := !yes
+
 			if unprotectAll {
-				return unprotectAllResources(stack)
+				return unprotectAllResources(stack, showPrompt)
 			}
 
 			if len(args) != 1 {
@@ -52,7 +56,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 			}
 
 			urn := resource.URN(args[0])
-			return unprotectResource(stack, urn)
+			return unprotectResource(stack, urn, showPrompt)
 		}),
 	}
 
@@ -60,11 +64,13 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+
 	return cmd
 }
 
-func unprotectAllResources(stackName string) result.Result {
-	res := runTotalStateEdit(stackName, func(_ display.Options, snap *deploy.Snapshot) error {
+func unprotectAllResources(stackName string, showPrompt bool) result.Result {
+	res := runTotalStateEdit(stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 		for _, res := range snap.Resources {
 			err := edit.UnprotectResource(snap, res)
 			contract.AssertNoError(err)
@@ -80,8 +86,8 @@ func unprotectAllResources(stackName string) result.Result {
 	return nil
 }
 
-func unprotectResource(stackName string, urn resource.URN) result.Result {
-	res := runStateEdit(stackName, urn, edit.UnprotectResource)
+func unprotectResource(stackName string, urn resource.URN, showPrompt bool) result.Result {
+	res := runStateEdit(stackName, showPrompt, urn, edit.UnprotectResource)
 	if res != nil {
 		return res
 	}
