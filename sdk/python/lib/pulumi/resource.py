@@ -18,7 +18,7 @@ from typing import Optional, List, Any, Mapping, Union, TYPE_CHECKING
 import copy
 
 from .runtime import known_types
-from .runtime.resource import register_resource, register_resource_outputs, read_resource
+from .runtime.resource import  create_urn, register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
@@ -51,41 +51,6 @@ class CustomTimeouts:
         self.create = create
         self.update = update
         self.delete = delete
-
-
-def create_urn(
-        name: 'Input[str]',
-        typ: 'Input[str]',
-        parent: Optional[Union['Resource', 'Input[str]']] = None,
-        project: str = None,
-        stack: str = None) -> 'Output[str]':
-    """
-    createUrn computes a URN from the combination of a resource name, resource type, optional
-    parent, optional project and optional stack.
-    """
-    parent_prefix = None
-    if parent is not None:
-        parent_urn = None
-        if isinstance(parent, Resource):
-            parent_urn = parent.urn
-        else:
-            parent_urn = Output.from_input(parent)
-
-        parent_prefix = parent_urn.apply(
-            lambda u:
-            u[0:u.rfind("::")] + "$")
-    else:
-        if stack is None:
-            stack = get_stack()
-
-        if project is None:
-            project = get_project()
-
-        parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
-
-    return Output.all([parent_prefix, typ, name]).apply(
-        lambda arr:
-        arr[0] + arr[1] + "::" + arr[2])
 
 
 def inherited_child_alias(

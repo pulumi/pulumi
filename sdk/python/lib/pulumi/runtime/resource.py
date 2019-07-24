@@ -20,7 +20,6 @@ import grpc
 
 from . import rpc, settings, known_types
 from .. import log
-from ..resource import create_urn
 from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
 
@@ -445,8 +444,36 @@ class RegisterResponse:
         self.object = object
 
 
-def create_test_urn(ty: str, name: str) -> str:
+def create_urn(
+        name: 'Input[str]',
+        typ: 'Input[str]',
+        parent: Optional[Union['Resource', 'Input[str]']] = None,
+        project: str = None,
+        stack: str = None) -> 'Output[str]':
     """
-    Creates a test URN for cases where the engine isn't available to give us one (i.e., test mode).
+    create_urn computes a URN from the combination of a resource name, resource type, optional
+    parent, optional project and optional stack.
     """
-    return 'urn:pulumi:{0}::{1}::{2}::{3}'.format(settings.get_stack(), settings.get_project(), ty, name)
+    parent_prefix = None
+    if parent is not None:
+        parent_urn = None
+        if isinstance(parent, Resource):
+            parent_urn = parent.urn
+        else:
+            parent_urn = Output.from_input(parent)
+
+        parent_prefix = parent_urn.apply(
+            lambda u:
+            u[0:u.rfind("::")] + "$")
+    else:
+        if stack is None:
+            stack = get_stack()
+
+        if project is None:
+            project = get_project()
+
+        parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
+
+    return Output.all([parent_prefix, typ, name]).apply(
+        lambda arr:
+        arr[0] + arr[1] + "::" + arr[2])
