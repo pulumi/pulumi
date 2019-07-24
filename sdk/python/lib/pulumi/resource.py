@@ -113,11 +113,11 @@ class Alias:
     Alias is a partial description of prior named used for a resource. It can be processed in the
     context of a resource creation to determine what the full aliased URN would be.
 
-    Note there is a semantic difference between properties being absent from this type and
-    properties having the `undefined` value. Specifically, there is a difference between:
+    Note there is a semantic difference between attributes being given the `None` value and
+    attributes not being given at all. Specifically, there is a difference between:
 
     ```ts
-    Alias(name="foo", parent=None) // and
+    Alias(name="foo", parent=None) # and
     Alias(name="foo")
     ```
 
