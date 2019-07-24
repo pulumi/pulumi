@@ -188,7 +188,7 @@ def collapse_alias_to_urn(
             return Op.from_input(inner)
 
         name = inner.name if inner.name is not ABSENT_VALUE else defaultName
-        typ = inner.type if inner.type is not ABSENT_VALUE else defaultType
+        typ = inner.typ if inner.typ is not ABSENT_VALUE else defaultType
         parent = inner.parent if inner.parent is not ABSENT_VALUE else defaultParent
         project = inner.project if inner.project is not ABSENT_VALUE else get_project()
         stack = inner.stack if inner.stack is not ABSENT_VALUE else get_stack()
