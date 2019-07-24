@@ -41,7 +41,8 @@ func TestPythonAliases(t *testing.T) {
 	for _, dir := range dirs {
 		if dir == "adopt_into_component" ||
 			dir == "rename" ||
-			dir == "rename_component" {
+			dir == "rename_component" ||
+			dir == "rename_component_and_child" {
 			d := path.Join("python", dir)
 			t.Run(d, func(t *testing.T) {
 				integration.ProgramTest(t, &integration.ProgramTestOptions{
