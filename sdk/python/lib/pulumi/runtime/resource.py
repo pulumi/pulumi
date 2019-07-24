@@ -18,8 +18,8 @@ from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, TYPE_CH
 from google.protobuf import struct_pb2
 import grpc
 
-from . import rpc, settings, known_types, create_urn
-from .. import log
+from . import rpc, settings, known_types
+from .. import log, create_urn
 from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
 
@@ -313,8 +313,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             # `register_resource` - both adding new inherited aliases and simplifying aliases down
             # to URNs.
             aliases = []
-            for alias of res._aliases:
-                aliases.push(await Output.from_input(alias).future())
+            for alias in res._aliases:
+                aliases.append(await Output.from_input(alias).future())
 
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
