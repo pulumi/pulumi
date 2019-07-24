@@ -59,7 +59,7 @@ def inherited_child_alias(
         parent_alias: 'Input[str]',
         child_type: str) -> 'Output[str]':
     """
-    inheritedChildAlias computes the alias that should be applied to a child based on an alias
+    inherited_child_alias computes the alias that should be applied to a child based on an alias
     applied to it's parent. This may involve changing the name of the resource in cases where the
     resource has a named derived from the name of the parent, and the parent name changed.
     """
