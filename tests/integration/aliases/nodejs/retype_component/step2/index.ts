@@ -2,9 +2,6 @@
 
 import * as pulumi from "@pulumi/pulumi";
 
-const stackName = pulumi.getStack();
-const projectName = pulumi.getProject();
-
 class Resource extends pulumi.ComponentResource {
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         super("my:module:Resource", name, {}, opts);

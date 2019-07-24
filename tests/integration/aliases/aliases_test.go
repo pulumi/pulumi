@@ -39,27 +39,22 @@ func TestNodejsAliases(t *testing.T) {
 
 func TestPythonAliases(t *testing.T) {
 	for _, dir := range dirs {
-		if dir == "adopt_into_component" ||
-			dir == "rename" ||
-			dir == "rename_component" ||
-			dir == "rename_component_and_child" {
-			d := path.Join("python", dir)
-			t.Run(d, func(t *testing.T) {
-				integration.ProgramTest(t, &integration.ProgramTestOptions{
-					Dir: path.Join(d, "step1"),
-					Dependencies: []string{
-						filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+		d := path.Join("python", dir)
+		t.Run(d, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir: path.Join(d, "step1"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick: true,
+				EditDirs: []integration.EditDir{
+					{
+						Dir:             path.Join(d, "step2"),
+						Additive:        true,
+						ExpectNoChanges: true,
 					},
-					Quick: true,
-					EditDirs: []integration.EditDir{
-						{
-							Dir:             path.Join(d, "step2"),
-							Additive:        true,
-							ExpectNoChanges: true,
-						},
-					},
-				})
+				},
 			})
-		}
+		})
 	}
 }
