@@ -60,8 +60,14 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d      diag.Sink
-	url    string
+	d diag.Sink
+
+	// originalURL is the URL provided when the localBackend was initialized, for example
+	// "file://~". url is a canonicalized version that should be used when persisting data.
+	// (For example, replacing ~ with the home directory, making an absolute path, etc.)
+	originalURL string
+	url         string
+
 	bucket Bucket
 }
 
@@ -88,13 +94,13 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
-func New(d diag.Sink, u string) (Backend, error) {
-	if !IsFileStateBackendURL(u) {
+func New(d diag.Sink, originalURL string) (Backend, error) {
+	if !IsFileStateBackendURL(originalURL) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
-			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
+			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	u, err := massageBlobPath(u)
+	u, err := massageBlobPath(originalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -120,9 +126,10 @@ func New(d diag.Sink, u string) (Backend, error) {
 	}
 
 	return &localBackend{
-		d:      d,
-		url:    u,
-		bucket: &wrappedBucket{bucket: bucket},
+		d:           d,
+		originalURL: originalURL,
+		url:         u,
+		bucket:      &wrappedBucket{bucket: bucket},
 	}, nil
 }
 
@@ -191,7 +198,7 @@ func (b *localBackend) Name() string {
 }
 
 func (b *localBackend) URL() string {
-	return b.url
+	return b.originalURL
 }
 
 func (b *localBackend) StateDir() string {
@@ -648,7 +655,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 }
 
 func (b *localBackend) Logout() error {
-	return workspace.DeleteAccessToken(b.url)
+	return workspace.DeleteAccessToken(b.originalURL)
 }
 
 func (b *localBackend) CurrentUser() (string, error) {
