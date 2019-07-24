@@ -86,6 +86,10 @@ def inherited_child_alias(
     return create_urn(alias_name, child_type, parent_alias)
 
 ABSENT_VALUE = object()
+"""
+ABSENT_VALUE is how we mark if a value provided to an alias was actually given by the user as 'None',
+versus the use not providing any value at all.
+"""
 
 ROOT_STACK_RESOURCE = None
 """
