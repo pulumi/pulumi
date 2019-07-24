@@ -39,7 +39,8 @@ func TestNodejsAliases(t *testing.T) {
 
 func TestPythonAliases(t *testing.T) {
 	for _, dir := range dirs {
-		if dir == "adopt_into_component" {
+		if dir == "adopt_into_component" ||
+			dir == "rename" {
 			d := path.Join("python", dir)
 			t.Run(d, func(t *testing.T) {
 				integration.ProgramTest(t, &integration.ProgramTestOptions{
