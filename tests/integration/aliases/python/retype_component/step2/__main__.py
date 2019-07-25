@@ -12,7 +12,7 @@ class Resource1(ComponentResource):
 class ComponentFour(ComponentResource):
     def __init__(self, name, opts=ResourceOptions()):
         # Add an alias that references the old type of this resource...
-        aliases = [Alias(typ="my:module:ComponentFour")]
+        aliases = [Alias(type_="my:module:ComponentFour")]
         if opts.aliases is not None:
             for alias in opts.aliases:
                 aliases.append(alias)

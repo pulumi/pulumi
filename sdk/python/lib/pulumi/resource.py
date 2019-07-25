@@ -138,7 +138,7 @@ class Alias:
     The previous name of the resource.  If not provided, the current name of the resource is used.
     """
 
-    typ: Optional[str]
+    type_: Optional[str]
     """
     The previous type of the resource.  If not provided, the current type of the resource is used.
     """
@@ -164,13 +164,13 @@ class Alias:
 
     def __init__(self,
                  name: Optional[str] = ABSENT_VALUE,
-                 typ: Optional[str] = ABSENT_VALUE,
+                 type_: Optional[str] = ABSENT_VALUE,
                  parent: Optional[Union['Resource', 'Input[str]']] = ABSENT_VALUE,
                  stack: Optional['Input[str]'] = ABSENT_VALUE,
                  project: Optional['Input[str]'] = ABSENT_VALUE) -> None:
 
         self.name = name
-        self.typ = typ
+        self.type_ = type_
         self.parent = parent
         self.stack = stack
         self.project = project
@@ -192,7 +192,7 @@ def collapse_alias_to_urn(
             return Op.from_input(inner)
 
         name = inner.name if inner.name is not ABSENT_VALUE else defaultName
-        typ = inner.typ if inner.typ is not ABSENT_VALUE else defaultType
+        type_ = inner.type_ if inner.type_ is not ABSENT_VALUE else defaultType
         parent = inner.parent if inner.parent is not ABSENT_VALUE else defaultParent
         project = inner.project if inner.project is not ABSENT_VALUE else get_project()
         stack = inner.stack if inner.stack is not ABSENT_VALUE else get_stack()
@@ -200,10 +200,10 @@ def collapse_alias_to_urn(
         if name is None:
             raise Exception("No valid 'name' passed in for alias.")
 
-        if typ is None:
-            raise Exception("No valid 'type' passed in for alias.")
+        if type_ is None:
+            raise Exception("No valid 'type_' passed in for alias.")
 
-        return create_urn(name, typ, parent, project, stack)
+        return create_urn(name, type_, parent, project, stack)
 
     return Op.from_input(alias).apply(collapse_alias_to_urn_worker)
 
@@ -638,7 +638,7 @@ def export(name: str, value: Any):
 
 def create_urn(
         name: 'Input[str]',
-        typ: 'Input[str]',
+        type_: 'Input[str]',
         parent: Optional[Union['Resource', 'Input[str]']] = None,
         project: str = None,
         stack: str = None) -> 'Output[str]':
@@ -667,5 +667,5 @@ def create_urn(
 
         parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
 
-    return Op.all(parent_prefix, typ, name).apply(
+    return Op.all(parent_prefix, type_, name).apply(
         lambda arr: arr[0] + arr[1] + "::" + arr[2])
