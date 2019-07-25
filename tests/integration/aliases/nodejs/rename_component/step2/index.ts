@@ -21,7 +21,7 @@ class ComponentThree extends pulumi.ComponentResource {
         this.resource2 = new Resource("otherchild", { parent: this });
     }
 }
-// ...but applying an alias to the instance succesfully renames both the component and the children.
+// ...but applying an alias to the instance successfully renames both the component and the children.
 const comp3 = new ComponentThree("newcomp3", {
     aliases: [{ name: "comp3" }],
 });
