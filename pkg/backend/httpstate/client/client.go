@@ -103,6 +103,13 @@ func applyPolicyPackPath(orgName, policyPackName string, version int) string {
 		"/api/orgs/%s/policypacks/%s/versions/%d/apply", orgName, policyPackName, version)
 }
 
+// publishPolicyPackPublishComplete returns the path for an API call to signal to the Pulumi service
+// that a PolicyPack to a Pulumi organization.
+func publishPolicyPackPublishComplete(orgName, policyPackName string, version int) string {
+	return fmt.Sprintf(
+		"/api/orgs/%s/policypacks/%s/versions/%d/complete", orgName, policyPackName, version)
+}
+
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the update root.
 func getUpdatePath(update UpdateIdentifier, components ...string) string {
@@ -437,7 +444,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) error {
 
 	//
-	// Step 1 of 2: Send POST containing policy metadata to service. This begins process of creating
+	// Step 1: Send POST containing policy metadata to service. This begins process of creating
 	// publishing the PolicyPack.
 	//
 
@@ -458,8 +465,8 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	fmt.Printf("Published as version %d\n", resp.Version)
 
 	//
-	// Step 2 or 2: Upload the compressed PolicyPack directory to the presigned S3 URL. The
-	// PolicyPack is now published.
+	// Step 2: Upload the compressed PolicyPack directory to the presigned S3 URL. The PolicyPack is
+	// now published.
 	//
 
 	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
@@ -470,6 +477,16 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	_, err = http.DefaultClient.Do(putS3Req)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+	}
+
+	//
+	// Step 3: Signal to the service that the PolicyPack publish operation is complete.
+	//
+
+	err = pc.restCall(ctx, "POST",
+		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, resp.Version), nil, nil, nil)
+	if err != nil {
+		return errors.Wrapf(err, "HTTP POST to signal completion of the publish operation failed")
 	}
 
 	return nil
