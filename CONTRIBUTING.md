@@ -61,4 +61,7 @@ For contributors we use the standard fork based workflow. Fork this repository, 
 
 ## Getting Help
 
-We're sure there are rough edges and we appreciate you helping out. If you want to talk with other folks hacking on Pulumi (or members of the Pulumi team!) come hang out `#contribute` channel in the [Pulumi Community Slack](https://slack.pulumi.io/).
+We're sure there are rough edges and we appreciate you helping out. If you want
+to talk with other folks hacking on Pulumi (or members of the Pulumi team!)
+come hang out `#contribute` channel in the
+[Pulumi Community Slack](https://slack.pulumi.com/).
