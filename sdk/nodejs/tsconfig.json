@@ -60,6 +60,7 @@
         "tests/deasync.spec.ts",
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
+        "tests/options.spec.ts",
         "tests/output.spec.ts",
         "tests/resource.spec.ts",
         "tests/testmode.spec.ts",

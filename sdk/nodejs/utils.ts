@@ -116,6 +116,136 @@ export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {})
 }
 
 /**
+ * [mergeOptions] takes two ResourceOptions values and produces a new ResourceOptions with the
+ * respective properties of `opts2` merged over the same properties in `opts1`.
+ *
+ * Conceptually property merging follows these basic rules:
+ *  1. if the property is a collection, the final value will be a collection containing the values
+ *     from each options object.  The original collections will not be affected.
+ *  2. Scaler values from `opts2` (i.e. strings, numbers, bools) will replace the values of `opts1`.
+ *  3. `opts2` can have properties explicitly provided with `null` or `undefined` as the value. If
+ *     explicitly provided, then that will be the final value in the result.
+ */
+export function mergeOptions(
+        opts1: pulumi.ResourceOptions | undefined,
+        opts2: pulumi.ResourceOptions | undefined): pulumi.ResourceOptions {
+    const dest = <any>{ ...opts1 };
+    const source = <any>{ ...opts2 };
+
+    // iterate specifically over the supplied properties in [source].  Note: there may not be an
+    // corresponding value in [dest].
+    for (const key of Object.keys(source)) {
+        // Due to the possibility of top level and nested Inputs for 'dependsOn' we have to handle
+        // that property specially.
+
+        const destVal = dest[key];
+        const sourceVal = source[key]
+        if (key === "dependsOn") {
+            dest[key] = mergeDependsOn(destVal, sourceVal);
+            continue;
+        }
+
+        if (key === "providers") {
+            // for 'providers' we need to combine maps/arrays into one final map.
+            const result: Record<string, pulumi.ProviderResource> = {};
+            addToMap(result, dest);
+            addToMap(result, source);
+            dest[key] = result;
+            continue;
+        }
+
+        if (isPromiseOrOutput(destVal)) {
+            throw new Error(`Unexpected promise/output in opts1.${key}`);
+        }
+
+        if (isPromiseOrOutput(sourceVal)) {
+            throw new Error(`Unexpected promise/output in opts2.${key}`);
+        }
+
+        // we should have no promises/outputs at top level for any other resource option properties.
+        dest[key] = merge(dest[key], source[key]);
+    }
+
+    return dest;
+}
+
+function isPromiseOrOutput(val: any): boolean {
+    return val instanceof Promise || pulumi.Output.isInstance(val);
+}
+
+function merge(dest: any, source: any): any {
+    // if the second options bag contained `prop: null` or `prop: undefined` then that overrides
+    // anything in the destination.
+
+    // if there's no destination value, the source value wins.
+    if (source === null || source === undefined) {
+        return source;
+    }
+
+    if (dest === null || dest === undefined) {
+        return source;
+    }
+
+    // if the source is not an object, then it's a simple scaler (i.e. int/bool/string).  The source
+    // overrides the destination in this case.
+    if (typeof source !== "object") {
+        return source;
+    }
+
+    // If either are an array, make a new array and merge the values into it. also do this for the
+    // specific "dependsOn" property as we allow options to contain a single value as a shorthand
+    // way to represent an array just containing that value.
+    if (Array.isArray(source) || Array.isArray(dest)) {
+        return mergeArraysAndScalers(source, dest);
+    }
+
+    // In any other case, just override the destination with the source value.
+    return source;
+}
+
+function mergeDependsOn(dest: any, source: any): any {
+    if (isPromiseOrOutput(dest)) {
+        return pulumi.output(dest).apply(d => mergeDependsOn(d, source));
+    }
+
+    if (isPromiseOrOutput(source)) {
+        return pulumi.output(source).apply(s => mergeDependsOn(dest, s));
+    }
+
+    return mergeArraysAndScalers(dest, source);
+}
+
+function addToMap(
+    resultMap: Record<string, pulumi.ProviderResource>,
+    value: Record<string, pulumi.ProviderResource> | pulumi.ProviderResource[]) {
+
+    if (Array.isArray(value)) {
+        for (const res of value) {
+            resultMap[res.getPackage()] = res;
+        }
+    }
+    else  {
+        Object.assign(resultMap, value);
+    }
+}
+
+function mergeArraysAndScalers(dest: any, source: any) {
+    const result: any[] = [];
+    addToArray(result, dest);
+    addToArray(result, source);
+    return result;
+}
+
+function addToArray(resultArray: any[], value: any) {
+    if (Array.isArray(value)) {
+        resultArray.push(...value);
+    }
+    else if (value !== undefined && value !== null) {
+        resultArray.push(value);
+    }
+}
+
+/**
  * Returns a full copy of `opts` except with `alias` added to it's list of
  * `ResourceOptions.aliases`.
  *
