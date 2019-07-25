@@ -30,8 +30,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
 	"github.com/docker/docker/pkg/term"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	"github.com/pulumi/glog"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"

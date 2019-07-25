@@ -18,10 +18,10 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"github.com/pulumi/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 

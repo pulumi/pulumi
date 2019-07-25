@@ -16,7 +16,6 @@ require (
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/gofrs/flock v0.7.0
 	github.com/gogo/protobuf v1.2.0 // indirect
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.1
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/context v1.1.1 // indirect
@@ -35,6 +34,7 @@ require (
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pkg/errors v0.8.1
+	github.com/pulumi/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54
 	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
@@ -63,5 +63,3 @@ require (
 	gopkg.in/src-d/go-git.v4 v4.8.1
 	gopkg.in/yaml.v2 v2.2.2
 )
-
-replace github.com/golang/glog => github.com/pulumi/glog v0.0.0-20180820174630-7eaa6ffb71e4
