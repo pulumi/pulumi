@@ -62,6 +62,8 @@ from .resource import (
     create_urn,
     export,
     ROOT_STACK_RESOURCE,
+    with_alias,
+    with_aliases,
 )
 
 from .output import (
