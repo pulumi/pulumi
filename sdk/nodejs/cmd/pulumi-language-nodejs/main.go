@@ -41,9 +41,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"github.com/pulumi/glog"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"

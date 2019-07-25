@@ -30,7 +30,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/golang/glog"
+	"github.com/pulumi/glog"
 )
 
 type Filter interface {

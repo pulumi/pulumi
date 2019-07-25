@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
+	"github.com/pulumi/glog"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
