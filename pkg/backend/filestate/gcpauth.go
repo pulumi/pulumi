@@ -20,10 +20,10 @@ import (
 )
 
 type GoogleCredentials struct {
-	PrivateKeyId string `json:"private_key_id"`
+	PrivateKeyID string `json:"private_key_id"`
 	PrivateKey   string `json:"private_key"`
 	ClientEmail  string `json:"client_email"`
-	ClientId     string `json:"client_id"`
+	ClientID     string `json:"client_id"`
 }
 
 func GoogleCredentialsMux() (*blob.URLMux, error) {
