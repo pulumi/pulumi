@@ -154,7 +154,7 @@ class Alias:
 
     stack: Optional['Input[str]']
     """
-    The previous stack of the resource.  If not provided, defaults to `pulumi.getStack()`.
+    The name of the previous stack of the resource.  If not provided, defaults to `pulumi.getStack()`.
     """
 
     project: Optional['Input[str]']
