@@ -90,8 +90,6 @@ Pulumi on your platform and cloud of choice.
 Otherwise, the following steps demonstrate how to deploy your first Pulumi program, using AWS
 Serverless Lambdas, in minutes:
 
-Follow these steps to deploy your first Pulumi program, using AWS Serverless Lambdas, in minutes:
-
 1. **Install**:
 
     To install the latest Pulumi release, run the following (see full
