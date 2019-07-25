@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as pulumi from ".";
+
 import * as deasync from "deasync";
 
 import { InvokeOptions } from "./invoke";
@@ -111,4 +113,37 @@ export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {})
     // return the combined set of each.
     const value = promiseResult(promise);
     return Object.assign(promise, value);
+}
+
+/**
+ * Returns a full copy of `opts` except with `alias` added to it's list of
+ * `ResourceOptions.aliases`.
+ *
+ * This is an advanced compat function for libraries and should not generally be used by normal
+ * Pulumi application.
+ */
+export function withAlias<T extends pulumi.ResourceOptions>(opts: T | undefined, alias: pulumi.Input<pulumi.URN | pulumi.Alias>): T {
+    return withAliases(opts, [alias]);
+}
+
+/**
+ * Returns a full copy of `opts` except with `aliases` added to it's list of
+ * `ResourceOptions.aliases`.
+ *
+ * This is an advanced compat function for libraries and should not generally be used by normal
+ * Pulumi application.
+ */
+export function withAliases<T extends pulumi.ResourceOptions>(opts: T | undefined, aliases: pulumi.Input<pulumi.URN | pulumi.Alias>[]): T {
+    const allAliases: pulumi.Input<pulumi.URN | pulumi.Alias>[] = [];
+    if (opts && opts.aliases) {
+        for (const alias of opts.aliases) {
+            allAliases.push(alias);
+        }
+    }
+
+    for (const alias of aliases) {
+        allAliases.push(alias);
+    }
+
+    return <T>{ ...opts, aliases };
 }
