@@ -103,6 +103,7 @@ bit confusing and may incorrectly look like something that could be removed with
 semantics.
 """
 
+
 class Alias:
     """
     Alias is a partial description of prior named used for a resource. It can be processed in the
@@ -234,7 +235,8 @@ class ResourceOptions:
     provider bag (see also ResourceOptions.providers).
     """
 
-    providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]
+    providers: Union[Mapping[str, 'ProviderResource'],
+                     List['ProviderResource']]
     """
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
@@ -335,7 +337,9 @@ class ResourceOptions:
         if depends_on is not None:
             for dep in depends_on:
                 if not isinstance(dep, Resource):
-                    raise Exception("'dependsOn' was passed a value that was not a Resource.")
+                    raise Exception(
+                        "'dependsOn' was passed a value that was not a Resource.")
+
 
 class Resource:
     """
@@ -389,7 +393,8 @@ class Resource:
         if not isinstance(t, str):
             raise TypeError('Expected resource type to be a string')
         if not name:
-            raise TypeError('Missing resource name argument (for URN creation)')
+            raise TypeError(
+                'Missing resource name argument (for URN creation)')
         if not isinstance(name, str):
             raise TypeError('Expected resource name to be a string')
         if opts is None:
@@ -417,7 +422,8 @@ class Resource:
 
             opts.aliases = opts.aliases.copy()
             for parent_alias in opts.parent._aliases:
-                opts.aliases.append(inherited_child_alias(name, opts.parent._name, parent_alias, t))
+                opts.aliases.append(inherited_child_alias(
+                    name, opts.parent._name, parent_alias, t))
 
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
@@ -448,16 +454,17 @@ class Resource:
         self._aliases = []
         if opts.aliases is not None:
             for alias in opts.aliases:
-                self._aliases.append(collapse_alias_to_urn(alias, name, t, opts.parent))
+                self._aliases.append(collapse_alias_to_urn(
+                    alias, name, t, opts.parent))
 
         if opts.id is not None:
             # If this resource already exists, read its state rather than registering it anow.
             if not custom:
-                raise Exception("Cannot read an existing resource unless it has a custom provider")
+                raise Exception(
+                    "Cannot read an existing resource unless it has a custom provider")
             read_resource(self, t, name, props, opts)
         else:
             register_resource(self, t, name, custom, props, opts)
-
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
@@ -516,7 +523,6 @@ class Resource:
         return self._providers.get(pkg)
 
 
-
 @known_types.custom_resource
 class CustomResource(Resource):
     """
@@ -537,7 +543,6 @@ class CustomResource(Resource):
     Private field containing the type ID for this object. Useful for implementing `isInstance` on
     classes that inherit from `CustomResource`.
     """
-
 
     def __init__(self,
                  t: str,
@@ -560,6 +565,7 @@ class ComponentResource(Resource):
     ComponentResource is a resource that aggregates one or more other child resources into a higher level
     abstraction.  The component itself is a resource, but does not require custom CRUD operations for provisioning.
     """
+
     def __init__(self,
                  t: str,
                  name: str,
@@ -597,7 +603,6 @@ class ProviderResource(CustomResource):
     package is the name of the package this is provider for.  Common examples are "aws" and "azure".
     """
 
-
     def __init__(self,
                  pkg: str,
                  name: str,
@@ -612,9 +617,11 @@ class ProviderResource(CustomResource):
         """
 
         if opts is not None and opts.provider is not None:
-            raise TypeError("Explicit providers may not be used with provider resources")
+            raise TypeError(
+                "Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
-        CustomResource.__init__(self, f"pulumi:providers:{pkg}", name, props, opts)
+        CustomResource.__init__(
+            self, f"pulumi:providers:{pkg}", name, props, opts)
         self.package = pkg
 
 
@@ -675,7 +682,9 @@ def with_alias(opts: Optional[ResourceOptions], alias: Input[Union[str, Alias]])
     return with_aliases(opts, [alias])
 
 
-def with_aliases(opts: Optional[ResourceOptions], aliases: List[Input[Union[str, Alias]]]) -> ResourceOptions:
+def with_aliases(
+        opts: Optional[ResourceOptions],
+        aliases: List[Input[Union[str, Alias]]]) -> ResourceOptions:
     """
     Returns a full copy of `opts` except with `aliases` added to it's list of
     `ResourceOptions.aliases`.
