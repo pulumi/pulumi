@@ -671,7 +671,9 @@ def create_urn(
         lambda arr: arr[0] + arr[1] + "::" + arr[2])
 
 
-def with_alias(opts: Optional[ResourceOptions], alias: Input[Union[str, Alias]]) -> ResourceOptions:
+def with_alias(
+        opts: Optional[ResourceOptions],
+        alias: "Input[Union[str, Alias]]") -> ResourceOptions:
     """
     Returns a full copy of `opts` except with `alias` added to it's list of
     `ResourceOptions.aliases`.
@@ -684,7 +686,7 @@ def with_alias(opts: Optional[ResourceOptions], alias: Input[Union[str, Alias]])
 
 def with_aliases(
         opts: Optional[ResourceOptions],
-        aliases: List[Input[Union[str, Alias]]]) -> ResourceOptions:
+        aliases: List["Input[Union[str, Alias]]"]) -> ResourceOptions:
     """
     Returns a full copy of `opts` except with `aliases` added to it's list of
     `ResourceOptions.aliases`.
@@ -696,7 +698,7 @@ def with_aliases(
     if opts is None:
         opts = ResourceOptions()
 
-    all_aliases: List[Input[Union[str, Alias]]] = []
+    all_aliases: List["Input[Union[str, Alias]]"] = []
     if opts.aliases is not None:
         for alias in opts.aliases:
             all_aliases.append(alias)
