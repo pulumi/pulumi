@@ -1,5 +1,5 @@
 <a href="https://www.pulumi.com" title="Pulumi - Modern Infrastructure as Code - AWS Azure Kubernetes Containers Serverless">
-    <img src="https://www.pulumi.com/images/logo/logo-inv.svg" width="350">
+    <img src="https://www.pulumi.com/images/logo/logo.svg" width="350">
 </a>
 
 [![Slack](http://www.pulumi.com/images/docs/badges/slack.svg)](https://slack.pulumi.com)
