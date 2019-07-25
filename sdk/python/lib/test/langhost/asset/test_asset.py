@@ -35,7 +35,7 @@ class AssetTest(LanghostTest):
             self.assertEqual(resource["asset"].text, "its a string")
         elif name == "remote":
             self.assertIsInstance(resource["asset"], RemoteAsset)
-            self.assertEqual(resource["asset"].uri, "https://pulumi.io")
+            self.assertEqual(resource["asset"].uri, "https://pulumi.com")
         else:
             self.fail("unexpected resource name: " + name)
         return {
