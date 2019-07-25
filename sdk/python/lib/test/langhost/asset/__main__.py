@@ -24,4 +24,4 @@ class MyResource(CustomResource):
 
 MyResource("file", FileAsset("./testfile.txt"))
 MyResource("string", StringAsset("its a string"))
-MyResource("remote", RemoteAsset("https://pulumi.io"))
+MyResource("remote", RemoteAsset("https://pulumi.com"))

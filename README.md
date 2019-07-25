@@ -1,6 +1,8 @@
-<a href="https://pulumi.io" title="Pulumi - Modern Infrastructure as Code - AWS Azure Kubernetes Containers Serverless"><img src="https://pulumi.io/images/logo/logo.svg" width="350"></a>
+<a href="https://www.pulumi.com" title="Pulumi - Modern Infrastructure as Code - AWS Azure Kubernetes Containers Serverless">
+    <img src="https://www.pulumi.com/images/logo/logo.svg" width="350">
+</a>
 
-[![Slack](https://pulumi.io/images/badges/slack.svg)](https://slack.pulumi.io)
+[![Slack](http://www.pulumi.com/images/docs/badges/slack.svg)](https://slack.pulumi.com)
 [![NPM version](https://badge.fury.io/js/%40pulumi%2Fpulumi.svg)](https://npmjs.com/package/@pulumi/pulumi)
 [![Python version](https://badge.fury.io/py/pulumi.svg)](https://pypi.org/project/pulumi)
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
@@ -10,11 +12,13 @@
 containers, serverless functions, hosted services, and infrastructure, on any cloud.
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your
-[AWS](https://pulumi.io/reference/aws.html), [Azure](https://pulumi.io/reference/azure.html),
-[Google Cloud Platform](https://pulumi.io/reference/gcp.html), and/or
-[Kubernetes](https://pulumi.io/reference/kubernetes.html) resources, using an
-[infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_as_Code) approach.  Skip the YAML, and
-use standard language features like loops, functions, classes, and package management that you already know and love.
+[AWS](https://www.pulumi.com/docs/reference/clouds/aws/),
+[Azure](https://www.pulumi.com/docs/reference/clouds/azure/),
+[Google Cloud Platform](https://www.pulumi.com/docs/reference/clouds/gcp/), and/or
+[Kubernetes](https://www.pulumi.com/docs/reference/clouds/kubernetes/) resources, using an
+[infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_as_Code) approach.
+Skip the YAML, and use standard language features like loops, functions, classes,
+and package management that you already know and love.
 
 For example, create three web servers:
 
@@ -59,23 +63,20 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 ## Welcome
 
-<img align="right" width="400" src="https://pulumi.io/images/quickstart/console.png" />
+<img align="right" width="400" src="https://www.pulumi.com/images/docs/quickstart/console.png" />
 
 * **[Getting Started](#getting-started)**: get up and running quickly.
 
-* **[Tutorials](https://pulumi.io/quickstart)**: walk through end-to-end workflows for creating containers, serverless
+* **[Tutorials](https://www.pulumi.com/docs/quickstart/)**: walk through end-to-end workflows for creating containers, serverless
   functions, and other cloud services and infrastructure.
 
 * **[Examples](https://github.com/pulumi/examples)**: browse a number of useful examples across many languages,
   clouds, and scenarios including containers, serverless, and infrastructure.
 
-* **[A Tour of Pulumi](https://pulumi.io/tour)**: interactively walk through the core Pulumi concepts, one at a time,
-  covering the entire CLI and programming model surface area in a handful of bite-sized chunks.
-
-* **[Reference Docs](https://pulumi.io/reference)**: read conceptual documentation, in addition to details on how
+* **[Reference Docs](https://www.pulumi.com/docs/reference/)**: read conceptual documentation, in addition to details on how
   to configure Pulumi to deploy into your AWS, Azure, or Google Cloud accounts, and/or Kubernetes cluster.
 
-* **[Community Slack](https://slack.pulumi.io)**: join us over at our community Slack channel.  Any and all
+* **[Community Slack](https://slack.pulumi.com)**: join us over at our community Slack channel.  Any and all
   discussion or questions are welcome.
 
 * **[Roadmap](https://github.com/pulumi/pulumi/wiki/Roadmap)**: check out what's on the roadmap for the Pulumi 
@@ -87,13 +88,15 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
 
 1. **Install**:
 
-    To install the latest Pulumi release, run the following (see full [installation instructions](https://pulumi.io/install) for additional installation options):
+    To install the latest Pulumi release, run the following (see full
+    [installation instructions](https://www.pulumi.com/docs/reference/install/) for additional installation options):
 
     ```bash
     $ curl -fsSL https://get.pulumi.com/ | sh
     ```
 
-2. **[Configure your Cloud Provider](https://pulumi.io/install#cloud-configuration)** so that Pulumi can deploy into it.
+2. **[Configure your Cloud Provider](https://www.pulumi.com/docs/reference/install/#cloud-configuration)**
+    so that Pulumi can deploy into it.
 
 3. **Create a Project**:
 
@@ -141,9 +144,9 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
     $ pulumi destroy -y
     ```
 
-Please head on over to [the project website](https://pulumi.io) for much more information, including
-[tutorials](https://pulumi.io/quickstart), [examples](https://github.com/pulumi/examples), and
-[an interactive tour](https://pulumi.io/tour) of the core Pulumi CLI and programming model concepts.
+To learn more, head over to <pulumi.com> for much more information, including
+[tutorials](https://www.pulumi.com/docs/quickstart/), [examples](https://github.com/pulumi/examples), and
+details of the core Pulumi CLI and [programming model concepts](https://www.pulumi.com/docs/reference/concepts/).
 
 ## <a name="platform"></a>Platform
 
@@ -151,32 +154,24 @@ Please head on over to [the project website](https://pulumi.io) for much more in
 
 | Architecture | Build Status |
 | ------------ | ------------ |
-| Linux/macOS x64 | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi) |
-| Windows x64  | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi) |
+| Linux/macOS x64 | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi)                |
+| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi) |
 
 ### Languages
 
 |    | Language | Status | Runtime |
 | -- | -------- | ------ | ------- |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-js.png" height=38 /> | [JavaScript](./sdk/nodejs) | Stable | Node.js 8+ |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-ts.png" height=38 /> | [TypeScript](./sdk/nodejs) | Stable | Node.js 8+ |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python) | Stable | Python 3.6+ |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go) | Preview | Go 1.x |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 8+  |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 8+  |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.6+ |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Preview | Go 1.x      |
 
 ### Clouds
 
-See [Supported Clouds](https://pulumi.io/reference/clouds.html) for the full list of supported cloud and infrastructure providers.
-
-### Libraries
-
-There are several libraries that encapsulate best practices and common patterns:
-
-| Library | Status | Docs | Repo |
-| ------- | ------ | ---- | ---- |
-| AWS Serverless | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-serverless/) | [pulumi/pulumi-aws-serverless](https://github.com/pulumi/pulumi-aws-serverless) |
-| AWS Infrastructure | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-infra/) | [pulumi/pulumi-aws-infra](https://github.com/pulumi/pulumi-aws-infra) |
-| Pulumi Multi-Cloud Framework | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/cloud/) | [pulumi/pulumi-cloud](https://github.com/pulumi/pulumi-cloud) |
+See [Supported Clouds](https://www.pulumi.com/docs/reference/clouds/) for the
+full list of supported cloud and infrastructure providers.
 
 ## Contributing
 
-Please See [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md) for information on building Pulumi from source or contributing improvments.
+Please See [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md)
+for information on building Pulumi from source or contributing improvements.

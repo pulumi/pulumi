@@ -106,10 +106,10 @@ class NextSerializationTests(unittest.TestCase):
 
     @async_test
     async def test_remote_asset(self):
-        asset = RemoteAsset("https://pulumi.io")
+        asset = RemoteAsset("https://pulumi.com")
         prop = await rpc.serialize_property(asset, [])
         self.assertEqual(rpc._special_asset_sig, prop[rpc._special_sig_key])
-        self.assertEqual("https://pulumi.io", prop["uri"])
+        self.assertEqual("https://pulumi.com", prop["uri"])
 
     @async_test
     async def test_output(self):
@@ -223,10 +223,10 @@ class NextSerializationTests(unittest.TestCase):
 
     @async_test
     async def test_remote_archive(self):
-        asset = RemoteArchive("https://pulumi.io")
+        asset = RemoteArchive("https://pulumi.com")
         prop = await rpc.serialize_property(asset, [])
         self.assertEqual(rpc._special_archive_sig, prop[rpc._special_sig_key])
-        self.assertEqual("https://pulumi.io", prop["uri"])
+        self.assertEqual("https://pulumi.com", prop["uri"])
 
     @async_test
     async def test_file_archive(self):

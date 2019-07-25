@@ -16,8 +16,8 @@ Using yarn:
 $ yarn add @pulumi/pulumi
 ```
 
-This SDK is meant for use with the Pulumi CLI.  Please visit [pulumi.io](https://pulumi.io) for
-installation instructions.
+This SDK is meant for use with the Pulumi CLI.  Please visit
+[pulumi.com](https://pulumi.com) for installation instructions.
 
 ## Building and Testing
 
