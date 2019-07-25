@@ -291,11 +291,21 @@ func chooseStack(
 	return stack, nil
 }
 
-// readProject attempts to detect and read the project for the current workspace. If an error occurs, it will be
-// printed to Stderr, and the returned value will be nil. If the project is successfully detected and read, it
-// is returned along with the path to its containing directory, which will be used as the root of the project's
-// Pulumi program.
-func readProject() (*workspace.Project, string, error) {
+// projType represents the various types of Pulumi project. All Pulumi projects are denoted by a
+// Pulumi.yaml in the root of the workspace.
+type projType string
+
+const (
+	// pulumiAppProj is a Pulumi application project.
+	pulumiAppProj projType = "pulumi-app"
+	// pulumiPolicyProj is a Pulumi resource policy project.
+	pulumiPolicyProj projType = "pulumi-policy"
+)
+
+// readProject attempts to detect and read a project of type `projType` for the current workspace.
+// If the project is successfully detected and read, it is returned along with the path to its
+// containing directory, which will be used as the root of the project's Pulumi program.
+func readProject(projType projType) (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
@@ -304,19 +314,29 @@ func readProject() (*workspace.Project, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", errors.Wrapf(err,
-			"could not locate Pulumi.yaml project file (searching upwards from %s)", pwd)
+		return nil, "", errors.Wrapf(err, "failed to find current Pulumi project because of "+
+			"an error when searching for the Pulumi.yaml file (searching upwards from %s)", pwd)
 	} else if path == "" {
-		return nil, "", errors.Errorf(
-			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-				"created a project yet, use `pulumi new` to do so", pwd)
+		return nil, "", errReadProjNoPulumiYAML(projType, pwd)
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.Wrapf(err, "failed to load Pulumi project located at %q", path)
 	}
 
 	return proj, filepath.Dir(path), nil
+}
+
+func errReadProjNoPulumiYAML(projType projType, pwd string) error {
+	switch projType {
+	case pulumiPolicyProj:
+		return fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s)", pwd)
+
+	default:
+		return fmt.Errorf(
+			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+				"created a project yet, use `pulumi new` to do so", pwd)
+	}
 }
 
 // anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a

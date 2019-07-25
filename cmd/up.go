@@ -83,7 +83,7 @@ func newUpCmd() *cobra.Command {
 			}
 		}
 
-		proj, root, err := readProject()
+		proj, root, err := readProject(pulumiAppProj)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -216,7 +216,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		proj, root, err := readProject()
+		proj, root, err := readProject(pulumiAppProj)
 		if err != nil {
 			return result.FromError(err)
 		}

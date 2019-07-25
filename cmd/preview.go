@@ -89,7 +89,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := readProject(pulumiAppProj)
 			if err != nil {
 				return result.FromError(err)
 			}

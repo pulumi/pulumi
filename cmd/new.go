@@ -234,7 +234,7 @@ func newNewCmd() *cobra.Command {
 			fmt.Println()
 
 			// Load the project, update the name & description, remove the template section, and save it.
-			proj, _, err := readProject()
+			proj, _, err := readProject(pulumiAppProj)
 			if err != nil {
 				return err
 			}
@@ -461,7 +461,7 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 func installDependencies() error {
-	proj, _, err := readProject()
+	proj, _, err := readProject(pulumiAppProj)
 	if err != nil {
 		return err
 	}
