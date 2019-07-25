@@ -28,33 +28,52 @@ type ResourceMonitor struct {
 	resmon pulumirpc.ResourceMonitorClient
 }
 
-func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool, parent resource.URN, protect bool,
-	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
-	propertyDeps map[resource.PropertyKey][]resource.URN, deleteBeforeReplace bool,
-	version string, ignoreChanges []string,
-	aliases []resource.URN, importID resource.ID, customTimeouts *resource.CustomTimeouts) (resource.URN, resource.ID,
-	resource.PropertyMap, error) {
+type ResourceOptions struct {
+	Parent              resource.URN
+	Protect             bool
+	Dependencies        []resource.URN
+	Provider            string
+	Inputs              resource.PropertyMap
+	PropertyDeps        map[resource.PropertyKey][]resource.URN
+	DeleteBeforeReplace bool
+	Version             string
+	IgnoreChanges       []string
+	Aliases             []resource.URN
+	ImportID            resource.ID
+	CustomTimeouts      *resource.CustomTimeouts
+}
+
+func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
+	options ...ResourceOptions) (resource.URN, resource.ID, resource.PropertyMap, error) {
+
+	var opts ResourceOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	if opts.Inputs == nil {
+		opts.Inputs = resource.PropertyMap{}
+	}
 
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
+	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return "", "", nil, err
 	}
 
 	// marshal dependencies
 	deps := []string{}
-	for _, d := range dependencies {
+	for _, d := range opts.Dependencies {
 		deps = append(deps, string(d))
 	}
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range aliases {
+	for _, a := range opts.Aliases {
 		aliasStrings = append(aliasStrings, string(a))
 	}
 
 	inputDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
-	for pk, pd := range propertyDeps {
+	for pk, pd := range opts.PropertyDeps {
 		pdeps := []string{}
 		for _, d := range pd {
 			pdeps = append(pdeps, string(d))
@@ -65,27 +84,27 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}
 
 	var timeouts pulumirpc.RegisterResourceRequest_CustomTimeouts
-	if customTimeouts != nil {
-		timeouts.Create = prepareTestTimeout(customTimeouts.Create)
-		timeouts.Update = prepareTestTimeout(customTimeouts.Update)
-		timeouts.Delete = prepareTestTimeout(customTimeouts.Delete)
+	if opts.CustomTimeouts != nil {
+		timeouts.Create = prepareTestTimeout(opts.CustomTimeouts.Create)
+		timeouts.Update = prepareTestTimeout(opts.CustomTimeouts.Update)
+		timeouts.Delete = prepareTestTimeout(opts.CustomTimeouts.Delete)
 	}
 
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                 string(t),
 		Name:                 name,
 		Custom:               custom,
-		Parent:               string(parent),
-		Protect:              protect,
+		Parent:               string(opts.Parent),
+		Protect:              opts.Protect,
 		Dependencies:         deps,
-		Provider:             provider,
+		Provider:             opts.Provider,
 		Object:               ins,
 		PropertyDependencies: inputDeps,
-		DeleteBeforeReplace:  deleteBeforeReplace,
-		IgnoreChanges:        ignoreChanges,
-		Version:              version,
+		DeleteBeforeReplace:  opts.DeleteBeforeReplace,
+		IgnoreChanges:        opts.IgnoreChanges,
+		Version:              opts.Version,
 		Aliases:              aliasStrings,
-		ImportId:             string(importID),
+		ImportId:             string(opts.ImportID),
 		CustomTimeouts:       &timeouts,
 	}
 
