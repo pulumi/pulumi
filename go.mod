@@ -5,7 +5,6 @@ go 1.12
 require (
 	cloud.google.com/go v0.39.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
-	github.com/Nvveen/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/Sirupsen/logrus v1.0.5 // indirect
 	github.com/aws/aws-sdk-go v1.19.16
 	github.com/blang/semver v3.5.1+incompatible
@@ -24,6 +23,7 @@ require (
 	github.com/gorilla/mux v1.6.2
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20171105060200-01f8541d5372
 	github.com/hashicorp/go-multierror v1.0.0
+	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-runewidth v0.0.3 // indirect
@@ -56,13 +56,12 @@ require (
 	google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8
 	google.golang.org/grpc v1.20.1
 	gopkg.in/AlecAivazis/survey.v1 v1.4.1
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/src-d/go-git-fixtures.v3 v3.4.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.8.1
 	gopkg.in/yaml.v2 v2.2.2
 )
 
-replace (
-	github.com/Nvveen/Gotty => github.com/ijc25/Gotty v0.0.0-20170406111628-a8b993ba6abd
-	github.com/golang/glog => github.com/pulumi/glog v0.0.0-20180820174630-7eaa6ffb71e4
-)
+replace github.com/golang/glog => github.com/pulumi/glog v0.0.0-20180820174630-7eaa6ffb71e4
