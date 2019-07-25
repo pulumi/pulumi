@@ -67,7 +67,7 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 * **[Getting Started](#getting-started)**: get up and running quickly.
 
-* **[Tutorials](https://www.pulumi.com/docs/quickstart/)**: walk through end-to-end workflows for creating containers, serverless
+* **[Tutorials](https://www.pulumi.com/docs/reference/tutorials/)**: walk through end-to-end workflows for creating containers, serverless
   functions, and other cloud services and infrastructure.
 
 * **[Examples](https://github.com/pulumi/examples)**: browse a number of useful examples across many languages,
@@ -95,21 +95,19 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
     $ curl -fsSL https://get.pulumi.com/ | sh
     ```
 
-2. **[Configure your Cloud Provider](https://www.pulumi.com/docs/reference/install/#cloud-configuration)**
-    so that Pulumi can deploy into it.
-
-3. **Create a Project**:
+2. **Create a Project**:
 
     After installing, you can get started with the `pulumi new` command:
 
     ```bash
+    $ mkdir pulumi-demo && cd pulumi-demo
     $ pulumi new hello-aws-javascript
     ```
 
     The `new` command offers templates for all languages and clouds.  Run it without an argument and it'll prompt
     you with available projects.  This command created an AWS Serverless Lambda project written in JavaScript.
 
-4. **Deploy to the Cloud**:
+3. **Deploy to the Cloud**:
 
     Run `pulumi up` to get your code to the cloud:
 
@@ -120,7 +118,7 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
     This makes all cloud resources needed to run your code.  Simply make edits to your project, and subsequent
     `pulumi up`s will compute the minimal diff to deploy your changes.
 
-5. **Use Your Program**:
+4. **Use Your Program**:
 
     Now that your code is deployed, you can interact with it.  In the above example, we can curl the endpoint:
 
@@ -128,7 +126,7 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
     $ curl $(pulumi stack output url)
     ```
 
-6. **Access the Logs**:
+5. **Access the Logs**:
 
     If you're using containers or functions, Pulumi's unified logging command will show all of your logs:
 
@@ -136,7 +134,7 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
     $ pulumi logs -f
     ```
 
-7. **Destroy your Resources**:
+6. **Destroy your Resources**:
 
     After you're done, you can remove all resources created by your program:
 
@@ -144,8 +142,8 @@ Follow these steps to deploy your first Pulumi program, using AWS Serverless Lam
     $ pulumi destroy -y
     ```
 
-To learn more, head over to <pulumi.com> for much more information, including
-[tutorials](https://www.pulumi.com/docs/quickstart/), [examples](https://github.com/pulumi/examples), and
+To learn more, head over to [pulumi.com](https://pulumi.com) for much more information, including
+[tutorials](https://www.pulumi.com/docs/reference/tutorials/), [examples](https://github.com/pulumi/examples), and
 details of the core Pulumi CLI and [programming model concepts](https://www.pulumi.com/docs/reference/concepts/).
 
 ## <a name="platform"></a>Platform
