@@ -23,8 +23,10 @@ from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
 
+from .output import Output
+
 if TYPE_CHECKING:
-    from .output import Output, Input, Inputs
+    from .output import Input, Inputs
 
 
 class CustomTimeouts:
@@ -76,10 +78,9 @@ def inherited_child_alias(
 #   * parentAliasName: "app"
 #   * aliasName: "app-function"
 #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-    from .output import Output as Op
-    alias_name = Op.from_input(child_name)
+    alias_name = Output.from_input(child_name)
     if child_name.startswith(parent_name):
-        alias_name = Op.from_input(parent_alias).apply(
+        alias_name = Output.from_input(parent_alias).apply(
             lambda u: u[u.rfind("::") + 2:] + child_name[len(parent_name):])
 
     return create_urn(alias_name, child_type, parent_alias)
@@ -185,11 +186,9 @@ def collapse_alias_to_urn(
     collapse_alias_to_urn turns an Alias into a URN given a set of default data
     """
 
-    from .output import Output as Op
-
     def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
         if isinstance(inner, str):
-            return Op.from_input(inner)
+            return Output.from_input(inner)
 
         name = inner.name if inner.name is not ABSENT_VALUE else defaultName
         type_ = inner.type_ if inner.type_ is not ABSENT_VALUE else defaultType
@@ -205,7 +204,7 @@ def collapse_alias_to_urn(
 
         return create_urn(name, type_, parent, project, stack)
 
-    return Op.from_input(alias).apply(collapse_alias_to_urn_worker)
+    return Output.from_input(alias).apply(collapse_alias_to_urn_worker)
 
 
 class ResourceOptions:
@@ -647,14 +646,13 @@ def create_urn(
     parent, optional project and optional stack.
     """
 
-    from .output import Output as Op
     parent_prefix = None
     if parent is not None:
         parent_urn = None
         if isinstance(parent, Resource):
             parent_urn = parent.urn
         else:
-            parent_urn = Op.from_input(parent)
+            parent_urn = Output.from_input(parent)
 
         parent_prefix = parent_urn.apply(
             lambda u: u[0:u.rfind("::")] + "$")
@@ -667,5 +665,5 @@ def create_urn(
 
         parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
 
-    return Op.all(parent_prefix, type_, name).apply(
+    return Output.all(parent_prefix, type_, name).apply(
         lambda arr: arr[0] + arr[1] + "::" + arr[2])
