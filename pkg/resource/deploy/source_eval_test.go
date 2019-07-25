@@ -54,8 +54,14 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		for _, s := range steps {
 			g := s.Goal()
-			urn, id, outs, err := resmon.RegisterResource(g.Type, string(g.Name), g.Custom, g.Parent, g.Protect,
-				g.Dependencies, g.Provider, g.Properties, g.PropertyDependencies, false, "", nil, nil, "", nil)
+			urn, id, outs, err := resmon.RegisterResource(g.Type, string(g.Name), g.Custom, deploytest.ResourceOptions{
+				Parent:       g.Parent,
+				Protect:      g.Protect,
+				Dependencies: g.Dependencies,
+				Provider:     g.Provider,
+				Inputs:       g.Properties,
+				PropertyDeps: g.PropertyDependencies,
+			})
 			if err != nil {
 				return err
 			}
