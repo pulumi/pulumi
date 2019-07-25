@@ -85,11 +85,6 @@ def inherited_child_alias(
 
     return create_urn(alias_name, child_type, parent_alias)
 
-ABSENT_VALUE = object()
-"""
-ABSENT_VALUE is how we mark if a value provided to an alias was actually given by the user as 'None',
-versus the use not providing any value at all.
-"""
 
 ROOT_STACK_RESOURCE = None
 """
@@ -164,11 +159,11 @@ class Alias:
     """
 
     def __init__(self,
-                 name: Optional[str] = ABSENT_VALUE,
-                 type_: Optional[str] = ABSENT_VALUE,
-                 parent: Optional[Union['Resource', 'Input[str]']] = ABSENT_VALUE,
-                 stack: Optional['Input[str]'] = ABSENT_VALUE,
-                 project: Optional['Input[str]'] = ABSENT_VALUE) -> None:
+                 name: Optional[str] = ...,
+                 type_: Optional[str] = ...,
+                 parent: Optional[Union['Resource', 'Input[str]']] = ...,
+                 stack: Optional['Input[str]'] = ...,
+                 project: Optional['Input[str]'] = ...) -> None:
 
         self.name = name
         self.type_ = type_
@@ -190,11 +185,11 @@ def collapse_alias_to_urn(
         if isinstance(inner, str):
             return Output.from_input(inner)
 
-        name = inner.name if inner.name is not ABSENT_VALUE else defaultName
-        type_ = inner.type_ if inner.type_ is not ABSENT_VALUE else defaultType
-        parent = inner.parent if inner.parent is not ABSENT_VALUE else defaultParent
-        project = inner.project if inner.project is not ABSENT_VALUE else get_project()
-        stack = inner.stack if inner.stack is not ABSENT_VALUE else get_stack()
+        name = inner.name if inner.name is not ... else defaultName
+        type_ = inner.type_ if inner.type_ is not ... else defaultType
+        parent = inner.parent if inner.parent is not ... else defaultParent
+        project = inner.project if inner.project is not ... else get_project()
+        stack = inner.stack if inner.stack is not ... else get_stack()
 
         if name is None:
             raise Exception("No valid 'name' passed in for alias.")
