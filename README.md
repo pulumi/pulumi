@@ -84,6 +84,12 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 ## <a name="getting-started"></a>Getting Started
 
+See our [Get Started](https://www.pulumi.com/docs/quickstart/) guide to quickly get started with
+Pulumi on your platform and cloud of choice.
+
+Otherwise, the following steps demonstrate how to deploy your first Pulumi program, using AWS
+Serverless Lambdas, in minutes:
+
 Follow these steps to deploy your first Pulumi program, using AWS Serverless Lambdas, in minutes:
 
 1. **Install**:
