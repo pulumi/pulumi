@@ -752,7 +752,6 @@ function merge(dest: any, source: any): any {
     // if the second options bag contained `prop: null` or `prop: undefined` then that overrides
     // anything in the destination.
 
-    // if there's no destination value, the source value wins.
     if (source === null || source === undefined) {
         return source;
     }
