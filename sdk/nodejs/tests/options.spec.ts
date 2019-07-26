@@ -17,8 +17,9 @@
 import * as assert from "assert";
 import { Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
+import { ComponentResourceOptions, ProviderResource } from "../resource";
 import { asyncTest } from "./util";
-import { mergeOptions } from "../utils";
+import { mergeDependsOn, mergeOptions } from "../utils";
 
 
 describe("options", () => {
@@ -38,7 +39,7 @@ describe("options", () => {
             }));
             it("overwrites value from opts1 if given undefined in opts2", asyncTest(async () => {
                 const result = mergeOptions({ id: "a" }, { id: undefined });
-                assert.strictEqual(result.id, null);
+                assert.strictEqual(result.id, undefined);
             }));
             it("overwrites value from opts1 if given value in opts2", asyncTest(async () => {
                 const result = mergeOptions({ id: "a" }, { id: "b" });
@@ -53,31 +54,137 @@ describe("options", () => {
             }));
             it("keeps value from opts2 if not provided in opts1", asyncTest(async () => {
                 const result = mergeOptions({ }, { ignoreChanges: ["a"] });
-                assert.strictEqual(result.ignoreChanges, ["a"]);
+                assert.deepStrictEqual(result.ignoreChanges, ["a"]);
             }));
             it("overwrites value from opts1 if given null in opts2", asyncTest(async () => {
-                const result = mergeOptions({ ignoreChanges: ["a"] }, { id: null! });
-                assert.strictEqual(result.ignoreChanges, null);
+                const result = mergeOptions({ ignoreChanges: ["a"] }, { ignoreChanges: null! });
+                assert.deepStrictEqual(result.ignoreChanges, null);
             }));
             it("overwrites value from opts1 if given undefined in opts2", asyncTest(async () => {
-                const result = mergeOptions({ ignoreChanges: ["a"] }, { id: undefined });
-                assert.strictEqual(result.ignoreChanges, null);
+                const result = mergeOptions({ ignoreChanges: ["a"] }, { ignoreChanges: undefined });
+                assert.deepStrictEqual(result.ignoreChanges, undefined);
             }));
             it("merges values from opts1 if given value in opts2", asyncTest(async () => {
                 const result = mergeOptions({ ignoreChanges: ["a"] }, { ignoreChanges: ["b"] });
-                assert.strictEqual(result.ignoreChanges, ["a", "b"]);
+                assert.deepStrictEqual(result.ignoreChanges, ["a", "b"]);
             }));
 
             describe("including promises", () => {
-                it("merges promise in opts1 and non-promise in opts2", asyncTest(async () => {
+                it("merges non-promise in opts1 and promise in opts2", asyncTest(async () => {
                     const result = mergeOptions({ aliases: ["a"] }, { aliases: [Promise.resolve("b")] });
                     const aliases = result.aliases!;
-                    assert.strictEqual(Array.isArray(aliases), true);
-                    assert.strictEqual(aliases.length, 2);
-                    assert.strictEqual(aliases[0], "a");
-                    assert.strictEqual(result.ignoreChanges, ["a", "b"]);
+                    assert.deepStrictEqual(Array.isArray(aliases), true);
+                    assert.deepStrictEqual(aliases.length, 2);
+                    assert.deepStrictEqual(aliases[0], "a");
+                    assert.deepStrictEqual(aliases[1] instanceof Promise, true);
+
+                    const val1 = await aliases[1];
+                    assert.deepStrictEqual(val1, "b");
+                }));
+                it("merges promise in opts1 and non-promise in opts2", asyncTest(async () => {
+                    const result = mergeOptions({ aliases: [Promise.resolve("a")] }, { aliases: ["b"] });
+                    const aliases = result.aliases!;
+                    assert.deepStrictEqual(Array.isArray(aliases), true);
+                    assert.deepStrictEqual(aliases.length, 2);
+                    assert.deepStrictEqual(aliases[0] instanceof Promise, true);
+                    assert.deepStrictEqual(aliases[1], "b");
+
+                    const val0 = await aliases[0];
+                    assert.deepStrictEqual(val0, "a");
                 }));
             });
-        })
+        });
+
+        describe("providers", () => {
+            const awsProvider = <ProviderResource>{ getPackage: () => "aws" };
+            const azureProvider = <ProviderResource>{ getPackage: () => "azure" };
+            const gcpProvider = <ProviderResource>{ getPackage: () => "gcp" };
+
+            it("merges singleton into map", () => {
+                const result = mergeOptions({ providers: { aws: awsProvider } }, { provider: azureProvider });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+            });
+            it("merges singleton-array into map", () => {
+                const result = mergeOptions({ providers: { aws: awsProvider } }, { providers: [azureProvider] });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+            });
+            it("merges array into map", () => {
+                const result = mergeOptions({ providers: { aws: awsProvider } }, { providers: [azureProvider, gcpProvider] });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider, gcp: gcpProvider } });
+            });
+
+            it("merges map into singleton", () => {
+                const result = mergeOptions({ provider: awsProvider }, { providers: { azure: azureProvider } });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+            });
+            it("merges map into singleton-array", () => {
+                const result = mergeOptions({ providers: [awsProvider] }, { providers: { azure: azureProvider } });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+            });
+            it("merges map into array", () => {
+                const result = mergeOptions({ providers: [awsProvider, azureProvider] }, { providers: { gcp: gcpProvider } });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider, gcp: gcpProvider } });
+            });
+
+            it("merges map into map", () => {
+                const result = mergeOptions({ providers: { aws: awsProvider } }, { providers: { azure: azureProvider } });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+            });
+
+            it("merges array into array", () => {
+                const result = mergeOptions({ providers: [awsProvider] }, { providers: [azureProvider] });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+            });
+
+            it("merges singleton into singleton", () => {
+                const result = mergeOptions(<ComponentResourceOptions>{ provider: awsProvider }, { provider: azureProvider });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+            });
+        });
+
+        // describe("dependsOn", () => {
+        //     it("merges two scalers into array", () => {
+        //         const result = mergeDependsOn("a", "b");
+        //         assert.deepStrictEqual(result, ["a", "b"]);
+        //     });
+        //     it("merges array and scaler", () => {
+        //         const result = mergeDependsOn(["a"], "b");
+        //         assert.deepStrictEqual(result, ["a", "b"]);
+        //     });
+        //     it("merges scaler and array", () => {
+        //         const result = mergeDependsOn("a", ["b"]);
+        //         assert.deepStrictEqual(result, ["a", "b"]);
+        //     });
+
+        //     it("merges promise-scaler and scaler into array", async () => {
+        //         const result = mergeDependsOn(Promise.resolve("a"), "b");
+        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+        //     });
+        //     it("merges scaler and promise-scaler into array", async () => {
+        //         const result = mergeDependsOn("a", Promise.resolve("b"));
+        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+        //     });
+        //     it("merges promise-scaler and promise-scaler into array", async () => {
+        //         const result = mergeDependsOn(Promise.resolve("a"), Promise.resolve("b"));
+        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+        //     });
+
+        //     it("merges promise-array and scaler into array", async () => {
+        //         const result = mergeDependsOn(Promise.resolve(["a"]), "b");
+        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+        //     });
+        //     it("merges promise-scaler and array into array", async () => {
+        //         const result = mergeDependsOn(Promise.resolve("a"), ["b"]);
+        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+        //     });
+        //     it("merges promise-scaler and promise-array into array", async () => {
+        //         const result = mergeDependsOn(Promise.resolve("a"), Promise.resolve(["b"]));
+        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+        //     });
+        //     it("merges promise-array and promise-array into array", async () => {
+        //         const result = mergeDependsOn(Promise.resolve(["a"]), Promise.resolve(["b"]));
+        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+        //     });
+        // });
     });
 });

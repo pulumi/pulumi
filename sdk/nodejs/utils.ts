@@ -17,6 +17,7 @@ import * as pulumi from ".";
 import * as deasync from "deasync";
 
 import { InvokeOptions } from "./invoke";
+import { ComponentResourceOptions } from "./resource";
 
 /**
  * Common code for doing RTTI typechecks.  RTTI is done by having a boolean property on an object
@@ -117,43 +118,54 @@ export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {})
 
 /**
  * [mergeOptions] takes two ResourceOptions values and produces a new ResourceOptions with the
- * respective properties of `opts2` merged over the same properties in `opts1`.
+ * respective properties of `opts2` merged over the same properties in `opts1`.  The original
+ * options objects will be unchanged.
  *
  * Conceptually property merging follows these basic rules:
  *  1. if the property is a collection, the final value will be a collection containing the values
- *     from each options object.  The original collections will not be affected.
- *  2. Scaler values from `opts2` (i.e. strings, numbers, bools) will replace the values of `opts1`.
+ *     from each options object.
+ *  2. Simple scaler values from `opts2` (i.e. strings, numbers, bools) will replace the values of
+ *     `opts1`.
  *  3. `opts2` can have properties explicitly provided with `null` or `undefined` as the value. If
  *     explicitly provided, then that will be the final value in the result.
+ *  4. For the purposes of merging `dependsOn`, `provider` and `providers` are always treated as
+ *     collections, even if only a single value was provided.
  */
+export function mergeOptions(opts1: pulumi.CustomResourceOptions | undefined, opts2: pulumi.CustomResourceOptions | undefined): pulumi.CustomResourceOptions;
+export function mergeOptions(opts1: pulumi.ComponentResourceOptions | undefined, opts2: pulumi.ComponentResourceOptions | undefined): pulumi.ComponentResourceOptions;
+export function mergeOptions(opts1: pulumi.ResourceOptions | undefined, opts2: pulumi.ResourceOptions | undefined): pulumi.ResourceOptions;
 export function mergeOptions(
         opts1: pulumi.ResourceOptions | undefined,
         opts2: pulumi.ResourceOptions | undefined): pulumi.ResourceOptions {
     const dest = <any>{ ...opts1 };
     const source = <any>{ ...opts2 };
 
+    // Ensure provider/providers are all expanded into the `{ provName: prov }` form.
+    // This makes merging simple.
+    expandProviders(dest);
+    expandProviders(source);
+
     // iterate specifically over the supplied properties in [source].  Note: there may not be an
     // corresponding value in [dest].
     for (const key of Object.keys(source)) {
+        const destVal = dest[key];
+        const sourceVal = source[key];
+
+        if (key === "providers") {
+            // Note: this expansion is safe to do as expandProviders will have made sure
+            // that both collections are in Record<string, ProviderResource> form.
+            dest[key] = { ...destVal, ...sourceVal };
+            continue;
+        }
+
         // Due to the possibility of top level and nested Inputs for 'dependsOn' we have to handle
         // that property specially.
-
-        const destVal = dest[key];
-        const sourceVal = source[key]
         if (key === "dependsOn") {
             dest[key] = mergeDependsOn(destVal, sourceVal);
             continue;
         }
 
-        if (key === "providers") {
-            // for 'providers' we need to combine maps/arrays into one final map.
-            const result: Record<string, pulumi.ProviderResource> = {};
-            addToMap(result, dest);
-            addToMap(result, source);
-            dest[key] = result;
-            continue;
-        }
-
+        // we should have no promises/outputs at top level for any other resource option properties.
         if (isPromiseOrOutput(destVal)) {
             throw new Error(`Unexpected promise/output in opts1.${key}`);
         }
@@ -162,9 +174,12 @@ export function mergeOptions(
             throw new Error(`Unexpected promise/output in opts2.${key}`);
         }
 
-        // we should have no promises/outputs at top level for any other resource option properties.
-        dest[key] = merge(dest[key], source[key]);
+        dest[key] = merge(destVal, sourceVal);
     }
+
+    // Now, if we are left with a .providers that is just a single key/value pair, then
+    // collapse that down into .provider form.
+    collapseProviders(dest);
 
     return dest;
 }
@@ -196,14 +211,17 @@ function merge(dest: any, source: any): any {
     // specific "dependsOn" property as we allow options to contain a single value as a shorthand
     // way to represent an array just containing that value.
     if (Array.isArray(source) || Array.isArray(dest)) {
-        return mergeArraysAndScalers(source, dest);
+        return mergeArraysAndScalers(dest, source);
     }
 
     // In any other case, just override the destination with the source value.
     return source;
 }
 
-function mergeDependsOn(dest: any, source: any): any {
+/**
+ * @internal For testing purposes only.
+ */
+export function mergeDependsOn(dest: any, source: any): any {
     if (isPromiseOrOutput(dest)) {
         return pulumi.output(dest).apply(d => mergeDependsOn(d, source));
     }
@@ -215,17 +233,36 @@ function mergeDependsOn(dest: any, source: any): any {
     return mergeArraysAndScalers(dest, source);
 }
 
-function addToMap(
-    resultMap: Record<string, pulumi.ProviderResource>,
-    value: Record<string, pulumi.ProviderResource> | pulumi.ProviderResource[]) {
-
-    if (Array.isArray(value)) {
-        for (const res of value) {
-            resultMap[res.getPackage()] = res;
-        }
+function expandProviders(options: pulumi.ComponentResourceOptions) {
+    // Move 'provider' up to 'providers' if we have it.
+    if (options.provider) {
+        options.providers = [options.provider];
     }
-    else  {
-        Object.assign(resultMap, value);
+
+    // Convert 'providers' array to map form if we have an array.
+    if (Array.isArray(options.providers)) {
+        const result: Record<string, pulumi.ProviderResource> = {};
+        for (const provider of options.providers) {
+            result[provider.getPackage()] = provider;
+        }
+
+        options.providers = result;
+    }
+
+    delete options.provider;
+}
+
+function collapseProviders(opts: ComponentResourceOptions) {
+    // If we have only 0-1 providers, then merge that back down to the .provider field.
+    if (opts.providers) {
+        const keys = Object.keys(opts.providers);
+        if (keys.length === 0) {
+            delete opts.providers;
+        }
+        else if (keys.length === 1) {
+            opts.provider = (<any>opts.providers)[keys[0]];
+            delete opts.providers;
+        }
     }
 }
 
@@ -243,37 +280,4 @@ function addToArray(resultArray: any[], value: any) {
     else if (value !== undefined && value !== null) {
         resultArray.push(value);
     }
-}
-
-/**
- * Returns a full copy of `opts` except with `alias` added to it's list of
- * `ResourceOptions.aliases`.
- *
- * This is an advanced compat function for libraries and should not generally be used by normal
- * Pulumi application.
- */
-export function withAlias<T extends pulumi.ResourceOptions>(opts: T | undefined, alias: pulumi.Input<pulumi.URN | pulumi.Alias>): T {
-    return withAliases(opts, [alias]);
-}
-
-/**
- * Returns a full copy of `opts` except with `aliases` added to it's list of
- * `ResourceOptions.aliases`.
- *
- * This is an advanced compat function for libraries and should not generally be used by normal
- * Pulumi application.
- */
-export function withAliases<T extends pulumi.ResourceOptions>(opts: T | undefined, aliases: pulumi.Input<pulumi.URN | pulumi.Alias>[]): T {
-    const allAliases: pulumi.Input<pulumi.URN | pulumi.Alias>[] = [];
-    if (opts && opts.aliases) {
-        for (const alias of opts.aliases) {
-            allAliases.push(alias);
-        }
-    }
-
-    for (const alias of aliases) {
-        allAliases.push(alias);
-    }
-
-    return <T>{ ...opts, aliases };
 }
