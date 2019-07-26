@@ -756,6 +756,7 @@ function merge(dest: any, source: any): any {
         return source;
     }
 
+    // if there's no destination value, the source value wins.
     if (dest === null || dest === undefined) {
         return source;
     }
