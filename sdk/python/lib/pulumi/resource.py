@@ -360,11 +360,11 @@ class ResourceOptions:
             as collections, even if only a single value was provided.
          4. Attributes with value 'None' will not be copied over.
         """
-        return _mergeOptions(self, other)
+        return _merge_options(self, other)
 
-def _mergeOptions(
-    opts1: ResourceOptions = ResourceOptions(),
-    opts2: ResourceOptions = ResourceOptions()) -> ResourceOptions:
+def _merge_options(
+        opts1: ResourceOptions = ResourceOptions(),
+        opts2: ResourceOptions = ResourceOptions()) -> ResourceOptions:
 
     dest = copy.copy(opts1)
     source = copy.copy(opts2)
@@ -373,12 +373,12 @@ def _mergeOptions(
     # This makes merging simple.
     _expand_providers(dest)
     _expand_providers(source)
-    dest.providers = { **dest.providers, **source.providers }
+    dest.providers = {**dest.providers, **source.providers}
 
     dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
     dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
     dest.aliases = _merge_lists(dest.aliases, source.aliases)
-    dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, additional_secret_outputs.parent)
+    dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, source.additional_secret_outputs)
 
     dest.parent = dest.parent if source.parent is None else source.parent
     dest.protect = dest.protect if source.protect is None else source.protect
@@ -416,7 +416,7 @@ def _expand_providers(options: ResourceOptions):
 def _collapse_providers(opts: ResourceOptions):
     # If we have only 0-1 providers, then merge that back down to the .provider field.
     if opts.providers is not None:
-        if len(opts.providers) == 0:
+        if not opts.providers:
             opts.providers = None
         elif len(opts.providers) == 1:
             opts.provider = next(iter(opts.providers.values()))
