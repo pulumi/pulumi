@@ -149,6 +149,7 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 		planTo = "to "
 	}
 
+	var changeKindCount = 0
 	var changeCount = 0
 	var sameCount = changes[deploy.OpSame]
 
@@ -168,7 +169,13 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 					opDescription = op.PastTense()
 				}
 
-				changeCount++
+				// Increment the change count by the number of changes associated with this step kind
+				changeCount += c
+
+				// Increment the number of kinds of changes by one
+				changeKindCount++
+
+				// Print a summary of the changes of this kind
 				fprintIgnoreError(out, opts.Color.Colorize(
 					fmt.Sprintf("    %s%d %s%s%s\n", op.Prefix(), c, planTo, opDescription, colors.Reset)))
 			}
@@ -176,7 +183,7 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 	}
 
 	summaryPieces := []string{}
-	if changeCount >= 2 {
+	if changeKindCount >= 2 {
 		// Only if we made multiple types of changes do we need to print out the total number of
 		// changes.  i.e. we don't need "10 changes" and "+ 10 to create".  We can just say "+ 10 to create"
 		summaryPieces = append(summaryPieces, fmt.Sprintf("%s%d %s%s",
