@@ -140,7 +140,7 @@ type ProgressDisplay struct {
 	isTerminal bool
 
 	// The width and height of the terminal.  Used so we can trim resource messages that are too long.
-	terminalWidth int
+	terminalWidth  int
 	terminalHeight int
 
 	// If all progress messages are done and we can print out the final display.
