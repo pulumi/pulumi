@@ -201,15 +201,7 @@ function merge(dest: any, source: any): any {
         return source;
     }
 
-    // if the source is not an object, then it's a simple scaler (i.e. int/bool/string).  The source
-    // overrides the destination in this case.
-    if (typeof source !== "object") {
-        return source;
-    }
-
-    // If either are an array, make a new array and merge the values into it. also do this for the
-    // specific "dependsOn" property as we allow options to contain a single value as a shorthand
-    // way to represent an array just containing that value.
+    // If either are an array, make a new array and merge the values into it.
     if (Array.isArray(source) || Array.isArray(dest)) {
         return mergeArraysAndScalers(dest, source);
     }

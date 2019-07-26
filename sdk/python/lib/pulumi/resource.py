@@ -210,7 +210,8 @@ class ResourceOptions:
 
     parent: Optional['Resource']
     """
-    If provided, the currently-constructing resource should be the child of the provided parent resource.
+    If provided, the currently-constructing resource should be the child of the provided parent
+    resource.
     """
 
     depends_on: Optional[List['Resource']]
@@ -230,9 +231,9 @@ class ResourceOptions:
 
     provider: Optional['ProviderResource']
     """
-    An optional provider to use for this resource's CRUD operations. If no provider is supplied, the default
-    provider for the resource's package will be used. The default provider is pulled from the parent's
-    provider bag (see also ResourceOptions.providers).
+    An optional provider to use for this resource's CRUD operations. If no provider is supplied, the
+    default provider for the resource's package will be used. The default provider is pulled from
+    the parent's provider bag (see also ResourceOptions.providers).
     """
 
     providers: Union[Mapping[str, 'ProviderResource'],
@@ -248,9 +249,9 @@ class ResourceOptions:
 
     version: Optional[str]
     """
-    An optional version. If provided, the engine loads a provider with exactly the requested version to operate on this
-    resource. This version overrides the version information inferred from the current package and should rarely be
-    used.
+    An optional version. If provided, the engine loads a provider with exactly the requested version
+    to operate on this resource. This version overrides the version information inferred from the
+    current package and should rarely be used.
     """
 
     aliases: Optional[List['Input[Union[str, Alias]]']]
@@ -258,11 +259,11 @@ class ResourceOptions:
     An optional list of aliases to treat this resource as matching.
     """
 
-    additional_secret_outputs: [List[str]]
+    additional_secret_outputs: Optional[List[str]]
     """
-    The names of outputs for this resource that should be treated as secrets. This augments the list that
-    the resource provider and pulumi engine already determine based on inputs to your resource. It can be used
-    to mark certain ouputs as a secrets on a per resource basis.
+    The names of outputs for this resource that should be treated as secrets. This augments the list
+    that the resource provider and pulumi engine already determine based on inputs to your resource.
+    It can be used to mark certain outputs as a secrets on a per resource basis.
     """
 
     custom_timeouts: Optional['CustomTimeouts']
@@ -277,9 +278,10 @@ class ResourceOptions:
 
     import_: Optional[str]
     """
-    When provided with a resource ID, import indicates that this resource's provider should import its state from the
-    cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's current
-    state. Once a resource has been imported, the import property must be removed from the resource's options.
+    When provided with a resource ID, import indicates that this resource's provider should import
+    its state from the cloud resource with the given ID. The inputs to the resource's constructor
+    must align with the resource's current state. Once a resource has been imported, the import
+    property must be removed from the resource's options.
     """
 
     # pylint: disable=redefined-builtin
@@ -338,7 +340,97 @@ class ResourceOptions:
             for dep in depends_on:
                 if not isinstance(dep, Resource):
                     raise Exception(
-                        "'dependsOn' was passed a value that was not a Resource.")
+                        "'depends_on' was passed a value that was not a Resource.")
+
+
+    def merge_options(self: ResourceOptions, other: ResourceOptions) -> ResourceOptions:
+        """
+        merge_options produces a new ResourceOptions object with the respective attributes of this
+        instance in it with the attributes of `other` merged over them.
+
+        Both this options instance and the `other` options instance will be unchanged.
+
+        Conceptually attributes merging follows these basic rules:
+         1. if the attributes is a collection, the final value will be a collection containing the
+            values from each options object. Both original collections in each options object will
+            be unchanged.
+         2. Simple scaler values from `other` (i.e. strings, numbers, bools) will replace the values
+            from this.
+         3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
+            as collections, even if only a single value was provided.
+         4. Attributes with value 'None' will not be copied over.
+        """
+        return _mergeOptions(self, other)
+
+def _mergeOptions(
+    opts1: ResourceOptions = ResourceOptions(),
+    opts2: ResourceOptions = ResourceOptions()) -> ResourceOptions:
+
+    dest = copy.copy(opts1)
+    source = copy.copy(opts2)
+
+    # Ensure provider/providers are all expanded into the `{ provName: prov }` form.
+    # This makes merging simple.
+    _expand_providers(dest)
+    _expand_providers(source)
+    dest.providers = { **dest.providers, **source.providers }
+
+    dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
+    dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
+    dest.aliases = _merge_lists(dest.aliases, source.aliases)
+    dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, additional_secret_outputs.parent)
+
+    dest.parent = dest.parent if source.parent is None else source.parent
+    dest.protect = dest.protect if source.protect is None else source.protect
+    dest.delete_before_replace = dest.delete_before_replace if source.delete_before_replace is None else source.delete_before_replace
+    dest.version = dest.version if source.version is None else source.version
+    dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
+    dest.id = dest.id if source.id is None else source.id
+    dest.import_ = dest.import_ if source.import_ is None else source.import_
+
+    # Now, if we are left with a .providers that is just a single key/value pair, then
+    # collapse that down into .provider form.
+    _collapse_providers(dest)
+
+    return dest
+
+
+def _expand_providers(options: ResourceOptions):
+    # Move 'provider' up to 'providers' if we have it.
+    if options.provider is not None:
+        options.providers = [options.provider]
+
+    if isinstance(options.providers, list):
+        result = {}
+        for p in options.providers:
+            result[p.package] = p
+
+        options.providers = result
+
+    if options.providers is None:
+        options.providers = {}
+
+    options.provider = None
+
+
+def _collapse_providers(opts: ResourceOptions):
+    # If we have only 0-1 providers, then merge that back down to the .provider field.
+    if opts.providers is not None:
+        if len(opts.providers) == 0:
+            opts.providers = None
+        elif len(opts.providers) == 1:
+            opts.provider = next(iter(opts.providers.values()))
+            opts.providers = None
+
+
+def _merge_lists(dest, source):
+    if dest is None:
+        dest = []
+
+    if source is None:
+        source = []
+
+    return dest + source
 
 
 class Resource:
@@ -562,8 +654,9 @@ class CustomResource(Resource):
 
 class ComponentResource(Resource):
     """
-    ComponentResource is a resource that aggregates one or more other child resources into a higher level
-    abstraction.  The component itself is a resource, but does not require custom CRUD operations for provisioning.
+    ComponentResource is a resource that aggregates one or more other child resources into a higher
+    level abstraction.  The component itself is a resource, but does not require custom CRUD
+    operations for provisioning.
     """
 
     def __init__(self,
