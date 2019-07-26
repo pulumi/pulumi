@@ -3,6 +3,8 @@ CHANGELOG
 
 ## Unreleased
 
+## 0.17.26 (2019-07-26)
+
 - Add `get_object`, `require_object`, `get_secret_object` and `require_secret_object` APIs to Python
   `config` module [#2959](https://github.com/pulumi/pulumi/pull/2959)
 
@@ -13,6 +15,7 @@ CHANGELOG
   allows new resources to match resources from previous deployments which used different names,
   maintaining the identity of the resource and avoiding replacements or re-creation of the resource.
   This was previously added to the *JavaScript* sdk in 0.17.15.
+  [#2974](https://github.com/pulumi/pulumi/pull/2974)
 
 ## 0.17.25 (2019-07-19)
 
