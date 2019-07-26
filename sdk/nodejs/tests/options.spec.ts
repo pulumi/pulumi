@@ -17,10 +17,8 @@
 import * as assert from "assert";
 import { Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
-import { ComponentResourceOptions, ProviderResource } from "../resource";
+import { ComponentResourceOptions, ProviderResource, mergeDependsOn, mergeOptions } from "../resource";
 import { asyncTest } from "./util";
-import { mergeDependsOn, mergeOptions } from "../utils";
-
 
 describe("options", () => {
     describe("merge", () => {
@@ -142,49 +140,49 @@ describe("options", () => {
             });
         });
 
-        // describe("dependsOn", () => {
-        //     it("merges two scalers into array", () => {
-        //         const result = mergeDependsOn("a", "b");
-        //         assert.deepStrictEqual(result, ["a", "b"]);
-        //     });
-        //     it("merges array and scaler", () => {
-        //         const result = mergeDependsOn(["a"], "b");
-        //         assert.deepStrictEqual(result, ["a", "b"]);
-        //     });
-        //     it("merges scaler and array", () => {
-        //         const result = mergeDependsOn("a", ["b"]);
-        //         assert.deepStrictEqual(result, ["a", "b"]);
-        //     });
+        describe("dependsOn", () => {
+            it("merges two scalers into array", () => {
+                const result = mergeDependsOn("a", "b");
+                assert.deepStrictEqual(result, ["a", "b"]);
+            });
+            it("merges array and scaler", () => {
+                const result = mergeDependsOn(["a"], "b");
+                assert.deepStrictEqual(result, ["a", "b"]);
+            });
+            it("merges scaler and array", () => {
+                const result = mergeDependsOn("a", ["b"]);
+                assert.deepStrictEqual(result, ["a", "b"]);
+            });
 
-        //     it("merges promise-scaler and scaler into array", async () => {
-        //         const result = mergeDependsOn(Promise.resolve("a"), "b");
-        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
-        //     });
-        //     it("merges scaler and promise-scaler into array", async () => {
-        //         const result = mergeDependsOn("a", Promise.resolve("b"));
-        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
-        //     });
-        //     it("merges promise-scaler and promise-scaler into array", async () => {
-        //         const result = mergeDependsOn(Promise.resolve("a"), Promise.resolve("b"));
-        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
-        //     });
+            it("merges promise-scaler and scaler into array", async () => {
+                const result = mergeDependsOn(Promise.resolve("a"), "b");
+                assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+            it("merges scaler and promise-scaler into array", async () => {
+                const result = mergeDependsOn("a", Promise.resolve("b"));
+                assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+            it("merges promise-scaler and promise-scaler into array", async () => {
+                const result = mergeDependsOn(Promise.resolve("a"), Promise.resolve("b"));
+                assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
 
-        //     it("merges promise-array and scaler into array", async () => {
-        //         const result = mergeDependsOn(Promise.resolve(["a"]), "b");
-        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
-        //     });
-        //     it("merges promise-scaler and array into array", async () => {
-        //         const result = mergeDependsOn(Promise.resolve("a"), ["b"]);
-        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
-        //     });
-        //     it("merges promise-scaler and promise-array into array", async () => {
-        //         const result = mergeDependsOn(Promise.resolve("a"), Promise.resolve(["b"]));
-        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
-        //     });
-        //     it("merges promise-array and promise-array into array", async () => {
-        //         const result = mergeDependsOn(Promise.resolve(["a"]), Promise.resolve(["b"]));
-        //         assert.deepStrictEqual(await result.promise(), ["a", "b"]);
-        //     });
-        // });
+            it("merges promise-array and scaler into array", async () => {
+                const result = mergeDependsOn(Promise.resolve(["a"]), "b");
+                assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+            it("merges promise-scaler and array into array", async () => {
+                const result = mergeDependsOn(Promise.resolve("a"), ["b"]);
+                assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+            it("merges promise-scaler and promise-array into array", async () => {
+                const result = mergeDependsOn(Promise.resolve("a"), Promise.resolve(["b"]));
+                assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+            it("merges promise-array and promise-array into array", async () => {
+                const result = mergeDependsOn(Promise.resolve(["a"]), Promise.resolve(["b"]));
+                assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+        });
     });
 });

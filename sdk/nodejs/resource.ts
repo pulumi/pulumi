@@ -676,3 +676,160 @@ export class ComponentResource extends Resource {
 export const testingOptions = {
     isDryRun: false,
 };
+
+
+/**
+ * [mergeOptions] takes two ResourceOptions values and produces a new ResourceOptions with the
+ * respective properties of `opts2` merged over the same properties in `opts1`.  The original
+ * options objects will be unchanged.
+ *
+ * Conceptually property merging follows these basic rules:
+ *  1. if the property is a collection, the final value will be a collection containing the values
+ *     from each options object.
+ *  2. Simple scaler values from `opts2` (i.e. strings, numbers, bools) will replace the values of
+ *     `opts1`.
+ *  3. `opts2` can have properties explicitly provided with `null` or `undefined` as the value. If
+ *     explicitly provided, then that will be the final value in the result.
+ *  4. For the purposes of merging `dependsOn`, `provider` and `providers` are always treated as
+ *     collections, even if only a single value was provided.
+ */
+export function mergeOptions(opts1: CustomResourceOptions | undefined, opts2: CustomResourceOptions | undefined): CustomResourceOptions;
+export function mergeOptions(opts1: ComponentResourceOptions | undefined, opts2: ComponentResourceOptions | undefined): ComponentResourceOptions;
+export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions;
+export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions {
+    const dest = <any>{ ...opts1 };
+    const source = <any>{ ...opts2 };
+
+    // Ensure provider/providers are all expanded into the `{ provName: prov }` form.
+    // This makes merging simple.
+    expandProviders(dest);
+    expandProviders(source);
+
+    // iterate specifically over the supplied properties in [source].  Note: there may not be an
+    // corresponding value in [dest].
+    for (const key of Object.keys(source)) {
+        const destVal = dest[key];
+        const sourceVal = source[key];
+
+        if (key === "providers") {
+            // Note: this expansion is safe to do as expandProviders will have made sure
+            // that both collections are in Record<string, ProviderResource> form.
+            dest[key] = { ...destVal, ...sourceVal };
+            continue;
+        }
+
+        // Due to the possibility of top level and nested Inputs for 'dependsOn' we have to handle
+        // that property specially.
+        if (key === "dependsOn") {
+            dest[key] = mergeDependsOn(destVal, sourceVal);
+            continue;
+        }
+
+        // we should have no promises/outputs at top level for any other resource option properties.
+        if (isPromiseOrOutput(destVal)) {
+            throw new Error(`Unexpected promise/output in opts1.${key}`);
+        }
+
+        if (isPromiseOrOutput(sourceVal)) {
+            throw new Error(`Unexpected promise/output in opts2.${key}`);
+        }
+
+        dest[key] = merge(destVal, sourceVal);
+    }
+
+    // Now, if we are left with a .providers that is just a single key/value pair, then
+    // collapse that down into .provider form.
+    collapseProviders(dest);
+
+    return dest;
+}
+
+function isPromiseOrOutput(val: any): boolean {
+    return val instanceof Promise || Output.isInstance(val);
+}
+
+function merge(dest: any, source: any): any {
+    // if the second options bag contained `prop: null` or `prop: undefined` then that overrides
+    // anything in the destination.
+
+    // if there's no destination value, the source value wins.
+    if (source === null || source === undefined) {
+        return source;
+    }
+
+    if (dest === null || dest === undefined) {
+        return source;
+    }
+
+    // If either are an array, make a new array and merge the values into it.
+    if (Array.isArray(source) || Array.isArray(dest)) {
+        return mergeArraysAndScalers(dest, source);
+    }
+
+    // In any other case, just override the destination with the source value.
+    return source;
+}
+
+/**
+ * @internal For testing purposes only.
+ */
+export function mergeDependsOn(dest: any, source: any): any {
+    if (isPromiseOrOutput(dest)) {
+        return output(dest).apply(d => mergeDependsOn(d, source));
+    }
+
+    if (isPromiseOrOutput(source)) {
+        return output(source).apply(s => mergeDependsOn(dest, s));
+    }
+
+    return mergeArraysAndScalers(dest, source);
+}
+
+function expandProviders(options: ComponentResourceOptions) {
+    // Move 'provider' up to 'providers' if we have it.
+    if (options.provider) {
+        options.providers = [options.provider];
+    }
+
+    // Convert 'providers' array to map form if we have an array.
+    if (Array.isArray(options.providers)) {
+        const result: Record<string, ProviderResource> = {};
+        for (const provider of options.providers) {
+            result[provider.getPackage()] = provider;
+        }
+
+        options.providers = result;
+    }
+
+    delete options.provider;
+}
+
+function collapseProviders(opts: ComponentResourceOptions) {
+    // If we have only 0-1 providers, then merge that back down to the .provider field.
+    if (opts.providers) {
+        const keys = Object.keys(opts.providers);
+        if (keys.length === 0) {
+            delete opts.providers;
+        }
+        else if (keys.length === 1) {
+            opts.provider = (<any>opts.providers)[keys[0]];
+            delete opts.providers;
+        }
+    }
+}
+
+function mergeArraysAndScalers(dest: any, source: any) {
+    const result: any[] = [];
+    addToArray(result, dest);
+    addToArray(result, source);
+    return result;
+}
+
+function addToArray(resultArray: any[], value: any) {
+    if (Array.isArray(value)) {
+        resultArray.push(...value);
+    }
+    else if (value !== undefined && value !== null) {
+        resultArray.push(value);
+    }
+}
