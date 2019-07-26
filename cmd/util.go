@@ -104,6 +104,10 @@ func createStack(
 		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
 			return nil, pharseErr
 		}
+	} else if secretsProvider == "awskms" {
+		if _, secretsErr := newAwsKmsSecretsManager(stackRef.Name(), stackConfigFile); secretsErr != nil {
+			return nil, secretsErr
+		}
 	}
 
 	stack, err := b.CreateStack(commandContext(), stackRef, opts)

@@ -21,7 +21,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/secrets/awskms"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
@@ -48,6 +52,13 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		return nil, err
 	}
 
+	if ps.SecretsProvider != "" {
+		switch ps.SecretsProvider {
+		case "awskms":
+			return newAwsKmsSecretsManager(s.Ref().Name(), stackConfigFile)
+		}
+	}
+
 	if ps.EncryptionSalt != "" {
 		return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
 	}
@@ -63,9 +74,31 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 }
 
 func validateSecretsProvider(typ string) error {
-	if typ != "default" && typ != "passphrase" {
-		return errors.Errorf("unknown secrets provider type '%s' (supported values: default, passphrase)", typ)
+	if typ != "default" && typ != "passphrase" && typ != "awskms" {
+		return errors.Errorf("unknown secrets provider type '%s' (supported values: default, passphrase, awskms)", typ)
 	}
 
 	return nil
+}
+
+func newAwsKmsSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
+	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+
+	if configFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackName)
+		if err != nil {
+			return nil, err
+		}
+		configFile = f
+	}
+
+	info, err := workspace.LoadProjectStack(configFile)
+	if err != nil {
+		return nil, err
+	}
+	info.SecretsProvider = "awskms"
+	if err = info.Save(configFile); err != nil {
+		return nil, err
+	}
+	return awskms.NewAwsKmsSecretsManager(), nil
 }
