@@ -134,6 +134,8 @@ func (proj *Project) Save(path string) error {
 
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
+	// SecretsProvider is this stack's secrets provider.
+	SecretsProvider string `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
 	// EncryptionSalt is this stack's base64 encoded encryption salt.
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
