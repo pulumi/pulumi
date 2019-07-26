@@ -139,8 +139,9 @@ type ProgressDisplay struct {
 	// align.  We don't need to do that in non-terminal situations.
 	isTerminal bool
 
-	// The width of the terminal.  Used so we can trim resource messages that are too long.
+	// The width and height of the terminal.  Used so we can trim resource messages that are too long.
 	terminalWidth int
+	terminalHeight int
 
 	// If all progress messages are done and we can print out the final display.
 	done bool
@@ -266,10 +267,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 		nonInteractiveSpinner:  spinner,
 	}
 
-	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+	terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
 	contract.IgnoreError(err)
 	display.isTerminal = opts.IsInteractive
 	display.terminalWidth = terminalWidth
+	display.terminalHeight = terminalHeight
 
 	go func() {
 		display.processEvents(ticker, events)
@@ -386,14 +388,16 @@ func (display *ProgressDisplay) refreshColumns(
 }
 
 // Ensure our stored dimension info is up to date.
-func (display *ProgressDisplay) updateTerminalWidth() {
+func (display *ProgressDisplay) updateTerminalDimensions() {
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
-		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+		currentTerminalWidth, currentTerminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
 		contract.IgnoreError(err)
 
-		if currentTerminalWidth != display.terminalWidth {
+		if currentTerminalWidth != display.terminalWidth ||
+			currentTerminalHeight != display.terminalHeight {
 			display.terminalWidth = currentTerminalWidth
+			display.terminalHeight = currentTerminalHeight
 
 			// also clear our display cache as we want to reprint all lines.
 			display.printedProgressCache = make(map[string]Progress)
@@ -573,7 +577,7 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 	if display.isTerminal && display.headerRow != nil {
 		// make sure our stored dimension info is up to date
-		display.updateTerminalWidth()
+		display.updateTerminalDimensions()
 
 		rootNodes := display.generateTreeNodes()
 		rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
