@@ -104,8 +104,10 @@ func createStack(
 		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
 			return nil, pharseErr
 		}
-	} else if secretsProvider == "awskms" {
-		if _, secretsErr := newAwsKmsSecretsManager(stackRef.Name(), stackConfigFile); secretsErr != nil {
+	} else if secretsProvider != "" {
+		// All other non-default secrets providers are handled by the cloud secrets provider which
+		// uses a URL schema to identify the provider
+		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
 			return nil, secretsErr
 		}
 	}
