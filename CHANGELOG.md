@@ -847,8 +847,6 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 #### Changed
 
-- (**Breaking**) Smaller Lambda ZIP for `aws.serverless.Function` ([pulumi/pulumi-aws#222](https://github.com/pulumi/pulumi-aws/pull/222)). By default, compute only the required package dependencies, and then include the transitive dependencies of these into the Lambda ZIP. There is now a new option for explicitly adding additional package dependencies.
-
 - Compute required packages during closure serialization ([pulumi/pulumi#1457](https://github.com/pulumi/pulumi/pull/1457)). Closure serialization now keeps track of the `require`'d packages it sees in the function bodies that are serialized during a call to `serializeFunction`. So, only required packages are uploaded to Lambda.
 
 - Support browser based logins to the CLI ([pulumi/pulumi#1439](https://github.com/pulumi/pulumi/pull/1439)). The Pulumi CLI now has an option to login via a browser. When you are prompted for an access token, you can just hit enter. The CLI then opens a browser to [app.pulumi.com](https://app.pulumi.com) so that you can authenticate.
@@ -875,11 +873,7 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 - Several improvements to the `pulumi up` CLI experience ([pulumi/pulumi#1260](https://github.com/pulumi/pulumi/pull/1260)): a tree view display, more details from logs during deployments, and rendering of stack outputs at the end of updates.
 
-- A new `@pulumi/aws-infra` package is available which contains useful AWS infrastructure components for `Network` and `Cluster` ([pulumi/pulumi-cloud#472](https://github.com/pulumi/pulumi-cloud/pull/472)).
-
 ### Changed
-
-- (**Breaking**) Removed the `LogCollector` and `onError` handler from `@pulumi-cloud` ([pulumi/pulumi-cloud#474](https://github.com/pulumi/pulumi-cloud/pull/474)).  These were previously created in all stacks using `@pulumi/cloud`, but in practice were not being used.
 
 - (**Breaking**) Remove the `--preview` flag in `pulumi up`, in favor of reintroducing `pulumi preview` ([pulumi/pulumi#1290](https://github.com/pulumi/pulumi/pull/1290)). Also, to accept an update without the interactive prompt, use the `--yes` flag, rather than `--force`.
 
@@ -904,8 +898,6 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 - (**Breaking**) Remove the explicit 'pulumi preview' command ([pulumi/pulumi#1170](https://github.com/pulumi/pulumi/pull/1170)). The `pulumi preview` output has now been merged in to the `pulumi up` command. Before an update is run, the preview is shown and you can choose whether to proceed or see more update details. To see just the preview operation, run `pulumi up --preview`.
 
-- (**Breaking**) Add support for Node 8.10 for AWS Lambda ([pulumi/pulumi-aws#195](https://github.com/pulumi/pulumi-aws/pull/195)). Lambdas created with `aws.serverless.Function` and via JavaScript callbacks in `@pulumi/cloud` now default to Node.js 8.10.
-
 - Switch to a more streamlined view for property diffs in `pulumi up` ([pulumi/pulumi#1212](https://github.com/pulumi/pulumi/pull/1212)).
 
 - Allow multiple versions of the `@pulumi/pulumi` package to be loaded ([pulumi/pulumi#1209](https://github.com/pulumi/pulumi/pull/1209)). This allows packages and dependencies to be versioned independently.
@@ -917,27 +909,11 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 ## 0.11.3 (2018-04-13)
 
-### Added
-
-- Add a static `get` method to all AWS resource classes. ([pulumi/pulumi-aws#189](https://github.com/pulumi/pulumi-aws/pull/189)). Each Pulumi resource class now has a static `get` method that construct an instance by reading existing resource state from your cloud provider.  For example, to read an existing EC2 VM, use `aws.ec2.Instance.get("vm", "i-01d7e1cddb70a2f0d")`.
-
-### Changed
-
 - Switch to a resource-progress oriented view for pulumi preview, update, and destroy operations ([pulumi/pulumi#1116](https://github.com/pulumi/pulumi/pull/1116)). The operations `pulumi preview`, `update` and `destroy` have far simpler output by default, and show a progress view of ongoing operations. In addition, there is a structured component view, showing a parent operation as complete only when all child resources have been created.
 
 - Remove strict dependency on Node v6.10.x ([pulumi/pulumi#1139](https://github.com/pulumi/pulumi/pull/1139)). It is now no longer necessary to use a specific version of Node to run Pulumi programs. Node versions after 6.10.x are supported, as long as they are under **Active LTS** or are the **Current** stable release.
 
-- Use subnets instead of subnetMappings on LoadBalancer ([pulumi/pulumi-cloud#451](https://github.com/pulumi/pulumi-cloud/pull/451)). A change to how load balancers are configured for `cloud.Service` will mean that applications may see load balancers for non-HTTP services get replaced during updates.  This should not cause disruption to applications, but may change the DNS names of the load balancers where services are exposed.
-
-### Fixed
-
-- Fix non-Fargate support for `cloud.Service` ([pulumi/pulumi-cloud#458](https://github.com/pulumi/pulumi-cloud/pull/458)). The issue in the 0.11.2 version of the SDK has now been fixed, and `cloud.Service` can either be used in the Fargate execution mode, or to target a cluster of EC2 instances (including the `cloud-aws:ecsAutoCluster` configuration setting).
-
 ## 0.11.2 (2018-04-06)
-
-### Added
-
-- Add support for AWS Fargate ([pulumi/pulumi-cloud#411](https://github.com/pulumi/pulumi-cloud/pull/411)). Adds a `cloud-aws:useFargate` flag which causes container compute to run in Fargate. Also, when neither `cloud-aws:externalVpcId` nor `cloud-aws:usePrivateNetwork` are defined, `cloud.Service` uses the default VPC as the target network.
 
 ### Changed
 
@@ -947,16 +923,6 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 - Improve the error message arising from missing required configurations for resource providers ([pulumi/pulumi#1097](https://github.com/pulumi/pulumi/pull/1097)). The error message now prints all missing configuration keys, along with their descriptions.
 
-## 0.11.1 (2018-03-30)
-
-### Added
-
-- Initial support for a new `cloud.Bucket` component ([pulumi/pulumi-cloud#426](https://github.com/pulumi/pulumi-cloud/pull/426)).
-
-### Fixed
-
-- When waiting for an ECS service to reach steady state, retry when ECS says the service can't be found ([pulumi/pulumi-cloud#443](https://github.com/pulumi/pulumi-cloud/pull/443)). This situation can occur when the ECS API performs a stale read of its datastore, so the workaround is to retry the operation.
-
 ## 0.11.0 (2018-03-20)
 
 ### Added
@@ -965,27 +931,11 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 - Python is now a supported language in Pulumi ([pulumi/pulumi#800](https://github.com/pulumi/pulumi/pull/800)). For more information, see [Python documentation](https://www.pulumi.com/docs/reference/python/).
 
-- Add ECS container definition JSON schemas ([pulumi/pulumi-aws#156](https://github.com/pulumi/pulumi-aws/pull/156)). Additionally, the Lambda runtime enum has been updated. The function `getLinuxAMI` has been removed from `ec2` and moved directly into example code.
-
-- Add link to documentation source in doc comments ([pulumi/pulumi-terraform#126](https://github.com/pulumi/pulumi-terraform/pull/126)). Adds a "Sourced from \<url\>" annotation to all generated doc comments, with links to Terraform resource provider source documentation.
-
 ### Changed
 
 - (Breaking) Change the way that configuration is stored ([pulumi/pulumi#986](https://github.com/pulumi/pulumi/pull/986)). To simplify the configuration model, there is no longer a separate notion of project and workspace settings, but only stack settings. The switches `--all` and `--save` are no longer supported; any common settings across stacks must be set on each stack directly. Settings for a stack are stored in a file that is a sibling to `Pulumi.yaml`, named `Pulumi.<stack-name>.yaml`. On first run `pulumi`, will migrate projects from the previous configuration format to the new one. The recommended practice is that developer stacks that are not shared between team members should be added to `.gitignore`, while stack setting files for shared stacks should be checked in to source control. For more information, see the section [Defining and setting stack settings](https://www.pulumi.com/docs/reference/config/#config-stack).
 
 - (Breaking) Eliminate the superfluous `:config` part of configuration keys ([pulumi/pulumi#995](https://github.com/pulumi/pulumi/pull/995)). `pulumi` no longer requires configuration keys to have the string `:config` in them. Using the `:config` string in keys for the object `@pulumi/pulumi.Config` is deprecated and `preview` and `update` show warnings when it is used. Additionally, it is preferred to set keys in the form `aws:region` rather than `aws:config:region`. For compatibility, the old behavior is also supported, but will be removed in a future release. For more information, see the article [Configuration](https://www.pulumi.com/docs/reference/config/).
-
-- (Breaking) Require provider config and improve error message when provider not installed ([pulumi/pulumi-cloud#377](https://github.com/pulumi/pulumi-cloud/pull/377)). When using the JavaScript package `@pulumi/cloud`, you must first set the configuration value for `cloud:provider`. For instance, to target AWS, use `pulumi config set cloud:provider aws`.  Additionally, if the package `@pulumi/cloud-aws` is not included in the `dependencies` section of `package.json`, you'll see the following error message. For more information, see [Pulumi npm packages](https://www.pulumi.com/docs/reference/pkg/nodejs/).
-
-    ```
-    Attempted to load the 'aws' implementation of '@pulumi/cloud',
-    but no '@pulumi/cloud-aws' module is installed. Install it now
-    or select another provider implementation with the "cloud:config:provider" setting.
-    ```
-
-- (Breaking) Use plural names for array-typed values ([pulumi/pulumi-aws#146](https://github.com/pulumi/pulumi-aws/pull/146)) and ([pulumi/pulumi-terraform#123](https://github.com/pulumi/pulumi-terraform/pull/123)). API properties that are array-typed now have a plural name. For example, the property is `aws.cloudfront.Distribution.cacheBehaviors` (plural), rather than `cacheBehavior` (singular).
-
-- (Breaking) Project array with one element as nested struct instead of array ([pulumi/pulumi-terraform#122](https://github.com/pulumi/pulumi-terraform/pull/122)). The API is now improved for properties that were previously array typed but accepted exactly one value. These properties are now nested structs instead of an array. For example, the properties `clusterConfig`, `ebsOptions` and `snapshotOptions` in `aws.elasticsearch.Domain` are no longer array-typed.
 
 - (Breaking) Modules are treated as normal values when serialized ([pulumi/pulumi#1030](https://github.com/pulumi/pulumi/pull/1030)). If you need to use a module at runtime, consider either using `require` or `await import` at runtime, or pre-compute what you need and capture the resulting data or objects.
 
@@ -996,11 +946,7 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 - Change default of where stacks are created ([pulumi/pulumi#971](https://github.com/pulumi/pulumi/pull/971)). If currently logged in to the Pulumi CLI, `stack init` creates a managed stack; otherwise, it creates a local stack. To force a local or remote stack, use the flags `--local` or `--remote`.
 
-- Use the same load balancer port as exposed on the underlying `cloud.Service` ([pulumi/pulumi-cloud#395](https://github.com/pulumi/pulumi-cloud/pull/395)). By default, the port exposed by a `cloud.Service` load balancer is the same as the container port. There is also a new `target` port property which allows exposing a different port than the internal container port. Note that this may cause surprising resource updates or replacements upon your next update after adopting v0.11.0 of the SDK. Such updates should be handled transparently by Pulumi, with no downtime.
-
 ### Fixed
-
-- In `cloud.Service`, wait for ECS services to reach a steady state ([pulumi/pulumi-cloud#396](https://github.com/pulumi/pulumi-cloud/pull/396)). Previously, when a `cloud.Service` resource was updated (for example, to point to a new container image), the update operation did not wait for the underlying service to reach a new steady state, but only waited for the service update to start. Now, `pulumi up` waits for the service to reach a new steady state, ensuring that the service is in a healthy state before continuing to make further changes to your infrastructure.
 
 - Improve error messages output by the CLI ([pulumi/pulumi#1011](https://github.com/pulumi/pulumi/pull/1011)). RPC endpoint errors have been improved. Errors such as "catastrophic error" and "fatal error" are no longer duplicated in the output.
 
@@ -1014,8 +960,6 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 - Support "force" option when deleting a managed stack.
 
-- In `@pulumi/cloud`, support for creating a `Cluster` without EFS using the `cloud-aws:config:ecsAutoClusterUseEFS` config setting ([pulumi-cloud#175](https://github.com/pulumi/pulumi-cloud/issues/175))
-
 - Add a `pulumi history` command ([pulumi#636](https://github.com/pulumi/pulumi/issues/636)). For a managed stack, use the `pulumi history` to view deployments of that stack's resources.
 
 ### Changed
@@ -1026,11 +970,6 @@ GitHub application and configure it with your CI system, please [visit our docum
 
 ### Fixed
 
-- Make change detection more accurate for complex values ([pulumi-terraform#99](https://github.com/pulumi/pulumi-terraform/issues/99)).
-- In `@pulumi/cloud`, ensure `Deployment` is recreated on all changes to API body. ([pulumi-cloud#360](https://github.com/pulumi/pulumi-cloud/issues/360))
-- In `@pulumi/cloud`, `Task.run` does not throw an error when running the task fails ([pulumi-cloud#368](https://github.com/pulumi/pulumi-cloud/issues/368))
-- In `@pulumi/cloud`, when creating `Cluster`, sporadic failure to create requested number of EC2 instances ([pulumi-cloud#195](https://github.com/pulumi/pulumi-cloud/issues/195))
-- When using managed stacks, get an HTTP 500 error if you try to remove a non-empty stack ([pulumi-ppc#111](https://github.com/pulumi/pulumi-ppc/issues/111))
 - Managed stacks sometimes return a 500 error when requesting logs
 - Error when using `float64` attributes using SDK v0.9.9 ([pulumi-terraform#95](https://github.com/pulumi/pulumi-terraform/issues/95))
 - `pulumi logs` entries only return first line ([pulumi#857](https://github.com/pulumi/pulumi/issues/857))
@@ -1055,14 +994,6 @@ GitHub application and configure it with your CI system, please [visit our docum
    - When the Pulumi CLI is run in interactive mode, it displays an animated ASCII spinner
    - When run in non-interactive mode, CLI prints a message that it is still working. For CI systems that kill jobs when there is no CLI output (such as TravisCI), this eliminates the need to create shell scripts that periodically print output.
 
-- [@pulumi/cloud] Support for ACM certificates on HttpEndpoint. The AWS implementation of `HttpEndpoint#attachCustomDomain` accepts an ACM cert in place of raw certificate material, making it much easier to use `HttpEndpoint` with custom domains.
-
-- [@pulumi/cloud] Added `HttpEndpoint#proxy` function to provide routes on an HTTP endpoint which redirect to a URL or `cloud.Endpoint`.
-
-- [@pulumi/cloud] Added `Response#getHeader` function.
-
-- [@pulumi/cloud-aws] Many new config settings have been added to enable overriding defaults for Network and Cluster configuration - both for auto clusters and for externally provided networks and clusters.
-
 ### Changed
 
 - To make the behavior of local and managed stacks consistent, the Pulumi CLI uses a separate encryption key for each stack, rather than one shared for all stacks. You can now use a different passphrase for different stacks. Similar to managed stacks, you cannot copy and paste an encrypted value from one stack to another in `Pulumi.yaml`. Instead you must manage the value via `pulumi config`.
@@ -1070,16 +1001,6 @@ GitHub application and configure it with your CI system, please [visit our docum
 - The default behavior for `--color` is now `always`. To change this, specify `--color always` or `--color never`. Previously, the value was based on the presence of the flag `--debug`.
 
 - The command `pulumi logs` now defaults to returning one hour of logs and outputs the start time that is  used.
-
-- [pulumi-aws] Auto-name ElasticSearch domain name, following the naming restrictions documented in [Amazon Elasticsearch documentation for DomainName](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-configuration-api.html#es-configuration-api-datatypes-domainname).
-
-- [pulumi-cloud] Header names are now normalized (using toLowerCase) for HttpEndpoint.
-
-- [pulumi-cloud] For `cloud.Service`, the default permissions for cluster EC2 instances have been reduced.
-
-- [pulumi-cloud] Pulumi now adds a `Name` tag onto instances launched into the ECS cluster.
-
-- [pulumi-cloud] Expose additional AWS resources in `@pulumi/cloud-aws`: Topic, Timer, Table and HttpEndpoint.
 
 ### Fixed
 
@@ -1122,7 +1043,7 @@ Resource naming is now more consistent, but there is a new file format for check
 
 #### Logging
 
-- [**experimental**] Support for the `pulumi logs` command ([pulumi #527](https://github.com/pulumi/pulumi/issues/527)). Unified logging is available in all of the `@pulumi/cloud` components ([pulumi-cloud #40](https://github.com/pulumi/pulumi-cloud/issues/40)). These features now work:
+- [**experimental**] Support for the `pulumi logs` command ([pulumi #527](https://github.com/pulumi/pulumi/issues/527)). These features now work:
    - To see new logs as they arrive, use `--follow`
    - Use `--since` to limit to recent logs, such as `pulumi logs --since=1h`
    - Filter to specific resources with `--resource`. This filters to a particular component and its child resources (if any), such as `pulumi logs --resource examples-todoc57917fa --since 1h`
@@ -1133,22 +1054,16 @@ Resource naming is now more consistent, but there is a new file format for check
 - [Allow overriding a `Pulumi.yaml`'s entry point #575](https://github.com/pulumi/pulumi/issues/575). To specify the entry directory, specify `main` in `Pulumi.yaml`. For instance, `main: a/path/to/main/`.
 - Support for *protected* resources. A resource can be marked as `protect: true`, which prevents deletion of the resource. For example, `let res = new MyResource("precious", { .. }, { protect: true });`. To "unprotect" the resource, change `protect: false` then run `pulumi up`. See [Allow resources to be flagged "protected" #689](https://github.com/pulumi/pulumi/issues/689).
 - Changed defaults for workspace and stack configuration. See [Workspace configuration is error prone #714](https://github.com/pulumi/pulumi/issues/714).
-- Allow configuring the number of availability zones in auto-cluster via the setting `cloud-aws:config:ecsAutoClusterNumberOfAZs`. See [Provide config for auto-cluster's number of availability zones #300](https://github.com/pulumi/pulumi-cloud/issues/300).
 - [Save configuration under the stack by default](https://github.com/pulumi/pulumi/issues/693).
 
 ### Fixed
-- Improved SDK installer. It automatically creates directories as needed, configures node modules, and prints out friendly error messages. ([pulumi-home #49](https://github.com/pulumi/home/issues/49), [pulumi-home #52](https://github.com/pulumi/home/issues/52), [pulumi-home #53](https://github.com/pulumi/home/issues/53), [pulumi-home #54](https://github.com/pulumi/home/issues/54), [pulumi-home #69](https://github.com/pulumi/home/issues/69))
-- [Switch to use \`\-\-password\-stdin\` on Docker CLI \#152](https://github.com/pulumi/pulumi-cloud/issues/152)
+- Improved SDK installer. It automatically creates directories as needed, configures node modules, and prints out friendly error messages.
 - [Better diffing in CLI output, especially for Lambdas \#454](https://github.com/pulumi/pulumi/issues/454)
-- [Aggregate container logs into shared pulumi\-app\-log\-collector \#93](https://github.com/pulumi/pulumi-cloud/issues/93)
-- [Implement strong read consistency on cloud.Table #44](https://github.com/pulumi/pulumi-cloud/issues/44)
 - [`main` does not set working dir correctly for Lambda zip #667](https://github.com/pulumi/pulumi/issues/667)
 - [Better error when invalid access token is used in `pulumi login` #640](https://github.com/pulumi/pulumi/issues/640)
 - [Eliminate the top-level Stack from all URNs #647](https://github.com/pulumi/pulumi/issues/647)
-- [Store user account credentials safely #112](https://github.com/pulumi/pulumi-ppc/issues/112)
 - Service API for Encrypting and Decrypting secrets
 - [Make CLI resilient to network flakiness #763](https://github.com/pulumi/pulumi/issues/763)
-- [Some PPC messages aren't colorized #152](https://github.com/pulumi/pulumi-ppc/issues/152)
 - Support --since and --resource on `pulumi logs` when targeting the service
 - [Pulumi unable to serialize non-integers #694](https://github.com/pulumi/pulumi/issues/694)
 - [Stop buffering CLI output #660](https://github.com/pulumi/pulumi/issues/660)
