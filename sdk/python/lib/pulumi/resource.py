@@ -432,7 +432,8 @@ def _merge_lists(dest, source):
 
     return dest + source
 
-
+# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
+# works properly for it.
 class Resource:
     """
     Resource represents a class whose CRUD operations are implemented by a provider plugin.
@@ -463,6 +464,9 @@ class Resource:
     """
     The name assigned to the resource at construction.
     """
+
+# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
+# works properly for it.
 
     def __init__(self,
                  t: str,
@@ -618,10 +622,10 @@ class Resource:
 @known_types.custom_resource
 class CustomResource(Resource):
     """
-    CustomResource is a resource whose create, read, update, and delete (CRUD) operations are managed
-    by performing external operations on some physical entity.  The engine understands how to diff
-    and perform partial updates of them, and these CRUD operations are implemented in a dynamically
-    loaded plugin for the defining package.
+    CustomResource is a resource whose create, read, update, and delete (CRUD) operations are
+    managed by performing external operations on some physical entity.  The engine understands how
+    to diff and perform partial updates of them, and these CRUD operations are implemented in a
+    dynamically loaded plugin for the defining package.
     """
 
     id: 'Output[str]'
