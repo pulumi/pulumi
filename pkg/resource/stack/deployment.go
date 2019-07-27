@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -206,6 +207,8 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 			provider = passphrase.NewProvider()
 		case service.Type:
 			provider = service.NewProvider()
+		case cloud.Type:
+			provider = cloud.NewProvider()
 		default:
 			return nil, errors.Errorf("unknown secrets provider type %s", deployment.SecretsProviders.Type)
 		}
