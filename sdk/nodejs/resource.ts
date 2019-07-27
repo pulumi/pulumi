@@ -421,6 +421,9 @@ function collapseAliasToUrn(
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
  */
 export interface ResourceOptions {
+    // !!!IMPORTANT!!! If you add a new field to this type, make sure to add test that verifies that
+    // mergeOptions works properly for it.
+
     /**
      * An optional existing ID to load, rather than create.
      */
@@ -463,6 +466,9 @@ export interface ResourceOptions {
      * An optional customTimeouts configuration block.
      */
     customTimeouts?: CustomTimeouts;
+
+    // !!!IMPORTANT!!! If you add a new field to this type, make sure to add test that verifies that
+    // mergeOptions works properly for it.
 }
 
 export interface CustomTimeouts {
@@ -484,6 +490,9 @@ export interface CustomTimeouts {
  * CustomResourceOptions is a bag of optional settings that control a custom resource's behavior.
  */
 export interface CustomResourceOptions extends ResourceOptions {
+    // !!!IMPORTANT!!! If you add a new field to this type, make sure to add test that verifies that
+    // mergeOptions works properly for it.
+
     /**
      * When set to true, deleteBeforeReplace indicates that this resource should be deleted before its replacement
      * is created when replacement is necessary.
@@ -504,12 +513,18 @@ export interface CustomResourceOptions extends ResourceOptions {
      * options.
      */
     import?: ID;
+
+    // !!!IMPORTANT!!! If you add a new field to this type, make sure to add test that verifies that
+    // mergeOptions works properly for it.
 }
 
 /**
  * ComponentResourceOptions is a bag of optional settings that control a component resource's behavior.
  */
 export interface ComponentResourceOptions extends ResourceOptions {
+    // !!!IMPORTANT!!! If you add a new field to this type, make sure to add test that verifies that
+    // mergeOptions works properly for it.
+
     /**
      * An optional set of providers to use for child resources. Either keyed by package name (e.g.
      * "aws"), or just provided as an array.  In the latter case, the package name will be retrieved
@@ -520,6 +535,9 @@ export interface ComponentResourceOptions extends ResourceOptions {
      * Note: do not provide both [provider] and [providers];
      */
     providers?: Record<string, ProviderResource> | ProviderResource[];
+
+    // !!!IMPORTANT!!! If you add a new field to this type, make sure to add test that verifies that
+    // mergeOptions works properly for it.
 }
 
 /**

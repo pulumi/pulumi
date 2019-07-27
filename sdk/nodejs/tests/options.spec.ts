@@ -41,6 +41,18 @@ describe("options", () => {
                 const result = mergeOptions({ id: "a" }, { id: "b" });
                 assert.strictEqual(result.id, "b");
             }));
+            it("overwrites promise-value from opts1 if given value in opts2", asyncTest(async () => {
+                const result: any = mergeOptions({ id: Promise.resolve("a") }, { id: "b" });
+                assert.strictEqual(await result.id.promise(), "b");
+            }));
+            it("overwrites value from opts1 if given promise-value in opts2", asyncTest(async () => {
+                const result: any = mergeOptions({ id: "a" }, { id: Promise.resolve("b") });
+                assert.strictEqual(await result.id.promise(), "b");
+            }));
+            it("overwrites promise-value from opts1 if given promise-value in opts2", asyncTest(async () => {
+                const result: any = mergeOptions({ id: Promise.resolve("a") }, { id: Promise.resolve("b") });
+                assert.strictEqual(await result.id.promise(), "b");
+            }));
         });
 
         describe("array", () => {
