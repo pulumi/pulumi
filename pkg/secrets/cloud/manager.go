@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
+	"github.com/pkg/errors"
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
@@ -31,10 +32,20 @@ import (
 
 const Type = "cloud"
 
+type cloudSecretsManagerState struct {
+	URL string `json:"url"`
+}
+
 type provider struct{}
 
 func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
-	return &manager{}, nil
+	var s cloudSecretsManagerState
+	if err := json.Unmarshal(state, &s); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling state")
+	}
+	return &manager{
+		url: s.URL,
+	}, nil
 }
 
 // NewProvider returns a new manager provider which hands back Base64SecretsManagers

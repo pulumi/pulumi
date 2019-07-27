@@ -86,7 +86,7 @@ func validateSecretsProvider(typ string) error {
 	)
 }
 
-func newCloudSecretsManager(stackName tokens.QName, configFile string, secretsProvider string) (secrets.Manager, error) {
+func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
