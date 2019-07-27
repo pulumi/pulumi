@@ -700,7 +700,7 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
     const dest = <any>{ ...opts1 };
     const source = <any>{ ...opts2 };
 
-    // Ensure provider/providers are all expanded into the `{ provName: prov }` form.
+    // Ensure provider/providers are all expanded into the `ProviderResource[]` form.
     // This makes merging simple.
     expandProviders(dest);
     expandProviders(source);
@@ -711,15 +711,8 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
         const destVal = dest[key];
         const sourceVal = source[key];
 
-        if (key === "providers") {
-            // Note: this expansion is safe to do as expandProviders will have made sure
-            // that both collections are in Record<string, ProviderResource> form.
-            dest[key] = { ...destVal, ...sourceVal };
-            continue;
-        }
-
-        // For dependsOn we might have singleton resources in both options bags.  We want to make
-        // sure we combine them into a collection.
+        // For 'dependsOn' we might have singleton resources in both options bags. We
+        // want to make sure we combine them into a collection.
         if (key === "dependsOn") {
             dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ true);
             continue;
@@ -730,7 +723,7 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
 
     // Now, if we are left with a .providers that is just a single key/value pair, then
     // collapse that down into .provider form.
-    collapseProviders(dest);
+    normalizeProviders(dest);
 
     return dest;
 }
@@ -745,29 +738,30 @@ function expandProviders(options: ComponentResourceOptions) {
         options.providers = [options.provider];
     }
 
-    // Convert 'providers' array to map form if we have an array.
-    if (Array.isArray(options.providers)) {
-        const result: Record<string, ProviderResource> = {};
-        for (const provider of options.providers) {
-            result[provider.getPackage()] = provider;
-        }
-
-        options.providers = result;
+    // Convert 'providers' map to array form.
+    if (options.providers && !Array.isArray(options.providers)) {
+        options.providers = Object.values(options.providers);
     }
 
     delete options.provider;
 }
 
-function collapseProviders(opts: ComponentResourceOptions) {
+function normalizeProviders(opts: ComponentResourceOptions) {
     // If we have only 0-1 providers, then merge that back down to the .provider field.
-    if (opts.providers) {
-        const keys = Object.keys(opts.providers);
-        if (keys.length === 0) {
+    const providers = <ProviderResource[]>opts.providers;
+    if (providers) {
+        if (providers.length === 0) {
             delete opts.providers;
         }
-        else if (keys.length === 1) {
-            opts.provider = (<any>opts.providers)[keys[0]];
+        else if (providers.length === 1) {
+            opts.provider = providers[0];
             delete opts.providers;
+        }
+        else {
+            opts.providers = {};
+            for (const res of providers) {
+                opts.providers[res.getPackage()] = res;
+            }
         }
     }
 }

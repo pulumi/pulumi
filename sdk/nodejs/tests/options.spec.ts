@@ -15,8 +15,6 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, concat, interpolate, output } from "../output";
-import * as runtime from "../runtime";
 import { ComponentResourceOptions, ProviderResource, merge, mergeOptions } from "../resource";
 import { asyncTest } from "./util";
 
