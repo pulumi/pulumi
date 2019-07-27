@@ -734,7 +734,11 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             throw new Error(`Unexpected promise/output in opts2.${key}`);
         }
 
-        dest[key] = merge(destVal, sourceVal);
+        // If either are an array, make a new array and merge the values into it.
+        // Otherwise, just overwrite the destination with the source value.
+        dest[key] = Array.isArray(destVal) || Array.isArray(sourceVal)
+            ? mergeArrays(destVal, sourceVal)
+            : sourceVal;
     }
 
     // Now, if we are left with a .providers that is just a single key/value pair, then
@@ -748,32 +752,11 @@ function isPromiseOrOutput(val: any): boolean {
     return val instanceof Promise || Output.isInstance(val);
 }
 
-function merge(dest: any, source: any): any {
-    // if the second options bag contained `prop: null` or `prop: undefined` then that overrides
-    // anything in the destination.
-
-    if (source === null || source === undefined) {
-        return source;
-    }
-
-    // if there's no destination value, the source value wins.
-    if (dest === null || dest === undefined) {
-        return source;
-    }
-
-    // If either are an array, make a new array and merge the values into it.
-    if (Array.isArray(source) || Array.isArray(dest)) {
-        return mergeArraysAndScalers(dest, source);
-    }
-
-    // In any other case, just override the destination with the source value.
-    return source;
-}
-
 /**
  * @internal For testing purposes only.
  */
 export function mergeDependsOn(dest: any, source: any): any {
+    // unwind any top level promise/outputs.
     if (isPromiseOrOutput(dest)) {
         return output(dest).apply(d => mergeDependsOn(d, source));
     }
@@ -782,7 +765,7 @@ export function mergeDependsOn(dest: any, source: any): any {
         return output(source).apply(s => mergeDependsOn(dest, s));
     }
 
-    return mergeArraysAndScalers(dest, source);
+    return mergeArrays(dest, source);
 }
 
 function expandProviders(options: ComponentResourceOptions) {
@@ -818,7 +801,7 @@ function collapseProviders(opts: ComponentResourceOptions) {
     }
 }
 
-function mergeArraysAndScalers(dest: any, source: any) {
+function mergeArrays(dest: any, source: any): any[] {
     const result: any[] = [];
     addToArray(result, dest);
     addToArray(result, source);
