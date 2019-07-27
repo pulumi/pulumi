@@ -17,7 +17,7 @@
 import * as assert from "assert";
 import { Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
-import { ComponentResourceOptions, ProviderResource, mergeDependsOn, mergeOptions } from "../resource";
+import { ComponentResourceOptions, ProviderResource, merge, mergeOptions } from "../resource";
 import { asyncTest } from "./util";
 
 describe("options", () => {
@@ -54,13 +54,13 @@ describe("options", () => {
                 const result = mergeOptions({ }, { ignoreChanges: ["a"] });
                 assert.deepStrictEqual(result.ignoreChanges, ["a"]);
             }));
-            it("overwrites value from opts1 if given null in opts2", asyncTest(async () => {
+            it("does nothing to value from opts1 if given null in opts2", asyncTest(async () => {
                 const result = mergeOptions({ ignoreChanges: ["a"] }, { ignoreChanges: null! });
-                assert.deepStrictEqual(result.ignoreChanges, null);
+                assert.deepStrictEqual(result.ignoreChanges, ["a"]);
             }));
-            it("overwrites value from opts1 if given undefined in opts2", asyncTest(async () => {
+            it("does nothing to value from opts1 if given undefined in opts2", asyncTest(async () => {
                 const result = mergeOptions({ ignoreChanges: ["a"] }, { ignoreChanges: undefined });
-                assert.deepStrictEqual(result.ignoreChanges, undefined);
+                assert.deepStrictEqual(result.ignoreChanges, ["a"]);
             }));
             it("merges values from opts1 if given value in opts2", asyncTest(async () => {
                 const result = mergeOptions({ ignoreChanges: ["a"] }, { ignoreChanges: ["b"] });
@@ -141,6 +141,10 @@ describe("options", () => {
         });
 
         describe("dependsOn", () => {
+            function mergeDependsOn(a: any, b: any): any {
+                return merge(a, b, /*alwaysCreateArray:*/ true);
+            }
+
             it("merges two scalers into array", () => {
                 const result = mergeDependsOn("a", "b");
                 assert.deepStrictEqual(result, ["a", "b"]);

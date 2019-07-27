@@ -718,27 +718,14 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             continue;
         }
 
-        // Due to the possibility of top level and nested Inputs for 'dependsOn' we have to handle
-        // that property specially.
+        // For dependsOn we might have singleton resources in both options bags.  We want to make
+        // sure we combine them into a collection.
         if (key === "dependsOn") {
-            dest[key] = mergeDependsOn(destVal, sourceVal);
+            dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ true);
             continue;
         }
 
-        // we should have no promises/outputs at top level for any other resource option properties.
-        if (isPromiseOrOutput(destVal)) {
-            throw new Error(`Unexpected promise/output in opts1.${key}`);
-        }
-
-        if (isPromiseOrOutput(sourceVal)) {
-            throw new Error(`Unexpected promise/output in opts2.${key}`);
-        }
-
-        // If either are an array, make a new array and merge the values into it.
-        // Otherwise, just overwrite the destination with the source value.
-        dest[key] = Array.isArray(destVal) || Array.isArray(sourceVal)
-            ? mergeArrays(destVal, sourceVal)
-            : sourceVal;
+        dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ false);
     }
 
     // Now, if we are left with a .providers that is just a single key/value pair, then
@@ -750,22 +737,6 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
 
 function isPromiseOrOutput(val: any): boolean {
     return val instanceof Promise || Output.isInstance(val);
-}
-
-/**
- * @internal For testing purposes only.
- */
-export function mergeDependsOn(dest: any, source: any): any {
-    // unwind any top level promise/outputs.
-    if (isPromiseOrOutput(dest)) {
-        return output(dest).apply(d => mergeDependsOn(d, source));
-    }
-
-    if (isPromiseOrOutput(source)) {
-        return output(source).apply(s => mergeDependsOn(dest, s));
-    }
-
-    return mergeArrays(dest, source);
 }
 
 function expandProviders(options: ComponentResourceOptions) {
@@ -799,6 +770,24 @@ function collapseProviders(opts: ComponentResourceOptions) {
             delete opts.providers;
         }
     }
+}
+
+/** @internal for testing purposes. */
+export function merge(dest: any, source: any, alwaysCreateArray: boolean): any {
+    // unwind any top level promise/outputs.
+    if (isPromiseOrOutput(dest)) {
+        return output(dest).apply(d => merge(d, source, alwaysCreateArray));
+    }
+
+    if (isPromiseOrOutput(source)) {
+        return output(source).apply(s => merge(dest, s, alwaysCreateArray));
+    }
+
+    // If either are an array, make a new array and merge the values into it.
+    // Otherwise, just overwrite the destination with the source value.
+    return alwaysCreateArray || Array.isArray(dest) || Array.isArray(source)
+        ? mergeArrays(dest, source)
+        : source;
 }
 
 function mergeArrays(dest: any, source: any): any[] {
