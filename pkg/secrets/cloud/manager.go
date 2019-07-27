@@ -12,22 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package awskms
+package cloud
 
 import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 
 	gosecrets "gocloud.dev/secrets"
-	_ "gocloud.dev/secrets/awskms" // driver for awskms://
+	_ "gocloud.dev/secrets/awskms"        // support for awskms://
+	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
+	_ "gocloud.dev/secrets/gcpkms"        // support for gcpkms://
+	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
 
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
 )
 
-const Type = "awskms"
+const Type = "cloud"
 
 type provider struct{}
 
@@ -40,23 +42,28 @@ func NewProvider() secrets.ManagerProvider {
 	return &provider{}
 }
 
-// NewAwsKmsSecretsManager returns a secrets manager that just base64 encodes instead of encrypting. Useful for testing.
-func NewAwsKmsSecretsManager() secrets.Manager {
-	return &manager{}
+// NewSecretsManager returns a secrets manager that just base64 encodes instead of encrypting. Useful for testing.
+func NewSecretsManager(url string) secrets.Manager {
+	return &manager{
+		url: url,
+	}
 }
 
-type manager struct{}
+type manager struct {
+	url string
+}
 
 func (m *manager) Type() string                         { return Type }
-func (m *manager) State() interface{}                   { return map[string]string{} }
-func (m *manager) Encrypter() (config.Encrypter, error) { return &awsKmsCrypter{}, nil }
-func (m *manager) Decrypter() (config.Decrypter, error) { return &awsKmsCrypter{}, nil }
+func (m *manager) State() interface{}                   { return map[string]string{"url": m.url} }
+func (m *manager) Encrypter() (config.Encrypter, error) { return &awsKmsCrypter{url: m.url}, nil }
+func (m *manager) Decrypter() (config.Decrypter, error) { return &awsKmsCrypter{url: m.url}, nil }
 
-type awsKmsCrypter struct{}
+type awsKmsCrypter struct {
+	url string
+}
 
 func (c *awsKmsCrypter) EncryptValue(s string) (string, error) {
-	fmt.Printf("encyrpting with awskms://alias/LukeTesting?region=us-west-2\n")
-	keeper, err := gosecrets.OpenKeeper(context.Background(), "awskms://alias/LukeTesting?region=us-west-2")
+	keeper, err := gosecrets.OpenKeeper(context.Background(), c.url)
 	if err != nil {
 		return "", err
 	}
@@ -66,13 +73,13 @@ func (c *awsKmsCrypter) EncryptValue(s string) (string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
+
 func (c *awsKmsCrypter) DecryptValue(s string) (string, error) {
-	fmt.Printf("decrypting with awskms://alias/LukeTesting?region=us-west-2\n")
 	ciphertext, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
 		return "", err
 	}
-	keeper, err := gosecrets.OpenKeeper(context.Background(), "awskms://alias/LukeTesting?region=us-west-2")
+	keeper, err := gosecrets.OpenKeeper(context.Background(), c.url)
 	if err != nil {
 		return "", err
 	}

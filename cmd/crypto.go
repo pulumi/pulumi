@@ -15,16 +15,17 @@ package cmd
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/secrets/awskms"
+	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -53,10 +54,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	}
 
 	if ps.SecretsProvider != "" {
-		switch ps.SecretsProvider {
-		case "awskms":
-			return newAwsKmsSecretsManager(s.Ref().Name(), stackConfigFile)
-		}
+		return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
 	}
 
 	if ps.EncryptionSalt != "" {
@@ -74,14 +72,21 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 }
 
 func validateSecretsProvider(typ string) error {
-	if typ != "default" && typ != "passphrase" && typ != "awskms" {
-		return errors.Errorf("unknown secrets provider type '%s' (supported values: default, passphrase, awskms)", typ)
+	kind := strings.SplitN(typ, ":", 2)[0]
+	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
+	for _, supportedKind := range supportedKinds {
+		if kind == supportedKind {
+			return nil
+		}
 	}
-
-	return nil
+	return errors.Errorf(
+		"unknown secrets provider type '%s' (supported values: %s)",
+		kind,
+		strings.Join(supportedKinds, ","),
+	)
 }
 
-func newAwsKmsSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
+func newCloudSecretsManager(stackName tokens.QName, configFile string, secretsProvider string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
@@ -96,9 +101,9 @@ func newAwsKmsSecretsManager(stackName tokens.QName, configFile string) (secrets
 	if err != nil {
 		return nil, err
 	}
-	info.SecretsProvider = "awskms"
+	info.SecretsProvider = secretsProvider
 	if err = info.Save(configFile); err != nil {
 		return nil, err
 	}
-	return awskms.NewAwsKmsSecretsManager(), nil
+	return cloud.NewSecretsManager(secretsProvider), nil
 }
