@@ -369,12 +369,12 @@ def _merge_options(
     dest = copy.copy(opts1)
     source = copy.copy(opts2)
 
-    # Ensure provider/providers are all expanded into the `{ provName: prov }` form.
+    # Ensure provider/providers are all expanded into the `List[ResourceProvider]` form.
     # This makes merging simple.
     _expand_providers(dest)
     _expand_providers(source)
-    dest.providers = {**dest.providers, **source.providers}
 
+    dest.providers = _merge_lists(dest.providers, source.providers)
     dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
     dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
     dest.aliases = _merge_lists(dest.aliases, source.aliases)
@@ -400,27 +400,27 @@ def _expand_providers(options: 'ResourceOptions'):
     if options.provider is not None:
         options.providers = [options.provider]
 
-    if isinstance(options.providers, list):
-        result = {}
-        for p in options.providers:
-            result[p.package] = p
-
-        options.providers = result
-
-    if options.providers is None:
-        options.providers = {}
+    # Convert 'providers' map to list form.
+    if options.providers is not None and not isinstance(options.providers, list):
+        options.providers = options.providers.values()
 
     options.provider = None
 
 
 def _collapse_providers(opts: 'ResourceOptions'):
     # If we have only 0-1 providers, then merge that back down to the .provider field.
-    if opts.providers is not None:
-        if not opts.providers:
+    providers: List['ProviderResource'] = opts.providers
+    if providers is not None:
+        provider_length = len(providers)
+        if provider_length == 0:
             opts.providers = None
-        elif len(opts.providers) == 1:
-            opts.provider = next(iter(opts.providers.values()))
+        elif provider_length == 1:
+            opts.provider = next(iter(providers.values()))
             opts.providers = None
+        else:
+            opts.providers = {}
+            for prov in providers:
+                opts.providers[prov.package] = prov
 
 
 def _merge_lists(dest, source):
