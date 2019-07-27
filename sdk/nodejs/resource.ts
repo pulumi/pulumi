@@ -785,16 +785,14 @@ export function merge(dest: any, source: any, alwaysCreateArray: boolean): any {
 
     // If either are an array, make a new array and merge the values into it.
     // Otherwise, just overwrite the destination with the source value.
-    return alwaysCreateArray || Array.isArray(dest) || Array.isArray(source)
-        ? mergeArrays(dest, source)
-        : source;
-}
+    if (alwaysCreateArray || Array.isArray(dest) || Array.isArray(source)) {
+        const result: any[] = [];
+        addToArray(result, dest);
+        addToArray(result, source);
+        return result;
+    }
 
-function mergeArrays(dest: any, source: any): any[] {
-    const result: any[] = [];
-    addToArray(result, dest);
-    addToArray(result, source);
-    return result;
+    return source;
 }
 
 function addToArray(resultArray: any[], value: any) {
