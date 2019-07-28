@@ -343,9 +343,9 @@ class ResourceOptions:
                         "'depends_on' was passed a value that was not a Resource.")
 
 
-    def merge_options(self, other: 'ResourceOptions') -> 'ResourceOptions':
+    def merge(self, other: 'ResourceOptions') -> 'ResourceOptions':
         """
-        merge_options produces a new ResourceOptions object with the respective attributes of this
+        merge produces a new ResourceOptions object with the respective attributes of this
         instance in it with the attributes of `other` merged over them.
 
         Both this options instance and the `other` options instance will be unchanged.
