@@ -3,6 +3,8 @@ CHANGELOG
 
 ## Unreleased
 
+## 0.17.27 (2019-07-29)
+
 - Fix an error message from the logging subsystem which was introduced in v0.17.26
   [#2989](https://github.com/pulumi/pulumi/pull/2997)
 
