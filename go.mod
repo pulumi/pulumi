@@ -34,7 +34,7 @@ require (
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pkg/errors v0.8.1
-	github.com/pulumi/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/pulumi/glog v0.0.0-20180820174630-7eaa6ffb71e4
 	github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54
 	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
