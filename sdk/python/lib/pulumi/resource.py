@@ -103,6 +103,7 @@ bit confusing and may incorrectly look like something that could be removed with
 semantics.
 """
 
+
 class Alias:
     """
     Alias is a partial description of prior named used for a resource. It can be processed in the
@@ -209,7 +210,8 @@ class ResourceOptions:
 
     parent: Optional['Resource']
     """
-    If provided, the currently-constructing resource should be the child of the provided parent resource.
+    If provided, the currently-constructing resource should be the child of the provided parent
+    resource.
     """
 
     depends_on: Optional[List['Resource']]
@@ -229,12 +231,13 @@ class ResourceOptions:
 
     provider: Optional['ProviderResource']
     """
-    An optional provider to use for this resource's CRUD operations. If no provider is supplied, the default
-    provider for the resource's package will be used. The default provider is pulled from the parent's
-    provider bag (see also ResourceOptions.providers).
+    An optional provider to use for this resource's CRUD operations. If no provider is supplied, the
+    default provider for the resource's package will be used. The default provider is pulled from
+    the parent's provider bag (see also ResourceOptions.providers).
     """
 
-    providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]
+    providers: Union[Mapping[str, 'ProviderResource'],
+                     List['ProviderResource']]
     """
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
@@ -246,9 +249,9 @@ class ResourceOptions:
 
     version: Optional[str]
     """
-    An optional version. If provided, the engine loads a provider with exactly the requested version to operate on this
-    resource. This version overrides the version information inferred from the current package and should rarely be
-    used.
+    An optional version. If provided, the engine loads a provider with exactly the requested version
+    to operate on this resource. This version overrides the version information inferred from the
+    current package and should rarely be used.
     """
 
     aliases: Optional[List['Input[Union[str, Alias]]']]
@@ -256,11 +259,11 @@ class ResourceOptions:
     An optional list of aliases to treat this resource as matching.
     """
 
-    additional_secret_outputs: [List[str]]
+    additional_secret_outputs: Optional[List[str]]
     """
-    The names of outputs for this resource that should be treated as secrets. This augments the list that
-    the resource provider and pulumi engine already determine based on inputs to your resource. It can be used
-    to mark certain ouputs as a secrets on a per resource basis.
+    The names of outputs for this resource that should be treated as secrets. This augments the list
+    that the resource provider and pulumi engine already determine based on inputs to your resource.
+    It can be used to mark certain outputs as a secrets on a per resource basis.
     """
 
     custom_timeouts: Optional['CustomTimeouts']
@@ -275,9 +278,10 @@ class ResourceOptions:
 
     import_: Optional[str]
     """
-    When provided with a resource ID, import indicates that this resource's provider should import its state from the
-    cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's current
-    state. Once a resource has been imported, the import property must be removed from the resource's options.
+    When provided with a resource ID, import indicates that this resource's provider should import
+    its state from the cloud resource with the given ID. The inputs to the resource's constructor
+    must align with the resource's current state. Once a resource has been imported, the import
+    property must be removed from the resource's options.
     """
 
     # pylint: disable=redefined-builtin
@@ -335,8 +339,101 @@ class ResourceOptions:
         if depends_on is not None:
             for dep in depends_on:
                 if not isinstance(dep, Resource):
-                    raise Exception("'dependsOn' was passed a value that was not a Resource.")
+                    raise Exception(
+                        "'depends_on' was passed a value that was not a Resource.")
 
+
+    def merge(self, other: 'ResourceOptions') -> 'ResourceOptions':
+        """
+        merge produces a new ResourceOptions object with the respective attributes of this
+        instance in it with the attributes of `other` merged over them.
+
+        Both this options instance and the `other` options instance will be unchanged.
+
+        Conceptually attributes merging follows these basic rules:
+         1. if the attributes is a collection, the final value will be a collection containing the
+            values from each options object. Both original collections in each options object will
+            be unchanged.
+         2. Simple scaler values from `other` (i.e. strings, numbers, bools) will replace the values
+            from this.
+         3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
+            as collections, even if only a single value was provided.
+         4. Attributes with value 'None' will not be copied over.
+        """
+        return _merge_options(self, other)
+
+def _merge_options(
+        opts1: 'ResourceOptions' = ResourceOptions(),
+        opts2: 'ResourceOptions' = ResourceOptions()) -> 'ResourceOptions':
+
+    dest = copy.copy(opts1)
+    source = copy.copy(opts2)
+
+    # Ensure provider/providers are all expanded into the `List[ResourceProvider]` form.
+    # This makes merging simple.
+    _expand_providers(dest)
+    _expand_providers(source)
+
+    dest.providers = _merge_lists(dest.providers, source.providers)
+    dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
+    dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
+    dest.aliases = _merge_lists(dest.aliases, source.aliases)
+    dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, source.additional_secret_outputs)
+
+    dest.parent = dest.parent if source.parent is None else source.parent
+    dest.protect = dest.protect if source.protect is None else source.protect
+    dest.delete_before_replace = dest.delete_before_replace if source.delete_before_replace is None else source.delete_before_replace
+    dest.version = dest.version if source.version is None else source.version
+    dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
+    dest.id = dest.id if source.id is None else source.id
+    dest.import_ = dest.import_ if source.import_ is None else source.import_
+
+    # Now, if we are left with a .providers that is just a single key/value pair, then
+    # collapse that down into .provider form.
+    _collapse_providers(dest)
+
+    return dest
+
+
+def _expand_providers(options: 'ResourceOptions'):
+    # Move 'provider' up to 'providers' if we have it.
+    if options.provider is not None:
+        options.providers = [options.provider]
+
+    # Convert 'providers' map to list form.
+    if options.providers is not None and not isinstance(options.providers, list):
+        options.providers = options.providers.values()
+
+    options.provider = None
+
+
+def _collapse_providers(opts: 'ResourceOptions'):
+    # If we have only 0-1 providers, then merge that back down to the .provider field.
+    providers: List['ProviderResource'] = opts.providers
+    if providers is not None:
+        provider_length = len(providers)
+        if provider_length == 0:
+            opts.providers = None
+        elif provider_length == 1:
+            opts.provider = next(iter(providers.values()))
+            opts.providers = None
+        else:
+            opts.providers = {}
+            for prov in providers:
+                opts.providers[prov.package] = prov
+
+
+def _merge_lists(dest, source):
+    if dest is None:
+        dest = []
+
+    if source is None:
+        source = []
+
+    return dest + source
+
+# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
+# works properly for it.
 class Resource:
     """
     Resource represents a class whose CRUD operations are implemented by a provider plugin.
@@ -368,6 +465,9 @@ class Resource:
     The name assigned to the resource at construction.
     """
 
+# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
+# works properly for it.
+
     def __init__(self,
                  t: str,
                  name: str,
@@ -389,7 +489,8 @@ class Resource:
         if not isinstance(t, str):
             raise TypeError('Expected resource type to be a string')
         if not name:
-            raise TypeError('Missing resource name argument (for URN creation)')
+            raise TypeError(
+                'Missing resource name argument (for URN creation)')
         if not isinstance(name, str):
             raise TypeError('Expected resource name to be a string')
         if opts is None:
@@ -417,7 +518,8 @@ class Resource:
 
             opts.aliases = opts.aliases.copy()
             for parent_alias in opts.parent._aliases:
-                opts.aliases.append(inherited_child_alias(name, opts.parent._name, parent_alias, t))
+                opts.aliases.append(inherited_child_alias(
+                    name, opts.parent._name, parent_alias, t))
 
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
@@ -448,16 +550,17 @@ class Resource:
         self._aliases = []
         if opts.aliases is not None:
             for alias in opts.aliases:
-                self._aliases.append(collapse_alias_to_urn(alias, name, t, opts.parent))
+                self._aliases.append(collapse_alias_to_urn(
+                    alias, name, t, opts.parent))
 
         if opts.id is not None:
             # If this resource already exists, read its state rather than registering it anow.
             if not custom:
-                raise Exception("Cannot read an existing resource unless it has a custom provider")
+                raise Exception(
+                    "Cannot read an existing resource unless it has a custom provider")
             read_resource(self, t, name, props, opts)
         else:
             register_resource(self, t, name, custom, props, opts)
-
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
@@ -516,14 +619,13 @@ class Resource:
         return self._providers.get(pkg)
 
 
-
 @known_types.custom_resource
 class CustomResource(Resource):
     """
-    CustomResource is a resource whose create, read, update, and delete (CRUD) operations are managed
-    by performing external operations on some physical entity.  The engine understands how to diff
-    and perform partial updates of them, and these CRUD operations are implemented in a dynamically
-    loaded plugin for the defining package.
+    CustomResource is a resource whose create, read, update, and delete (CRUD) operations are
+    managed by performing external operations on some physical entity.  The engine understands how
+    to diff and perform partial updates of them, and these CRUD operations are implemented in a
+    dynamically loaded plugin for the defining package.
     """
 
     id: 'Output[str]'
@@ -537,7 +639,6 @@ class CustomResource(Resource):
     Private field containing the type ID for this object. Useful for implementing `isInstance` on
     classes that inherit from `CustomResource`.
     """
-
 
     def __init__(self,
                  t: str,
@@ -557,9 +658,11 @@ class CustomResource(Resource):
 
 class ComponentResource(Resource):
     """
-    ComponentResource is a resource that aggregates one or more other child resources into a higher level
-    abstraction.  The component itself is a resource, but does not require custom CRUD operations for provisioning.
+    ComponentResource is a resource that aggregates one or more other child resources into a higher
+    level abstraction.  The component itself is a resource, but does not require custom CRUD
+    operations for provisioning.
     """
+
     def __init__(self,
                  t: str,
                  name: str,
@@ -597,7 +700,6 @@ class ProviderResource(CustomResource):
     package is the name of the package this is provider for.  Common examples are "aws" and "azure".
     """
 
-
     def __init__(self,
                  pkg: str,
                  name: str,
@@ -612,9 +714,11 @@ class ProviderResource(CustomResource):
         """
 
         if opts is not None and opts.provider is not None:
-            raise TypeError("Explicit providers may not be used with provider resources")
+            raise TypeError(
+                "Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
-        CustomResource.__init__(self, f"pulumi:providers:{pkg}", name, props, opts)
+        CustomResource.__init__(
+            self, f"pulumi:providers:{pkg}", name, props, opts)
         self.package = pkg
 
 
