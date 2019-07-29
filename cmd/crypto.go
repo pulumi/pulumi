@@ -53,7 +53,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		return nil, err
 	}
 
-	if ps.SecretsProvider != "default" && ps.SecretsProvider != "passphrase" {
+	if ps.SecretsProvider != "default" && ps.SecretsProvider != "passphrase" && ps.SecretsProvider != "" {
 		return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
 	}
 
