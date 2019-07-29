@@ -3,6 +3,9 @@ CHANGELOG
 
 ## Unreleased
 
+- Fix an error message from the logging subsystem which was introduced in v0.17.26
+  [#2989](https://github.com/pulumi/pulumi/pull/2997)
+
 ## 0.17.26 (2019-07-26)
 
 - Add `get_object`, `require_object`, `get_secret_object` and `require_secret_object` APIs to Python
