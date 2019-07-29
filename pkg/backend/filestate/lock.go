@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -297,6 +298,7 @@ func (b *lockableBackend) ListStacks(ctx context.Context,
 	projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
 	return b.lb.ListStacks(ctx, projectFilter)
 }
+
 func (b *lockableBackend) Query(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) result.Result {
 	return b.lb.Query(ctx, stackRef, op)
@@ -322,11 +324,18 @@ func (b *lockableBackend) GetStackTags(ctx context.Context,
 	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
 	return b.lb.GetStackTags(ctx, stackRef)
 }
+
 func (b *lockableBackend) Logout() error {
 	return b.lb.Logout()
 }
+
 func (b *lockableBackend) CurrentUser() (string, error) {
 	return b.lb.CurrentUser()
+}
+
+func (b *lockableBackend) GetPolicyPack(ctx context.Context, policyPack string,
+	d diag.Sink) (backend.PolicyPack, error) {
+	return b.lb.GetPolicyPack(ctx, policyPack, d)
 }
 
 func (b *lockableBackend) Name() string {

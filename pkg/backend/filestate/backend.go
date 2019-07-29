@@ -143,10 +143,10 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 	}
 
 	return NewLockableBackend(&localBackend{
-		d:      d,
+		d:           d,
 		originalURL: originalURL,
-		url:    u,
-		bucket: &wrappedBucket{bucket: bucket},
+		url:         u,
+		bucket:      &wrappedBucket{bucket: bucket},
 	}), nil
 }
 
