@@ -95,8 +95,7 @@ export async function serializeFunction(
 }
 
 /**
- * @deprecated This function has been replaced by `serializeFunction`, which accepts additional parameters and returns
- * more details about the serialized function.  This form will be removed in a future release of this package.
+ * @deprecated Please use 'serializeFunction' instead."
  */
 export async function serializeFunctionAsync(
         func: Function,

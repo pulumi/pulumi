@@ -89,7 +89,7 @@ export async function computeCodePaths(
 
     let options: CodePathOptions;
     if (Array.isArray(optionsOrExtraIncludePaths)) {
-        log.warn("Passing a 'string[]' to 'function computeCodePaths' is deprecated.\nPlease switch to the 'computeCodePaths(options?: CodePathOptions)' overload.");
+        log.warn("'function computeCodePaths(string[])' is deprecated. Use the [computeCodePaths] overload that takes a [CodePathOptions] instead.");
         options = {
             extraIncludePaths: optionsOrExtraIncludePaths,
             extraIncludePackages,
