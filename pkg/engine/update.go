@@ -356,7 +356,7 @@ func (acts *updateActions) OnResourceStepPost(
 		}
 
 		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetPlanApplyFailedError(errorURN), err)
+		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
 		if reportStep {
 			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 		}
