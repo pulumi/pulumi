@@ -96,11 +96,8 @@ export async function computeCodePaths(
             extraExcludePackages,
         };
     }
-    else if (optionsOrExtraIncludePaths) {
-        options = optionsOrExtraIncludePaths;
-    }
     else {
-        options = {};
+        options = optionsOrExtraIncludePaths || {};
     }
 
     return computeCodePathsWorker(options);
