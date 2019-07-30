@@ -95,7 +95,7 @@ export async function serializeFunction(
 }
 
 /**
- * @deprecated Please use 'serializeFunction' instead."
+ * @deprecated Please use 'serializeFunction' instead.
  */
 export async function serializeFunctionAsync(
         func: Function,
