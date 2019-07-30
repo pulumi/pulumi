@@ -138,15 +138,9 @@ func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, e
 	return sm, nil
 }
 
-type provider struct{}
-
-var _ secrets.ManagerProvider = &provider{}
-
-func NewProvider() secrets.ManagerProvider {
-	return &provider{}
-}
-
-func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
+// NewPassphaseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
+// given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE.
+func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s localSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling state")

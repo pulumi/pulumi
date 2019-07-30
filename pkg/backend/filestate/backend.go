@@ -638,7 +638,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	snap, err := stack.DeserializeUntypedDeployment(deployment)
+	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}

@@ -159,7 +159,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(untypedDeployment)
+	deployment, err := DeserializeUntypedDeployment(untypedDeployment, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
@@ -170,7 +170,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(untypedDeployment)
+	deployment, err := DeserializeUntypedDeployment(untypedDeployment, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)

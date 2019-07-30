@@ -233,7 +233,7 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		snap, err := stack.DeserializeUntypedDeployment(&deployment)
+		snap, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

@@ -16,24 +16,12 @@ package b64
 
 import (
 	"encoding/base64"
-	"encoding/json"
 
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
 )
 
 const Type = "b64"
-
-type provider struct{}
-
-func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
-	return &manager{}, nil
-}
-
-// NewProvider returns a new manager provider which hands back Base64SecretsManagers
-func NewProvider() secrets.ManagerProvider {
-	return &provider{}
-}
 
 // NewBase64SecretsManager returns a secrets manager that just base64 encodes instead of encrypting. Useful for testing.
 func NewBase64SecretsManager() secrets.Manager {
