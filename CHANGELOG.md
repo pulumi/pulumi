@@ -3,6 +3,8 @@ CHANGELOG
 
 ## Unreleased
 
+- Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
+
 ## 0.17.27 (2019-07-29)
 
 - Fix an error message from the logging subsystem which was introduced in v0.17.26
