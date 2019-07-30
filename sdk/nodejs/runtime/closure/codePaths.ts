@@ -18,6 +18,7 @@ import * as fs from "fs";
 import * as normalize from "normalize-package-data";
 import * as readPackageTree from "read-package-tree";
 import * as upath from "upath";
+import { log } from "../..";
 import * as asset from "../../asset";
 import { ResourceError } from "../../errors";
 import { Resource } from "../../resource";
@@ -54,25 +55,26 @@ export interface CodePathOptions {
     logResource?: Resource;
 }
 
-// computeCodePaths computes the local node_module paths to include in an uploaded cloud 'Lambda'.
-// Specifically, it will examine the package.json for the caller's code, and will transitively walk
-// it's 'dependencies' section to determine what packages should be included.
-//
-// During this walk, if a package is encountered that contains a `"pulumi": { ... }` section then
-// the normal `"dependencies": { ... }` section of that package will not be included.  These are
-// "pulumi" packages, and those dependencies are only intended for use at deployment time. However,
-// a "pulumi" package can also specify package that should be available at cloud-runtime.  These
-// packages are found in a `"runtimeDependencies": { ... }` section in the package.json file with
-// the same format as the normal "dependencies" section.
-//
-// See [CodePathOptions] for information on ways to control and configure the final set of paths
-// included in the resultant asset/archive map.
-//
-// Note: this functionality is specifically intended for use by downstream library code that is
-// determining what is needed for a cloud-lambda.  i.e. the aws.serverless.Function or
-// azure.serverless.FunctionApp libraries.  In general, other clients should not need to use this
-// helper.
-
+/**
+ * computeCodePaths computes the local node_module paths to include in an uploaded cloud 'Lambda'.
+ * Specifically, it will examine the package.json for the caller's code, and will transitively walk
+ * it's 'dependencies' section to determine what packages should be included.
+ *
+ * During this walk, if a package is encountered that contains a `"pulumi": { ... }` section then
+ * the normal `"dependencies": { ... }` section of that package will not be included.  These are
+ * "pulumi" packages, and those dependencies are only intended for use at deployment time. However,
+ * a "pulumi" package can also specify package that should be available at cloud-runtime.  These
+ * packages are found in a `"runtimeDependencies": { ... }` section in the package.json file with
+ * the same format as the normal "dependencies" section.
+ *
+ * See [CodePathOptions] for information on ways to control and configure the final set of paths
+ * included in the resultant asset/archive map.
+ *
+ * Note: this functionality is specifically intended for use by downstream library code that is
+ * determining what is needed for a cloud-lambda.  i.e. the aws.serverless.Function or
+ * azure.serverless.FunctionApp libraries.  In general, other clients should not need to use this
+ * helper.
+ */
 export async function computeCodePaths(options?: CodePathOptions): Promise<Map<string, asset.Asset | asset.Archive>>;
 
 /**
@@ -87,17 +89,15 @@ export async function computeCodePaths(
 
     let options: CodePathOptions;
     if (Array.isArray(optionsOrExtraIncludePaths)) {
+        log.warn("'function computeCodePaths(string[])' is deprecated. Use the [computeCodePaths] overload that takes a [CodePathOptions] instead.");
         options = {
             extraIncludePaths: optionsOrExtraIncludePaths,
             extraIncludePackages,
             extraExcludePackages,
         };
     }
-    else if (optionsOrExtraIncludePaths) {
-        options = optionsOrExtraIncludePaths;
-    }
     else {
-        options = {};
+        options = optionsOrExtraIncludePaths || {};
     }
 
     return computeCodePathsWorker(options);

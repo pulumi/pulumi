@@ -3,6 +3,14 @@ CHANGELOG
 
 ## Unreleased
 
+### Compatibility
+
+* Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
+  off of these functions as they will be removed in a future release.  The deprecated functions are.
+  1. `function computeCodePaths(extraIncludePaths?: string[], ...)`.  Use the `computeCodePaths`
+     overload that takes a `CodePathOptions` instead.
+  2. `function serializeFunctionAsync`. Please use `serializeFunction` instead.
+
 ## 0.17.27 (2019-07-29)
 
 - Fix an error message from the logging subsystem which was introduced in v0.17.26
