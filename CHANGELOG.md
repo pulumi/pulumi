@@ -8,6 +8,11 @@ CHANGELOG
 - Fix an error message from the logging subsystem which was introduced in v0.17.26
   [#2989](https://github.com/pulumi/pulumi/pull/2997)
 
+- Add support for property paths in `ignoreChanges`, and pass `ignoreChanges` to providers
+  [#3005](https://github.com/pulumi/pulumi/pull/3005). This allows differences between the actual and desired
+  state of the resource that are not captured by differences in the resource's inputs to be ignored (including
+  differences that may occur due to resource provider bugs).
+
 ## 0.17.26 (2019-07-26)
 
 - Add `get_object`, `require_object`, `get_secret_object` and `require_secret_object` APIs to Python
