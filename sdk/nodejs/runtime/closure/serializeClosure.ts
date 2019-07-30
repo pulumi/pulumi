@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { log } from "../..";
 import { Resource } from "../../resource";
 import * as closure from "./createClosure";
 import * as utils from "./utils";
@@ -100,6 +101,8 @@ export async function serializeFunction(
 export async function serializeFunctionAsync(
         func: Function,
         serialize?: (o: any) => boolean): Promise<string> {
+    log.warn("'function serializeFunctionAsync' is deprecated.  Please use 'serializeFunction' instead.");
+
     serialize = serialize || (_ => true);
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize, /*logResource:*/ undefined);
     return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false).text;
