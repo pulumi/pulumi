@@ -348,19 +348,21 @@ func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCom
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
-	plan         *Plan                          // the current plan.
-	reg          RegisterResourceEvent          // the registration intent to convey a URN back to.
-	old          *resource.State                // the state of the existing resource.
-	new          *resource.State                // the newly computed state of the resource after updating.
-	stables      []resource.PropertyKey         // an optional list of properties that won't change during this update.
-	diffs        []resource.PropertyKey         // the keys causing a diff.
-	detailedDiff map[string]plugin.PropertyDiff // the structured diff.
+	plan          *Plan                          // the current plan.
+	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
+	old           *resource.State                // the state of the existing resource.
+	new           *resource.State                // the newly computed state of the resource after updating.
+	stables       []resource.PropertyKey         // an optional list of properties that won't change during this update.
+	diffs         []resource.PropertyKey         // the keys causing a diff.
+	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
+	ignoreChanges []string                       // a list of property paths to ignore when updating.
 }
 
 var _ Step = (*UpdateStep)(nil)
 
 func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
-	new *resource.State, stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff) Step {
+	new *resource.State, stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
+	ignoreChanges []string) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -374,13 +376,14 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(!new.External)
 	contract.Assert(!old.External)
 	return &UpdateStep{
-		plan:         plan,
-		reg:          reg,
-		old:          old,
-		new:          new,
-		stables:      stables,
-		diffs:        diffs,
-		detailedDiff: detailedDiff,
+		plan:          plan,
+		reg:           reg,
+		old:           old,
+		new:           new,
+		stables:       stables,
+		diffs:         diffs,
+		detailedDiff:  detailedDiff,
+		ignoreChanges: ignoreChanges,
 	}
 }
 
@@ -411,7 +414,8 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			}
 
 			// Update to the combination of the old "all" state, but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs, s.new.CustomTimeouts.Update)
+			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
+				s.new.CustomTimeouts.Update, s.ignoreChanges)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, upderr
@@ -713,17 +717,18 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 }
 
 type ImportStep struct {
-	plan         *Plan                          // the current plan.
-	reg          RegisterResourceEvent          // the registration intent to convey a URN back to.
-	original     *resource.State                // the original resource, if this is an import-replace.
-	old          *resource.State                // the state of the resource fetched from the provider.
-	new          *resource.State                // the newly computed state of the resource after importing.
-	replacing    bool                           // true if we are replacing a Pulumi-managed resource.
-	diffs        []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
-	detailedDiff map[string]plugin.PropertyDiff // the structured property diff.
+	plan          *Plan                          // the current plan.
+	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
+	original      *resource.State                // the original resource, if this is an import-replace.
+	old           *resource.State                // the state of the resource fetched from the provider.
+	new           *resource.State                // the newly computed state of the resource after importing.
+	replacing     bool                           // true if we are replacing a Pulumi-managed resource.
+	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
+	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
+	ignoreChanges []string                       // a list of property paths to ignore when updating.
 }
 
-func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) Step {
+func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State, ignoreChanges []string) Step {
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID != "")
@@ -732,13 +737,16 @@ func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) S
 	contract.Assert(!new.External)
 
 	return &ImportStep{
-		plan: plan,
-		reg:  reg,
-		new:  new,
+		plan:          plan,
+		reg:           reg,
+		new:           new,
+		ignoreChanges: ignoreChanges,
 	}
 }
 
-func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, new *resource.State) Step {
+func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, new *resource.State,
+	ignoreChanges []string) Step {
+
 	contract.Assert(original != nil)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
@@ -748,11 +756,12 @@ func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, n
 	contract.Assert(!new.External)
 
 	return &ImportStep{
-		plan:      plan,
-		reg:       reg,
-		original:  original,
-		new:       new,
-		replacing: true,
+		plan:          plan,
+		reg:           reg,
+		original:      original,
+		new:           new,
+		replacing:     true,
+		ignoreChanges: ignoreChanges,
 	}
 }
 
@@ -819,7 +828,8 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = inputs
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import.
-	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview)
+	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
+		s.ignoreChanges)
 	if err != nil {
 		return rst, nil, err
 	}

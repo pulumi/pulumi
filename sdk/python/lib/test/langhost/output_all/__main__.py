@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pulumi import Output, CustomResource
+from pulumi import Output, CustomResource, export
 
 class MyResource(CustomResource):
     number: Output[str]
@@ -43,3 +43,7 @@ res2.number.apply(lambda n: assert_eq(n, 3))
 # Output.all combines a list of outputs into an output of a list.
 resSum = Output.all(res1.number, res2.number).apply(lambda l: l[0] + l[1])
 FinalResource("testResource3", resSum)
+
+# Test additional Output helpers
+hello_world = Output.concat("Hello ", Output.from_input("world!")).apply(lambda s: assert_eq(s, "Hello world!"))
+export("helloworld", hello_world)

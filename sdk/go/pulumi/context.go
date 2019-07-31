@@ -21,10 +21,10 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/pulumi/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
@@ -149,20 +149,20 @@ func (ctx *Context) Invoke(tok string, args map[string]interface{}, opts ...Invo
 	defer ctx.endRPC()
 
 	// Now, invoke the RPC to the provider synchronously.
-	glog.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(args))
+	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(args))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
 		Tok:      tok,
 		Args:     rpcArgs,
 		Provider: provider,
 	})
 	if err != nil {
-		glog.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
+		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
 		return nil, err
 	}
 
 	// If there were any failures from the provider, return them.
 	if len(resp.Failures) > 0 {
-		glog.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
+		logging.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
 		var ferr error
 		for _, failure := range resp.Failures {
 			ferr = multierror.Append(ferr,
@@ -173,7 +173,7 @@ func (ctx *Context) Invoke(tok string, args map[string]interface{}, opts ...Invo
 
 	// Otherwsie, simply unmarshal the output properties and return the result.
 	outs, err := unmarshalOutputs(resp.Return)
-	glog.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outs), err)
+	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outs), err)
 	return outs, err
 }
 
@@ -214,7 +214,7 @@ func (ctx *Context) ReadResource(
 			return
 		}
 
-		glog.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+		logging.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 		resp, err := ctx.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
 			Type:       t,
 			Name:       name,
@@ -223,9 +223,9 @@ func (ctx *Context) ReadResource(
 			Provider:   inputs.provider,
 		})
 		if err != nil {
-			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
 		} else {
-			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
+			logging.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
 		}
 		if resp != nil {
 			urn, resID = resp.Urn, string(id)
@@ -281,7 +281,7 @@ func (ctx *Context) RegisterResource(
 			return
 		}
 
-		glog.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+		logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 		resp, err := ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 			Type:                 t,
 			Name:                 name,
@@ -297,9 +297,9 @@ func (ctx *Context) RegisterResource(
 			CustomTimeouts:       inputs.customTimeouts,
 		})
 		if err != nil {
-			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
 		} else {
-			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
+			logging.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
 		}
 		if resp != nil {
 			urn, resID = resp.Urn, resp.Id
@@ -659,7 +659,7 @@ func (ctx *Context) RegisterResourceOutputs(urn URN, outs map[string]interface{}
 	}
 
 	// Register the outputs
-	glog.V(9).Infof("RegisterResourceOutputs(%s): RPC call being made", urn)
+	logging.V(9).Infof("RegisterResourceOutputs(%s): RPC call being made", urn)
 	_, err = ctx.monitor.RegisterResourceOutputs(ctx.ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     string(urn),
 		Outputs: outsMarshalled,
@@ -668,7 +668,7 @@ func (ctx *Context) RegisterResourceOutputs(urn URN, outs map[string]interface{}
 		return errors.Wrap(err, "registering outputs")
 	}
 
-	glog.V(9).Infof("RegisterResourceOutputs(%s): success", urn)
+	logging.V(9).Infof("RegisterResourceOutputs(%s): success", urn)
 
 	// Signal the completion of this RPC and notify any potential awaiters.
 	ctx.endRPC()
