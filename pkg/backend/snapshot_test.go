@@ -421,7 +421,7 @@ func TestVexingDeployment(t *testing.T) {
 	// cPrime now exists, c is now pending deletion
 	// dPrime now depends on cPrime, which got replaced
 	dPrime := NewResource(string(d.URN), cPrime.URN)
-	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil, nil, nil))
+	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil, nil, nil, nil))
 
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
 	assert.Len(t, lastSnap.Resources, 6)
@@ -581,7 +581,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil)
+	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -620,7 +620,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil)
+	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
