@@ -3,9 +3,11 @@ CHANGELOG
 
 ## Unreleased
 
+- Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
+
 ### Compatibility
 
-* Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
+- Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
   off of these functions as they will be removed in a future release.  The deprecated functions are.
   1. `function computeCodePaths(extraIncludePaths?: string[], ...)`.  Use the `computeCodePaths`
      overload that takes a `CodePathOptions` instead.
