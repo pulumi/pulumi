@@ -3,6 +3,14 @@ CHANGELOG
 
 ## Unreleased
 
+- Add support for additional Pulumi secrets providers using AWS KMS, Azure KeyVault, Google Cloud
+  KMS and HashiCorp Vault.  These secrets providers can be configured at stack creation time using
+  `pulumi stack init b --secrets-provider="awskms://alias/LukeTesting?region=us-west-2"`, and ensure
+  that all encrypted data associated with the stack is encrypted using the target cloud platform
+  encryption keys.  This augments the previous choice between using the app.pulumi.com-managed
+  secrets encryption or a fully-client-side local passphrase encryption.
+  [#2994](https://github.com/pulumi/pulumi/pull/2994)
+
 ### Compatibility
 
 * Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
