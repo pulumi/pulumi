@@ -74,14 +74,16 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	// glog uses golang's built in flags package to set configuration values, which is incompatible with how
 	// we use cobra. In order to accommodate this, we call flag.CommandLine.Parse() with an empty array and
 	// explicitly set the flags we care about here.
-	err := flag.CommandLine.Parse([]string{})
-	assertNoError(err)
+	if !flag.Parsed() {
+		err := flag.CommandLine.Parse([]string{})
+		assertNoError(err)
+	}
 	if logToStderr {
-		err = flag.Lookup("logtostderr").Value.Set("true")
+		err := flag.Lookup("logtostderr").Value.Set("true")
 		assertNoError(err)
 	}
 	if verbose > 0 {
-		err = flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
+		err := flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
 		assertNoError(err)
 	}
 }
