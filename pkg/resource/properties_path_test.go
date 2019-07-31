@@ -123,6 +123,42 @@ func TestPropertyPath(t *testing.T) {
 			v, ok := parsed.Get(value)
 			assert.True(t, ok)
 			assert.False(t, v.IsNull())
+
+			ok = parsed.Delete(value)
+			assert.True(t, ok)
+
+			ok = parsed.Set(value, v)
+			assert.True(t, ok)
+
+			u, ok := parsed.Get(value)
+			assert.True(t, ok)
+			assert.Equal(t, v, u)
+		})
+	}
+
+	negativeCases := []string{
+		// Syntax errors
+		"root[",
+		`root["nested]`,
+		`root."double".nest`,
+		"root.array[abc]",
+		"root.[1]",
+
+		// Missing values
+		"root[1]",
+		"root.nested.array[100]",
+		"root.nested.array.bar",
+		"foo",
+	}
+
+	for _, c := range negativeCases {
+		t.Run(c, func(t *testing.T) {
+			parsed, err := ParsePropertyPath(c)
+			if err == nil {
+				v, ok := parsed.Get(value)
+				assert.False(t, ok)
+				assert.True(t, v.IsNull())
+			}
 		})
 	}
 }

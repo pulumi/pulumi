@@ -54,11 +54,11 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.
 			var pathElement interface{}
-			if path[1] == '"' {
+			if len(path) > 1 && path[1] == '"' {
 				var propertyKey []byte
 				var i int
 				for i = 2; ; {
-					if i == len(path) {
+					if i >= len(path) {
 						return nil, errors.New("missing closing quote in property name")
 					} else if path[i] == '"' {
 						i++
@@ -71,7 +71,7 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 						i++
 					}
 				}
-				if i == len(path) || path[i] != ']' {
+				if i >= len(path) || path[i] != ']' {
 					return nil, errors.New("missing closing bracket in property access")
 				}
 				pathElement, path = string(propertyKey), path[i:]
