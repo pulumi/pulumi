@@ -293,7 +293,7 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 	if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
 		switch err.(type) {
 		case *os.LinkError:
-			// On Windows, an Access Denied error is sometimes thrown when renaming. Work around by trying the 
+			// On Windows, an Access Denied error is sometimes thrown when renaming. Work around by trying the
 			// second time, which seems to work fine. See https://github.com/pulumi/pulumi/issues/2695
 			if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
 				return errors.Wrap(err, "moving plugin")
