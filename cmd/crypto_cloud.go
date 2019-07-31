@@ -40,21 +40,19 @@ func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider 
 	}
 
 	var secretsManager *cloud.Manager
-	// TODO: We shouldn't be re-using the `EncryptionSalt` field here - this is really a `DataKey`.
-	// TBD how to better represent this in the ProjectStack data structure.
-	if info.EncryptionSalt == "" {
+	if info.EncryptionKey == "" {
 		dataKey, err := cloud.GenerateNewDataKey(secretsProvider)
 		if err != nil {
 			return nil, err
 		}
-		info.EncryptionSalt = base64.StdEncoding.EncodeToString(dataKey)
+		info.EncryptionKey = base64.StdEncoding.EncodeToString(dataKey)
 	}
 	info.SecretsProvider = secretsProvider
 	if err = info.Save(configFile); err != nil {
 		return nil, err
 	}
 
-	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptionSalt)
+	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptionKey)
 	if err != nil {
 		return nil, err
 	}

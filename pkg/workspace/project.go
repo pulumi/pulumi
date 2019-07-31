@@ -136,7 +136,11 @@ func (proj *Project) Save(path string) error {
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
 	SecretsProvider string `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
-	// EncryptionSalt is this stack's base64 encoded encryption salt.
+	// EncryptionKey is the KMS-encyrpted ciphertext for the data key used for secrets encryption.
+	// Only used for cloud-based secrets providers.
+	EncryptionKey string `json:"encryptionkey,omitempty" yaml:"encryptionkey,omitempty"`
+	// EncryptionSalt is this stack's base64 encoded encryption salt.  Only used for
+	// passphrase-based secrets providers.
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
