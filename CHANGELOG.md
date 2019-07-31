@@ -5,10 +5,23 @@ CHANGELOG
 
 - Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
 
+### Compatibility
+
+- Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
+  off of these functions as they will be removed in a future release.  The deprecated functions are.
+  1. `function computeCodePaths(extraIncludePaths?: string[], ...)`.  Use the `computeCodePaths`
+     overload that takes a `CodePathOptions` instead.
+  2. `function serializeFunctionAsync`. Please use `serializeFunction` instead.
+
 ## 0.17.27 (2019-07-29)
 
 - Fix an error message from the logging subsystem which was introduced in v0.17.26
   [#2989](https://github.com/pulumi/pulumi/pull/2997)
+
+- Add support for property paths in `ignoreChanges`, and pass `ignoreChanges` to providers
+  [#3005](https://github.com/pulumi/pulumi/pull/3005). This allows differences between the actual and desired
+  state of the resource that are not captured by differences in the resource's inputs to be ignored (including
+  differences that may occur due to resource provider bugs).
 
 ## 0.17.26 (2019-07-26)
 

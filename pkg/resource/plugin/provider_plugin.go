@@ -238,7 +238,7 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool) (DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 	molds, err := MarshalProperties(olds, MarshalOptions{
@@ -258,9 +258,10 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	}
 
 	resp, err := p.clientRaw.DiffConfig(p.ctx.Request(), &pulumirpc.DiffRequest{
-		Urn:  string(urn),
-		Olds: molds,
-		News: mnews,
+		Urn:           string(urn),
+		Olds:          molds,
+		News:          mnews,
+		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -495,7 +496,9 @@ func (p *provider) Check(urn resource.URN,
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool,
+	ignoreChanges []string) (DiffResult, error) {
+
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -539,10 +542,11 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	}
 
 	resp, err := client.Diff(p.ctx.Request(), &pulumirpc.DiffRequest{
-		Id:   string(id),
-		Urn:  string(urn),
-		Olds: molds,
-		News: mnews,
+		Id:            string(id),
+		Urn:           string(urn),
+		Olds:          molds,
+		News:          mnews,
+		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -774,8 +778,9 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float64) (resource.PropertyMap, resource.Status,
-	error) {
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
+	ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -813,11 +818,12 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	var resourceError error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
-		Id:      string(id),
-		Urn:     string(urn),
-		Olds:    molds,
-		News:    mnews,
-		Timeout: timeout,
+		Id:            string(id),
+		Urn:           string(urn),
+		Olds:          molds,
+		News:          mnews,
+		Timeout:       timeout,
+		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)

@@ -719,7 +719,8 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool) (plugin.DiffResult, error) {
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -797,7 +798,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool) (plugin.DiffResult, error) {
+					ignoreChanges []string) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -888,7 +889,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool) (plugin.DiffResult, error) {
+					ignoreChanges []string) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -999,7 +1000,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
 					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
 				},
@@ -2208,14 +2209,16 @@ func TestUpdatePartialFailure(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID, olds,
-					news resource.PropertyMap, timeout float64) (resource.PropertyMap, resource.Status, error) {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
 					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 						"output_prop": 42,
 					})
@@ -2605,7 +2608,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool) (plugin.DiffResult, error) {
+					ignoreChanges []string) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -2615,7 +2618,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
@@ -2766,7 +2769,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
@@ -2918,14 +2921,30 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestSingleResourceIgnoreChanges(t *testing.T) {
+	var expectedIgnoreChanges []string
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
+					return plugin.DiffResult{}, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+
+					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
+					return resource.PropertyMap{}, resource.StatusOK, nil
+				},
+			}, nil
 		}),
 	}
 
 	updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, ignoreChanges []string,
 		allowedOps []deploy.StepOp) *deploy.Snapshot {
+		expectedIgnoreChanges = ignoreChanges
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:        props,
@@ -2956,35 +2975,47 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		return p.Run(t, snap)
 	}
 
-	snap := updateProgramWithProps(nil, resource.PropertyMap{
-		"a": resource.NewNumberProperty(1),
-	}, []string{"a"}, []deploy.StepOp{deploy.OpCreate})
+	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 1,
+		"b": map[string]interface{}{
+			"c": "foo",
+		},
+	}), []string{"a", "b.c"}, []deploy.StepOp{deploy.OpCreate})
 
 	// Ensure that a change to an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.PropertyMap{
-		"a": resource.NewNumberProperty(2),
-	}, []string{"a"}, []deploy.StepOp{deploy.OpSame})
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 2,
+		"b": map[string]interface{}{
+			"c": "bar",
+		},
+	}), []string{"a", "b.c"}, []deploy.StepOp{deploy.OpSame})
 
 	// Ensure that a change to an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.PropertyMap{
-		"a": resource.NewNumberProperty(3),
-	}, nil, []deploy.StepOp{deploy.OpUpdate})
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 3,
+		"b": map[string]interface{}{
+			"c": "qux",
+		},
+	}), nil, []deploy.StepOp{deploy.OpUpdate})
 
 	// Ensure that a removing an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.PropertyMap{}, []string{"a"}, []deploy.StepOp{deploy.OpSame})
+	snap = updateProgramWithProps(snap, resource.PropertyMap{}, []string{"a", "b"}, []deploy.StepOp{deploy.OpSame})
 
 	// Ensure that a removing an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.PropertyMap{}, nil, []deploy.StepOp{deploy.OpUpdate})
 
 	// Ensure that adding an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.PropertyMap{
-		"a": resource.NewNumberProperty(4),
-	}, []string{"a"}, []deploy.StepOp{deploy.OpSame})
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 4,
+		"b": map[string]interface{}{
+			"c": "zed",
+		},
+	}), []string{"a", "b"}, []deploy.StepOp{deploy.OpSame})
 
 	// Ensure that adding an un-ignored property results in an OpUpdate
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
-		"b": resource.NewNumberProperty(4),
-	}, []string{"a"}, []deploy.StepOp{deploy.OpUpdate})
+		"c": resource.NewNumberProperty(4),
+	}, []string{"a", "b"}, []deploy.StepOp{deploy.OpUpdate})
 }
 
 // TestDefaultProviderDiff tests that the engine can gracefully recover whenever a resource's default provider changes
@@ -3105,7 +3136,9 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// This implementation of DiffConfig always requests replacement.
-				DiffConfigF: func(_ resource.URN, olds, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
+				DiffConfigF: func(_ resource.URN, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
 					keys := []resource.PropertyKey{}
 					for k := range news {
 						keys = append(keys, k)
@@ -3234,7 +3267,9 @@ func TestAliases(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
-				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
 					replaceKeys := []resource.PropertyKey{}
 					old, hasOld := olds["forcesReplacement"]
 					new, hasNew := news["forcesReplacement"]
@@ -3497,7 +3532,7 @@ func TestPersistentDiff(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
 					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 				},
@@ -3573,7 +3608,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
@@ -3632,7 +3667,7 @@ func TestImport(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
 					if olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -3914,7 +3949,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool) (plugin.DiffResult, error) {
+					ignoreChanges []string) (plugin.DiffResult, error) {
 					// Always require replacement if any diff exists.
 					if !olds.DeepEquals(news) {
 						keys := []resource.PropertyKey{}

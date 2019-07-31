@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 
@@ -162,7 +164,11 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	inputs := goal.Properties
 	if hasOld {
 		// Set inputs back to their old values (if any) for any "ignored" properties
-		inputs = sg.processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
+		processedInputs, res := processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
+		if res != nil {
+			return nil, res
+		}
+		inputs = processedInputs
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
@@ -201,11 +207,11 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		new.ID = goal.ID
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
-				NewImportReplacementStep(sg.plan, event, old, new),
+				NewImportReplacementStep(sg.plan, event, old, new, goal.IgnoreChanges),
 				NewReplaceStep(sg.plan, old, new, nil, nil, nil, true),
 			}, nil
 		}
-		return []Step{NewImportStep(sg.plan, event, new)}, nil
+		return []Step{NewImportStep(sg.plan, event, new, goal.IgnoreChanges)}, nil
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -327,7 +333,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
 		contract.Assert(old != nil)
-		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
+		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
 		if err != nil {
 			// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 			// report the message contained in the error.
@@ -455,7 +461,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 			}
 			return []Step{
-				NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff),
+				NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
+					goal.IgnoreChanges),
 			}, nil
 		}
 
@@ -463,7 +470,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		// step to attempt to "continue" awaiting initialization.
 		if len(old.InitErrors) > 0 {
 			sg.updates[urn] = true
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil)}, nil
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -704,7 +711,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new plan didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true)
+	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true, nil)
 	if err != nil {
 		return false, err
 	}
@@ -724,7 +731,8 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 
 // diff returns a DiffResult for the given resource.
 func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
+	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
+	ignoreChanges []string) (plugin.DiffResult, error) {
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
@@ -750,18 +758,19 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	}
 
-	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns)
+	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
 }
 
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
 func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
+	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
+	ignoreChanges []string) (plugin.DiffResult, error) {
 
 	contract.Require(prov != nil, "prov != nil")
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns)
+	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return diff, err
 	}
@@ -795,19 +804,41 @@ func issueCheckErrors(plan *Plan, new *resource.State, urn resource.URN, failure
 
 // processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
 // the effect of ensuring that no changes will be made for the corresponding property.
-func (sg *stepGenerator) processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
-	ignoreChanges []string) resource.PropertyMap {
+func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
+	ignoreChanges []string) (resource.PropertyMap, result.Result) {
 
-	ignoredInputs := inputs.Copy()
+	ignoredInputs := resource.NewObjectProperty(inputs.Copy())
+	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
-		ignoreChangePropertyKey := resource.PropertyKey(ignoreChange)
-		if oldValue, has := oldInputs[ignoreChangePropertyKey]; has {
-			ignoredInputs[ignoreChangePropertyKey] = oldValue
-		} else {
-			delete(ignoredInputs, ignoreChangePropertyKey)
+		path, err := resource.ParsePropertyPath(ignoreChange)
+		if err != nil {
+			continue
+		}
+
+		oldValue, hasOld := path.Get(resource.NewObjectProperty(oldInputs))
+		_, hasNew := path.Get(resource.NewObjectProperty(inputs))
+
+		var ok bool
+		switch {
+		case hasOld && hasNew:
+			ok = path.Set(ignoredInputs, oldValue)
+			contract.Assert(ok)
+		case hasOld && !hasNew:
+			ok = path.Set(ignoredInputs, oldValue)
+		case !hasOld && hasNew:
+			ok = path.Delete(ignoredInputs)
+		default:
+			ok = true
+		}
+		if !ok {
+			invalidPaths = append(invalidPaths, ignoreChange)
 		}
 	}
-	return ignoredInputs
+	if len(invalidPaths) != 0 {
+		return nil, result.Errorf("cannot ignore changes to the following properties because one or more elements of "+
+			"the path are missing: %q", strings.Join(invalidPaths, ", "))
+	}
+	return ignoredInputs.ObjectValue(), nil
 }
 
 func (sg *stepGenerator) loadResourceProvider(
@@ -912,7 +943,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assert(prov != nil)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
+		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true, nil)
 		if err != nil {
 			return false, nil, result.FromError(err)
 		}
