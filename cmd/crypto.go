@@ -23,10 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
@@ -84,26 +80,4 @@ func validateSecretsProvider(typ string) error {
 		kind,
 		strings.Join(supportedKinds, ","),
 	)
-}
-
-func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider string) (secrets.Manager, error) {
-	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
-
-	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
-		if err != nil {
-			return nil, err
-		}
-		configFile = f
-	}
-
-	info, err := workspace.LoadProjectStack(configFile)
-	if err != nil {
-		return nil, err
-	}
-	info.SecretsProvider = secretsProvider
-	if err = info.Save(configFile); err != nil {
-		return nil, err
-	}
-	return cloud.NewSecretsManager(secretsProvider), nil
 }

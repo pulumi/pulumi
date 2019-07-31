@@ -16,7 +16,7 @@ package cloud
 
 import (
 	"context"
-	"encoding/base64"
+	"crypto/rand"
 	"encoding/json"
 
 	"github.com/pkg/errors"
@@ -32,20 +32,20 @@ import (
 
 const Type = "cloud"
 
-type cloudSecretsManagerState struct {
-	URL string `json:"url"`
+type State struct {
+	URL     string `json:"url"`
+	DataKey []byte `json:"dataKey"`
 }
 
 type provider struct{}
 
 func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
-	var s cloudSecretsManagerState
+	var s State
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling state")
 	}
-	return &manager{
-		url: s.URL,
-	}, nil
+
+	return SecretsManagerFromState(s)
 }
 
 // NewProvider returns a new manager provider which hands back Base64SecretsManagers
@@ -53,51 +53,55 @@ func NewProvider() secrets.ManagerProvider {
 	return &provider{}
 }
 
+func SecretsManagerFromState(state State) (*Manager, error) {
+	keeper, err := gosecrets.OpenKeeper(context.Background(), state.URL)
+	if err != nil {
+		return nil, err
+	}
+	plaintextDataKey, err := keeper.Decrypt(context.Background(), state.DataKey)
+	if err != nil {
+		return nil, err
+	}
+	crypter := config.NewSymmetricCrypter(plaintextDataKey)
+
+	return &Manager{
+		crypter: crypter,
+		state:   state,
+	}, nil
+}
+
 // NewSecretsManager returns a secrets manager that just base64 encodes instead of encrypting. Useful for testing.
-func NewSecretsManager(url string) secrets.Manager {
-	return &manager{
-		url: url,
+func NewSecretsManager(url string) (*Manager, error) {
+	plaintextDataKey := make([]byte, 32)
+	_, err := rand.Read(plaintextDataKey)
+	if err != nil {
+		return nil, err
 	}
+	keeper, err := gosecrets.OpenKeeper(context.Background(), url)
+	if err != nil {
+		return nil, err
+	}
+	encryptedDataKey, err := keeper.Encrypt(context.Background(), plaintextDataKey)
+	if err != nil {
+		return nil, err
+	}
+	crypter := config.NewSymmetricCrypter(plaintextDataKey)
+	return &Manager{
+		crypter: crypter,
+		state: State{
+			URL:     url,
+			DataKey: encryptedDataKey,
+		},
+	}, nil
 }
 
-type manager struct {
-	url string
+type Manager struct {
+	crypter config.Crypter
+	state   State
 }
 
-func (m *manager) Type() string                         { return Type }
-func (m *manager) State() interface{}                   { return map[string]string{"url": m.url} }
-func (m *manager) Encrypter() (config.Encrypter, error) { return &awsKmsCrypter{url: m.url}, nil }
-func (m *manager) Decrypter() (config.Decrypter, error) { return &awsKmsCrypter{url: m.url}, nil }
-
-type awsKmsCrypter struct {
-	url string
-}
-
-func (c *awsKmsCrypter) EncryptValue(s string) (string, error) {
-	keeper, err := gosecrets.OpenKeeper(context.Background(), c.url)
-	if err != nil {
-		return "", err
-	}
-	ciphertext, err := keeper.Encrypt(context.Background(), []byte(s))
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func (c *awsKmsCrypter) DecryptValue(s string) (string, error) {
-	ciphertext, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		return "", err
-	}
-	keeper, err := gosecrets.OpenKeeper(context.Background(), c.url)
-	if err != nil {
-		return "", err
-	}
-
-	plaintext, err := keeper.Decrypt(context.Background(), ciphertext)
-	if err != nil {
-		return "", err
-	}
-	return string(plaintext), nil
-}
+func (m *Manager) Type() string                         { return Type }
+func (m *Manager) State() interface{}                   { return m.state }
+func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
+func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
+func (m *Manager) DataKey() []byte                      { return m.state.DataKey }
