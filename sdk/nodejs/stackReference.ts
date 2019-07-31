@@ -66,7 +66,7 @@ export class StackReference extends CustomResource {
     public requireOutput(name: Input<string>): Output<any> {
         return all([output(this.name), output(name), this.outputs]).apply(([stackname, n, os]) => {
             if (!os.hasOwnProperty(n)) {
-                throw new Error(`Required output '${n}' does not exist on stack '${stackname}'."`);
+                throw new Error(`Required output '${n}' does not exist on stack '${stackname}'.`);
             }
             return os[n];
         });
@@ -85,7 +85,7 @@ export class StackReference extends CustomResource {
         const out = this.getOutput(name);
         const isSecret = promiseResult(out.isSecret);
         if (isSecret) {
-            throw new Error("Cannot call [getOutputSync] if the referenced stack has secret outputs. Use [getOutput] instead.");
+            throw new Error("Cannot call 'getOutputSync' if the referenced stack has secret outputs. Use 'getOutput' instead.");
         }
 
         return promiseResult(out.promise());
@@ -104,7 +104,7 @@ export class StackReference extends CustomResource {
         const out = this.requireOutput(name);
         const isSecret = promiseResult(out.isSecret);
         if (isSecret) {
-            throw new Error("Cannot call [getOutputSync] if the referenced stack has secret outputs. Use [getOutput] instead.");
+            throw new Error("Cannot call 'requireOutputSync' if the referenced stack has secret outputs. Use 'requireOutput' instead.");
         }
 
         return promiseResult(out.promise());
