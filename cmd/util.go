@@ -28,9 +28,8 @@ import (
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/pulumi/glog"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
@@ -47,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/tracing"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -362,7 +362,7 @@ func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
 	}
 
 	if err := addGitMetadata(root, m); err != nil {
-		glog.V(3).Infof("errors detecting git metadata: %s", err)
+		logging.V(3).Infof("errors detecting git metadata: %s", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)

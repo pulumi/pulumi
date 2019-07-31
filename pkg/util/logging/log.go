@@ -30,7 +30,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pulumi/glog"
+	"github.com/golang/glog"
 )
 
 type Filter interface {
@@ -72,13 +72,16 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	LogFlow = logFlow
 
 	// glog uses golang's built in flags package to set configuration values, which is incompatible with how
-	// we use cobra. So we explicitly set the flags we care about here, and don't call flag.Parse()
+	// we use cobra. In order to accommodate this, we call flag.CommandLine.Parse() with an empty array and
+	// explicitly set the flags we care about here.
+	err := flag.CommandLine.Parse([]string{})
+	assertNoError(err)
 	if logToStderr {
-		err := flag.Lookup("logtostderr").Value.Set("true")
+		err = flag.Lookup("logtostderr").Value.Set("true")
 		assertNoError(err)
 	}
 	if verbose > 0 {
-		err := flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
+		err = flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
 		assertNoError(err)
 	}
 }
