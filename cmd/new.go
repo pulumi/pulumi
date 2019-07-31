@@ -47,7 +47,7 @@ import (
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
-// intentionally disabling here for cleaner err declaration/assignment.
+// Intentionally disabling here for cleaner err declaration/assignment.
 // nolint: vetshadow
 func newNewCmd() *cobra.Command {
 	var configArray []string

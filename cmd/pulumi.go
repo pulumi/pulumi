@@ -30,7 +30,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
 	"github.com/docker/docker/pkg/term"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -76,7 +75,7 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi config   : Alter your stack's configuration or secrets\n" +
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
-			"For more information, please visit the project page: https://pulumi.io",
+			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
@@ -187,6 +186,8 @@ func NewPulumiCmd() *cobra.Command {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
 		cmd.AddCommand(newQueryCmd())
+		//     - Policy Management Commands:
+		cmd.AddCommand(newPolicyCmd())
 	}
 
 	return cmd
@@ -197,7 +198,7 @@ func NewPulumiCmd() *cobra.Command {
 func checkForUpdate() {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
-		glog.V(3).Infof("error parsing current version: %s", err)
+		logging.V(3).Infof("error parsing current version: %s", err)
 	}
 
 	// We don't care about warning for you to update if you have installed a developer version
@@ -207,7 +208,7 @@ func checkForUpdate() {
 
 	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
 	if err != nil {
-		glog.V(3).Infof("error fetching latest version information: %s", err)
+		logging.V(3).Infof("error fetching latest version information: %s", err)
 	}
 
 	if oldestAllowedVer.GT(curVer) {
@@ -231,7 +232,7 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 
 	err = cacheVersionInfo(latest, oldest)
 	if err != nil {
-		glog.V(3).Infof("failed to cache version info: %s", err)
+		logging.V(3).Infof("failed to cache version info: %s", err)
 	}
 
 	return latest, oldest, err
@@ -313,7 +314,7 @@ func getUpgradeMessage(latest semver.Version, current semver.Version) string {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
-	msg += "visit https://pulumi.io/install for manual instructions and release notes."
+	msg += "visit https://pulumi.com/docs/reference/install/ for manual instructions and release notes."
 	return msg
 }
 
@@ -332,7 +333,7 @@ func getUpgradeCommand() string {
 
 	isBrew, err := isBrewInstall(exe)
 	if err != nil {
-		glog.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
 	}
 	if isBrew {
 		return "$ brew upgrade pulumi"

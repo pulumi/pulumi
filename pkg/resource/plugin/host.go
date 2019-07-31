@@ -44,9 +44,20 @@ type Host interface {
 	// have a resource URN associated with them.  If no urn is provided, the message is global.
 	LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32)
 
-	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for it.  If an analyzer
-	// could not be found, or an error occurred while creating it, a non-nil error is returned.
+	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for
+	// it.  If an analyzer could not be found, or an error occurred while creating it, a non-nil
+	// error is returned.
 	Analyzer(nm tokens.QName) (Analyzer, error)
+
+	// PolicyAnalyzer boots the nodejs analyzer plugin located at a given path. This is useful
+	// because policy analyzers generally do not need to be "discovered" -- the engine is given a
+	// set of policies that are required to be run during an update, so they tend to be in a
+	// well-known place.
+	PolicyAnalyzer(name tokens.QName, path string) (Analyzer, error)
+
+	// ListAnalyzers returns a list of all analyzer plugins known to the plugin host.
+	ListAnalyzers() []Analyzer
+
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(pkg tokens.Package, version *semver.Version) (Provider, error)
@@ -196,6 +207,43 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 		return nil, err
 	}
 	return plugin.(Analyzer), nil
+}
+
+func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string) (Analyzer, error) {
+	plugin, err := host.loadPlugin(func() (interface{}, error) {
+		// First see if we already loaded this plugin.
+		if plug, has := host.analyzerPlugins[name]; has {
+			contract.Assert(plug != nil)
+			return plug.Plugin, nil
+		}
+
+		// If not, try to load and bind to a plugin.
+		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path)
+		if err == nil && plug != nil {
+			info, infoerr := plug.GetPluginInfo()
+			if infoerr != nil {
+				return nil, infoerr
+			}
+
+			// Memoize the result.
+			host.plugins = append(host.plugins, info)
+			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
+		}
+
+		return plug, err
+	})
+	if plugin == nil || err != nil {
+		return nil, err
+	}
+	return plugin.(Analyzer), nil
+}
+
+func (host *defaultHost) ListAnalyzers() []Analyzer {
+	analyzers := []Analyzer{}
+	for _, analyzer := range host.analyzerPlugins {
+		analyzers = append(analyzers, analyzer.Plugin)
+	}
+	return analyzers
 }
 
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {

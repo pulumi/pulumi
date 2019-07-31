@@ -21,7 +21,6 @@ import * as log from "../../log";
 import * as runtime from "../../runtime";
 
 import * as mod from ".";
-import { isQueryMode } from "../../runtime";
 
 /**
  * Attempts to provide a detailed error message for module load failure if the

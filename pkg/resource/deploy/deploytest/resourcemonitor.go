@@ -16,6 +16,7 @@ package deploytest
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -27,32 +28,52 @@ type ResourceMonitor struct {
 	resmon pulumirpc.ResourceMonitorClient
 }
 
-func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool, parent resource.URN, protect bool,
-	dependencies []resource.URN, provider string, inputs resource.PropertyMap,
-	propertyDeps map[resource.PropertyKey][]resource.URN, deleteBeforeReplace bool,
-	version string, ignoreChanges []string,
-	aliases []resource.URN) (resource.URN, resource.ID, resource.PropertyMap, error) {
+type ResourceOptions struct {
+	Parent              resource.URN
+	Protect             bool
+	Dependencies        []resource.URN
+	Provider            string
+	Inputs              resource.PropertyMap
+	PropertyDeps        map[resource.PropertyKey][]resource.URN
+	DeleteBeforeReplace bool
+	Version             string
+	IgnoreChanges       []string
+	Aliases             []resource.URN
+	ImportID            resource.ID
+	CustomTimeouts      *resource.CustomTimeouts
+}
+
+func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
+	options ...ResourceOptions) (resource.URN, resource.ID, resource.PropertyMap, error) {
+
+	var opts ResourceOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	if opts.Inputs == nil {
+		opts.Inputs = resource.PropertyMap{}
+	}
 
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
+	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return "", "", nil, err
 	}
 
 	// marshal dependencies
 	deps := []string{}
-	for _, d := range dependencies {
+	for _, d := range opts.Dependencies {
 		deps = append(deps, string(d))
 	}
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range aliases {
+	for _, a := range opts.Aliases {
 		aliasStrings = append(aliasStrings, string(a))
 	}
 
 	inputDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
-	for pk, pd := range propertyDeps {
+	for pk, pd := range opts.PropertyDeps {
 		pdeps := []string{}
 		for _, d := range pd {
 			pdeps = append(pdeps, string(d))
@@ -62,26 +83,36 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		}
 	}
 
-	// submit request
-	resp, err := rm.resmon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
+	var timeouts pulumirpc.RegisterResourceRequest_CustomTimeouts
+	if opts.CustomTimeouts != nil {
+		timeouts.Create = prepareTestTimeout(opts.CustomTimeouts.Create)
+		timeouts.Update = prepareTestTimeout(opts.CustomTimeouts.Update)
+		timeouts.Delete = prepareTestTimeout(opts.CustomTimeouts.Delete)
+	}
+
+	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                 string(t),
 		Name:                 name,
 		Custom:               custom,
-		Parent:               string(parent),
-		Protect:              protect,
+		Parent:               string(opts.Parent),
+		Protect:              opts.Protect,
 		Dependencies:         deps,
-		Provider:             provider,
+		Provider:             opts.Provider,
 		Object:               ins,
 		PropertyDependencies: inputDeps,
-		DeleteBeforeReplace:  deleteBeforeReplace,
-		IgnoreChanges:        ignoreChanges,
-		Version:              version,
+		DeleteBeforeReplace:  opts.DeleteBeforeReplace,
+		IgnoreChanges:        opts.IgnoreChanges,
+		Version:              opts.Version,
 		Aliases:              aliasStrings,
-	})
+		ImportId:             string(opts.ImportID),
+		CustomTimeouts:       &timeouts,
+	}
+
+	// submit request
+	resp, err := rm.resmon.RegisterResource(context.Background(), requestInput)
 	if err != nil {
 		return "", "", nil, err
 	}
-
 	// unmarshal outputs
 	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
@@ -104,6 +135,7 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 	resp, err := rm.resmon.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
 		Type:       string(t),
 		Name:       name,
+		Id:         string(id),
 		Parent:     string(parent),
 		Provider:   provider,
 		Properties: ins,
@@ -154,4 +186,10 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	return outs, nil, nil
+}
+
+func prepareTestTimeout(timeout float64) string {
+	mins := int(timeout) / 60
+
+	return fmt.Sprintf("%dm", mins)
 }

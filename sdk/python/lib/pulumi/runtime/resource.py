@@ -14,7 +14,8 @@
 import asyncio
 import sys
 import traceback
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, TYPE_CHECKING
+
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING
 from google.protobuf import struct_pb2
 import grpc
 
@@ -22,10 +23,13 @@ from . import rpc, settings, known_types
 from .. import log
 from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
+from ..metadata import get_project, get_stack
+
+from ..output import Output
 
 if TYPE_CHECKING:
     from .. import Resource, ResourceOptions
-    from ..output import Output, Inputs
+    from ..output import Inputs
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -58,6 +62,11 @@ class ResourceResolverOperations(NamedTuple):
     A map from property name to the URNs of the resources the property depends on.
     """
 
+    aliases: List[str]
+    """
+    A list of aliases applied to this resource.
+    """
+
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
 # pylint: disable=too-many-locals
@@ -82,7 +91,8 @@ async def prepare_resource(res: 'Resource',
     parent_urn = ""
     if opts is not None and opts.parent is not None:
         parent_urn = await opts.parent.urn.future()
-    elif ty != "pulumi:pulumi:Stack": # TODO(sean) is it necessary to check the type here?
+    # TODO(sean) is it necessary to check the type here?
+    elif ty != "pulumi:pulumi:Stack":
         # If no parent was provided, parent to the root resource.
         parent = settings.get_root_resource()
         if parent is not None:
@@ -109,19 +119,33 @@ async def prepare_resource(res: 'Resource',
             dependencies.add(urn)
         property_dependencies[key] = list(urns)
 
+    # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
+    # former has been processed in the Resource constructor prior to calling
+    # `register_resource` - both adding new inherited aliases and simplifying aliases down
+    # to URNs.
+    aliases = []
+    for alias in res._aliases:
+        alias_val = await Output.from_input(alias).future()
+        if not alias_val in aliases:
+            aliases.append(alias_val)
+
     log.debug(f"resource {props} prepared")
     return ResourceResolverOperations(
         parent_urn,
         serialized_props,
         dependencies,
         provider_ref,
-        property_dependencies
+        property_dependencies,
+        aliases,
     )
 
 # pylint: disable=too-many-locals,too-many-statements
+
+
 def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Optional['ResourceOptions']):
     if opts.id is None:
-        raise Exception("Cannot read resource whose options are lacking an ID value")
+        raise Exception(
+            "Cannot read resource whose options are lacking an ID value")
 
     log.debug(f"reading resource: ty={ty}, name={name}, id={opts.id}")
     monitor = settings.get_monitor()
@@ -148,7 +172,8 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
     resolve_value = asyncio.Future()
     resolve_perform_apply = asyncio.Future()
     resolve_secret = asyncio.Future()
-    res.id = known_types.new_output({res}, resolve_value, resolve_perform_apply, resolve_secret)
+    res.id = known_types.new_output(
+        {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
     def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
         if exn is not None:
@@ -181,7 +206,8 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
             # here.
             additional_secret_outputs = opts.additional_secret_outputs
             if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
-                additional_secret_outputs = map(res.translate_input_property, opts.additional_secret_outputs)
+                additional_secret_outputs = map(
+                    res.translate_input_property, opts.additional_secret_outputs)
 
             req = resource_pb2.ReadResourceRequest(
                 type=ty,
@@ -196,28 +222,32 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
-            def do_rpc_call():
-                if monitor:
-                    # If there is a monitor available, make the true RPC request to the engine.
-                    try:
-                        return monitor.ReadResource(req)
-                    except grpc.RpcError as exn:
-                        # See the comment on invoke for the justification for disabling
-                        # this warning
-                        # pylint: disable=no-member
-                        if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                            sys.exit(0)
+            from ..resource import create_urn
+            mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-                        details = exn.details()
-                    raise Exception(details)
-                else:
+            def do_rpc_call():
+                if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(create_test_urn(ty, name), None, resolver.serialized_props)
+                    return RegisterResponse(mock_urn, None, resolver.serialized_props)
+
+                # If there is a monitor available, make the true RPC request to the engine.
+                try:
+                    return monitor.ReadResource(req)
+                except grpc.RpcError as exn:
+                    # See the comment on invoke for the justification for disabling
+                    # this warning
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
+
+                    details = exn.details()
+                raise Exception(details)
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
         except Exception as exn:
-            log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            log.debug(
+                f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn_exn(exn)
             resolve_id(None, False, exn)
@@ -225,17 +255,20 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
 
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
-        resolve_id(resolved_id, True, None) # Read IDs are always known.
+        resolve_id(resolved_id, True, None)  # Read IDs are always known.
         await rpc.resolve_outputs(res, props, resp.properties, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
 # pylint: disable=too-many-locals,too-many-statements
+
+
 def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
     """
-    registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
-    URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
-    objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
+    registerResource registers a new resource object with a given type t and name.  It returns the
+    auto-generated URN and the ID that will resolve after the deployment has completed.  All
+    properties will be initialized to property objects that the registration operation will resolve
+    at the right time (or remain unresolved for deployments).
     """
     log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
     monitor = settings.get_monitor()
@@ -256,12 +289,14 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
 
     # If a custom resource, make room for the ID property.
-    resolve_id: Optional[Callable[[Any, str, Optional[Exception]], None]] = None
+    resolve_id: Optional[Callable[[
+        Any, str, Optional[Exception]], None]] = None
     if custom:
         resolve_value = asyncio.Future()
         resolve_perform_apply = asyncio.Future()
         resolve_secret = asyncio.Future()
-        res.id = known_types.new_output({res}, resolve_value, resolve_perform_apply, resolve_secret)
+        res.id = known_types.new_output(
+            {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
         def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
             if exn is not None:
@@ -288,18 +323,21 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
-                property_dependencies[key] = resource_pb2.RegisterResourceRequest.PropertyDependencies(urns=deps)
+                property_dependencies[key] = resource_pb2.RegisterResourceRequest.PropertyDependencies(
+                    urns=deps)
 
             ignore_changes = opts.ignore_changes
             if res.translate_input_property is not None and opts.ignore_changes is not None:
-                ignore_changes = map(res.translate_input_property, opts.ignore_changes)
+                ignore_changes = map(
+                    res.translate_input_property, opts.ignore_changes)
 
-            # Note that while `additional_secret_outputs` lists property names that are outputs, we call
-            # `translate_input_property` because it is the method that converts from the language projection
-            # name to the provider name, which is what we want.
+            # Note that while `additional_secret_outputs` lists property names that are outputs, we
+            # call `translate_input_property` because it is the method that converts from the
+            # language projection name to the provider name, which is what we want.
             additional_secret_outputs = opts.additional_secret_outputs
             if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
-                additional_secret_outputs = map(res.translate_input_property, opts.additional_secret_outputs)
+                additional_secret_outputs = map(
+                    res.translate_input_property, opts.additional_secret_outputs)
 
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
@@ -316,30 +354,36 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 version=opts.version or "",
                 acceptSecrets=True,
                 additionalSecretOutputs=additional_secret_outputs,
-                aliases=[]
+                importId=opts.import_,
+                customTimeouts=opts.custom_timeouts,
+                aliases=resolver.aliases,
             )
 
-            def do_rpc_call():
-                if monitor:
-                    # If there is a monitor available, make the true RPC request to the engine.
-                    try:
-                        return monitor.RegisterResource(req)
-                    except grpc.RpcError as exn:
-                        # See the comment on invoke for the justification for disabling
-                        # this warning
-                        # pylint: disable=no-member
-                        if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                            sys.exit(0)
+            from ..resource import create_urn
+            mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-                        details = exn.details()
-                    raise Exception(details)
-                else:
+            def do_rpc_call():
+                if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(create_test_urn(ty, name), None, resolver.serialized_props)
+                    return RegisterResponse(mock_urn, None, resolver.serialized_props)
+
+                # If there is a monitor available, make the true RPC request to the engine.
+                try:
+                    return monitor.RegisterResource(req)
+                except grpc.RpcError as exn:
+                    # See the comment on invoke for the justification for disabling
+                    # this warning
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
+
+                    details = exn.details()
+                raise Exception(details)
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
-            log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            log.debug(
+                f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn_exn(exn)
             if resolve_id is not None:
@@ -357,38 +401,43 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
         await rpc.resolve_outputs(res, props, resp.object, resolvers)
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource", do_register)())
+    asyncio.ensure_future(RPC_MANAGER.do_rpc(
+        "register resource", do_register)())
 
 
 def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
     async def do_register_resource_outputs():
         urn = await res.urn.future()
         serialized_props = await rpc.serialize_properties(outputs, {})
-        log.debug(f"register resource outputs prepared: urn={urn}, props={serialized_props}")
+        log.debug(
+            f"register resource outputs prepared: urn={urn}, props={serialized_props}")
         monitor = settings.get_monitor()
-        req = resource_pb2.RegisterResourceOutputsRequest(urn=urn, outputs=serialized_props)
+        req = resource_pb2.RegisterResourceOutputsRequest(
+            urn=urn, outputs=serialized_props)
 
         def do_rpc_call():
-            if monitor:
-                # If there's an engine attached, perform the RPC. Otherwise, simply ignore it.
-                try:
-                    return monitor.RegisterResourceOutputs(req)
-                except grpc.RpcError as exn:
-                    # See the comment on invoke for the justification for disabling
-                    # this warning
-                    # pylint: disable=no-member
-                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                        sys.exit(0)
-
-                    details = exn.details()
-                raise Exception(details)
-            else:
+            if monitor is None:
+                # If there's no engine attached, simply ignore it.
                 return None
 
-        await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
-        log.debug(f"resource registration successful: urn={urn}, props={serialized_props}")
+            try:
+                return monitor.RegisterResourceOutputs(req)
+            except grpc.RpcError as exn:
+                # See the comment on invoke for the justification for disabling
+                # this warning
+                # pylint: disable=no-member
+                if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                    sys.exit(0)
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource outputs", do_register_resource_outputs)())
+                details = exn.details()
+            raise Exception(details)
+
+        await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        log.debug(
+            f"resource registration successful: urn={urn}, props={serialized_props}")
+
+    asyncio.ensure_future(RPC_MANAGER.do_rpc(
+        "register resource outputs", do_register_resource_outputs)())
 
 
 class RegisterResponse:
@@ -401,10 +450,3 @@ class RegisterResponse:
         self.urn = urn
         self.id = id
         self.object = object
-
-
-def create_test_urn(ty: str, name: str) -> str:
-    """
-    Creates a test URN for cases where the engine isn't available to give us one (i.e., test mode).
-    """
-    return 'urn:pulumi:{0}::{1}::{2}::{3}'.format(settings.get_stack(), settings.get_project(), ty, name)

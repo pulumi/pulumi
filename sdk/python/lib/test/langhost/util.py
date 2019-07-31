@@ -94,6 +94,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         delete_before_replace = request.deleteBeforeReplace
         ignore_changes = sorted(list(request.ignoreChanges))
         version = request.version
+        import_ = request.importId
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
@@ -101,9 +102,9 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
-            outs = self.langhost_test.register_resource(
-                context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider,
-                property_dependencies, delete_before_replace, ignore_changes, version)
+            rrsig = signature(self.langhost_test.register_resource)
+            args = [context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider, property_dependencies, delete_before_replace, ignore_changes, version, import_]
+            outs = self.langhost_test.register_resource(*args[0:len(rrsig.parameters)])
             if outs.get("urn"):
                 urn = outs["urn"]
                 self.registrations[urn] = {
@@ -262,7 +263,7 @@ class LanghostTest(unittest.TestCase):
         return {}
 
     def register_resource(self, _ctx, _dry_run, _type, _name, _resource,
-                          _dependencies):
+                          _dependencies, _parent, _custom, _provider, _property_deps, _delete_before_replace, _import):
         """
         Method corresponding to the `RegisterResource` resource monitor RPC call.
         Override for custom behavior or assertions.

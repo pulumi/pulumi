@@ -317,3 +317,21 @@ class Output(Generic[T]):
         known_futures = asyncio.ensure_future(is_known(all_outputs))
         secret_futures = asyncio.ensure_future(is_secret(all_outputs))
         return Output(resources, value_futures, known_futures, secret_futures)
+
+    @staticmethod
+    def concat(*args: List[Input[str]]) -> 'Output[str]':
+        """
+        Concatenates a collection of Input[str] into a single Output[str].
+
+        This function takes a sequence of Input[str], stringifies each, and concatenates all values
+        into one final string. This can be used like so:
+
+            url = Output.concat("http://", server.hostname, ":", loadBalancer.port)
+
+        :param List[Input[str]] args: A list of string Inputs to concatenate.
+        :return: A concatenated output string.
+        :rtype: Output[str]
+        """
+
+        transformed_items = [Output.from_input(v) for v in args]
+        return Output.all(*transformed_items).apply("".join)

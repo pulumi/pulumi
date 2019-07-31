@@ -72,22 +72,30 @@ message RegisterResourceRequest {
     message PropertyDependencies {
         repeated string urns = 1; // A list of URNs this property depends on.
     }
+    // CustomTimeouts allows a user to be able to create a set of custom timeout parameters.
+    message CustomTimeouts {
+        string create = 1; // The create resource timeout represented as a string e.g. 5m.
+        string update = 2; // The update resource timeout represented as a string e.g. 5m.
+        string delete = 3; // The delete resource timeout represented as a string e.g. 5m.
+    }
 
-    string type = 1;                   // the type of the object allocated.
-    string name = 2;                   // the name, for URN purposes, of the object.
-    string parent = 3;                 // an optional parent URN that this child resource belongs to.
-    bool custom = 4;                   // true if the resource is a custom, managed by a plugin's CRUD operations.
-    google.protobuf.Struct object = 5; // an object produced by the interpreter/source.
-    bool protect = 6;                  // true if the resource should be marked protected.
-    repeated string dependencies = 7;  // a list of URNs that this resource depends on, as observed by the language host.
-    string provider = 8;               // an optional reference to the provider to manage this resource's CRUD operations.
+    string type = 1;                                            // the type of the object allocated.
+    string name = 2;                                            // the name, for URN purposes, of the object.
+    string parent = 3;                                          // an optional parent URN that this child resource belongs to.
+    bool custom = 4;                                            // true if the resource is a custom, managed by a plugin's CRUD operations.
+    google.protobuf.Struct object = 5;                          // an object produced by the interpreter/source.
+    bool protect = 6;                                           // true if the resource should be marked protected.
+    repeated string dependencies = 7;                           // a list of URNs that this resource depends on, as observed by the language host.
+    string provider = 8;                                        // an optional reference to the provider to manage this resource's CRUD operations.
     map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
-    bool deleteBeforeReplace = 10;     // true if this resource should be deleted before replacement.
-    string version = 11;               // the version of the provider to use when servicing this request.
-    repeated string ignoreChanges = 12; // a list of property selectors to ignore during updates.
-    bool acceptSecrets = 13;           // when true operations should return secrets as strongly typed.
-    repeated string additionalSecretOutputs = 14;  // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 15;      // a list of additional URNs that shoud be considered the same.
+    bool deleteBeforeReplace = 10;                              // true if this resource should be deleted before replacement.
+    string version = 11;                                        // the version of the provider to use when servicing this request.
+    repeated string ignoreChanges = 12;                         // a list of property selectors to ignore during updates.
+    bool acceptSecrets = 13;                                    // when true operations should return secrets as strongly typed.
+    repeated string additionalSecretOutputs = 14;               // a list of output properties that should also be treated as secret, in addition to ones we detect.
+    repeated string aliases = 15;                               // a list of additional URNs that shoud be considered the same.
+    string importId = 16;                                       // if set, this resource's state should be imported from the given ID.
+    CustomTimeouts customTimeouts = 17;                         // ability to pass a custom Timeout block.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

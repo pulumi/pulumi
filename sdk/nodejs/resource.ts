@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { util } from "protobufjs";
 import { ResourceError, RunError } from "./errors";
 import { all, Input, Inputs, interpolate, Output, output } from "./output";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
@@ -142,16 +143,24 @@ export abstract class Resource {
     /**
      * @internal
      * A list of aliases applied to this resource.
+     *
+     * Note: This is marked optional only because older versions of this library may not have had
+     * this property, and marking optional forces conumers of the property to defensively handle
+     * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
-    readonly __aliases: Input<URN>[];
+    readonly __aliases?: Input<URN>[];
 
     /**
      * @internal
      * The name assigned to the resource at construction.
+     *
+     * Note: This is marked optional only because older versions of this library may not have had
+     * this property, and marking optional forces conumers of the property to defensively handle
+     * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
-    private readonly __name: string;
+    private readonly __name?: string;
 
     /**
      * @internal
@@ -221,8 +230,10 @@ export abstract class Resource {
 
             // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
             opts.aliases = [...(opts.aliases || [])];
-            for (const parentAlias of opts.parent.__aliases) {
-                opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+            if (opts.parent.__name) {
+                for (const parentAlias of (opts.parent.__aliases || [])) {
+                    opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+                }
             }
 
             this.__providers = opts.parent.__providers;
@@ -410,6 +421,9 @@ function collapseAliasToUrn(
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
  */
 export interface ResourceOptions {
+    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+    // that mergeOptions works properly for it.
+
     /**
      * An optional existing ID to load, rather than create.
      */
@@ -448,12 +462,37 @@ export interface ResourceOptions {
      * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
      */
     provider?: ProviderResource;
+    /**
+     * An optional customTimeouts configuration block.
+     */
+    customTimeouts?: CustomTimeouts;
+
+    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+    // that mergeOptions works properly for it.
+}
+
+export interface CustomTimeouts {
+    /**
+     * The optional create timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    create?: string;
+    /**
+     * The optional update timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    update?: string;
+    /**
+     * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    delete?: string;
 }
 
 /**
  * CustomResourceOptions is a bag of optional settings that control a custom resource's behavior.
  */
 export interface CustomResourceOptions extends ResourceOptions {
+    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+    // that mergeOptions works properly for it.
+
     /**
      * When set to true, deleteBeforeReplace indicates that this resource should be deleted before its replacement
      * is created when replacement is necessary.
@@ -466,12 +505,26 @@ export interface CustomResourceOptions extends ResourceOptions {
      * to mark certain ouputs as a secrets on a per resource basis.
      */
     additionalSecretOutputs?: string[];
+
+    /**
+     * When provided with a resource ID, import indicates that this resource's provider should import its state from
+     * the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
+     * current state. Once a resource has been imported, the import property must be removed from the resource's
+     * options.
+     */
+    import?: ID;
+
+    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+    // that mergeOptions works properly for it.
 }
 
 /**
  * ComponentResourceOptions is a bag of optional settings that control a component resource's behavior.
  */
 export interface ComponentResourceOptions extends ResourceOptions {
+    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+    // that mergeOptions works properly for it.
+
     /**
      * An optional set of providers to use for child resources. Either keyed by package name (e.g.
      * "aws"), or just provided as an array.  In the latter case, the package name will be retrieved
@@ -482,6 +535,9 @@ export interface ComponentResourceOptions extends ResourceOptions {
      * Note: do not provide both [provider] and [providers];
      */
     providers?: Record<string, ProviderResource> | ProviderResource[];
+
+    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
+    // that mergeOptions works properly for it.
 }
 
 /**
@@ -638,3 +694,124 @@ export class ComponentResource extends Resource {
 export const testingOptions = {
     isDryRun: false,
 };
+
+
+/**
+ * [mergeOptions] takes two ResourceOptions values and produces a new ResourceOptions with the
+ * respective properties of `opts2` merged over the same properties in `opts1`.  The original
+ * options objects will be unchanged.
+ *
+ * Conceptually property merging follows these basic rules:
+ *  1. if the property is a collection, the final value will be a collection containing the values
+ *     from each options object.
+ *  2. Simple scaler values from `opts2` (i.e. strings, numbers, bools) will replace the values of
+ *     `opts1`.
+ *  3. `opts2` can have properties explicitly provided with `null` or `undefined` as the value. If
+ *     explicitly provided, then that will be the final value in the result.
+ *  4. For the purposes of merging `dependsOn`, `provider` and `providers` are always treated as
+ *     collections, even if only a single value was provided.
+ */
+export function mergeOptions(opts1: CustomResourceOptions | undefined, opts2: CustomResourceOptions | undefined): CustomResourceOptions;
+export function mergeOptions(opts1: ComponentResourceOptions | undefined, opts2: ComponentResourceOptions | undefined): ComponentResourceOptions;
+export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions;
+export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions {
+    const dest = <any>{ ...opts1 };
+    const source = <any>{ ...opts2 };
+
+    // Ensure provider/providers are all expanded into the `ProviderResource[]` form.
+    // This makes merging simple.
+    expandProviders(dest);
+    expandProviders(source);
+
+    // iterate specifically over the supplied properties in [source].  Note: there may not be an
+    // corresponding value in [dest].
+    for (const key of Object.keys(source)) {
+        const destVal = dest[key];
+        const sourceVal = source[key];
+
+        // For 'dependsOn' we might have singleton resources in both options bags. We
+        // want to make sure we combine them into a collection.
+        if (key === "dependsOn") {
+            dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ true);
+            continue;
+        }
+
+        dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ false);
+    }
+
+    // Now, if we are left with a .providers that is just a single key/value pair, then
+    // collapse that down into .provider form.
+    normalizeProviders(dest);
+
+    return dest;
+}
+
+function isPromiseOrOutput(val: any): boolean {
+    return val instanceof Promise || Output.isInstance(val);
+}
+
+function expandProviders(options: ComponentResourceOptions) {
+    // Move 'provider' up to 'providers' if we have it.
+    if (options.provider) {
+        options.providers = [options.provider];
+    }
+
+    // Convert 'providers' map to array form.
+    if (options.providers && !Array.isArray(options.providers)) {
+        options.providers = Object.values(options.providers);
+    }
+
+    delete options.provider;
+}
+
+function normalizeProviders(opts: ComponentResourceOptions) {
+    // If we have only 0-1 providers, then merge that back down to the .provider field.
+    const providers = <ProviderResource[]>opts.providers;
+    if (providers) {
+        if (providers.length === 0) {
+            delete opts.providers;
+        }
+        else if (providers.length === 1) {
+            opts.provider = providers[0];
+            delete opts.providers;
+        }
+        else {
+            opts.providers = {};
+            for (const res of providers) {
+                opts.providers[res.getPackage()] = res;
+            }
+        }
+    }
+}
+
+/** @internal for testing purposes. */
+export function merge(dest: any, source: any, alwaysCreateArray: boolean): any {
+    // unwind any top level promise/outputs.
+    if (isPromiseOrOutput(dest)) {
+        return output(dest).apply(d => merge(d, source, alwaysCreateArray));
+    }
+
+    if (isPromiseOrOutput(source)) {
+        return output(source).apply(s => merge(dest, s, alwaysCreateArray));
+    }
+
+    // If either are an array, make a new array and merge the values into it.
+    // Otherwise, just overwrite the destination with the source value.
+    if (alwaysCreateArray || Array.isArray(dest) || Array.isArray(source)) {
+        const result: any[] = [];
+        addToArray(result, dest);
+        addToArray(result, source);
+        return result;
+    }
+
+    return source;
+}
+
+function addToArray(resultArray: any[], value: any) {
+    if (Array.isArray(value)) {
+        resultArray.push(...value);
+    }
+    else if (value !== undefined && value !== null) {
+        resultArray.push(value);
+    }
+}

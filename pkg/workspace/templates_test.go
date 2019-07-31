@@ -62,6 +62,17 @@ func TestGetValidDefaultProjectName(t *testing.T) {
 	assert.Equal(t, "project", getValidProjectName("!@#$%^&*()"))
 }
 
+func TestValidateStackName(t *testing.T) {
+	assert.NoError(t, ValidateStackName("alpha-beta-gamma"))
+	assert.NoError(t, ValidateStackName("owner-name/alpha-beta-gamma"))
+
+	err := ValidateStackName("alpha/beta/gamma")
+	assert.Equal(t, err.Error(), "A stack name may not contain slashes")
+
+	err = ValidateStackName("mooo looo mi/alpha-beta-gamma")
+	assert.Equal(t, err.Error(), "Invalid stack owner")
+}
+
 func getValidProjectNamePrefixes() []string {
 	var results []string
 	for ch := 'A'; ch <= 'Z'; ch++ {

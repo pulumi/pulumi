@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -30,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
@@ -86,7 +85,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 
 	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, inputs,
 		outputs, s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
-		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases)
+		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases, &s.CustomTimeouts)
 }
 
 // ShowJSONEvents renders engine events from a preview into a well-formed JSON document. Note that this does not
@@ -160,7 +159,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 					if err == nil {
 						step.OldState = &res
 					} else {
-						glog.V(7).Infof("not adding old state as there was an error serialzing: %s", err)
+						logging.V(7).Infof("not adding old state as there was an error serialzing: %s", err)
 					}
 				}
 				if m.New != nil {
@@ -169,7 +168,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 					if err == nil {
 						step.NewState = &res
 					} else {
-						glog.V(7).Infof("not adding new state as there was an error serialzing: %s", err)
+						logging.V(7).Infof("not adding new state as there was an error serialzing: %s", err)
 					}
 				}
 

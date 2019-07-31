@@ -76,10 +76,25 @@ type Policy struct {
 type EnforcementLevel string
 
 const (
-	// Warning is an enforcement level where the resource is still created, but a
+	// Advisory is an enforcement level where the resource is still created, but a
 	// message is displayed to the user for informational / warning purposes.
-	Warning EnforcementLevel = "warning"
+	Advisory EnforcementLevel = "advisory"
 
 	// Mandatory is an enforcement level that prevents a resource from being created.
 	Mandatory EnforcementLevel = "mandatory"
 )
+
+// GetPolicyPackResponse is the response to get a specific Policy Pack's
+// metadata and policies.
+type GetPolicyPackResponse struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Version     int      `json:"version"`
+	Policies    []Policy `json:"policies"`
+}
+
+// ApplyPolicyPackRequest is the request to apply a Policy Pack to an organization.
+type ApplyPolicyPackRequest struct {
+	Name    string `json:"name"`
+	Version int    `json:"version"`
+}

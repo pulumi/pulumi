@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -572,7 +572,7 @@ func persistEngineEvents(
 		for eventBatch := range batchesToTransmit {
 			err := update.recordEngineEvents(eventBatch.sequenceStart, eventBatch.events)
 			if err != nil {
-				glog.V(3).Infof("error recording engine events: %s", err)
+				logging.V(3).Infof("error recording engine events: %s", err)
 			}
 		}
 	}

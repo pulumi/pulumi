@@ -194,7 +194,7 @@ func (r *Registry) CheckConfig(urn resource.URN, olds,
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (r *Registry) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 	contract.Fail()
 	return plugin.DiffResult{}, errors.New("the provider registry is not configurable")
 }
@@ -260,7 +260,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 // Diff diffs the configuration of the indicated provider. The provider corresponding to the given URN must have
 // previously been loaded by a call to Check.
 func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-	allowUnknowns bool) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 	contract.Require(id != "", "id")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), urn, id)
@@ -276,7 +276,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 		provider, ok = r.GetProvider(mustNewReference(urn, id))
 		contract.Assertf(ok, "Provider must have been registered by NewRegistry for DBR Diff (%v::%v)", urn, id)
 
-		diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns)
+		diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns, ignoreChanges)
 		if err != nil {
 			return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 		}
@@ -284,7 +284,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	}
 
 	// Diff the properties.
-	diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns)
+	diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
@@ -308,7 +308,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 //
 // The provider must have been loaded by a prior call to Check.
 func (r *Registry) Create(urn resource.URN,
-	news resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(!r.isPreview)
 
@@ -334,8 +334,8 @@ func (r *Registry) Create(urn resource.URN,
 // reference indicated by the (URN, ID) pair.
 //
 // THe provider must have been loaded by a prior call to Check.
-func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
-	news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+func (r *Registry) Update(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(!r.isPreview)
 
@@ -357,7 +357,8 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
 
 // Delete unregisters and unloads the provider with the given URN and ID. The provider must have been loaded when the
 // registry was created (i.e. it must have been present in the state handed to NewRegistry).
-func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+	timeout float64) (resource.Status, error) {
 	contract.Assert(!r.isPreview)
 
 	ref := mustNewReference(urn, id)

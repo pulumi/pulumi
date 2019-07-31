@@ -51,7 +51,7 @@ interface RunCase {
         urn: URN | undefined, props: any | undefined };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
-                        propertyDeps?: any, ignoreChanges?: string[], version?: string) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
+                        propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
@@ -826,6 +826,19 @@ describe("rpc", () => {
                 };
             },
         },
+        // A program that imports a single resource.
+        "import_resource": {
+            program: path.join(base, "030.import_resource"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
+                               custom: boolean, protect: boolean, parent: string, provider: string,
+                               propertyDeps: any, ignoreChanges: string[], version: string, importID: string) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.strictEqual(importID, "testID");
+                return { urn: makeUrn(t, name), id: importID, props: {} };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -898,8 +911,9 @@ describe("rpc", () => {
                                         return { ...o, [key]: value.getUrnsList().sort() };
                                     }, {});
                                 const version: string = req.getVersion();
+                                const importID: string = req.getImportid();
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
-                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version);
+                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version, importID);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));

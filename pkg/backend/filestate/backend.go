@@ -65,8 +65,14 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d      diag.Sink
-	url    string
+	d diag.Sink
+
+	// originalURL is the URL provided when the localBackend was initialized, for example
+	// "file://~". url is a canonicalized version that should be used when persisting data.
+	// (For example, replacing ~ with the home directory, making an absolute path, etc.)
+	originalURL string
+	url         string
+
 	bucket Bucket
 }
 
@@ -93,13 +99,13 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
-func New(d diag.Sink, u string) (Backend, error) {
-	if !IsFileStateBackendURL(u) {
+func New(d diag.Sink, originalURL string) (Backend, error) {
+	if !IsFileStateBackendURL(originalURL) {
 		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
-			u, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
+			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
-	u, err := massageBlobPath(u)
+	u, err := massageBlobPath(originalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -134,9 +140,10 @@ func New(d diag.Sink, u string) (Backend, error) {
 	}
 
 	return &localBackend{
-		d:      d,
-		url:    u,
-		bucket: &wrappedBucket{bucket: bucket},
+		d:           d,
+		originalURL: originalURL,
+		url:         u,
+		bucket:      &wrappedBucket{bucket: bucket},
 	}, nil
 }
 
@@ -145,11 +152,11 @@ func New(d diag.Sink, u string) (Backend, error) {
 // file:// paths which have a few oddities around them that we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
-		// not a file:// path.  Keep this untouched and pass directly to gocloud.
+		// Not a file:// path.  Keep this untouched and pass directly to gocloud.
 		return path, nil
 	}
 
-	// Strip off the "file://"" portion so we can examine and determine what to do with the rest.
+	// Strip off the "file://" portion so we can examine and determine what to do with the rest.
 	path = strings.TrimPrefix(path, FilePathPrefix)
 
 	// We need to specially handle ~.  The shell doesn't take care of this for us, and later
@@ -176,7 +183,7 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
-	// On Windows, convert "\" to "/" and add a leading "/":
+	// On Windows, convert "\" to "/" and add a leading "/". (See https://gocloud.dev/howto/blob/#local)
 	path = filepath.ToSlash(path)
 	if os.PathSeparator != '/' && !strings.HasPrefix(path, "/") {
 		path = "/" + path
@@ -190,7 +197,7 @@ func Login(d diag.Sink, url string) (Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return be, workspace.StoreAccessToken(url, "", true)
+	return be, workspace.StoreAccessToken(be.URL(), "", true)
 }
 
 func (b *localBackend) local() {}
@@ -205,11 +212,17 @@ func (b *localBackend) Name() string {
 }
 
 func (b *localBackend) URL() string {
-	return b.url
+	return b.originalURL
 }
 
 func (b *localBackend) StateDir() string {
 	return workspace.BookkeepingDir
+}
+
+func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
+	d diag.Sink) (backend.PolicyPack, error) {
+
+	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
@@ -345,6 +358,14 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	}
 
 	return hist[0].Config, nil
+}
+
+func (b *localBackend) PackPolicies(
+	ctx context.Context, policyPackRef backend.PolicyPackReference,
+	cancellationScopes backend.CancellationScopeSource,
+	callerEventsOpt chan<- engine.Event) result.Result {
+
+	return result.Error("File state backend does not support resource policy")
 }
 
 func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackReference,
@@ -648,7 +669,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 }
 
 func (b *localBackend) Logout() error {
-	return workspace.DeleteAccessToken(b.url)
+	return workspace.DeleteAccessToken(b.originalURL)
 }
 
 func (b *localBackend) CurrentUser() (string, error) {

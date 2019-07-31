@@ -17,12 +17,12 @@ package deploy
 import (
 	"context"
 	"fmt"
-
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
@@ -298,7 +298,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil, nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil, nil, "", nil),
 		done: done,
 	}
 	return event, done, nil
@@ -667,13 +667,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
-
 	name := tokens.QName(req.GetName())
 	custom := req.GetCustom()
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
 	deleteBeforeReplace := req.GetDeleteBeforeReplace()
 	ignoreChanges := req.GetIgnoreChanges()
+	id := resource.ID(req.GetImportId())
+	customTimeouts := req.GetCustomTimeouts()
 	var t tokens.Type
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -747,15 +748,41 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}
 
+	var timeouts resource.CustomTimeouts
+	if customTimeouts != nil {
+		if customTimeouts.Create != "" {
+			seconds, err := generateTimeoutInSeconds(customTimeouts.Create)
+			if err != nil {
+				return nil, err
+			}
+			timeouts.Create = seconds
+		}
+		if customTimeouts.Delete != "" {
+			seconds, err := generateTimeoutInSeconds(customTimeouts.Delete)
+			if err != nil {
+				return nil, err
+			}
+			timeouts.Delete = seconds
+		}
+		if customTimeouts.Update != "" {
+			seconds, err := generateTimeoutInSeconds(customTimeouts.Update)
+			if err != nil {
+				return nil, err
+			}
+			timeouts.Update = seconds
+		}
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
-			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v",
-		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace, ignoreChanges)
+			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v",
+		t, name, custom, len(props), parent, protect, provider, dependencies, deleteBeforeReplace, ignoreChanges,
+		aliases, timeouts)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs, aliases),
+			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs, aliases, id, &timeouts),
 		done: make(chan *RegisterResult),
 	}
 
@@ -923,4 +950,13 @@ func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 }
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result
+}
+
+func generateTimeoutInSeconds(timeout string) (float64, error) {
+	duration, err := time.ParseDuration(timeout)
+	if err != nil {
+		return 0, errors.Errorf("unable to parse customTimeout Value %s", timeout)
+	}
+
+	return duration.Seconds(), nil
 }

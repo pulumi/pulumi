@@ -9,80 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseDiffPath(t *testing.T) {
-	cases := []struct {
-		path     string
-		elements []interface{}
-	}{
-		{
-			"root",
-			[]interface{}{"root"},
-		},
-		{
-			"root.nested",
-			[]interface{}{"root", "nested"},
-		},
-		{
-			`root["nested"]`,
-			[]interface{}{"root", "nested"},
-		},
-		{
-			"root.double.nest",
-			[]interface{}{"root", "double", "nest"},
-		},
-		{
-			`root["double"].nest`,
-			[]interface{}{"root", "double", "nest"},
-		},
-		{
-			`root["double"]["nest"]`,
-			[]interface{}{"root", "double", "nest"},
-		},
-		{
-			"root.array[0]",
-			[]interface{}{"root", "array", 0},
-		},
-		{
-			"root.array[100]",
-			[]interface{}{"root", "array", 100},
-		},
-		{
-			"root.array[0].nested",
-			[]interface{}{"root", "array", 0, "nested"},
-		},
-		{
-			"root.array[0][1].nested",
-			[]interface{}{"root", "array", 0, 1, "nested"},
-		},
-		{
-			"root.nested.array[0].double[1]",
-			[]interface{}{"root", "nested", "array", 0, "double", 1},
-		},
-		{
-			`root["key with \"escaped\" quotes"]`,
-			[]interface{}{"root", `key with "escaped" quotes`},
-		},
-		{
-			`root["key with a ."]`,
-			[]interface{}{"root", "key with a ."},
-		},
-		{
-			`["root key with \"escaped\" quotes"].nested`,
-			[]interface{}{`root key with "escaped" quotes`, "nested"},
-		},
-		{
-			`["root key with a ."][100]`,
-			[]interface{}{"root key with a .", 100},
-		},
-	}
-
-	for _, c := range cases {
-		elements, err := parseDiffPath(c.path)
-		assert.NoError(t, err)
-		assert.Equal(t, c.elements, elements)
-	}
-}
-
 func TestTranslateDetailedDiff(t *testing.T) {
 	var (
 		A = plugin.PropertyDiff{Kind: plugin.DiffAdd}
@@ -283,6 +209,54 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				},
 			},
 		},
+		{
+			state: map[string]interface{}{
+				"foo": []interface{}{
+					"bar",
+					"baz",
+				},
+			},
+			inputs: map[string]interface{}{
+				"foo": []interface{}{
+					"bar",
+					"qux",
+				},
+			},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo": U,
+			},
+			expected: &resource.ObjectDiff{
+				Adds:    resource.PropertyMap{},
+				Deletes: resource.PropertyMap{},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"foo": {
+						Old: resource.NewPropertyValue([]interface{}{
+							"bar",
+							"baz",
+						}),
+						New: resource.NewPropertyValue([]interface{}{
+							"bar",
+							"qux",
+						}),
+						Array: &resource.ArrayDiff{
+							Adds:    map[int]resource.PropertyValue{},
+							Deletes: map[int]resource.PropertyValue{},
+							Sames: map[int]resource.PropertyValue{
+								0: resource.NewPropertyValue("bar"),
+							},
+							Updates: map[int]resource.ValueDiff{
+								1: {
+									Old: resource.NewStringProperty("baz"),
+									New: resource.NewStringProperty("qux"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+
 		{
 			state: map[string]interface{}{
 				"foo": []interface{}{
@@ -492,6 +466,53 @@ func TestTranslateDetailedDiff(t *testing.T) {
 							Adds:    resource.PropertyMap{},
 							Deletes: resource.PropertyMap{},
 							Sames:   resource.PropertyMap{},
+							Updates: map[resource.PropertyKey]resource.ValueDiff{
+								"qux": {
+									Old: resource.NewStringProperty("zed"),
+									New: resource.NewStringProperty("alpha"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			state: map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+					"qux": "zed",
+				},
+			},
+			inputs: map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+					"qux": "alpha",
+				},
+			},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo": U,
+			},
+			expected: &resource.ObjectDiff{
+				Adds:    resource.PropertyMap{},
+				Deletes: resource.PropertyMap{},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"foo": {
+						Old: resource.NewPropertyValue(map[string]interface{}{
+							"bar": "baz",
+							"qux": "zed",
+						}),
+						New: resource.NewPropertyValue(map[string]interface{}{
+							"bar": "baz",
+							"qux": "alpha",
+						}),
+						Object: &resource.ObjectDiff{
+							Adds:    resource.PropertyMap{},
+							Deletes: resource.PropertyMap{},
+							Sames: resource.PropertyMap{
+								"bar": resource.NewPropertyValue("baz"),
+							},
 							Updates: map[resource.PropertyKey]resource.ValueDiff{
 								"qux": {
 									Old: resource.NewStringProperty("zed"),

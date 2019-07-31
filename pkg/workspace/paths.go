@@ -41,12 +41,17 @@ const (
 	HistoryDir = "history"
 	// PluginDir is the name of the directory containing plugins.
 	PluginDir = "plugins"
+	// PolicyDir is the name of the directory that holds policy packs.
+	PolicyDir = "policies"
 	// StackDir is the name of the directory that holds stack information for projects.
 	StackDir = "stacks"
 	// TemplateDir is the name of the directory containing templates.
 	TemplateDir = "templates"
 	// WorkspaceDir is the name of the directory that holds workspace information for projects.
 	WorkspaceDir = "workspaces"
+
+	// IgnoreFile is the name of the file that we use to control what to upload to the service.
+	IgnoreFile = ".pulumiignore"
 
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"

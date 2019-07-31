@@ -53,6 +53,12 @@ func (host *testPluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg s
 func (host *testPluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
+func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string) (plugin.Analyzer, error) {
+	return nil, errors.New("unsupported")
+}
+func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
+	return nil
+}
 func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	return host.provider(pkg, version)
 }
@@ -79,7 +85,7 @@ type testProvider struct {
 	configured  bool
 	checkConfig func(resource.URN, resource.PropertyMap,
 		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
-	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool) (plugin.DiffResult, error)
+	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
 	config     func(resource.PropertyMap) error
 }
 
@@ -97,8 +103,8 @@ func (prov *testProvider) CheckConfig(urn resource.URN, olds,
 	return prov.checkConfig(urn, olds, news, allowUnknowns)
 }
 func (prov *testProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool) (plugin.DiffResult, error) {
-	return prov.diffConfig(urn, olds, news, allowUnknowns)
+	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	return prov.diffConfig(urn, olds, news, allowUnknowns, ignoreChanges)
 }
 func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	if err := prov.config(inputs); err != nil {
@@ -111,7 +117,7 @@ func (prov *testProvider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
+func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
@@ -120,15 +126,16 @@ func (prov *testProvider) Read(urn resource.URN, id resource.ID,
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
 }
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, _ bool, _ []string) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64, ignoreChanges []string) (resource.PropertyMap,
+	resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
 	return resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Invoke(tok tokens.ModuleMember,
@@ -209,7 +216,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 				return news, nil, nil
 			},
 			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
-				allowUnknowns bool) (plugin.DiffResult, error) {
+				allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 				return plugin.DiffResult{}, nil
 			},
 			config: config,
@@ -414,6 +421,7 @@ func TestCRUD(t *testing.T) {
 		typ := MakeProviderType(l.pkg)
 		urn := resource.NewURN("test", "test", "", typ, "b")
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
+		timeout := float64(120)
 
 		// Check
 		inputs, failures, err := r.Check(urn, olds, news, false)
@@ -427,7 +435,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Create
-		id, outs, status, err := r.Create(urn, inputs)
+		id, outs, status, err := r.Create(urn, inputs, timeout)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", id)
 		assert.NotEqual(t, UnknownID, id)
@@ -444,6 +452,7 @@ func TestCRUD(t *testing.T) {
 	{
 		urn, id := olds[0].URN, olds[0].ID
 		olds, news := olds[0].Inputs, olds[0].Inputs
+		timeout := float64(120)
 
 		// Fetch the old provider instance.
 		old, ok := r.GetProvider(Reference{urn: urn, id: id})
@@ -462,7 +471,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false)
+		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{}, diff)
 
@@ -472,7 +481,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, olds, inputs)
+		outs, status, err := r.Update(urn, id, olds, inputs, timeout, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -486,13 +495,14 @@ func TestCRUD(t *testing.T) {
 	// Delete the existingv provider for the last entry in olds.
 	{
 		urn, id := olds[len(olds)-1].URN, olds[len(olds)-1].ID
+		timeout := float64(120)
 
 		// Fetch the old provider instance.
 		_, ok := r.GetProvider(Reference{urn: urn, id: id})
 		assert.True(t, ok)
 
 		// Delete
-		status, err := r.Delete(urn, id, resource.PropertyMap{})
+		status, err := r.Delete(urn, id, resource.PropertyMap{}, timeout)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, status)
 
@@ -521,7 +531,7 @@ func TestCRUDPreview(t *testing.T) {
 					return news, nil, nil
 				},
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool) (plugin.DiffResult, error) {
+					allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 					// Always reuquire replacement.
 					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
 				},
@@ -590,7 +600,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false)
+		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{}, diff)
 
@@ -623,7 +633,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false)
+		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.True(t, diff.Replace())
 

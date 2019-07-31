@@ -41,7 +41,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -199,7 +198,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}
 
 	if err != nil {
-		glog.V(3).Infof("one or more errors while discovering plugins: %s", err)
+		logging.V(3).Infof("one or more errors while discovering plugins: %s", err)
 	}
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: plugins,

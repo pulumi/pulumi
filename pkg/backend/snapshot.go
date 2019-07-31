@@ -145,6 +145,8 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &refreshSnapshotMutation{sm}, nil
 	case deploy.OpRemovePendingReplace:
 		return &removePendingReplaceSnapshotMutation{sm}, nil
+	case deploy.OpImport, deploy.OpImportReplacement:
+		return sm.doImport(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -185,6 +187,11 @@ func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
 
 	// If the kind of this resource has changed, we must write the checkpoint.
 	if old.Custom != new.Custom {
+		return true
+	}
+
+	// We need to persist the changes if CustomTimes have changed
+	if old.CustomTimeouts != new.CustomTimeouts {
 		return true
 	}
 
@@ -423,6 +430,37 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 		res := step.Old()
 		contract.Assert(res.PendingReplacement)
 		rsm.manager.markDone(res)
+		return true
+	})
+}
+
+func (sm *SnapshotManager) doImport(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
+	err := sm.mutate(func() bool {
+		sm.markOperationPending(step.New(), resource.OperationTypeImporting)
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &importSnapshotMutation{sm}, nil
+}
+
+type importSnapshotMutation struct {
+	manager *SnapshotManager
+}
+
+func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error {
+	contract.Require(step != nil, "step != nil")
+	contract.Require(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement,
+		"step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement")
+
+	return ism.manager.mutate(func() bool {
+		ism.manager.markOperationComplete(step.New())
+		if successful {
+			ism.manager.markNew(step.New())
+		}
 		return true
 	})
 }

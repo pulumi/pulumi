@@ -22,7 +22,7 @@ import (
 	"io"
 	"os"
 
-	gotty "github.com/Nvveen/Gotty"
+	gotty "github.com/ijc/Gotty"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )

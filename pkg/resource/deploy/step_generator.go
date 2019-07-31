@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 
@@ -36,6 +38,11 @@ import (
 type stepGenerator struct {
 	plan *Plan   // the plan to which this step generator belongs
 	opts Options // options for this step generator
+
+	// signals that one or more PolicyViolationEvents have been reported to the user, and the plan
+	// should terminate in error. This primarily allows `preview` to aggregate many policy violation
+	// events and report them all at once.
+	hasPolicyViolations bool
 
 	urns           map[resource.URN]bool            // set of URNs discovered for this plan
 	reads          map[resource.URN]bool            // set of URNs read for this plan
@@ -74,6 +81,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		false, /* deleteBeforeCreate */
 		event.AdditionalSecretOutputs(),
 		nil, /* aliases */
+		nil, /* customTimeouts */
 	)
 	old, hasOld := sg.plan.Olds()[urn]
 
@@ -156,14 +164,18 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	inputs := goal.Properties
 	if hasOld {
 		// Set inputs back to their old values (if any) for any "ignored" properties
-		inputs = sg.processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
+		processedInputs, res := processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
+		if res != nil {
+			return nil, res
+		}
+		inputs = processedInputs
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases)
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts)
 
 	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
 	// of resources that use this provider.
@@ -186,6 +198,22 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	// We may be creating this resource if it previously existed in the snapshot as an External resource
 	wasExternal := hasOld && old.External
 
+	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
+	// resource's ID does not match the ID in the goal state.
+	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || old.ID != goal.ID)
+	if isImport {
+		// Write the ID of the resource to import into the new state and return an ImportStep or an
+		// ImportReplacementStep
+		new.ID = goal.ID
+		if isReplace := hasOld && !recreating; isReplace {
+			return []Step{
+				NewImportReplacementStep(sg.plan, event, old, new, goal.IgnoreChanges),
+				NewReplaceStep(sg.plan, old, new, nil, nil, nil, true),
+			}, nil
+		}
+		return []Step{NewImportStep(sg.plan, event, new, goal.IgnoreChanges)}, nil
+	}
+
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	var err error
 	if prov != nil {
@@ -202,13 +230,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 		if err != nil {
 			return nil, result.FromError(err)
-		} else if sg.issueCheckErrors(new, urn, failures) {
+		} else if issueCheckErrors(sg.plan, new, urn, failures) {
 			invalid = true
 		}
 		new.Inputs = inputs
 	}
 
-	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
+	// Get all Analyzers -- if any -- and give each a chance to inspect the resource too.
+	analyzers := sg.plan.ctx.Host.ListAnalyzers()
 	for _, a := range sg.plan.analyzers {
 		var analyzer plugin.Analyzer
 		analyzer, err = sg.plan.ctx.Host.Analyzer(a)
@@ -217,6 +246,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		} else if analyzer == nil {
 			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
+		analyzers = append(analyzers, analyzer)
+	}
+
+	for _, analyzer := range analyzers {
 		var diagnostics []plugin.AnalyzeDiagnostic
 		diagnostics, err = analyzer.Analyze(new.Type, inputs)
 		if err != nil {
@@ -226,7 +259,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			// TODO(hausdorff): Batch up failures and report them all at once during preview. This
 			// will cause them to fail eagerly.
 			if d.EnforcementLevel == apitype.Mandatory {
-				invalid = true
+				if !sg.plan.preview {
+					invalid = true
+				}
+				sg.hasPolicyViolations = true
 			}
 			sg.opts.Events.OnPolicyViolation(new.URN, d)
 		}
@@ -297,7 +333,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
 		contract.Assert(old != nil)
-		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
+		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
 		if err != nil {
 			// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 			// report the message contained in the error.
@@ -307,7 +343,6 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			} else {
 				return nil, result.FromError(err)
 			}
-
 		}
 
 		// Ensure that we received a sensible response.
@@ -319,6 +354,18 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		// If there were changes, check for a replacement vs. an in-place update.
 		if diff.Changes == plugin.DiffSome {
 			if diff.Replace() {
+				// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
+				// therefore incompatible with the goal state.
+				if goal.ID != "" {
+					const message = "previously-imported resources that still specify an ID may not be replaced; " +
+						"please remove the `import` declaration from your program"
+					if sg.plan.preview {
+						sg.plan.ctx.Diag.Warningf(diag.StreamMessage(urn, message, 0))
+					} else {
+						return nil, result.Errorf(message)
+					}
+				}
+
 				sg.replaces[urn] = true
 
 				// If we are going to perform a replacement, we need to recompute the default values.  The above logic
@@ -328,7 +375,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 					if err != nil {
 						return nil, result.FromError(err)
-					} else if sg.issueCheckErrors(new, urn, failures) {
+					} else if issueCheckErrors(sg.plan, new, urn, failures) {
 						return nil, result.Bail()
 					}
 					new.Inputs = inputs
@@ -414,7 +461,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 			}
 			return []Step{
-				NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff),
+				NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
+					goal.IgnoreChanges),
 			}, nil
 		}
 
@@ -422,7 +470,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		// step to attempt to "continue" awaiting initialization.
 		if len(old.InitErrors) > 0 {
 			sg.updates[urn] = true
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil)}, nil
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -663,7 +711,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new plan didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true)
+	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true, nil)
 	if err != nil {
 		return false, err
 	}
@@ -683,7 +731,8 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 
 // diff returns a DiffResult for the given resource.
 func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
+	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
+	ignoreChanges []string) (plugin.DiffResult, error) {
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
@@ -709,9 +758,19 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	}
 
+	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
+}
+
+// diffResource invokes the Diff function for the given custom resource's provider and returns the result.
+func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
+	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
+	ignoreChanges []string) (plugin.DiffResult, error) {
+
+	contract.Require(prov != nil, "prov != nil")
+
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, old.ID, oldOutputs, newInputs, allowUnknowns)
+	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return diff, err
 	}
@@ -726,18 +785,17 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
-func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
-	failures []plugin.CheckFailure) bool {
+func issueCheckErrors(plan *Plan, new *resource.State, urn resource.URN, failures []plugin.CheckFailure) bool {
 	if len(failures) == 0 {
 		return false
 	}
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			sg.plan.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
+			plan.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			sg.plan.Diag().Errorf(
+			plan.Diag().Errorf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
@@ -746,19 +804,41 @@ func (sg *stepGenerator) issueCheckErrors(new *resource.State, urn resource.URN,
 
 // processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
 // the effect of ensuring that no changes will be made for the corresponding property.
-func (sg *stepGenerator) processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
-	ignoreChanges []string) resource.PropertyMap {
+func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
+	ignoreChanges []string) (resource.PropertyMap, result.Result) {
 
-	ignoredInputs := inputs.Copy()
+	ignoredInputs := resource.NewObjectProperty(inputs.Copy())
+	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
-		ignoreChangePropertyKey := resource.PropertyKey(ignoreChange)
-		if oldValue, has := oldInputs[ignoreChangePropertyKey]; has {
-			ignoredInputs[ignoreChangePropertyKey] = oldValue
-		} else {
-			delete(ignoredInputs, ignoreChangePropertyKey)
+		path, err := resource.ParsePropertyPath(ignoreChange)
+		if err != nil {
+			continue
+		}
+
+		oldValue, hasOld := path.Get(resource.NewObjectProperty(oldInputs))
+		_, hasNew := path.Get(resource.NewObjectProperty(inputs))
+
+		var ok bool
+		switch {
+		case hasOld && hasNew:
+			ok = path.Set(ignoredInputs, oldValue)
+			contract.Assert(ok)
+		case hasOld && !hasNew:
+			ok = path.Set(ignoredInputs, oldValue)
+		case !hasOld && hasNew:
+			ok = path.Delete(ignoredInputs)
+		default:
+			ok = true
+		}
+		if !ok {
+			invalidPaths = append(invalidPaths, ignoreChange)
 		}
 	}
-	return ignoredInputs
+	if len(invalidPaths) != 0 {
+		return nil, result.Errorf("cannot ignore changes to the following properties because one or more elements of "+
+			"the path are missing: %q", strings.Join(invalidPaths, ", "))
+	}
+	return ignoredInputs.ObjectValue(), nil
 }
 
 func (sg *stepGenerator) loadResourceProvider(
@@ -863,7 +943,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assert(prov != nil)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
+		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true, nil)
 		if err != nil {
 			return false, nil, result.FromError(err)
 		}

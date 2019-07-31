@@ -1,87 +1,11 @@
 package display
 
 import (
-	"strconv"
-	"strings"
-
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
-
-func parseDiffPath(path string) ([]interface{}, error) {
-	// Complete paths obey the following EBNF-ish grammar:
-	//
-	//   propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
-	//   quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
-	//   arrayIndex := { [0-9] }
-	//
-	//   propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
-	//   rootProperty := ( propertyName | propertyIndex )
-	//   propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
-	//   path := rootProperty { propertyAccessor }
-	//
-	// We interpret this a little loosely in order to keep things simple. Specifically, we will accept something close
-	// to the following:
-	// pathElement := { '.' } ( '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']' | [a-zA-Z_$][a-zA-Z0-9_$] )
-	// path := { pathElement }
-
-	var elements []interface{}
-	for len(path) > 0 {
-		switch path[0] {
-		case '.':
-			path = path[1:]
-		case '[':
-			// If the character following the '[' is a '"', parse a string key.
-			var pathElement interface{}
-			if path[1] == '"' {
-				var propertyKey []byte
-				var i int
-				for i = 2; ; {
-					if i == len(path) {
-						return nil, errors.New("missing closing quote in property name")
-					} else if path[i] == '"' {
-						i++
-						break
-					} else if path[i] == '\\' && i+1 < len(path) && path[i+1] == '"' {
-						propertyKey = append(propertyKey, '"')
-						i += 2
-					} else {
-						propertyKey = append(propertyKey, path[i])
-						i++
-					}
-				}
-				if i == len(path) || path[i] != ']' {
-					return nil, errors.New("missing closing bracket in property access")
-				}
-				pathElement, path = string(propertyKey), path[i:]
-			} else {
-				// Look for a closing ']'
-				rbracket := strings.IndexRune(path, ']')
-				if rbracket == -1 {
-					return nil, errors.New("missing closing bracket in array index")
-				}
-
-				index, err := strconv.ParseInt(path[1:rbracket], 10, 0)
-				if err != nil {
-					return nil, errors.Wrap(err, "invalid array index")
-				}
-				pathElement, path = int(index), path[rbracket:]
-			}
-			elements, path = append(elements, pathElement), path[1:]
-		default:
-			for i := 0; ; i++ {
-				if i == len(path) || path[i] == '.' || path[i] == '[' {
-					elements, path = append(elements, path[:i]), path[i:]
-					break
-				}
-			}
-		}
-	}
-	return elements, nil
-}
 
 // getProperty fetches the child property with the indicated key from the given property value. If the key does not
 // exist, it returns an empty `PropertyValue`.
@@ -114,7 +38,7 @@ func getProperty(key interface{}, v resource.PropertyValue) resource.PropertyVal
 // property named by the first element of the path exists in both parents, we snip off the first element of the path
 // and recurse into the property itself. If the property does not exist in one parent or the other, the diff kind is
 // disregarded and the change is treated as either an Add or a Delete.
-func addDiff(path []interface{}, kind plugin.DiffKind, parent *resource.ValueDiff,
+func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.ValueDiff,
 	oldParent, newParent resource.PropertyValue) {
 
 	contract.Require(len(path) > 0, "len(path) > 0")
@@ -143,7 +67,11 @@ func addDiff(path []interface{}, kind plugin.DiffKind, parent *resource.ValueDif
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
 				parent.Array.Deletes[element] = old
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
-				parent.Array.Updates[element] = resource.ValueDiff{Old: old, New: new}
+				valueDiff := resource.ValueDiff{Old: old, New: new}
+				if d := old.Diff(new); d != nil {
+					valueDiff = *d
+				}
+				parent.Array.Updates[element] = valueDiff
 			default:
 				contract.Failf("unexpected diff kind %v", kind)
 			}
@@ -177,7 +105,11 @@ func addDiff(path []interface{}, kind plugin.DiffKind, parent *resource.ValueDif
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
 				parent.Object.Deletes[e] = old
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
-				parent.Object.Updates[e] = resource.ValueDiff{Old: old, New: new}
+				valueDiff := resource.ValueDiff{Old: old, New: new}
+				if d := old.Diff(new); d != nil {
+					valueDiff = *d
+				}
+				parent.Object.Updates[e] = valueDiff
 			default:
 				contract.Failf("unexpected diff kind %v", kind)
 			}
@@ -209,7 +141,7 @@ func translateDetailedDiff(step engine.StepEventMetadata) *resource.ObjectDiff {
 
 	var diff resource.ValueDiff
 	for path, pdiff := range step.DetailedDiff {
-		elements, err := parseDiffPath(path)
+		elements, err := resource.ParsePropertyPath(path)
 		contract.Assert(err == nil)
 
 		olds := resource.NewObjectProperty(step.Old.Outputs)

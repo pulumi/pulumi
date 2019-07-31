@@ -111,8 +111,8 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 }
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
-func runStateEdit(stackName string, urn resource.URN, operation edit.OperationFunc) result.Result {
-	return runTotalStateEdit(stackName, func(opts display.Options, snap *deploy.Snapshot) error {
+func runStateEdit(stackName string, showPrompt bool, urn resource.URN, operation edit.OperationFunc) result.Result {
+	return runTotalStateEdit(stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
 			return err
@@ -122,9 +122,10 @@ func runStateEdit(stackName string, urn resource.URN, operation edit.OperationFu
 	})
 }
 
-// runTotalStateEdit runs a snapshot-mutating function on the entirity of the given stack's snapshot. Before mutating
-// the snapshot, the user is prompted for confirmation if the current session is interactive.
-func runTotalStateEdit(stackName string,
+// runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
+// Before mutating, the user may be prompted to for confirmation if the current session is interactive.
+func runTotalStateEdit(
+	stackName string, showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
@@ -138,7 +139,7 @@ func runTotalStateEdit(stackName string,
 		return result.FromError(err)
 	}
 
-	if cmdutil.Interactive() {
+	if showPrompt && cmdutil.Interactive() {
 		confirm := false
 		surveycore.DisableColor = true
 		surveycore.QuestionIcon = ""

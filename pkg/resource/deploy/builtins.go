@@ -46,7 +46,7 @@ func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *builtinProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
@@ -82,7 +82,7 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 }
 
 func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
-	allowUnknowns bool) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
@@ -97,7 +97,7 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs r
 }
 
 func (p *builtinProvider) Create(urn resource.URN,
-	inputs resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
@@ -109,8 +109,8 @@ func (p *builtinProvider) Create(urn resource.URN,
 	return id, state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state,
-	inputs resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
+	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Failf("unexpected update for builtin resource %v", urn)
 	contract.Assert(urn.Type() == stackReferenceType)
@@ -119,7 +119,7 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state,
 }
 
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
-	state resource.PropertyMap) (resource.Status, error) {
+	state resource.PropertyMap, timeout float64) (resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 

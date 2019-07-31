@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// nolint: goconst
 package display
 
 import (
@@ -138,8 +139,9 @@ type ProgressDisplay struct {
 	// align.  We don't need to do that in non-terminal situations.
 	isTerminal bool
 
-	// The width of the terminal.  Used so we can trim resource messages that are too long.
-	terminalWidth int
+	// The width and height of the terminal.  Used so we can trim resource messages that are too long.
+	terminalWidth  int
+	terminalHeight int
 
 	// If all progress messages are done and we can print out the final display.
 	done bool
@@ -188,6 +190,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return payload.Metadata.URN, &payload.Metadata
 	} else if event.Type == engine.DiagEvent {
 		return event.Payload.(engine.DiagEventPayload).URN, nil
+	} else if event.Type == engine.PolicyViolationEvent {
+		return event.Payload.(engine.PolicyViolationEventPayload).ResourceURN, nil
 	}
 
 	return "", nil
@@ -263,10 +267,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 		nonInteractiveSpinner:  spinner,
 	}
 
-	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+	terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
 	contract.IgnoreError(err)
 	display.isTerminal = opts.IsInteractive
 	display.terminalWidth = terminalWidth
+	display.terminalHeight = terminalHeight
 
 	go func() {
 		display.processEvents(ticker, events)
@@ -383,14 +388,16 @@ func (display *ProgressDisplay) refreshColumns(
 }
 
 // Ensure our stored dimension info is up to date.
-func (display *ProgressDisplay) updateTerminalWidth() {
+func (display *ProgressDisplay) updateTerminalDimensions() {
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
-		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+		currentTerminalWidth, currentTerminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
 		contract.IgnoreError(err)
 
-		if currentTerminalWidth != display.terminalWidth {
+		if currentTerminalWidth != display.terminalWidth ||
+			currentTerminalHeight != display.terminalHeight {
 			display.terminalWidth = currentTerminalWidth
+			display.terminalHeight = currentTerminalHeight
 
 			// also clear our display cache as we want to reprint all lines.
 			display.printedProgressCache = make(map[string]Progress)
@@ -570,7 +577,7 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 	if display.isTerminal && display.headerRow != nil {
 		// make sure our stored dimension info is up to date
-		display.updateTerminalWidth()
+		display.updateTerminalDimensions()
 
 		rootNodes := display.generateTreeNodes()
 		rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
@@ -918,6 +925,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// always show the root 'stack' resource so we can indicate that it's still running, and
 	// also so we have something to attach unparented diagnostic events to.
 	hideRowIfUnnecessary := metadata != nil && !shouldShow(*metadata, display.opts) && !isRootEvent
+	// Always show row if there's a policy violation event. Policy violations prevent resource
+	// registration, so if we don't show the row, the violation gets attributed to the stack
+	// resource rather than the resources whose policy failed.
+	hideRowIfUnnecessary = hideRowIfUnnecessary || event.Type == engine.PolicyViolationEvent
 	if !hideRowIfUnnecessary {
 		row.SetHideRowIfUnnecessary(false)
 	}
@@ -1075,6 +1086,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "refreshing failed"
 			case deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				return "discarding failed"
+			case deploy.OpImport, deploy.OpImportReplacement:
+				return "importing failed"
 			}
 		} else {
 			switch op {
@@ -1103,6 +1116,10 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "discarded"
 			case deploy.OpDiscardReplaced:
 				return "discarded original"
+			case deploy.OpImport:
+				return "imported"
+			case deploy.OpImportReplacement:
+				return "imported replacement"
 			}
 		}
 
@@ -1143,7 +1160,11 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 	case deploy.OpReadDiscard:
 		return "discard"
 	case deploy.OpDiscardReplaced:
-		return "discard origina;"
+		return "discard original"
+	case deploy.OpImport:
+		return "import"
+	case deploy.OpImportReplacement:
+		return "import replacement"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1172,6 +1193,8 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 		return "refresh"
 	case deploy.OpReadDiscard:
 		return "discard"
+	case deploy.OpImport, deploy.OpImportReplacement:
+		return "import"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1246,6 +1269,10 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "discarding"
 		case deploy.OpDiscardReplaced:
 			return "discarding original"
+		case deploy.OpImport:
+			return "importing"
+		case deploy.OpImportReplacement:
+			return "importing replacement"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)

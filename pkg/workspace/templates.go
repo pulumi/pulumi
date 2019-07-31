@@ -398,6 +398,7 @@ func GetTemplateDir() (string, error) {
 // restrictive that what the backend enforces, but we want to "stop the bleeding" for new projects created via
 // `pulumi new`.
 var (
+	stackOwnerRegexp          = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
 	stackNameAndProjectRegexp = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
 )
 
@@ -427,9 +428,40 @@ func ValidateProjectDescription(s string) error {
 	return nil
 }
 
-// ValidateStackName ensures a stack name is valid, if it is not it returns an error with a message suitable
-// for display to an end user.
+// ValidateStackName ensures a -- potentially qualified -- stack name is valid, if it is not it
+// returns an error with a message suitable for display to an end user.
 func ValidateStackName(s string) error {
+	// First, see if the stack name is qualified or not. It may be of the form "owner/name", when
+	// you have access to multiple organizations.
+	parts := strings.Split(s, "/")
+	switch len(parts) {
+	case 1:
+		return validateStackName(parts[0])
+	case 2:
+		if err := validateStackOwner(parts[0]); err != nil {
+			return err
+		}
+		return validateStackName(parts[1])
+	default:
+		return errors.New("A stack name may not contain slashes")
+	}
+}
+
+// validateStackOwner checks if a stack owner name is valid. An "owner" is simply the namespace
+// a stack may exist within, which for the Pulumi Service is the user account or organization.
+func validateStackOwner(s string) error {
+	// The error message takes a different from here, since stack names are created via the CLI,
+	// Pulumi organizations are created on the Pulumi Service. And so
+	if !stackOwnerRegexp.MatchString(s) {
+		return errors.New("Invalid stack owner")
+	}
+
+	return nil
+}
+
+// validateStackName checks if a stack name is valid, returning a user-suitable error if needed. May
+// need to be paired with validateOwnerName when checking a qualified stack reference.
+func validateStackName(s string) error {
 	if len(s) > 100 {
 		return errors.New("A stack name must be 100 characters or less")
 	}

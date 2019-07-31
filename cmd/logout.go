@@ -38,7 +38,7 @@ func newLogoutCmd() *cobra.Command {
 			"\n" +
 			"Because you may be logged into multiple backends simultaneously, you can optionally pass\n" +
 			"a specific URL argument, formatted just as you logged in, to log out of a specific one.\n" +
-			"If none is supplied, you will be logged out of the default cloud.",
+			"If no URL is provided, you will be logged out of the current backend.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.

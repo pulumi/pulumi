@@ -7,8 +7,10 @@ from . import plugin_pb2 as plugin__pb2
 
 
 class AnalyzerStub(object):
-  """Analyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
-  for arbitrary issues.  These might be style, policy, correctness, security, or performance related.
+  """Analyzer provides a pluggable interface for checking resource definitions against some number of
+  resource policies. It is intentionally open-ended, allowing for implementations that check
+  everything from raw resource definitions to entire projects/stacks/snapshots for arbitrary
+  issues -- style, policy, correctness, security, and so on.
   """
 
   def __init__(self, channel):
@@ -22,6 +24,11 @@ class AnalyzerStub(object):
         request_serializer=analyzer__pb2.AnalyzeRequest.SerializeToString,
         response_deserializer=analyzer__pb2.AnalyzeResponse.FromString,
         )
+    self.GetAnalyzerInfo = channel.unary_unary(
+        '/pulumirpc.Analyzer/GetAnalyzerInfo',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=analyzer__pb2.AnalyzerInfo.FromString,
+        )
     self.GetPluginInfo = channel.unary_unary(
         '/pulumirpc.Analyzer/GetPluginInfo',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -30,12 +37,21 @@ class AnalyzerStub(object):
 
 
 class AnalyzerServicer(object):
-  """Analyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
-  for arbitrary issues.  These might be style, policy, correctness, security, or performance related.
+  """Analyzer provides a pluggable interface for checking resource definitions against some number of
+  resource policies. It is intentionally open-ended, allowing for implementations that check
+  everything from raw resource definitions to entire projects/stacks/snapshots for arbitrary
+  issues -- style, policy, correctness, security, and so on.
   """
 
   def Analyze(self, request, context):
     """Analyze analyzes a single resource object, and returns any errors that it finds.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def GetAnalyzerInfo(self, request, context):
+    """GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -55,6 +71,11 @@ def add_AnalyzerServicer_to_server(servicer, server):
           servicer.Analyze,
           request_deserializer=analyzer__pb2.AnalyzeRequest.FromString,
           response_serializer=analyzer__pb2.AnalyzeResponse.SerializeToString,
+      ),
+      'GetAnalyzerInfo': grpc.unary_unary_rpc_method_handler(
+          servicer.GetAnalyzerInfo,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=analyzer__pb2.AnalyzerInfo.SerializeToString,
       ),
       'GetPluginInfo': grpc.unary_unary_rpc_method_handler(
           servicer.GetPluginInfo,
