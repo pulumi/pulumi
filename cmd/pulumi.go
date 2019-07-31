@@ -31,7 +31,6 @@ import (
 	"github.com/djherbis/times"
 	"github.com/docker/docker/pkg/term"
 	"github.com/pkg/errors"
-	"github.com/pulumi/glog"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
@@ -199,7 +198,7 @@ func NewPulumiCmd() *cobra.Command {
 func checkForUpdate() {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
-		glog.V(3).Infof("error parsing current version: %s", err)
+		logging.V(3).Infof("error parsing current version: %s", err)
 	}
 
 	// We don't care about warning for you to update if you have installed a developer version
@@ -209,7 +208,7 @@ func checkForUpdate() {
 
 	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
 	if err != nil {
-		glog.V(3).Infof("error fetching latest version information: %s", err)
+		logging.V(3).Infof("error fetching latest version information: %s", err)
 	}
 
 	if oldestAllowedVer.GT(curVer) {
@@ -233,7 +232,7 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 
 	err = cacheVersionInfo(latest, oldest)
 	if err != nil {
-		glog.V(3).Infof("failed to cache version info: %s", err)
+		logging.V(3).Infof("failed to cache version info: %s", err)
 	}
 
 	return latest, oldest, err
@@ -334,7 +333,7 @@ func getUpgradeCommand() string {
 
 	isBrew, err := isBrewInstall(exe)
 	if err != nil {
-		glog.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
 	}
 	if isBrew {
 		return "$ brew upgrade pulumi"

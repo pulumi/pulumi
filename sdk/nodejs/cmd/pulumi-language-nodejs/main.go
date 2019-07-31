@@ -43,7 +43,6 @@ import (
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/pulumi/glog"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -199,7 +198,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}
 
 	if err != nil {
-		glog.V(3).Infof("one or more errors while discovering plugins: %s", err)
+		logging.V(3).Infof("one or more errors while discovering plugins: %s", err)
 	}
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: plugins,
