@@ -38,36 +38,30 @@ func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider 
 	if err != nil {
 		return nil, err
 	}
-	info.SecretsProvider = secretsProvider
 
 	var secretsManager *cloud.Manager
 	// TODO: We shouldn't be re-using the `EncryptionSalt` field here - this is really a `DataKey`.
 	// TBD how to better represent this in the ProjectStack data structure.
 	if info.EncryptionSalt == "" {
-		// No existing data key, so create a fresh secrets manager and store it's data key
-		secretsManager, err = cloud.NewSecretsManager(secretsProvider)
+		dataKey, err := cloud.GenerateNewDataKey(secretsProvider)
 		if err != nil {
 			return nil, err
 		}
-		dataKey := secretsManager.DataKey()
 		info.EncryptionSalt = base64.StdEncoding.EncodeToString(dataKey)
-	} else {
-		// We do have an existing data key, so get a secrets manager based on that key
-		dataKey, err := base64.StdEncoding.DecodeString(info.EncryptionSalt)
-		if err != nil {
-			return nil, err
-		}
-		secretsManager, err = cloud.SecretsManagerFromState(cloud.State{
-			URL:     secretsProvider,
-			DataKey: dataKey,
-		})
-		if err != nil {
-			return nil, err
-		}
 	}
-
+	info.SecretsProvider = secretsProvider
 	if err = info.Save(configFile); err != nil {
 		return nil, err
 	}
+
+	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptionSalt)
+	if err != nil {
+		return nil, err
+	}
+	secretsManager, err = cloud.NewSecretsManager(secretsProvider, dataKey)
+	if err != nil {
+		return nil, err
+	}
+
 	return secretsManager, nil
 }
