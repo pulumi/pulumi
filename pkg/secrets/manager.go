@@ -14,11 +14,10 @@
 package secrets
 
 import (
-	"encoding/json"
-
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
 
+// Manager provides the interface for providing stack encryption.
 type Manager interface {
 	// Type retruns a string that reflects the type of this provider. This is serialized along with the state of
 	// the manager into the deployment such that we can re-construct the correct manager when deserializing a
@@ -33,8 +32,4 @@ type Manager interface {
 	// Decrypter returns a `config.Decrypter` that can be used to decrypt values when deserializing a snapshot from a
 	// deployment, or an error if one can not be constructed.
 	Decrypter() (config.Decrypter, error)
-}
-
-type ManagerProvider interface {
-	FromState(state json.RawMessage) (Manager, error)
 }

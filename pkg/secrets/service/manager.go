@@ -93,15 +93,9 @@ func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier) (secr
 	}, nil
 }
 
-type provider struct{}
-
-var _ secrets.ManagerProvider = &provider{}
-
-func NewProvider() secrets.ManagerProvider {
-	return &provider{}
-}
-
-func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
+// NewServiceSecretsManagerFromState returns a Pulumi service-based secrets manager based on the
+// existing state.
+func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s serviceSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling state")

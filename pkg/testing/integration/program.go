@@ -399,7 +399,7 @@ func GetLogs(
 	stackInfo RuntimeValidationStackInfo,
 	query operations.LogQuery) *[]operations.LogEntry {
 
-	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment)
+	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment, stack.DefaultSecretsProvider)
 	assert.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
