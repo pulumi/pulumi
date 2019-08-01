@@ -197,7 +197,7 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 	diagInfo := data.diagInfo
 	diagInfo.LastDiag = &payload
 
-	if  payload.Severity == diag.Error {
+	if payload.Severity == diag.Error {
 		diagInfo.LastError = &payload
 	}
 
@@ -401,9 +401,9 @@ func (data *resourceRowData) getInfoColumn() string {
 		// whatever the last diagnostics was that we got.  This way, as we're hearing about
 		// diagnostic events, we're always printing out the last one.
 
-		 diagnostic := data.diagInfo.LastDiag
+		diagnostic := data.diagInfo.LastDiag
 		if data.display.isTerminal && data.diagInfo.LastError != nil {
-				diagnostic = data.diagInfo.LastError
+			diagnostic = data.diagInfo.LastError
 		}
 
 		if diagnostic != nil {
