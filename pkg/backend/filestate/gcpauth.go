@@ -31,6 +31,10 @@ func GoogleCredentialsMux() (*blob.URLMux, error) {
 	var err error
 	var credentials *google.Credentials
 
+	// GOOGLE_CREDENTIALS aren't part of the gcloud standard authorization variables
+	// but the GCP terraform provider uses this variable to allow users to authenticate
+	// with the contents of a credentials.json file instead of just a file path.
+	// https://www.terraform.io/docs/backends/types/gcs.html
 	if creds := os.Getenv("GOOGLE_CREDENTIALS"); creds != "" {
 		// We try $GOOGLE_CREDENTIALS before gcp.DefaultCredentials
 		// so that users can override the default creds
@@ -62,7 +66,7 @@ func GoogleCredentialsMux() (*blob.URLMux, error) {
 		options.PrivateKey = []byte(account.PrivateKey)
 	} else {
 		cmdutil.Diag().Warningf(diag.Message("",
-			"Pulumi will not be able to pint a statefile permalink using these credentials. "+
+			"Pulumi will not be able to print a statefile permalink using these credentials. "+
 				"Neither a GoogleAccessID or PrivateKey are available. "+
 				"Try using a GCP Service Account."))
 	}

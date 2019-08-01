@@ -112,6 +112,8 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 
 	blobmux := blob.DefaultURLMux()
 
+	// for gcp we want to support additional credentials
+	// schemes on top of go-cloud's default credentials mux.
 	if strings.HasPrefix(u, gcsblob.Scheme) {
 		blobmux, err = GoogleCredentialsMux()
 		if err != nil {
@@ -560,6 +562,11 @@ func (b *localBackend) apply(
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
+				// we log a warning here rather then returning an error to avoid exiting
+				// pulumi with an error code.
+				// printing a statefile perma link happens after all the providers have finished
+				// deploying the infrastructure, failing the pulumi update because there was a
+				// problem printing a statefile perma link can be missleading in automated CI environments.
 				cmdutil.Diag().Warningf(diag.Message("", "Could not get signed url for stack location: %v"), err)
 			}
 		}
