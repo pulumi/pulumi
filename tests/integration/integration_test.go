@@ -774,7 +774,6 @@ func TestCloudSecretProvider(t *testing.T) {
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Bin:             "/opt/pulumi/bin/pulumi",
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
 		SecretsProvider: fmt.Sprintf("awskms://alias/%s", kmsKeyAlias),
