@@ -29,6 +29,11 @@ CHANGELOG
 - Fix a bug in the Python SDK that caused input properties that are coroutines to be awaited twice.
   [#3024](https://github.com/pulumi/pulumi/pull/3024)
 
+- Do not propagate input properties to missing output properties during preview. The old behavior can case issues that
+  are difficult to diagnose in cases where the actual value of the output property differs from the value of the input
+  property, and can cause `apply`s to run at unexpected times. If this change causes issues in a Pulumi program, the
+  original behavior can be enabled by setting the `PULUMI_ENABLE_LEGACY_APPLY` environment variable to `true`.
+
 ### Compatibility
 
 - Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate

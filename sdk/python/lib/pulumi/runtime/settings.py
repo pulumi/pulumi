@@ -36,6 +36,7 @@ class Settings:
     parallel: Optional[str]
     dry_run: Optional[bool]
     test_mode_enabled: Optional[bool]
+    legacy_apply_enabled: Optional[bool]
 
     """
     A bag of properties for configuring the Pulumi Python language runtime.
@@ -47,16 +48,21 @@ class Settings:
                  stack: Optional[str] = None,
                  parallel: Optional[str] = None,
                  dry_run: Optional[bool] = None,
-                 test_mode_enabled: Optional[bool] = None):
+                 test_mode_enabled: Optional[bool] = None,
+                 legacy_apply_enabled: Optional[bool] = None):
         # Save the metadata information.
         self.project = project
         self.stack = stack
         self.parallel = parallel
         self.dry_run = dry_run
         self.test_mode_enabled = test_mode_enabled
+        self.legacy_apply_enabled = legacy_apply_enabled
 
         if self.test_mode_enabled is None:
             self.test_mode_enabled = os.getenv("PULUMI_TEST_MODE", "false") == "true"
+
+        if self.legacy_apply_enabled is None:
+            self.legacy_apply_enabled = os.getenv("PULUMI_ENABLE_LEGACY_APPLY", "false") == "true"
 
         # Actually connect to the monitor/engine over gRPC.
         if monitor:
@@ -107,6 +113,10 @@ def require_test_mode_enabled():
     if not is_test_mode_enabled():
         raise RunError('Program run without the `pulumi` CLI; this may not be what you want '+
                        '(enable PULUMI_TEST_MODE to disable this error)')
+
+
+def is_legacy_apply_enabled():
+    return bool(SETTINGS.legacy_apply_enabled)
 
 
 def get_project() -> Optional[str]:

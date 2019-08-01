@@ -395,7 +395,7 @@ func (outputs *resourceOutputs) resolve(dryrun bool, err error, inputs map[strin
 		// Now resolve all output properties.
 		for k, s := range outputs.state {
 			v, has := outprops[k]
-			if !has {
+			if !has && !dryrun {
 				// If we did not receive a value for a particular property, resolve it to the corresponding input
 				// if any exists.
 				v = inputs[k]

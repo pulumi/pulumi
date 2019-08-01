@@ -47,6 +47,8 @@ import {
     getProject,
     getRootResource,
     getStack,
+    isDryRun,
+    isLegacyApplyEnabled,
     rpcKeepAlive,
     serialize,
 } from "./settings";
@@ -474,16 +476,18 @@ async function resolveOutputs(res: Resource, t: string, name: string,
     }
 
     const label = `resource:${name}[${t}]#...`;
-    for (const key of Object.keys(props)) {
-        if (!allProps.hasOwnProperty(key)) {
-            // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
-            // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
-            // Output values are handled properly w.r.t. unknowns.
-            const inputProp = await serializeProperty(label, props[key], new Set());
-            if (inputProp === undefined) {
-                continue;
+    if (!isDryRun() || isLegacyApplyEnabled()) {
+        for (const key of Object.keys(props)) {
+            if (!allProps.hasOwnProperty(key)) {
+                // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
+                // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
+                // Output values are handled properly w.r.t. unknowns.
+                const inputProp = await serializeProperty(label, props[key], new Set());
+                if (inputProp === undefined) {
+                    continue;
+                }
+                allProps[key] = deserializeProperty(inputProp);
             }
-            allProps[key] = deserializeProperty(inputProp);
         }
     }
 

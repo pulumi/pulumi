@@ -53,7 +53,7 @@ class ResourceThensTest(LanghostTest):
             self.assertListEqual(deps, ["test:index:ResourceA::resourceA"])
             if dry_run:
                 self.assertDictEqual(res, {
-                    "other_in": 777,
+                    # other_in is unknown, so it is not in the dictionary.
                     # other_out is unknown, so it is not in the dictionary.
                     # other_id is also unknown so it is not in the dictionary
                 })
