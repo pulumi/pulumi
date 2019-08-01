@@ -33,6 +33,7 @@ class StackOutputTest(LanghostTest):
             "list": [],
             "list_with_none": [None],
             "list_of_lists": [[], []],
+            "list_of_outputs": [[1], [2]],
             "set": ["val"],
             "dict": {"a": 1.0},
             "output": 1.0,
