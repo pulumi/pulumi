@@ -1,12 +1,19 @@
 package httpstate
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/pulumi/pulumi/pkg/util/archive"
+
+	"github.com/pulumi/pulumi/pkg/npm"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -14,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -48,12 +54,12 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 	}
 
 	// PolicyPack has not been downloaded and installed. Do this now.
-	policyPackZip, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
+	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
 	if err != nil {
 		return "", err
 	}
 
-	return policyPackPath, installRequiredPolicy(policyPackPath, policyPackZip)
+	return policyPackPath, installRequiredPolicy(policyPackPath, policyPackTarball)
 }
 
 func newCloudBackendPolicyPackReference(
@@ -127,9 +133,17 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Compressing policy pack")
 
-	dirArchive, err := archive.Process(op.Root, false)
+	if runtime := pack.b.currentProject.Runtime.Name(); !strings.EqualFold(runtime, "nodejs") {
+		return result.Errorf(
+			"failed to publish policies becuase Pulumi.yaml requests unsupported runtime %s",
+			runtime)
+	}
+
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	packTarball, err := npm.Pack(op.PlugCtx.Pwd, os.Stderr)
 	if err != nil {
-		return result.FromError(err)
+		return result.FromError(
+			errors.Wrapf(err, "could not publish policies because of error running npm pack"))
 	}
 
 	//
@@ -138,7 +152,7 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Uploading policy pack to Pulumi service")
 
-	err = pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, dirArchive)
+	err = pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -150,7 +164,9 @@ func (pack *cloudPolicyPack) Apply(ctx context.Context, op backend.ApplyOperatio
 	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), op.Version)
 }
 
-func installRequiredPolicy(finalDir string, zip []byte) error {
+const npmPackageDir = "package"
+
+func installRequiredPolicy(finalDir string, tarball []byte) error {
 	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
@@ -162,14 +178,19 @@ func installRequiredPolicy(finalDir string, zip []byte) error {
 		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
 	}
 
+	// npm unpacks into a directory called `package`.
+	tempNPMPkgDir := path.Join(tempDir, npmPackageDir)
+	if err := os.MkdirAll(tempNPMPkgDir, 0700); err != nil {
+		return errors.Wrap(err, "creating plugin root")
+	}
+
 	// If we early out of this function, try to remove the temp folder we created.
 	defer func() {
 		contract.IgnoreError(os.RemoveAll(tempDir))
 	}()
 
-	// Unzip the file. NOTE: It is important that the `Close` calls in this function complete before
-	// we try to rename the temp directory. Open file handles here cause issues on Windows.
-	err = archive.Unzip(zip, tempDir)
+	// Uncompress the policy pack.
+	err = archive.Untgz(tarball, tempDir)
 	if err != nil {
 		return err
 	}
@@ -179,9 +200,31 @@ func installRequiredPolicy(finalDir string, zip []byte) error {
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be
 	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
 	// as part of the install will be cleaned up when we exit by the defer above.
-	if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
+	if err := os.Rename(tempNPMPkgDir, finalDir); err != nil && !os.IsExist(err) {
 		return errors.Wrap(err, "moving plugin")
 	}
+
+	proj, err := workspace.LoadProject(path.Join(finalDir, "Pulumi.yaml"))
+	if err != nil {
+		return errors.Wrapf(err, "failed to load policy project at %s", finalDir)
+	}
+
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		return fmt.Errorf("unsupported policy runtime %s", proj.Runtime.Name())
+	}
+
+	fmt.Println("Installing dependencies...")
+	fmt.Println()
+
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	err = npm.Install(finalDir, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Finished installing dependencies")
+	fmt.Println()
 
 	return nil
 }
