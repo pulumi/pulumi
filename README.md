@@ -45,9 +45,7 @@ for (let i = 0; i < 3; i++) {
 Or a simple serverless timer that archives Hacker News every day at 8:30AM:
 
 ```typescript
-import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
-import * as https from "https";
+const aws = require("@pulumi/aws");
 
 const snapshots = new aws.dynamodb.Table("snapshots", {
     attributes: [{ name: "id", type: "S", }],
@@ -55,7 +53,7 @@ const snapshots = new aws.dynamodb.Table("snapshots", {
 });
 
 aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", () => {
-    https.get("https://news.ycombinator.com", res => {
+    require("https").get("https://news.ycombinator.com", res => {
         let content = "";
         res.setEncoding("utf8");
         res.on("data", chunk => content += chunk);
