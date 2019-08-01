@@ -143,10 +143,8 @@ def massage(attr: Any, seen: List[Any]):
 
         return result
 
-
     if isinstance(attr, Output):
         return attr.apply(lambda v: massage(v, seen))
-
 
     if hasattr(attr, "__dict__"):
         # recurse on the dictionary itself.  It will be handled above.

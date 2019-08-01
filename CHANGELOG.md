@@ -11,8 +11,7 @@ CHANGELOG
 
 - Arbitrary values can now be exported from a Python app. This includes dictionaries, lists, class
   instances, and the like. Values are treated as "plain old python data" and generally kept as
-  simple values (like strings, numbers, etc.) of simple collections (dictionaries, lists, sets,
-  etc.)
+  simple values (like strings, numbers, etc.) or the simple collections supported by the Pulumi data model (specifically, dictionaries and lists).
 
 ### Compatibility
 
