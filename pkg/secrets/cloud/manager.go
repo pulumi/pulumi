@@ -34,8 +34,8 @@ import (
 const Type = "cloud"
 
 type cloudState struct {
-	URL     string `json:"url"`
-	DataKey []byte `json:"dataKey"`
+	URL          string `json:"url"`
+	EncryptedKey []byte `json:"encryptedkey"`
 }
 
 type provider struct{}
@@ -46,7 +46,7 @@ func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
 		return nil, errors.Wrap(err, "unmarshalling state")
 	}
 
-	return NewSecretsManager(s.URL, s.DataKey)
+	return NewSecretsManager(s.URL, s.EncryptedKey)
 }
 
 // NewProvider returns a new manager provider which hands back Base64SecretsManagers
@@ -84,8 +84,8 @@ func NewSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
 	return &Manager{
 		crypter: crypter,
 		state: cloudState{
-			URL:     url,
-			DataKey: encryptedDataKey,
+			URL:          url,
+			EncryptedKey: encryptedDataKey,
 		},
 	}, nil
 }
@@ -100,4 +100,4 @@ func (m *Manager) Type() string                         { return Type }
 func (m *Manager) State() interface{}                   { return m.state }
 func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
 func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
-func (m *Manager) DataKey() []byte                      { return m.state.DataKey }
+func (m *Manager) EncryptedKey() []byte                 { return m.state.EncryptedKey }

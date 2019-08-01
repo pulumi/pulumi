@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -762,6 +763,38 @@ func TestResourceWithSecretSerialization(t *testing.T) {
 			// And here, the prop was not set, it should just be a string value
 			_, isString := withoutSecretProps["prefix"].(string)
 			assert.Truef(t, isString, "non-secret output was not a string")
+		},
+	})
+}
+
+func TestCloudSecretProvider(t *testing.T) {
+	kmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
+	if kmsKeyAlias == "" {
+		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Bin:             "/opt/pulumi/bin/pulumi",
+		Dir:             "cloud_secrets_provider",
+		Dependencies:    []string{"@pulumi/pulumi"},
+		SecretsProvider: fmt.Sprintf("awskms://alias/%s", kmsKeyAlias),
+		Secrets: map[string]string{
+			"mysecret": "THISISASECRET",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			secretsProvider := stackInfo.Deployment.SecretsProviders
+			assert.NotNil(t, secretsProvider)
+			assert.Equal(t, secretsProvider.Type, "cloud")
+
+			p := cloud.NewProvider()
+			_, err := p.FromState(secretsProvider.State)
+			assert.NoError(t, err)
+
+			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
 		},
 	})
 }

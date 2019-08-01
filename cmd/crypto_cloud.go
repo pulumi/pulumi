@@ -40,19 +40,19 @@ func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider 
 	}
 
 	var secretsManager *cloud.Manager
-	if info.EncryptionKey == "" {
+	if info.EncryptedKey == "" {
 		dataKey, err := cloud.GenerateNewDataKey(secretsProvider)
 		if err != nil {
 			return nil, err
 		}
-		info.EncryptionKey = base64.StdEncoding.EncodeToString(dataKey)
+		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
 	}
 	info.SecretsProvider = secretsProvider
 	if err = info.Save(configFile); err != nil {
 		return nil, err
 	}
 
-	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptionKey)
+	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptedKey)
 	if err != nil {
 		return nil, err
 	}

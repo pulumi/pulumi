@@ -131,6 +131,8 @@ type ProgramTestOptions struct {
 	Config map[string]string
 	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
 	Secrets map[string]string
+	// SecretsProvider is the optional custom secrets provider to use instead of the default.
+	SecretsProvider string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
@@ -803,6 +805,9 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 
 	// Stack init
 	stackInitArgs := []string{"stack", "init", stackInitName}
+	if pt.opts.SecretsProvider != "" {
+		stackInitArgs = append(stackInitArgs, "--secrets-provider", pt.opts.SecretsProvider)
+	}
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
