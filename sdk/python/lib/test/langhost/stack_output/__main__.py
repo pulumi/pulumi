@@ -13,4 +13,23 @@
 # limitations under the License.
 import pulumi
 
-pulumi.export("the-coolest", "pulumi")
+class TestClass:
+    def __init__(self):
+        self.num = 1
+        self._private = 2
+
+recursive = {"a": 1}
+recursive["b"] = 2
+recursive["c"] = recursive
+
+pulumi.export("string", "pulumi")
+pulumi.export("number", 1)
+pulumi.export("boolean", True)
+pulumi.export("list", [])
+pulumi.export("list_with_none", [None])
+pulumi.export("list_of_lists", [[], []])
+pulumi.export("set", set())
+pulumi.export("dict", {"a": 1})
+pulumi.export("output", pulumi.Output.from_input(1))
+pulumi.export("class", TestClass())
+pulumi.export("recursive", recursive)

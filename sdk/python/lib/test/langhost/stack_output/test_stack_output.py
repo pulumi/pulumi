@@ -27,5 +27,15 @@ class StackOutputTest(LanghostTest):
     def register_resource_outputs(self, _ctx, _dry_run, _urn, ty, _name, _resource, outputs):
         self.assertEqual(ty, "pulumi:pulumi:Stack")
         self.assertDictEqual({
-            "the-coolest": "pulumi"
+            "string": "pulumi",
+            "number": 1.0,
+            "boolean": True,
+            "list": [],
+            "list_with_none": [None],
+            "list_of_lists": [[], []],
+            "set": [],
+            "dict": {"a": 1.0},
+            "output": 1.0,
+            "class": {"num": 1.0},
+            "recursive": {"a": 1.0, "b": 2.0},
         }, outputs)
