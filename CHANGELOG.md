@@ -2,6 +2,8 @@ CHANGELOG
 =========
 
 ## Unreleased
+- Retry renaming a temporary folder during plugin installation
+  [#3008](https://github.com/pulumi/pulumi/pull/3008)
 
 - Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
 
