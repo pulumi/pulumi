@@ -50,12 +50,26 @@ export class StackReference extends CustomResource {
     }
 
     /**
-     * Fetches the value of the named stack output.
+     * Fetches the value of the named stack output, or undefined if the stack output was not found.
      *
      * @param name The name of the stack output to fetch.
      */
     public getOutput(name: Input<string>): Output<any> {
         return all([output(name), this.outputs]).apply(([n, os]) => os[n]);
+    }
+
+    /**
+     * Fetches the value of the named stack output, or throws an error if the output was not found.
+     *
+     * @param name The name of the stack output to fetch.
+     */
+    public requireOutput(name: Input<string>): Output<any> {
+        return all([output(this.name), output(name), this.outputs]).apply(([stackname, n, os]) => {
+            if (!os.hasOwnProperty(n)) {
+                throw new Error(`Required output '${n}' does not exist on stack '${stackname}'.`);
+            }
+            return os[n];
+        });
     }
 
     /**
@@ -71,11 +85,31 @@ export class StackReference extends CustomResource {
         const out = this.getOutput(name);
         const isSecret = promiseResult(out.isSecret);
         if (isSecret) {
-            throw new Error("Cannot call [getOutputSync] if the referenced stack has secret outputs. Use [getOutput] instead.");
+            throw new Error("Cannot call 'getOutputSync' if the referenced stack has secret outputs. Use 'getOutput' instead.");
         }
 
         return promiseResult(out.promise());
     }
+
+    /**
+     * Fetches the value promptly of the named stack output.  Throws an error if the stack output is
+     * not found.
+     *
+     * This operation is not supported (and will throw) if any exported values of the StackReference
+     * are secrets.
+     *
+     * @param name The name of the stack output to fetch.
+     */
+    public requireOutputSync(name: string): any {
+        const out = this.requireOutput(name);
+        const isSecret = promiseResult(out.isSecret);
+        if (isSecret) {
+            throw new Error("Cannot call 'requireOutputSync' if the referenced stack has secret outputs. Use 'requireOutput' instead.");
+        }
+
+        return promiseResult(out.promise());
+    }
+
 }
 
 /**

@@ -56,7 +56,16 @@ class StackReference(CustomResource):
 
     def get_output(self, name: Input[str]) -> Output[Any]:
         """
-        Fetches the value of the named stack output.
+        Fetches the value of the named stack output, or None if the stack output was not found.
+
+        :param Input[str] name: The name of the stack output to fetch.
+        """
+        return Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1].get(l[0]))
+
+    def require_output(self, name: Input[str]) -> Output[Any]:
+        """
+        Fetches the value of the named stack output, or raises a KeyError if the output was not
+        found.
 
         :param Input[str] name: The name of the stack output to fetch.
         """

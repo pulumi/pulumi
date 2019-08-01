@@ -7,6 +7,8 @@ CHANGELOG
 
 - Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
 
+- Add `requireOutput` to `StackReference` [#3007](https://github.com/pulumi/pulumi/pull/3007)
+
 ### Compatibility
 
 - Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
