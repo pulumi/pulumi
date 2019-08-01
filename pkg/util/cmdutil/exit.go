@@ -17,6 +17,7 @@ package cmdutil
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -145,13 +146,15 @@ func Exit(err error) {
 }
 
 // ExitError issues an error and exits with a standard error exit code.
-func ExitError(msg string, args ...interface{}) {
-	exitErrorCode(-1, msg, args...)
+func ExitError(msg string) {
+	// Escape percent sign before passing the message as a format string (e.g., msg could contain %PATH% on Windows).
+	format := strings.Replace(msg, "%", "%%", -1)
+	exitErrorCodef(-1, format)
 }
 
-// exitErrorCode issues an error and exists with the given error exit code.
-func exitErrorCode(code int, msg string, args ...interface{}) {
-	Diag().Errorf(diag.Message("", msg), args...)
+// exitErrorCodef formats the message with arguments, issues an error and exists with the given error exit code.
+func exitErrorCodef(code int, format string, args ...interface{}) {
+	Diag().Errorf(diag.Message("", format), args...)
 	os.Exit(code)
 }
 

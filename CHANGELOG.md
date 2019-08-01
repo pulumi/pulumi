@@ -2,6 +2,8 @@ CHANGELOG
 =========
 
 ## Unreleased
+- Retry renaming a temporary folder during plugin installation
+  [#3008](https://github.com/pulumi/pulumi/pull/3008)
 
 - Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
 
@@ -66,6 +68,7 @@ CHANGELOG
   by setting the `import` property in the resource options bag when instantiating a resource. In order to
   successfully import a resource, its desired configuration (i.e. its inputs) must not differ from its
   actual configuration (i.e. its state) as calculated by the resource's provider.
+- Better error message for missing npm on `pulumi new` (fixes [#1511](https://github.com/pulumi/pulumi/issues/1511))
 
 - Add the ability to pass a customTimeouts object from the providers across the engine
   to resource management. (fixes [#2655](https://github.com/pulumi/pulumi/issues/2655))
