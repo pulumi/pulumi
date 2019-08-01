@@ -18,33 +18,30 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/npm"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/workspace"
-
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/spf13/cobra"
-
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Intentionally disabling here for cleaner err declaration/assignment.
@@ -466,15 +463,7 @@ func installDependencies() error {
 		return err
 	}
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	var command string
-	var c *exec.Cmd
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		command = "npm install"
-		// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
-		// `description`, `repository`, and `license` fields in the package.json file.
-		c = exec.Command("npm", "install", "--loglevel=error")
-	} else {
+	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		return nil
 	}
 
@@ -482,17 +471,11 @@ func installDependencies() error {
 	fmt.Println()
 
 	// Run the command.
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	if err := c.Run(); err != nil {
-		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment", command)
-	}
-
-	// Ensure the "node_modules" directory exists.
-	if _, err := os.Stat("node_modules"); os.IsNotExist(err) {
-		return errors.Errorf("installing dependencies; rerun '%s' manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment", command)
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	err = npm.Install("", os.Stdout, os.Stderr)
+	if err != nil {
+		return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment")
 	}
 
 	fmt.Println("Finished installing dependencies")

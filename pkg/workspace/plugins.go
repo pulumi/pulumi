@@ -15,8 +15,6 @@
 package workspace
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,6 +28,8 @@ import (
 	"runtime"
 	"sort"
 	"time"
+
+	"github.com/pulumi/pulumi/pkg/util/archive"
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
@@ -238,49 +238,17 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		contract.IgnoreError(os.RemoveAll(tempDir))
 	}()
 
-	// Unzip and untar the file as we go. We do this inside a function so that the `defer`'s to close files happen
-	// before we later try to rename the directory. Otherwise, the open file handles cause issues on Windows.
+	// Uncompress the plugin. We do this inside a function so that the `defer`'s to close files
+	// happen before we later try to rename the directory. Otherwise, the open file handles cause
+	// issues on Windows.
 	err = (func() error {
 		defer contract.IgnoreClose(tarball)
-		gzr, err := gzip.NewReader(tarball)
+		tarballBytes, err := ioutil.ReadAll(tarball)
 		if err != nil {
-			return errors.Wrapf(err, "unzipping")
-		}
-		r := tar.NewReader(gzr)
-		for {
-			header, err := r.Next()
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return errors.Wrapf(err, "untarring")
-			}
-
-			path := filepath.Join(tempDir, header.Name)
-
-			switch header.Typeflag {
-			case tar.TypeDir:
-				// Create any directories as needed.
-				if _, err := os.Stat(path); err != nil {
-					if err = os.MkdirAll(path, 0700); err != nil {
-						return errors.Wrapf(err, "untarring dir %s", path)
-					}
-				}
-			case tar.TypeReg:
-				// Expand files into the target directory.
-				dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-				if err != nil {
-					return errors.Wrapf(err, "opening file %s for untar", path)
-				}
-				defer contract.IgnoreClose(dst)
-				if _, err = io.Copy(dst, r); err != nil {
-					return errors.Wrapf(err, "untarring file %s", path)
-				}
-			default:
-				return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
-			}
+			return err
 		}
 
-		return nil
+		return archive.Untgz(tarballBytes, tempDir)
 	})()
 	if err != nil {
 		return err
