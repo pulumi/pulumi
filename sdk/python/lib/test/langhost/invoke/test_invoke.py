@@ -19,13 +19,14 @@ class TestInvoke(LanghostTest):
     def test_invoke_success(self):
         self.run_test(
             program=path.join(self.base_path(), "invoke"),
-            expected_resource_count=1)
+            expected_resource_count=2)
 
     def invoke(self, _ctx, token, args, provider, _version):
         self.assertEqual("test:index:MyFunction", token)
         self.assertEqual("", provider)
         self.assertDictEqual({
             "value": 41,
+            "value2": 42,
         }, args)
 
         return [], {
@@ -36,7 +37,6 @@ class TestInvoke(LanghostTest):
                           _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
                           _ignore_changes, _version):
         self.assertEqual("test:index:MyResource", ty)
-        self.assertEqual("resourceA", name)
         self.assertEqual(resource["value"], 42)
 
         return {
@@ -57,6 +57,7 @@ class TestInvokeWithFailures(LanghostTest):
         self.assertEqual("test:index:MyFunction", token)
         self.assertDictEqual({
             "value": 41,
+            "value2": 42,
         }, args)
 
         return [{"property": "value", "reason": "the invoke failed"}], {}

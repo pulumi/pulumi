@@ -15,6 +15,8 @@ CHANGELOG
 
 - Fix `get_secret` in Python SDK always returning None.
 
+- Make `pulumi.runtime.invoke` synchronous in the Python SDK [#3019](https://github.com/pulumi/pulumi/pull/3019)
+
 ### Compatibility
 
 - Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate

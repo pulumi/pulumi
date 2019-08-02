@@ -38,8 +38,8 @@ class MyComponent(ComponentResource):
 
 # Explicitly use a provider for an Invoke.
 prov = MyProvider("testprov")
-async def do_provider_invoke():
-    value = await invoke("test:index:MyFunction", props={"value": 9000}, opts=InvokeOptions(provider=prov))
+def do_provider_invoke():
+    value = invoke("test:index:MyFunction", props={"value": 9000}, opts=InvokeOptions(provider=prov)).value
     return value["value"]
 
 res = MyResource("resourceA", do_provider_invoke())
@@ -51,8 +51,8 @@ res.value.apply(lambda v: assert_eq(v, 9001))
 # performing the invoke.
 componentRes = MyComponent("resourceB", opts=ResourceOptions(providers={"test": prov}))
 
-async def do_provider_invoke_with_parent(parent):
-    value = await invoke("test:index:MyFunctionWithParent", props={"value": 41}, opts=InvokeOptions(parent=parent))
+def do_provider_invoke_with_parent(parent):
+    value = invoke("test:index:MyFunctionWithParent", props={"value": 41}, opts=InvokeOptions(parent=parent)).value
     return value["value"]
 
 res2 = MyResource("resourceC", do_provider_invoke_with_parent(componentRes))
