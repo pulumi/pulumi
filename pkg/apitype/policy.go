@@ -53,7 +53,7 @@ type RequiredPolicy struct {
 	DisplayName string `json:"displayName"`
 
 	// Where the Policy Pack can be downloaded from.
-	PackLocation string `json:"packLocation"`
+	PackLocation string `json:"packLocation,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -97,4 +97,12 @@ type GetPolicyPackResponse struct {
 type ApplyPolicyPackRequest struct {
 	Name    string `json:"name"`
 	Version int    `json:"version"`
+}
+
+// GetStackPolicyPacksResponse is the response to getting the applicable Policy Packs
+// for a particular stack. This allows the CLI to download the packs prior to 
+// starting an update.
+type GetStackPolicyPacksResponse struct {
+	// RequiredPolicies is a list of required Policy Packs to run during the update.
+	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
