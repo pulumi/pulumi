@@ -9,6 +9,10 @@ CHANGELOG
 
 - Add `requireOutput` to `StackReference` [#3007](https://github.com/pulumi/pulumi/pull/3007)
 
+- Arbitrary values can now be exported from a Python app. This includes dictionaries, lists, class
+  instances, and the like. Values are treated as "plain old python data" and generally kept as
+  simple values (like strings, numbers, etc.) or the simple collections supported by the Pulumi data model (specifically, dictionaries and lists).
+
 ### Compatibility
 
 - Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
