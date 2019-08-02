@@ -66,7 +66,7 @@ class Config:
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
-        c = self.get(self.full_key(key))
+        c = self.get(key)
         if c is None:
             return None
 

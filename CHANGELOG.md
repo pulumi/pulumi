@@ -13,6 +13,8 @@ CHANGELOG
   instances, and the like. Values are treated as "plain old python data" and generally kept as
   simple values (like strings, numbers, etc.) or the simple collections supported by the Pulumi data model (specifically, dictionaries and lists).
 
+- Fix `get_secret` in Python SDK always returning None.
+
 ### Compatibility
 
 - Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
