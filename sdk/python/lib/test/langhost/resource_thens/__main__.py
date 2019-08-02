@@ -11,19 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 from functools import partial
 from pulumi import CustomResource, Output
 
 def assert_eq(l, r):
     assert l == r
 
+async def inprop2():
+    await asyncio.sleep(0)
+    return 42
+
 class ResourceA(CustomResource):
     inprop: Output[int]
+    inprop_2: Output[int]
     outprop: Output[str]
 
     def __init__(self, name: str) -> None:
         CustomResource.__init__(self, "test:index:ResourceA", name, {
             "inprop": 777,
+            "inprop_2": inprop2(),
             "outprop": None
         })
 
@@ -41,6 +48,7 @@ class ResourceB(CustomResource):
 a = ResourceA("resourceA")
 a.urn.apply(lambda urn: assert_eq(urn, "test:index:ResourceA::resourceA"))
 a.inprop.apply(lambda v: assert_eq(v, 777))
+a.inprop_2.apply(lambda v: assert_eq(v, 42))
 a.outprop.apply(lambda v: assert_eq(v, "output yeah"))
 
 b = ResourceB("resourceB", a)

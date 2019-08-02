@@ -256,7 +256,7 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
         resolve_id(resolved_id, True, None)  # Read IDs are always known.
-        await rpc.resolve_outputs(res, props, resp.properties, resolvers)
+        await rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
@@ -399,7 +399,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             is_known = bool(resp.id)
             resolve_id(resp.id, is_known, None)
 
-        await rpc.resolve_outputs(res, props, resp.object, resolvers)
+        await rpc.resolve_outputs(res, resolver.serialized_props, resp.object, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
         "register resource", do_register)())

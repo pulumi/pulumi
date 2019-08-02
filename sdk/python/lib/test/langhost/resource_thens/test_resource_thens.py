@@ -34,7 +34,7 @@ class ResourceThensTest(LanghostTest):
                           _ignore_changes, _version):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
-            self.assertDictEqual(res, {"inprop": 777})
+            self.assertDictEqual(res, {"inprop": 777, "inprop_2": 42})
             urn = self.make_urn(ty, name)
             res_id = ""
             props = {}
