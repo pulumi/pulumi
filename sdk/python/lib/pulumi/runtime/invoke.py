@@ -31,10 +31,10 @@ if sys.version_info[0] == 3 and sys.version_info[1] < 7:
     asyncio.tasks.Task = asyncio.tasks._PyTask
 
     def enter_task(loop, task):
-        task.__class__.current_tasks[loop] = task
+        task.__class__._current_tasks[loop] = task
 
     def leave_task(loop, task):
-        task.__class__.current_tasks.pop(loop)
+        task.__class__._current_tasks.pop(loop)
 
     _enter_task = enter_task
     _leave_task = leave_task
