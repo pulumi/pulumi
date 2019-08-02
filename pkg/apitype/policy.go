@@ -100,7 +100,7 @@ type ApplyPolicyPackRequest struct {
 }
 
 // GetStackPolicyPacksResponse is the response to getting the applicable Policy Packs
-// for a particular stack. This allows the CLI to download the packs prior to 
+// for a particular stack. This allows the CLI to download the packs prior to
 // starting an update.
 type GetStackPolicyPacksResponse struct {
 	// RequiredPolicies is a list of required Policy Packs to run during the update.
