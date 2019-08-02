@@ -17,6 +17,9 @@ CHANGELOG
 
 - Make `pulumi.runtime.invoke` synchronous in the Python SDK [#3019](https://github.com/pulumi/pulumi/pull/3019)
 
+- Fix a bug in the Python SDK that caused input properties that are coroutines to be awaited twice.
+  [#3024](https://github.com/pulumi/pulumi/pull/3024)
+
 ### Compatibility
 
 - Deprecated functions in `@pulumi/pulumi` will now issue warnings if you call them.  Please migrate
