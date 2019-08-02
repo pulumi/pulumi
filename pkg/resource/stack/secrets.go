@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/secrets/service"
 )
@@ -51,6 +52,8 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 		sm, err = passphrase.NewPassphaseSecretsManagerFromState(state)
 	case service.Type:
 		sm, err = service.NewServiceSecretsManagerFromState(state)
+	case cloud.Type:
+		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:
 		return nil, errors.Errorf("no known secrets provider for type %q", ty)
 	}

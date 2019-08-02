@@ -5,6 +5,14 @@ CHANGELOG
 - Retry renaming a temporary folder during plugin installation
   [#3008](https://github.com/pulumi/pulumi/pull/3008)
 
+- Add support for additional Pulumi secrets providers using AWS KMS, Azure KeyVault, Google Cloud
+  KMS and HashiCorp Vault.  These secrets providers can be configured at stack creation time using
+  `pulumi stack init b --secrets-provider="awskms://alias/LukeTesting?region=us-west-2"`, and ensure
+  that all encrypted data associated with the stack is encrypted using the target cloud platform
+  encryption keys.  This augments the previous choice between using the app.pulumi.com-managed
+  secrets encryption or a fully-client-side local passphrase encryption.
+  [#2994](https://github.com/pulumi/pulumi/pull/2994)
+
 - Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
 
 - Add `requireOutput` to `StackReference` [#3007](https://github.com/pulumi/pulumi/pull/3007)
