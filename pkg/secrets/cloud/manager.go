@@ -66,7 +66,7 @@ func GenerateNewDataKey(url string) ([]byte, error) {
 }
 
 // NewCloudSecretsManager returns a secrets manager that uses the target cloud key management
-// service to encrypt/decrypt a data key used for envelope encyrtion of secrets values.
+// service to encrypt/decrypt a data key used for envelope encryption of secrets values.
 func NewCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
 	keeper, err := gosecrets.OpenKeeper(context.Background(), url)
 	if err != nil {
