@@ -4,7 +4,8 @@ matrix:
   include:
     - os: linux
       env: NODE_VERSION=v12.1.0 TRAVIS_PUBLISH_PACKAGES=true
-    - os: osx
+    - if: type IN (cron, push)
+      os: osx
       env: NODE_VERSION=v10.15.3
     - if: type = cron
       os: linux
