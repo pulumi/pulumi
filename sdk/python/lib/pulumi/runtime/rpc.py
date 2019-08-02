@@ -367,9 +367,8 @@ async def resolve_outputs(res: 'Resource',
     for key, value in list(serialized_props.items()):
         translated_key = res.translate_output_property(key)
         if translated_key not in all_properties:
-            # input prop the engine didn't give us a final value for.  Just use the value passed into the resource
-            # after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
-            # Output values are handled properly w.r.t. unknowns.
+            # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
+            # the user.
             all_properties[translated_key] = translate_output_properties(res, deserialize_property(value))
 
     for key, value in all_properties.items():
