@@ -289,9 +289,20 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be unable to rename
 	// the directory. That's OK, just ignore the error. The temp directory created as part of the install will be
 	// cleaned up when we exit by the defer above.
+	fmt.Print("Moving plugin...")
 	if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
-		return errors.Wrap(err, "moving plugin")
+		switch err.(type) {
+		case *os.LinkError:
+			// On Windows, an Access Denied error is sometimes thrown when renaming. Work around by trying the
+			// second time, which seems to work fine. See https://github.com/pulumi/pulumi/issues/2695
+			if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
+				return errors.Wrap(err, "moving plugin")
+			}
+		default:
+			return errors.Wrap(err, "moving plugin")
+		}
 	}
+	fmt.Println(" done.")
 
 	return nil
 }

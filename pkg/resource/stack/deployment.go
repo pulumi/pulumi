@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/secrets/service"
-
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -29,9 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -137,7 +132,9 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager) (*apitype.De
 // DeserializeUntypedDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
 // from it. DeserializeDeployment will return an error if the untyped deployment's version is
 // not within the range `DeploymentSchemaVersionCurrent` and `DeploymentSchemaVersionOldestSupported`.
-func DeserializeUntypedDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snapshot, error) {
+func DeserializeUntypedDeployment(
+	deployment *apitype.UntypedDeployment, secretsProv SecretsProvider) (*deploy.Snapshot, error) {
+
 	contract.Require(deployment != nil, "deployment")
 	switch {
 	case deployment.Version > apitype.DeploymentSchemaVersionCurrent:
@@ -169,11 +166,11 @@ func DeserializeUntypedDeployment(deployment *apitype.UntypedDeployment) (*deplo
 		contract.Failf("unrecognized version: %d", deployment.Version)
 	}
 
-	return DeserializeDeploymentV3(v3deployment)
+	return DeserializeDeploymentV3(v3deployment, secretsProv)
 }
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
-func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot, error) {
+func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv SecretsProvider) (*deploy.Snapshot, error) {
 	// Unpack the versions.
 	manifest := deploy.Manifest{
 		Time:    deployment.Manifest.Time,
@@ -198,24 +195,13 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3) (*deploy.Snapshot,
 
 	var secretsManager secrets.Manager
 	if deployment.SecretsProviders != nil && deployment.SecretsProviders.Type != "" {
-		var provider secrets.ManagerProvider
-
-		switch deployment.SecretsProviders.Type {
-		case b64.Type:
-			provider = b64.NewProvider()
-		case passphrase.Type:
-			provider = passphrase.NewProvider()
-		case service.Type:
-			provider = service.NewProvider()
-		case cloud.Type:
-			provider = cloud.NewProvider()
-		default:
-			return nil, errors.Errorf("unknown secrets provider type %s", deployment.SecretsProviders.Type)
+		if secretsProv == nil {
+			return nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
 		}
 
-		sm, err := provider.FromState(deployment.SecretsProviders.State)
+		sm, err := secretsProv.OfType(deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
 		if err != nil {
-			return nil, errors.Wrap(err, "creating secrets manager from existing state")
+			return nil, err
 		}
 		secretsManager = sm
 	}

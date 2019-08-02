@@ -33,25 +33,21 @@ import (
 // Type is the type of secrets managed by this secrets provider
 const Type = "cloud"
 
-type cloudState struct {
+type cloudSecretsManagerState struct {
 	URL          string `json:"url"`
 	EncryptedKey []byte `json:"encryptedkey"`
 }
 
-type provider struct{}
-
-func (p *provider) FromState(state json.RawMessage) (secrets.Manager, error) {
-	var s cloudState
+// NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
+// manager that uses the target cloud key management service to encrypt/decrypt a data key used for
+// envelope encyrtion of secrets values.
+func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
+	var s cloudSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling state")
 	}
 
-	return NewSecretsManager(s.URL, s.EncryptedKey)
-}
-
-// NewProvider returns a new manager provider which hands back Base64SecretsManagers
-func NewProvider() secrets.ManagerProvider {
-	return &provider{}
+	return NewCloudSecretsManager(s.URL, s.EncryptedKey)
 }
 
 // GenerateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
@@ -69,9 +65,9 @@ func GenerateNewDataKey(url string) ([]byte, error) {
 	return keeper.Encrypt(context.Background(), plaintextDataKey)
 }
 
-// NewSecretsManager returns a secrets manager that uses the target cloud key management service to
-// encrypt/decrypt a data key used for envelope encyrtion of secrets values.
-func NewSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
+// NewCloudSecretsManager returns a secrets manager that uses the target cloud key management
+// service to encrypt/decrypt a data key used for envelope encyrtion of secrets values.
+func NewCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
 	keeper, err := gosecrets.OpenKeeper(context.Background(), url)
 	if err != nil {
 		return nil, err
@@ -83,7 +79,7 @@ func NewSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
 	crypter := config.NewSymmetricCrypter(plaintextDataKey)
 	return &Manager{
 		crypter: crypter,
-		state: cloudState{
+		state: cloudSecretsManagerState{
 			URL:          url,
 			EncryptedKey: encryptedDataKey,
 		},
@@ -92,8 +88,8 @@ func NewSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
 
 // Manager is the secrets.Manager implementation for cloud key management services
 type Manager struct {
+	state   cloudSecretsManagerState
 	crypter config.Crypter
-	state   cloudState
 }
 
 func (m *Manager) Type() string                         { return Type }

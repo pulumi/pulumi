@@ -56,7 +56,7 @@ func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider 
 	if err != nil {
 		return nil, err
 	}
-	secretsManager, err = cloud.NewSecretsManager(secretsProvider, dataKey)
+	secretsManager, err = cloud.NewCloudSecretsManager(secretsProvider, dataKey)
 	if err != nil {
 		return nil, err
 	}
