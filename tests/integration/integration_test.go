@@ -785,8 +785,7 @@ func TestCloudSecretProvider(t *testing.T) {
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "cloud")
 
-			p := cloud.NewProvider()
-			_, err := p.FromState(secretsProvider.State)
+			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
 			assert.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
