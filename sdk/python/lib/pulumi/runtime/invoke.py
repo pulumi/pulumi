@@ -24,6 +24,25 @@ from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
 
+# If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
+# implementation in order to support synchronous invokes.
+if sys.version_info[0] == 3 and sys.version_info[1] < 7:
+    asyncio.Task = asyncio.tasks._PyTask
+    asyncio.tasks.Task = asyncio.tasks._PyTask
+
+    def enter_task(loop, task):
+        task.__class__._current_tasks[loop] = task
+
+    def leave_task(loop, task):
+        task.__class__._current_tasks.pop(loop)
+
+    _enter_task = enter_task
+    _leave_task = leave_task
+else:
+    _enter_task = asyncio.tasks._enter_task
+    _leave_task = asyncio.tasks._leave_task
+
+
 def _sync_await(awaitable: Awaitable[Any]) -> Any:
     """
     _sync_await waits for the given future to complete by effectively yielding the current task and pumping the event
@@ -43,7 +62,7 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     # the event loop--by calling _leave_task.
     task = asyncio.Task.current_task(loop)
     if task is not None:
-        asyncio.tasks._leave_task(loop, task)
+        _leave_task(loop, task)
 
     # Pump the event loop until the future is complete. This is the kernel of BaseEventLoop.run_forever, and may not
     # work with alternative event loop implementations.
@@ -54,7 +73,7 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
 
     # If we were executing inside a task, restore its context and continue on.
     if task is not None:
-        asyncio.tasks._enter_task(loop, task)
+        _enter_task(loop, task)
 
     # Return the result of the future.
     return fut.result()
