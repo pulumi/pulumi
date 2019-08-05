@@ -21,7 +21,7 @@ CHANGELOG
   secrets encryption or a fully-client-side local passphrase encryption.
   [#2994](https://github.com/pulumi/pulumi/pull/2994)
 
-- Add `Ouput.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
+- Add `Output.concat` to Python SDK [#3006](https://github.com/pulumi/pulumi/pull/3006)
 
 - Add `requireOutput` to `StackReference` [#3007](https://github.com/pulumi/pulumi/pull/3007)
 
