@@ -40,6 +40,7 @@ export interface Options {
     readonly dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
     readonly testModeEnabled?: boolean; // true if we're in testing mode (allows execution without the CLI).
     readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
+    readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
 }
 
 /**
@@ -93,6 +94,13 @@ export function _setQueryMode(val: boolean) {
  */
 export function isQueryMode(): boolean {
     return options.queryMode === true;
+}
+
+/**
+ * Returns true if we will resolve missing outputs to inputs during preview (PULUMI_ENABLE_LEGACY_APPLY).
+ */
+export function isLegacyApplyEnabled(): boolean {
+    return options.legacyApply === true;
 }
 
 /**
@@ -218,6 +226,7 @@ function loadOptions(): Options {
         monitorAddr: process.env["PULUMI_NODEJS_MONITOR"],
         engineAddr: process.env["PULUMI_NODEJS_ENGINE"],
         testModeEnabled: (process.env["PULUMI_TEST_MODE"] === "true"),
+        legacyApply: (process.env["PULUMI_ENABLE_LEGACY_APPLY"] === "true"),
     };
 }
 

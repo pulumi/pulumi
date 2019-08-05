@@ -364,12 +364,13 @@ async def resolve_outputs(res: 'Resource',
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
         all_properties[translated_key] = translated_value
 
-    for key, value in list(serialized_props.items()):
-        translated_key = res.translate_output_property(key)
-        if translated_key not in all_properties:
-            # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
-            # the user.
-            all_properties[translated_key] = translate_output_properties(res, deserialize_property(value))
+    if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
+        for key, value in list(serialized_props.items()):
+            translated_key = res.translate_output_property(key)
+            if translated_key not in all_properties:
+                # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
+                # the user.
+                all_properties[translated_key] = translate_output_properties(res, deserialize_property(value))
 
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
