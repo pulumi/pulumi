@@ -37,11 +37,17 @@
         "log/index.ts",
 
         "runtime/index.ts",
-        "runtime/closure/v8.ts",
+
+        "runtime/closure/codePaths.ts",
         "runtime/closure/createClosure.ts",
         "runtime/closure/parseFunction.ts",
-        "runtime/closure/serializeClosure.ts",
         "runtime/closure/rewriteSuper.ts",
+        "runtime/closure/serializeClosure.ts",
+        "runtime/closure/utils.ts",
+        "runtime/closure/v8.ts",
+        "runtime/closure/v8_v10andLower.ts",
+        "runtime/closure/v8_v11andHigher.ts",
+        
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
