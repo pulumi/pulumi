@@ -1,7 +1,8 @@
 CHANGELOG
 =========
 
-## Unreleased
+## 0.17.28 (2019-08-05)
+
 - Retry renaming a temporary folder during plugin installation
   [#3008](https://github.com/pulumi/pulumi/pull/3008)
 
