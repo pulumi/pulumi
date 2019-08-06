@@ -489,12 +489,13 @@ class Resource:
         if not isinstance(t, str):
             raise TypeError('Expected resource type to be a string')
         if not name:
-            raise TypeError(
-                'Missing resource name argument (for URN creation)')
+            raise TypeError('Missing resource name argument (for URN creation)')
         if not isinstance(name, str):
             raise TypeError('Expected resource name to be a string')
         if opts is None:
             opts = ResourceOptions()
+        elif not isinstance(opts, ResourceOptions):
+            raise TypeError('Expected resource options to be a ResourceOptions instance')
 
         self._name = name
 
