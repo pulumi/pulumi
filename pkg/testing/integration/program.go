@@ -29,6 +29,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
@@ -479,6 +480,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	// other tests running in parallel from cleaning up.
 	defer func() {
 		if failure := recover(); failure != nil {
+			debug.PrintStack()
 			t.Errorf("panic testing %v: %v", opts.Dir, failure)
 		}
 	}()

@@ -16,7 +16,7 @@
 
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
-import { Input, isSecretOutput, Output } from "../../output";
+import { Input, isSecretOutput, Output, secret } from "../../output";
 import * as resource from "../../resource";
 import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
@@ -211,13 +211,16 @@ class SerializedOutput<T> {
 }
 
 /**
- * createFunctionInfo serializes a function and its closure environment into a form that is
+ * createFunctionInfoAsync serializes a function and its closure environment into a form that is
  * amenable to persistence as simple JSON.  Like toString, it includes the full text of the
  * function's source code, suitable for execution. Unlike toString, it actually includes information
  * about the captured environment.
  */
 export async function createFunctionInfoAsync(
-    func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<FunctionInfo> {
+    func: Function,
+    serialize: (o: any) => boolean,
+    logResource: resource.Resource | undefined,
+    secretReplacer?: (o: any) => any): Promise<FunctionInfo> {
 
     // Initialize our Context object.  It is effectively used to keep track of the work we're doing
     // as well as to keep track of the graph as we're walking it so we don't infinitely recurse.
@@ -241,9 +244,16 @@ export async function createFunctionInfoAsync(
     const entry: Entry = {};
     context.cache.set(func, entry);
 
-    entry.function = await analyzeFunctionInfoAsync(func, context, serialize);
+    entry.function = await analyzeFunctionInfoAsync(func, context, serialize, realSecretReplacer);
 
     return entry.function;
+
+    function realSecretReplacer(o: any): any {
+        if (!secretReplacer) {
+            throw new Error("Secret outputs cannot be captured by a closure.");
+        }
+        return secretReplacer(o);
+    }
 
     async function addEntriesForWellKnownGlobalObjectsAsync() {
         const seenGlobalObjects = new Set<any>();
@@ -340,8 +350,11 @@ export async function createFunctionInfoAsync(
  * final FunctionInfo.
  */
 async function analyzeFunctionInfoAsync(
-        func: Function, context: Context,
-        serialize: (o: any) => boolean, logInfo?: boolean): Promise<FunctionInfo> {
+        func: Function,
+        context: Context,
+        serialize: (o: any) => boolean,
+        secretReplacer: (o: any) => any,
+        logInfo?: boolean): Promise<FunctionInfo> {
 
     // logInfo = logInfo || func.name === "addHandler";
 
@@ -422,7 +435,7 @@ async function analyzeFunctionInfoAsync(
             !isAsyncFunction &&
             !isDerivedNoCaptureConstructor(func)) {
 
-            const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
+            const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo, secretReplacer);
             functionInfo.proto = protoEntry;
 
             if (functionString.startsWith("class ")) {
@@ -465,8 +478,8 @@ async function analyzeFunctionInfoAsync(
             }
 
             functionInfo.env.set(
-                await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo),
-                { entry: await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo) });
+                await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo, secretReplacer),
+                { entry: await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo, secretReplacer) });
         }
 
         const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
@@ -475,7 +488,7 @@ async function analyzeFunctionInfoAsync(
             // this was a class constructor or method.  We need to put a special __super
             // entry into scope, and then rewrite any calls to super() to refer to it.
             capturedValues.set(
-                await getOrCreateNameEntryAsync("__super", undefined, context, serialize, logInfo),
+                await getOrCreateNameEntryAsync("__super", undefined, context, serialize, logInfo, secretReplacer),
                 { entry: superEntry });
 
             functionInfo.code = rewriteSuperReferences(
@@ -495,7 +508,7 @@ async function analyzeFunctionInfoAsync(
         // itself.
         if (functionDeclarationName !== undefined) {
             capturedValues.set(
-                await getOrCreateNameEntryAsync(functionDeclarationName, undefined, context, serialize, logInfo),
+                await getOrCreateNameEntryAsync(functionDeclarationName, undefined, context, serialize, logInfo, secretReplacer),
                 { entry: funcEntry });
         }
 
@@ -546,10 +559,10 @@ async function analyzeFunctionInfoAsync(
             capturedVariables: CapturedVariableMap, name: string, value: any) {
 
             const properties = capturedVariables.get(name);
-            const serializedName = await getOrCreateNameEntryAsync(name, undefined, context, serialize, logInfo);
+            const serializedName = await getOrCreateNameEntryAsync(name, undefined, context, serialize, logInfo, secretReplacer);
 
             // try to only serialize out the properties that were used by the user's code.
-            const serializedValue = await getOrCreateEntryAsync(value, properties, context, serialize, logInfo);
+            const serializedValue = await getOrCreateEntryAsync(value, properties, context, serialize, logInfo, secretReplacer);
 
             capturedValues.set(serializedName, { entry: serializedValue });
         }
@@ -761,9 +774,10 @@ function getOrCreateNameEntryAsync(
     name: string, capturedObjectProperties: CapturedPropertyChain[] | undefined,
     context: Context,
     serialize: (o: any) => boolean,
-    logInfo: boolean | undefined): Promise<Entry> {
+    logInfo: boolean | undefined,
+    secretReplacer: (o: any) => any): Promise<Entry> {
 
-    return getOrCreateEntryAsync(name, capturedObjectProperties, context, serialize, logInfo);
+    return getOrCreateEntryAsync(name, capturedObjectProperties, context, serialize, logInfo, secretReplacer);
 }
 
 /**
@@ -775,7 +789,8 @@ async function getOrCreateEntryAsync(
         obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
         context: Context,
         serialize: (o: any) => boolean,
-        logInfo: boolean | undefined): Promise<Entry> {
+        logInfo: boolean | undefined,
+        secretReplacer: (o: any) => any): Promise<Entry> {
 
     // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
     // the code necessary to represent the number on the other side.  Note: we have to do this
@@ -885,17 +900,19 @@ async function getOrCreateEntryAsync(
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
-            entry.function = await analyzeFunctionInfoAsync(obj, context, serialize, logInfo);
+            entry.function = await analyzeFunctionInfoAsync(obj, context, serialize, secretReplacer, logInfo);
         }
         else if (Output.isInstance(obj)) {
             if (await isSecretOutput(obj)) {
-                throw new Error("Secret outputs cannot be captured by a closure.");
+                // Replace the secret with a user-defined value.  This defaults to a function that
+                // throws an error indicating that secrets cannot be captured.
+                obj = secretReplacer(obj);
             }
             entry.output = await createOutputEntryAsync(obj);
         }
         else if (obj instanceof Promise) {
             const val = await obj;
-            entry.promise = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo);
+            entry.promise = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo, secretReplacer);
         }
         else if (obj instanceof Array) {
             // Recursively serialize elements of an array. Note: we use getOwnPropertyNames as the
@@ -906,7 +923,7 @@ async function getOrCreateEntryAsync(
                     descriptor.name !== "length") {
 
                     entry.array[<any>descriptor.name] = await getOrCreateEntryAsync(
-                        await getOwnPropertyAsync(obj, descriptor), undefined, context, serialize, logInfo);
+                        await getOwnPropertyAsync(obj, descriptor), undefined, context, serialize, logInfo, secretReplacer);
                 }
             }
 
@@ -918,7 +935,7 @@ async function getOrCreateEntryAsync(
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.array = [];
             for (const elem of obj) {
-                entry.array.push(await getOrCreateEntryAsync(elem, undefined, context, serialize, logInfo));
+                entry.array.push(await getOrCreateEntryAsync(elem, undefined, context, serialize, logInfo, secretReplacer));
             }
         }
         else {
@@ -957,7 +974,7 @@ async function getOrCreateEntryAsync(
         const descriptors = await getOwnPropertyDescriptors(obj);
 
         for (const descriptor of descriptors) {
-            const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
+            const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo, secretReplacer);
 
             // We're about to recurse inside this object.  In order to prevent infinite loops, put a
             // dummy entry in the environment map.  That way, if we hit this object again while
@@ -977,7 +994,7 @@ async function getOrCreateEntryAsync(
             const propertyInfo = await createPropertyInfoAsync(descriptor);
             const prop = await getOwnPropertyAsync(obj, descriptor);
             const valEntry = await getOrCreateEntryAsync(
-                prop, undefined, context, serialize, logInfo);
+                prop, undefined, context, serialize, logInfo, secretReplacer);
 
             // Now, replace the dummy entry with the actual one we want.
             object.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
@@ -992,7 +1009,7 @@ async function getOrCreateEntryAsync(
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
                 object.proto = await getOrCreateEntryAsync(
-                    proto, undefined, context, serialize, logInfo);
+                    proto, undefined, context, serialize, logInfo, secretReplacer);
             }
         }
     }
@@ -1029,7 +1046,7 @@ async function getOrCreateEntryAsync(
             const propChains = localCapturedPropertyChains.filter(chain => chain.infos[0].name === propName);
 
             // Now, make an entry just for this name.
-            const keyEntry = await getOrCreateNameEntryAsync(propName, undefined, context, serialize, logInfo);
+            const keyEntry = await getOrCreateNameEntryAsync(propName, undefined, context, serialize, logInfo, secretReplacer);
 
             // We're about to recurse inside this object.  In order to prevent infinite loops, put a
             // dummy entry in the environment map.  That way, if we hit this object again while
@@ -1074,7 +1091,7 @@ async function getOrCreateEntryAsync(
                 // object does have the property, but the property is just set to the
                 // undefined value.
                 const valEntry = await getOrCreateEntryAsync(
-                    objPropValue, nestedPropChains, context, serialize, logInfo);
+                    objPropValue, nestedPropChains, context, serialize, logInfo, secretReplacer);
 
                 const infos = propChains.map(chain => chain.infos[0]);
                 if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
@@ -1138,11 +1155,11 @@ async function getOrCreateEntryAsync(
         propertyInfo.writable = descriptor.writable;
         if (descriptor.get) {
             propertyInfo.get = await getOrCreateEntryAsync(
-                descriptor.get, undefined, context, serialize, logInfo);
+                descriptor.get, undefined, context, serialize, logInfo, secretReplacer);
         }
         if (descriptor.set) {
             propertyInfo.set = await getOrCreateEntryAsync(
-                descriptor.set, undefined, context, serialize, logInfo);
+                descriptor.set, undefined, context, serialize, logInfo, secretReplacer);
         }
 
         return propertyInfo;
@@ -1232,12 +1249,12 @@ async function getOrCreateEntryAsync(
 
         // First get the underlying value of the out, and create the environment entry for it.
         const val = await output.promise();
-        const valEntry = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo);
+        const valEntry = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo, secretReplacer);
 
         // Now, create an empty-serialized output and create an environment entry for it.  It
         // will have a property 'value' that points to an Entry for 'undefined'.
         const initializedEmptyOutput = new SerializedOutput(undefined);
-        const emptyOutputEntry = await getOrCreateEntryAsync(initializedEmptyOutput, undefined, context, serialize, logInfo);
+        const emptyOutputEntry = await getOrCreateEntryAsync(initializedEmptyOutput, undefined, context, serialize, logInfo, secretReplacer);
 
         // validate that we created the right sort of entry.  It should be an Object-Entry with
         // a single property called 'value' in it.

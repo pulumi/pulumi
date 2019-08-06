@@ -47,6 +47,16 @@ export interface SerializeFunctionArgs {
      * The resource to log any errors we encounter against.
      */
     logResource?: Resource;
+
+    /**
+     * secretReplacer is called whenever a secret value is encountered in the serialization, and the
+     * return value of this callback is used instead of the original secret object in the serialized
+     * function text.  The caller is resonsible for ensuring that this transformation is
+     * semantically equivalent to capturing the plain text of the secret (e.g. by looking up an
+     * environment variabe instead, which has been arranged to have the value of the secret by
+     * additional steps taken outside of the serialized code).
+     */
+    secretReplacer?: (o: any) => any;
 }
 
 /**
@@ -90,7 +100,7 @@ export async function serializeFunction(
     const serialize = args.serialize || (_ => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
 
-    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, args.logResource);
+    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, args.logResource, args.secretReplacer);
     return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction);
 }
 
