@@ -111,15 +111,18 @@ describe("output", () => {
     }));
 
     describe("isKnown", () => {
-        function or<T>(output1: Output<T>, output2: Output<T>): Output<T> {
+        function or<T>(output1: Output<T>, output2: Output<T>): Output<T>;
+        function or<T>(output1: any, output2: any): any {
+            const val1 = output1.promise();
+            const val2 = output2.promise();
             return new Output<T>(
                 new Set([...output1.resources(), ...output2.resources()]),
-                Promise.all([output1.isKnown, output2.isKnown, output1.promise(), output2.promise()])
-                       .then(([isKnown1, isKnown2, val1, val2]) => isKnown1 ? val1 : isKnown2 ? val2 : undefined!),
-                Promise.all([output1.isKnown, output2.isKnown])
-                       .then(([isKnown1, isKnown2]) => isKnown1 || isKnown2),
-                Promise.all([output1.isKnown, output2.isKnown, output1.isSecret, output2.isSecret])
-                       .then(([isKnown1, isKnown2, isSecret1, isSecret2]) => isKnown1 ? isSecret1 : isKnown2 ? isSecret2 : false));
+                Promise.all([val1, val2])
+                       .then(([val1, val2]) => val1 || val2),
+                Promise.all([val1, output1.isKnown, output2.isKnown])
+                       .then(([val1, isKnown1, isKnown2]) => val1 ? isKnown1 : isKnown2),
+                Promise.all([val1, output1.isSecret, output2.isSecret])
+                       .then(([val1, isSecret1, isSecret2]) => val1 ? isSecret1 : isSecret2));
         }
 
         it("choose between known and known output, non-secret", asyncTest(async () => {
@@ -281,7 +284,7 @@ describe("output", () => {
             assert.equal(value, undefined);
 
             const secret = await result.isSecret;
-            assert.equal(secret, false);
+            assert.equal(secret, true);
         }));
 
         it("choose between unknown and unknown output, secret3", asyncTest(async () => {
@@ -299,7 +302,7 @@ describe("output", () => {
             assert.equal(value, undefined);
 
             const secret = await result.isSecret;
-            assert.equal(secret, false);
+            assert.equal(secret, true);
         }));
     });
 
