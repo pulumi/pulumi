@@ -175,7 +175,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
 
-        this.apply = <U>(func: (t: T) => Input<U>) => {
+        this.apply = <U>(func: (t: T) => Input<U>, options: ApplyOptions = {}) => {
             let innerDetailsResolve: (val: {isKnown: boolean, isSecret: boolean}) => void;
             const innerDetails = new Promise<any>(resolve => {
                 innerDetailsResolve = resolve;
@@ -189,7 +189,8 @@ This function may throw in a future version of @pulumi/pulumi.`;
 
             return new Output<U>(resources, promise.then(async v => {
                 try {
-                    if (runtime.isDryRun()) {
+                    const alwaysRunDuringPreview = options.alwaysRunDuringPreview;
+                    if (runtime.isDryRun() && !alwaysRunDuringPreview) {
                         // During previews only perform the apply if the engine was able to
                         // give us an actual value for this Output.
                         const applyDuringPreview = await isKnown;
@@ -571,6 +572,10 @@ export interface OutputInstance<T> {
     apply<U>(func: (t: T) => OutputInstance<U>): Output<U>;
     apply<U>(func: (t: T) => U): Output<U>;
 
+    apply<U>(func: (t: T) => Promise<U>, opts: ApplyOptions): Output<U>;
+    apply<U>(func: (t: T) => OutputInstance<U>, opts: ApplyOptions): Output<U>;
+    apply<U>(func: (t: T) => U, opts: ApplyOptions): Output<U>;
+
     /**
      * Retrieves the underlying value of this dependency.
      *
@@ -581,6 +586,18 @@ export interface OutputInstance<T> {
      * the dependency graph to be changed.
      */
     get(): T;
+}
+
+/**
+ * Extra options that can control how [Output.apply] works.s
+ */
+export interface ApplyOptions {
+    /**
+     * If [true], forces the [apply] call to execute the passed in [function] even when run during a
+     * `pulumi preview` invocation. The function should be resilient for `undefined` being passed to
+     * when the value of the `Output` is not known at `preview` time.
+     */
+    alwaysRunDuringPreview?: boolean;
 }
 
 /**

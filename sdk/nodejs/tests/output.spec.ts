@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, concat, interpolate, output } from "../output";
+import { all, Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
@@ -39,6 +39,78 @@ function mustCompile(): Output<Widget> {
 }
 
 describe("output", () => {
+    describe("apply", () => {
+        it("executes when known", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+            const output1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
+            const output2 = output1.apply(a => a);
+
+            const value1 = await output1.promise();
+            assert.equal(value1, "foo");
+
+            const value2 = await output2.promise();
+            assert.equal(value2, "foo");
+        }));
+
+        it("does not execute when not known", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+            const output1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(false), Promise.resolve(false));
+            const output2 = output1.apply(a => a);
+
+            const value1 = await output1.promise();
+            assert.equal(value1, "foo");
+
+            const value2 = await output2.promise();
+            assert.equal(value2, undefined);
+        }));
+
+        it("does not execute when not known and throws", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+            const output1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(false), Promise.resolve(false));
+            const output2 = output1.apply(a => {
+                throw new Error("Should not run");
+            });
+
+            const value1 = await output1.promise();
+            assert.equal(value1, "foo");
+
+            const value2 = await output2.promise();
+            assert.equal(value2, undefined);
+        }));
+
+        it("executes when not known, but forced", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+            const output1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(false), Promise.resolve(false));
+            const output2 = output1.apply(a => a, { alwaysRunDuringPreview: true });
+
+            const value1 = await output1.promise();
+            assert.equal(value1, "foo");
+
+            const value2 = await output2.promise();
+            assert.equal(value2, "foo");
+        }));
+
+        it("does not execute when through all if any are unknown", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+            const output1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
+            const output2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+
+            const output3 = all([output1, output2]).apply(([a, b]) => a || b);
+            const value3 = await output3.promise();
+            assert.equal(value3, undefined);
+        }));
+
+        it("executes all if any are unknown, but forced", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+            const output1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
+            const output2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+
+            const output3 = all([output1, output2]).apply(([a, b]) => a || b, { alwaysRunDuringPreview: true });
+            const value3 = await output3.promise();
+            assert.equal(value3, "foo");
+        }));
+    });
+
     it("propagates true isKnown bit from inner Output", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
