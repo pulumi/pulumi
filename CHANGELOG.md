@@ -3,10 +3,13 @@ CHANGELOG
 
 ## Unreleased
 
-- Do not propagate input properties to missing output properties during preview. The old behavior can case issues that
+- Do not propagate input properties to missing output properties during preview. The old behavior can cause issues that
   are difficult to diagnose in cases where the actual value of the output property differs from the value of the input
   property, and can cause `apply`s to run at unexpected times. If this change causes issues in a Pulumi program, the
   original behavior can be enabled by setting the `PULUMI_ENABLE_LEGACY_APPLY` environment variable to `true`.
+
+- Fix a bug in the GitHub Actions program preventing errors from being rendered in the Actions log on github.com.
+  [#3036](https://github.com/pulumi/pulumi/pull/3036)
 
 ## 0.17.28 (2019-08-05)
 

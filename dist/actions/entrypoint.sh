@@ -89,7 +89,7 @@ PULUMI_COMMAND="pulumi $*"
 OUTPUT_FILE="/tmp/out.txt"
 echo "#### :tropical_drink: \`$PULUMI_COMMAND\`"
 bash -c "$PULUMI_COMMAND" | tee $OUTPUT_FILE
-EXIT_CODE=$?
+EXIT_CODE=${PIPESTATUS[0]}
 
 # If the GitHub action stems from a Pull Request event, we may optionally leave a comment if the
 # COMMENT_ON_PR is set.
