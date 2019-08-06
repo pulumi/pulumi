@@ -356,6 +356,40 @@ describe("rpc", () => {
             program: path.join(base, "012.assets_archive"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.deepEqual(res, {
+                    "archive": {
+                        "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
+                        "__pulumiArchive": true,
+                        "assets": {
+                            "archive": {
+                                "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
+                                "__pulumiArchive": true,
+                                "assets": {},
+                            },
+                            "asset": {
+                                "4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+                                "__pulumiAsset": true,
+                                "text": "foo",
+                            },
+                        },
+                    },
+                    "archiveP": {
+                        "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
+                        "__pulumiArchive": true,
+                        "assets": {
+                            "foo": {
+                                "4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+                                "__pulumiAsset": true,
+                                "text": "bar",
+                            },
+                        },
+                    },
+                    "assetP": {
+                        "4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+                        "__pulumiAsset": true,
+                        "text": "baz",
+                    },
+                });
                 return { urn: makeUrn(t, name), id: undefined, props: res };
             },
         },

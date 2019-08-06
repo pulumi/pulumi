@@ -291,6 +291,8 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			if err != nil {
 				return nil, err
 			}
+			// This can only be false with a non-nil error if there is a signature match. We've already verified the
+			// signature.
 			contract.Assert(isasset)
 			if opts.ComputeAssetHashes {
 				if err = asset.EnsureHash(); err != nil {
@@ -304,6 +306,8 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			if err != nil {
 				return nil, err
 			}
+			// This can only be false with a non-nil error if there is a signature match. We've already verified the
+			// signature.
 			contract.Assert(isarchive)
 			if opts.ComputeAssetHashes {
 				if err = archive.EnsureHash(); err != nil {
