@@ -86,7 +86,7 @@ fi
 # later use. Note that we exit immediately on failure (under set -e), so we `tee` stdout, but
 # allow errors to be surfaced in the Actions log.
 PULUMI_COMMAND="pulumi $*"
-OUTPUT_FILE="/tmp/out.txt"
+OUTPUT_FILE=$(mktemp)
 echo "#### :tropical_drink: \`$PULUMI_COMMAND\`"
 bash -c "$PULUMI_COMMAND" | tee $OUTPUT_FILE
 EXIT_CODE=${PIPESTATUS[0]}
