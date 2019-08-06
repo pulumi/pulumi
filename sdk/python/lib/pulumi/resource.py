@@ -554,7 +554,7 @@ class Resource:
                     alias, name, t, opts.parent))
 
         if opts.id is not None:
-            # If this resource already exists, read its state rather than registering it anow.
+            # If this resource already exists, read its state rather than registering it anew.
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
