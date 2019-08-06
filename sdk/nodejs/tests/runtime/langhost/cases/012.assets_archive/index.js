@@ -8,7 +8,15 @@ class MyResource extends pulumi.CustomResource {
             "asset": new pulumi.asset.StringAsset("foo"),
             "archive": new pulumi.asset.AssetArchive({}),
         });
-        super("test:index:MyResource", name, { "archive": archive });
+        let archiveP = Promise.resolve(new pulumi.asset.AssetArchive({
+            "foo": new pulumi.asset.StringAsset("bar"),
+        }));
+        let assetP = Promise.resolve(new pulumi.asset.StringAsset("baz"));
+        super("test:index:MyResource", name, {
+            "archive": archive,
+            "archiveP": archiveP,
+            "assetP": assetP,
+        });
     }
 }
 
