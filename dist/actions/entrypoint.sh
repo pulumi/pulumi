@@ -82,12 +82,14 @@ if [ -e package.json ] && [ ! -d node_modules ]; then
     npm install
 fi
 
-# Now just pass along all arguments to the Pulumi CLI.
-OUTPUT=$(sh -c "pulumi --non-interactive $*" 2>&1)
+# Now just pass along all arguments to the Pulumi CLI, sending the output to a file for
+# later use. Note that we exit immediately on failure (under set -e), so we `tee` stdout, but
+# allow errors to be surfaced in the Actions log.
+PULUMI_COMMAND="pulumi $*"
+OUTPUT_FILE="/tmp/out.txt"
+echo "#### :tropical_drink: \`$PULUMI_COMMAND\`"
+bash -c "$PULUMI_COMMAND" | tee $OUTPUT_FILE
 EXIT_CODE=$?
-
-echo "#### :tropical_drink: \`pulumi ${@:2}\`"
-echo "$OUTPUT"
 
 # If the GitHub action stems from a Pull Request event, we may optionally leave a comment if the
 # COMMENT_ON_PR is set.
@@ -96,9 +98,9 @@ if [ ! -z $COMMENTS_URL ] && [ ! -z $COMMENT_ON_PR ]; then
     if [ -z $GITHUB_TOKEN ]; then
         echo "ERROR: COMMENT_ON_PR was set, but GITHUB_TOKEN is not set."
     else
-        COMMENT="#### :tropical_drink: \`pulumi ${@:2}\`
+        COMMENT="#### :tropical_drink: \`$PULUMI_COMMAND\`
 \`\`\`
-$OUTPUT
+$(cat $OUTPUT_FILE)
 \`\`\`"
         PAYLOAD=$(echo '{}' | jq --arg body "$COMMENT" '.body = $body')
         echo "Commenting on PR $COMMENTS_URL"
