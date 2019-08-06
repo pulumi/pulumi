@@ -96,9 +96,11 @@ var detectors = map[SystemName]system{
 		Name:            Hudson,
 		EnvVarsToDetect: []string{"HUDSON_URL"},
 	},
-	Jenkins: baseCI{
-		Name:            Jenkins,
-		EnvVarsToDetect: []string{"JENKINS_URL", "BUILD_ID"},
+	Jenkins: jenkinsCI{
+		baseCI: baseCI{
+			Name:            Jenkins,
+			EnvVarsToDetect: []string{"JENKINS_URL"},
+		},
 	},
 	MagnumCI: baseCI{
 		Name:            MagnumCI,
