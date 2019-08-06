@@ -110,6 +110,199 @@ describe("output", () => {
         assert.equal(value, "inner");
     }));
 
+    describe("isKnown", () => {
+        function or<T>(output1: Output<T>, output2: Output<T>): Output<T> {
+            return new Output<T>(
+                new Set([...output1.resources(), ...output2.resources()]),
+                Promise.all([output1.isKnown, output2.isKnown, output1.promise(), output2.promise()])
+                       .then(([isKnown1, isKnown2, val1, val2]) => isKnown1 ? val1 : isKnown2 ? val2 : undefined!),
+                Promise.all([output1.isKnown, output2.isKnown])
+                       .then(([isKnown1, isKnown2]) => isKnown1 || isKnown2),
+                Promise.all([output1.isKnown, output2.isKnown, output1.isSecret, output2.isSecret])
+                       .then(([isKnown1, isKnown2, isSecret1, isSecret2]) => isKnown1 ? isSecret1 : isKnown2 ? isSecret2 : false));
+        }
+
+        it("choose between known and known output, non-secret", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, true);
+
+            const value = await result.promise();
+            assert.equal(value, "foo");
+
+            const secret = await result.isSecret;
+            assert.equal(secret, false);
+        }));
+
+        it("choose between known and known output, secret", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, true);
+
+            const value = await result.promise();
+            assert.equal(value, "foo");
+
+            const secret = await result.isSecret;
+            assert.equal(secret, true);
+        }));
+
+        it("choose between known and unknown output, non-secret", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, true);
+
+            const value = await result.promise();
+            assert.equal(value, "foo");
+
+            const secret = await result.isSecret;
+            assert.equal(secret, false);
+        }));
+
+        it("choose between known and unknown output, secret", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, true);
+
+            const value = await result.promise();
+            assert.equal(value, "foo");
+
+            const secret = await result.isSecret;
+            assert.equal(secret, true);
+        }));
+
+        it("choose between unknown and known output, non-secret", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, true);
+
+            const value = await result.promise();
+            assert.equal(value, "bar");
+
+            const secret = await result.isSecret;
+            assert.equal(secret, false);
+        }));
+
+        it("choose between unknown and known output, secret", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(true));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, true);
+
+            const value = await result.promise();
+            assert.equal(value, "bar");
+
+            const secret = await result.isSecret;
+            assert.equal(secret, true);
+        }));
+
+        it("choose between unknown and unknown output, non-secret", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, false);
+
+            const value = await result.promise();
+            assert.equal(value, undefined);
+
+            const secret = await result.isSecret;
+            assert.equal(secret, false);
+        }));
+
+        it("choose between unknown and unknown output, secret1", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, false);
+
+            const value = await result.promise();
+            assert.equal(value, undefined);
+
+            const secret = await result.isSecret;
+            assert.equal(secret, false);
+        }));
+
+        it("choose between unknown and unknown output, secret2", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, false);
+
+            const value = await result.promise();
+            assert.equal(value, undefined);
+
+            const secret = await result.isSecret;
+            assert.equal(secret, false);
+        }));
+
+        it("choose between unknown and unknown output, secret3", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
+
+            const result = or(o1, o2);
+
+            const isKnown = await result.isKnown;
+            assert.equal(isKnown, false);
+
+            const value = await result.promise();
+            assert.equal(value, undefined);
+
+            const secret = await result.isSecret;
+            assert.equal(secret, false);
+        }));
+    });
+
     describe("concat", () => {
         it ("handles no args", asyncTest(async () => {
             const result = concat();
