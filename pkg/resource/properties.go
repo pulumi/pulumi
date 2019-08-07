@@ -257,7 +257,7 @@ func NewPropertyValueRepl(v interface{},
 	switch rk := rv.Type().Kind(); rk {
 	case reflect.Array, reflect.Slice:
 		// If an array or slice, just create an array out of it.
-		var arr []PropertyValue
+		arr := []PropertyValue{}
 		for i := 0; i < rv.Len(); i++ {
 			elem := rv.Index(i)
 			arr = append(arr, NewPropertyValueRepl(elem.Interface(), replk, replv))
@@ -492,7 +492,7 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 	} else if v.IsString() {
 		return v.StringValue()
 	} else if v.IsArray() {
-		var arr []interface{}
+		arr := []interface{}{}
 		for _, e := range v.ArrayValue() {
 			arr = append(arr, e.MapRepl(replk, replv))
 		}
