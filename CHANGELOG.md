@@ -11,6 +11,9 @@ CHANGELOG
 - Fix a bug in the GitHub Actions program preventing errors from being rendered in the Actions log on github.com.
   [#3036](https://github.com/pulumi/pulumi/pull/3036)
 
+- Fix a bug in the Node.JS SDK that caused failure details for provider functions to go unreported.
+  [#3048](https://github.com/pulumi/pulumi/pull/3048)
+
 ## 0.17.28 (2019-08-05)
 
 - Retry renaming a temporary folder during plugin installation
