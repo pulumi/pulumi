@@ -220,7 +220,7 @@ export async function createFunctionInfoAsync(
     func: Function,
     serialize: (o: any) => boolean,
     logResource: resource.Resource | undefined,
-    secretReplacer?: (o: any) => any): Promise<FunctionInfo> {
+    secretReplacer?: (o: Output<any>) => Output<any>): Promise<FunctionInfo> {
 
     // Initialize our Context object.  It is effectively used to keep track of the work we're doing
     // as well as to keep track of the graph as we're walking it so we don't infinitely recurse.
@@ -353,7 +353,7 @@ async function analyzeFunctionInfoAsync(
         func: Function,
         context: Context,
         serialize: (o: any) => boolean,
-        secretReplacer: (o: any) => any,
+        secretReplacer: (o: Output<any>) => Output<any>,
         logInfo?: boolean): Promise<FunctionInfo> {
 
     // logInfo = logInfo || func.name === "addHandler";
@@ -775,7 +775,7 @@ function getOrCreateNameEntryAsync(
     context: Context,
     serialize: (o: any) => boolean,
     logInfo: boolean | undefined,
-    secretReplacer: (o: any) => any): Promise<Entry> {
+    secretReplacer: (o: Output<any>) => Output<any>): Promise<Entry> {
 
     return getOrCreateEntryAsync(name, capturedObjectProperties, context, serialize, logInfo, secretReplacer);
 }
@@ -790,7 +790,7 @@ async function getOrCreateEntryAsync(
         context: Context,
         serialize: (o: any) => boolean,
         logInfo: boolean | undefined,
-        secretReplacer: (o: any) => any): Promise<Entry> {
+        secretReplacer: (o: Output<any>) => Output<any>): Promise<Entry> {
 
     // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
     // the code necessary to represent the number on the other side.  Note: we have to do this

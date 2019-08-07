@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { log } from "../..";
+import { log, Output } from "../..";
 import { Resource } from "../../resource";
 import * as closure from "./createClosure";
 import * as utils from "./utils";
@@ -56,7 +56,7 @@ export interface SerializeFunctionArgs {
      * environment variabe instead, which has been arranged to have the value of the secret by
      * additional steps taken outside of the serialized code).
      */
-    secretReplacer?: (o: any) => any;
+    secretReplacer?: (o: Output<any>) => Output<any>;
 }
 
 /**
