@@ -56,6 +56,16 @@ func Untgz(tarball []byte, dir string) error {
 				}
 			}
 		case tar.TypeReg:
+			// Create any directories as needed. Some tools (notably `npm pack`) don't list
+			// directories individually, so if a file is in a directory that doesn't exist, we need
+			// to create it here.
+			dir := filepath.Dir(path)
+			if _, err := os.Stat(dir); err != nil {
+				if err = os.MkdirAll(dir, 0700); err != nil {
+					return errors.Wrapf(err, "untarring dir %s", dir)
+				}
+			}
+
 			// Expand files into the target directory.
 			dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
