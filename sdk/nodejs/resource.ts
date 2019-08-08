@@ -758,7 +758,7 @@ function expandProviders(options: ComponentResourceOptions) {
 
     // Convert 'providers' map to array form.
     if (options.providers && !Array.isArray(options.providers)) {
-        options.providers = Object.values(options.providers);
+        options.providers = utils.values(options.providers);
     }
 
     delete options.provider;
