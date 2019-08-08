@@ -66,10 +66,20 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
 
     # Pump the event loop until the future is complete. This is the kernel of BaseEventLoop.run_forever, and may not
     # work with alternative event loop implementations.
+    #
+    # In order to make this reentrant with repsect to _run_once, we keep track of the number of event handles on the
+    # ready list and ensure that there are exactly that many handles on the list once we are finished.
+    ntodo = len(loop._ready)
     while not fut.done() and not fut.cancelled():
         loop._run_once()
         if loop._stopping:
             break
+    # If we drained the ready list past what a calling _run_once would have expected, fix things up by pushing
+    # cancelled handles onto the list.
+    while len(loop._ready) < ntodo:
+        handle = asyncio.Handle(None, None, loop)
+        handle._cancelled = True
+        loop._ready.append(handle)
 
     # If we were executing inside a task, restore its context and continue on.
     if task is not None:
