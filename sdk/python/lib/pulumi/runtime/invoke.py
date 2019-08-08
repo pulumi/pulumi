@@ -69,6 +69,9 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     #
     # In order to make this reentrant with respect to _run_once, we keep track of the number of event handles on the
     # ready list and ensure that there are exactly that many handles on the list once we are finished.
+    #
+    # See https://github.com/python/cpython/blob/3.6/Lib/asyncio/base_events.py#L1428-L1452 for the details of the
+    # _run_once kernel with which we need to cooperate.
     ntodo = len(loop._ready)
     while not fut.done() and not fut.cancelled():
         loop._run_once()
