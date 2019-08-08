@@ -8,6 +8,8 @@ CHANGELOG
   property, and can cause `apply`s to run at unexpected times. If this change causes issues in a Pulumi program, the
   original behavior can be enabled by setting the `PULUMI_ENABLE_LEGACY_APPLY` environment variable to `true`.
 
+- Allow `pulumi.runtime.serializeFunction` to support secrets captured by serialized functions [#3050](https://github.com/pulumi/pulumi/pull/3050)
+
 ## 0.17.28 (2019-08-05)
 
 - Retry renaming a temporary folder during plugin installation
