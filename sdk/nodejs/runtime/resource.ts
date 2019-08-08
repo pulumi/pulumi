@@ -15,6 +15,8 @@
 import * as query from "@pulumi/query";
 import * as grpc from "grpc";
 import * as log from "../log";
+import * as utils from "../utils";
+
 import { Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
@@ -568,12 +570,11 @@ export function listResourceOutputs<U extends Resource>(
         typeFilter = isAny;
     }
 
-
     return query
         .from(
             invoke("pulumi:pulumi:readStackResourceOutputs", {
                 stackName: stackName || getStack(),
-            }).then<any[]>(({ outputs }) => Object.values(outputs)),
+            }).then<any[]>(({ outputs }) => utils.values(outputs)),
         )
         .map<ResolvedResource<U>>(({ type: typ, outputs }) => {
             return { ...outputs, __pulumiType: typ };

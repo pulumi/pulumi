@@ -44,6 +44,16 @@ export function hasTrueBooleanMember(obj: any, memberName: string | number | sym
     return val === true;
 }
 
+// Workaround errors we sometimes get on some machines saying that Object.values is not available.
+/** @internal */
+export function values(obj: object): any[] {
+    const result: any[] = [];
+    for (const key of Object.keys(obj)) {
+        result.push((<any>obj)[key]);
+    }
+    return result;
+}
+
 /**
  * Synchronously blocks until the result of this promise is computed.  If the promise is rejected,
  * this will throw the error the promise was rejected with.  If this promise does not complete this
