@@ -17,6 +17,7 @@ Support for automatic stack components.
 """
 import asyncio
 import collections
+from inspect import isawaitable
 from typing import Callable, Any, Dict, List
 
 from ..resource import ComponentResource, Resource
@@ -145,6 +146,9 @@ def massage(attr: Any, seen: List[Any]):
 
     if isinstance(attr, Output):
         return attr.apply(lambda v: massage(v, seen))
+
+    if isawaitable(attr):
+        return Output.from_input(attr).apply(lambda v: massage(v, seen))
 
     if hasattr(attr, "__dict__"):
         # recurse on the dictionary itself.  It will be handled above.
