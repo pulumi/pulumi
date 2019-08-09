@@ -48,7 +48,8 @@ _INT_OR_FLOAT = six.integer_types + (float,)
 
 def isLegalProtobufValue(value: Any) -> bool:
     """
-    Returns True if the given value is a legal Protobuf value.
+    Returns True if the given value is a legal Protobuf value as per the source at
+    https://github.com/protocolbuffers/protobuf/blob/master/python/google/protobuf/internal/well_known_types.py#L714-L732
     """
     return value is None or isinstance(value, (bool, six.string_types, _INT_OR_FLOAT, dict, list))
 
