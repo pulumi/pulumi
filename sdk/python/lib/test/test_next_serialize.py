@@ -235,6 +235,21 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(rpc._special_archive_sig, prop[rpc._special_sig_key])
         self.assertEqual("foo.tar.gz", prop["path"])
 
+    @async_test
+    async def test_bad_inputs(self):
+        class MyClass:
+            def __init__(self):
+                self.prop = "oh no!"
+
+        error = None
+        try:
+            prop = await rpc.serialize_property(MyClass(), [])
+        except ValueError as err:
+            error = err
+
+        self.assertIsNotNone(error)
+        self.assertEqual("unexpected input of type MyClass", str(error))
+
 class DeserializationTests(unittest.TestCase):
     def test_unsupported_sig(self):
         struct = struct_pb2.Struct()
