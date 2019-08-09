@@ -21,6 +21,7 @@ import inspect
 from typing import List, Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from google.protobuf import struct_pb2
+import six
 from . import known_types, settings
 from .. import log
 
@@ -42,6 +43,14 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 
 _special_secret_sig = "1b47061264138c4ac30d75fd1eb44270"
 """special_secret_sig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go"""
+
+_INT_OR_FLOAT = six.integer_types + (float,)
+
+def isLegalProtobufValue(value: Any) -> bool:
+    """
+    Returns True if the given value is a legal Protobuf value.
+    """
+    return value is None or isinstance(value, (bool, six.string_types, _INT_OR_FLOAT, dict, list))
 
 async def serialize_properties(inputs: 'Inputs',
                                property_deps: Dict[str, List['Resource']],
@@ -165,6 +174,10 @@ async def serialize_property(value: 'Input[Any]',
             obj[transformed_key] = await serialize_property(v, deps, input_transformer)
 
         return obj
+
+    # Ensure that we have a value that Protobuf understands.
+    if not isLegalProtobufValue(value):
+        raise ValueError(f"unexpected input of type {type(value).__name__}")
 
     return value
 
