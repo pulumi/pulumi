@@ -17,6 +17,7 @@ package cmdutil
 import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +26,7 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := argsValidator(cmd, args)
 		if err != nil {
+			contract.IgnoreError(cmd.Help())
 			Exit(err)
 		}
 
