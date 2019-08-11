@@ -366,7 +366,7 @@ func GetPolicyPath(name, version string) (string, bool, error) {
 		return "", false, err
 	}
 
-	policyPackPath := path.Join(policiesDir, fmt.Sprintf("pulumi-analyzer-%s%s", name, version))
+	policyPackPath := path.Join(policiesDir, fmt.Sprintf("pulumi-analyzer-%s-v%s", name, version))
 
 	file, err := os.Stat(policyPackPath)
 	if err == nil && file.IsDir() {
