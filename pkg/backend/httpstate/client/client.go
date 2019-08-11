@@ -370,7 +370,7 @@ func (pc *Client) CreateUpdate(
 		Description: description,
 		Config:      wireConfig,
 		Options: apitype.UpdateOptions{
-			Analyzers:            opts.Analyzers,
+			LocalPolicyPackPaths: opts.LocalPolicyPackPaths,
 			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
 			DryRun:               dryRun,
 			Parallel:             opts.Parallel,

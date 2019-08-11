@@ -52,7 +52,7 @@ func newUpCmd() *cobra.Command {
 	var configArray []string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
+	var policyPackPaths []string
 	var diffDisplay bool
 	var parallel int
 	var refresh bool
@@ -104,11 +104,11 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			Analyzers:     analyzers,
-			Parallel:      parallel,
-			Debug:         debug,
-			Refresh:       refresh,
-			UseLegacyDiff: useLegacyDiff(),
+			LocalPolicyPackPaths: policyPackPaths,
+			Parallel:             parallel,
+			Debug:                debug,
+			Refresh:              refresh,
+			UseLegacyDiff:        useLegacyDiff(),
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -262,10 +262,10 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			Analyzers: analyzers,
-			Parallel:  parallel,
-			Debug:     debug,
-			Refresh:   refresh,
+			LocalPolicyPackPaths: policyPackPaths,
+			Parallel:             parallel,
+			Debug:                debug,
+			Refresh:              refresh,
 		}
 
 		// TODO for the URL case:
@@ -372,8 +372,8 @@ func newUpCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this update")
+		&policyPackPaths, "policy-pack", []string{},
+		"Run one or more policy packs as part of this update")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

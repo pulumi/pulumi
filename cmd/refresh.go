@@ -34,7 +34,6 @@ func newRefreshCmd() *cobra.Command {
 	var stack string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
 	var diffDisplay bool
 	var parallel int
 	var showConfig bool
@@ -110,7 +109,6 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Analyzers:     analyzers,
 				Parallel:      parallel,
 				Debug:         debug,
 				UseLegacyDiff: useLegacyDiff(),
@@ -157,9 +155,6 @@ func newRefreshCmd() *cobra.Command {
 		"Optional message to associate with the update operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", nil,
-		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

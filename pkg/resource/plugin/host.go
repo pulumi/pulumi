@@ -395,17 +395,6 @@ func (host *defaultHost) GetRequiredPlugins(info ProgInfo, kinds Flags) ([]works
 			"cannot load resource plugins without also loading the language plugin")
 	}
 
-	// Next, if there are analyzers listed in the project file, use them too.
-	// TODO: these are currently not versioned.  We probably need to let folks specify versions in Pulumi.yaml.
-	if info.Proj.Analyzers != nil && kinds&AnalyzerPlugins != 0 {
-		for _, analyzer := range *info.Proj.Analyzers {
-			plugins = append(plugins, workspace.PluginInfo{
-				Name: string(analyzer),
-				Kind: workspace.AnalyzerPlugin,
-			})
-		}
-	}
-
 	return plugins, nil
 }
 

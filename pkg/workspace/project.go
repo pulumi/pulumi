@@ -82,9 +82,6 @@ type Project struct {
 	// License is the optional license governing this project's usage.
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
-	// Analyzers is an optional list of analyzers that are enabled for this project.
-	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
-
 	// Config indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder Pulumi.yaml is in.
 	Config string `json:"config,omitempty" yaml:"config,omitempty"`
 
