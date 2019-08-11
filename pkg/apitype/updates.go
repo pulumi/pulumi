@@ -47,7 +47,7 @@ type UpdateProgramRequest struct {
 // Should generally mirror engine.UpdateOptions, but we clone it in this package to add
 // flexibility in case there is a breaking change in the engine-type.
 type UpdateOptions struct {
-	Analyzers            []string            `json:"analyzers"`
+	LocalPolicyPackPaths []string            `json:"localPolicyPackPaths"`
 	Color                colors.Colorization `json:"color"`
 	DryRun               bool                `json:"dryRun"`
 	Parallel             int                 `json:"parallel"`
