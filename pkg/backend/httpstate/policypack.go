@@ -44,7 +44,7 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 	policy := rp.RequiredPolicy
 
 	policyPackPath, installed, err := workspace.GetPolicyPath(
-		policy.Name, strconv.Itoa(policy.Version))
+		strings.Replace(policy.Name, tokens.QNameDelimiter, "_", -1), strconv.Itoa(policy.Version))
 	if err != nil {
 		// Failed to get a sensible PolicyPack path.
 		return "", err
