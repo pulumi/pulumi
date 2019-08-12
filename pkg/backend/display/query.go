@@ -112,7 +112,7 @@ func renderQueryDiagEvent(payload engine.DiagEventPayload, opts Options) string 
 
 	// For stdout messages, trim ONLY the last newline character.
 	if payload.Severity == diag.Info {
-		payload.Message = cmdutil.RemoveTralingNewline(payload.Message)
+		payload.Message = cmdutil.RemoveTrailingNewline(payload.Message)
 	}
 
 	return opts.Color.Colorize(payload.Prefix + payload.Message)

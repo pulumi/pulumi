@@ -259,7 +259,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				if readerr != nil {
 					return readerr
 				}
-				value = cmdutil.RemoveTralingNewline(string(b))
+				value = cmdutil.RemoveTrailingNewline(string(b))
 			case secret:
 				value, err = cmdutil.ReadConsoleNoEcho("value")
 				if err != nil {
