@@ -26,7 +26,7 @@ setup(name='pulumi',
       long_description=readme(),
       url='https://github.com/pulumi/pulumi',
       license='Apache 2.0',
-      packages=find_packages(),
+      packages=find_packages(exclude=("test*",)),
       install_requires=[
           'protobuf>=3.6.0',
           'dill>=0.3.0',
