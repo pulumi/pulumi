@@ -702,9 +702,8 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Query(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) result.Result {
-	return b.query(ctx, stack, op, nil /*events*/)
+func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
+	return b.query(ctx, op, nil /*events*/)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -810,13 +809,10 @@ func (b *cloudBackend) apply(
 
 // query executes a query program against the resource outputs of a stack hosted in the Pulumi
 // Cloud.
-func (b *cloudBackend) query(
-	ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
+func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 	callerEventsOpt chan<- engine.Event) result.Result {
 
-	stackRef := stack.Ref()
-
-	q, err := b.newQuery(ctx, stackRef, op)
+	q, err := b.newQuery(ctx, op)
 	if err != nil {
 		return result.FromError(err)
 	}

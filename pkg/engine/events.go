@@ -169,7 +169,7 @@ type StepEventStateMetadata struct {
 func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
 	target := update.GetTarget()
 	var secrets []string
-	if target.Config.HasSecureValue() {
+	if target != nil && target.Config.HasSecureValue() {
 		for k, v := range target.Config {
 			if !v.Secure() {
 				continue
@@ -232,6 +232,12 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 	return eventEmitter{
 		done: done,
 		ch:   buffer,
+	}, nil
+}
+
+func makeQueryEventEmitter(events chan<- Event) (eventEmitter, error) {
+	return eventEmitter{
+		ch: events,
 	}, nil
 }
 
