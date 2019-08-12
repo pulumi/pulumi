@@ -211,6 +211,11 @@ func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
+// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *localBackend) SupportsOrganizations() bool {
+	return false
+}
+
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
 }

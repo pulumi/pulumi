@@ -435,6 +435,12 @@ func promptAndCreateStack(
 		return s, nil
 	}
 
+	if b.SupportsOrganizations() {
+		fmt.Print("Please enter your desired stack name.\n" +
+			"To create a stack in an organization, " +
+			"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
+	}
+
 	for {
 		stackName, err := promptForValue(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
 		if err != nil {

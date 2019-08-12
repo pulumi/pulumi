@@ -35,8 +35,8 @@ func newStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.\n" +
 			"\n" +
-			"To create a stack in an organization, prefix the stack name with the organization name\n" +
-			"and a slash (e.g. 'acmecorp/dev')\n" +
+			"To create a stack in an organization when logged in to the Pulumi service,\n" +
+			"prefix the stack name with the organization name and a slash (e.g. 'acmecorp/dev')\n" +
 			"\n" +
 			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
 			"provider and a stack created using the local or cloud object storage backend will use the\n" +
@@ -76,9 +76,12 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			if stackName == "" && cmdutil.Interactive() {
-				name, nameErr := cmdutil.ReadConsole("Please enter your desired stack name.\n" +
-					"To create a stack in an organization, " +
-					"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)")
+				hint := "Please enter your desired stack name."
+				if b.SupportsOrganizations() {
+					hint += "\nTo create a stack in an organization, " +
+						"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)"
+				}
+				name, nameErr := cmdutil.ReadConsole(hint)
 				if nameErr != nil {
 					return nameErr
 				}
