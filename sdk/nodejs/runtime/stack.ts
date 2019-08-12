@@ -96,7 +96,6 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
     }
 
     if (Output.isInstance(prop)) {
-        console.log("hitting this");
         return prop.apply(v => massage(v, seenObjects));
     }
 
