@@ -291,13 +291,15 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // so we must compare to the literal true instead of just doing await prop.isSecret.
         const isSecret = await prop.isSecret === true;
         const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
+
         if (!isKnown) {
             return unknownValue;
         }
         if (isSecret && await monitorSupportsSecrets()) {
             return {
                 [specialSigKey]: specialSecretSig,
-                value: value,
+                // coerce 'undefined' to 'null' as required by the protobuf system.
+                value: value === undefined ? null : value,
             };
         }
         return value;
