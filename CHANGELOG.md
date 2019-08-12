@@ -15,7 +15,7 @@ CHANGELOG
 
 - Allow resource IDs to be changed during `pulumi refresh` operations
 
-- Do not crash when renaming a stack that has never been updated, when using the local backend. (fixes 
+- Do not crash when renaming a stack that has never been updated, when using the local backend. (fixes
   [#2654](https://github.com/pulumi/pulumi/issues/2654))
 
 - Fix intermittet "NoSuchKey" issues when using the S3 based backend. (fixes [#2714](https://github.com/pulumi/pulumi/issues/2714)).
@@ -55,6 +55,9 @@ CHANGELOG
 
 - Fix a panic in logger when a secret contains non-printable characters
   [#3074](https://github.com/pulumi/pulumi/pull/3074)
+
+- Check the uniqueness of the project name during pulumi new
+  [#3065](https://github.com/pulumi/pulumi/pull/3065)
 
 ## 0.17.28 (2019-08-05)
 

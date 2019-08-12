@@ -84,6 +84,12 @@ func (pc *Client) updateRESTCall(ctx context.Context, method, path string, query
 	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
 
+// getProjectPath returns the API path for the given owner and the given project name joined with path separators
+// and appended to the stack root.
+func getProjectPath(owner string, projectName string) string {
+	return fmt.Sprintf("/api/stacks/%s/%s", owner, projectName)
+}
+
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the stack root.
 func getStackPath(stack StackIdentifier, components ...string) string {
@@ -226,6 +232,19 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 	}
 
 	return cfg, nil
+}
+
+// DoesProjectExist returns true if a project with the given name exists, or false otherwise.
+func (pc *Client) DoesProjectExist(ctx context.Context, owner string, projectName string) (bool, error) {
+	if err := pc.restCall(ctx, "HEAD", getProjectPath(owner, projectName), nil, nil, nil); err != nil {
+		// If this was a 404, return false - project not found.
+		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
+			return false, nil
+		}
+
+		return false, err
+	}
+	return true, nil
 }
 
 // GetStack retrieves the stack with the given name.

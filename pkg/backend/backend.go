@@ -113,6 +113,9 @@ type Backend interface {
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
 
+	// DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
+	DoesProjectExist(ctx context.Context, projectName string) (bool, error)
+
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.

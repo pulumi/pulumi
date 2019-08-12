@@ -221,6 +221,11 @@ func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackRe
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
 }
 
+func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
+	// Local backends don't really have multiple projects, so just return false here.
+	return false, nil
+}
+
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
