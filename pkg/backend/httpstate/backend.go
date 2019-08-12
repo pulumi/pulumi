@@ -478,6 +478,16 @@ func (b *cloudBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.CloudURL())
 }
 
+// DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
+func (b *cloudBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
+	owner, err := b.client.GetPulumiAccountName(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return b.client.DoesProjectExist(ctx, owner, projectName)
+}
+
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {

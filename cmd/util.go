@@ -59,7 +59,14 @@ func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
 
+// backendInstance is used to inject a backend mock from tests
+var backendInstance backend.Backend
+
 func currentBackend(opts display.Options) (backend.Backend, error) {
+	if backendInstance != nil {
+		return backendInstance, nil
+	}
+
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get cloud url")
