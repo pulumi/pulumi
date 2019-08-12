@@ -391,6 +391,11 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
 }
 
+// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *cloudBackend) SupportsOrganizations() bool {
+	return true
+}
+
 func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
 	split := strings.Split(s, "/")
 	var owner string

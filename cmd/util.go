@@ -261,10 +261,12 @@ func chooseStack(
 	}
 
 	if option == newOption {
-		stackName, readErr := cmdutil.ReadConsole(
-			"Please enter your desired stack name.\n" +
-				"To create a stack in an organization, " +
-				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)")
+		hint := "Please enter your desired stack name."
+		if b.SupportsOrganizations() {
+			hint += "\nTo create a stack in an organization, " +
+				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)"
+		}
+		stackName, readErr := cmdutil.ReadConsole(hint)
 		if readErr != nil {
 			return nil, readErr
 		}
