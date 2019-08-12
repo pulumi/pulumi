@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { Inputs, runtime } from "../../index";
+import { Inputs, runtime, secret } from "../../index";
 import { asyncTest } from "../util";
 
 
@@ -40,6 +40,20 @@ describe("runtime", () => {
             assert.deepEqual(result.dArr, [ "x", 42, true, null ]);
             assert.equal(result.id, "foo");
             assert.equal(result.urn, "bar");
+        }));
+        it("marshals secrets correctly", asyncTest(async () => {
+            runtime._setTestModeEnabled(true);
+            const inputs: Inputs = {
+                "secret1": secret(1),
+                "secret2": secret(undefined),
+            };
+            // Serialize and then deserialize all the properties, checking that they round-trip as expected.
+            const transfer = gstruct.Struct.fromJavaScript(
+                await runtime.serializeProperties("test", inputs));
+            const result = runtime.deserializeProperties(transfer);
+            assert.equal(result.secret1, 1);
+            assert.equal(result.secret2, undefined);
+            runtime._setTestModeEnabled(false);
         }));
     });
 
