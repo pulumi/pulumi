@@ -53,6 +53,7 @@ describe("runtime", () => {
             const result = runtime.deserializeProperties(transfer);
             assert.equal(result.secret1, 1);
             assert.equal(result.secret2, undefined);
+            runtime._setTestModeEnabled(false);
         }));
     });
 
