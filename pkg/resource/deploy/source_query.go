@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -134,15 +135,23 @@ func runLangPlugin(src *querySource) result.Result {
 	defer contract.IgnoreClose(langhost)
 
 	// Decrypt the configuration.
-	config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
-	if err != nil {
-		return result.FromError(err)
+	var config map[config.Key]string
+	if src.runinfo.Target != nil {
+		config, err = src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
+		if err != nil {
+			return result.FromError(err)
+		}
+	}
+
+	var name string
+	if src.runinfo.Target != nil {
+		name = string(src.runinfo.Target.Name)
 	}
 
 	// Now run the actual program.
 	progerr, bail, err := langhost.Run(plugin.RunInfo{
 		MonitorAddress: src.mon.Address(),
-		Stack:          string(src.runinfo.Target.Name),
+		Stack:          name,
 		Project:        string(src.runinfo.Proj.Name),
 		Pwd:            src.runinfo.Pwd,
 		Program:        src.runinfo.Program,
