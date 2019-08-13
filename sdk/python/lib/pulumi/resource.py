@@ -361,8 +361,8 @@ class ResourceOptions:
             4. Attributes with value 'None' will not be copied over.
         """
 
-        opts1 = ResourceOptions if opts1 is None else opts1
-        opts2 = ResourceOptions if opts2 is None else opts2
+        opts1 = ResourceOptions() if opts1 is None else opts1
+        opts2 = ResourceOptions() if opts2 is None else opts2
 
         dest = copy.copy(opts1)
         source = copy.copy(opts2)
