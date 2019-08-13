@@ -8,6 +8,9 @@ CHANGELOG
 
 - Allow resource IDs to be changed during `pulumi refresh` operations
 
+- Do not crash when renaming a stack that has never been updated, when using the local backend. (fixes 
+  [#2654](https://github.com/pulumi/pulumi/issues/2654))
+
 ## 1.0.0-beta.2 (2019-08-13)
 
 - Fix the package version compatibility checks in the NodeJS language host.

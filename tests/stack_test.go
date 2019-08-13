@@ -348,6 +348,22 @@ func TestStackBackups(t *testing.T) {
 	})
 }
 
+func TestStackRenameAfterCreate(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	stackName := addRandomSuffix("stack-rename")
+	integration.CreateBasicPulumiRepo(e)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	newName := addRandomSuffix("renamed-stack")
+	e.RunCommand("pulumi", "stack", "rename", newName)
+}
+
 func getFileNames(infos []os.FileInfo) []string {
 	var result []string
 	for _, i := range infos {
