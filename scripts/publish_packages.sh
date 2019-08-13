@@ -23,8 +23,6 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         NPM_TAG="latest"
     fi
 
-	echo "${NPM_TAG}"
-
     pushd "${ROOT}/sdk/nodejs/bin" && \
         npm publish --tag "${NPM_TAG}" && \
         npm info 2>/dev/null || true && \
