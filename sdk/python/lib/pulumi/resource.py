@@ -354,7 +354,8 @@ class ResourceOptions:
         merge produces a new ResourceOptions object with the respective attributes of the
         `opts1` instance in it with the attributes of `opts2` merged over them.
 
-        Both the `opts1` instance and the `opts2` instance will be unchanged.
+        Both the `opts1` instance and the `opts2` instance will be unchanged.  Both of `opts1` and `opts2` can be 
+        `None`, in which case its attributes are ignored.
 
         Conceptually attributes merging follows these basic rules:
             1. if the attributes is a collection, the final value will be a collection containing
