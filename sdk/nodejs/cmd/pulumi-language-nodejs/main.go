@@ -170,11 +170,11 @@ func compatibleVersions(a, b semver.Version) (bool, string) {
 
 	case a.Major >= 1 && b.Major >= 1:
 		// If both major versions are post-1.0, we require that the major versions match.
-		if a.Major != b.Minor {
+		if a.Major != b.Major {
 			return false, "Differing major versions are not supported."
 		}
 
-	case a.Major == 1 && b.Minor == 17 || b.Major == 1 && a.Minor == 17:
+	case a.Major == 1 && b.Major == 0 && b.Minor == 17 || b.Major == 1 && a.Major == 0 && a.Minor == 17:
 		// If one version is pre-1.0 and the other is post-1.0, we unify 1.x.y and 0.17.z. This combination is legal.
 
 	default:
