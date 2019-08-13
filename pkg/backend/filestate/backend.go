@@ -312,12 +312,15 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 		return err
 	}
 
-	// Rewrite the checkpoint and save it with the new name.
-	if err = edit.RenameStack(snap, newName); err != nil {
-		return err
+	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
+	if snap != nil {
+		if err = edit.RenameStack(snap, newName); err != nil {
+			return err
+		}
 	}
 
-	if _, err = b.saveStack(newName, snap, snap.SecretsManager); err != nil {
+	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot)
+	if _, err = b.saveStack(newName, snap, nil); err != nil {
 		return err
 	}
 
@@ -325,11 +328,16 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	file := b.stackPath(stackName)
 	backupTarget(b.bucket, file)
 
-	// And move the history over as well.
+	// And move the history over as well, if it exists.
 	oldHistoryDir := b.historyDirectory(stackName)
-	newHistoryDir := b.historyDirectory(newName)
+	if _, err := os.Stat(oldHistoryDir); err == nil {
+		newHistoryDir := b.historyDirectory(newName)
+		if err := os.Rename(oldHistoryDir, newHistoryDir); err != nil {
+			return errors.Wrap(err, "renaming history")
+		}
+	}
 
-	return os.Rename(oldHistoryDir, newHistoryDir)
+	return nil
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
