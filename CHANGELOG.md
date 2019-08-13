@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## Unreleased
+## 1.0.0-beta.1 (2019-08-13)
 
 - Do not propagate input properties to missing output properties during preview. The old behavior can cause issues that
   are difficult to diagnose in cases where the actual value of the output property differs from the value of the input

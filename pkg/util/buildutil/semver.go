@@ -29,6 +29,10 @@ var (
 		`^v(?P<version>\d+\.\d+\.\d+)(?P<dirty>\+dirty)?$`)
 	rcVersionRegex = regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)-rc\.(?P<rcN>\d+)(?P<dirty>\+dirty)?$`)
+	betaVersionRegex = regexp.MustCompile(
+		`^v(?P<version>\d+\.\d+\.\d+)-beta\.(?P<betaN>\d+)(?P<dirty>.dirty)?$`)
+	alphaVersionRegex = regexp.MustCompile(
+		`^v(?P<version>\d+\.\d+\.\d+)-alpha\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
 	devVersionRegex = regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)-dev\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
 )
@@ -42,21 +46,36 @@ var (
 func PyPiVersionFromNpmVersion(s string) (string, error) {
 	var b bytes.Buffer
 
-	if releaseVersionRegex.MatchString(s) {
+	switch {
+	case releaseVersionRegex.MatchString(s):
 		capMap := captureToMap(releaseVersionRegex, s)
 		mustFprintf(&b, "%s", capMap["version"])
 		if capMap["dirty"] != "" {
 			mustFprintf(&b, "+dirty")
 		}
 		return b.String(), nil
-	} else if rcVersionRegex.MatchString(s) {
+	case rcVersionRegex.MatchString(s):
 		capMap := captureToMap(rcVersionRegex, s)
 		mustFprintf(&b, "%src%s", capMap["version"], capMap["rcN"])
 		if capMap["dirty"] != "" {
 			mustFprintf(&b, "+dirty")
 		}
 		return b.String(), nil
-	} else if devVersionRegex.MatchString(s) {
+	case betaVersionRegex.MatchString(s):
+		capMap := captureToMap(betaVersionRegex, s)
+		mustFprintf(&b, "%sb%s", capMap["version"], capMap["betaN"])
+		if capMap["dirty"] != "" {
+			mustFprintf(&b, "+dirty")
+		}
+		return b.String(), nil
+	case alphaVersionRegex.MatchString(s):
+		capMap := captureToMap(alphaVersionRegex, s)
+		mustFprintf(&b, "%sa%s", capMap["version"], capMap["time"])
+		if capMap["dirty"] != "" {
+			mustFprintf(&b, "+dirty")
+		}
+		return b.String(), nil
+	case devVersionRegex.MatchString(s):
 		capMap := captureToMap(devVersionRegex, s)
 		mustFprintf(&b, "%s.dev%s", capMap["version"], capMap["time"])
 		if capMap["dirty"] != "" {

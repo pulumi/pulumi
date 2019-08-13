@@ -43,7 +43,7 @@ PATCH=$(cut -d. -f3 <<< "${TAG}")
 # add a timestamp and commit hash. We use the timestamp of the commit
 # itself, not the date it was authored (so it will change when someone
 # rebases a PR into master, for example).
-echo -n "${MAJOR}.${MINOR}.$((${PATCH}+1))-dev.$(git show -s --format='%ct+g%h' ${COMMITISH})"
+echo -n "${MAJOR}.${MINOR}.$((${PATCH}+1))-alpha.$(git show -s --format='%ct+g%h' ${COMMITISH})"
 if [ ! -z "${DIRTY_TAG}" ]; then
     echo -n ".${DIRTY_TAG}"
 fi
