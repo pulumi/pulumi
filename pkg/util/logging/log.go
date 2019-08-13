@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"strconv"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/golang/glog"
 )
@@ -126,6 +127,9 @@ func CreateFilter(secrets []string, replacement string) Filter {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
 		// displaying `[secret]`. Travis does a similar thing, for example.
 		if len(secret) < 3 {
+			continue
+		}
+		if !utf8.ValidString(secret) {
 			continue
 		}
 		if b.Len() > 0 {
