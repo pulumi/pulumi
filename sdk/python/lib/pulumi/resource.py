@@ -343,9 +343,9 @@ class ResourceOptions:
                         "'depends_on' was passed a value that was not a Resource.")
 
     @staticmethod
-    def merge_options(
-            opts1: 'ResourceOptions' = ResourceOptions(),
-            opts2: 'ResourceOptions' = ResourceOptions()) -> 'ResourceOptions':
+    def merge(
+            opts1: 'ResourceOptions',
+            opts2: 'ResourceOptions') -> 'ResourceOptions':
         """
         merge produces a new ResourceOptions object with the respective attributes of the
         `opts` instance in it with the attributes of `opts2` merged over them.
@@ -362,6 +362,9 @@ class ResourceOptions:
                treated as collections, even if only a single value was provided.
             4. Attributes with value 'None' will not be copied over.
         """
+
+        opts1 = ResourceOptions if opts1 is None else opts1
+        opts2 = ResourceOptions if opts2 is None else opts2
 
         dest = copy.copy(opts1)
         source = copy.copy(opts2)
@@ -391,21 +394,6 @@ class ResourceOptions:
         _collapse_providers(dest)
 
         return dest
-
-
-    def merge(self, other: 'ResourceOptions') -> 'ResourceOptions':
-        """
-        merge produces a new ResourceOptions object with the respective attributes of this
-        instance in it with the attributes of `other` merged over them.
-
-        Both this options instance and the `other` options instance will be unchanged.
-
-        Calling `r1.merge(r2)` is equivalent to calling `ResourceOptions.merge_options(r1, r2)`.
-        The latter may be preferable in the case where r1 is not known to be None or not.
-
-        See `merge_options` for more details on how attribute merging behaves.
-        """
-        return ResourceOptions.merge_options(self, other)
 
 
 def _expand_providers(options: 'ResourceOptions'):
