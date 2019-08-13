@@ -400,15 +400,10 @@ class ResourceOptions:
 
         Both this options instance and the `other` options instance will be unchanged.
 
-        Conceptually attributes merging follows these basic rules:
-         1. if the attributes is a collection, the final value will be a collection containing the
-            values from each options object. Both original collections in each options object will
-            be unchanged.
-         2. Simple scaler values from `other` (i.e. strings, numbers, bools) will replace the values
-            from this.
-         3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
-            as collections, even if only a single value was provided.
-         4. Attributes with value 'None' will not be copied over.
+        Calling `r1.merge(r2)` is equivalent to calling `ResourceOptions.merge_options(r1, r2)`.
+        The latter may be preferable in the case where r1 is not known to be None or not.
+
+        See `merge_options` for more details on how attribute merging behaves.
         """
         return ResourceOptions.merge_options(self, other)
 
