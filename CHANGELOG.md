@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## 1.0.0-beta.2 (2019-08-13)
+
+- Fix the package version compatibility checks in the NodeJS language host.
+  [#3083](https://github.com/pulumi/pulumi/pull/3083)
+
 ## 1.0.0-beta.1 (2019-08-13)
 
 - Do not propagate input properties to missing output properties during preview. The old behavior can cause issues that
