@@ -53,6 +53,7 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		return policyPackPath, nil
 	}
 
+	fmt.Println(policy.Name, policy.Version)
 	// PolicyPack has not been downloaded and installed. Do this now.
 	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
 	if err != nil {

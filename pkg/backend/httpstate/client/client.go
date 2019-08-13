@@ -511,6 +511,7 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyPac
 // DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
 func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) ([]byte, error) {
 	fmt.Println("Downloading policy pack")
+	fmt.Println(url)
 
 	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
