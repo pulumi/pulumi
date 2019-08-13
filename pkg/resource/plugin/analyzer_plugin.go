@@ -92,10 +92,8 @@ func NewPolicyAnalyzer(
 	plug, err := newPlugin(ctx, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), policyPackPath})
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not start policy pack %s because the built-in "+
-			"analyzer plugin that runs policy plugins is missing. This might occur when the "+
-			"plugin directory is not on your $PATH, or when the installed version of the Pulumi "+
-			"SDK does not support resource policies", string(name))
+		return nil, errors.Wrapf(err,
+			"policy pack %s failed to start because of an internal error", string(name))
 	}
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
