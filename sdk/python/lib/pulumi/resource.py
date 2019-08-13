@@ -365,6 +365,9 @@ class ResourceOptions:
             3. For the purposes of merging `depends_on`, `provider` and `providers` are always
                treated as collections, even if only a single value was provided.
             4. Attributes with value 'None' will not be copied over.
+        This method can be called either as static-method like `ResourceOptions.merge(opts1, opts2)` or as an instance-method
+        like `opts1.merge(opts2)`.  The former is useful for cases where `opts1` may be `None` so the caller does not need
+        to check for this case. 
         """
 
         opts1 = ResourceOptions() if opts1 is None else opts1
