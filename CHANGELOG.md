@@ -20,6 +20,9 @@ CHANGELOG
 - Fix crash when exporting secrets from a pulumi app
   [#2962](https://github.com/pulumi/pulumi/issues/2962)
 
+- Fix a panic in logger when a secret contains non-printable characters
+  [#3074](https://github.com/pulumi/pulumi/pull/3074)
+
 ## 0.17.28 (2019-08-05)
 
 - Retry renaming a temporary folder during plugin installation
