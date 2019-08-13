@@ -35,7 +35,7 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string, timesPerSecond time.
 		}
 	}
 
-	if InteractiveTerminal() {
+	if Interactive() {
 		return &ttySpinner{
 			prefix: prefix,
 			frames: ttyFrames,

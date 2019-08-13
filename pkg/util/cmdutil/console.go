@@ -75,7 +75,7 @@ func ReadConsole(prompt string) (string, error) {
 		return "", err
 	}
 
-	return RemoveTralingNewline(raw), nil
+	return RemoveTrailingNewline(raw), nil
 }
 
 // IsTruthy returns true if the given string represents a CLI input interpreted as "true".
@@ -83,9 +83,9 @@ func IsTruthy(s string) bool {
 	return s == "1" || strings.EqualFold(s, "true")
 }
 
-// RemoveTralingNewline removes a trailing newline from a string. On windows, we'll remove either \r\n or \n, on other
+// RemoveTrailingNewline removes a trailing newline from a string. On windows, we'll remove either \r\n or \n, on other
 // platforms, we just remove \n.
-func RemoveTralingNewline(s string) string {
+func RemoveTrailingNewline(s string) string {
 	s = strings.TrimSuffix(s, "\n")
 
 	if runtime.GOOS == "windows" {
