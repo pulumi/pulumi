@@ -767,6 +767,39 @@ func TestResourceWithSecretSerialization(t *testing.T) {
 	})
 }
 
+func TestStackReferenceSecrets(t *testing.T) {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+	if owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	d := "stack_reference_secrets"
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          path.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Config: map[string]string{
+			"org": owner,
+		},
+		Quick: true,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:             path.Join(d, "step2"),
+				Additive:        true,
+				ExpectNoChanges: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					_, isString := stackInfo.Outputs["refNormal"].(string)
+					assert.Truef(t, isString, "referenced non-secret output was not a string")
+
+					secretPropValue, ok := stackInfo.Outputs["refSecret"].(map[string]interface{})
+					assert.Truef(t, ok, "secret output was not serialized as a secret")
+					assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+				},
+			},
+		},
+	})
+}
+
 func TestCloudSecretProvider(t *testing.T) {
 	kmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
 	if kmsKeyAlias == "" {
