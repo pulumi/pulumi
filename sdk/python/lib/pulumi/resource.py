@@ -342,6 +342,56 @@ class ResourceOptions:
                     raise Exception(
                         "'depends_on' was passed a value that was not a Resource.")
 
+    @staticmethod
+    def merge_options(
+            opts1: 'ResourceOptions' = ResourceOptions(),
+            opts2: 'ResourceOptions' = ResourceOptions()) -> 'ResourceOptions':
+        """
+        merge produces a new ResourceOptions object with the respective attributes of the
+        `opts` instance in it with the attributes of `opts2` merged over them.
+
+        Both the `opts1` instance and the `opts2` instance will be unchanged.
+
+        Conceptually attributes merging follows these basic rules:
+            1. if the attributes is a collection, the final value will be a collection containing
+               the values from each options object. Both original collections in each options
+               object will be unchanged.
+            2. Simple scaler values from `opts2` (i.e. strings, numbers, bools) will replace the
+               values from `opts1`.
+            3. For the purposes of merging `depends_on`, `provider` and `providers` are always
+               treated as collections, even if only a single value was provided.
+            4. Attributes with value 'None' will not be copied over.
+        """
+
+        dest = copy.copy(opts1)
+        source = copy.copy(opts2)
+
+        # Ensure provider/providers are all expanded into the `List[ResourceProvider]` form.
+        # This makes merging simple.
+        _expand_providers(dest)
+        _expand_providers(source)
+
+        dest.providers = _merge_lists(dest.providers, source.providers)
+        dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
+        dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
+        dest.aliases = _merge_lists(dest.aliases, source.aliases)
+        dest.additional_secret_outputs = _merge_lists(
+            dest.additional_secret_outputs, source.additional_secret_outputs)
+
+        dest.parent = dest.parent if source.parent is None else source.parent
+        dest.protect = dest.protect if source.protect is None else source.protect
+        dest.delete_before_replace = dest.delete_before_replace if source.delete_before_replace is None else source.delete_before_replace
+        dest.version = dest.version if source.version is None else source.version
+        dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
+        dest.id = dest.id if source.id is None else source.id
+        dest.import_ = dest.import_ if source.import_ is None else source.import_
+
+        # Now, if we are left with a .providers that is just a single key/value pair, then
+        # collapse that down into .provider form.
+        _collapse_providers(dest)
+
+        return dest
+
 
     def merge(self, other: 'ResourceOptions') -> 'ResourceOptions':
         """
@@ -360,39 +410,7 @@ class ResourceOptions:
             as collections, even if only a single value was provided.
          4. Attributes with value 'None' will not be copied over.
         """
-        return _merge_options(self, other)
-
-def _merge_options(
-        opts1: 'ResourceOptions' = ResourceOptions(),
-        opts2: 'ResourceOptions' = ResourceOptions()) -> 'ResourceOptions':
-
-    dest = copy.copy(opts1)
-    source = copy.copy(opts2)
-
-    # Ensure provider/providers are all expanded into the `List[ResourceProvider]` form.
-    # This makes merging simple.
-    _expand_providers(dest)
-    _expand_providers(source)
-
-    dest.providers = _merge_lists(dest.providers, source.providers)
-    dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
-    dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
-    dest.aliases = _merge_lists(dest.aliases, source.aliases)
-    dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, source.additional_secret_outputs)
-
-    dest.parent = dest.parent if source.parent is None else source.parent
-    dest.protect = dest.protect if source.protect is None else source.protect
-    dest.delete_before_replace = dest.delete_before_replace if source.delete_before_replace is None else source.delete_before_replace
-    dest.version = dest.version if source.version is None else source.version
-    dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
-    dest.id = dest.id if source.id is None else source.id
-    dest.import_ = dest.import_ if source.import_ is None else source.import_
-
-    # Now, if we are left with a .providers that is just a single key/value pair, then
-    # collapse that down into .provider form.
-    _collapse_providers(dest)
-
-    return dest
+        return ResourceOptions.merge_options(self, other)
 
 
 def _expand_providers(options: 'ResourceOptions'):
