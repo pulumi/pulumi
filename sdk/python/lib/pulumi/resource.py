@@ -343,9 +343,7 @@ class ResourceOptions:
                         "'depends_on' was passed a value that was not a Resource.")
 
     @staticmethod
-    def merge(
-            opts1: 'ResourceOptions',
-            opts2: 'ResourceOptions') -> 'ResourceOptions':
+    def merge(opts1: 'ResourceOptions', opts2: 'ResourceOptions') -> 'ResourceOptions':
         """
         merge produces a new ResourceOptions object with the respective attributes of the
         `opts` instance in it with the attributes of `opts2` merged over them.
