@@ -160,6 +160,31 @@ func newLanguageHost(nodePath, runPath, engineAddress,
 	}
 }
 
+func compatibleVersions(a, b semver.Version) (bool, string) {
+	switch {
+	case a.Major == 0 && b.Major == 0:
+		// If both major versions are pre-1.0, we require that the major and minor versions match.
+		if a.Minor != b.Minor {
+			return false, "Differing major or minor versions are not supported."
+		}
+
+	case a.Major >= 1 && b.Major >= 1:
+		// If both major versions are post-1.0, we require that the major versions match.
+		if a.Major != b.Minor {
+			return false, "Differing major versions are not supported."
+		}
+
+	case a.Major == 1 && b.Minor == 17 || b.Major == 1 && a.Minor == 17:
+		// If one version is pre-1.0 and the other is post-1.0, we unify 1.x.y and 0.17.z. This combination is legal.
+
+	default:
+		// All other combinations of versions are illegal.
+		return false, "Differing major or minor versions are not supported."
+	}
+
+	return true, ""
+}
+
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
@@ -186,12 +211,12 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 				continue
 			}
 
-			if version.Major != firstVersion.Major || version.Minor != firstVersion.Minor {
+			if ok, message := compatibleVersions(version, firstVersion); !ok {
 				fmt.Fprintf(os.Stderr,
-					`Found incompatible versions of @pulumi/pulumi.  Differing major or minor versions are not supported.
+					`Found incompatible versions of @pulumi/pulumi. %s
   Version %s referenced at %s
   Version %s referenced at %s
-`, firstVersion, firstPath, version, path)
+`, message, firstVersion, firstPath, version, path)
 				break
 			}
 		}
