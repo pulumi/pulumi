@@ -351,25 +351,29 @@ class ResourceOptions:
     @staticmethod
     def merge(opts1: 'ResourceOptions', opts2: 'ResourceOptions') -> 'ResourceOptions':
         """
-        merge produces a new ResourceOptions object with the respective attributes of the
-        `opts1` instance in it with the attributes of `opts2` merged over them.
+        merge produces a new ResourceOptions object with the respective attributes of the `opts1`
+        instance in it with the attributes of `opts2` merged over them.
 
-        Both the `opts1` instance and the `opts2` instance will be unchanged.  Both of `opts1` and `opts2` can be 
-        `None`, in which case its attributes are ignored.
+        Both the `opts1` instance and the `opts2` instance will be unchanged.  Both of `opts1` and
+        `opts2` can be `None`, in which case its attributes are ignored.
 
         Conceptually attributes merging follows these basic rules:
-            1. if the attributes is a collection, the final value will be a collection containing
-               the values from each options object. Both original collections in each options
-               object will be unchanged.
-            2. Simple scaler values from `opts2` (i.e. strings, numbers, bools) will replace the
-               values from `opts1`.
-            3. For the purposes of merging `depends_on`, `provider` and `providers` are always
-               treated as collections, even if only a single value was provided.
-            4. Attributes with value 'None' will not be copied over.
 
-        This method can be called either as static-method like `ResourceOptions.merge(opts1, opts2)` or as an instance-method
-        like `opts1.merge(opts2)`.  The former is useful for cases where `opts1` may be `None` so the caller does not need
-        to check for this case. 
+        1. if the attributes is a collection, the final value will be a collection containing the
+            values from each options object. Both original collections in each options object will
+            be unchanged.
+
+        2. Simple scaler values from `opts2` (i.e. strings, numbers, bools) will replace the values
+            from `opts1`.
+
+        3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
+            as collections, even if only a single value was provided.
+
+        4. Attributes with value 'None' will not be copied over.
+
+        This method can be called either as static-method like `ResourceOptions.merge(opts1, opts2)`
+        or as an instance-method like `opts1.merge(opts2)`.  The former is useful for cases where
+        `opts1` may be `None` so the caller does not need to check for this case.
         """
 
         opts1 = ResourceOptions() if opts1 is None else opts1
