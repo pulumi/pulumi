@@ -352,7 +352,7 @@ class ResourceOptions:
     def merge(opts1: 'ResourceOptions', opts2: 'ResourceOptions') -> 'ResourceOptions':
         """
         merge produces a new ResourceOptions object with the respective attributes of the
-        `opts` instance in it with the attributes of `opts2` merged over them.
+        `opts1` instance in it with the attributes of `opts2` merged over them.
 
         Both the `opts1` instance and the `opts2` instance will be unchanged.
 
