@@ -376,8 +376,7 @@ class ResourceOptions:
         dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
-        dest.additional_secret_outputs = _merge_lists(
-            dest.additional_secret_outputs, source.additional_secret_outputs)
+        dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, source.additional_secret_outputs)
 
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
