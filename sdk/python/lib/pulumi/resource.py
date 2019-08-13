@@ -322,6 +322,8 @@ class ResourceOptions:
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
         """
+        self.merge = self._merge_instance
+
         self.parent = parent
         self.depends_on = depends_on
         self.protect = protect
@@ -342,6 +344,10 @@ class ResourceOptions:
                     raise Exception(
                         "'depends_on' was passed a value that was not a Resource.")
 
+    def _merge_instance(self, opts: 'ResourceOptions') -> 'ResourceOptions':
+        return ResourceOptions.merge(self, opts)
+
+    # pylint: disable=method-hidden
     @staticmethod
     def merge(opts1: 'ResourceOptions', opts2: 'ResourceOptions') -> 'ResourceOptions':
         """
