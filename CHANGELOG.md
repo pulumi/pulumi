@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- When using StackReference to fetch output values from another stack, do not mark a value as secret if it was not
+  secret in the stack you referenced. (fixes [#2744](https://github.com/pulumi/pulumi/issues/2744)).
+
 ## 1.0.0-beta.2 (2019-08-13)
 
 - Fix the package version compatibility checks in the NodeJS language host.

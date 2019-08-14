@@ -32,6 +32,11 @@ export class StackReference extends CustomResource {
     public readonly outputs: Output<{[name: string]: any}>;
 
     /**
+     * The names of any stack outputs which contain secrets.
+     */
+    public readonly secretOutputs: Output<string[]>;
+
+    /**
      * Create a StackReference resource with the given unique name, arguments, and options.
      *
      * If args is not specified, the name of the referenced stack will be the name of the StackReference resource.
@@ -46,6 +51,7 @@ export class StackReference extends CustomResource {
         super("pulumi:pulumi:StackReference", name, {
             name: args.name || name,
             outputs: undefined,
+            secretOutputs: undefined,
         }, { ...opts, id: args.name || name });
     }
 
@@ -55,7 +61,8 @@ export class StackReference extends CustomResource {
      * @param name The name of the stack output to fetch.
      */
     public getOutput(name: Input<string>): Output<any> {
-        return all([output(name), this.outputs]).apply(([n, os]) => os[n]);
+        const value = all([output(name), this.outputs]).apply(([n, os]) => os[n]);
+        return new Output(value.resources(), value.promise(), value.isKnown, this.isSecretOutput(output(name)));
     }
 
     /**
@@ -64,12 +71,13 @@ export class StackReference extends CustomResource {
      * @param name The name of the stack output to fetch.
      */
     public requireOutput(name: Input<string>): Output<any> {
-        return all([output(this.name), output(name), this.outputs]).apply(([stackname, n, os]) => {
+        const value = all([output(this.name), output(name), this.outputs]).apply(([stackname, n, os]) => {
             if (!os.hasOwnProperty(n)) {
                 throw new Error(`Required output '${n}' does not exist on stack '${stackname}'.`);
             }
             return os[n];
         });
+        return new Output(value.resources(), value.promise(), value.isKnown, this.isSecretOutput(output(name)));
     }
 
     /**
@@ -110,6 +118,23 @@ export class StackReference extends CustomResource {
         return promiseResult(out.promise());
     }
 
+    async isSecretOutput(name: Output<string>): Promise<boolean> {
+        // If either the name or set of secret outputs is unknown, we can't do anything smart, so we just copy the
+        // secretness from the entire outputs value.
+        if (!((await name.isKnown) && (await this.secretOutputs.isKnown))) {
+            return await this.outputs.isSecret;
+        }
+
+        // Otherwise, if we have a list of outputs we know are secret, we can use that list to determine if this
+        // output should be secret. Names could be falsy here in cases where we are using an older CLI that did
+        // not return this information (in this case we again fallback to the secretness of outputs value).
+        const names = await this.secretOutputs.promise();
+        if (!names) {
+            return await this.outputs.isSecret;
+        }
+
+        return names.includes(await name.promise());
+    }
 }
 
 /**
