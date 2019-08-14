@@ -412,7 +412,6 @@ func TestStackDependencyGraph(t *testing.T) {
 			assert.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
-			fmt.Println(latest.Resources)
 			sawFirst := false
 			sawSecond := false
 			for _, res := range latest.Resources {
