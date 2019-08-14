@@ -322,7 +322,10 @@ class ResourceOptions:
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
         """
+
+        # Expose 'merge' again this this object, but this time as an instance method.
         self.merge = self._merge_instance
+        self.merge.__func__.__doc__ = ResourceOptions.merge.__doc__
 
         self.parent = parent
         self.depends_on = depends_on
