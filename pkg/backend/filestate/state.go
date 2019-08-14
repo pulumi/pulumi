@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -267,7 +268,7 @@ func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, erro
 	allFiles, err := listBucket(b.bucket, dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
-		if os.IsNotExist(err) {
+		if gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound {
 			return nil, nil
 		}
 		return nil, err
@@ -300,6 +301,42 @@ func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, erro
 	}
 
 	return updates, nil
+}
+
+func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName) error {
+	contract.Require(oldName != "", "oldName")
+	contract.Require(newName != "", "newName")
+
+	oldHistory := b.historyDirectory(oldName)
+	newHistory := b.historyDirectory(newName)
+
+	allFiles, err := listBucket(b.bucket, oldHistory)
+	if err != nil {
+		// if there's nothing there, we don't really need to do a rename.
+		if gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound {
+			return nil
+		}
+		return err
+	}
+
+	for _, file := range allFiles {
+		fileName := objectName(file)
+		oldBlob := path.Join(oldHistory, fileName)
+
+		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json, we need to change
+		// the stack name part but retain the other parts.
+		newFileName := string(newName) + fileName[strings.LastIndex(fileName, "-"):]
+		newBlob := path.Join(newHistory, newFileName)
+
+		if err := b.bucket.Copy(context.TODO(), newBlob, oldBlob, nil); err != nil {
+			return errors.Wrap(err, "copying history file")
+		}
+		if err := b.bucket.Delete(context.TODO(), oldBlob); err != nil {
+			return errors.Wrap(err, "deleting existing history file")
+		}
+	}
+
+	return nil
 }
 
 // addToHistory saves the UpdateInfo and makes a copy of the current Checkpoint file.

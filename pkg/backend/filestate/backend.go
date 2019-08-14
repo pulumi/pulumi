@@ -32,6 +32,7 @@ import (
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
 	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -252,7 +253,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	stackName := stackRef.Name()
 	snapshot, path, err := b.getStack(stackName)
 	switch {
-	case os.IsNotExist(errors.Cause(err)):
+	case gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err
@@ -305,11 +306,12 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	// Ensure the destination stack does not already exist.
-	_, err = os.Stat(b.stackPath(newName))
-	if err == nil {
-		return errors.Errorf("a stack named %s already exists", newName)
-	} else if !os.IsNotExist(err) {
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
+	if err != nil {
 		return err
+	}
+	if hasExisting {
+		return errors.Errorf("a stack named %s already exists", newName)
 	}
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
@@ -328,16 +330,8 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	file := b.stackPath(stackName)
 	backupTarget(b.bucket, file)
 
-	// And move the history over as well, if it exists.
-	oldHistoryDir := b.historyDirectory(stackName)
-	if _, err := os.Stat(oldHistoryDir); err == nil {
-		newHistoryDir := b.historyDirectory(newName)
-		if err := os.Rename(oldHistoryDir, newHistoryDir); err != nil {
-			return errors.Wrap(err, "renaming history")
-		}
-	}
-
-	return nil
+	// And rename the histoy folder as well.
+	return b.renameHistory(stackName, newName)
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,

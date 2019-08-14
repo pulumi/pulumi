@@ -20,6 +20,7 @@ type Bucket interface {
 	SignedURL(ctx context.Context, key string, opts *blob.SignedURLOptions) (string, error)
 	ReadAll(ctx context.Context, key string) (_ []byte, err error)
 	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error)
+	Exists(ctx context.Context, key string) (bool, error)
 }
 
 // wrappedBucket encapsulates a true gocloud blob.Bucket, but ensures that all paths we send to it
@@ -52,6 +53,10 @@ func (b *wrappedBucket) ReadAll(ctx context.Context, key string) (_ []byte, err 
 
 func (b *wrappedBucket) WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error) {
 	return b.bucket.WriteAll(ctx, filepath.ToSlash(key), p, opts)
+}
+
+func (b *wrappedBucket) Exists(ctx context.Context, key string) (bool, error) {
+	return b.bucket.Exists(ctx, filepath.ToSlash(key))
 }
 
 // listBucket returns a list of all files in the bucket within a given directory. go-cloud sorts the results by key
