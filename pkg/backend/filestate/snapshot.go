@@ -15,8 +15,6 @@
 package filestate
 
 import (
-	"os"
-
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -35,12 +33,7 @@ func (sp *localSnapshotPersister) SecretsManager() secrets.Manager {
 }
 
 func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	_, _, err := sp.backend.getStack(sp.name)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	_, err = sp.backend.saveStack(sp.name, snapshot, sp.sm)
+	_, err := sp.backend.saveStack(sp.name, snapshot, sp.sm)
 	return err
 
 }
