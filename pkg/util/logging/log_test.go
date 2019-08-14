@@ -37,13 +37,18 @@ func TestFilter(t *testing.T) {
 	msg1 := filter1.Filter("These are my secrets: secret1, secret2, secret3, secret10")
 	assert.Equal(t, msg1, "These are my secrets: [secret], [secret], secret3, [secret]0")
 
-	// Ensure that special characters don't screw up the regex we create
+	// Ensure that special characters don't screw up the search
 	filter2 := CreateFilter([]string{"secret.*", "secre[t]3"}, "[creds]")
 	msg2 := filter2.Filter("These are my secrets: secret1, secret2, secret3, secret.*, secre[t]3")
 	assert.Equal(t, msg2, "These are my secrets: secret1, secret2, secret3, [creds], [creds]")
 
-	// Ensure that non-UTF8 characters don't screw up the regex - we just skip those secrets
-	filter3 := CreateFilter([]string{"nonutf8\xa7", "validsecret"}, "[creds]")
-	msg3 := filter3.Filter("These are my secrets: validsecret, nonutf8\xa7")
-	assert.Equal(t, msg3, "These are my secrets: [creds], nonutf8\xa7")
+	// Ensure that non-UTF8 characters don't screw up the search
+	filter3 := CreateFilter([]string{"nonutf8\xa7", "secret1"}, "[creds]")
+	msg3 := filter3.Filter("These are my secrets: secret1, nonutf8\xa7")
+	assert.Equal(t, msg3, "These are my secrets: [creds], [creds]")
+
+	// Short secrets of 1-2 characters are not masked
+	filter4 := CreateFilter([]string{"a", "my", "123"}, "[creds]")
+	msg4 := filter4.Filter("These are my secrets: a, my, 123")
+	assert.Equal(t, msg4, "These are my secrets: a, my, [creds]")
 }

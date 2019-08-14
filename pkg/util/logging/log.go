@@ -23,13 +23,11 @@ package logging
 // should be updated to properly filter as well before forwarding things along.
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"regexp"
 	"strconv"
+	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/golang/glog"
 )
@@ -106,13 +104,12 @@ func (f *nopFilter) Filter(s string) string {
 	return s
 }
 
-type regexFilter struct {
-	re          *regexp.Regexp
-	replacement string
+type replacerFilter struct {
+	replacer *strings.Replacer
 }
 
-func (f *regexFilter) Filter(s string) string {
-	return f.re.ReplaceAllLiteralString(s, f.replacement)
+func (f *replacerFilter) Filter(s string) string {
+	return f.replacer.Replace(s)
 }
 
 func AddGlobalFilter(filter Filter) {
@@ -122,25 +119,17 @@ func AddGlobalFilter(filter Filter) {
 }
 
 func CreateFilter(secrets []string, replacement string) Filter {
-	var b bytes.Buffer
+	var items []string
 	for _, secret := range secrets {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
 		// displaying `[secret]`. Travis does a similar thing, for example.
 		if len(secret) < 3 {
 			continue
 		}
-		if !utf8.ValidString(secret) {
-			continue
-		}
-		if b.Len() > 0 {
-			b.WriteRune('|')
-		}
-
-		b.WriteString(regexp.QuoteMeta(secret))
+		items = append(items, secret, replacement)
 	}
-	// "[secret]"
-	if b.Len() > 0 {
-		return &regexFilter{re: regexp.MustCompile(b.String()), replacement: replacement}
+	if len(items) > 0 {
+		return &replacerFilter{replacer: strings.NewReplacer(items...)}
 	}
 
 	return &nopFilter{}
