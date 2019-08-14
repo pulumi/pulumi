@@ -34,7 +34,7 @@ export class StackReference extends CustomResource {
     /**
      * The names of any stack outputs which contain secrets.
      */
-    public readonly secretOutputs: Output<string[]>;
+    public readonly secretOutputNames: Output<string[]>;
 
     /**
      * Create a StackReference resource with the given unique name, arguments, and options.
@@ -51,7 +51,7 @@ export class StackReference extends CustomResource {
         super("pulumi:pulumi:StackReference", name, {
             name: args.name || name,
             outputs: undefined,
-            secretOutputs: undefined,
+            secretOutputNames: undefined,
         }, { ...opts, id: args.name || name });
     }
 
@@ -61,8 +61,11 @@ export class StackReference extends CustomResource {
      * @param name The name of the stack output to fetch.
      */
     public getOutput(name: Input<string>): Output<any> {
+        // Note that this is subltly different from "apply" here. A default "apply" will set the secret bit if any
+        // of the inputs are a secret, and this.outputs is always a secret if it contains any secrets. We do this dance
+        // so we can ensure that the Output we return is not needlessly tainted as a secret.
         const value = all([output(name), this.outputs]).apply(([n, os]) => os[n]);
-        return new Output(value.resources(), value.promise(), value.isKnown, this.isSecretOutput(output(name)));
+        return new Output(value.resources(), value.promise(), value.isKnown, isSecretOutputName(this, output(name)));
     }
 
     /**
@@ -77,7 +80,7 @@ export class StackReference extends CustomResource {
             }
             return os[n];
         });
-        return new Output(value.resources(), value.promise(), value.isKnown, this.isSecretOutput(output(name)));
+        return new Output(value.resources(), value.promise(), value.isKnown, isSecretOutputName(this, output(name)));
     }
 
     /**
@@ -117,24 +120,6 @@ export class StackReference extends CustomResource {
 
         return promiseResult(out.promise());
     }
-
-    async isSecretOutput(name: Output<string>): Promise<boolean> {
-        // If either the name or set of secret outputs is unknown, we can't do anything smart, so we just copy the
-        // secretness from the entire outputs value.
-        if (!((await name.isKnown) && (await this.secretOutputs.isKnown))) {
-            return await this.outputs.isSecret;
-        }
-
-        // Otherwise, if we have a list of outputs we know are secret, we can use that list to determine if this
-        // output should be secret. Names could be falsy here in cases where we are using an older CLI that did
-        // not return this information (in this case we again fallback to the secretness of outputs value).
-        const names = await this.secretOutputs.promise();
-        if (!names) {
-            return await this.outputs.isSecret;
-        }
-
-        return names.includes(await name.promise());
-    }
 }
 
 /**
@@ -145,4 +130,24 @@ export interface StackReferenceArgs {
      * The name of the stack to reference.
      */
     readonly name?: Input<string>;
+}
+
+async function isSecretOutputName(sr: StackReference, name: Input<string>): Promise<boolean> {
+    const nameOutput = output(name);
+
+    // If either the name or set of secret outputs is unknown, we can't do anything smart, so we just copy the
+    // secretness from the entire outputs value.
+    if (!((await nameOutput.isKnown) && (await sr.secretOutputNames.isKnown))) {
+        return await this.outputs.isSecret;
+    }
+
+    // Otherwise, if we have a list of outputs we know are secret, we can use that list to determine if this
+    // output should be secret. Names could be falsy here in cases where we are using an older CLI that did
+    // not return this information (in this case we again fallback to the secretness of outputs value).
+    const names = await sr.secretOutputNames.promise();
+    if (!names) {
+        return await sr.outputs.isSecret;
+    }
+
+    return names.includes(await nameOutput.promise());
 }
