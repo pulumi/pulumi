@@ -190,9 +190,9 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	}
 
 	return resource.PropertyMap{
-		"name":          name,
-		"outputs":       resource.NewObjectProperty(outputs),
-		"secretOutputs": resource.NewArrayProperty(secretOutputs),
+		"name":              name,
+		"outputs":           resource.NewObjectProperty(outputs),
+		"secretOutputNames": resource.NewArrayProperty(secretOutputs),
 	}, nil
 }
 
