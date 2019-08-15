@@ -54,6 +54,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const PythonRuntime = "python"
+const NodeJSRuntime = "nodejs"
+const GoRuntime = "go"
+
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
@@ -168,6 +172,8 @@ type ProgramTestOptions struct {
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
 	RunBuild bool
+	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
+	RunUpdateTest bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
@@ -356,6 +362,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
+	}
+	if overrides.RunUpdateTest {
+		opts.RunUpdateTest = overrides.RunUpdateTest
 	}
 	return opts
 }
@@ -757,7 +766,41 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
+	if pt.opts.RunUpdateTest {
+
+		err = upgradeProjectDeps(projdir, pt)
+		if err != nil {
+			return errors.Wrap(err, "upgrading project dependencies")
+		}
+
+		if err = pt.testPreviewUpdateAndEdits(projdir); err != nil {
+			return errors.Wrap(err, "running test preview, update, and edits")
+		}
+	}
+
 	testFinished = true
+	return nil
+}
+
+func upgradeProjectDeps(projectDir string, pt *programTester) error {
+	projInfo, err := pt.getProjinfo(projectDir)
+	if err != nil {
+		return errors.Wrap(err, "getting project info")
+	}
+
+	switch rt := projInfo.Proj.Runtime.Name(); rt {
+	case NodeJSRuntime:
+		if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+			return err
+		}
+	case PythonRuntime:
+		if err = pt.installPipPackageDeps(projectDir); err != nil {
+			return err
+		}
+	default:
+		return errors.Errorf("unrecognized project runtime: %s", rt)
+	}
+
 	return nil
 }
 
@@ -1259,11 +1302,11 @@ func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
-	case "nodejs":
+	case NodeJSRuntime:
 		return pt.prepareNodeJSProject(projinfo)
-	case "python":
+	case PythonRuntime:
 		return pt.preparePythonProject(projinfo)
-	case "go":
+	case GoRuntime:
 		return pt.prepareGoProject(projinfo)
 	default:
 		return errors.Errorf("unrecognized project runtime: %s", rt)
@@ -1331,8 +1374,8 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	for _, dependency := range pt.opts.Dependencies {
-		if err = pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+	if !pt.opts.RunUpdateTest {
+		if err = pt.yarnLinkPackageDeps(cwd); err != nil {
 			return err
 		}
 	}
@@ -1397,8 +1440,27 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// Install each package's dependencies, as requested. Dependencies can be either file paths or package names.
-	// Package names are installed from pypi while file paths are installed directly from the file system.
+	if !pt.opts.RunUpdateTest {
+		if err = pt.installPipPackageDeps(cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *programTester) installPipPackageDeps(cwd string) error {
+	var err error
 	for _, dep := range pt.opts.Dependencies {
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
 		// operating inside of a random folder in /tmp.
@@ -1409,7 +1471,7 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			}
 		}
 
-		err = pt.runPipenvCommand("pipenv-install-package", []string{"install", "--skip-lock", "-e", dep}, cwd)
+		err := pt.runPipenvCommand("pipenv-install-package", []string{"install", "--skip-lock", "-e", dep}, cwd)
 		if err != nil {
 			return err
 		}
