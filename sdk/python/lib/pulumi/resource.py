@@ -271,7 +271,7 @@ class ResourceOptions:
     An optional customTimeouts config block.
     """
 
-    id: Optional[str]
+    id: Optional['Input[str]']
     """
     An optional existing ID to load, rather than create.
     """
@@ -296,7 +296,7 @@ class ResourceOptions:
                  version: Optional[str] = None,
                  aliases: Optional[List['Input[Union[str, Alias]]']] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
-                 id: Optional[str] = None,
+                 id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None) -> None:
         """
