@@ -382,6 +382,12 @@ class ResourceOptions:
         opts1 = ResourceOptions() if opts1 is None else opts1
         opts2 = ResourceOptions() if opts2 is None else opts2
 
+        if not isinstance(opts1, ResourceOptions):
+            raise TypeError('Expected opts1 to be a ResourceOptions instance')
+
+        if not isinstance(opts2, ResourceOptions):
+            raise TypeError('Expected opts2 to be a ResourceOptions instance')
+
         dest = copy.copy(opts1)
         source = copy.copy(opts2)
 
