@@ -62,7 +62,27 @@ func newNewCmd() *cobra.Command {
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
 		Short:      "Create a new Pulumi project",
-		Args:       cmdutil.MaximumNArgs(1),
+		Long: "Create a new Pulumi project and stack from a template.\n" +
+			"\n" +
+			"To create a project from a specific template, pass the template name (such as `aws-typescript`\n" +
+			"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
+			"which can be selected interactively.\n" +
+			"\n" +
+			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
+			"provider and a stack created using the local or cloud object storage backend will use the\n" +
+			"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
+			"`--secrets-provider` flag.\n" +
+			"\n" +
+			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
+			"* `pulumi new --secrets-provider=passphrase`\n" +
+			"\n" +
+			"To use a cloud secrets provider with any backend, use one of the following:\n" +
+			"* `pulumi new --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
+			"* `pulumi new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
+			"* `pulumi new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
+			"* `pulumi new --secrets-provider=\"gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k\"`\n" +
+			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`",
+		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			interactive := cmdutil.Interactive()
 			if !interactive {
@@ -347,7 +367,7 @@ func newNewCmd() *cobra.Command {
 		"Skip prompts and proceed with default values")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase)")
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
 
 	return cmd
 }
