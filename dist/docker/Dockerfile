@@ -59,5 +59,12 @@ RUN if [ "$PULUMI_VERSION" = "latest" ]; then \
   fi && \
   mv ~/.pulumi/bin/* /usr/bin
 
-# I think it's safe to say if we're using this mega image, we want pulumi
-ENTRYPOINT ["pulumi"]
+COPY ./entrypoint.sh /usr/bin/pulumi-entrypoint
+
+# The app directory should contain the Pulumi program and is the pwd for the CLI.
+WORKDIR /app
+VOLUME ["/app"]
+
+# This image uses a thin wrapper over the Pulumi CLI as its entrypoint. As a result, you may run commands
+# simply by running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
+ENTRYPOINT ["/usr/bin/pulumi-entrypoint", "--non-interactive"]
