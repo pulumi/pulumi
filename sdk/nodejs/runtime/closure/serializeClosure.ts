@@ -49,14 +49,15 @@ export interface SerializeFunctionArgs {
     logResource?: Resource;
 
     /**
-     * secretReplacer is called whenever a secret value is encountered in the serialization, and the
-     * return value of this callback is used instead of the original secret object in the serialized
-     * function text.  The caller is resonsible for ensuring that this transformation is
-     * semantically equivalent to capturing the plain text of the secret (e.g. by looking up an
-     * environment variabe instead, which has been arranged to have the value of the secret by
-     * additional steps taken outside of the serialized code).
+     * secretReplacer is called whenever a secret value is encountered in the serialization. The
+     * return value of this callback is a function which can be called at runtime to get the value
+     * of the secret in place of using the original secret object in the serialized function text.
+     * The caller is responsible for ensuring that this transformation is semantically equivalent to
+     * capturing the plain text of the secret (e.g. by looking up an environment variable instead,
+     * which has been arranged to have the value of the secret by additional steps taken outside of
+     * the serialized code).
      */
-    secretReplacer?: (o: Output<any>) => Output<any>;
+    secretReplacer?: (o: Output<any>) => () => any;
 }
 
 /**
@@ -455,7 +456,7 @@ function serializeJavaScriptText(
 
             // Walk the names of the array properties directly. This ensures we work efficiently
             // with sparse arrays.  i.e. if the array has length 1k, but only has one value in it
-            // set, we can just set htat value, instead of setting 999 undefineds.
+            // set, we can just set that value, instead of setting 999 undefineds.
             let length = 0;
             for (const key of Object.getOwnPropertyNames(arr)) {
                 if (key !== "length") {

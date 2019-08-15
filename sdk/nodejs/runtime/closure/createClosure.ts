@@ -110,7 +110,7 @@ export interface Entry {
     // a reference to a requirable module name.
     module?: string;
 
-    // A promise value.  this will be serialized as the underlyign value the promise
+    // A promise value.  this will be serialized as the underlying value the promise
     // points to.  And deserialized as Promise.resolve(<underlying_value>)
     promise?: Entry;
 
@@ -124,7 +124,7 @@ export interface Entry {
 
 interface Context {
     // The cache stores a map of objects to the entries we've created for them.  It's used so that
-    // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
+    // we only ever create a single environment entry for a single object. i.e. if we hit the same
     // object multiple times while walking the memory graph, we only emit it once.
     cache: Map<Object, Entry>;
 
@@ -220,7 +220,7 @@ export async function createFunctionInfoAsync(
     func: Function,
     serialize: (o: any) => boolean,
     logResource: resource.Resource | undefined,
-    secretReplacer?: (o: Output<any>) => Output<any>): Promise<FunctionInfo> {
+    secretReplacer?: (o: Output<any>) => () => any): Promise<FunctionInfo> {
 
     // Initialize our Context object.  It is effectively used to keep track of the work we're doing
     // as well as to keep track of the graph as we're walking it so we don't infinitely recurse.
@@ -353,7 +353,7 @@ async function analyzeFunctionInfoAsync(
         func: Function,
         context: Context,
         serialize: (o: any) => boolean,
-        secretReplacer: (o: Output<any>) => Output<any>,
+        secretReplacer: (o: Output<any>) => () => any,
         logInfo?: boolean): Promise<FunctionInfo> {
 
     // logInfo = logInfo || func.name === "addHandler";
@@ -775,7 +775,7 @@ function getOrCreateNameEntryAsync(
     context: Context,
     serialize: (o: any) => boolean,
     logInfo: boolean | undefined,
-    secretReplacer: (o: Output<any>) => Output<any>): Promise<Entry> {
+    secretReplacer: (o: Output<any>) => () => any): Promise<Entry> {
 
     return getOrCreateEntryAsync(name, capturedObjectProperties, context, serialize, logInfo, secretReplacer);
 }
@@ -790,7 +790,7 @@ async function getOrCreateEntryAsync(
         context: Context,
         serialize: (o: any) => boolean,
         logInfo: boolean | undefined,
-        secretReplacer: (o: Output<any>) => Output<any>): Promise<Entry> {
+        secretReplacer: (o: Output<any>) => () => any): Promise<Entry> {
 
     // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
     // the code necessary to represent the number on the other side.  Note: we have to do this
@@ -904,11 +904,17 @@ async function getOrCreateEntryAsync(
         }
         else if (Output.isInstance(obj)) {
             if (await isSecretOutput(obj)) {
-                // Replace the secret with a user-defined value.  This defaults to a function that
-                // throws an error indicating that secrets cannot be captured.
-                obj = secretReplacer(obj);
+                // Replace the secret with a user-defined value.  The replacer will return a
+                // callback which can be invoked at runtime when the `get` call on the Output is
+                // invoked.  This defaults to a function that throws an error indicating that
+                // secrets cannot be captured.
+                const f = secretReplacer(obj);
+                const o = { get: f };
+                const getterEntry = await getOrCreateEntryAsync(o, undefined, context, serialize, logInfo, secretReplacer);
+                entry.object = getterEntry.object;
+            } else {
+                entry.output = await createOutputEntryAsync(obj);
             }
-            entry.output = await createOutputEntryAsync(obj);
         }
         else if (obj instanceof Promise) {
             const val = await obj;
