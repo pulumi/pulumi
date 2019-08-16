@@ -55,7 +55,7 @@ func newLoginCmd() *cobra.Command {
 			"to log in to a Pulumi Enterprise server running at the pulumi.acmecorp.com domain.\n" +
 			"\n" +
 			"For `https://` URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
-			"If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
+			"[PREVIEW] If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
 			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
 			"\n" +
 			"    $ pulumi login file://~\n" +
@@ -67,7 +67,7 @@ func newLoginCmd() *cobra.Command {
 			"\n" +
 			"    $ pulumi login --local\n" +
 			"\n" +
-			"Additionally, you may leverage supported object storage backends from one of the cloud providers " +
+			"[PREVIEW] Additionally, you may leverage supported object storage backends from one of the cloud providers " +
 			"to manage the state independent of the service. For instance,\n" +
 			"\n" +
 			"AWS S3:\n" +
