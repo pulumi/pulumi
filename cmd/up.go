@@ -363,8 +363,8 @@ func newUpCmd() *cobra.Command {
 		"Config to use during the update")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase). Only used when creating a new stack from "+
-			"an existing template")
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
+			"used when creating a new stack from an existing template")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

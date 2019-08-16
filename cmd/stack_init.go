@@ -36,7 +36,22 @@ func newStackInitCmd() *cobra.Command {
 			"but afterwards it can become the target of a deployment using the `update` command.\n" +
 			"\n" +
 			"To create a stack in an organization, prefix the stack name with the organization name\n" +
-			"and a slash (e.g. 'acmecorp/dev')",
+			"and a slash (e.g. 'acmecorp/dev')\n" +
+			"\n" +
+			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
+			"provider and a stack created using the local or cloud object storage backend will use the\n" +
+			"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
+			"`--secrets-provider` flag.\n" +
+			"\n" +
+			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
+			"* `pulumi stack init --secrets-provider=passphrase`\n" +
+			"\n" +
+			"To use a cloud secrets provider with any backend, use one of the following:\n" +
+			"* `pulumi stack init --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
+			"* `pulumi stack init --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
+			"* `pulumi stack init --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
+			"* `pulumi stack init --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
+			"* `pulumi stack init --secrets-provider=\"hashivault://mykey\"`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -88,6 +103,6 @@ func newStackInitCmd() *cobra.Command {
 		&stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase)")
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
 	return cmd
 }
