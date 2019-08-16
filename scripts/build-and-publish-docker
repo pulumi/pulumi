@@ -23,9 +23,9 @@ fi
 
 CLI_VERSION="${1}"
 
-# We only want to push docker images for released versions of Pulumi. So if there are pre-release tags,
-# just skip publishing
-if [[ "${CLI_VERSION}" == *-* ]]; then
+# We only want to push docker images for stable versions of Pulumi. So if there is a -alpha
+# pre-release tag, skip publishing.
+if [[ "${CLI_VERSION}" == *-alpha* ]]; then
     >&2 echo "Skipping docker publishing for ${CLI_VERSION} since it is a pre-release"
     exit 0    
 fi
