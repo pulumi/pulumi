@@ -23,8 +23,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/secrets"
-
 	"github.com/blang/semver"
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
@@ -39,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -4034,4 +4033,64 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 		},
 	}}
 	p.Run(t, snap)
+}
+
+func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
+	p := &TestPlan{}
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	idBefore := resource.ID("myid")
+	idAfter := resource.ID("mynewid")
+	outputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{ID: idAfter, Outputs: outputs, Inputs: resource.PropertyMap{}}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p.Options.host = host
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:       resURN.Type(),
+				URN:        resURN,
+				Custom:     true,
+				ID:         idBefore,
+				Inputs:     resource.PropertyMap{},
+				Outputs:    outputs,
+				InitErrors: []string{"Resource failed to initialize"},
+			},
+		},
+	}
+
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
+	snap := p.Run(t, old)
+
+	for _, resource := range snap.Resources {
+		switch urn := resource.URN; urn {
+		case provURN:
+			// break
+		case resURN:
+			assert.Empty(t, resource.InitErrors)
+			assert.Equal(t, idAfter, resource.ID)
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+	}
 }

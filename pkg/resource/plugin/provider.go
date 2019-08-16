@@ -190,6 +190,9 @@ func (e DiffUnavailableError) Error() string {
 
 // ReadResult is the result of a call to Read.
 type ReadResult struct {
+	// This is the ID for the resource. This ID will always be populated and will ensure we get the most up-to-date
+	// resource ID.
+	ID resource.ID
 	// Inputs contains the new inputs for the resource, if any. If this field is nil, the provider does not support
 	// returning inputs from a call to Read and the old inputs (if any) should be preserved.
 	Inputs resource.PropertyMap

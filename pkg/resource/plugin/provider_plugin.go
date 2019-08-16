@@ -734,9 +734,6 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	// If the resource was missing, simply return a nil property map.
 	if string(readID) == "" {
 		return ReadResult{}, resourceStatus, nil
-	} else if readID != id {
-		return ReadResult{}, resourceStatus, errors.Errorf(
-			"reading resource %s yielded an unexpected ID; expected %s, got %s", urn, id, readID)
 	}
 
 	// Finally, unmarshal the resulting state properties and return them.
@@ -771,6 +768,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResult{
+		ID:      readID,
 		Outputs: newState,
 		Inputs:  newInputs,
 	}, resourceStatus, resourceError
