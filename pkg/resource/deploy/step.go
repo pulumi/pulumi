@@ -711,7 +711,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		// There is a chance that the ID has changed. We want to allow this change to happen
 		// it will have changed already in the outputs, but we need to persist this change
 		// at a state level because the Id
-		if refreshed.ID.String() != "" && refreshed.ID != resourceID {
+		if refreshed.ID != "" && refreshed.ID != resourceID {
 			logging.V(7).Infof("Refreshing ID; oldId=%s, newId=%s", resourceID, refreshed.ID)
 			resourceID = refreshed.ID
 		}
