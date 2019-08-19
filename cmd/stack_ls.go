@@ -17,6 +17,7 @@ package cmd
 import (
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
@@ -26,21 +27,47 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newStackLsCmd() *cobra.Command {
-	var allStacks bool
 	var jsonOut bool
+
+	var allStacks bool
+
+	var orgFilter string
+	var projFilter string
+	var tagFilter string
+
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "List all known stacks",
-		Args:  cmdutil.NoArgs,
+		Short: "List stacks",
+		Long: "List stacks\n" +
+			"\n" +
+			"This command lists stacks. By default only stacks with the same project name as the\n" +
+			"current workspace will be returned. By passing --all, all stacks you have access to\n" +
+			"will be listed.\n" +
+			"\n" +
+			"Results may be further filtered by passing additional flags. Tag filters may include\n" +
+			"the tag name as well as the tag value, separated by a colon. For example 'environment:production'\n" +
+			"or just 'devstack-owner'.",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			var packageFilter *tokens.PackageName
-			if !allStacks {
+			// Build up the stack filters. If left empty, will be a no-op.
+			tagName, tagValue, err := parseTagFilter(tagFilter)
+			if err != nil {
+				return errors.Wrap(err, "parsing tag filter")
+			}
+			filter := backend.ListStacksFilter{
+				Organization: orgFilter,
+				Project:      projFilter,
+				TagName:      tagName,
+				TagValue:     tagValue,
+			}
+
+			// If --all is not specified, default to filtering to just the current workspace.
+			if !allStacks && projFilter == "" {
 				// Ensure we are in a project; if not, we will fail.
 				projPath, err := workspace.DetectProjectPath()
 				if err != nil {
@@ -53,7 +80,7 @@ func newStackLsCmd() *cobra.Command {
 				if err != nil {
 					return errors.Wrap(err, "could not load current project")
 				}
-				packageFilter = &proj.Name
+				filter.Project = string(proj.Name)
 			}
 
 			// Get the current backend.
@@ -70,7 +97,7 @@ func newStackLsCmd() *cobra.Command {
 			}
 
 			// List all of the stacks available.
-			stackSummaries, err := b.ListStacks(commandContext(), packageFilter)
+			stackSummaries, err := b.ListStacks(commandContext(), filter)
 			if err != nil {
 				return err
 			}
@@ -88,10 +115,40 @@ func newStackLsCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
+
 	cmd.PersistentFlags().BoolVarP(
 		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
+	cmd.PersistentFlags().StringVarP(
+		&orgFilter, "organization", "o", "", "Filter returned stacks to those in a specific organization")
+	cmd.PersistentFlags().StringVarP(
+		&projFilter, "project", "p", "", "Filter returned stacks to those with a specific project name")
+	cmd.PersistentFlags().StringVarP(
+		&tagFilter, "tag", "t", "", "Filter returned stacks to those in a specific tag (tag-name or tag-name:tag-value)")
+
 	return cmd
+}
+
+// parseTagFilter parses a tag filter into its separate name and value parts, assuming they are separated by a colon.
+// This requires that the tag name not contain a colon, but the tag's value can. Returns an error if the tag filter is
+// malformed, such as ":" or ":tag-value". (i.e. a tag name must be specified if a tag value is set.)
+func parseTagFilter(t string) (string, string, error) {
+	if t == "" {
+		return "", "", nil
+	}
+	if t[0] == ':' {
+		return "", "", errors.New("no tag name specified")
+	}
+
+	colonIdx := strings.Index(t, ":")
+	if colonIdx == -1 {
+		return t, "", nil
+	}
+	if colonIdx == len(t)-1 {
+		return "", "", errors.New("no tag value specified")
+	}
+
+	return t[:colonIdx], t[colonIdx+1:], nil
 }
 
 // stackSummaryJSON is the shape of the --json output of this command. When --json is passed, we print an array

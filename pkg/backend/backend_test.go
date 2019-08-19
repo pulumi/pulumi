@@ -135,7 +135,7 @@ type mockBackend struct {
 	GetStackF               func(context.Context, StackReference) (Stack, error)
 	CreateStackF            func(context.Context, StackReference, interface{}) (Stack, error)
 	RemoveStackF            func(context.Context, StackReference, bool) (bool, error)
-	ListStacksF             func(context.Context, *tokens.PackageName) ([]StackSummary, error)
+	ListStacksF             func(context.Context, ListStacksFilter) ([]StackSummary, error)
 	RenameStackF            func(context.Context, StackReference, tokens.QName) error
 	GetStackCrypterF        func(StackReference) (config.Crypter, error)
 	QueryF                  func(context.Context, StackReference, UpdateOperation) result.Result
@@ -219,9 +219,9 @@ func (be *mockBackend) RemoveStack(ctx context.Context, stackRef StackReference,
 	panic("not implemented")
 }
 
-func (be *mockBackend) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error) {
+func (be *mockBackend) ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error) {
 	if be.ListStacksF != nil {
-		return be.ListStacksF(ctx, projectFilter)
+		return be.ListStacksF(ctx, filter)
 	}
 	panic("not implemented")
 }
