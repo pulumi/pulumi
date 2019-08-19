@@ -17,6 +17,8 @@ package cmd
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseTagFilter(t *testing.T) {
@@ -43,18 +45,8 @@ func TestParseTagFilter(t *testing.T) {
 
 	for _, test := range tests {
 		name, value, err := parseTagFilter(test.Filter)
-
-		var validationErr string
-		if test.WantName != name {
-			validationErr = fmt.Sprintf("Tag name not parsed as expected (%v vs. %v)", test.WantName, name)
-		} else if test.WantValue != value {
-			validationErr = fmt.Sprintf("Tag value not parsed as expected (%v vs. %v)", test.WantValue, value)
-		} else if test.WantError != (err != nil) {
-			validationErr = fmt.Sprintf("wanted error %v but got error %v", test.WantError, err)
-		}
-
-		if validationErr != "" {
-			t.Errorf("parseTagFilter(%q) didn't return expected input: %v", test.Filter, validationErr)
-		}
+		assert.Equal(t, test.WantName, name)
+		assert.Equal(t, test.WantValue, value)
+		assert.Equal(t, test.WantError, (err != nil), fmt.Sprintf("Got error: %v", err))
 	}
 }

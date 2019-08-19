@@ -50,7 +50,7 @@ func newStackLsCmd() *cobra.Command {
 			"will be listed.\n" +
 			"\n" +
 			"Results may be further filtered by passing additional flags. Tag filters may include\n" +
-			"the tag name as well as the tag value, separated by a colon. For example 'environment=production'\n" +
+			"the tag name as well as the tag value, separated by an equals sign. For example 'environment=production'\n" +
 			"or just 'devstack-owner'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -66,7 +66,7 @@ func newStackLsCmd() *cobra.Command {
 				TagValue:     tagValue,
 			}
 
-			// If --all is not specified, default to filtering to just the current workspace.
+			// If --all is not specified, default to filtering to just the current project.
 			if !allStacks && projFilter == "" {
 				// Ensure we are in a project; if not, we will fail.
 				projPath, err := workspace.DetectProjectPath()
@@ -129,26 +129,21 @@ func newStackLsCmd() *cobra.Command {
 	return cmd
 }
 
-// parseTagFilter parses a tag filter into its separate name and value parts, assuming they are separated by a colon.
-// This requires that the tag name not contain a colon, but the tag's value can. Returns an error if the tag filter is
-// malformed, such as ":" or ":tag-value". (i.e. a tag name must be specified if a tag value is set.)
+// parseTagFilter parses a tag filter into its separate name and value parts, separatedby an equal sign.
+// This requires that the tag name not contain an equals sign, but the tag's value can. Returns an error if the tag
+// filter is malformed, such as "=" or "=tag-value". (i.e. a tag name must be specified if a tag value is set.)
 func parseTagFilter(t string) (string, string, error) {
-	if t == "" {
-		return "", "", nil
-	}
-	if t[0] == '=' {
+	parts := strings.SplitN(t, "=", 2)
+	if parts[0] == "" {
 		return "", "", errors.New("no tag name specified")
 	}
-
-	equalIdx := strings.Index(t, "=")
-	if equalIdx == -1 {
-		return t, "", nil
+	if len(parts) == 1 {
+		return parts[0], "", nil
 	}
-	if equalIdx == len(t)-1 {
+	if parts[1] == "" {
 		return "", "", errors.New("no tag value specified")
 	}
-
-	return t[:equalIdx], t[equalIdx+1:], nil
+	return parts[0], parts[1], nil
 }
 
 // stackSummaryJSON is the shape of the --json output of this command. When --json is passed, we print an array
