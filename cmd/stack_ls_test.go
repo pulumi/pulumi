@@ -27,16 +27,18 @@ func TestParseTagFilter(t *testing.T) {
 		WantError bool
 	}{
 		// Just tag name
+		{Filter: ":", WantName: ":"},
 		{Filter: "just tag name", WantName: "just tag name"},
 		{Filter: "tag-name123", WantName: "tag-name123"},
 
-		{Filter: "tag-name123:tag value", WantName: "tag-name123", WantValue: "tag value"},
-		{Filter: "tag-name123:tag value:with-colon", WantName: "tag-name123", WantValue: "tag value:with-colon"},
+		{Filter: "tag-name123=tag value", WantName: "tag-name123", WantValue: "tag value"},
+		{Filter: "tag-name123=tag value:with-colon", WantName: "tag-name123", WantValue: "tag value:with-colon"},
+		{Filter: "tag-name123=tag value=with-equal", WantName: "tag-name123", WantValue: "tag value=with-equal"},
 
 		// Error cases
-		{Filter: ":", WantError: true},
-		{Filter: ":no tag name", WantError: true},
-		{Filter: "no tag value:", WantError: true},
+		{Filter: "=", WantError: true},
+		{Filter: "=no tag name", WantError: true},
+		{Filter: "no tag value=", WantError: true},
 	}
 
 	for _, test := range tests {

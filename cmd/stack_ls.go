@@ -50,7 +50,7 @@ func newStackLsCmd() *cobra.Command {
 			"will be listed.\n" +
 			"\n" +
 			"Results may be further filtered by passing additional flags. Tag filters may include\n" +
-			"the tag name as well as the tag value, separated by a colon. For example 'environment:production'\n" +
+			"the tag name as well as the tag value, separated by a colon. For example 'environment=production'\n" +
 			"or just 'devstack-owner'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -124,7 +124,7 @@ func newStackLsCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&projFilter, "project", "p", "", "Filter returned stacks to those with a specific project name")
 	cmd.PersistentFlags().StringVarP(
-		&tagFilter, "tag", "t", "", "Filter returned stacks to those in a specific tag (tag-name or tag-name:tag-value)")
+		&tagFilter, "tag", "t", "", "Filter returned stacks to those in a specific tag (tag-name or tag-name=tag-value)")
 
 	return cmd
 }
@@ -136,19 +136,19 @@ func parseTagFilter(t string) (string, string, error) {
 	if t == "" {
 		return "", "", nil
 	}
-	if t[0] == ':' {
+	if t[0] == '=' {
 		return "", "", errors.New("no tag name specified")
 	}
 
-	colonIdx := strings.Index(t, ":")
-	if colonIdx == -1 {
+	equalIdx := strings.Index(t, "=")
+	if equalIdx == -1 {
 		return t, "", nil
 	}
-	if colonIdx == len(t)-1 {
+	if equalIdx == len(t)-1 {
 		return "", "", errors.New("no tag value specified")
 	}
 
-	return t[:colonIdx], t[colonIdx+1:], nil
+	return t[:equalIdx], t[equalIdx+1:], nil
 }
 
 // stackSummaryJSON is the shape of the --json output of this command. When --json is passed, we print an array
