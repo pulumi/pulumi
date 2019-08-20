@@ -164,11 +164,12 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
     resolve_urn_exn = urn_future.set_exception
     res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
 
-    # Furthermore, since resources being Read must always be custom resources (enforced in the Resource constructor),
-    # we'll need to set up the ID field which will be populated at the end of the ReadResource call.
+    # Furthermore, since resources being Read must always be custom resources (enforced in the
+    # Resource constructor), we'll need to set up the ID field which will be populated at the end of
+    # the ReadResource call.
     #
-    # Note that we technically already have the ID (opts.id), but it's more consistent with the rest of the model to
-    # resolve it asynchronously along with all of the other resources.
+    # Note that we technically already have the ID (opts.id), but it's more consistent with the rest
+    # of the model to resolve it asynchronously along with all of the other resources.
     resolve_value = asyncio.Future()
     resolve_perform_apply = asyncio.Future()
     resolve_secret = asyncio.Future()
@@ -195,15 +196,16 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
             log.debug(f"preparing read: ty={ty}, name={name}, id={opts.id}")
             resolver = await prepare_resource(res, ty, True, props, opts)
 
-            # Resolve the ID that we were given. Note that we are explicitly discarding the list of dependencies
-            # returned to us from "serialize_property" (the second argument). This is because a "read" resource does
-            # not actually have any dependencies at all in the cloud provider sense, because a read resource already
-            # exists. We do not need to track this dependency.
+            # Resolve the ID that we were given. Note that we are explicitly discarding the list of
+            # dependencies returned to us from "serialize_property" (the second argument). This is
+            # because a "read" resource does not actually have any dependencies at all in the cloud
+            # provider sense, because a read resource already exists. We do not need to track this
+            # dependency.
             resolved_id = await rpc.serialize_property(opts.id, [])
             log.debug(f"read prepared: ty={ty}, name={name}, id={opts.id}")
 
-            # These inputs will end up in the snapshot, so if there are any additional secret outputs, record them
-            # here.
+            # These inputs will end up in the snapshot, so if there are any additional secret
+            # outputs, record them here.
             additional_secret_outputs = opts.additional_secret_outputs
             if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
                 additional_secret_outputs = map(
@@ -393,9 +395,9 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
         if resolve_id:
-            # The ID is known if (and only if) it is a non-empty string. If it's either None or an empty string,
-            # we should treat it as unknown. TFBridge in particular is known to send the empty string as an ID when
-            # doing a preview.
+            # The ID is known if (and only if) it is a non-empty string. If it's either None or an
+            # empty string, we should treat it as unknown. TFBridge in particular is known to send
+            # the empty string as an ID when doing a preview.
             is_known = bool(resp.id)
             resolve_id(resp.id, is_known, None)
 
