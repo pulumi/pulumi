@@ -31,7 +31,7 @@ type Goal struct {
 	Provider                string                // the provider to use for this resource.
 	InitErrors              []string              // errors encountered as we attempted to initialize the resource.
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
-	DeleteBeforeReplace     bool                  // true if this resource should be deleted prior to replacement.
+	DeleteBeforeReplace     *bool                 // true if this resource should be deleted prior to replacement.
 	IgnoreChanges           []string              // a list of property names to ignore during changes.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
 	Aliases                 []URN                 // additional URNs that should be aliased to this resource.
@@ -42,7 +42,7 @@ type Goal struct {
 // NewGoal allocates a new resource goal state.
 func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
-	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace bool, ignoreChanges []string,
+	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []URN, id ID, customTimeouts *CustomTimeouts) *Goal {
 
 	g := &Goal{

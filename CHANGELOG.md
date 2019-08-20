@@ -13,6 +13,9 @@ CHANGELOG
 
 - Fix intermittet "NoSuchKey" issues when using the S3 based backend. (fixes [#2714](https://github.com/pulumi/pulumi/issues/2714)).
 
+- Explicitly setting `deleteBeforeReplace` to `false` now overrides the provider's decision.
+  [#3118](https://github.com/pulumi/pulumi/pull/3118)
+
 ## 1.0.0-beta.2 (2019-08-13)
 
 - Fix the package version compatibility checks in the NodeJS language host.

@@ -298,7 +298,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, false, nil, nil, nil, "", nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil),
 		done: done,
 	}
 	return event, done, nil
@@ -671,7 +671,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	custom := req.GetCustom()
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
-	deleteBeforeReplace := req.GetDeleteBeforeReplace()
+	deleteBeforeReplaceValue := req.GetDeleteBeforeReplace()
 	ignoreChanges := req.GetIgnoreChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
@@ -771,6 +771,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			timeouts.Update = seconds
 		}
+	}
+
+	var deleteBeforeReplace *bool
+	if deleteBeforeReplaceValue || req.GetDeleteBeforeReplaceDefined() {
+		deleteBeforeReplace = &deleteBeforeReplaceValue
 	}
 
 	logging.V(5).Infof(
