@@ -229,7 +229,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes,
+			if s, err = promptAndCreateStack(promptForValue, stack, name, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}

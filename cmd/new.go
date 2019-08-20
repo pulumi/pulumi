@@ -125,6 +125,13 @@ func runNew(args newArgs) error {
 		}
 	}
 
+	// Ensure the project doesn't already exist.
+	if args.name != "" {
+		if err := validateProjectName(args.name, args.generateOnly, opts); err != nil {
+			return err
+		}
+	}
+
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline)
 	if err != nil {
@@ -195,11 +202,11 @@ func runNew(args newArgs) error {
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		if err := validateProjectName(defaultValue, opts); err != nil {
+		if err := validateProjectName(defaultValue, args.generateOnly, opts); err != nil {
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
-		validate := func(s string) error { return validateProjectName(s, opts) }
+		validate := func(s string) error { return validateProjectName(s, args.generateOnly, opts) }
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
@@ -242,7 +249,7 @@ func runNew(args newArgs) error {
 
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
-		if s, err = promptAndCreateStack(
+		if s, err = promptAndCreateStack(args.prompt,
 			args.stack, args.name, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
 		}
@@ -289,7 +296,7 @@ func runNew(args newArgs) error {
 // Intentionally disabling here for cleaner err declaration/assignment.
 // nolint: vetshadow
 func newNewCmd() *cobra.Command {
-	var o = newArgs{
+	var args = newArgs{
 		interactive: cmdutil.Interactive(),
 		prompt:      promptForValue,
 	}
@@ -319,11 +326,11 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new --secrets-provider=\"gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k\"`\n" +
 			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				o.templateNameOrURL = args[0]
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			if len(cliArgs) > 0 {
+				args.templateNameOrURL = cliArgs[0]
 			}
-			return runNew(o)
+			return runNew(args)
 		}),
 	}
 
@@ -359,34 +366,34 @@ func newNewCmd() *cobra.Command {
 	})
 
 	cmd.PersistentFlags().StringArrayVarP(
-		&o.configArray, "config", "c", []string{},
+		&args.configArray, "config", "c", []string{},
 		"Config to save")
 	cmd.PersistentFlags().StringVarP(
-		&o.description, "description", "d", "",
+		&args.description, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
 	cmd.PersistentFlags().StringVar(
-		&o.dir, "dir", "",
+		&args.dir, "dir", "",
 		"The location to place the generated project; if not specified, the current directory is used")
 	cmd.PersistentFlags().BoolVarP(
-		&o.force, "force", "f", false,
+		&args.force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
 	cmd.PersistentFlags().BoolVarP(
-		&o.generateOnly, "generate-only", "g", false,
+		&args.generateOnly, "generate-only", "g", false,
 		"Generate the project only; do not create a stack, save config, or install dependencies")
 	cmd.PersistentFlags().StringVarP(
-		&o.name, "name", "n", "",
+		&args.name, "name", "n", "",
 		"The project name; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
-		&o.offline, "offline", "o", false,
+		&args.offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests")
 	cmd.PersistentFlags().StringVarP(
-		&o.stack, "stack", "s", "",
+		&args.stack, "stack", "s", "",
 		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
-		&o.yes, "yes", "y", false,
+		&args.yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
 	cmd.PersistentFlags().StringVar(
-		&o.secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+		&args.secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
 
 	return cmd
@@ -407,24 +414,26 @@ func errorIfNotEmptyDirectory(path string) error {
 	return nil
 }
 
-func validateProjectName(projectName string, opts display.Options) error {
+func validateProjectName(projectName string, generateOnly bool, opts display.Options) error {
 	err := workspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
 	}
 
-	b, err := currentBackend(opts)
-	if err != nil {
-		return err
-	}
+	if !generateOnly {
+		b, err := currentBackend(opts)
+		if err != nil {
+			return err
+		}
 
-	exists, err := b.DoesProjectExist(commandContext(), projectName)
-	if err != nil {
-		return err
-	}
+		exists, err := b.DoesProjectExist(commandContext(), projectName)
+		if err != nil {
+			return err
+		}
 
-	if exists {
-		return errors.New("A project with this name already exists")
+		if exists {
+			return errors.New("A project with this name already exists")
+		}
 	}
 
 	return nil
@@ -461,7 +470,7 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func promptAndCreateStack(
+func promptAndCreateStack(prompt promptForValueFunc,
 	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string) (backend.Stack, error) {
 
@@ -485,7 +494,7 @@ func promptAndCreateStack(
 	}
 
 	for {
-		stackName, err := promptForValue(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
+		stackName, err := prompt(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}

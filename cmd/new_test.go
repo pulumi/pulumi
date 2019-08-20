@@ -15,91 +15,66 @@ package cmd
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	pul_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreatingProjectWithSpecifiedName(t *testing.T) {
-	e := pul_testing.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-	projectName := filepath.Base(e.RootPath)
+func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+	uniqueProjectName := filepath.Base(tempdir)
 
 	var args = newArgs{
 		interactive:       false,
-		dir:               e.RootPath,
-		name:              projectName,
-		templateNameOrURL: "typescript",
-		secretsProvider:   "default",
-		force:             true,
+		name:              uniqueProjectName,
 		prompt:            promptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
 	}
 
-	assert.NoError(t, os.Chdir(e.CWD))
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	path, err := workspace.DetectProjectPathFrom(e.RootPath)
-	assert.NoError(t, err)
-	proj, err := workspace.LoadProject(path)
-	assert.NoError(t, err)
+	removeStack(t)
 
-	assert.Equal(t, projectName, proj.Name.String())
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
-func TestCreatingProjectWithEnteredName(t *testing.T) {
-	e := pul_testing.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-	projectName := filepath.Base(e.RootPath)
-
-	promptMock := func(
-		yes bool, valueType string, defaultValue string, secret bool,
-		isValidFn func(value string) error, opts display.Options) (string, error) {
-		return projectName, nil
-	}
+func TestCreatingProjectWithPromptedName(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+	uniqueProjectName := filepath.Base(tempdir)
 
 	var args = newArgs{
-		interactive:       false,
-		dir:               e.RootPath,
-		name:              projectName,
-		templateNameOrURL: "typescript",
-		prompt:            promptMock,
+		interactive:       true,
+		prompt:            promptMock(uniqueProjectName),
 		secretsProvider:   "default",
-		force:             true,
+		templateNameOrURL: "typescript",
 	}
 
-	assert.NoError(t, os.Chdir(e.CWD))
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	path, err := workspace.DetectProjectPathFrom(e.RootPath)
-	assert.NoError(t, err)
-	proj, err := workspace.LoadProject(path)
-	assert.NoError(t, err)
+	removeStack(t)
 
-	assert.Equal(t, projectName, proj.Name.String())
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
-func TestCreatingProjectWithExistingEnteredNameFails(t *testing.T) {
-	e := pul_testing.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-	projectName := "test_project"
-
-	promptMock := func(
-		yes bool, valueType string, defaultValue string, secret bool,
-		isValidFn func(value string) error, opts display.Options) (string, error) {
-		if valueType == "project name" {
-			err := isValidFn(projectName)
-			return projectName, err
-		}
-		return "", nil
-	}
+func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
 
 	backendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
@@ -108,16 +83,173 @@ func TestCreatingProjectWithExistingEnteredNameFails(t *testing.T) {
 	}
 
 	var args = newArgs{
-		dir:               e.RootPath,
-		force:             true,
-		interactive:       true,
-		prompt:            promptMock,
+		interactive:       false,
+		name:              projectName,
+		prompt:            promptForValue,
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
-	assert.NoError(t, os.Chdir(e.CWD))
 	err := runNew(args)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "project with this name already exists")
+}
+
+func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	backendInstance = &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+			return name == projectName, nil
+		},
+	}
+
+	var args = newArgs{
+		interactive:       true,
+		prompt:            promptMock(projectName),
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project with this name already exists")
+}
+
+func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	backendInstance = &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+			return true, nil
+		},
+	}
+
+	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
+	var args = newArgs{
+		generateOnly:      true,
+		interactive:       false,
+		name:              projectName,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, projectName, proj.Name.String())
+}
+
+func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	backendInstance = &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+			return true, nil
+		},
+	}
+
+	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
+	var args = newArgs{
+		generateOnly:      true,
+		interactive:       true,
+		prompt:            promptMock(projectName),
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, projectName, proj.Name.String())
+}
+
+func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	backendInstance = &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+			return true, nil
+		},
+	}
+
+	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
+	var args = newArgs{
+		generateOnly:      true,
+		interactive:       false,
+		name:              "not#valid",
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project name may only contain")
+}
+
+func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	backendInstance = &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+			return true, nil
+		},
+	}
+
+	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
+	var args = newArgs{
+		generateOnly:      true,
+		interactive:       true,
+		prompt:            promptMock("not#valid"),
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project name may only contain")
+}
+
+const projectName = "test_project"
+
+func promptMock(name string) promptForValueFunc {
+	return func(yes bool, valueType string, defaultValue string, secret bool,
+		isValidFn func(value string) error, opts display.Options) (string, error) {
+		if valueType == "project name" {
+			err := isValidFn(name)
+			return name, err
+		}
+		return defaultValue, nil
+	}
+}
+
+func loadProject(t *testing.T, dir string) *workspace.Project {
+	path, err := workspace.DetectProjectPathFrom(dir)
+	assert.NoError(t, err)
+	proj, err := workspace.LoadProject(path)
+	assert.NoError(t, err)
+	return proj
+}
+
+func removeStack(t *testing.T) {
+	b, err := currentBackend(display.Options{})
+	assert.NoError(t, err)
+	ref, err := b.ParseStackReference("dev")
+	assert.NoError(t, err)
+	_, err = b.RemoveStack(context.Background(), ref, false)
+	assert.NoError(t, err)
 }
