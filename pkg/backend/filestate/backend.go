@@ -314,7 +314,7 @@ func (b *localBackend) ListStacks(
 
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
-		backendRef := localBackendReference{}
+		var backendRef localBackendReference
 		if stackName.HasNamespace() {
 			backendRef = localBackendReference{
 				project: stackName.Namespace().String(),
