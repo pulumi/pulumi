@@ -59,7 +59,7 @@ func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
 
-// backendInstance is used to inject a backend mock from tests
+// backendInstance is used to inject a backend mock from tests.
 var backendInstance backend.Backend
 
 func currentBackend(opts display.Options) (backend.Backend, error) {
