@@ -529,7 +529,10 @@ func (b *cloudBackend) ListStacks(
 	// Sanitize the project name as needed, so when communicating with the Pulumi Service we
 	// always use the name the service expects. (So that a similar, but not technically valid
 	// name may be put in Pulumi.yaml without causing problems.)
-	filter.Project = cleanProjectName(filter.Project)
+	if filter.Project != nil {
+		cleanedProj := cleanProjectName(*filter.Project)
+		filter.Project = &cleanedProj
+	}
 
 	// Duplicate type to avoid circular dependency.
 	clientFilter := client.ListStacksFilter{

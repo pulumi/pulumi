@@ -162,20 +162,20 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 
 // ListStacksFilter describes optional filters when listing stacks.
 type ListStacksFilter struct {
-	Project      string
-	Organization string
-	TagName      string
-	TagValue     string
+	Project      *string
+	Organization *string
+	TagName      *string
+	TagValue     *string
 }
 
 // ListStacks lists all stacks the current user has access to, optionally filtered by project.
 func (pc *Client) ListStacks(
 	ctx context.Context, filter ListStacksFilter) ([]apitype.StackSummary, error) {
 	queryFilter := struct {
-		Project      string `url:"project,omitempty"`
-		Organization string `url:"organization,omitempty"`
-		TagName      string `url:"tagName,omitempty"`
-		TagValue     string `url:"tagValue,omitempty"`
+		Project      *string `url:"project,omitempty"`
+		Organization *string `url:"organization,omitempty"`
+		TagName      *string `url:"tagName,omitempty"`
+		TagValue     *string `url:"tagValue,omitempty"`
 	}{
 		Project:      filter.Project,
 		Organization: filter.Organization,

@@ -33,9 +33,7 @@ import (
 
 func newStackLsCmd() *cobra.Command {
 	var jsonOut bool
-
 	var allStacks bool
-
 	var orgFilter string
 	var projFilter string
 	var tagFilter string
@@ -50,20 +48,26 @@ func newStackLsCmd() *cobra.Command {
 			"will be listed.\n" +
 			"\n" +
 			"Results may be further filtered by passing additional flags. Tag filters may include\n" +
-			"the tag name as well as the tag value, separated by an equals sign. For example 'environment=production'\n" +
-			"or just 'devstack-owner'.",
+			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
+			"'environment=production' or just 'gcp:project'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Build up the stack filters. If left empty, will be a no-op.
-			tagName, tagValue, err := parseTagFilter(tagFilter)
-			if err != nil {
-				return errors.Wrap(err, "parsing tag filter")
+			// Build up the stack filters. We do not support accepting empty strings as filters
+			// from command-line arguments, though the API technically supports it.
+			strPtrIfSet := func(s string) *string {
+				if s != "" {
+					return &s
+				}
+				return nil
 			}
 			filter := backend.ListStacksFilter{
-				Organization: orgFilter,
-				Project:      projFilter,
-				TagName:      tagName,
-				TagValue:     tagValue,
+				Organization: strPtrIfSet(orgFilter),
+				Project:      strPtrIfSet(projFilter),
+			}
+			if tagFilter != "" {
+				tagName, tagValue := parseTagFilter(tagFilter)
+				filter.TagName = &tagName
+				filter.TagValue = tagValue
 			}
 
 			// If --all is not specified, default to filtering to just the current project.
@@ -80,7 +84,8 @@ func newStackLsCmd() *cobra.Command {
 				if err != nil {
 					return errors.Wrap(err, "could not load current project")
 				}
-				filter.Project = string(proj.Name)
+				projName := string(proj.Name)
+				filter.Project = &projName
 			}
 
 			// Get the current backend.
@@ -130,20 +135,14 @@ func newStackLsCmd() *cobra.Command {
 }
 
 // parseTagFilter parses a tag filter into its separate name and value parts, separatedby an equal sign.
-// This requires that the tag name not contain an equals sign, but the tag's value can. Returns an error if the tag
-// filter is malformed, such as "=" or "=tag-value". (i.e. a tag name must be specified if a tag value is set.)
-func parseTagFilter(t string) (string, string, error) {
+// If no "value" is provided, the second return parameter will be `nil`. Either the tag name or value can
+// be omitted. e.g. "=x" returns ("", "x") and "=" returns ("", "").
+func parseTagFilter(t string) (string, *string) {
 	parts := strings.SplitN(t, "=", 2)
-	if parts[0] == "" {
-		return "", "", errors.New("no tag name specified")
-	}
 	if len(parts) == 1 {
-		return parts[0], "", nil
+		return parts[0], nil
 	}
-	if parts[1] == "" {
-		return "", "", errors.New("no tag value specified")
-	}
-	return parts[0], parts[1], nil
+	return parts[0], &parts[1]
 }
 
 // stackSummaryJSON is the shape of the --json output of this command. When --json is passed, we print an array

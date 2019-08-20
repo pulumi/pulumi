@@ -15,38 +15,49 @@
 package cmd
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestParseTagFilter(t *testing.T) {
+	p := func(s string) *string {
+		return &s
+	}
+
 	tests := []struct {
 		Filter    string
 		WantName  string
-		WantValue string
-		WantError bool
+		WantValue *string
 	}{
 		// Just tag name
+		{Filter: "", WantName: ""},
 		{Filter: ":", WantName: ":"},
 		{Filter: "just tag name", WantName: "just tag name"},
 		{Filter: "tag-name123", WantName: "tag-name123"},
 
-		{Filter: "tag-name123=tag value", WantName: "tag-name123", WantValue: "tag value"},
-		{Filter: "tag-name123=tag value:with-colon", WantName: "tag-name123", WantValue: "tag value:with-colon"},
-		{Filter: "tag-name123=tag value=with-equal", WantName: "tag-name123", WantValue: "tag value=with-equal"},
+		// Tag name and value
+		{Filter: "tag-name123=tag value", WantName: "tag-name123", WantValue: p("tag value")},
+		{Filter: "tag-name123=tag value:with-colon", WantName: "tag-name123", WantValue: p("tag value:with-colon")},
+		{Filter: "tag-name123=tag value=with-equal", WantName: "tag-name123", WantValue: p("tag value=with-equal")},
 
-		// Error cases
-		{Filter: "=", WantError: true},
-		{Filter: "=no tag name", WantError: true},
-		{Filter: "no tag value=", WantError: true},
+		// Degenerate cases
+		{Filter: "=", WantName: "", WantValue: p("")},
+		{Filter: "no tag value=", WantName: "no tag value", WantValue: p("")},
+		{Filter: "=no tag name", WantName: "", WantValue: p("no tag name")},
 	}
 
 	for _, test := range tests {
-		name, value, err := parseTagFilter(test.Filter)
-		assert.Equal(t, test.WantName, name)
-		assert.Equal(t, test.WantValue, value)
-		assert.Equal(t, test.WantError, (err != nil), fmt.Sprintf("Got error: %v", err))
+		name, value := parseTagFilter(test.Filter)
+		assert.Equal(t, test.WantName, name, "parseTagFilter(%q) name", test.Filter)
+		if test.WantValue == nil {
+			assert.Nil(t, value, "parseTagFilter(%q) value", test.Filter)
+		} else {
+			if value == nil {
+				t.Errorf("parseTagFilter(%q) expected %q tag name, but got nil", test.Filter, *test.WantValue)
+			} else {
+				assert.Equal(t, *test.WantValue, *value)
+			}
+		}
 	}
 }

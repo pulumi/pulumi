@@ -90,10 +90,10 @@ type StackSummary interface {
 
 // ListStacksFilter describes optional filters when listing stacks.
 type ListStacksFilter struct {
-	Organization string
-	Project      string
-	TagName      string
-	TagValue     string
+	Organization *string
+	Project      *string
+	TagName      *string
+	TagValue     *string
 }
 
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.

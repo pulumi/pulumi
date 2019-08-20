@@ -212,7 +212,7 @@ func chooseStack(
 
 	// List stacks as available options.
 	project := string(proj.Name)
-	summaries, err := b.ListStacks(commandContext(), backend.ListStacksFilter{Project: project})
+	summaries, err := b.ListStacks(commandContext(), backend.ListStacksFilter{Project: &project})
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
