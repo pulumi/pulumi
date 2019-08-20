@@ -185,6 +185,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setProvider(resop.providerRef);
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);
+        req.setDeletebeforereplacedefined((<any>opts).deleteBeforeReplace !== undefined);
         req.setIgnorechangesList(opts.ignoreChanges || []);
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);

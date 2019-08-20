@@ -352,6 +352,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 dependencies=resolver.dependencies,
                 propertyDependencies=property_dependencies,
                 deleteBeforeReplace=opts.delete_before_replace,
+                deleteBeforeReplaceDefined=opts.delete_before_replace is not None,
                 ignoreChanges=ignore_changes,
                 version=opts.version or "",
                 acceptSecrets=True,

@@ -1045,7 +1045,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     additionalsecretoutputsList: jspb.Message.getRepeatedField(msg, 14),
     aliasesList: jspb.Message.getRepeatedField(msg, 15),
     importid: jspb.Message.getFieldWithDefault(msg, 16, ""),
-    customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f)
+    customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
+    deletebeforereplacedefined: jspb.Message.getFieldWithDefault(msg, 18, false)
   };
 
   if (includeInstance) {
@@ -1153,6 +1154,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new proto.pulumirpc.RegisterResourceRequest.CustomTimeouts;
       reader.readMessage(value,proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.deserializeBinaryFromReader);
       msg.setCustomtimeouts(value);
+      break;
+    case 18:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDeletebeforereplacedefined(value);
       break;
     default:
       reader.skipField();
@@ -1299,6 +1304,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       17,
       f,
       proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.serializeBinaryToWriter
+    );
+  }
+  f = message.getDeletebeforereplacedefined();
+  if (f) {
+    writer.writeBool(
+      18,
+      f
     );
   }
 };
@@ -2012,6 +2024,23 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearCustomtimeouts = function
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.hasCustomtimeouts = function() {
   return jspb.Message.getField(this, 17) != null;
+};
+
+
+/**
+ * optional bool deleteBeforeReplaceDefined = 18;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getDeletebeforereplacedefined = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 18, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setDeletebeforereplacedefined = function(value) {
+  jspb.Message.setProto3BooleanField(this, 18, value);
 };
 
 
