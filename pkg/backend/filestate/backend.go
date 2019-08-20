@@ -73,15 +73,19 @@ type localBackend struct {
 }
 
 type localBackendReference struct {
-	name tokens.QName
+	name    tokens.QName
+	project string
 }
 
 func (r localBackendReference) String() string {
-	return string(r.name)
+	return r.Name().String()
 }
 
 func (r localBackendReference) Name() tokens.QName {
-	return r.name
+	if r.project == "" {
+		return r.name
+	}
+	return tokens.QName(r.project + "/" + r.name.String())
 }
 
 func IsFileStateBackendURL(urlstr string) bool {
@@ -218,7 +222,33 @@ func (b *localBackend) SupportsOrganizations() bool {
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+	split := strings.Split(stackRefName, "/")
+	var projectName string
+	var stackName string
+
+	switch len(split) {
+	case 1:
+		stackName = split[0]
+	case 2:
+		projectName = split[0]
+		stackName = split[1]
+	default:
+		return nil, errors.Errorf("could not parse stack name '%s'", stackRefName)
+	}
+
+	if projectName == "" {
+		currentProject, projectErr := workspace.DetectProject()
+		if projectErr != nil {
+			return nil, projectErr
+		}
+
+		projectName = currentProject.Name.String()
+	}
+
+	return localBackendReference{
+		project: projectName,
+		name:    tokens.QName(stackName),
+	}, nil
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
@@ -239,7 +269,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	if err != nil {
 		return nil, errors.Wrap(err, "getting stack tags")
 	}
-	if err = validation.ValidateStackProperties(string(stackName), tags); err != nil {
+	if err = validation.ValidateStackProperties(string(stackName.Name()), tags); err != nil {
 		return nil, errors.Wrap(err, "validating stack properties")
 	}
 
@@ -259,7 +289,9 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	snapshot, path, err := b.getStack(stackName)
 	switch {
 	case gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound:
-		return nil, nil
+		// A little hacky but we may of assumed a project name but this is a
+		// stack that was created before project so try again without the project part
+		return b.GetStack(ctx, localBackendReference{name: tokens.QName(stackRef.Name().Name())})
 	case err != nil:
 		return nil, err
 	default:
@@ -274,15 +306,34 @@ func (b *localBackend) ListStacks(
 		return nil, err
 	}
 
+	var qProjectName *tokens.QName
+	if projectFilter != nil {
+		name := tokens.QName(string(*projectFilter))
+		qProjectName = &name
+	}
+
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
-		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
+		backendRef := localBackendReference{}
+		if stackName.HasNamespace() {
+			backendRef = localBackendReference{
+				project: stackName.Namespace().String(),
+				name:    stackName.Name().Q(),
+			}
+		} else {
+			backendRef = localBackendReference{name: stackName}
+		}
+
+		stack, err := b.GetStack(ctx, backendRef)
 		if err != nil {
 			return nil, err
 		}
 		localStack, ok := stack.(*localStack)
 		contract.Assertf(ok, "localBackend GetStack returned non-localStack")
-		results = append(results, newLocalStackSummary(localStack))
+
+		if qProjectName == nil || (!stackName.HasNamespace() || *qProjectName == stackName.Namespace()) {
+			results = append(results, newLocalStackSummary(localStack))
+		}
 	}
 
 	return results, nil
@@ -685,9 +736,32 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	}
 
 	for _, file := range files {
-		// Ignore directories.
+		// Recurse into top level directories
 		if file.IsDir {
-			continue
+			projectName := objectName(file)
+			subFiles, err := listBucket(b.bucket, path+"/"+projectName)
+			if err != nil {
+				return nil, errors.Wrap(err, "error listing stacks")
+			}
+
+			for _, subFile := range subFiles {
+				// Skip files without valid extensions (e.g., *.bak files).
+				stackfn := objectName(subFile)
+				ext := filepath.Ext(stackfn)
+				if _, has := encoding.Marshalers[ext]; !has {
+					continue
+				}
+
+				// Read in this stack's information.
+				name := tokens.QName(projectName + "/" + stackfn[:len(stackfn)-len(ext)])
+				_, _, err := b.getStack(name)
+				if err != nil {
+					logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
+					continue // failure reading the stack information.
+				}
+
+				stacks = append(stacks, name)
+			}
 		}
 
 		// Skip files without valid extensions (e.g., *.bak files).
