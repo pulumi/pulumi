@@ -492,6 +492,7 @@ func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
 			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
 			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
 			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
+			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpRetryUpdate)
 		}
 	}
 

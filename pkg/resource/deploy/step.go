@@ -357,6 +357,7 @@ type UpdateStep struct {
 	diffs         []resource.PropertyKey         // the keys causing a diff.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	isRetry       bool
 }
 
 var _ Step = (*UpdateStep)(nil)
@@ -376,6 +377,11 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(!new.Delete)
 	contract.Assert(!new.External)
 	contract.Assert(!old.External)
+
+	isRetry := false
+	if len(old.InitErrors) > 0 || len(new.InitErrors) > 0 {
+		isRetry = true
+	}
 	return &UpdateStep{
 		plan:          plan,
 		reg:           reg,
@@ -385,10 +391,17 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 		diffs:         diffs,
 		detailedDiff:  detailedDiff,
 		ignoreChanges: ignoreChanges,
+		isRetry:       isRetry,
 	}
 }
 
-func (s *UpdateStep) Op() StepOp                                   { return OpUpdate }
+func (s *UpdateStep) Op() StepOp {
+	if s.isRetry || len(s.old.InitErrors) > 0 || len(s.new.InitErrors) > 0 {
+		return OpRetryUpdate
+	}
+	return OpUpdate
+}
+
 func (s *UpdateStep) Plan() *Plan                                  { return s.plan }
 func (s *UpdateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *UpdateStep) Provider() string                             { return s.new.Provider }
@@ -655,6 +668,9 @@ func (s *RefreshStep) ResultOp() StepOp {
 	if s.new == nil {
 		return OpDelete
 	}
+	if len(s.old.InitErrors) > 0 || len(s.new.InitErrors) > 0 {
+		return OpRetryUpdate
+	}
 	if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
 		return OpSame
 	}
@@ -871,6 +887,7 @@ const (
 	OpSame                 StepOp = "same"                   // nothing to do.
 	OpCreate               StepOp = "create"                 // creating a new resource.
 	OpUpdate               StepOp = "update"                 // updating an existing resource.
+	OpRetryUpdate          StepOp = "retry-update"           // retry updating an existing resource.
 	OpDelete               StepOp = "delete"                 // deleting an existing resource.
 	OpReplace              StepOp = "replace"                // replacing a resource with a new one.
 	OpCreateReplacement    StepOp = "create-replacement"     // creating a new resource for a replacement.
@@ -890,6 +907,7 @@ var StepOps = []StepOp{
 	OpSame,
 	OpCreate,
 	OpUpdate,
+	OpRetryUpdate,
 	OpDelete,
 	OpReplace,
 	OpCreateReplacement,
@@ -915,6 +933,8 @@ func (op StepOp) Color() string {
 		return colors.SpecDelete
 	case OpUpdate:
 		return colors.SpecUpdate
+	case OpRetryUpdate:
+		return colors.SpecRetryUpdate
 	case OpReplace:
 		return colors.SpecReplace
 	case OpCreateReplacement:
@@ -951,6 +971,8 @@ func (op StepOp) RawPrefix() string {
 		return "- "
 	case OpUpdate:
 		return "~ "
+	case OpRetryUpdate:
+		return "~ "
 	case OpReplace:
 		return "+-"
 	case OpCreateReplacement:
@@ -981,6 +1003,8 @@ func (op StepOp) PastTense() string {
 	switch op {
 	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
+	case OpRetryUpdate:
+		return string(OpUpdate) + "d"
 	case OpRefresh:
 		return "refreshed"
 	case OpRead:

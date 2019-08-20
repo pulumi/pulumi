@@ -65,6 +65,8 @@ const (
 	OpCreate OpType = "create"
 	// OpUpdate indicates an existing resource was updated.
 	OpUpdate OpType = "update"
+	// OpRetryUpdate indicates an existing resource was updated.
+	OpRetryUpdate OpType = "retry-update"
 	// OpDelete indicates an existing resource was deleted.
 	OpDelete OpType = "delete"
 	// OpReplace indicates an existing resource was replaced with a new one.

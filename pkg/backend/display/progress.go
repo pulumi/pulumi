@@ -1075,11 +1075,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			case deploy.OpCreate, deploy.OpCreateReplacement:
 				return "creating failed"
 			case deploy.OpUpdate:
-				if len(step.Old.InitErrors) > 0 || len(step.New.InitErrors) > 0 {
-					return "retrying update failed"
-				}
 				return "updating failed"
 			case deploy.OpRetryUpdate:
+				return "retrying update failed"
 			case deploy.OpDelete, deploy.OpDeleteReplaced:
 				return "deleting failed"
 			case deploy.OpReplace:
@@ -1099,10 +1097,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return ""
 			case deploy.OpCreate:
 				return "created"
-			case deploy.OpUpdate:
-				if len(step.Old.InitErrors) > 0 || len(step.New.InitErrors) > 0 {
-					return "updated"
-				}
+			case deploy.OpUpdate, deploy.OpRetryUpdate:
 				return "updated"
 			case deploy.OpDelete:
 				return "deleted"
@@ -1148,10 +1143,9 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 	case deploy.OpCreate:
 		return "create"
 	case deploy.OpUpdate:
-		if len(step.Old.InitErrors) > 0 || len(step.New.InitErrors) > 0 {
-			return "retry update"
-		}
 		return "update"
+	case deploy.OpRetryUpdate:
+		return "retry update"
 	case deploy.OpDelete:
 		return "delete"
 	case deploy.OpReplace:
@@ -1190,10 +1184,9 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	case deploy.OpCreate:
 		return "create"
 	case deploy.OpUpdate:
-		if len(step.Old.InitErrors) > 0 || len(step.New.InitErrors) > 0 {
-			return "retry update"
-		}
 		return "update"
+	case deploy.OpRetryUpdate:
+		return "retry update"
 	case deploy.OpDelete:
 		return "delete"
 	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement,
@@ -1263,10 +1256,9 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		case deploy.OpCreate:
 			return "creating"
 		case deploy.OpUpdate:
-			if len(step.Old.InitErrors) > 0 || len(step.New.InitErrors) > 0 {
-				return "retrying update"
-			}
 			return "updating"
+		case deploy.OpRetryUpdate:
+			return "retrying update"
 		case deploy.OpDelete:
 			return "deleting"
 		case deploy.OpReplace:

@@ -360,7 +360,7 @@ func (acts *updateActions) OnResourceStepPost(
 	//
 	// This is a little kludgy given that these resources are global state. However, given the way that we have
 	// implemented the snapshot manager and engine today, it's the easiest way to accomplish what we are trying to do.
-	if status == resource.StatusPartialFailure && step.Op() == deploy.OpUpdate {
+	if status == resource.StatusPartialFailure && (step.Op() == deploy.OpUpdate || step.Op() == deploy.OpRetryUpdate) {
 		logging.V(7).Infof(
 			"OnResourceStepPost(%s): Step is partially-failed update, saving old inputs instead of new inputs",
 			step.URN())

@@ -154,6 +154,7 @@ var (
 
 	SpecCreate            = Green         // for adds (in the diff sense).
 	SpecUpdate            = Yellow        // for changes (in the diff sense).
+	SpecRetryUpdate       = Yellow        // for changes (in the diff sense).
 	SpecReplace           = BrightMagenta // for replacements (in the diff sense).
 	SpecDelete            = Red           // for deletes (in the diff sense).
 	SpecCreateReplacement = BrightGreen   // for replacement creates (in the diff sense).

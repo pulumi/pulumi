@@ -133,7 +133,7 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &sameSnapshotMutation{sm}, nil
 	case deploy.OpCreate, deploy.OpCreateReplacement:
 		return sm.doCreate(step)
-	case deploy.OpUpdate:
+	case deploy.OpUpdate, deploy.OpRetryUpdate:
 		return sm.doUpdate(step)
 	case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 		return sm.doDelete(step)
