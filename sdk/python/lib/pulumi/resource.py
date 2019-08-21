@@ -437,7 +437,7 @@ def _collapse_providers(opts: 'ResourceOptions'):
         if provider_length == 0:
             opts.providers = None
         elif provider_length == 1:
-            opts.provider = next(iter(providers.values()))
+            opts.provider = providers[0]
             opts.providers = None
         else:
             opts.providers = {}
