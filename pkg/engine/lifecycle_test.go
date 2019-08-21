@@ -4148,3 +4148,28 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestMissingRead(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ resource.URN, _ resource.ID, _, _ resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	// Our program reads a resource and exits.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "")
+		assert.Error(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps:   []TestStep{{Op: Update, ExpectFailure: true}},
+	}
+	p.Run(t, nil)
+}
