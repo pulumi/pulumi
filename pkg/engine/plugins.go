@@ -171,7 +171,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 	}
 
 	fmt.Printf("[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
-	stream = workspace.ReadCloserProgressBar(stream, size, cmdutil.GetGlobalColorization())
+	stream = workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)

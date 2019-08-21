@@ -601,14 +601,14 @@ func SelectCompatiblePlugin(
 }
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
-func ReadCloserProgressBar(closer io.ReadCloser, size int64, colorization colors.Colorization) io.ReadCloser {
+func ReadCloserProgressBar(closer io.ReadCloser, size int64, message string, colorization colors.Colorization) io.ReadCloser {
 	if size == -1 {
 		return closer
 	}
 
 	// If we know the length of the download, show a progress bar.
 	bar := pb.New(int(size))
-	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + "Downloading plugin:"))
+	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
 	bar.Postfix(colorization.Colorize(colors.Reset))
 	bar.SetMaxWidth(80)
 	bar.SetUnits(pb.U_BYTES)

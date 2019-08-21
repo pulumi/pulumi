@@ -153,7 +153,7 @@ func newPluginInstallCmd() *cobra.Command {
 					if tarball, size, err = install.Download(); err != nil {
 						return errors.Wrapf(err, "%s downloading from %s", label, install.ServerURL)
 					}
-					tarball = workspace.ReadCloserProgressBar(tarball, size, displayOpts.Color)
+					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
 				} else {
 					source = file
 					if verbose {
