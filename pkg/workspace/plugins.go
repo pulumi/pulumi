@@ -601,8 +601,8 @@ func SelectCompatiblePlugin(
 }
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
-func ReadCloserProgressBar(closer io.ReadCloser, size int64,
-	                       message string, colorization colors.Colorization) io.ReadCloser {
+func ReadCloserProgressBar(
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization) io.ReadCloser {
 	if size == -1 {
 		return closer
 	}
