@@ -79,6 +79,12 @@ func (nm QName) Name() Name {
 	return Name(nmn)
 }
 
+// HasNamespace returns if the QName has a namespace (dropping the name)
+func (nm QName) HasNamespace() bool {
+	ix := strings.LastIndex(string(nm), QNameDelimiter)
+	return ix != -1
+}
+
 // Namespace extracts the namespace portion of a QName (dropping the name); this may be empty.
 func (nm QName) Namespace() QName {
 	ix := strings.LastIndex(string(nm), QNameDelimiter)

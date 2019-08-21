@@ -85,6 +85,10 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 
 // objectName returns the filename of a ListObject (an object from a bucket)
 func objectName(obj *blob.ListObject) string {
+	if obj.Key[len(obj.Key)-1] == '/' {
+		_, filename := path.Split(obj.Key[:len(obj.Key)-1])
+		return filename
+	}
 	_, filename := path.Split(obj.Key)
 	return filename
 }
