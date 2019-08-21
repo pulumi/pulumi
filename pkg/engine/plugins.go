@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/blang/semver"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -163,10 +165,14 @@ func installPlugin(plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
-	stream, _, err := plugin.Download()
+	stream, size, err := plugin.Download()
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
+	stream = workspace.ReadCloserProgressBar(stream, size, cmdutil.GetGlobalColorization())
+
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
 	if err := plugin.Install(stream); err != nil {

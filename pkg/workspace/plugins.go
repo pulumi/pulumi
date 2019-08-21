@@ -32,9 +32,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/archive"
 
 	"github.com/blang/semver"
+	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -598,6 +600,26 @@ func SelectCompatiblePlugin(
 	return bestMatch, nil
 }
 
+// ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
+func ReadCloserProgressBar(closer io.ReadCloser, size int64, colorization colors.Colorization) io.ReadCloser {
+	if size == -1 {
+		return closer
+	}
+
+	// If we know the length of the download, show a progress bar.
+	bar := pb.New(int(size))
+	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + "Downloading plugin:"))
+	bar.Postfix(colorization.Colorize(colors.Reset))
+	bar.SetMaxWidth(80)
+	bar.SetUnits(pb.U_BYTES)
+	bar.Start()
+
+	return &barCloser{
+		bar:        bar,
+		readCloser: bar.NewProxyReader(closer),
+	}
+}
+
 // getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
 // probing for an executable file.
 func getCandidateExtensions() []string {
@@ -689,4 +711,18 @@ func getPluginSize(path string) (int64, error) {
 		size += file.Size()
 	}
 	return size, nil
+}
+
+type barCloser struct {
+	bar        *pb.ProgressBar
+	readCloser io.ReadCloser
+}
+
+func (bc *barCloser) Read(dest []byte) (int, error) {
+	return bc.readCloser.Read(dest)
+}
+
+func (bc *barCloser) Close() error {
+	bc.bar.Finish()
+	return bc.readCloser.Close()
 }
