@@ -268,12 +268,14 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 }
 
 func (b *localBackend) ListStacks(
-	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
+	ctx context.Context, _ backend.ListStacksFilter) ([]backend.StackSummary, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
 		return nil, err
 	}
 
+	// Note that the provided stack filter is not honored, since fields like
+	// organizations and tags aren't persisted in the local backend.
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
 		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
