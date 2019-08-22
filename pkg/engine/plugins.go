@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/blang/semver"
@@ -194,7 +195,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 // that the engine uses to determine which version of a particular provider to load.
 //
 // it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]*semver.Version {
+func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) (map[tokens.Package]*semver.Version, error) {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -211,7 +212,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 		sourceSet = allPlugins
 	}
 
-	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
+	defaultProviderPlugins := make(map[tokens.Package]workspace.PluginInfo)
 
 	// Sort the set of source plugins by version, so that we iterate over the set of plugins in a deterministic order.
 	// Sorting by version gets us two properties:
@@ -233,38 +234,49 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 			continue
 		}
 
-		if seenVersion, has := defaultProviderVersions[tokens.Package(p.Name)]; has {
-			if seenVersion == nil {
+		if seenPlugin, has := defaultProviderPlugins[tokens.Package(p.Name)]; has {
+			if seenPlugin.Version == nil {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
 					p, p.Name)
-				defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+				defaultProviderPlugins[tokens.Package(p.Name)] = p
 				continue
 			}
 
 			contract.Assertf(p.Version != nil, "p.Version should not be nil if sorting is correct!")
-			if p.Version != nil && p.Version.GT(*seenVersion) {
-				logging.V(preparePluginLog).Infof(
-					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
-					p, p.Name, seenVersion)
-				defaultProviderVersions[tokens.Package(p.Name)] = p.Version
-				continue
+			contract.Assertf(p.Version.GTE(*seenPlugin.Version),
+				"Should not have seen an older plugin if sorting is correct!\n  %s-%s %s\n  %s-%s - %s",
+				p.Name, p.Version.String(), p.Path,
+				seenPlugin.Name, seenPlugin.Version.String(), seenPlugin.Path)
+
+			if p.Version.EQ(*seenPlugin.Version) {
+				return nil, fmt.Errorf("two plugins had the same name and version.\n  %s-%s %s\n  %s-%s - %s",
+					p.Name, p.Version.String(), p.Path,
+					seenPlugin.Name, seenPlugin.Version.String(), seenPlugin.Path)
 			}
 
-			contract.Failf("Should not have seen an older plugin if sorting is correct!")
+			logging.V(preparePluginLog).Infof(
+				"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
+				p, p.Name, seenPlugin.Version)
+			defaultProviderPlugins[tokens.Package(p.Name)] = p
 		}
 
 		logging.V(preparePluginLog).Infof(
 			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", p, p.Name)
-		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+		defaultProviderPlugins[tokens.Package(p.Name)] = p
 	}
 
 	if logging.V(preparePluginLog) {
 		logging.V(preparePluginLog).Infoln("computeDefaultProviderPlugins(): summary of default plugins:")
-		for pkg, version := range defaultProviderVersions {
-			logging.V(preparePluginLog).Infof("  %-15s = %s", pkg, version)
-		}
 	}
 
-	return defaultProviderVersions
+	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
+	for name, plugin := range defaultProviderPlugins {
+		if logging.V(preparePluginLog) {
+			logging.V(preparePluginLog).Infof("  %-15s = %s", name, plugin.Version)
+		}
+		defaultProviderVersions[name] = plugin.Version
+	}
+
+	return defaultProviderVersions, nil
 }
