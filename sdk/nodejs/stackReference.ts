@@ -138,7 +138,7 @@ async function isSecretOutputName(sr: StackReference, name: Input<string>): Prom
     // If either the name or set of secret outputs is unknown, we can't do anything smart, so we just copy the
     // secretness from the entire outputs value.
     if (!((await nameOutput.isKnown) && (await sr.secretOutputNames.isKnown))) {
-        return await this.outputs.isSecret;
+        return await sr.outputs.isSecret;
     }
 
     // Otherwise, if we have a list of outputs we know are secret, we can use that list to determine if this

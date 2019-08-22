@@ -3,6 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 1.0.0-beta.4 (2019-08-22)
+
+- Fix a crash when using StackReference from the `1.0.0-beta.3` version of
+  `@pulumi/pulumi` and `1.0.0-beta.2` or earlier of the CLI.
+
 ## 1.0.0-beta.3 (2019-08-21)
 
 - When using StackReference to fetch output values from another stack, do not mark a value as secret if it was not
