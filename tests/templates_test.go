@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -25,6 +26,37 @@ import (
 )
 
 func TestTemplates(t *testing.T) {
+	awsRegion := os.Getenv("AWS_REGION")
+	if awsRegion == "" {
+		awsRegion = "us-west-1"
+		fmt.Println("Defaulting AWS_REGION to 'us-west-1'.  You can override using the AWS_REGION environment variable")
+	}
+	azureEnviron := os.Getenv("ARM_ENVIRONMENT")
+	if azureEnviron == "" {
+		azureEnviron = "public"
+		fmt.Println("Defaulting ARM_ENVIRONMENT to 'public'.  You can override using the ARM_ENVIRONMENT variable")
+	}
+	azureLocation := os.Getenv("ARM_LOCATION")
+	if azureLocation == "" {
+		azureLocation = "westus"
+		fmt.Println("Defaulting ARM_LOCATION to 'westus'.  You can override using the ARM_LOCATION variable")
+	}
+	gcpProject := os.Getenv("GOOGLE_PROJECT")
+	if gcpProject == "" {
+		gcpProject = "pulumi-ci-gcp-provider"
+		fmt.Println("Defaulting GOOGLE_PROJECT to 'pulumi-ci-gcp-provider'." +
+			"You can override using the GOOGLE_PROJECT variable")
+	}
+	gcpRegion := os.Getenv("GOOGLE_REGION")
+	if gcpRegion == "" {
+		gcpRegion = "us-central1"
+		fmt.Println("Defaulting GOOGLE_REGION to 'us-central1'.  You can override using the GOOGLE_REGION variable")
+	}
+	gcpZone := os.Getenv("GOOGLE_ZONE")
+	if gcpZone == "" {
+		gcpZone = "us-central1-a"
+		fmt.Println("Defaulting GOOGLE_ZONE to 'us-central1-a'.  You can override using the GOOGLE_ZONE variable")
+	}
 	overrides, err := integration.DecodeMapString(os.Getenv("PULUMI_TEST_NODE_OVERRIDES"))
 	if !assert.NoError(t, err, "expected valid override map: %v", err) {
 		return
@@ -38,13 +70,21 @@ func TestTemplates(t *testing.T) {
 		SkipRefresh:          true,
 	}
 
-	tests := []string{"typescript"}
-	for _, templateName := range tests {
-		t.Run(templateName, func(t *testing.T) {
+	// Retrieve the template repo.
+	repo, err := workspace.RetrieveTemplates("", false /*offline*/)
+	assert.NoError(t, err)
+	defer assert.NoError(t, repo.Delete())
+
+	// List the templates from the repo.
+	templates, err := repo.Templates()
+	assert.NoError(t, err)
+
+	for _, template := range templates {
+		t.Run(template.Name, func(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			e.RunCommand("pulumi", "new", templateName, "-f")
+			e.RunCommand("pulumi", "new", template.Name, "-f")
 
 			path, err := workspace.DetectProjectPathFrom(e.RootPath)
 			assert.NoError(t, err)
@@ -53,6 +93,15 @@ func TestTemplates(t *testing.T) {
 
 			example := base.With(integration.ProgramTestOptions{
 				Dir: e.RootPath,
+				Config: map[string]string{
+					"aws:region":        awsRegion,
+					"azure:environment": azureEnviron,
+					"azure:location":    azureLocation,
+					"gcp:project":       gcpProject,
+					"gcp:region":        gcpRegion,
+					"gcp:zone":          gcpZone,
+					"cloud:provider":    "aws",
+				},
 			})
 
 			integration.ProgramTest(t, &example)
