@@ -262,7 +262,7 @@ func SerializeResource(res *resource.State, enc config.Encrypter) (apitype.Resou
 		outputs = soutp
 	}
 
-	return apitype.ResourceV3{
+	v3Resource := apitype.ResourceV3{
 		URN:                     res.URN,
 		Custom:                  res.Custom,
 		Delete:                  res.Delete,
@@ -280,8 +280,13 @@ func SerializeResource(res *resource.State, enc config.Encrypter) (apitype.Resou
 		PendingReplacement:      res.PendingReplacement,
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 		Aliases:                 res.Aliases,
-		CustomTimeouts:          &res.CustomTimeouts,
-	}, nil
+	}
+
+	if res.CustomTimeouts.IsNotEmpty() {
+		v3Resource.CustomTimeouts = &res.CustomTimeouts
+	}
+
+	return v3Resource, nil
 }
 
 func SerializeOperation(op resource.Operation, enc config.Encrypter) (apitype.OperationV2, error) {

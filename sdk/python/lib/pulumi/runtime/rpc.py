@@ -67,8 +67,8 @@ async def serialize_properties(inputs: 'Inputs',
         result = await serialize_property(v, deps, input_transformer)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
-            # While serializing to a pb struct, we must "translate" all key names to be what the engine is going to
-            # expect. Resources provide the "transform" function for doing this.
+            # While serializing to a pb struct, we must "translate" all key names to be what the
+            # engine is going to expect. Resources provide the "transform" function for doing this.
             translated_name = k
             if input_transformer is not None:
                 translated_name = input_transformer(k)
@@ -100,8 +100,9 @@ async def serialize_property(value: 'Input[Any]',
         return await serialize_property(value.id, deps, input_transformer)
 
     if known_types.is_asset(value):
-        # Serializing an asset requires the use of a magical signature key, since otherwise it would look
-        # like any old weakly typed object/map when received by the other side of the RPC boundary.
+        # Serializing an asset requires the use of a magical signature key, since otherwise it would
+        # look like any old weakly typed object/map when received by the other side of the RPC
+        # boundary.
         obj = {
             _special_sig_key: _special_asset_sig
         }
@@ -118,8 +119,9 @@ async def serialize_property(value: 'Input[Any]',
         return obj
 
     if known_types.is_archive(value):
-        # Serializing an archive requires the use of a magical signature key, since otherwise it would look
-        # like any old weakly typed object/map when received by the other side of the RPC boundary.
+        # Serializing an archive requires the use of a magical signature key, since otherwise it
+        # would look like any old weakly typed object/map when received by the other side of the RPC
+        # boundary.
         obj = {
             _special_sig_key: _special_archive_sig
         }
@@ -148,9 +150,10 @@ async def serialize_property(value: 'Input[Any]',
     if known_types.is_output(value):
         deps.extend(value.resources())
 
-        # When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
-        # sentinel. We will do the former for all outputs created directly by user code (such outputs always
-        # resolve isKnown to true) and for any resource outputs that were resolved with known values.
+        # When serializing an Output, we will either serialize it as its resolved value or the
+        # "unknown value" sentinel. We will do the former for all outputs created directly by user
+        # code (such outputs always resolve isKnown to true) and for any resource outputs that were
+        # resolved with known values.
         is_known = await value._is_known
         is_secret = await value._is_secret
         value = await serialize_property(value.future(), deps, input_transformer)

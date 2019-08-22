@@ -271,7 +271,7 @@ class ResourceOptions:
     An optional customTimeouts config block.
     """
 
-    id: Optional[str]
+    id: Optional['Input[str]']
     """
     An optional existing ID to load, rather than create.
     """
@@ -296,7 +296,7 @@ class ResourceOptions:
                  version: Optional[str] = None,
                  aliases: Optional[List['Input[Union[str, Alias]]']] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
-                 id: Optional[str] = None,
+                 id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None) -> None:
         """
@@ -382,6 +382,12 @@ class ResourceOptions:
         opts1 = ResourceOptions() if opts1 is None else opts1
         opts2 = ResourceOptions() if opts2 is None else opts2
 
+        if not isinstance(opts1, ResourceOptions):
+            raise TypeError('Expected opts1 to be a ResourceOptions instance')
+
+        if not isinstance(opts2, ResourceOptions):
+            raise TypeError('Expected opts2 to be a ResourceOptions instance')
+
         dest = copy.copy(opts1)
         source = copy.copy(opts2)
 
@@ -431,7 +437,7 @@ def _collapse_providers(opts: 'ResourceOptions'):
         if provider_length == 0:
             opts.providers = None
         elif provider_length == 1:
-            opts.provider = next(iter(providers.values()))
+            opts.provider = providers[0]
             opts.providers = None
         else:
             opts.providers = {}

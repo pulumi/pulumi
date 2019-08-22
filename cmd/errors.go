@@ -75,7 +75,7 @@ func printDecryptError(e engine.DecryptError) {
 This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and
 it is not possible to share an encrypted configuration value across stacks.
 
-You can re-encrypt your configuration buy running 'pulumi config set %s [value] --secret' with your
+You can re-encrypt your configuration by running 'pulumi config set %s [value] --secret' with your
 new stack selected.
 
 refusing to proceed`, e.Key)

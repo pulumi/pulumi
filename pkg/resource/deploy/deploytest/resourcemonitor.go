@@ -35,7 +35,7 @@ type ResourceOptions struct {
 	Provider            string
 	Inputs              resource.PropertyMap
 	PropertyDeps        map[resource.PropertyKey][]resource.URN
-	DeleteBeforeReplace bool
+	DeleteBeforeReplace *bool
 	Version             string
 	IgnoreChanges       []string
 	Aliases             []resource.URN
@@ -90,22 +90,27 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		timeouts.Delete = prepareTestTimeout(opts.CustomTimeouts.Delete)
 	}
 
+	deleteBeforeReplace := false
+	if opts.DeleteBeforeReplace != nil {
+		deleteBeforeReplace = *opts.DeleteBeforeReplace
+	}
 	requestInput := &pulumirpc.RegisterResourceRequest{
-		Type:                 string(t),
-		Name:                 name,
-		Custom:               custom,
-		Parent:               string(opts.Parent),
-		Protect:              opts.Protect,
-		Dependencies:         deps,
-		Provider:             opts.Provider,
-		Object:               ins,
-		PropertyDependencies: inputDeps,
-		DeleteBeforeReplace:  opts.DeleteBeforeReplace,
-		IgnoreChanges:        opts.IgnoreChanges,
-		Version:              opts.Version,
-		Aliases:              aliasStrings,
-		ImportId:             string(opts.ImportID),
-		CustomTimeouts:       &timeouts,
+		Type:                       string(t),
+		Name:                       name,
+		Custom:                     custom,
+		Parent:                     string(opts.Parent),
+		Protect:                    opts.Protect,
+		Dependencies:               deps,
+		Provider:                   opts.Provider,
+		Object:                     ins,
+		PropertyDependencies:       inputDeps,
+		DeleteBeforeReplace:        deleteBeforeReplace,
+		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
+		IgnoreChanges:              opts.IgnoreChanges,
+		Version:                    opts.Version,
+		Aliases:                    aliasStrings,
+		ImportId:                   string(opts.ImportID),
+		CustomTimeouts:             &timeouts,
 	}
 
 	// submit request

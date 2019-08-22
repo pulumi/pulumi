@@ -2764,6 +2764,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p := &TestPlan{}
 
+	dbrDiff := false
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -2771,7 +2772,10 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
 					if !olds["A"].DeepEquals(news["A"]) {
-						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: dbrDiff,
+						}, nil
 					}
 					return plugin.DiffResult{}, nil
 				},
@@ -2782,7 +2786,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	const resType = "pkgA:index:typ"
 
 	inputsA := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
-	dbrA := false
+	dbrValue, dbrA := true, (*bool)(nil)
 	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
 
 	var provURN, urnA, urnB resource.URN
@@ -2847,7 +2851,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
-	dbrA, inputsA["A"] = true, resource.NewStringProperty("baz")
+	dbrA, inputsA["A"] = &dbrValue, resource.NewStringProperty("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
 
@@ -2895,8 +2899,58 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	// Change the registration of resA such that it no longer requires delete-before-replace and change the value of
-	// resA.A. Only resA should be replaced, and the replacement should be delete-before-replace.
-	dbrA, inputsA["A"] = false, resource.NewStringProperty("zam")
+	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
+	dbrA, inputsA["A"] = nil, resource.NewStringProperty("zam")
+	p.Steps = []TestStep{{
+		Op: Update,
+
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+
+			AssertSameSteps(t, []StepSummary{
+				{Op: deploy.OpSame, URN: provURN},
+				{Op: deploy.OpCreateReplacement, URN: urnA},
+				{Op: deploy.OpReplace, URN: urnA},
+				{Op: deploy.OpSame, URN: urnB},
+				{Op: deploy.OpDeleteReplaced, URN: urnA},
+			}, j.SuccessfulSteps())
+
+			return res
+		},
+	}}
+	snap = p.Run(t, snap)
+
+	// Change the diff of resA such that it requires delete-before-replace and change the value of resA.A. Both
+	// resA and resB should be replaced, and the replacements should be delete-before-replace.
+	dbrDiff, inputsA["A"] = true, resource.NewStringProperty("foo")
+	p.Steps = []TestStep{{
+		Op: Update,
+
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+
+			AssertSameSteps(t, []StepSummary{
+				{Op: deploy.OpSame, URN: provURN},
+				{Op: deploy.OpDeleteReplaced, URN: urnB},
+				{Op: deploy.OpDeleteReplaced, URN: urnA},
+				{Op: deploy.OpReplace, URN: urnA},
+				{Op: deploy.OpCreateReplacement, URN: urnA},
+				{Op: deploy.OpReplace, URN: urnB},
+				{Op: deploy.OpCreateReplacement, URN: urnB},
+			}, j.SuccessfulSteps())
+
+			return res
+		},
+	}}
+	snap = p.Run(t, snap)
+
+	// Change the registration of resA such that it disables delete-before-replace and change the value of
+	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
+	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewStringProperty("bar")
 	p.Steps = []TestStep{{
 		Op: Update,
 
@@ -3247,7 +3301,7 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 			Parent:              r.parent,
 			Dependencies:        r.dependencies,
 			Inputs:              r.props,
-			DeleteBeforeReplace: r.deleteBeforeReplace,
+			DeleteBeforeReplace: &r.deleteBeforeReplace,
 			Aliases:             r.aliases,
 		})
 		if err != nil {
@@ -4093,4 +4147,29 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+}
+
+func TestMissingRead(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ resource.URN, _ resource.ID, _, _ resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	// Our program reads a resource and exits.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "")
+		assert.Error(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps:   []TestStep{{Op: Update, ExpectFailure: true}},
+	}
+	p.Run(t, nil)
 }

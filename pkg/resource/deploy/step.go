@@ -578,7 +578,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	resourceStatus := resource.StatusOK
 	// Unlike most steps, Read steps run during previews. The only time
 	// we can't run is if the ID we are given is unknown.
-	if id == "" || id == plugin.UnknownStringValue {
+	if id == plugin.UnknownStringValue {
 		s.new.Outputs = resource.PropertyMap{}
 	} else {
 		prov, err := getProvider(s)
@@ -600,7 +600,15 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			}
 		}
 
+		// If there is no such resource, return an error indicating as such.
+		if result.Outputs == nil {
+			return resource.StatusOK, nil, errors.Errorf("resource '%s' does not exist", id)
+		}
 		s.new.Outputs = result.Outputs
+
+		if result.ID != "" {
+			s.new.ID = result.ID
+		}
 	}
 
 	// If we were asked to replace an existing, non-External resource, pend the
