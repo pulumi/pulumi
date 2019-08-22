@@ -211,11 +211,13 @@ func chooseStack(
 	}
 
 	// List stacks as available options.
-	var options []string
-	summaries, err := b.ListStacks(commandContext(), &proj.Name)
+	project := string(proj.Name)
+	summaries, err := b.ListStacks(commandContext(), backend.ListStacksFilter{Project: &project})
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
+
+	var options []string
 	for _, summary := range summaries {
 		name := summary.Name().String()
 		options = append(options, name)

@@ -20,6 +20,9 @@ CHANGELOG
 
 - Fix intermittet "NoSuchKey" issues when using the S3 based backend. (fixes [#2714](https://github.com/pulumi/pulumi/issues/2714)).
 
+- Support filting stacks by organization or tags when using `pulumi stack ls`. (fixes [#2712](https://github.com/pulumi/pulumi/issues/),
+  [#2769](https://github.com/pulumi/pulumi/issues/2769)
+
 - Explicitly setting `deleteBeforeReplace` to `false` now overrides the provider's decision.
   [#3118](https://github.com/pulumi/pulumi/pull/3118)
 

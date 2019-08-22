@@ -525,15 +525,24 @@ func (b *cloudBackend) CreateStack(
 }
 
 func (b *cloudBackend) ListStacks(
-	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
-
-	var cleanedProjectName *string
-	if projectFilter != nil {
-		clean := cleanProjectName(string(*projectFilter))
-		cleanedProjectName = &clean
+	ctx context.Context, filter backend.ListStacksFilter) ([]backend.StackSummary, error) {
+	// Sanitize the project name as needed, so when communicating with the Pulumi Service we
+	// always use the name the service expects. (So that a similar, but not technically valid
+	// name may be put in Pulumi.yaml without causing problems.)
+	if filter.Project != nil {
+		cleanedProj := cleanProjectName(*filter.Project)
+		filter.Project = &cleanedProj
 	}
 
-	apiSummaries, err := b.client.ListStacks(ctx, cleanedProjectName)
+	// Duplicate type to avoid circular dependency.
+	clientFilter := client.ListStacksFilter{
+		Organization: filter.Organization,
+		Project:      filter.Project,
+		TagName:      filter.TagName,
+		TagValue:     filter.TagValue,
+	}
+
+	apiSummaries, err := b.client.ListStacks(ctx, clientFilter)
 	if err != nil {
 		return nil, err
 	}
