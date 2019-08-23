@@ -4173,3 +4173,51 @@ func TestMissingRead(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+func TestImportUpdatedID(t *testing.T) {
+	p := &TestPlan{}
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	importID := resource.ID("myID")
+	actualID := resource.ID("myNewID")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						ID:      actualID,
+						Outputs: resource.PropertyMap{},
+						Inputs:  resource.PropertyMap{},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			ImportID: importID,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
+	snap := p.Run(t, nil)
+
+	for _, resource := range snap.Resources {
+		switch urn := resource.URN; urn {
+		case provURN:
+			// break
+		case resURN:
+			assert.Equal(t, actualID, resource.ID)
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+	}
+}
