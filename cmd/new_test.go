@@ -55,7 +55,6 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       true,
-		name:              uniqueProjectName,
 		prompt:            promptMock(uniqueProjectName, stackName),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",

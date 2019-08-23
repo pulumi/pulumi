@@ -11,13 +11,13 @@ CHANGELOG
   [#3201](https://github.com/pulumi/pulumi/pull/3201)
 - Do not ask for a passphrase in non-interactive sessions (fix [#2758](https://github.com/pulumi/pulumi/issues/2758)).
   [#3204](https://github.com/pulumi/pulumi/pull/3204)
-
 - Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.).
   [#3198](https://github.com/pulumi/pulumi/pull/3198)
-
 - Moved `@pulumi/pulumi` to target `es2016` instead of `es6`.  As `@pulumi/pulumi` programs run
   inside Nodejs, this should not change anything externally as Nodejs already provides es2016
   support. Internally, this makes more APIs available for `@pulumi/pulumi` to use in its implementation.
+- Fix the --stack option of the `pulumi new` command.
+  ([#3131](https://github.com/pulumi/pulumi/pull/3131) fixes [#2880](https://github.com/pulumi/pulumi/issues/2880))
 
 ## 1.0.0 (2019-09-03)
 
@@ -30,7 +30,6 @@ CHANGELOG
 
 - Filter the list of templates shown by default during `pulumi new`.
   [#3147](https://github.com/pulumi/pulumi/pull/3147)
-
 ## 1.0.0-beta.4 (2019-08-22)
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of
