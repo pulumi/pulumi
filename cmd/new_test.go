@@ -224,6 +224,65 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "project name may only contain")
 }
 
+func TestInvalidTemplateName(t *testing.T) {
+	t.Run("NoTemplateSpecified", func(t *testing.T) {
+		tempdir, _ := ioutil.TempDir("", "test-env")
+		defer os.RemoveAll(tempdir)
+		assert.NoError(t, os.Chdir(tempdir))
+
+		var args = newArgs{
+			secretsProvider:   "default",
+			templateNameOrURL: "",
+		}
+
+		err := runNew(args)
+		assert.Error(t, err)
+
+		assert.Contains(t, err.Error(), "no template selected")
+	})
+
+	t.Run("LocalTemplateNotFound", func(t *testing.T) {
+		tempdir, _ := ioutil.TempDir("", "test-env")
+		defer os.RemoveAll(tempdir)
+		assert.NoError(t, os.Chdir(tempdir))
+
+		// A template that will never exist.
+		template := "this-is-not-the-template-youre-looking-for"
+
+		var args = newArgs{
+			secretsProvider:   "default",
+			templateNameOrURL: template,
+		}
+
+		err := runNew(args)
+		assert.Error(t, err)
+
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
+		tempdir, _ := ioutil.TempDir("", "test-env")
+		defer os.RemoveAll(tempdir)
+		assert.NoError(t, os.Chdir(tempdir))
+
+		// A template that will never exist remotely.
+		template := "this-is-not-the-template-youre-looking-for"
+
+		var args = newArgs{
+			generateOnly:      true,
+			offline:           true,
+			secretsProvider:   "default",
+			templateNameOrURL: template,
+			yes:               true,
+		}
+
+		err := runNew(args)
+		assert.Error(t, err)
+
+		assert.Contains(t, err.Error(), "not found")
+	})
+}
+
 const projectName = "test_project"
 
 func promptMock(name string) promptForValueFunc {
