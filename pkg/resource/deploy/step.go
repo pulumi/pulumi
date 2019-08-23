@@ -827,6 +827,9 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			"provider does not support importing resources; please try updating the '%v' plugin",
 			s.new.URN.Type().Package())
 	}
+	if read.ID != "" {
+		s.new.ID = read.ID
+	}
 	s.new.Outputs = read.Outputs
 
 	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
