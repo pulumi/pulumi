@@ -4199,10 +4199,11 @@ func TestImportUpdatedID(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+		_, id, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			ImportID: importID,
 		})
 		assert.NoError(t, err)
+		assert.Equal(t, actualID, id)
 		return nil
 	})
 	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
