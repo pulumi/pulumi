@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,11 +27,119 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
+func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	var args = newArgs{
+		interactive:       false,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	assert.Equal(t, stackName, loadStackName(t))
+	removeStack(t, stackName)
+}
+
+func TestCreatingStackWithPromptedName(t *testing.T) {
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 	uniqueProjectName := filepath.Base(tempdir)
+
+	var args = newArgs{
+		interactive:       true,
+		name:              uniqueProjectName,
+		prompt:            promptMock(uniqueProjectName, stackName),
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	assert.Equal(t, stackName, loadStackName(t))
+	removeStack(t, stackName)
+}
+
+func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
+
+	var args = newArgs{
+		interactive:       false,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             orgStackName,
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	assert.Equal(t, stackName, loadStackName(t))
+	removeStack(t, stackName)
+}
+
+func TestCreatingStackWithPromptedOrgName(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	uniqueProjectName := filepath.Base(tempdir)
+	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
+
+	var args = newArgs{
+		interactive:       true,
+		prompt:            promptMock(uniqueProjectName, orgStackName),
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	assert.Equal(t, stackName, loadStackName(t))
+	removeStack(t, stackName)
+}
+
+func TestCreatingProjectWithDefaultName(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+	defaultProjectName := filepath.Base(tempdir)
+
+	var args = newArgs{
+		interactive:       true,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+		yes:               true,
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	removeStack(t, "dev")
+
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, defaultProjectName, proj.Name.String())
+}
+
+func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	var args = newArgs{
 		interactive:       false,
@@ -43,7 +152,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t)
+	removeStack(t, "dev")
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
@@ -53,11 +162,11 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
-	uniqueProjectName := filepath.Base(tempdir)
+	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	var args = newArgs{
 		interactive:       true,
-		prompt:            promptMock(uniqueProjectName),
+		prompt:            promptMock(uniqueProjectName, stackName),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -65,7 +174,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t)
+	removeStack(t, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
@@ -108,7 +217,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       true,
-		prompt:            promptMock(projectName),
+		prompt:            promptMock(projectName, ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -161,7 +270,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	var args = newArgs{
 		generateOnly:      true,
 		interactive:       true,
-		prompt:            promptMock(projectName),
+		prompt:            promptMock(projectName, ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -214,7 +323,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	var args = newArgs{
 		generateOnly:      true,
 		interactive:       true,
-		prompt:            promptMock("not#valid"),
+		prompt:            promptMock("not#valid", ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -284,13 +393,18 @@ func TestInvalidTemplateName(t *testing.T) {
 }
 
 const projectName = "test_project"
+const stackName = "test_stack"
 
-func promptMock(name string) promptForValueFunc {
+func promptMock(name string, stackName string) promptForValueFunc {
 	return func(yes bool, valueType string, defaultValue string, secret bool,
 		isValidFn func(value string) error, opts display.Options) (string, error) {
 		if valueType == "project name" {
 			err := isValidFn(name)
 			return name, err
+		}
+		if valueType == "stack name" {
+			err := isValidFn(stackName)
+			return stackName, err
 		}
 		return defaultValue, nil
 	}
@@ -304,10 +418,24 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 	return proj
 }
 
-func removeStack(t *testing.T) {
+func currentUser(t *testing.T) string {
 	b, err := currentBackend(display.Options{})
 	assert.NoError(t, err)
-	ref, err := b.ParseStackReference("dev")
+	currentUser, err := b.CurrentUser()
+	assert.NoError(t, err)
+	return currentUser
+}
+
+func loadStackName(t *testing.T) string {
+	w, err := workspace.New()
+	assert.NoError(t, err)
+	return w.Settings().Stack
+}
+
+func removeStack(t *testing.T, name string) {
+	b, err := currentBackend(display.Options{})
+	assert.NoError(t, err)
+	ref, err := b.ParseStackReference(name)
 	assert.NoError(t, err)
 	_, err = b.RemoveStack(context.Background(), ref, false)
 	assert.NoError(t, err)

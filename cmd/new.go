@@ -168,22 +168,6 @@ func runNew(args newArgs) error {
 		}
 	}
 
-	// If a stack was specified via --stack, see if it already exists.
-	var s backend.Stack
-	if args.stack != "" {
-		existingStack, existingName, existingDesc, err := getStack(args.stack, opts)
-		if err != nil {
-			return err
-		}
-		s = existingStack
-		if args.name == "" {
-			args.name = existingName
-		}
-		if args.description == "" {
-			args.description = existingDesc
-		}
-	}
-
 	// Show instructions, if we're going to show at least one prompt.
 	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
 	if !args.yes && hasAtLeastOnePrompt {
@@ -248,7 +232,8 @@ func runNew(args newArgs) error {
 	}
 
 	// Create the stack, if needed.
-	if !args.generateOnly && s == nil {
+	var s backend.Stack
+	if !args.generateOnly {
 		if s, err = promptAndCreateStack(args.prompt,
 			args.stack, args.name, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
