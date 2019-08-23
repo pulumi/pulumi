@@ -241,7 +241,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		assert.Contains(t, err.Error(), "no template selected")
 	})
 
-	t.Run("LocalTemplateNotFound", func(t *testing.T) {
+	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -260,7 +260,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 	})
 
-	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
+	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
