@@ -54,7 +54,6 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
 				buf.WriteString(fmt.Sprintf("title: %q\n", title))
-				buf.WriteString("expanded_url: /docs/reference/commands/\n")
 				buf.WriteString("---\n\n")
 				return buf.String()
 			}
