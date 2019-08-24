@@ -35,6 +35,7 @@ type MarshalOptions struct {
 	ElideAssetContents bool   // true if we are eliding the contents of assets.
 	ComputeAssetHashes bool   // true if we are computing missing asset hashes on the fly.
 	KeepSecrets        bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
+	RejectAssets       bool   // true if we should return errors on Asset and Archive values.
 }
 
 const (
@@ -118,8 +119,14 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			},
 		}, nil
 	} else if v.IsAsset() {
+		if opts.RejectAssets {
+			return nil, errors.New("unexpected Asset property value")
+		}
 		return MarshalAsset(v.AssetValue(), opts)
 	} else if v.IsArchive() {
+		if opts.RejectAssets {
+			return nil, errors.New("unexpected Asset Archive property value")
+		}
 		return MarshalArchive(v.ArchiveValue(), opts)
 	} else if v.IsObject() {
 		obj, err := MarshalProperties(v.ObjectValue(), opts)
@@ -287,6 +294,9 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 
 		switch sig {
 		case resource.AssetSig:
+			if opts.RejectAssets {
+				return nil, errors.New("unexpected Asset property value")
+			}
 			asset, isasset, err := resource.DeserializeAsset(objmap)
 			if err != nil {
 				return nil, err
@@ -302,6 +312,9 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			m := resource.NewAssetProperty(asset)
 			return &m, nil
 		case resource.ArchiveSig:
+			if opts.RejectAssets {
+				return nil, errors.New("unexpected Asset Archive property value")
+			}
 			archive, isarchive, err := resource.DeserializeArchive(objmap)
 			if err != nil {
 				return nil, err

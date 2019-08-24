@@ -7,6 +7,8 @@ CHANGELOG
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of
   `@pulumi/pulumi` and `1.0.0-beta.2` or earlier of the CLI.
+- Allow Un/MashalProperties to reject Asset and AssetArchive types. (partial fix
+  for https://github.com/pulumi/pulumi-kubernetes/issues/737)
 
 ## 1.0.0-beta.3 (2019-08-21)
 

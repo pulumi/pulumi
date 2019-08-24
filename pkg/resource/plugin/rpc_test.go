@@ -185,6 +185,44 @@ func TestComputedReject(t *testing.T) {
 	}
 }
 
+func TestAssetReject(t *testing.T) {
+	// Ensure that asset and archive properties produce errors when RejectAssets == true.
+
+	opts := MarshalOptions{RejectAssets: true}
+
+	text := "a test asset"
+	asset, err := resource.NewTextAsset(text)
+	assert.Nil(t, err)
+	{
+		assetProps, err := MarshalPropertyValue(resource.NewAssetProperty(asset), opts)
+		assert.NotNil(t, err)
+		assert.Nil(t, assetProps)
+	}
+	{
+		assetProps, err := MarshalPropertyValue(resource.NewAssetProperty(asset), MarshalOptions{})
+		assert.Nil(t, err)
+		assetPropU, err := UnmarshalPropertyValue(assetProps, opts)
+		assert.NotNil(t, err)
+		assert.Nil(t, assetPropU)
+	}
+
+	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
+	assert.Nil(t, err)
+	{
+		archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), opts)
+		assert.NotNil(t, err)
+		assert.Nil(t, archProps)
+	}
+	{
+		archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
+		assert.Nil(t, err)
+		archValue, err := UnmarshalPropertyValue(archProps, opts)
+		assert.NotNil(t, err)
+		assert.Nil(t, archValue)
+	}
+
+}
+
 func TestUnsupportedSecret(t *testing.T) {
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
