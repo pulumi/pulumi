@@ -8,8 +8,9 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-> See the [Get Started](https://www.pulumi.com/docs/quickstart/) guide to quickly get started with
-Pulumi on your platform and cloud of choice.
+<a href="https://www.pulumi.com/docs/get-started/" title="Get Started">
+    <img src="https://www.pulumi.com/images/get-started.svg" align="right">
+</a>
 
 **Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that use
 containers, serverless functions, hosted services, and infrastructure, on any cloud.
