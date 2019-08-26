@@ -298,12 +298,6 @@ func (rm *queryResmon) SupportsFeature(ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
 
 	hasSupport := false
-
-	switch req.Id {
-	case "secrets":
-		hasSupport = true
-	}
-
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
 	}, nil
