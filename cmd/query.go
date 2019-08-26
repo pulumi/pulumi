@@ -64,28 +64,12 @@ func newQueryCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			//
-			// TODO: Allow secret manager.
-			//
-
-			// sm, err := getStackSecretsManager(s)
-			// if err != nil {
-			// 	return result.FromError(errors.Wrap(err, "getting secrets manager"))
-			// }
-
-			// cfg, err := getStackConfiguration(s, sm)
-			// if err != nil {
-			// 	return result.FromError(errors.Wrap(err, "getting stack configuration"))
-			// }
-
 			opts.Engine = engine.UpdateOptions{}
 
 			res := b.Query(commandContext(), backend.QueryOperation{
-				Proj: proj,
-				Root: root,
-				Opts: opts,
-				// StackConfiguration: cfg,
-				// SecretsManager:     sm,
+				Proj:   proj,
+				Root:   root,
+				Opts:   opts,
 				Scopes: cancellationScopes,
 			})
 			switch {
