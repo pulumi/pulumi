@@ -21,6 +21,7 @@ import sys
 from typing import Optional, Awaitable, TYPE_CHECKING
 
 import grpc
+from ..log import warn
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ..errors import RunError
 
@@ -99,7 +100,11 @@ def is_test_mode_enabled() -> bool:
     """
     Returns true if test mode is enabled (PULUMI_TEST_MODE).
     """
-    return bool(SETTINGS.test_mode_enabled)
+    test_mode = bool(SETTINGS.test_mode_enabled)
+    if test_mode:
+        warn('PULUMI_TEST_MODE is deprecated, and will be removed soon; '+
+             'please see https://github.com/pulumi/pulumi/issues/3045 for details')
+    return test_mode
 
 
 def _set_test_mode_enabled(v: Optional[bool]):

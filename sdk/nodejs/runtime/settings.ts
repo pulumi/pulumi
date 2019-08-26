@@ -71,7 +71,12 @@ export function _setTestModeEnabled(val: boolean) {
  * Returns true if test mode is enabled (PULUMI_TEST_MODE).
  */
 export function isTestModeEnabled(): boolean {
-    return options.testModeEnabled === true;
+    if (options.testModeEnabled === true) {
+        log.warn("PULUMI_TEST_MODE is deprecated, and will be removed soon; " +
+            "please see https://github.com/pulumi/pulumi/issues/3045 for details");
+        return true;
+    }
+    return false;
 }
 
 /**
