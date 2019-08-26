@@ -141,7 +141,8 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options,
+	beginningOfSession time.Time) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -213,11 +214,14 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 		return nil, err
 	}
 
+	WelcomeUserIfNew(ctx, cloudURL, accessToken, beginningOfSession, opts)
+
 	return New(d, cloudURL)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options,
+	beginningOfSession time.Time) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -296,7 +300,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL)
+				return loginWithBrowser(ctx, d, cloudURL, opts, beginningOfSession)
 			}
 		}
 	}
@@ -314,7 +318,38 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 		return nil, err
 	}
 
+	WelcomeUserIfNew(ctx, cloudURL, accessToken, beginningOfSession, opts)
+
 	return New(d, cloudURL)
+}
+
+// WelcomeUserIfNew prints a Welcome to Pulumi if this is the first time the user has ever logged in.
+func WelcomeUserIfNew(ctx context.Context, cloudURL, accessToken string, beginningOfSession time.Time,
+	opts display.Options) {
+
+	isFirst, err := IsFirstSession(ctx, cloudURL, accessToken, beginningOfSession)
+	// Log any error, but ignore it an conservatively assume it was not their first session
+	if err != nil {
+		logging.V(7).Infof("Unable to determine whether this is the user's first session: %v", err)
+		isFirst = false
+	}
+	if isFirst {
+		fmt.Printf("\n")
+		fmt.Printf("\n")
+		fmt.Print(opts.Color.Colorize(colors.SpecHeadline + "  Welcome to Pulumi!" + colors.Reset + "\n"))
+		fmt.Printf("\n")
+		fmt.Printf("  Pulumi helps you create, deploy, and manage infrastructure on any cloud using" + "\n")
+		fmt.Printf("  your favorite language. You can get started today with Pulumi at:" + "\n")
+		fmt.Printf("\n")
+		fmt.Printf("      https://www.pulumi.com/docs/get-started/" + "\n")
+		fmt.Printf("\n")
+		fmt.Print(opts.Color.Colorize(colors.SpecSubHeadline + "  Tip of the day: " + colors.Reset))
+		fmt.Printf("Resources you create with Pulumi are given unique names (a randomly" + "\n")
+		fmt.Printf("  generated postfix) by default. To learn more about auto-naming or to customize this" + "\n")
+		fmt.Printf("  see: https://www.pulumi.com/docs/intro/concepts/programming-model/#autonaming." + "\n")
+		fmt.Printf("\n")
+		fmt.Printf("\n")
+	}
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -327,7 +362,7 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 
 	url := b.CloudConsoleURL(path)
 	if url == "" {
-		return "", errors.New("could not determine clould console URL")
+		return "", errors.New("could not determine cloud console URL")
 	}
 	return url, nil
 }
@@ -1250,6 +1285,30 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "getting user info from %v", cloudURL)
+	}
+
+	return true, nil
+}
+
+// IsFirstSession determines whether this is the first time the user has ever logged in to the
+// Pulumi CLI.  This is determined by looking up all the access tokens the user has allocated, and
+// determining whether any of them were used prior to this CLI session.  If so, then the user has
+// used the CLI (or API) before and hence this is not their first session.  The most likely way for
+// this to be "wrong" is if the user deletes all their existing API keys.  If they do that, then we
+// will treat them as a new user when they login for the first time.
+func IsFirstSession(ctx context.Context, cloudURL, accessToken string, beginningOfSession time.Time) (bool, error) {
+	tokens, err := client.NewClient(cloudURL, accessToken, cmdutil.Diag()).ListAccessTokens(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	for _, token := range tokens {
+		// If token.LastUsed is 0 then it has never been used.  Else if the time of use was before
+		// this CLI session started then it represents usage of the CLI or API in the past so this
+		// is not the first session.
+		if token.LastUsed != 0 && time.Unix(token.LastUsed, 0).Before(beginningOfSession) {
+			return false, nil
+		}
 	}
 
 	return true, nil

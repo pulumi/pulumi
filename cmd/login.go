@@ -123,7 +123,7 @@ func newLoginCmd() *cobra.Command {
 			if filestate.IsFileStateBackendURL(cloudURL) {
 				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
 			} else {
-				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions, BeginningOfSession)
 			}
 			if err != nil {
 				return errors.Wrapf(err, "problem logging in")

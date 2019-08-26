@@ -93,7 +93,7 @@ func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+	b, err := httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions, BeginningOfSession)
 	if err != nil {
 		return nil, err
 	}
