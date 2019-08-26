@@ -7,6 +7,7 @@ CHANGELOG
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of
   `@pulumi/pulumi` and `1.0.0-beta.2` or earlier of the CLI.
+- Deprecate `PULUMI_TEST_MODE`. See [#3045](https://github.com/pulumi/pulumi/issues/3045) for details.
 
 ## 1.0.0-beta.3 (2019-08-21)
 
