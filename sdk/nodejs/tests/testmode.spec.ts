@@ -25,8 +25,7 @@ class FakeResource extends CustomResource {
 }
 
 const testModeDisabledError = (err: Error) => {
-    return err.message === "Program run without the `pulumi` CLI; this may not be what you want " +
-        "(enable PULUMI_TEST_MODE to disable this error)";
+    return err.message === "Program run without the Pulumi engine available; re-run using the `pulumi` CLI";
 };
 
 describe("testMode", () => {
