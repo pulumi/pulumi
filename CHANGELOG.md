@@ -6,10 +6,14 @@ CHANGELOG
 - Print a Welcome to Pulumi message for users during interactive logins to the Pulumi CLI.
   [#3145](https://github.com/pulumi/pulumi/pull/3145)
 
+- Filter the list of templates shown by default during `pulumi new`.
+  [#3147](https://github.com/pulumi/pulumi/pull/3147)
+
 ## 1.0.0-beta.4 (2019-08-22)
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of
   `@pulumi/pulumi` and `1.0.0-beta.2` or earlier of the CLI.
+
 - Allow Un/MashalProperties to reject Asset and AssetArchive types. (partial fix
   for https://github.com/pulumi/pulumi-kubernetes/issues/737)
 
