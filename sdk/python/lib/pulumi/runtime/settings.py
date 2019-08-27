@@ -111,9 +111,7 @@ def _set_test_mode_enabled(v: Optional[bool]):
 
 def require_test_mode_enabled():
     if not is_test_mode_enabled():
-        raise RunError('Program run without the `pulumi` CLI; this may not be what you want '+
-                       '(enable PULUMI_TEST_MODE to disable this error)')
-
+        raise RunError('Program run without the Pulumi engine available; re-run using the `pulumi` CLI')
 
 def is_legacy_apply_enabled():
     return bool(SETTINGS.legacy_apply_enabled)
