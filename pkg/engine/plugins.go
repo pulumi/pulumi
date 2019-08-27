@@ -15,7 +15,6 @@
 package engine
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/blang/semver"
@@ -244,21 +243,17 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) (map[t
 			}
 
 			contract.Assertf(p.Version != nil, "p.Version should not be nil if sorting is correct!")
-			contract.Assertf(p.Version.GTE(*seenPlugin.Version),
-				"Should not have seen an older plugin if sorting is correct!\n  %s-%s %s\n  %s-%s - %s",
-				p.Name, p.Version.String(), p.Path,
-				seenPlugin.Name, seenPlugin.Version.String(), seenPlugin.Path)
-
-			if p.Version.EQ(*seenPlugin.Version) {
-				return nil, fmt.Errorf("two plugins had the same name and version.\n  %s-%s %s\n  %s-%s - %s",
-					p.Name, p.Version.String(), p.Path,
-					seenPlugin.Name, seenPlugin.Version.String(), seenPlugin.Path)
+			if p.Version != nil && p.Version.GT(*seenPlugin.Version) {
+				logging.V(preparePluginLog).Infof(
+					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
+					p, p.Name, seenPlugin.Version)
+				defaultProviderPlugins[tokens.Package(p.Name)] = p
+				continue
 			}
 
-			logging.V(preparePluginLog).Infof(
-				"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
-				p, p.Name, seenPlugin.Version)
-			defaultProviderPlugins[tokens.Package(p.Name)] = p
+			contract.Failf("Should not have seen an older plugin if sorting is correct!\n  %s-%s %s\n  %s-%s - %s",
+				p.Name, p.Version.String(), p.Path,
+				seenPlugin.Name, seenPlugin.Version.String(), seenPlugin.Path)
 		}
 
 		logging.V(preparePluginLog).Infof(
@@ -268,13 +263,13 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) (map[t
 
 	if logging.V(preparePluginLog) {
 		logging.V(preparePluginLog).Infoln("computeDefaultProviderPlugins(): summary of default plugins:")
+		for pkg, info := range defaultProviderPlugins {
+			logging.V(preparePluginLog).Infof("  %-15s = %s", pkg, info.Version)
+		}
 	}
 
 	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
 	for name, plugin := range defaultProviderPlugins {
-		if logging.V(preparePluginLog) {
-			logging.V(preparePluginLog).Infof("  %-15s = %s", name, plugin.Version)
-		}
 		defaultProviderVersions[name] = plugin.Version
 	}
 
