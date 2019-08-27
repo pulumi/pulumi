@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
 <a href="https://www.pulumi.com/docs/get-started/" title="Get Started">
-    <img src="https://www.pulumi.com/images/get-started.svg" align="right">
+    <img src="https://www.pulumi.com/images/get-started.svg" align="right" width="120">
 </a>
 
 **Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that use
