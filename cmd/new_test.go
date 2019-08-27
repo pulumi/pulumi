@@ -111,6 +111,27 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	removeStack(t, stackName)
 }
 
+func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), projectName, stackName)
+
+	var args = newArgs{
+		interactive:       false,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             fullStackName,
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.NoError(t, err)
+
+	assert.Equal(t, fullStackName, loadStackName(t))
+}
+
 func TestCreatingProjectWithDefaultName(t *testing.T) {
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
