@@ -197,17 +197,6 @@ func (pc *Client) ListStacks(
 	return resp.Stacks, nil
 }
 
-// ListAccessTokens lists all access tokens the current user has allocated.
-func (pc *Client) ListAccessTokens(ctx context.Context) ([]apitype.AccessToken, error) {
-
-	var resp apitype.ListAccessTokensResponse
-	if err := pc.restCall(ctx, "GET", "/api/user/tokens", nil, nil, &resp); err != nil {
-		return nil, err
-	}
-
-	return resp.Tokens, nil
-}
-
 var (
 	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
 	ErrNoPreviousDeployment = errors.New("no previous deployment")

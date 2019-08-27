@@ -46,9 +46,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// BeginningOfSession is the time at which the current CLI command began executing.
-var BeginningOfSession time.Time
-
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
 	var cwd string
@@ -80,8 +77,6 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			BeginningOfSession = time.Now().UTC()
-
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
