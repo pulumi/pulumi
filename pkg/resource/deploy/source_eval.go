@@ -238,9 +238,9 @@ type defaultProviders struct {
 	providers map[string]providers.Reference
 	config    plugin.ConfigSource
 
-	requests chan defaultProviderRequest
-	regChan  chan<- *registerResourceEvent
-	cancel   <-chan bool
+	requests        chan defaultProviderRequest
+	providerRegChan chan<- *registerResourceEvent
+	cancel          <-chan bool
 }
 
 type defaultProviderResponse struct {
@@ -333,7 +333,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 
 	select {
-	case d.regChan <- event:
+	case d.providerRegChan <- event:
 	case <-d.cancel:
 		return providers.Reference{}, context.Canceled
 	}
@@ -417,7 +417,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		providers:       make(map[string]providers.Reference),
 		config:          src.runinfo.Target,
 		requests:        make(chan defaultProviderRequest),
-		regChan:         regChan,
+		providerRegChan: regChan,
 		cancel:          cancel,
 	}
 
