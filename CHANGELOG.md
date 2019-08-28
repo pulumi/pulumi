@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 1.0.0-rc.1 (2019-08-28)
+
 - Print a Welcome to Pulumi message for users during interactive logins to the Pulumi CLI.
   [#3145](https://github.com/pulumi/pulumi/pull/3145)
 
