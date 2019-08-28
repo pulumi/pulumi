@@ -141,7 +141,7 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -212,6 +212,9 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 	if err = workspace.StoreAccessToken(cloudURL, accessToken, true); err != nil {
 		return nil, err
 	}
+
+	// Welcome the user since this was an interactive login.
+	WelcomeUser(opts)
 
 	return New(d, cloudURL)
 }
@@ -296,8 +299,11 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL)
+				return loginWithBrowser(ctx, d, cloudURL, opts)
 			}
+
+			// Welcome the user since this was an interactive login.
+			WelcomeUser(opts)
 		}
 	}
 
@@ -317,6 +323,27 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	return New(d, cloudURL)
 }
 
+// WelcomeUser prints a Welcome to Pulumi message.
+func WelcomeUser(opts display.Options) {
+	fmt.Printf(`
+
+  %s
+
+  Pulumi  helps you create, deploy, and manage infrastructure on any cloud using
+  your favorite language. You can get started today with Pulumi at:
+
+      https://www.pulumi.com/docs/get-started/
+
+  %s Resources you create with Pulumi are given unique names (a randomly
+  generated suffix) by default. To learn more about auto-naming or customizing resource
+  names see https://www.pulumi.com/docs/intro/concepts/programming-model/#autonaming.
+
+
+`,
+		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
+		opts.Color.Colorize(colors.SpecSubHeadline+"Tip of the day:"+colors.Reset))
+}
+
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -327,7 +354,7 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 
 	url := b.CloudConsoleURL(path)
 	if url == "" {
-		return "", errors.New("could not determine clould console URL")
+		return "", errors.New("could not determine cloud console URL")
 	}
 	return url, nil
 }

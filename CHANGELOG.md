@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Print a Welcome to Pulumi message for users during interactive logins to the Pulumi CLI.
+  [#3145](https://github.com/pulumi/pulumi/pull/3145)
+
 ## 1.0.0-beta.4 (2019-08-22)
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of
