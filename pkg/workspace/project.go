@@ -40,6 +40,8 @@ type ProjectTemplate struct {
 	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
 	// Config is an optional template config.
 	Config map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`
+	// Important indicates the template is important and should be listed by default.
+	Important bool `json:"important,omitempty" yaml:"important,omitempty"`
 }
 
 // ProjectTemplateConfigValue is a config value included in the project template manifest.

@@ -356,7 +356,7 @@ func newNewCmd() *cobra.Command {
 
 		// If we have any templates, show them.
 		if len(templates) > 0 {
-			available, _ := templatesToOptionArrayAndMap(templates)
+			available, _ := templatesToOptionArrayAndMap(templates, true)
 			fmt.Println("")
 			fmt.Println("Available Templates:")
 			for _, t := range available {
@@ -660,18 +660,39 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
+	showAll := false
+	var selectedOption workspace.Template
 
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: len(options),
-	}, &option, nil); err != nil {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
+	for {
+
+		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, showAll)
+
+		// If showAll was false and we got only a single result, force showAll to be true and try
+		// again.
+		if !showAll && len(options) <= 1 {
+			showAll = true
+			continue
+		}
+
+		var option string
+		if err := survey.AskOne(&survey.Select{
+			Message:  message,
+			Options:  options,
+			PageSize: len(options),
+		}, &option, nil); err != nil {
+			return workspace.Template{}, errors.New(chooseTemplateErr)
+		}
+
+		var has bool
+		selectedOption, has = optionToTemplateMap[option]
+		if has {
+			break
+		} else {
+			showAll = true
+		}
 	}
 
-	return optionToTemplateMap[option], nil
+	return selectedOption, nil
 }
 
 // parseConfig parses the config values passed via command line flags.
@@ -879,7 +900,9 @@ func promptForValue(
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
-func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map[string]workspace.Template) {
+func templatesToOptionArrayAndMap(templates []workspace.Template,
+	showAll bool) ([]string, map[string]workspace.Template) {
+
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
@@ -892,6 +915,10 @@ func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map
 	var options []string
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
+		// If showAll is false, then only include templates marked Important
+		if !showAll && !template.Important {
+			continue
+		}
 		// Create the option string that combines the name, padding, and description.
 		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
@@ -901,6 +928,12 @@ func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map
 		nameToTemplateMap[option] = template
 	}
 	sort.Strings(options)
+
+	if !showAll {
+		// If showAll is false, include an option to show all
+		option := "Show additional templates"
+		options = append(options, option)
+	}
 
 	return options, nameToTemplateMap
 }
