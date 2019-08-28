@@ -194,7 +194,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 // that the engine uses to determine which version of a particular provider to load.
 //
 // it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) (map[tokens.Package]*semver.Version, error) {
+func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]*semver.Version {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -273,5 +273,5 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) (map[t
 		defaultProviderVersions[name] = plugin.Version
 	}
 
-	return defaultProviderVersions, nil
+	return defaultProviderVersions
 }

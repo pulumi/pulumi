@@ -44,8 +44,7 @@ func TestDefaultProvidersSingle(t *testing.T) {
 		Kind:    workspace.ResourcePlugin,
 	})
 
-	defaultProviders, err := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
-	assert.Nil(t, err)
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
 	assert.NotNil(t, defaultProviders)
 
 	awsVer, ok := defaultProviders[tokens.Package("aws")]
@@ -74,8 +73,7 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 		Kind:    workspace.ResourcePlugin,
 	})
 
-	defaultProviders, err := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
-	assert.Nil(t, err)
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
 	assert.NotNil(t, defaultProviders)
 	awsVer, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -101,8 +99,7 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 		Kind:    workspace.ResourcePlugin,
 	})
 
-	defaultProviders, err := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
-	assert.Nil(t, err)
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
 	assert.NotNil(t, defaultProviders)
 	awsVer, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -123,8 +120,7 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 		Kind:    workspace.ResourcePlugin,
 	})
 
-	defaultProviders, err := computeDefaultProviderPlugins(languagePlugins, snapshotPlugins)
-	assert.Nil(t, err)
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, snapshotPlugins)
 	assert.NotNil(t, defaultProviders)
 	awsVer, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
