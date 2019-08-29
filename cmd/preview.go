@@ -148,9 +148,11 @@ func newPreviewCmd() *cobra.Command {
 		"Optional message to associate with the preview operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&policyPackPaths, "policy-pack", []string{},
-		"Run one or more analyzers as part of this update")
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringSliceVar(
+			&policyPackPaths, "policy-pack", []string{},
+			"Run one or more analyzers as part of this update")
+	}
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
