@@ -35,6 +35,7 @@ func newRefreshCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var diffDisplay bool
+	var eventLogPath string
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -80,6 +81,7 @@ func newRefreshCmd() *cobra.Command {
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				Type:                 displayType,
+				EventLogPath:         eventLogPath,
 				Debug:                debug,
 			}
 
@@ -158,6 +160,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().StringVar(
+		&eventLogPath, "event-log", "",
+		"Log events to a file at this path")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")

@@ -34,6 +34,7 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
 	var diffDisplay bool
+	var eventLogPath string
 	var jsonDisplay bool
 	var parallel int
 	var showConfig bool
@@ -80,6 +81,7 @@ func newPreviewCmd() *cobra.Command {
 					IsInteractive:        cmdutil.Interactive(),
 					Type:                 displayType,
 					JSONDisplay:          jsonDisplay,
+					EventLogPath:         eventLogPath,
 					Debug:                debug,
 				},
 			}
@@ -154,6 +156,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().StringVar(
+		&eventLogPath, "event-log", "",
+		"Log events to a file at this path")
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON")
