@@ -34,7 +34,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -64,6 +64,7 @@ type RuntimeValidationStackInfo struct {
 	Deployment   *apitype.DeploymentV3
 	RootResource apitype.ResourceV3
 	Outputs      map[string]interface{}
+	Events       []apitype.EngineEvent
 }
 
 // EditDir is an optional edit to apply to the example, as subsequent deployments.
@@ -532,12 +533,15 @@ type programTester struct {
 	yarnBin   string              // the `yarn` binary we are using.
 	goBin     string              // the `go` binary we are using.
 	pipenvBin string              // The `pipenv` binary we are using.
+	eventLog  string              // The path to the event log for this test.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
+	stackName := opts.GetStackName()
 	return &programTester{
-		t:    t,
-		opts: opts,
+		t:        t,
+		opts:     opts,
+		eventLog: path.Join(os.TempDir(), string(stackName)+"-events.json"),
 	}
 }
 
@@ -967,7 +971,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	expectNopUpdate bool) error {
 
 	preview := []string{"preview", "--non-interactive"}
-	update := []string{"up", "--non-interactive", "--skip-preview"}
+	update := []string{"up", "--non-interactive", "--skip-preview", "--event-log", pt.eventLog}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
@@ -1207,12 +1211,31 @@ func (pt *programTester) performExtraRuntimeValidation(
 		}
 	}
 
+	// Read the event log.
+	eventsFile, err := os.Open(pt.eventLog)
+	if err != nil && !os.IsNotExist(err) {
+		return errors.Wrapf(err, "expected to be able to open event log file %s", pt.eventLog)
+	}
+	defer contract.IgnoreClose(eventsFile)
+	decoder, events := json.NewDecoder(eventsFile), []apitype.EngineEvent{}
+	for {
+		var event apitype.EngineEvent
+		if err = decoder.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrapf(err, "decoding engine event")
+		}
+		events = append(events, event)
+	}
+
 	// Populate stack info object with all of this data to pass to the validation function
 	stackInfo := RuntimeValidationStackInfo{
 		StackName:    pt.opts.GetStackName(),
 		Deployment:   &deployment,
 		RootResource: rootResource,
 		Outputs:      outputs,
+		Events:       events,
 	}
 
 	fprintf(pt.opts.Stdout, "Performing extra runtime validation.\n")
