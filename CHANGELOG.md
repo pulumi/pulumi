@@ -11,6 +11,9 @@ CHANGELOG
 - Filter the list of templates shown by default during `pulumi new`.
   [#3147](https://github.com/pulumi/pulumi/pull/3147)
 
+- Fix a bug in the test-harness which would fail to create temp directories when the stack name was prefixed with `ORG_NAME/`
+  [#3164](https://github.com/pulumi/pulumi/pull/3164)
+
 ## 1.0.0-beta.4 (2019-08-22)
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of
