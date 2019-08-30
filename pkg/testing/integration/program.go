@@ -1060,7 +1060,8 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		}
 	} else {
 		// Create a new temporary directory
-		newDir, err := ioutil.TempDir("", pt.opts.StackName+"-")
+		newDir := os.TempDir() + pt.opts.StackName + "-"
+		err := os.MkdirAll(newDir, os.ModePerm)
 		if err != nil {
 			return errors.Wrapf(err, "Couldn't create new temporary directory")
 		}
@@ -1263,7 +1264,8 @@ func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) 
 		projdir = projinfo.Root
 	} else {
 		stackName := string(pt.opts.GetStackName())
-		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
+		targetDir := os.TempDir() + stackName + "-"
+		tempErr := os.MkdirAll(targetDir, os.ModePerm)
 		if tempErr != nil {
 			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
 		}
