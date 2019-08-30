@@ -31,6 +31,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -172,8 +173,24 @@ type ProgramTestOptions struct {
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
 	RunBuild bool
-	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
-	RunUpdateTest bool
+	// RunLatestUpdateTest runs an additional test alongside the main
+	// test to check that the package update path for existing stacks has no errors.
+	//
+	// It creates a stack with the package dependencies installed, and then
+	// installs the latest public version for any dependency overrides. Then
+	// it updates the stack's dependency overrides to use their locally
+	// built versions instead, and runs a test preview and update to check that
+	// no errors exist.
+	//
+	// It will specifically:
+	// - `yarn install` / `pip install -r requirements.txt` the package dependencies.
+	// - `yarn add` / `pip install` the override dependencies directly, using
+	// the latest package versions available in the public registries (e.g. NPM and PyPI).
+	// - Run an updated test life cycle:
+	//   - Run usual `testPreviewUpdateAndEdits()`.
+	//   - `yarn link` / `pip install -e` the override dependencies using their locally built versions.
+	//   - Run `testPreviewUpdateAndEdits()` on the stack using the locally built dependencies.
+	RunLatestUpdateTest bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
@@ -363,10 +380,16 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
 	}
-	if overrides.RunUpdateTest {
-		opts.RunUpdateTest = overrides.RunUpdateTest
+	if overrides.RunLatestUpdateTest {
+		opts.RunLatestUpdateTest = overrides.RunLatestUpdateTest
 	}
 	return opts
+}
+
+// Create a copy of ProgramTestOptions.
+func (opts *ProgramTestOptions) Copy() *ProgramTestOptions {
+	o := *opts
+	return &o
 }
 
 type regexFlag struct {
@@ -509,9 +532,46 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
 	}
 
-	pt := newProgramTester(t, opts)
-	err := pt.testLifeCycleInitAndDestroy()
-	assert.NoError(t, err)
+	// Make a copy of the test options to use on the latest-update test.
+	// Also, override the main test options s.t it runs a normal test lifecycle.
+	var latestOpts *ProgramTestOptions
+	if opts.RunLatestUpdateTest {
+		latestOpts = opts.Copy()
+		opts.RunLatestUpdateTest = false
+	}
+
+	type testRunOptions struct {
+		overrideStackName string
+		options           *ProgramTestOptions
+	}
+
+	tests := []testRunOptions{
+		testRunOptions{
+			options: opts,
+		},
+	}
+
+	if latestOpts != nil {
+		tests = append(tests, testRunOptions{
+			overrideStackName: fmt.Sprintf("%s-%s", latestOpts.GetStackName(), "latest-update-test"),
+			options:           latestOpts,
+		})
+	}
+
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(tests))
+
+	for _, test := range tests {
+		go func(t *testing.T, overrideStackName string, o *ProgramTestOptions) {
+			defer waitGroup.Done()
+			o.StackName = overrideStackName
+			pt := newProgramTester(t, o)
+			err := pt.testLifeCycleInitAndDestroy()
+			assert.NoError(t, err)
+		}(t, test.overrideStackName, test.options)
+	}
+
+	waitGroup.Wait()
 }
 
 // fprintf works like fmt.FPrintf, except it explicitly drops the return values. This keeps the linters happy, since
@@ -766,15 +826,19 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
-	if pt.opts.RunUpdateTest {
+	if pt.opts.RunLatestUpdateTest {
+		fprintf(pt.opts.Stdout, "Performing latest-update test on dependencies: "+
+			"updating from the latest public versions of the dependencies, "+
+			"to using the locally linked versions.\n")
 
-		err = upgradeProjectDeps(projdir, pt)
-		if err != nil {
-			return errors.Wrap(err, "upgrading project dependencies")
+		// `yarn link` / `pip install -e` the local build dependency.
+		if err = installLocalProjectDeps(projdir, pt); err != nil {
+			return errors.Wrap(err, "locally installing project dependencies for latest-update test")
 		}
 
+		// Run preview & update on the local dependencies.
 		if err = pt.testPreviewUpdateAndEdits(projdir); err != nil {
-			return errors.Wrap(err, "running test preview, update, and edits")
+			return errors.Wrap(err, "running test preview, update, and edits on latest-update test")
 		}
 	}
 
@@ -782,7 +846,7 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 	return nil
 }
 
-func upgradeProjectDeps(projectDir string, pt *programTester) error {
+func installLocalProjectDeps(projectDir string, pt *programTester) error {
 	projInfo, err := pt.getProjinfo(projectDir)
 	if err != nil {
 		return errors.Wrap(err, "getting project info")
@@ -790,11 +854,11 @@ func upgradeProjectDeps(projectDir string, pt *programTester) error {
 
 	switch rt := projInfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
-		if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+		if err = pt.installLocalYarnPackageDeps(projectDir); err != nil {
 			return err
 		}
 	case PythonRuntime:
-		if err = pt.installPipPackageDeps(projectDir); err != nil {
+		if err = pt.installLocalPipPackageDeps(projectDir); err != nil {
 			return err
 		}
 	default:
@@ -1374,8 +1438,14 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	if !pt.opts.RunUpdateTest {
-		if err = pt.yarnLinkPackageDeps(cwd); err != nil {
+	if !pt.opts.RunLatestUpdateTest {
+		fprintf(pt.opts.Stdout, "Performing install of local versions of dependencies\n")
+		if err = pt.installLocalYarnPackageDeps(cwd); err != nil {
+			return err
+		}
+	} else {
+		fprintf(pt.opts.Stdout, "Performing install of latest versions of dependencies for latest-update test\n")
+		if err = pt.installLatestYarnPackageDeps(cwd); err != nil {
 			return err
 		}
 	}
@@ -1443,8 +1513,14 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	if !pt.opts.RunUpdateTest {
-		if err = pt.installPipPackageDeps(cwd); err != nil {
+	if !pt.opts.RunLatestUpdateTest {
+		fprintf(pt.opts.Stdout, "Performing install of local versions of dependencies")
+		if err = pt.installLocalPipPackageDeps(cwd); err != nil {
+			return err
+		}
+	} else {
+		fprintf(pt.opts.Stdout, "Performing install of latest versions of dependencies for latest-update test")
+		if err = pt.installLatestPipPackageDeps(cwd); err != nil {
 			return err
 		}
 	}
@@ -1452,7 +1528,7 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
-func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
+func (pt *programTester) installLocalYarnPackageDeps(cwd string) error {
 	for _, dependency := range pt.opts.Dependencies {
 		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
 			return err
@@ -1462,7 +1538,7 @@ func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
 	return nil
 }
 
-func (pt *programTester) installPipPackageDeps(cwd string) error {
+func (pt *programTester) installLocalPipPackageDeps(cwd string) error {
 	var err error
 	for _, dep := range pt.opts.Dependencies {
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
@@ -1475,6 +1551,27 @@ func (pt *programTester) installPipPackageDeps(cwd string) error {
 		}
 
 		err := pt.runPipenvCommand("pipenv-install-package", []string{"run", "pip", "install", "-e", dep}, cwd)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *programTester) installLatestYarnPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		if err := pt.runYarnCommand("yarn-add", []string{"add", dependency}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *programTester) installLatestPipPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		err := pt.runPipenvCommand("pipenv-install-package", []string{"run", "pip", "install", dependency}, cwd)
 		if err != nil {
 			return err
 		}
