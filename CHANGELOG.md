@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Refactor RunLatestUpdateTest in testing framework
+  [#3168](https://github.com/pulumi/pulumi/pull/3168)
+
 ## 1.0.0-rc.1 (2019-08-28)
 
 - Print a Welcome to Pulumi message for users during interactive logins to the Pulumi CLI.
