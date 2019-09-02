@@ -836,8 +836,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		loginArgs := []string{"login"}
 		loginArgs = addFlagIfNonNil(loginArgs, "--cloud-url", pt.opts.CloudURL)
 
-		// If this is a local login, then don't attach the owner to the stack-name.
-		if strings.HasPrefix(pt.opts.CloudURL, "file://") {
+		// If this is a local OR cloud login, then don't attach the owner to the stack-name.
+		if pt.opts.CloudURL != "" {
 			stackInitName = string(pt.opts.GetStackName())
 		}
 
