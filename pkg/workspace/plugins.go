@@ -631,17 +631,28 @@ func getCandidateExtensions() []string {
 	return []string{""}
 }
 
-// pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].
+// pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
 		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
 		"v(?P<Version>.*)$") // VERSION
+
+// installingPluginRegexp matches the name of folders for plugins which are being installed. During installation
+// we extract plugins to a folder with a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number, from
+// ioutil.TempFile. We should ignore these plugins as they have not yet been successfully installed.
+var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
 func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 	// Only directories contain plugins.
 	if !file.IsDir() {
 		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
+		return "", "", semver.Version{}, false
+	}
+
+	// Ignore plugins which are being installed
+	if installingPluginRegexp.MatchString(file.Name()) {
+		logging.V(11).Infof("skipping plugin %s which is being installed", file.Name())
 		return "", "", semver.Version{}, false
 	}
 
