@@ -15,6 +15,7 @@
 import { util } from "protobufjs";
 import { ResourceError, RunError } from "./errors";
 import { all, Input, Inputs, interpolate, Output, output } from "./output";
+import { getStackResource } from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
@@ -142,10 +143,21 @@ export abstract class Resource {
 
     /**
      * @internal
+     * A collection of transformations to apply as part of resource registration.
+     *
+     * Note: This is marked optional only because older versions of this library may not have had
+     * this property, and marking optional forces consumers of the property to defensively handle
+     * cases where they are passed "old" resources.
+     */
+    // tslint:disable-next-line:variable-name
+    __transformations?: ResourceTransformation[];
+
+    /**
+     * @internal
      * A list of aliases applied to this resource.
      *
      * Note: This is marked optional only because older versions of this library may not have had
-     * this property, and marking optional forces conumers of the property to defensively handle
+     * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
@@ -156,7 +168,7 @@ export abstract class Resource {
      * The name assigned to the resource at construction.
      *
      * Note: This is marked optional only because older versions of this library may not have had
-     * this property, and marking optional forces conumers of the property to defensively handle
+     * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
@@ -268,6 +280,10 @@ export abstract class Resource {
                 : convertToProvidersMap((<ComponentResourceOptions>opts).providers);
             this.__providers = { ...this.__providers, ...providers };
         }
+
+        // Combine transformations inherited from the parent with transformations provided in opts.
+        const parent = opts.parent || getStackResource() || { __transformations: undefined };
+        this.__transformations = [...(parent.__transformations || []), ...(opts.transformations || [])];
 
         this.__protect = !!opts.protect;
 
@@ -389,10 +405,10 @@ export interface Alias {
 
 // collapseAliasToUrn turns an Alias into a URN given a set of default data
 function collapseAliasToUrn(
-        alias: Input<Alias | string>,
-        defaultName: string,
-        defaultType: string,
-        defaultParent: Resource | undefined): Output<URN> {
+    alias: Input<Alias | string>,
+    defaultName: string,
+    defaultType: string,
+    defaultParent: Resource | undefined): Output<URN> {
 
     return output(alias).apply(a => {
         if (typeof a === "string") {
@@ -466,6 +482,10 @@ export interface ResourceOptions {
      * An optional customTimeouts configuration block.
      */
     customTimeouts?: CustomTimeouts;
+    /**
+     * Optional list of transformations to apply to this resource during construction.
+     */
+    transformations?: ResourceTransformation[];
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
@@ -485,6 +505,9 @@ export interface CustomTimeouts {
      */
     delete?: string;
 }
+
+export type ResourceTransformation =
+    (type: string, name: string, props: Inputs, opts: ResourceOptions) => { props: Inputs, opts: ResourceOptions } | undefined;
 
 /**
  * CustomResourceOptions is a bag of optional settings that control a custom resource's behavior.

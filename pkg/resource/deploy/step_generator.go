@@ -341,15 +341,13 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	if hasOld {
 		contract.Assert(old != nil)
 		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
-		if err != nil {
-			// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
-			// report the message contained in the error.
-			if _, ok := err.(plugin.DiffUnavailableError); ok {
-				diff = plugin.DiffResult{Changes: plugin.DiffSome}
-				sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
-			} else {
-				return nil, result.FromError(err)
-			}
+		// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
+		// report the message contained in the error.
+		if _, ok := err.(plugin.DiffUnavailableError); ok {
+			diff = plugin.DiffResult{Changes: plugin.DiffSome}
+			sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
+		} else if err != nil {
+			return nil, result.FromError(err)
 		}
 
 		// Ensure that we received a sensible response.
