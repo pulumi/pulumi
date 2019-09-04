@@ -34,6 +34,8 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         "${ROOT}/sdk/python/env/src/dist"/*.whl
 
     "${ROOT}/scripts/build-and-publish-docker" "${NPM_VERSION}"
+
+    "${ROOT}/scripts/build-docs.sh"
 fi
 
 exit 0
