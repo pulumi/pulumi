@@ -16,6 +16,10 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]] && [[ ! -z "${TRAVIS_TAG:-}" ]
     cd "$(go env GOPATH)/src/github.com/pulumi/docs"
     make ensure
 
+    go get -u github.com/cbroglie/mustache
+    go get -u github.com/gobuffalo/packr
+    go get -u github.com/pkg/errors
+
     # Regenerate the Node.JS SDK docs
     PKGS=pulumi NOBUILD=true ./scripts/run_typedoc.sh
 
@@ -30,7 +34,7 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]] && [[ ! -z "${TRAVIS_TAG:-}" ]
 
     # Update the version list
     NL=$'\n' 
-    sed -e "s/<tbody>/<tbody>\\${NL}        {{< changelog-table-row version=\"${VERSION}\" date=\"$(date +%Y-%m-%d)\" >}}/" -i "" content/docs/get-started/install/versions.md
+    sed -e "s/<tbody>/<tbody>\\${NL}        {{< changelog-table-row version=\"${VERSION}\" date=\"$(date +%Y-%m-%d)\" >}}/" -i ./content/docs/get-started/install/versions.md
 
     # Commit the resulting changes
     git checkout -b "pulumi/${TRAVIS_JOB_NUMBER}"
