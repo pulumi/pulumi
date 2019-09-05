@@ -50,10 +50,18 @@ type tokenSource struct {
 	done     chan bool
 }
 
+func debugPrint(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+
+	fmt.Printf("**** [%v]: %s\n", time.Now(), msg)
+}
+
 func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
+	debugPrint("newTokenSource initialized.")
 
 	// Perform an initial lease renewal.
+	debugPrint("First call to RenewUpdateLease")
 	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
 	if err != nil {
 		return nil, err
@@ -61,14 +69,29 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 
 	requests, done := make(chan tokenRequest), make(chan bool)
 	go func() {
+		debugPrint("Started newTokenSource goroutine")
 		// We will renew the lease after 50% of the duration has elapsed to allow more time for retries.
+		// DEBUGGING: "It adjusts the intervals or drops ticks to make up for slow receivers."
 		ticker := time.NewTicker(duration / 2)
-		defer ticker.Stop()
+		defer func() {
+			debugPrint("Stopping the ticker")
+			ticker.Stop()
+		}()
 
 		for {
+			// https://golang.org/ref/spec#Select_statements
+			// If one or more of the communications can proceed, a single one that can proceed is chosen via
+			// a uniform pseudo-random selection. Otherwise, if there is a default case, that case is chosen.
+			// If there is no default case, the "select" statement blocks until at least one of the communications
+			// can proceed.
 			select {
+			// Why isn't this ticker firing at the 2.5m mark? Instead it looks like that tick is "dropped". But why?
+			// Could it be that "c, ok <-requests" is literally taking up all the time for this goroutine until the
+			// _next_ tick at the 5m mark, at which point it is too late?
 			case <-ticker.C:
+				debugPrint("Ticker fired. Requesting new lease token")
 				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
+				debugPrint("Returned error: %v", err)
 				if err != nil {
 					ticker.Stop()
 				} else {
@@ -76,6 +99,7 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 				}
 
 			case c, ok := <-requests:
+				debugPrint("Got request for new update token... (current error: %v)", err)
 				if !ok {
 					close(done)
 					return
@@ -94,11 +118,13 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 }
 
 func (ts *tokenSource) Close() {
+	debugPrint("Closing token source")
 	close(ts.requests)
 	<-ts.done
 }
 
 func (ts *tokenSource) GetToken() (string, error) {
+	debugPrint("Call to GetToken")
 	ch := make(chan tokenResponse)
 	ts.requests <- ch
 	resp := <-ch

@@ -841,6 +841,7 @@ func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
+	debugPrint("Starting runEngineAction %+v", update)
 
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -889,6 +890,7 @@ func (b *cloudBackend) runEngineAction(
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
 
+	debugPrint("Starting engine operation")
 	var changes engine.ResourceChanges
 	var res result.Result
 	switch kind {
@@ -905,6 +907,7 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	// Wait for dependent channels to finish processing engineEvents before closing.
+	debugPrint("Waiting for displayDone signal")
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
@@ -912,6 +915,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
+	debugPrint("Waiting for eventsDone signal")
 	<-eventsDone
 	close(displayEvents)
 
@@ -920,6 +924,8 @@ func (b *cloudBackend) runEngineAction(
 	if res != nil {
 		status = apitype.UpdateStatusFailed
 	}
+
+	debugPrint("Completing the update")
 	completeErr := u.Complete(status)
 	if completeErr != nil {
 		res = result.Merge(res, result.FromError(errors.Wrap(completeErr, "failed to complete update")))
