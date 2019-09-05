@@ -183,7 +183,7 @@ func NewArchiveProperty(v *Archive) PropertyValue      { return PropertyValue{v}
 func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
-func NewSecretProperty(v Secret) PropertyValue         { return PropertyValue{v} }
+func NewSecretProperty(v *Secret) PropertyValue        { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
 	return NewComputedProperty(Computed{Element: v})
@@ -194,7 +194,7 @@ func MakeOutput(v PropertyValue) PropertyValue {
 }
 
 func MakeSecret(v PropertyValue) PropertyValue {
-	return NewSecretProperty(Secret{Element: v})
+	return NewSecretProperty(&Secret{Element: v})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
@@ -248,7 +248,7 @@ func NewPropertyValueRepl(v interface{},
 		return NewComputedProperty(t)
 	case Output:
 		return NewOutputProperty(t)
-	case Secret:
+	case *Secret:
 		return NewSecretProperty(t)
 	}
 
@@ -373,7 +373,7 @@ func (v PropertyValue) Input() Computed { return v.V.(Computed) }
 func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
 
 // SecretValue fetches the underlying secret value (panicking if it isn't a secret).
-func (v PropertyValue) SecretValue() Secret { return v.V.(Secret) }
+func (v PropertyValue) SecretValue() *Secret { return v.V.(*Secret) }
 
 // IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
@@ -436,7 +436,7 @@ func (v PropertyValue) IsOutput() bool {
 
 // IsSecret returns true if the underlying value is a secret value.
 func (v PropertyValue) IsSecret() bool {
-	_, is := v.V.(Secret)
+	_, is := v.V.(*Secret)
 	return is
 }
 

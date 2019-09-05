@@ -14,6 +14,8 @@
 package secrets
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
 
@@ -32,4 +34,21 @@ type Manager interface {
 	// Decrypter returns a `config.Decrypter` that can be used to decrypt values when deserializing a snapshot from a
 	// deployment, or an error if one can not be constructed.
 	Decrypter() (config.Decrypter, error)
+}
+
+// AreCompatible returns true if the two Managers are of the same type and have the same state.
+func AreCompatible(a, b Manager) bool {
+	if a.Type() != b.Type() {
+		return false
+	}
+
+	as, err := json.Marshal(a.State())
+	if err != nil {
+		return false
+	}
+	bs, err := json.Marshal(b.State())
+	if err != nil {
+		return false
+	}
+	return string(as) == string(bs)
 }

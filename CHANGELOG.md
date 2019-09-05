@@ -9,6 +9,9 @@ CHANGELOG
   [#3239](https://github.com/pulumi/pulumi/pull/3239)
 - `pulumi refresh` can now be scoped to refresh a subset of resources by adding a `--target urn` or
   `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
+- Avoid re-encrypting secret values on each checkpoint write. These changes should improve update times for stacks
+  that contain secret values.
+  [#3183](https://github.com/pulumi/pulumi/pull/3183)
 
 ## 1.1.0 (2019-09-11)
 

@@ -19,6 +19,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/secrets/cloud"
@@ -61,5 +63,83 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 		return nil, errors.Wrapf(err, "constructing secrets manager of type %q", ty)
 	}
 
-	return sm, nil
+	return NewCachingSecretsManager(sm), nil
+}
+
+type cacheEntry struct {
+	plaintext  string
+	ciphertext string
+}
+
+type cachingSecretsManager struct {
+	manager secrets.Manager
+	cache   map[*resource.Secret]cacheEntry
+}
+
+func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
+	return &cachingSecretsManager{
+		manager: manager,
+		cache:   make(map[*resource.Secret]cacheEntry),
+	}
+}
+
+func (csm *cachingSecretsManager) Type() string {
+	return csm.manager.Type()
+}
+
+func (csm *cachingSecretsManager) State() interface{} {
+	return csm.manager.State()
+}
+
+func (csm *cachingSecretsManager) Encrypter() (config.Encrypter, error) {
+	enc, err := csm.manager.Encrypter()
+	if err != nil {
+		return nil, err
+	}
+	return &cachingCrypter{
+		encrypter: enc,
+		cache:     csm.cache,
+	}, nil
+}
+
+func (csm *cachingSecretsManager) Decrypter() (config.Decrypter, error) {
+	dec, err := csm.manager.Decrypter()
+	if err != nil {
+		return nil, err
+	}
+	return &cachingCrypter{
+		decrypter: dec,
+		cache:     csm.cache,
+	}, nil
+}
+
+type cachingCrypter struct {
+	encrypter config.Encrypter
+	decrypter config.Decrypter
+	cache     map[*resource.Secret]cacheEntry
+}
+
+func (c *cachingCrypter) EncryptValue(plaintext string) (string, error) {
+	return c.encrypter.EncryptValue(plaintext)
+}
+
+func (c *cachingCrypter) DecryptValue(ciphertext string) (string, error) {
+	return c.decrypter.DecryptValue(ciphertext)
+}
+
+func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
+	entry, ok := c.cache[secret]
+	if ok && entry.plaintext == plaintext {
+		return entry.ciphertext, nil
+	}
+	ciphertext, err := c.encrypter.EncryptValue(plaintext)
+	if err != nil {
+		return "", err
+	}
+	c.insert(secret, plaintext, ciphertext)
+	return ciphertext, nil
+}
+
+func (c *cachingCrypter) insert(secret *resource.Secret, plaintext, ciphertext string) {
+	c.cache[secret] = cacheEntry{plaintext, ciphertext}
 }
