@@ -12,7 +12,7 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]] && [[ ! -z "${TRAVIS_TAG:-}" ]
     echo "Building SDK docs for version ${VERSION}:"
 
     # Clone the repo and fetch its dependencies.
-    # git clone "https://github.com/pulumi/docs.git" "$(go env GOPATH)/src/github.com/pulumi/docs"
+    git clone "https://github.com/pulumi/docs.git" "$(go env GOPATH)/src/github.com/pulumi/docs"
     cd "$(go env GOPATH)/src/github.com/pulumi/docs"
     make ensure
 
