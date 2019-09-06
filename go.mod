@@ -17,7 +17,6 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.1
 	github.com/google/go-querystring v1.0.0
-	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20171105060200-01f8541d5372
 	github.com/hashicorp/go-multierror v1.0.0
@@ -29,13 +28,10 @@ require (
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/mitchellh/go-ps v0.0.0-20170309133038-4fdf99ab2936
 	github.com/nbutton23/zxcvbn-go v0.0.0-20171102151520-eafdab6b0663
-	github.com/onsi/ginkgo v1.7.0 // indirect
-	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pkg/errors v0.8.1
 	github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54
 	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.0.0
 	github.com/sirupsen/logrus v1.3.0 // indirect
@@ -51,6 +47,7 @@ require (
 	golang.org/x/crypto v0.0.0-20190422183909-d864b10871cd
 	golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7 // indirect
 	google.golang.org/api v0.5.0
 	google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8
 	google.golang.org/grpc v1.20.1
