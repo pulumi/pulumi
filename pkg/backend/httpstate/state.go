@@ -78,6 +78,8 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 			ticker.Stop()
 		}()
 
+		aliveTicker := time.NewTicker(30 * time.Second)
+
 		for {
 			// https://golang.org/ref/spec#Select_statements
 			// If one or more of the communications can proceed, a single one that can proceed is chosen via
@@ -85,6 +87,8 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 			// If there is no default case, the "select" statement blocks until at least one of the communications
 			// can proceed.
 			select {
+			case <-aliveTicker.C:
+				debugPrint("The alive ticker has ticked...")
 			// Why isn't this ticker firing at the 2.5m mark? Instead it looks like that tick is "dropped". But why?
 			// Could it be that "c, ok <-requests" is literally taking up all the time for this goroutine until the
 			// _next_ tick at the 5m mark, at which point it is too late?
@@ -598,6 +602,7 @@ func persistEngineEvents(
 		for eventBatch := range batchesToTransmit {
 			err := update.recordEngineEvents(eventBatch.sequenceStart, eventBatch.events)
 			if err != nil {
+				debugPrint("Error recording engine events: %v", err)
 				logging.V(3).Infof("error recording engine events: %s", err)
 			}
 		}
@@ -647,12 +652,14 @@ func persistEngineEvents(
 
 			eventBatch = append(eventBatch, e)
 			if len(eventBatch) >= maxEventsToTransmit {
+				debugPrint("transmitting batch of engine vents (%d > %d)", len(eventBatch), maxEventsToTransmit)
 				transmitBatch()
 			}
 
 		case <-maxDelayTicker.C:
 			// If the ticker has fired, send any batched events. This sets an upper bound for
 			// the delay between the event being observed and persisted.
+			debugPrint("maxDelayTicker ticked. Transmitting any buffered EE.")
 			transmitBatch()
 		}
 
@@ -662,6 +669,7 @@ func persistEngineEvents(
 	}
 
 	// Transmit any lingering events.
+	debugPrint("Printing any lintering events post-cancelation")
 	transmitBatch()
 	// Closing the batchesToTransmit channel will signal the worker persistence routines to
 	// terminate, which will trigger the `wg` WaitGroup to be marked as complete, which will
