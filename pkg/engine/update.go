@@ -79,7 +79,10 @@ type ResourceChanges map[deploy.StepOp]int
 func (changes ResourceChanges) HasChanges() bool {
 	var c int
 	for op, count := range changes {
-		if op != deploy.OpSame {
+		if op != deploy.OpSame &&
+			op != deploy.OpRead &&
+			op != deploy.OpReadDiscard &&
+			op != deploy.OpReadReplacement {
 			c += count
 		}
 	}
