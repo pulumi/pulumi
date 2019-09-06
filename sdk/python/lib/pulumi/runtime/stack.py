@@ -35,10 +35,6 @@ async def run_in_stack(func: Callable):
     """
     try:
         Stack(func)
-
-        # If an exception occurred when doing an RPC, this await will propegate the exception
-        # to the main thread.
-        await RPC_MANAGER.unhandled_exeception()
     finally:
         log.debug("Waiting for outstanding RPCs to complete")
 
@@ -47,10 +43,10 @@ async def run_in_stack(func: Callable):
         #
         # Note that "asyncio.sleep(0)" is the blessed way to do this:
         # https://github.com/python/asyncio/issues/284#issuecomment-154180935
-        await asyncio.sleep(0)
-
-        # Wait for all outstanding RPCs to retire.
-        await RPC_MANAGER.wait_for_outstanding_rpcs()
+        while True:
+            await asyncio.sleep(0)
+            if RPC_MANAGER.count == 0:
+                break
 
         # Asyncio event loops require that all outstanding tasks be completed by the time that the
         # event loop closes. If we're at this point and there are no outstanding RPCs, we should
@@ -71,6 +67,9 @@ async def run_in_stack(func: Callable):
 
         # Once we get scheduled again, all tasks have exited and we're good to go.
         log.debug("run_in_stack completed")
+
+    if RPC_MANAGER.unhandled_exception is not None:
+        raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
 
 class Stack(ComponentResource):
