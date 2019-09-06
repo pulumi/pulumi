@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix build on Go 1.13
+- Run go mod tidy
+
 ## 1.0.0 (2019-09-03)
 
 - No significant changes.
