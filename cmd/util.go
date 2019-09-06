@@ -102,16 +102,14 @@ func createStack(
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	// As part of creating the stack, we also need to configure the secrets provider for the stack. Today, we only
-	// have to do this configuration step when you are using the passphrase provider (which is used for all filestate,
-	// stacks and well as httpstate stacks that opted into this by passing --secrets-provider passphrase
-	// while initialing a stack).  The only other supported provider today (the provider that uses the pulumi service
-	// does not need to be initialized explicitly, as creating the stack inside the Pulumi service does this).
-	if _, ok := b.(filestate.Backend); ok || secretsProvider == "passphrase" {
+	// As part of creating the stack, we also need to configure the secrets provider for the stack. We only
+	// have to do this configuration step when you are using the passphrase provider and httpstate stacks that opted
+	// into this by passing --secrets-provider passphrase, or default
+	if secretsProvider == "" || secretsProvider == "default" || secretsProvider == "passphrase" {
 		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
 			return nil, pharseErr
 		}
-	} else if secretsProvider != "" && secretsProvider != "default" {
+	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
 		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
