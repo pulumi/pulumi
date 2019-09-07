@@ -6,6 +6,9 @@ CHANGELOG
 - Fix a bug that caused the Python runtime to ignore unhandled exceptions and erroneously report that a Pulumi program executed successfully.
   [#3170](https://github.com/pulumi/pulumi/pull/3170)
 
+- Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.). 
+  [#3198](https://github.com/pulumi/pulumi/pull/3198)
+
 ## 1.0.0 (2019-09-03)
 
 - No significant changes.
