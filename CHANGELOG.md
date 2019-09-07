@@ -5,6 +5,8 @@ CHANGELOG
 
 - Fix a bug that caused the Python runtime to ignore unhandled exceptions and erroneously report that a Pulumi program executed successfully.
   [#3170](https://github.com/pulumi/pulumi/pull/3170)
+- Read operations are no longer considered changes for the purposes of `--expect-no-changes`.
+  [#3197](https://github.com/pulumi/pulumi/pull/3197)
 
 ## 1.0.0 (2019-09-03)
 
