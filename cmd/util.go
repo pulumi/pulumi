@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -109,9 +110,9 @@ func createStack(
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
 		// The default when using the filestate backend is the passphrase secrets provider
-		secretsProvider = "passphrase"
+		secretsProvider = passphrase.Type
 	}
-	if secretsProvider == "passphrase" {
+	if secretsProvider == passphrase.Type {
 		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
 			return nil, pharseErr
 		}
