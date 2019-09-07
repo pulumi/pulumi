@@ -54,6 +54,7 @@ func newUpCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
 	var diffDisplay bool
+	var eventLogPath string
 	var parallel int
 	var refresh bool
 	var showConfig bool
@@ -335,6 +336,7 @@ func newUpCmd() *cobra.Command {
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				Type:                 displayType,
+				EventLogPath:         eventLogPath,
 				Debug:                debug,
 			}
 
@@ -404,6 +406,11 @@ func newUpCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
 
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }
 

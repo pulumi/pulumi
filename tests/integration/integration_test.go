@@ -106,6 +106,32 @@ func TestEngineEventPerf(t *testing.T) {
 	})
 }
 
+// TestEngineEvents ensures that the test framework properly records and reads engine events.
+func TestEngineEvents(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "single_resource",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure that we have a non-empty list of events.
+			assert.NotEmpty(t, stackInfo.Events)
+
+			// Ensure that we have two "ResourcePre" events: one for the stack and one for our resource.
+			preEventResourceTypes := []string{}
+			for _, e := range stackInfo.Events {
+				if e.ResourcePreEvent != nil {
+					preEventResourceTypes = append(preEventResourceTypes, e.ResourcePreEvent.Metadata.Type)
+				}
+			}
+
+			assert.Equal(t, 2, len(preEventResourceTypes))
+			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
+			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
+		},
+	})
+
+}
+
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
 	test := integration.ProgramTestOptions{

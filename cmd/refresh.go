@@ -35,6 +35,7 @@ func newRefreshCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var diffDisplay bool
+	var eventLogPath string
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -80,6 +81,7 @@ func newRefreshCmd() *cobra.Command {
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				Type:                 displayType,
+				EventLogPath:         eventLogPath,
 				Debug:                debug,
 			}
 
@@ -177,5 +179,10 @@ func newRefreshCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
 
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }
