@@ -16,6 +16,7 @@ package cmd
 import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 
@@ -32,6 +33,9 @@ import (
 func readPassphrase(prompt string) (string, error) {
 	if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
 		return phrase, nil
+	}
+	if !cmdutil.Interactive() {
+		return "", errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE environment variable")
 	}
 	return cmdutil.ReadConsoleNoEcho(prompt)
 }
