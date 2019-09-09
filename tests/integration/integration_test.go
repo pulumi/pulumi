@@ -831,7 +831,7 @@ func TestCloudSecretProvider(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
 	}
 
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
+	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
 		SecretsProvider: fmt.Sprintf("awskms://alias/%s", kmsKeyAlias),
@@ -852,5 +852,15 @@ func TestCloudSecretProvider(t *testing.T) {
 			_, ok = out["ciphertext"]
 			assert.True(t, ok)
 		},
+	}
+
+	localTestOptions := testOptions.With(integration.ProgramTestOptions{
+		CloudURL: "file://~",
 	})
+
+	// Run with default Pulumi service backend
+	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
+
+	// Also run with local backend
+	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
 }

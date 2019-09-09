@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
@@ -49,7 +50,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		return nil, err
 	}
 
-	if ps.SecretsProvider != "default" && ps.SecretsProvider != "passphrase" && ps.SecretsProvider != "" {
+	if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
 		return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
 	}
 
