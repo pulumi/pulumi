@@ -55,6 +55,9 @@ type plugin struct {
 // pluginRPCConnectionTimeout dictates how long we wait for the plugin's RPC to become available.
 var pluginRPCConnectionTimeout = time.Second * 10
 
+// pluginRPCMaxMessageSize raises the gRPC Max Message size from `4194304` to `419430400`
+var pluginRPCMaxMessageSize = 1024 * 1024 * 400
+
 // A unique ID provided to the output stream of each plugin.  This allows the output of the plugin
 // to be streamed to the display, while still allowing that output to be sent a small piece at a
 // time.
@@ -149,10 +152,13 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
+	// We want to increase the default message size as per pulumi/pulumi#2319
+	messageSizeOpts := grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(pluginRPCMaxMessageSize))
+
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
 		rpcutil.OpenTracingClientInterceptor(),
-	))
+	), messageSizeOpts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
