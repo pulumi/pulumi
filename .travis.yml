@@ -11,7 +11,7 @@ matrix:
       os: linux
       env: NODE_VERSION=v8.16.0
 language: go
-go: 1.12
+go: 1.12.9
 sudo: true # give us 7.5GB and >2 bursted cores.
 git:
   depth: false
