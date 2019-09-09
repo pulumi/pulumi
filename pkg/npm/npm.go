@@ -59,7 +59,7 @@ func Install(dir string, stdout, stderr io.Writer) error {
 
 	// Ensure the "node_modules" directory exists.
 	if _, err := os.Stat("node_modules"); os.IsNotExist(err) {
-		return errors.Errorf("npm install reported success, but node_modeules directory is missing")
+		return errors.Errorf("npm install reported success, but node_modules directory is missing")
 	}
 
 	return nil
