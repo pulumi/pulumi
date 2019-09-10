@@ -105,7 +105,7 @@ class Output(Generic[T]):
         return self._is_secret
     # End private implementation details.
 
-    def apply(self, func: Callable[[T], Input[U]]) -> 'Output[U]':
+    def apply(self, func: Callable[[T], Input[U]], run_with_unknowns: Optional[bool] = None) -> 'Output[U]':
         """
         Transforms the data of the output with the provided func.  The result remains a
         Output so that dependent resources can be properly tracked.
@@ -133,7 +133,7 @@ class Output(Generic[T]):
         async def is_known() -> bool:
             inner = await inner_is_known
             known = await self._is_known
-            return inner and known
+            return inner and (known or run_with_unknowns)
 
         # The "is_secret" coroutine that we pass to the output we're about to create is derived from
         # the disjunction of the two is_secret that we know about: our own (self._is_secret) and a future
@@ -151,7 +151,7 @@ class Output(Generic[T]):
                     # During previews only perform the apply if the engine was able to
                     # give us an actual value for this Output.
                     apply_during_preview = await self._is_known
-                    if not apply_during_preview:
+                    if not apply_during_preview and not run_with_unknowns:
                         # We didn't actually run the function, our new Output is definitely
                         # **not** known and **not** secret
                         inner_is_known.set_result(False)
@@ -162,21 +162,23 @@ class Output(Generic[T]):
                 # Transformed is an Input, meaning there are three cases:
                 #  1. transformed is an Output[U]
                 if isinstance(transformed, Output):
+                    inner_value = await transformed.future()
                     transformed_as_output = cast(Output[U], transformed)
                     # Forward along the inner output's _is_known and _is_secret values.
-                    inner_is_known.set_result(await transformed_as_output._is_known)
+                    inner_is_known.set_result(await transformed_as_output._is_known and not contains_unknowns(inner_value))
                     inner_is_secret.set_result(await transformed_as_output._is_secret)
-                    return await transformed.future()
+                    return inner_value
 
                 #  2. transformed is an Awaitable[U]
                 if isawaitable(transformed):
                     # Since transformed is not an Output, it is both known and not a secret.
-                    inner_is_known.set_result(True)
+                    inner_value = await cast(Awaitable[U], transformed)
+                    inner_is_known.set_result(not contains_unknowns(inner_value))
                     inner_is_secret.set_result(False)
-                    return await cast(Awaitable[U], transformed)
+                    return inner_value
 
                 #  3. transformed is U. It is trivially known.
-                inner_is_known.set_result(True)
+                inner_is_known.set_result(not contains_unknowns(transformed))
                 inner_is_secret.set_result(False)
                 return cast(U, transformed)
             finally:
@@ -203,7 +205,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value's property with the given name.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: getattr(v, item))
+        return self.apply(lambda v: getattr(v, item), True)
 
 
     def __getitem__(self, key: Any) -> 'Output[Any]':
@@ -214,7 +216,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: v[key])
+        return self.apply(lambda v: v[key], True)
 
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
@@ -341,3 +343,27 @@ class Output(Generic[T]):
 
         transformed_items = [Output.from_input(v) for v in args]
         return Output.all(*transformed_items).apply("".join)
+
+
+@known_types.unknown
+class Unknown:
+    """
+    Unknown represents a value that is unknown.
+    """
+
+    def __init__(self):
+        pass
+
+UNKNOWN = Unknown()
+"""
+UNKNOWN is the singleton unknown value.
+"""
+
+def contains_unknowns(val: Any) -> bool:
+    if isinstance(val, Unknown):
+        return True
+    if isinstance(val, dict):
+        return any(map(contains_unknowns, val.values()))
+    if isinstance(val, list):
+        return any(map(contains_unknowns, val))
+    return False

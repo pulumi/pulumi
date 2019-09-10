@@ -95,6 +95,9 @@ async def serialize_property(value: 'Input[Any]',
 
         return props
 
+    if known_types.is_unknown(value):
+        return UNKNOWN
+
     if known_types.is_custom_resource(value):
         deps.append(value)
         return await serialize_property(value.id, deps, input_transformer)
@@ -256,7 +259,7 @@ def deserialize_property(value: Any) -> Any:
     Python values.
     """
     if value == UNKNOWN:
-        return None
+        return known_types.new_unknown() if settings.is_dry_run() else None
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
@@ -365,6 +368,16 @@ def translate_output_properties(res: 'Resource', output: Any) -> Any:
     return output
 
 
+def contains_unknowns(val: Any) -> bool:
+    if known_types.is_unknown(val):
+        return True
+    if isinstance(val, dict):
+        return any(map(contains_unknowns, val.values()))
+    if isinstance(val, list):
+        return any(map(contains_unknowns, val))
+    return False
+
+
 async def resolve_outputs(res: 'Resource',
                           serialized_props: struct_pb2.Struct,
                           outputs: struct_pb2.Struct,
@@ -431,7 +444,7 @@ async def resolve_outputs(res: 'Resource',
         else:
             # We're previewing. If the engine was able to give us a reasonable value back,
             # then use it. Otherwise, inform the Output that the value isn't known.
-            resolve(value, value is not None, is_secret, None)
+            resolve(value, value is not None and not contains_unknowns(value), is_secret, None)
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
