@@ -62,6 +62,8 @@ _remote_archive_resource_type: Optional[type] = None
 _output_type: Optional[type] = None
 """The type of Output. Filled-in as the Pulumi package is initializing."""
 
+_unknown_type: Optional[type] = None
+"""The type of unknown. Filled-in as the Pulumi package is initializing."""
 
 def asset(class_obj: type) -> type:
     """
@@ -169,6 +171,13 @@ def output(class_obj: type) -> type:
     return class_obj
 
 
+def unknown(class_obj: type) -> type:
+    assert isinstance(class_obj, type), "class_obj is not a Class"
+    global _unknown_type
+    _unknown_type = class_obj
+    return class_obj
+
+
 def new_file_asset(*args: Any) -> Any:
     """
     Instantiates a new FileAsset, passing the given arguments to the constructor.
@@ -213,9 +222,16 @@ def new_remote_archive(*args: Any) -> Any:
 
 def new_output(*args: Any) -> Any:
     """
-    Instantiates a new StringArchive, passing the given arguments to the constructor.
+    Instantiates a new Output, passing the given arguments to the constructor.
     """
     return _output_type(*args)
+
+
+def new_unknown(*args: Any) -> Any:
+    """
+    Instantiates a new Unknown, passing the given arguments to the constructor.
+    """
+    return _unknown_type(*args)
 
 
 def is_asset(obj: Any) -> bool:
@@ -244,3 +260,9 @@ def is_output(obj: Any) -> bool:
     Returns true if the given type is an Output, false otherwise.
     """
     return _output_type is not None and isinstance(obj, _output_type)
+
+def is_unknown(obj: Any) -> bool:
+    """
+    Returns true if the given object is an Unknown, false otherwise.
+    """
+    return _unknown_type is not None and isinstance(obj, _unknown_type)

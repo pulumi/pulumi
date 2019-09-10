@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, concat, interpolate, output } from "../output";
+import { Output, concat, interpolate, output, unknown } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
@@ -69,7 +69,7 @@ describe("output", () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error()), Promise.resolve(false)));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error("foo")), Promise.resolve(false)));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, false);
@@ -304,6 +304,37 @@ describe("output", () => {
             const secret = await result.isSecret;
             assert.equal(secret, true);
         }));
+
+        it("is unknown if the value is or contains unknowns", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve(unknown), Promise.resolve(true), Promise.resolve(false));
+            const o2 = new Output(new Set(), Promise.resolve(["foo", unknown]), Promise.resolve(true), Promise.resolve(false));
+            const o3 = new Output(new Set(), Promise.resolve({"foo": "foo", unknown}), Promise.resolve(true), Promise.resolve(false));
+
+            assert.equal(await o1.isKnown, false);
+            assert.equal(await o2.isKnown, false);
+            assert.equal(await o3.isKnown, false);
+        }));
+
+        it("is unknown if the result after apply is unknown or contains unknowns", asyncTest(async () => {
+            runtime._setIsDryRun(true);
+
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
+            const r1 = o1.apply(v => unknown);
+            const r2 = o1.apply(v => [v, unknown]);
+            const r3 = o1.apply(v => <any>{v, unknown});
+            const r4 = o1.apply(v => unknown).apply(v => v, true);
+            const r5 = o1.apply(v => [v, unknown]).apply(v => v, true);
+            const r6 = o1.apply(v => <any>{v, unknown}).apply(v => v, true);
+
+            assert.equal(await r1.isKnown, false);
+            assert.equal(await r2.isKnown, false);
+            assert.equal(await r3.isKnown, false);
+            assert.equal(await r4.isKnown, false);
+            assert.equal(await r5.isKnown, false);
+            assert.equal(await r6.isKnown, false);
+        }));
     });
 
     describe("concat", () => {
@@ -408,6 +439,24 @@ describe("output", () => {
         it("does not lift __ properties", asyncTest(async () => {
             const output1 = output({ a: 1, b: 2 });
             assert.strictEqual((<any>output1).__pulumiResource, undefined);
+        }));
+
+        it("lifts properties from values with nested unknowns", asyncTest(async () => {
+            const output1 = output({ foo: "foo", bar: unknown, baz: Promise.resolve(unknown) });
+
+            assert.equal(await output1.isKnown, false);
+
+            const result1 = output1.foo;
+            assert.equal(await result1.isKnown, true);
+            assert.equal(await result1.promise(), "foo");
+
+            const result2 = output1.bar;
+            assert.equal(await result2.isKnown, false);
+            assert.equal(await result2.promise(), unknown);
+
+            const result3 = output1.baz;
+            assert.equal(await result3.isKnown, false);
+            assert.equal(await result3.promise(), unknown);
         }));
     });
 });
