@@ -48,7 +48,7 @@ type cloudBackendReference struct {
 }
 
 func (c cloudBackendReference) String() string {
-	curUser, err := c.b.client.GetPulumiAccountName(context.Background())
+	curUser, err := c.b.CurrentUser()
 	if err != nil {
 		curUser = ""
 	}

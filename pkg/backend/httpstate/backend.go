@@ -226,7 +226,12 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	// If we have a saved access token, and it is valid, use it.
 	existingToken, err := workspace.GetAccessToken(cloudURL)
 	if err == nil && existingToken != "" {
-		if valid, _ := IsValidAccessToken(ctx, cloudURL, existingToken); valid {
+		valid, err := IsValidAccessToken(ctx, cloudURL, existingToken)
+		if err != nil {
+			return nil, err
+		}
+
+		if valid {
 			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
 			if err = workspace.StoreAccessToken(cloudURL, existingToken, true); err != nil {
 				return nil, err
