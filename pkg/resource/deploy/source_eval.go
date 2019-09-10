@@ -788,7 +788,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
 			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs, aliases, id, &timeouts),
-		done: make(chan *RegisterResult),
+		supportsPartialStables: req.GetSupportsPartiallyStableProperties(),
+		done:                   make(chan *RegisterResult),
 	}
 
 	select {
@@ -808,14 +809,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	state := result.State
-	stable := result.Stable
-	var stables []string
-	for _, sta := range result.Stables {
-		stables = append(stables, string(sta))
-	}
 	logging.V(5).Infof(
-		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, stable=%v, #stables=%v #outs=%v",
-		state.Type, state.URN, stable, len(stables), len(state.Outputs))
+		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, #outs=%v",
+		state.Type, state.URN, len(state.Outputs))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
@@ -828,11 +824,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 	return &pulumirpc.RegisterResourceResponse{
-		Urn:     string(state.URN),
-		Id:      string(state.ID),
-		Object:  obj,
-		Stable:  stable,
-		Stables: stables,
+		Urn:    string(state.URN),
+		Id:     string(state.ID),
+		Object: obj,
 	}, nil
 }
 
@@ -887,8 +881,9 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type registerResourceEvent struct {
-	goal *resource.Goal       // the resource goal state produced by the iterator.
-	done chan *RegisterResult // the channel to communicate with after the resource state is available.
+	goal                   *resource.Goal       // the resource goal state produced by the iterator.
+	supportsPartialStables bool                 // true if the requestor supports partially-stable properties during preview
+	done                   chan *RegisterResult // the channel to communicate with after the resource state is available.
 }
 
 var _ RegisterResourceEvent = (*registerResourceEvent)(nil)
@@ -897,6 +892,10 @@ func (g *registerResourceEvent) event() {}
 
 func (g *registerResourceEvent) Goal() *resource.Goal {
 	return g.goal
+}
+
+func (g *registerResourceEvent) SupportsPartialStables() bool {
+	return g.supportsPartialStables
 }
 
 func (g *registerResourceEvent) Done(result *RegisterResult) {

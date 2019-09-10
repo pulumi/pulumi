@@ -82,15 +82,15 @@ type RegisterResourceEvent interface {
 	SourceEvent
 	// Goal returns the goal state for the resource object that was allocated by the program.
 	Goal() *resource.Goal
+	// SupportsPartialStables returns true if the requestor supports partially-stable properties during preview.
+	SupportsPartialStables() bool
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done(result *RegisterResult)
 }
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State   *resource.State        // the resource state.
-	Stable  bool                   // if true, the resource state is stable and may be trusted.
-	Stables []resource.PropertyKey // an optional list of specific resource properties that are stable.
+	State *resource.State // the resource state.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.

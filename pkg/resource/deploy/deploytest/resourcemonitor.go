@@ -29,18 +29,19 @@ type ResourceMonitor struct {
 }
 
 type ResourceOptions struct {
-	Parent              resource.URN
-	Protect             bool
-	Dependencies        []resource.URN
-	Provider            string
-	Inputs              resource.PropertyMap
-	PropertyDeps        map[resource.PropertyKey][]resource.URN
-	DeleteBeforeReplace *bool
-	Version             string
-	IgnoreChanges       []string
-	Aliases             []resource.URN
-	ImportID            resource.ID
-	CustomTimeouts      *resource.CustomTimeouts
+	Parent                 resource.URN
+	Protect                bool
+	Dependencies           []resource.URN
+	Provider               string
+	Inputs                 resource.PropertyMap
+	PropertyDeps           map[resource.PropertyKey][]resource.URN
+	DeleteBeforeReplace    *bool
+	Version                string
+	IgnoreChanges          []string
+	Aliases                []resource.URN
+	ImportID               resource.ID
+	CustomTimeouts         *resource.CustomTimeouts
+	SupportsPartialStables *bool
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -94,23 +95,28 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.DeleteBeforeReplace != nil {
 		deleteBeforeReplace = *opts.DeleteBeforeReplace
 	}
+	supportsPartialStables := true
+	if opts.SupportsPartialStables != nil {
+		supportsPartialStables = *opts.SupportsPartialStables
+	}
 	requestInput := &pulumirpc.RegisterResourceRequest{
-		Type:                       string(t),
-		Name:                       name,
-		Custom:                     custom,
-		Parent:                     string(opts.Parent),
-		Protect:                    opts.Protect,
-		Dependencies:               deps,
-		Provider:                   opts.Provider,
-		Object:                     ins,
-		PropertyDependencies:       inputDeps,
-		DeleteBeforeReplace:        deleteBeforeReplace,
-		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
-		IgnoreChanges:              opts.IgnoreChanges,
-		Version:                    opts.Version,
-		Aliases:                    aliasStrings,
-		ImportId:                   string(opts.ImportID),
-		CustomTimeouts:             &timeouts,
+		Type:                              string(t),
+		Name:                              name,
+		Custom:                            custom,
+		Parent:                            string(opts.Parent),
+		Protect:                           opts.Protect,
+		Dependencies:                      deps,
+		Provider:                          opts.Provider,
+		Object:                            ins,
+		PropertyDependencies:              inputDeps,
+		DeleteBeforeReplace:               deleteBeforeReplace,
+		DeleteBeforeReplaceDefined:        opts.DeleteBeforeReplace != nil,
+		IgnoreChanges:                     opts.IgnoreChanges,
+		Version:                           opts.Version,
+		Aliases:                           aliasStrings,
+		ImportId:                          string(opts.ImportID),
+		CustomTimeouts:                    &timeouts,
+		SupportsPartiallyStableProperties: supportsPartialStables,
 	}
 
 	// submit request

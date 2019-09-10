@@ -98,7 +98,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	// Retain the ID, and outputs:
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new, Stable: true}) }
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }
 
@@ -437,7 +437,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	} else {
 		// Apply stables.
 		logging.V(9).Infof("applying stables: %#v", s.stables)
-		s.new.Outputs = processStables(s.old.Outputs, s.stables)
+		s.new.Outputs = processStables(s.old.Outputs, s.stables, s.reg.SupportsPartialStables())
 	}
 
 	// Finally, mark this operation as complete.

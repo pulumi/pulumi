@@ -4271,11 +4271,13 @@ func TestStableProperties(t *testing.T) {
 		}),
 	}
 
+	supportsPartialStables := true
 	computed := resource.Computed{Element: resource.NewStringProperty("")}
 	inputs, expected := map[string]interface{}{}, map[string]interface{}{}
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(inputs),
+			Inputs:                 resource.NewPropertyMapFromMap(inputs),
+			SupportsPartialStables: &supportsPartialStables,
 		})
 		assert.NoError(t, err)
 		if info.DryRun {
@@ -4351,7 +4353,17 @@ func TestStableProperties(t *testing.T) {
 	}
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient, nil)
 	assert.Nil(t, res)
+
+	// re-run the preview, but with support for partiall-stable properties disabled.
+	supportsPartialStables = false
+	expected = map[string]interface{}{
+		"foo": inputs["foo"],
+		"baz": inputs["baz"],
+	}
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient, nil)
+	assert.Nil(t, res)
 	inputs["bar"].(map[string]interface{})["zed"].([]interface{})[0] = 42
+	supportsPartialStables = true
 
 	// Change a different nested primitive and run a preview.
 	inputs["baz"].([]interface{})[0] = "zeta"

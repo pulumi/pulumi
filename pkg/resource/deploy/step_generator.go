@@ -873,8 +873,8 @@ func copyWithUnknownElements(oldValue resource.PropertyValue) resource.PropertyV
 	}
 }
 
-func copyStableValue(oldState, newState resource.PropertyMap, path resource.PropertyPath) {
-	if len(path) == 0 {
+func copyStableValue(oldState, newState resource.PropertyMap, path resource.PropertyPath, allowPartialValues bool) {
+	if len(path) == 0 || len(path) > 1 && !allowPartialValues {
 		return
 	}
 
@@ -937,7 +937,7 @@ func copyStableValue(oldState, newState resource.PropertyMap, path resource.Prop
 }
 
 // processStables
-func processStables(oldState resource.PropertyMap, stables []string) resource.PropertyMap {
+func processStables(oldState resource.PropertyMap, stables []string, allowPartialValues bool) resource.PropertyMap {
 	newState := make(resource.PropertyMap)
 	for _, stable := range stables {
 		path, err := resource.ParsePropertyPath(stable)
@@ -945,7 +945,7 @@ func processStables(oldState resource.PropertyMap, stables []string) resource.Pr
 			continue
 		}
 
-		copyStableValue(oldState, newState, path)
+		copyStableValue(oldState, newState, path, allowPartialValues)
 	}
 	return newState
 }
