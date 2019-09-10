@@ -10,6 +10,9 @@ CHANGELOG
 - Increase the MaxCallRecvMsgSize for interacting with the gRPC server. 
   [#3201](https://github.com/pulumi/pulumi/pull/3201)
 
+- Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.). 
+  [#3198](https://github.com/pulumi/pulumi/pull/3198)
+
 ## 1.0.0 (2019-09-03)
 
 - No significant changes.
