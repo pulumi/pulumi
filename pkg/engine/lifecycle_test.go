@@ -4222,3 +4222,198 @@ func TestImportUpdatedID(t *testing.T) {
 		}
 	}
 }
+
+func getStables(path string, diff resource.ValueDiff) []string {
+	var stables []string
+	switch {
+	case diff.Object != nil:
+		sep := ""
+		if path != "" {
+			sep = "."
+		}
+		for k := range diff.Object.Sames {
+			stables = append(stables, path+sep+string(k))
+		}
+		for k, v := range diff.Object.Updates {
+			stables = append(stables, getStables(path+sep+string(k), v)...)
+		}
+	case diff.Array != nil:
+		for i := range diff.Array.Sames {
+			stables = append(stables, fmt.Sprintf("%s[%d]", path, i))
+		}
+		for i, v := range diff.Array.Updates {
+			stables = append(stables, getStables(fmt.Sprintf("%s[%d]", path, i), v)...)
+		}
+	}
+	return stables
+}
+
+func TestStableProperties(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					diff := olds.Diff(news)
+					if diff == nil {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+					stables := getStables("", resource.ValueDiff{Object: diff})
+					return plugin.DiffResult{Changes: plugin.DiffSome, StablePaths: stables}, nil
+				},
+			}, nil
+		}),
+	}
+
+	computed := resource.Computed{Element: resource.NewStringProperty("")}
+	inputs, expected := map[string]interface{}{}, map[string]interface{}{}
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(inputs),
+		})
+		assert.NoError(t, err)
+		if info.DryRun {
+			assert.True(t, state.DeepEquals(resource.NewPropertyMapFromMap(expected)))
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+
+	// Set the inputs and run the initial update.
+	inputs = map[string]interface{}{
+		"foo": "oof",
+		"bar": map[string]interface{}{
+			"baz": "zab",
+			"qux": map[string]interface{}{
+				"wah": "haw",
+			},
+			"zed": []interface{}{
+				42,
+				map[string]interface{}{
+					"foo": "bar",
+					"baz": "qux",
+				},
+			},
+		},
+		"baz": []interface{}{
+			"alpha",
+			[]interface{}{"beta"},
+			map[string]interface{}{
+				"gamma": "delta",
+				"eta":   "theta",
+			},
+			"iota",
+		},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Change a top-level primitive and run a preview.
+	inputs["foo"] = "bar"
+	expected = map[string]interface{}{
+		"bar": inputs["bar"],
+		"baz": inputs["baz"],
+	}
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient, nil)
+	assert.Nil(t, res)
+	inputs["foo"] = "oof"
+
+	// Change a nested primitive and run a preview.
+	inputs["bar"].(map[string]interface{})["zed"].([]interface{})[0] = 43
+	expected = map[string]interface{}{
+		"foo": inputs["foo"],
+		"bar": map[string]interface{}{
+			"baz": "zab",
+			"qux": map[string]interface{}{
+				"wah": "haw",
+			},
+			"zed": []interface{}{
+				computed,
+				map[string]interface{}{
+					"foo": "bar",
+					"baz": "qux",
+				},
+			},
+		},
+		"baz": inputs["baz"],
+	}
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient, nil)
+	assert.Nil(t, res)
+	inputs["bar"].(map[string]interface{})["zed"].([]interface{})[0] = 42
+
+	// Change a different nested primitive and run a preview.
+	inputs["baz"].([]interface{})[0] = "zeta"
+	expected = map[string]interface{}{
+		"foo": inputs["foo"],
+		"bar": inputs["bar"],
+		"baz": []interface{}{
+			computed,
+			[]interface{}{"beta"},
+			map[string]interface{}{
+				"gamma": "delta",
+				"eta":   "theta",
+			},
+			"iota",
+		},
+	}
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient, nil)
+	assert.Nil(t, res)
+	inputs["baz"].([]interface{})[0] = "alpha"
+
+	// Change multiple properties and run a preview.
+	inputs = map[string]interface{}{
+		"foo": "bar",
+		"bar": map[string]interface{}{
+			"baz": "qux",
+			"qux": map[string]interface{}{
+				"wah": "whee",
+			},
+			"zed": []interface{}{
+				42,
+				map[string]interface{}{
+					"foo": "bar",
+					"baz": "zab",
+				},
+			},
+		},
+		"baz": []interface{}{
+			"alpha",
+			[]interface{}{"beta"},
+			42,
+			"iota",
+		},
+	}
+	expected = map[string]interface{}{
+		"bar": map[string]interface{}{
+			"baz": computed,
+			"qux": computed,
+			"zed": []interface{}{
+				42,
+				map[string]interface{}{
+					"foo": "bar",
+					"baz": computed,
+				},
+			},
+		},
+		"baz": []interface{}{
+			"alpha",
+			[]interface{}{"beta"},
+			computed,
+			"iota",
+		},
+	}
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient, nil)
+	assert.Nil(t, res)
+}

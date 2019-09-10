@@ -436,6 +436,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 	} else {
 		// Apply stables.
+		logging.V(9).Infof("applying stables: %#v", s.stables)
 		s.new.Outputs = processStables(s.old.Outputs, s.stables)
 	}
 
