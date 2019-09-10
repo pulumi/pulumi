@@ -302,13 +302,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
 
                 // Else for *any other* property lookup, succeed the lookup and return a lifted
                 // `apply` on the underlying `Output`.
-                return obj.apply(ob => {
-                    if (ob === undefined || ob === null) {
-                        return undefined;
-                    }
-
-                    return ob[prop];
-                });
+                return obj.apply(ob => ob[prop]);
             },
         });
     }

@@ -409,5 +409,31 @@ describe("output", () => {
             const output1 = output({ a: 1, b: 2 });
             assert.strictEqual((<any>output1).__pulumiResource, undefined);
         }));
+
+        it("throws when lifting on undefined", asyncTest(async () => {
+            const output1 = output(undefined);
+            try {
+                const v = (<any>output1).a;
+                await v.promise();
+            }
+            catch (e) {
+                return;
+            }
+
+            throw new Error("Should not have gotten here!");
+        }));
+
+        it("throws when lifting on null", asyncTest(async () => {
+            const output1 = output(null);
+            try {
+                const v = (<any>output1).a;
+                await v.promise();
+            }
+            catch (e) {
+                return;
+            }
+
+            throw new Error("Should not have gotten here!");
+        }));
     });
 });
