@@ -9,6 +9,8 @@ CHANGELOG
   [#3197](https://github.com/pulumi/pulumi/pull/3197)
 - Increase the MaxCallRecvMsgSize for interacting with the gRPC server. 
   [#3201](https://github.com/pulumi/pulumi/pull/3201)
+- Do not ask for a passphrase in non-interactive sessions (fix [#2758](https://github.com/pulumi/pulumi/issues/2758)).
+  [#3204](https://github.com/pulumi/pulumi/pull/3204)
 
 - Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.). 
   [#3198](https://github.com/pulumi/pulumi/pull/3198)
