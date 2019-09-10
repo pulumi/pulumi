@@ -192,6 +192,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");
+        req.setSupportspartiallystableproperties(true);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {

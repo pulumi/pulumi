@@ -70,7 +70,7 @@ class OutputImpl<T> implements OutputInstance<T> {
      */
     public readonly resources: () => Set<Resource>;
 
-    public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
+    public readonly apply: <U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean) => Output<U>;
     public readonly get: () => T;
 
     /**
@@ -175,7 +175,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
 
-        this.apply = <U>(func: (t: T) => Input<U>) => {
+        this.apply = <U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean) => {
             let innerDetailsResolve: (val: {isKnown: boolean, isSecret: boolean}) => void;
             const innerDetails = new Promise<any>(resolve => {
                 innerDetailsResolve = resolve;
@@ -184,7 +184,9 @@ This function may throw in a future version of @pulumi/pulumi.`;
             // The known state of the output we're returning depends on if we're known as well, and
             // if a potential lifted inner Output is known.  If we get an inner Output, and it is
             // not known itself, then the result we return should not be known.
-            const resultIsKnown = Promise.all([isKnown, innerDetails]).then(([k1, k2]) => k1 && k2.isKnown);
+            const resultIsKnown = Promise.all([isKnown, innerDetails]).then(([k1, k2]) => {
+                return (k1 || runWithUnknowns) && k2.isKnown;
+            });
             const resultIsSecret = Promise.all([isSecret, innerDetails]).then(([k1, k2]) => k1 || k2.isSecret);
 
             return new Output<U>(resources, promise.then(async v => {
@@ -194,7 +196,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
                         // give us an actual value for this Output.
                         const applyDuringPreview = await isKnown;
 
-                        if (!applyDuringPreview) {
+                        if (!applyDuringPreview && !runWithUnknowns) {
                             // We didn't actually run the function, our new Output is definitely
                             // **not** known.
                             innerDetailsResolve({
@@ -216,15 +218,16 @@ This function may throw in a future version of @pulumi/pulumi.`;
                         // The callback func has produced an inner Output that may be 'known' or 'unknown'.
                         // We have to properly forward that along to our outer output.  That way the Outer
                         // output doesn't consider itself 'known' then the inner Output did not.
+                        const innerValue = await transformed.promise();
                         innerDetailsResolve({
-                            isKnown: await transformed.isKnown,
+                            isKnown: await transformed.isKnown && !containsUnknowns(innerValue),
                             isSecret: await (transformed.isSecret || Promise.resolve(false)),
                         });
-                        return await transformed.promise();
+                        return innerValue;
                     } else {
                         // We successfully ran the inner function.  Our new Output should be considered known.
                         innerDetailsResolve({
-                            isKnown: true,
+                            isKnown: true && !containsUnknowns(transformed),
                             isSecret: false,
                         });
                         return transformed;
@@ -308,7 +311,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
                     }
 
                     return ob[prop];
-                });
+                }, true);
             },
         });
     }
@@ -458,6 +461,58 @@ function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[]
     const isSecret = Promise.all(allOutputs.map(o => isSecretOutput(o))).then(ps => ps.find(b => b) !== undefined);
 
     return [allResources, isKnown, isSecret];
+}
+
+/**
+ * Unknown represents a value that is unknown.
+ */
+export class Unknown {
+     /**
+     * @internal
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * This is internal instead of being truly private, to support mixins and our serialization model.
+     */
+    // tslint:disable-next-line:variable-name
+    public readonly __pulumiUnknown: boolean = true;
+
+    /**
+     * Returns true if the given object is an instance of Unknown. This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): obj is Unknown {
+        return utils.isInstance(obj, "__pulumiUnknown");
+    }
+}
+
+/**
+ * unknown is the singleton unknown value.
+ */
+export const unknown = new Unknown();
+
+/**
+ * isUnknown returns true if the given value is unknown.
+ */
+export function isUnknown(val: any): boolean {
+    return Unknown.isInstance(val);
+}
+
+/**
+ * containsUnknowns returns true if the given value is or contains unknown values.
+ */
+export function containsUnknowns(val: any): boolean {
+    if (val === null || typeof val !== "object") {
+        return false;
+    }
+    else if (isUnknown(val)) {
+        return true;
+    }
+    else if (val instanceof Array) {
+        return val.find(e => containsUnknowns(e)) !== undefined;
+    }
+    else {
+        return Object.keys(val).find(k => containsUnknowns(val[k])) !== undefined;
+    }
 }
 
 /**
