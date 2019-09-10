@@ -7,11 +7,18 @@ CHANGELOG
   [#3170](https://github.com/pulumi/pulumi/pull/3170)
 - Read operations are no longer considered changes for the purposes of `--expect-no-changes`.
   [#3197](https://github.com/pulumi/pulumi/pull/3197)
-- Increase the MaxCallRecvMsgSize for interacting with the gRPC server. 
+- Increase the MaxCallRecvMsgSize for interacting with the gRPC server.
   [#3201](https://github.com/pulumi/pulumi/pull/3201)
-
-- Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.). 
+- Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.).
   [#3198](https://github.com/pulumi/pulumi/pull/3198)
+
+### Compat
+
+- Accessing a property on an `undefined-Output` (i.e. `output(undefined).prop`) will now throw
+  instead of producing a fresh `undefined-Output`.  This is to match normal JS semantics around
+  property access.  This may cause errors to happen in existing Pulumi applications.  However, this
+  is felt to be preferable over the previous behavior which could mask errors and cause strange
+  behavior as it would allow `undefined` values to flow into Resource causing unexpected changes.
 
 ## 1.0.0 (2019-09-03)
 
