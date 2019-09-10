@@ -7,11 +7,15 @@ CHANGELOG
   [#3170](https://github.com/pulumi/pulumi/pull/3170)
 - Read operations are no longer considered changes for the purposes of `--expect-no-changes`.
   [#3197](https://github.com/pulumi/pulumi/pull/3197)
-- Increase the MaxCallRecvMsgSize for interacting with the gRPC server. 
+- Increase the MaxCallRecvMsgSize for interacting with the gRPC server.
   [#3201](https://github.com/pulumi/pulumi/pull/3201)
 
-- Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.). 
+- Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.).
   [#3198](https://github.com/pulumi/pulumi/pull/3198)
+
+- Moved `@pulumi/pulumi` to target `es2016` instead of `es6`.  As `@pulumi/pulumi` programs run
+  inside Nodejs, this should not change anything externally as Nodejs already provides es2016
+  support. Internally, this makes more APIs available for `@pulumi/pulumi` to use in its implementation.
 
 ## 1.0.0 (2019-09-03)
 
