@@ -870,10 +870,28 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: importID, props: {} };
             },
         },
+        // Test stack outputs via exports.
+        "recursive_stack_exports": {
+            program: path.join(base, "046.recursive_stack_exports"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    m: { a: { b: 1 } },
+                    n: { a: { b: 1 } },
+                    o: { b: 1 },
+                    p: 1,
+                    obj2: { x: { y: 1, x: undefined }, obj2: undefined },
+                    obj2_x: { y: 1, x: undefined },
+                    obj2_x_y: 1,
+                });
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("depends_on_non_resource") < 0) {
+        // if (casename.indexOf("recursive_stack_exports") < 0) {
         //     continue;
         // }
 

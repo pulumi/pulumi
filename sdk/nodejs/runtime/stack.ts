@@ -68,20 +68,20 @@ class Stack extends ComponentResource {
         await setRootResource(this);
         let outputs: Inputs | undefined;
         try {
-            outputs = init();
+            outputs = massage(init(), []);
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            super.registerOutputs(massage(outputs, new Set()));
+            super.registerOutputs(outputs);
         }
 
         return outputs;
     }
 }
 
-async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
+async function massage(prop: any, seenObjects: any[]): Promise<any> {
     if (prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
@@ -101,7 +101,7 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
 
     // from this point on, we have complex objects.  If we see them again, we don't want to emit
     // them again fully or else we'd loop infinitely.
-    if (seenObjects.has(prop)) {
+    if (seenObjects.indexOf(prop) >= 0) {
         // Note: for Resources we hit again, emit their urn so cycles can be easily understood
         // in the pojo objects.
         if (Resource.isInstance(prop)) {
@@ -111,8 +111,22 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
         return undefined;
     }
 
-    seenObjects.add(prop);
+    try {
+        // push and pop what we see into a stack.  That way if we see the same object through
+        // different paths, we will still print it out.  We only skip it if it would truly cause
+        // recursion.
+        seenObjects.push(prop);
+        return await massageComplex(prop, seenObjects);
+    }
+    finally {
+        const popped = seenObjects.pop();
+        if (popped !== prop) {
+            throw new Error("Invariant broken when processing stack outputs");
+        }
+    }
+}
 
+async function massageComplex(prop: any, seenObjects: any[]): Promise<any> {
     if (asset.Asset.isInstance(prop)) {
         if ((<asset.FileAsset>prop).path !== undefined) {
             return { path: (<asset.FileAsset>prop).path };
