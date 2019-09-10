@@ -446,7 +446,7 @@ func TestStables(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			old := resource.NewPropertyMapFromMap(oldState)
 			expected := resource.NewPropertyMapFromMap(c.expected)
-			processed := processStables(old, c.stables)
+			processed := processStables(old, c.stables, true)
 			assert.Equal(t, expected, processed)
 		})
 	}

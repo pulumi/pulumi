@@ -45,6 +45,10 @@ func (g *testRegEvent) Goal() *resource.Goal {
 	return g.goal
 }
 
+func (g *testRegEvent) SupportsPartialStables() bool {
+	return false
+}
+
 func (g *testRegEvent) Done(result *RegisterResult) {
 	contract.Assertf(g.result == nil, "Attempt to invoke testRegEvent.Done more than once")
 	g.result = result

@@ -33,6 +33,7 @@ type MockRegisterResourceEvent struct {
 }
 
 func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return nil }
+func (m MockRegisterResourceEvent) SupportsPartialStables() bool       { return false }
 func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
 
 type MockStackPersister struct {

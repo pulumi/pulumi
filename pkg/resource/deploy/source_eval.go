@@ -882,7 +882,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 
 type registerResourceEvent struct {
 	goal                   *resource.Goal       // the resource goal state produced by the iterator.
-	supportsPartialStables bool                 // true if the requestor supports partially-stable properties during preview
+	supportsPartialStables bool                 // true if the requestor supports partially-stable values during preview.
 	done                   chan *RegisterResult // the channel to communicate with after the resource state is available.
 }
 
