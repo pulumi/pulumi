@@ -68,7 +68,7 @@ class Stack extends ComponentResource {
         await setRootResource(this);
         let outputs: Inputs | undefined;
         try {
-            outputs = massage(init(), []);
+            outputs = await massage(init(), []);
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
@@ -96,7 +96,7 @@ async function massage(prop: any, seenObjects: any[]): Promise<any> {
     }
 
     if (Output.isInstance(prop)) {
-        return prop.apply(v => massage(v, seenObjects));
+        return prop.apply(v => massage(v, seenObjects)).promise();
     }
 
     // from this point on, we have complex objects.  If we see them again, we don't want to emit
@@ -143,7 +143,7 @@ async function massageComplex(prop: any, seenObjects: any[]): Promise<any> {
 
     if (asset.Archive.isInstance(prop)) {
         if ((<asset.AssetArchive>prop).assets) {
-            return { assets: massage((<asset.AssetArchive>prop).assets, seenObjects) };
+            return { assets: await massage((<asset.AssetArchive>prop).assets, seenObjects) };
         }
         else if ((<asset.FileArchive>prop).path !== undefined) {
             return { path: (<asset.FileArchive>prop).path };
