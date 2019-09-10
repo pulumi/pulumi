@@ -157,7 +157,7 @@ type PropertyDiff struct {
 type DiffResult struct {
 	Changes             DiffChanges             // true if this diff represents a changed resource.
 	ReplaceKeys         []resource.PropertyKey  // an optional list of replacement keys.
-	StableKeys          []resource.PropertyKey  // an optional list of property keys that are stable.
+	StablePaths         []string                // an optional list of property paths that are stable.
 	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
 	DetailedDiff        map[string]PropertyDiff // an optional structured diff
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.

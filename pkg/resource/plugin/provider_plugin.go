@@ -292,16 +292,12 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	var stables []resource.PropertyKey
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
 	var diffs []resource.PropertyKey
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
 
-	changes := resp.GetChanges()
+	stables, changes := resp.GetStables(), resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
 	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v",
 		label, changes, replaces, stables, deleteBeforeReplace, diffs)
@@ -309,7 +305,7 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	return DiffResult{
 		Changes:             DiffChanges(changes),
 		ReplaceKeys:         replaces,
-		StableKeys:          stables,
+		StablePaths:         stables,
 		ChangedKeys:         diffs,
 		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
@@ -558,16 +554,12 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	var stables []resource.PropertyKey
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
 	var diffs []resource.PropertyKey
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
 
-	changes := resp.GetChanges()
+	stables, changes := resp.GetStables(), resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
 	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v, detaileddiff=%v",
 		label, changes, replaces, stables, deleteBeforeReplace, diffs, resp.GetDetailedDiff())
@@ -575,7 +567,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	return DiffResult{
 		Changes:             DiffChanges(changes),
 		ReplaceKeys:         replaces,
-		StableKeys:          stables,
+		StablePaths:         stables,
 		ChangedKeys:         diffs,
 		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,

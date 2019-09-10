@@ -353,7 +353,7 @@ type UpdateStep struct {
 	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
 	old           *resource.State                // the state of the existing resource.
 	new           *resource.State                // the newly computed state of the resource after updating.
-	stables       []resource.PropertyKey         // an optional list of properties that won't change during this update.
+	stables       []string                       // an optional list of properties that won't change during this update.
 	diffs         []resource.PropertyKey         // the keys causing a diff.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
@@ -362,8 +362,9 @@ type UpdateStep struct {
 var _ Step = (*UpdateStep)(nil)
 
 func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
-	new *resource.State, stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
+	new *resource.State, stables []string, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
 	ignoreChanges []string) Step {
+
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -433,10 +434,13 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			// Now copy any output state back in case the update triggered cascading updates to other properties.
 			s.new.Outputs = outs
 		}
+	} else {
+		// Apply stables.
+		s.new.Outputs = processStables(s.old.Outputs, s.stables)
 	}
 
 	// Finally, mark this operation as complete.
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new, Stables: s.stables}) }
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}

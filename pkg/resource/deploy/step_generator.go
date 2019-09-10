@@ -473,7 +473,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 			}
 			return []Step{
-				NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
+				NewUpdateStep(sg.plan, event, old, new, diff.StablePaths, diff.ChangedKeys, diff.DetailedDiff,
 					goal.IgnoreChanges),
 			}, nil
 		}
@@ -482,7 +482,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		// step to attempt to "continue" awaiting initialization.
 		if len(old.InitErrors) > 0 {
 			sg.updates[urn] = true
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
+			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StablePaths, nil, nil, nil)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -851,6 +851,103 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 			"the path are missing: %q", strings.Join(invalidPaths, ", "))
 	}
 	return ignoredInputs.ObjectValue(), nil
+}
+
+func copyWithUnknownElements(oldValue resource.PropertyValue) resource.PropertyValue {
+	unknown := resource.MakeComputed(resource.NewStringProperty(""))
+	switch {
+	case oldValue.IsObject():
+		newValue := resource.PropertyMap{}
+		for k := range oldValue.ObjectValue() {
+			newValue[k] = unknown
+		}
+		return resource.NewObjectProperty(newValue)
+	case oldValue.IsArray():
+		newValue := make([]resource.PropertyValue, len(oldValue.ArrayValue()))
+		for i := range newValue {
+			newValue[i] = unknown
+		}
+		return resource.NewArrayProperty(newValue)
+	default:
+		return unknown
+	}
+}
+
+func copyStableValue(oldState, newState resource.PropertyMap, path resource.PropertyPath) {
+	if len(path) == 0 {
+		return
+	}
+
+	oldParent, newParent := resource.NewObjectProperty(oldState), resource.NewObjectProperty(newState)
+	for _, element := range path[:len(path)-1] {
+		switch element := element.(type) {
+		case string:
+			if !oldParent.IsObject() || !newParent.IsObject() {
+				return
+			}
+			key := resource.PropertyKey(element)
+			old, ok := oldParent.ObjectValue()[key]
+			if !ok {
+				return
+			}
+			new, ok := newParent.ObjectValue()[key]
+			if !ok || new.IsComputed() {
+				new = copyWithUnknownElements(old)
+				newParent.ObjectValue()[key] = new
+			}
+			oldParent, newParent = old, new
+		case int:
+			if !oldParent.IsArray() || !newParent.IsArray() {
+				return
+			}
+			oldArray, newArray := oldParent.ArrayValue(), newParent.ArrayValue()
+			if element < 0 || element >= len(oldArray) || element >= len(newArray) {
+				return
+			}
+			old, new := oldArray[element], newArray[element]
+			if new.IsComputed() {
+				new = copyWithUnknownElements(old)
+				newArray[element] = new
+			}
+			oldParent, newParent = old, new
+		}
+	}
+
+	switch element := path[len(path)-1].(type) {
+	case string:
+		if !oldParent.IsObject() || !newParent.IsObject() {
+			return
+		}
+		key := resource.PropertyKey(element)
+		old, ok := oldParent.ObjectValue()[key]
+		if !ok {
+			return
+		}
+		newParent.ObjectValue()[key] = old
+	case int:
+		if !oldParent.IsArray() || !newParent.IsArray() {
+			return
+		}
+		oldArray, newArray := oldParent.ArrayValue(), newParent.ArrayValue()
+		if element < 0 || element >= len(oldArray) || element >= len(newArray) {
+			return
+		}
+		newArray[element] = oldArray[element]
+	}
+}
+
+// processStables
+func processStables(oldState resource.PropertyMap, stables []string) resource.PropertyMap {
+	newState := make(resource.PropertyMap)
+	for _, stable := range stables {
+		path, err := resource.ParsePropertyPath(stable)
+		if err != nil {
+			continue
+		}
+
+		copyStableValue(oldState, newState, path)
+	}
+	return newState
 }
 
 func (sg *stepGenerator) loadResourceProvider(
