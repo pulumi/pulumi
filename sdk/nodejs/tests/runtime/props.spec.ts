@@ -90,8 +90,6 @@ describe("runtime", () => {
 
             const result = runtime.deserializeProperties(props);
 
-            console.log(JSON.stringify(result));
-
             // Regular had no secrets in it, so it is returned as is.
             assert.equal(result.regular, "a normal value");
 
