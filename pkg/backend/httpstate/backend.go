@@ -725,6 +725,10 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
+		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
+			conflict := backend.ConflictingUpdateError{Err: err}
+			return client.UpdateIdentifier{}, 0, "", conflict
+		}
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 	// Any non-preview update will be considered part of the stack's update history.
