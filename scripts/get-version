@@ -23,7 +23,8 @@ if git describe --tags --exact-match "${COMMITISH}" >/dev/null 2>&1; then
     exit 0
 fi
 
-# Otherwise, increment the patch version, add the -dev tag and some
+# Otherwise, increment the minor version version (if the package is 1.X or later) or the
+# patch version (if the package is pre 1.0), add the -alpha tag and some
 # commit metadata. If there's no existing tag, pretend a v0.0.0 was
 # there so we'll produce v0.0.1-dev builds.
 if git describe --tags --abbrev=0 "${COMMITISH}" > /dev/null 2>&1; then
@@ -39,11 +40,17 @@ MAJOR=$(cut -d. -f1 <<< "${TAG}")
 MINOR=$(cut -d. -f2 <<< "${TAG}")
 PATCH=$(cut -d. -f3 <<< "${TAG}")
 
+if [ "${MAJOR}" = "v0" ]; then
+    PATCH=$((${PATCH}+1))
+else
+    MINOR=$((${MINOR}+1))
+fi
+
 # We want to include some additional information. To the base tag we
 # add a timestamp and commit hash. We use the timestamp of the commit
 # itself, not the date it was authored (so it will change when someone
 # rebases a PR into master, for example).
-echo -n "${MAJOR}.${MINOR}.$((${PATCH}+1))-alpha.$(git show -s --format='%ct+g%h' ${COMMITISH})"
+echo -n "${MAJOR}.${MINOR}.${PATCH}-alpha.$(git show -s --format='%ct+g%h' ${COMMITISH})"
 if [ ! -z "${DIRTY_TAG}" ]; then
     echo -n ".${DIRTY_TAG}"
 fi
