@@ -15,7 +15,9 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
@@ -76,12 +78,13 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			if stackName == "" && cmdutil.Interactive() {
-				hint := "Please enter your desired stack name."
 				if b.SupportsOrganizations() {
-					hint += "\nTo create a stack in an organization, " +
-						"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)"
+					fmt.Print("Please enter your desired stack name.\n" +
+						"To create a stack in an organization, " +
+						"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 				}
-				name, nameErr := cmdutil.ReadConsole(hint)
+
+				name, nameErr := promptForValue(false, "stack name", "dev", false, workspace.ValidateStackName, opts)
 				if nameErr != nil {
 					return nameErr
 				}
