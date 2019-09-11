@@ -169,8 +169,12 @@ func runNew(args newArgs) error {
 	}
 
 	// If a stack was specified via --stack, see if it already exists.
+	// Only do the lookup for fully-qualified stack names `org/project/stack` because
+	// otherwise `getStack` will fail to detect the project folder and fail.
+	// The main purpose of this lookup is getting a proper start with a project
+	// created via the web app.
 	var s backend.Stack
-	if args.stack != "" {
+	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
 		existingStack, existingName, existingDesc, err := getStack(args.stack, opts)
 		if err != nil {
 			return err

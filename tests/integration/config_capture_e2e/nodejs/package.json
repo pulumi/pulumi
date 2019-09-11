@@ -13,6 +13,6 @@
         "pulumi": "latest"
     },
     "dependencies": {
-        "@types/node": "^9.4.7"
+        "@types/node": "^8.0.0"
     }
 }
