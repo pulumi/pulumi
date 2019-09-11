@@ -1,33 +1,33 @@
-# It may be tempting to add parens around each individual clause in this expression, but Travis then builds pushes anyway
 if: branch = master OR branch =~ ^features/ OR tag IS present
 matrix:
   include:
-    - os: linux
-      env: NODE_VERSION=v12.1.0 TRAVIS_PUBLISH_PACKAGES=true
-    - if: type IN (cron, push)
-      os: osx
-      env: NODE_VERSION=v10.15.3
-    - if: type = cron
-      os: linux
-      env: NODE_VERSION=v8.16.0
+  - os: linux
+    env: NODE_VERSION=v12.1.0 TRAVIS_PUBLISH_PACKAGES=true
+  - if: type IN (cron, push)
+    os: osx
+    env: NODE_VERSION=v10.15.3
+  - if: type = cron
+    os: linux
+    env: NODE_VERSION=v8.16.0
 language: go
 go: 1.12.9
-sudo: true # give us 7.5GB and >2 bursted cores.
+sudo: true
 git:
   depth: false
 before_install:
-    - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
-    - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
-    - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
-    # Increase the default file descriptor limit on MacOS
-    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ulimit -n 2048; fi 
+- openssl aes-256-cbc -K $encrypted_342342ee5e49_key -iv $encrypted_342342ee5e49_iv
+  -in gcp-credentials.json.enc -out gcp-credentials.json -d
+- git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
+- source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
+- source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
+- if [ "$TRAVIS_OS_NAME" = "osx" ]; then ulimit -n 2048; fi
 install:
-    - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
+- source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
 before_script:
-    - ${PULUMI_SCRIPTS}/ci/ensure-dependencies
+- "${PULUMI_SCRIPTS}/ci/ensure-dependencies"
 script:
-    - make travis_${TRAVIS_EVENT_TYPE}
+- make travis_${TRAVIS_EVENT_TYPE}
 after_failure:
-    - ${PULUMI_SCRIPTS}/ci/upload-failed-tests
+- "${PULUMI_SCRIPTS}/ci/upload-failed-tests"
 notifications:
-    webhooks: https://zlmgkhmhjc.execute-api.us-west-2.amazonaws.com/stage/travis
+  webhooks: https://zlmgkhmhjc.execute-api.us-west-2.amazonaws.com/stage/travis
