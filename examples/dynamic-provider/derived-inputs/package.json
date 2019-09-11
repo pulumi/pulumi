@@ -3,7 +3,7 @@
     "license": "Apache-2.0",
     "devDependencies": {
         "@types/minimist": "^1.2.0",
-        "@types/node": "^8.0.25",
+        "@types/node": "^8.0.0",
         "typescript": "^3.0.0"
     },
     "dependencies": {
