@@ -27,7 +27,6 @@ type GoogleCredentials struct {
 }
 
 func GoogleCredentialsMux() (*blob.URLMux, error) {
-
 	var err error
 	var credentials *google.Credentials
 
