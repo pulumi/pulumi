@@ -1,0 +1,47 @@
+{
+  "name": "experiments",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "author": {
+    "name": "pulumi"
+  },
+  "repository": {
+    "url": "github.com:pulumi/pulumi.git",
+    "type": "git"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "jsii": "^0.13.3",
+    "jsii-pacmak": "^0.13.3"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "jsii",
+    "watch": "jsii -w",
+    "package": "jsii-pacmak -v -c",
+    "package2": "jsii-pacmak -h"
+  },
+  "jsii": {
+    "outdir": "dist",
+    "targets": {
+      "java": {
+        "package": "com.acme.hello",
+        "maven": {
+          "groupId": "com.acme.hello",
+          "artifactId": "hello-jsii"
+        }
+      },
+      "dotnet": {
+        "namespace": "Acme.HelloNamespace",
+        "packageId": "Acme.HelloPackage"
+      },
+      "python": {
+        "distName": "pulumipy",
+        "module": "pulumipy"
+      },
+      "sphinx": { }
+    }
+  }
+}

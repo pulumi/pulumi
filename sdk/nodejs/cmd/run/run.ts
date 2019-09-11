@@ -210,6 +210,8 @@ ${defaultMessage}`);
     };
 
     process.on("uncaughtException", uncaughtHandler);
+    // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
+    // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
     process.on("exit", runtime.disconnectSync);
 

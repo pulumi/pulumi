@@ -24,17 +24,17 @@ export class StackReference extends CustomResource {
     /**
      * The name of the referenced stack.
      */
-    public readonly name: Output<string>;
+    public readonly name!: Output<string>;
 
     /**
      * The outputs of the referenced stack.
      */
-    public readonly outputs: Output<{[name: string]: any}>;
+    public readonly outputs!: Output<{[name: string]: any}>;
 
     /**
      * The names of any stack outputs which contain secrets.
      */
-    public readonly secretOutputNames: Output<string[]>;
+    public readonly secretOutputNames!: Output<string[]>;
 
     /**
      * Create a StackReference resource with the given unique name, arguments, and options.

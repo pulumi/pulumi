@@ -223,6 +223,8 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     };
 
     process.on("uncaughtException", uncaughtHandler);
+    // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
+    // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
     process.on("exit", disconnectSync);
 

@@ -47,6 +47,8 @@ const uncaughtHandler = (err: Error) => {
 export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
 process.on("uncaughtException", uncaughtHandler);
+// @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
+// suppress the TS strictness here.
 process.on("unhandledRejection", uncaughtHandler);
 process.on("exit", (code: number) => {
 

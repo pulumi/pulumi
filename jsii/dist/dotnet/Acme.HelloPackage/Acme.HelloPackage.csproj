@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <IncludeSource>true</IncludeSource>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackageId>Acme.HelloPackage</PackageId>
+    <Description>experiments</Description>
+    <ProjectUrl>github.com:pulumi/pulumi.git</ProjectUrl>
+    <LicenseUrl>https://spdx.org/licenses/ISC.html</LicenseUrl>
+    <Authors>pulumi</Authors>
+    <Language>en-US</Language>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="experiments-1.0.0.tgz" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Amazon.JSII.Runtime" Version="0.13.3" />
+  </ItemGroup>
+</Project>
