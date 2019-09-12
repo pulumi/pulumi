@@ -93,18 +93,18 @@ func TestTemplates(t *testing.T) {
 			assert.NoError(t, err)
 
 			run :=
-				// Skip packet templates for now
-				strings.Contains(template.Name, "packet") &&
-				// Skip go templates for now
-				strings.Contains(template.Name, "go") &&
-				// Skip kubernetes templates - no kubeconfig to run them with
-				strings.Contains(template.Name, "kubernetes")
-				// Skip digitalocean templates - they all try to create a domain which is occupied
-				strings.Contains(template.Name, "digitalocean")
-				// Skip kubernetes templates for now - waiting for credentials
-				strings.Contains(template.Name, "openstack")
-				// Skip gcp templates for now - waiting for gcp
-				strings.Contains(template.Name, "gcp")
+				// Skip packet templates for now - waiting for credentials
+				!strings.Contains(template.Name, "packet") &&
+					// Skip go templates for now
+					!strings.Contains(template.Name, "go") &&
+					// Skip kubernetes templates - no kubeconfig to run them with
+					!strings.Contains(template.Name, "kubernetes") &&
+					// Skip Digital Ocean templates - they all try to create a domain which is occupied
+					!strings.Contains(template.Name, "digitalocean") &&
+					// Skip Open Stack templates for now - waiting for credentials
+					!strings.Contains(template.Name, "openstack") &&
+					// Skip gcp templates for now - waiting for gcp
+					!strings.Contains(template.Name, "gcp")
 
 			if run {
 				example := base.With(integration.ProgramTestOptions{
