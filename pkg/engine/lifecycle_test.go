@@ -1696,11 +1696,11 @@ func TestRefreshBasics(t *testing.T) {
 		"5": {},
 	}
 
-	validateRefresh(t, p, urns, oldResources, newStates)
+	validateBasicRefresh(t, p, urns, oldResources, newStates)
 }
 
 // Tests basic refresh functionality.
-func TestRefreshTargets(t *testing.T) {
+func TestRefreshBasicsTargets(t *testing.T) {
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -1749,13 +1749,13 @@ func TestRefreshTargets(t *testing.T) {
 		"5": {},
 	}
 
-	for _, urn := range(urns) {
+	for _, urn := range urns {
 		p.Options.RefreshTargets = []resource.URN{urn}
-		validateRefresh(t, p, urns, oldResources, newStates)
+		validateBasicRefresh(t, p, urns, oldResources, newStates)
 	}
 }
 
-func validateRefresh(t *testing.T, p *TestPlan, urns []resource.URN, oldResources []*resource.State, newStates map[resource.ID]plugin.ReadResult) {
+func validateBasicRefresh(t *testing.T, p *TestPlan, urns []resource.URN, oldResources []*resource.State, newStates map[resource.ID]plugin.ReadResult) {
 	old := &deploy.Snapshot{
 		Resources: oldResources,
 	}
