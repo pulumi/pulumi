@@ -1638,10 +1638,10 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 			// A::3 should not have changed.
 			assert.Equal(t, oldResources[3], r)
 		case "5":
-			// A::4 was deleted but A::3 was still referenceable by C, so C should not have changed.
+			// A::4 was deleted but A::3 was still refernceable by C, so C should not have changed.
 			assert.Equal(t, oldResources[5], r)
 		default:
-			t.Fatalf("unexpected resource %v::%v", r.URN, r.ID)
+			t.Fatalf("unexepcted resource %v::%v", r.URN, r.ID)
 		}
 	}
 }
@@ -1655,7 +1655,6 @@ func TestRefreshBasics(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 	urnC := p.NewURN(resType, "resC", "")
-	urns := []resource.URN{urnA, urnB, urnC}
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
@@ -1695,69 +1694,6 @@ func TestRefreshBasics(t *testing.T) {
 		"2": {},
 		"5": {},
 	}
-
-	validateBasicRefresh(t, p, urns, oldResources, newStates)
-}
-
-// Tests basic refresh functionality.
-func TestRefreshBasicsTargets(t *testing.T) {
-	p := &TestPlan{}
-
-	const resType = "pkgA:m:typA"
-
-	urnA := p.NewURN(resType, "resA", "")
-	urnB := p.NewURN(resType, "resB", "")
-	urnC := p.NewURN(resType, "resC", "")
-	urns := []resource.URN{urnA, urnB, urnC}
-
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
-			Type:         urn.Type(),
-			URN:          urn,
-			Custom:       true,
-			Delete:       delete,
-			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
-			Dependencies: dependencies,
-		}
-	}
-
-	oldResources := []*resource.State{
-		newResource(urnA, "0", false),
-		newResource(urnB, "1", false, urnA),
-		newResource(urnC, "2", false, urnA, urnB),
-		newResource(urnA, "3", true),
-		newResource(urnA, "4", true),
-		newResource(urnC, "5", true, urnA, urnB),
-	}
-
-	newStates := map[resource.ID]plugin.ReadResult{
-		// A::0 and A::3 will have no changes.
-		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-
-		// B::1 and A::4 will have changes. The latter will also have input changes.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
-		"4": {
-			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
-		},
-
-		// C::2 and C::5 will be deleted.
-		"2": {},
-		"5": {},
-	}
-
-	for _, urn := range urns {
-		p.Options.RefreshTargets = []resource.URN{urn}
-		validateBasicRefresh(t, p, urns, oldResources, newStates)
-	}
-}
-
-func validateBasicRefresh(
-	t *testing.T, p *TestPlan, urns []resource.URN, oldResources []*resource.State,
-	newStates map[resource.ID]plugin.ReadResult) {
 
 	old := &deploy.Snapshot{
 		Resources: oldResources,
@@ -1779,45 +1715,7 @@ func validateBasicRefresh(
 
 	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
-	p.Steps = []TestStep{createRefreshTestStep(t, newStates)}
-	snap := p.Run(t, old)
-
-	provURN := p.NewProviderURN("pkgA", "default", "")
-
-	for _, r := range snap.Resources {
-		urn := r.URN
-		if urn == provURN {
-			continue
-		}
-
-		var has = false
-		for _, otherURN := range urns {
-			if urn == otherURN {
-				has = true
-				break
-			}
-		}
-		if !has {
-			t.Fatalf("unexpected resource %v", urn)
-		}
-
-		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
-		expected := newStates[r.ID]
-		assert.NotNil(t, expected)
-
-		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
-
-		// The new resources should be equal to the old resources + the new inputs and outputs.
-		old := oldResources[int(idx)]
-		old.Inputs = expected.Inputs
-		old.Outputs = expected.Outputs
-		assert.Equal(t, old, r)
-	}
-}
-
-func createRefreshTestStep(t *testing.T, newStates map[resource.ID]plugin.ReadResult) TestStep {
-	return TestStep{
+	p.Steps = []TestStep{{
 		Op: Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
 			_ []Event, res result.Result) result.Result {
@@ -1856,6 +1754,33 @@ func createRefreshTestStep(t *testing.T, newStates map[resource.ID]plugin.ReadRe
 			}
 			return res
 		},
+	}}
+	snap := p.Run(t, old)
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+
+	for _, r := range snap.Resources {
+		switch urn := r.URN; urn {
+		case provURN:
+			continue
+		case urnA, urnB, urnC:
+			// break
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+
+		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
+		expected := newStates[r.ID]
+		assert.NotNil(t, expected)
+
+		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
+		assert.NoError(t, err)
+
+		// The new resources should be equal to the old resources + the new inputs and outputs.
+		old := oldResources[int(idx)]
+		old.Inputs = expected.Inputs
+		old.Outputs = expected.Outputs
+		assert.Equal(t, old, r)
 	}
 }
 
