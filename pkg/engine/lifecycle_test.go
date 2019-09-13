@@ -1755,7 +1755,10 @@ func TestRefreshBasicsTargets(t *testing.T) {
 	}
 }
 
-func validateBasicRefresh(t *testing.T, p *TestPlan, urns []resource.URN, oldResources []*resource.State, newStates map[resource.ID]plugin.ReadResult) {
+func validateBasicRefresh(
+	t *testing.T, p *TestPlan, urns []resource.URN, oldResources []*resource.State,
+	newStates map[resource.ID]plugin.ReadResult) {
+
 	old := &deploy.Snapshot{
 		Resources: oldResources,
 	}
