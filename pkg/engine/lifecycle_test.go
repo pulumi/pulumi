@@ -1638,10 +1638,10 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 			// A::3 should not have changed.
 			assert.Equal(t, oldResources[3], r)
 		case "5":
-			// A::4 was deleted but A::3 was still refernceable by C, so C should not have changed.
+			// A::4 was deleted but A::3 was still referenceable by C, so C should not have changed.
 			assert.Equal(t, oldResources[5], r)
 		default:
-			t.Fatalf("unexepcted resource %v::%v", r.URN, r.ID)
+			t.Fatalf("unexpected resource %v::%v", r.URN, r.ID)
 		}
 	}
 }
