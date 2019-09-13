@@ -290,14 +290,14 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return nil
 	}
 
-	previousResources := prev.Resources
-
 	// If the user did not provide any --target's, create a refresh step for each resource in the
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
+	initialResources := []*resource.State{}
 	resourceToStep := map[*resource.State]Step{}
-	for _, res := range previousResources {
+	for _, res := range prev.Resources {
+		initialResources = append(initialResources, res)
 		if shouldRefresh(opts, res) {
 			step := NewRefreshStep(pe.plan, res, nil)
 			steps = append(steps, step)
@@ -343,7 +343,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
-	for _, s := range previousResources {
+	for _, s := range initialResources {
 		var old, new *resource.State
 		if step, has := resourceToStep[s]; has {
 			// We produces a refresh step for this specific resource.  Use the new information about
