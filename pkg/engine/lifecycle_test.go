@@ -1648,23 +1648,6 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 	}
 }
 
-// Tests basic refresh functionality.
-func TestRefreshBasics(t *testing.T) {
-	names := []string{"resA", "resB", "resC"}
-
-	// Try refreshing a stack with every combination of the three above resources as a target to
-	// refresh.
-	subsets := combinations.All(names)
-
-	// combinations.All doesn't return the empty set.  So explicitly test that case (i.e. test no
-	// targets specified)
-	validateRefreshCombination(t, names, []string{})
-
-	for _, subset := range subsets {
-		validateRefreshCombination(t, names, subset)
-	}
-}
-
 func pickURN(urns []resource.URN, target string) resource.URN {
 	switch target {
 	case "resA":
@@ -1678,7 +1661,24 @@ func pickURN(urns []resource.URN, target string) resource.URN {
 	}
 }
 
-func validateRefreshCombination(t *testing.T, names []string, targets []string) {
+// Tests basic refresh functionality.
+func TestRefreshBasics(t *testing.T) {
+	names := []string{"resA", "resB", "resC"}
+
+	// Try refreshing a stack with every combination of the three above resources as a target to
+	// refresh.
+	subsets := combinations.All(names)
+
+	// combinations.All doesn't return the empty set.  So explicitly test that case (i.e. test no
+	// targets specified)
+	validateRefreshBasicsCombination(t, names, []string{})
+
+	for _, subset := range subsets {
+		validateRefreshBasicsCombination(t, names, subset)
+	}
+}
+
+func validateRefreshBasicsCombination(t *testing.T, names []string, targets []string) {
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
