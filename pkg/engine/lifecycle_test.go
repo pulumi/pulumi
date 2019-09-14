@@ -1591,10 +1591,9 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	const resType = "pkgA:m:typA"
 
-	urnA := p.NewURN(resType, "resA", "")
-	urnB := p.NewURN(resType, "resB", "")
-	urnC := p.NewURN(resType, "resC", "")
-
+	urnA := p.NewURN(resType, names[0], "")
+	urnB := p.NewURN(resType, names[1], "")
+	urnC := p.NewURN(resType, names[2], "")
 	urns := []resource.URN{urnA, urnB, urnC}
 
 	refreshTargets := []resource.URN{}
@@ -1665,6 +1664,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 						assert.Containsf(t, refreshTargets, entry.Step.URN(),
 							"Refreshed a resource that wasn't a target: %v", entry.Step.URN())
 					}
+
+					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 				}
 
 				return res
