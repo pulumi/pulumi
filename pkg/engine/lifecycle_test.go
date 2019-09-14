@@ -1571,6 +1571,22 @@ func pickURN(urns []resource.URN, target string) resource.URN {
 
 // Tests that dependencies are correctly rewritten when refresh removes deleted resources.
 func TestRefreshDeleteDependencies(t *testing.T) {
+	names := []string{"resA", "resB", "resC"}
+
+	// Try refreshing a stack with every combination of the three above resources as a target to
+	// refresh.
+	subsets := combinations.All(names)
+
+	// combinations.All doesn't return the empty set.  So explicitly test that case (i.e. test no
+	// targets specified)
+	validateRefreshDeleteCombination(t, names, []string{})
+
+	for _, subset := range subsets {
+		validateRefreshDeleteCombination(t, names, subset)
+	}
+}
+
+func validateRefreshDeleteCombination(t *testing.T, names []string, targets []string) {
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -1578,6 +1594,17 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 	urnC := p.NewURN(resType, "resC", "")
+
+	urns := []resource.URN{urnA, urnB, urnC}
+
+	refreshTargets := []resource.URN{}
+
+	t.Logf("Refreshing targets: %v", targets)
+	for _, target := range targets {
+		refreshTargets = append(p.Options.RefreshTargets, pickURN(urns, target))
+	}
+
+	p.Options.RefreshTargets = refreshTargets
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
@@ -1625,7 +1652,26 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 
 	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
-	p.Steps = []TestStep{{Op: Refresh}}
+	p.Steps = []TestStep{
+		{
+			Op: Refresh,
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				_ []Event, res result.Result) result.Result {
+
+				// Should see only refreshes.
+				for _, entry := range j.Entries {
+					if len(refreshTargets) > 0 {
+						// should only see changes to urns we explicitly asked to change
+						assert.Containsf(t, refreshTargets, entry.Step.URN(),
+							"Refreshed a resource that wasn't a target: %v", entry.Step.URN())
+					}
+				}
+
+				return res
+			},
+		},
+	}
+
 	snap := p.Run(t, old)
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -1640,25 +1686,44 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 			t.Fatalf("unexpected resource %v", urn)
 		}
 
-		switch r.ID {
-		case "1":
-			// A::0 was deleted, so B's dependency list should be empty.
-			assert.Equal(t, urnB, r.URN)
-			assert.Empty(t, r.Dependencies)
-		case "2":
-			// A::0 was deleted, so C's dependency list should only contain B.
-			assert.Equal(t, urnC, r.URN)
-			assert.Equal(t, []resource.URN{urnB}, r.Dependencies)
-		case "3":
-			// A::3 should not have changed.
-			assert.Equal(t, oldResources[3], r)
-		case "5":
-			// A::4 was deleted but A::3 was still refernceable by C, so C should not have changed.
-			assert.Equal(t, oldResources[5], r)
-		default:
-			t.Fatalf("unexepcted resource %v::%v", r.URN, r.ID)
+		if len(refreshTargets) == 0 || containsURN(refreshTargets, urnA) {
+			// 'A' was deleted, so we should see the impact downstream.
+
+			switch r.ID {
+			case "1":
+				// A::0 was deleted, so B's dependency list should be empty.
+				assert.Equal(t, urnB, r.URN)
+				assert.Empty(t, r.Dependencies)
+			case "2":
+				// A::0 was deleted, so C's dependency list should only contain B.
+				assert.Equal(t, urnC, r.URN)
+				assert.Equal(t, []resource.URN{urnB}, r.Dependencies)
+			case "3":
+				// A::3 should not have changed.
+				assert.Equal(t, oldResources[3], r)
+			case "5":
+				// A::4 was deleted but A::3 was still refernceable by C, so C should not have changed.
+				assert.Equal(t, oldResources[5], r)
+			default:
+				t.Fatalf("Unexpected changed resource when refreshing %v: %v::%v", refreshTargets, r.URN, r.ID)
+			}
+		} else {
+			// A was not deleted. So nothing should be impacted.
+			id, err := strconv.Atoi(r.ID.String())
+			assert.NoError(t, err)
+			assert.Equal(t, oldResources[id], r)
 		}
 	}
+}
+
+func containsURN(urns []resource.URN, urn resource.URN) bool {
+	for _, val := range urns {
+		if val == urn {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Tests basic refresh functionality.
