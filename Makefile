@@ -9,6 +9,9 @@ VERSION         := $(shell scripts/get-version)
 
 TESTPARALLELISM := 10
 
+# Set NOPROXY to true to skip GOPROXY on 'ensure'
+NOPROXY := false
+
 build-proto::
 	cd sdk/proto && ./generate.sh
 
