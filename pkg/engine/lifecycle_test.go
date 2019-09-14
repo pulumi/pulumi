@@ -45,6 +45,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
+
+	combinations "github.com/mxschmitt/golang-combinations"
 )
 
 type JournalEntryKind int
@@ -1648,430 +1650,51 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 
 // Tests basic refresh functionality.
 func TestRefreshBasics(t *testing.T) {
-	p := &TestPlan{}
+	names := []string{"resA", "resB", "resC"}
 
-	const resType = "pkgA:m:typA"
+	// Try refreshing a stack with every combination of the three above resources as a target to
+	// refresh.
+	subsets := combinations.All(names)
 
-	urnA := p.NewURN(resType, "resA", "")
-	urnB := p.NewURN(resType, "resB", "")
-	urnC := p.NewURN(resType, "resC", "")
+	// combinations.All doesn't return the empty set.  So explicitly test that case (i.e. test no
+	// targets specified)
+	validateRefreshCombination(t, names, []string{})
 
-	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
-			Type:         urn.Type(),
-			URN:          urn,
-			Custom:       true,
-			Delete:       delete,
-			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
-			Dependencies: dependencies,
-		}
-	}
-
-	oldResources := []*resource.State{
-		newResource(urnA, "0", false),
-		newResource(urnB, "1", false, urnA),
-		newResource(urnC, "2", false, urnA, urnB),
-		newResource(urnA, "3", true),
-		newResource(urnA, "4", true),
-		newResource(urnC, "5", true, urnA, urnB),
-	}
-
-	newStates := map[resource.ID]plugin.ReadResult{
-		// A::0 and A::3 will have no changes.
-		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-
-		// B::1 and A::4 will have changes. The latter will also have input changes.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
-		"4": {
-			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
-		},
-
-		// C::2 and C::5 will be deleted.
-		"2": {},
-		"5": {},
-	}
-
-	old := &deploy.Snapshot{
-		Resources: oldResources,
-	}
-
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
-					new, hasNewState := newStates[id]
-					assert.True(t, hasNewState)
-					return new, resource.StatusOK, nil
-				},
-			}, nil
-		}),
-	}
-
-	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
-
-	p.Steps = []TestStep{{
-		Op: Refresh,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-			_ []Event, res result.Result) result.Result {
-
-			// Should see only refreshes.
-			for _, entry := range j.Entries {
-				assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
-				resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
-
-				old := entry.Step.Old()
-				if !old.Custom || providers.IsProviderType(old.Type) {
-					// Component and provider resources should never change.
-					assert.Equal(t, deploy.OpSame, resultOp)
-					continue
-				}
-
-				expected, new := newStates[old.ID], entry.Step.New()
-				if expected.Outputs == nil {
-					// If the resource was deleted, we want the result op to be an OpDelete.
-					assert.Nil(t, new)
-					assert.Equal(t, deploy.OpDelete, resultOp)
-				} else {
-					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
-					// an OpSame.
-					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
-						assert.Equal(t, deploy.OpSame, resultOp)
-					} else {
-						assert.Equal(t, deploy.OpUpdate, resultOp)
-					}
-
-					// Only the inputs and outputs should have changed (if anything changed).
-					old.Inputs = expected.Inputs
-					old.Outputs = expected.Outputs
-					assert.Equal(t, old, new)
-				}
-			}
-			return res
-		},
-	}}
-	snap := p.Run(t, old)
-
-	provURN := p.NewProviderURN("pkgA", "default", "")
-
-	for _, r := range snap.Resources {
-		switch urn := r.URN; urn {
-		case provURN:
-			continue
-		case urnA, urnB, urnC:
-			// break
-		default:
-			t.Fatalf("unexpected resource %v", urn)
-		}
-
-		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
-		expected := newStates[r.ID]
-		assert.NotNil(t, expected)
-
-		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
-
-		// The new resources should be equal to the old resources + the new inputs and outputs.
-		old := oldResources[int(idx)]
-		old.Inputs = expected.Inputs
-		old.Outputs = expected.Outputs
-		assert.Equal(t, old, r)
+	for _, subset := range subsets {
+		validateRefreshCombination(t, names, subset)
 	}
 }
 
-// Tests basic refresh functionality.
-// func TestRefreshTarget(t *testing.T) {
-// 	p := &TestPlan{}
+func pickURN(urns []resource.URN, target string) resource.URN {
+	switch target {
+	case "resA":
+		return urns[0]
+	case "resB":
+		return urns[1]
+	case "resC":
+		return urns[2]
+	default:
+		panic("Invalid target: " + target)
+	}
+}
 
-// 	const resType = "pkgA:m:typA"
-
-// 	urnA := p.NewURN(resType, "resA", "")
-// 	urnB := p.NewURN(resType, "resB", "")
-// 	urnC := p.NewURN(resType, "resC", "")
-
-// 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
-// 		return &resource.State{
-// 			Type:         urn.Type(),
-// 			URN:          urn,
-// 			Custom:       true,
-// 			Delete:       delete,
-// 			ID:           id,
-// 			Inputs:       resource.PropertyMap{},
-// 			Outputs:      resource.PropertyMap{},
-// 			Dependencies: dependencies,
-// 		}
-// 	}
-
-// 	oldResources := []*resource.State{
-// 		newResource(urnA, "0", false),
-// 		newResource(urnB, "1", false, urnA),
-// 		newResource(urnC, "2", false, urnA, urnB),
-// 		newResource(urnA, "3", true),
-// 		newResource(urnA, "4", true),
-// 		newResource(urnC, "5", true, urnA, urnB),
-// 	}
-
-// 	newStates := map[resource.ID]plugin.ReadResult{
-// 		// A::0 and A::3 will have no changes.
-// 		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-// 		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-
-// 		// B::1 and A::4 will have changes. The latter will also have input changes.
-// 		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
-// 		"4": {
-// 			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
-// 			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
-// 		},
-
-// 		// C::2 and C::5 will be deleted.
-// 		"2": {},
-// 		"5": {},
-// 	}
-
-// 	old := &deploy.Snapshot{
-// 		Resources: oldResources,
-// 	}
-
-// 	loaders := []*deploytest.ProviderLoader{
-// 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-// 			return &deploytest.Provider{
-// 				ReadF: func(urn resource.URN, id resource.ID,
-// 					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
-// 					new, hasNewState := newStates[id]
-// 					assert.True(t, hasNewState)
-// 					return new, resource.StatusOK, nil
-// 				},
-// 			}, nil
-// 		}),
-// 	}
-
-// 	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
-
-// 	p.Steps = []TestStep{{
-// 		Op: Refresh,
-// 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-// 			_ []Event, res result.Result) result.Result {
-
-// 			// Should see only refreshes.
-// 			for _, entry := range j.Entries {
-// 				assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
-// 				resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
-
-// 				old := entry.Step.Old()
-// 				if !old.Custom || providers.IsProviderType(old.Type) {
-// 					// Component and provider resources should never change.
-// 					assert.Equal(t, deploy.OpSame, resultOp)
-// 					continue
-// 				}
-
-// 				expected, new := newStates[old.ID], entry.Step.New()
-// 				if expected.Outputs == nil {
-// 					// If the resource was deleted, we want the result op to be an OpDelete.
-// 					assert.Nil(t, new)
-// 					assert.Equal(t, deploy.OpDelete, resultOp)
-// 				} else {
-// 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
-// 					// an OpSame.
-// 					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
-// 						assert.Equal(t, deploy.OpSame, resultOp)
-// 					} else {
-// 						assert.Equal(t, deploy.OpUpdate, resultOp)
-// 					}
-
-// 					// Only the inputs and outputs should have changed (if anything changed).
-// 					old.Inputs = expected.Inputs
-// 					old.Outputs = expected.Outputs
-// 					assert.Equal(t, old, new)
-// 				}
-// 			}
-// 			return res
-// 		},
-// 	}}
-// 	p.Options.RefreshTargets = []resource.URN{urnA}
-// 	snap := p.Run(t, old)
-
-// 	provURN := p.NewProviderURN("pkgA", "default", "")
-
-// 	for _, r := range snap.Resources {
-// 		switch urn := r.URN; urn {
-// 		case provURN:
-// 			continue
-// 		case urnA, urnB, urnC:
-// 			// break
-// 		default:
-// 			t.Fatalf("unexpected resource %v", urn)
-// 		}
-
-// 		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
-// 		expected := newStates[r.ID]
-// 		assert.NotNil(t, expected)
-
-// 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-// 		assert.NoError(t, err)
-
-// 		// The new resources should be equal to the old resources + the new inputs and outputs.
-// 		old := oldResources[int(idx)]
-// 		old.Inputs = expected.Inputs
-// 		old.Outputs = expected.Outputs
-// 		assert.Equal(t, old, r)
-// 	}
-// }
-
-// // Tests basic refresh functionality.
-// func TestRefreshTarget1(t *testing.T) {
-// 	p := &TestPlan{}
-
-// 	const resType = "pkgA:m:typA"
-
-// 	urnA := p.NewURN(resType, "resA", "")
-// 	urnB := p.NewURN(resType, "resB", "")
-// 	urnC := p.NewURN(resType, "resC", "")
-
-// 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
-// 		return &resource.State{
-// 			Type:         urn.Type(),
-// 			URN:          urn,
-// 			Custom:       true,
-// 			Delete:       delete,
-// 			ID:           id,
-// 			Inputs:       resource.PropertyMap{},
-// 			Outputs:      resource.PropertyMap{},
-// 			Dependencies: dependencies,
-// 		}
-// 	}
-
-// 	oldResources := []*resource.State{
-// 		newResource(urnA, "0", false),
-// 		newResource(urnB, "1", false, urnA),
-// 		newResource(urnC, "2", false, urnA, urnB),
-// 		newResource(urnA, "3", true),
-// 		newResource(urnA, "4", true),
-// 		newResource(urnC, "5", true, urnA, urnB),
-// 	}
-
-// 	newStates := map[resource.ID]plugin.ReadResult{
-// 		// A::0 and A::3 will have no changes.
-// 		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-// 		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-
-// 		// B::1 and A::4 will have changes. The latter will also have input changes.
-// 		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
-// 		"4": {
-// 			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
-// 			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
-// 		},
-
-// 		// C::2 and C::5 will be deleted.
-// 		"2": {},
-// 		"5": {},
-// 	}
-
-// 	old := &deploy.Snapshot{
-// 		Resources: oldResources,
-// 	}
-
-// 	loaders := []*deploytest.ProviderLoader{
-// 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-// 			return &deploytest.Provider{
-// 				ReadF: func(urn resource.URN, id resource.ID,
-// 					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
-// 					new, hasNewState := newStates[id]
-// 					assert.True(t, hasNewState)
-// 					return new, resource.StatusOK, nil
-// 				},
-// 			}, nil
-// 		}),
-// 	}
-
-// 	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
-
-// 	p.Steps = []TestStep{{
-// 		Op: Refresh,
-// 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-// 			_ []Event, res result.Result) result.Result {
-
-// 			// Should see only refreshes.
-// 			for _, entry := range j.Entries {
-// 				assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
-// 				resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
-
-// 				old := entry.Step.Old()
-// 				if !old.Custom || providers.IsProviderType(old.Type) {
-// 					// Component and provider resources should never change.
-// 					assert.Equal(t, deploy.OpSame, resultOp)
-// 					continue
-// 				}
-
-// 				assert.Equal(t, entry.Step.URN(), urnB)
-// 				expected, new := newStates[old.ID], entry.Step.New()
-// 				if expected.Outputs == nil {
-// 					// If the resource was deleted, we want the result op to be an OpDelete.
-// 					assert.Nil(t, new)
-// 					assert.Equal(t, deploy.OpDelete, resultOp)
-// 				} else {
-// 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
-// 					// an OpSame.
-// 					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
-// 						assert.Equal(t, deploy.OpSame, resultOp)
-// 					} else {
-// 						assert.Equal(t, deploy.OpUpdate, resultOp)
-// 					}
-
-// 					// Only the inputs and outputs should have changed (if anything changed).
-// 					old.Inputs = expected.Inputs
-// 					old.Outputs = expected.Outputs
-// 					assert.Equal(t, old, new)
-// 				}
-// 			}
-// 			return res
-// 		},
-// 	}}
-// 	p.Options.RefreshTargets = []resource.URN{urnB}
-// 	snap := p.Run(t, old)
-
-// 	provURN := p.NewProviderURN("pkgA", "default", "")
-
-// 	for _, r := range snap.Resources {
-// 		switch urn := r.URN; urn {
-// 		case provURN:
-// 			continue
-// 		case urnA, urnB, urnC:
-// 			// break
-// 		default:
-// 			t.Fatalf("unexpected resource %v", urn)
-// 		}
-
-// 		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
-// 		expected := newStates[r.ID]
-// 		assert.NotNil(t, expected)
-
-// 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-// 		assert.NoError(t, err)
-
-// 		// The new resources should be equal to the old resources + the new inputs and outputs.
-// 		old := oldResources[int(idx)]
-// 		old.Inputs = expected.Inputs
-// 		old.Outputs = expected.Outputs
-// 		assert.Equal(t, old, r)
-// 	}
-// }
-
-// Tests basic refresh functionality.
-func TestRefreshTarget2(t *testing.T) {
+func validateRefreshCombination(t *testing.T, names []string, targets []string) {
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
 
-	urnA := p.NewURN(resType, "resA", "")
-	urnB := p.NewURN(resType, "resB", "")
-	urnC := p.NewURN(resType, "resC", "")
+	urnA := p.NewURN(resType, names[0], "")
+	urnB := p.NewURN(resType, names[1], "")
+	urnC := p.NewURN(resType, names[2], "")
+	urns := []resource.URN{urnA, urnB, urnC}
+
+	refreshTargets := []resource.URN{}
+
+	for _, target := range targets {
+		refreshTargets = append(p.Options.RefreshTargets, pickURN(urns, target))
+	}
+
+	p.Options.RefreshTargets = refreshTargets
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
@@ -2139,8 +1762,11 @@ func TestRefreshTarget2(t *testing.T) {
 
 			// Should see only refreshes.
 			for _, entry := range j.Entries {
-				// We should only be touching the C resource.
-				assert.Equal(t, urnC, entry.Step.URN())
+				if len(refreshTargets) > 0 {
+					// should only see changes to urns we explicitly asked to change
+					assert.Containsf(t, refreshTargets, entry.Step.URN(),
+						"Refreshed a resource that wasn't a target: %v", entry.Step.URN())
+				}
 
 				assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 				resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
@@ -2158,7 +1784,6 @@ func TestRefreshTarget2(t *testing.T) {
 					assert.Nil(t, new)
 					assert.Equal(t, deploy.OpDelete, resultOp)
 				} else {
-					assert.NotEqual(t, urnC, entry.Step.URN())
 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
 					// an OpSame.
 					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
@@ -2176,7 +1801,6 @@ func TestRefreshTarget2(t *testing.T) {
 			return res
 		},
 	}}
-	p.Options.RefreshTargets = []resource.URN{urnC}
 	snap := p.Run(t, old)
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
