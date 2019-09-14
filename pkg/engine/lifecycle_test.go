@@ -1556,6 +1556,19 @@ func TestRefreshWithDelete(t *testing.T) {
 	}
 }
 
+func pickURN(urns []resource.URN, target string) resource.URN {
+	switch target {
+	case "resA":
+		return urns[0]
+	case "resB":
+		return urns[1]
+	case "resC":
+		return urns[2]
+	default:
+		panic("Invalid target: " + target)
+	}
+}
+
 // Tests that dependencies are correctly rewritten when refresh removes deleted resources.
 func TestRefreshDeleteDependencies(t *testing.T) {
 	p := &TestPlan{}
@@ -1645,19 +1658,6 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 		default:
 			t.Fatalf("unexepcted resource %v::%v", r.URN, r.ID)
 		}
-	}
-}
-
-func pickURN(urns []resource.URN, target string) resource.URN {
-	switch target {
-	case "resA":
-		return urns[0]
-	case "resB":
-		return urns[1]
-	case "resC":
-		return urns[2]
-	default:
-		panic("Invalid target: " + target)
 	}
 }
 
