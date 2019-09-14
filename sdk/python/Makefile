@@ -2,14 +2,6 @@ PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python
 VERSION          := $(shell ../../scripts/get-py-version)
 
-ifeq ($(PYTHON),)
-	PYTHON := python
-endif
-
-ifeq ($(PIP),)
-	PIP := pip
-endif
-
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 

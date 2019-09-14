@@ -44,6 +44,7 @@ if [ "${MAJOR}" = "v0" ]; then
     PATCH=$((${PATCH}+1))
 else
     MINOR=$((${MINOR}+1))
+    PATCH=0
 fi
 
 # We want to include some additional information. To the base tag we

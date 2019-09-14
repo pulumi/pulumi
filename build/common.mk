@@ -101,6 +101,11 @@ ifeq ($(PULUMI_ROOT),)
 	PULUMI_ROOT:=/opt/pulumi
 endif
 
+# Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
+# runtime.
+PYTHON ?= python3
+PIP ?= pip3
+
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 
