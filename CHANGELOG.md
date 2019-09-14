@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- `pulumi refresh` can now be scoped to refresh a subset of resources by adding a `--target urn` or
+  `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
+
 ## 1.1.0 (2019-09-11)
 
 - Fix a bug that caused the Python runtime to ignore unhandled exceptions and erroneously report that a Pulumi program executed successfully.
