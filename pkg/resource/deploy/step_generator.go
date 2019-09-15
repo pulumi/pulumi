@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -236,18 +237,24 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	// Get all Analyzers -- if any -- and give each a chance to inspect the resource too.
-	analyzers := sg.plan.ctx.Host.ListAnalyzers()
-	for _, a := range sg.plan.analyzers {
+	// Load all policy packs into the plugin host.
+	for _, path := range sg.plan.localPolicyPackPaths {
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+
 		var analyzer plugin.Analyzer
-		analyzer, err = sg.plan.ctx.Host.Analyzer(a)
+		analyzer, err = sg.plan.ctx.Host.PolicyAnalyzer(tokens.QName(abs), path)
 		if err != nil {
 			return nil, result.FromError(err)
 		} else if analyzer == nil {
-			return nil, result.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
+			return nil, result.Errorf("analyzer could not be loaded from path '%s'", path)
 		}
-		analyzers = append(analyzers, analyzer)
 	}
+
+	// Get the final list of policy packs.
+	analyzers := sg.plan.ctx.Host.ListAnalyzers()
 
 	for _, analyzer := range analyzers {
 		var diagnostics []plugin.AnalyzeDiagnostic
@@ -398,9 +405,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				//       until pulumi/pulumi#624 is resolved, we cannot safely perform this operation on resources
 				//       that have dependent resources (we try to delete the resource while they refer to it).
 				//
-				// The provider is responsible for requesting which of these two modes to use.
-
-				if diff.DeleteBeforeReplace || goal.DeleteBeforeReplace {
+				// The provider is responsible for requesting which of these two modes to use. The user can override
+				// the provider's decision by setting the `deleteBeforeReplace` field of `ResourceOptions` to either
+				// `true` or `false`.
+				deleteBeforeReplace := diff.DeleteBeforeReplace
+				if goal.DeleteBeforeReplace != nil {
+					deleteBeforeReplace = *goal.DeleteBeforeReplace
+				}
+				if deleteBeforeReplace {
 					logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
 					contract.Assert(sg.plan.depGraph != nil)
 

@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -34,8 +35,8 @@ func newDestroyCmd() *cobra.Command {
 	var message string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
 	var diffDisplay bool
+	var eventLogPath string
 	var parallel int
 	var refresh bool
 	var showConfig bool
@@ -81,6 +82,7 @@ func newDestroyCmd() *cobra.Command {
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				Type:                 displayType,
+				EventLogPath:         eventLogPath,
 				Debug:                debug,
 			}
 
@@ -88,7 +90,7 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-			proj, root, err := readProject()
+			proj, root, err := readProject(pulumiAppProj)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -109,7 +111,6 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Analyzers:     analyzers,
 				Parallel:      parallel,
 				Debug:         debug,
 				Refresh:       refresh,
@@ -125,7 +126,12 @@ func newDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
-			if res != nil && res.Error() == context.Canceled {
+
+			if res == nil {
+				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
+					"associated with the stack are still maintained. \nIf you want to remove the stack "+
+					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
+			} else if res.Error() == context.Canceled {
 				return result.FromError(errors.New("destroy cancelled"))
 			}
 			return PrintEngineResult(res)
@@ -146,9 +152,6 @@ func newDestroyCmd() *cobra.Command {
 		"Optional message to associate with the destroy operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
@@ -177,5 +180,10 @@ func newDestroyCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
 
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }

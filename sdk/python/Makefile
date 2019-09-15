@@ -2,14 +2,6 @@ PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python
 VERSION          := $(shell ../../scripts/get-py-version)
 
-ifeq ($(PYTHON),)
-	PYTHON := python
-endif
-
-ifeq ($(PIP),)
-	PIP := pip
-endif
-
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
@@ -22,12 +14,7 @@ ensure::
 build_package::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
-	if [ ! -z "$$(command -v pandoc)" ]; then \
-		pandoc --from=markdown --to=rst --output="$(PYENVSRC)/README.rst" ../../README.md; \
-	else \
-		echo "warning: pandoc not found, generating empty README.rst"; \
-		echo "" > "$(PYENVSRC)/README.rst"; \
-	fi
+	cp ../../README.md $(PYENVSRC)
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 
 build_plugin::

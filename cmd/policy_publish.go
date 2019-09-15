@@ -49,8 +49,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			// Load metadata about the current project.
 			//
 
-			// TODO: `readPolicyProject` instead?
-			proj, root, err := readProject()
+			proj, root, err := readProject(pulumiPolicyProj)
 			if err != nil {
 				return err
 			}

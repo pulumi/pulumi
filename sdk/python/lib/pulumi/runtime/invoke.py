@@ -24,8 +24,91 @@ from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
 
+# If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
+# implementation in order to support synchronous invokes.
+if sys.version_info[0] == 3 and sys.version_info[1] < 7:
+    asyncio.Task = asyncio.tasks._PyTask
+    asyncio.tasks.Task = asyncio.tasks._PyTask
 
-def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> Awaitable[Any]:
+    def enter_task(loop, task):
+        task.__class__._current_tasks[loop] = task
+
+    def leave_task(loop, task):
+        task.__class__._current_tasks.pop(loop)
+
+    _enter_task = enter_task
+    _leave_task = leave_task
+else:
+    _enter_task = asyncio.tasks._enter_task
+    _leave_task = asyncio.tasks._leave_task
+
+
+def _sync_await(awaitable: Awaitable[Any]) -> Any:
+    """
+    _sync_await waits for the given future to complete by effectively yielding the current task and pumping the event
+    loop.
+    """
+
+    # Fetch the current event loop and ensure a future.
+    loop = asyncio.get_event_loop()
+    fut = asyncio.ensure_future(awaitable)
+
+    # If the loop is not running, we can just use run_until_complete. Without this, we would need to duplicate a fair
+    # amount of bookkeeping logic around loop startup and shutdown.
+    if not loop.is_running():
+        return loop.run_until_complete(fut)
+
+    # If we are executing inside a task, pretend we've returned from its current callback--effectively yielding to
+    # the event loop--by calling _leave_task.
+    task = asyncio.Task.current_task(loop)
+    if task is not None:
+        _leave_task(loop, task)
+
+    # Pump the event loop until the future is complete. This is the kernel of BaseEventLoop.run_forever, and may not
+    # work with alternative event loop implementations.
+    #
+    # In order to make this reentrant with respect to _run_once, we keep track of the number of event handles on the
+    # ready list and ensure that there are exactly that many handles on the list once we are finished.
+    #
+    # See https://github.com/python/cpython/blob/3.6/Lib/asyncio/base_events.py#L1428-L1452 for the details of the
+    # _run_once kernel with which we need to cooperate.
+    ntodo = len(loop._ready)
+    while not fut.done() and not fut.cancelled():
+        loop._run_once()
+        if loop._stopping:
+            break
+    # If we drained the ready list past what a calling _run_once would have expected, fix things up by pushing
+    # cancelled handles onto the list.
+    while len(loop._ready) < ntodo:
+        handle = asyncio.Handle(None, None, loop)
+        handle._cancelled = True
+        loop._ready.append(handle)
+
+    # If we were executing inside a task, restore its context and continue on.
+    if task is not None:
+        _enter_task(loop, task)
+
+    # Return the result of the future.
+    return fut.result()
+
+class InvokeResult:
+    """
+    InvokeResult is a helper type that wraps a prompt value in an Awaitable.
+    """
+    def __init__(self, value):
+        self.value = value
+
+    # pylint: disable=using-constant-test
+    def __await__(self):
+        # We need __await__ to be an iterator, but we only want it to return one value. As such, we use
+        # `if False: yield` to construct this.
+        if False:
+            yield self.value
+        return self.value
+
+    __iter__ = __await__
+
+def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> InvokeResult:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
@@ -72,6 +155,7 @@ def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> Awaitable[Any
             raise Exception(details)
 
         resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+
         log.debug(f"Invoking function completed successfully: tok={tok}")
         # If the invoke failed, raise an error.
         if resp.failures:
@@ -83,4 +167,10 @@ def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> Awaitable[Any
             return rpc.deserialize_properties(ret_obj)
         return {}
 
-    return asyncio.ensure_future(RPC_MANAGER.do_rpc("invoke", do_invoke)())
+    async def do_rpc():
+        resp, exn = await RPC_MANAGER.do_rpc("invoke", do_invoke)()
+        if exn is not None:
+            raise exn
+        return resp
+
+    return InvokeResult(_sync_await(asyncio.ensure_future(do_rpc())))

@@ -88,6 +88,14 @@ type StackSummary interface {
 	ResourceCount() *int
 }
 
+// ListStacksFilter describes optional filters when listing stacks.
+type ListStacksFilter struct {
+	Organization *string
+	Project      *string
+	TagName      *string
+	TagValue     *string
+}
+
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
 // It can be implemented any number of ways to provide pluggable backend implementations of the Pulumi Cloud.
 type Backend interface {
@@ -99,9 +107,14 @@ type Backend interface {
 	// GetPolicyPack returns a PolicyPack object tied to this backend, or nil if it cannot be found.
 	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 
+	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+	SupportsOrganizations() bool
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
+
+	// DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
+	DoesProjectExist(ctx context.Context, projectName string) (bool, error)
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
@@ -112,7 +125,7 @@ type Backend interface {
 	// first boolean return value will be set to true.
 	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]StackSummary, error)
+	ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error)
 
 	RenameStack(ctx context.Context, stackRef StackReference, newName tokens.QName) error
 

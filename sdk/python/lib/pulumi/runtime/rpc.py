@@ -21,6 +21,7 @@ import inspect
 from typing import List, Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from google.protobuf import struct_pb2
+import six
 from . import known_types, settings
 from .. import log
 
@@ -43,6 +44,15 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 _special_secret_sig = "1b47061264138c4ac30d75fd1eb44270"
 """special_secret_sig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go"""
 
+_INT_OR_FLOAT = six.integer_types + (float,)
+
+def isLegalProtobufValue(value: Any) -> bool:
+    """
+    Returns True if the given value is a legal Protobuf value as per the source at
+    https://github.com/protocolbuffers/protobuf/blob/master/python/google/protobuf/internal/well_known_types.py#L714-L732
+    """
+    return value is None or isinstance(value, (bool, six.string_types, _INT_OR_FLOAT, dict, list))
+
 async def serialize_properties(inputs: 'Inputs',
                                property_deps: Dict[str, List['Resource']],
                                input_transformer: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
@@ -57,8 +67,8 @@ async def serialize_properties(inputs: 'Inputs',
         result = await serialize_property(v, deps, input_transformer)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
-            # While serializing to a pb struct, we must "translate" all key names to be what the engine is going to
-            # expect. Resources provide the "transform" function for doing this.
+            # While serializing to a pb struct, we must "translate" all key names to be what the
+            # engine is going to expect. Resources provide the "transform" function for doing this.
             translated_name = k
             if input_transformer is not None:
                 translated_name = input_transformer(k)
@@ -90,8 +100,9 @@ async def serialize_property(value: 'Input[Any]',
         return await serialize_property(value.id, deps, input_transformer)
 
     if known_types.is_asset(value):
-        # Serializing an asset requires the use of a magical signature key, since otherwise it would look
-        # like any old weakly typed object/map when received by the other side of the RPC boundary.
+        # Serializing an asset requires the use of a magical signature key, since otherwise it would
+        # look like any old weakly typed object/map when received by the other side of the RPC
+        # boundary.
         obj = {
             _special_sig_key: _special_asset_sig
         }
@@ -108,8 +119,9 @@ async def serialize_property(value: 'Input[Any]',
         return obj
 
     if known_types.is_archive(value):
-        # Serializing an archive requires the use of a magical signature key, since otherwise it would look
-        # like any old weakly typed object/map when received by the other side of the RPC boundary.
+        # Serializing an archive requires the use of a magical signature key, since otherwise it
+        # would look like any old weakly typed object/map when received by the other side of the RPC
+        # boundary.
         obj = {
             _special_sig_key: _special_archive_sig
         }
@@ -138,9 +150,10 @@ async def serialize_property(value: 'Input[Any]',
     if known_types.is_output(value):
         deps.extend(value.resources())
 
-        # When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
-        # sentinel. We will do the former for all outputs created directly by user code (such outputs always
-        # resolve isKnown to true) and for any resource outputs that were resolved with known values.
+        # When serializing an Output, we will either serialize it as its resolved value or the
+        # "unknown value" sentinel. We will do the former for all outputs created directly by user
+        # code (such outputs always resolve isKnown to true) and for any resource outputs that were
+        # resolved with known values.
         is_known = await value._is_known
         is_secret = await value._is_secret
         value = await serialize_property(value.future(), deps, input_transformer)
@@ -165,6 +178,10 @@ async def serialize_property(value: 'Input[Any]',
             obj[transformed_key] = await serialize_property(v, deps, input_transformer)
 
         return obj
+
+    # Ensure that we have a value that Protobuf understands.
+    if not isLegalProtobufValue(value):
+        raise ValueError(f"unexpected input of type {type(value).__name__}")
 
     return value
 
@@ -348,7 +365,11 @@ def translate_output_properties(res: 'Resource', output: Any) -> Any:
     return output
 
 
-async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.Struct, resolvers: Dict[str, Resolver]):
+async def resolve_outputs(res: 'Resource',
+                          serialized_props: struct_pb2.Struct,
+                          outputs: struct_pb2.Struct,
+                          resolvers: Dict[str, Resolver]):
+
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}
@@ -360,16 +381,13 @@ async def resolve_outputs(res: 'Resource', props: 'Inputs', outputs: struct_pb2.
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
         all_properties[translated_key] = translated_value
 
-    for key, value in props.items():
-        if key not in all_properties:
-            # input prop the engine didn't give us a final value for.  Just use the value passed into the resource
-            # after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
-            # Output values are handled properly w.r.t. unknowns.
-            input_prop = await serialize_property(value, [])
-            if input_prop is None:
-                continue
-
-            all_properties[key] = deserialize_property(input_prop)
+    if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
+        for key, value in list(serialized_props.items()):
+            translated_key = res.translate_output_property(key)
+            if translated_key not in all_properties:
+                # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
+                # the user.
+                all_properties[translated_key] = translate_output_properties(res, deserialize_property(value))
 
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.

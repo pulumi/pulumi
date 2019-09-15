@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -82,16 +83,17 @@ func NewPolicyAnalyzer(
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	} else if pluginPath == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.AnalyzerPlugin,
-			Name: string(name),
-		})
+		return nil, fmt.Errorf("could not start policy pack %s because the built-in analyzer "+
+			"plugin that runs policy plugins is missing. This might occur when the plugin "+
+			"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
+			"does not support resource policies", string(name))
 	}
 
 	plug, err := newPlugin(ctx, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), policyPackPath})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err,
+			"policy pack %s failed to start because of an internal error", string(name))
 	}
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 

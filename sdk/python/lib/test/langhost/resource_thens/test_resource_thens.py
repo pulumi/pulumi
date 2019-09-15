@@ -34,7 +34,7 @@ class ResourceThensTest(LanghostTest):
                           _ignore_changes, _version):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
-            self.assertDictEqual(res, {"inprop": 777})
+            self.assertDictEqual(res, {"inprop": 777, "inprop_2": 42})
             urn = self.make_urn(ty, name)
             res_id = ""
             props = {}
@@ -53,7 +53,7 @@ class ResourceThensTest(LanghostTest):
             self.assertListEqual(deps, ["test:index:ResourceA::resourceA"])
             if dry_run:
                 self.assertDictEqual(res, {
-                    "other_in": 777,
+                    # other_in is unknown, so it is not in the dictionary.
                     # other_out is unknown, so it is not in the dictionary.
                     # other_id is also unknown so it is not in the dictionary
                 })

@@ -13,9 +13,7 @@ require (
 	github.com/djherbis/times v1.0.1
 	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
 	github.com/dustin/go-humanize v1.0.0
-	github.com/fatih/color v1.7.0 // indirect
 	github.com/gofrs/flock v0.7.0
-	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.1
 	github.com/google/go-querystring v1.0.0
@@ -37,7 +35,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54
 	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
+	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.0.0
 	github.com/sirupsen/logrus v1.3.0 // indirect
@@ -49,6 +47,7 @@ require (
 	github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
 	gocloud.dev v0.15.0
+	gocloud.dev/secrets/hashivault v0.0.0-20190724225620-1d5466654942
 	golang.org/x/crypto v0.0.0-20190422183909-d864b10871cd
 	golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a

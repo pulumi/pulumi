@@ -40,6 +40,8 @@ type ProjectTemplate struct {
 	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
 	// Config is an optional template config.
 	Config map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`
+	// Important indicates the template is important and should be listed by default.
+	Important bool `json:"important,omitempty" yaml:"important,omitempty"`
 }
 
 // ProjectTemplateConfigValue is a config value included in the project template manifest.
@@ -81,9 +83,6 @@ type Project struct {
 	Website *string `json:"website,omitempty" yaml:"website,omitempty"`
 	// License is the optional license governing this project's usage.
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
-
-	// Analyzers is an optional list of analyzers that are enabled for this project.
-	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
 
 	// Config indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder Pulumi.yaml is in.
 	Config string `json:"config,omitempty" yaml:"config,omitempty"`
@@ -134,7 +133,13 @@ func (proj *Project) Save(path string) error {
 
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
-	// EncryptionSalt is this stack's base64 encoded encryption salt.
+	// SecretsProvider is this stack's secrets provider.
+	SecretsProvider string `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
+	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
+	// Only used for cloud-based secrets providers.
+	EncryptedKey string `json:"encryptedkey,omitempty" yaml:"encryptedkey,omitempty"`
+	// EncryptionSalt is this stack's base64 encoded encryption salt.  Only used for
+	// passphrase-based secrets providers.
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`

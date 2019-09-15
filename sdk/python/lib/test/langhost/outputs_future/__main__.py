@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import pulumi
 from pulumi.runtime import invoke
 
 async def do_invoke():
-    value = await invoke("test:index:MyFunction", props={"value": 41})
+    await asyncio.sleep(0)
+    value = invoke("test:index:MyFunction", props={"value": 41}).value
     return value["value"]
 
 pulumi.export("value", do_invoke())

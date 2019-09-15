@@ -111,6 +111,7 @@ return function () { console.log(this); };
 
     cases.push({
         title: "Function closure with this and arguments capture",
+        // @ts-ignore: this is just test code.
         func: function () { console.log(this + arguments); },
         expectText: `exports.handler = __f0;
 
@@ -145,6 +146,7 @@ return () => { };
 
     cases.push({
         title: "Arrow closure with this capture",
+        // @ts-ignore: this is just test code.
         func: () => { console.log(this); },
         expectText: undefined,
         error:
@@ -165,10 +167,11 @@ function __f1(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -187,7 +190,7 @@ function __f0() {
   return (function() {
     with({ __awaiter: __f1 }) {
 
-return () => __awaiter(this, void 0, void 0, function* () { });
+return () => __awaiter(void 0, void 0, void 0, function* () { });
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -197,15 +200,19 @@ return () => __awaiter(this, void 0, void 0, function* () { });
 
     cases.push({
         title: "Async lambda that does capture this",
+        // @ts-ignore: this is just test code.
         func: async () => { console.log(this); },
-        expectText: undefined,
-        error: `Error serializing function 'func': tsClosureCases.js(0,0)
+        expectText: `exports.handler = __f0;
+${awaiterCode}
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
 
-function 'func': tsClosureCases.js(0,0): which could not be serialized because
-  arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
+return () => __awaiter(void 0, void 0, void 0, function* () { console.log(this); });
 
-Function code:
-  () => __awaiter(this, void 0, void 0, function* () { console.log(this); })
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 `,
     });
 
@@ -249,6 +256,7 @@ return function () {
 
     cases.push({
         title: "Arrow closure with this and arguments capture",
+        // @ts-ignore: this is just test code.
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expectText: undefined,
         error: `Error serializing function '<anonymous>': tsClosureCases.js(0,0)
@@ -280,6 +288,7 @@ return function () { () => { console.log(this); }; };
 
     cases.push({
         title: "Arrow closure with this and arguments capture inside function closure",
+        // @ts-ignore: this is just test code.
         func: function () { () => { console.log(this + arguments); } },
         expectText: `exports.handler = __f0;
 
@@ -317,10 +326,11 @@ function __f1(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -381,10 +391,11 @@ function __f1(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -456,10 +467,11 @@ function __f1(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -941,10 +953,11 @@ function __f1(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -3497,6 +3510,7 @@ return function () { console.log(o.c()); };
     }
 
     {
+      // @ts-ignore: this is just test code.
         const o = { a: 1, b: 2, c() { const v = function () { return this; }; } };
 
         cases.push({
@@ -4098,10 +4112,11 @@ function __f0(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -5689,10 +5704,11 @@ function __f0(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -5744,10 +5760,11 @@ function __f1(__0, __1, __2, __3) {
     with({  }) {
 
 return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -5760,7 +5777,7 @@ function __f0(__0) {
   return (function() {
     with({ __awaiter: __f1 }) {
 
-return ({ whatever }) => __awaiter(this, void 0, void 0, function* () { });
+return ({ whatever }) => __awaiter(void 0, void 0, void 0, function* () { });
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

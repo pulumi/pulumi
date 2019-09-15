@@ -152,12 +152,15 @@ disable=print-statement,
         too-many-arguments,
         too-many-branches,
         too-many-locals,
+        too-many-return-statements,
+        too-many-statements,
         missing-docstring,
         fixme,
         broad-except,
         no-self-use,
         unused-import,
-        unsubscriptable-object
+        unsubscriptable-object,
+        line-too-long
 
 
 # Enable the message, report, category or checker with the given id(s). You can

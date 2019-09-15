@@ -20,13 +20,11 @@ import (
 	"os"
 
 	"github.com/blang/semver"
-	"github.com/cheggaaa/pb"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -155,16 +153,7 @@ func newPluginInstallCmd() *cobra.Command {
 					if tarball, size, err = install.Download(); err != nil {
 						return errors.Wrapf(err, "%s downloading from %s", label, install.ServerURL)
 					}
-					// If we know the length of the download, show a progress bar.
-					if size != -1 {
-						bar := pb.New(int(size))
-						tarball = newBarProxyReadCloser(bar, tarball)
-						bar.Prefix(displayOpts.Color.Colorize(colors.SpecUnimportant + "Downloading plugin: "))
-						bar.Postfix(displayOpts.Color.Colorize(colors.Reset))
-						bar.SetMaxWidth(80)
-						bar.SetUnits(pb.U_BYTES)
-						bar.Start()
-					}
+					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
 				} else {
 					source = file
 					if verbose {
@@ -205,27 +194,4 @@ func newPluginInstallCmd() *cobra.Command {
 	contract.AssertNoError(cmd.PersistentFlags().MarkHidden("cloud-url"))
 
 	return cmd
-}
-
-// barCloser is an implementation of io.Closer that finishes a progress bar upon Close() as well as closing its
-// underlying readCloser.
-type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
-}
-
-func (bc *barCloser) Read(dest []byte) (int, error) {
-	return bc.readCloser.Read(dest)
-}
-
-func (bc *barCloser) Close() error {
-	bc.bar.Finish()
-	return bc.readCloser.Close()
-}
-
-func newBarProxyReadCloser(bar *pb.ProgressBar, r io.Reader) io.ReadCloser {
-	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(r),
-	}
 }

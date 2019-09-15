@@ -34,6 +34,7 @@ func TestMappable(t *testing.T) {
 			"e.n": float64(676.767),
 			"e.^": []interface{}{"bbb"},
 		},
+		"f": []interface{}{},
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
 	assert.Equal(t, len(ma1), len(ma1p))

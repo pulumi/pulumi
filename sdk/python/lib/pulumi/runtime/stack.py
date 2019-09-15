@@ -16,26 +16,25 @@
 Support for automatic stack components.
 """
 import asyncio
-from typing import Callable, Any, Dict
+import collections
+from inspect import isawaitable
+from typing import Callable, Any, Dict, List
 
-from ..resource import ComponentResource
+from ..resource import ComponentResource, Resource
 from .settings import get_project, get_stack, get_root_resource, set_root_resource
 from .rpc_manager import RPC_MANAGER
 from .. import log
 
+from ..output import Output
 
 async def run_in_stack(func: Callable):
     """
-    Run the given function inside of a new stack resource.  This ensures that any stack export calls will end
-    up as output properties on the resulting stack component in the checkpoint file.  This is meant for internal
-    runtime use only and is used by the Python SDK entrypoint program.
+    Run the given function inside of a new stack resource.  This ensures that any stack export calls
+    will end up as output properties on the resulting stack component in the checkpoint file.  This
+    is meant for internal runtime use only and is used by the Python SDK entrypoint program.
     """
     try:
         Stack(func)
-
-        # If an exception occurred when doing an RPC, this await will propegate the exception
-        # to the main thread.
-        await RPC_MANAGER.unhandled_exeception()
     finally:
         log.debug("Waiting for outstanding RPCs to complete")
 
@@ -44,17 +43,17 @@ async def run_in_stack(func: Callable):
         #
         # Note that "asyncio.sleep(0)" is the blessed way to do this:
         # https://github.com/python/asyncio/issues/284#issuecomment-154180935
-        await asyncio.sleep(0)
+        while True:
+            await asyncio.sleep(0)
+            if RPC_MANAGER.count == 0:
+                break
 
-        # Wait for all outstanding RPCs to retire.
-        await RPC_MANAGER.wait_for_outstanding_rpcs()
-
-        # Asyncio event loops require that all outstanding tasks be completed by the time that the event
-        # loop closes. If we're at this point and there are no outstanding RPCs, we should just cancel
-        # all outstanding tasks.
+        # Asyncio event loops require that all outstanding tasks be completed by the time that the
+        # event loop closes. If we're at this point and there are no outstanding RPCs, we should
+        # just cancel all outstanding tasks.
         #
-        # We will occasionally start tasks deliberately that we know will never complete. We must cancel
-        # them before shutting down the event loop.
+        # We will occasionally start tasks deliberately that we know will never complete. We must
+        # cancel them before shutting down the event loop.
         log.debug("Canceling all outstanding tasks")
         for task in asyncio.Task.all_tasks():
             # Don't kill ourselves, that would be silly.
@@ -68,6 +67,9 @@ async def run_in_stack(func: Callable):
 
         # Once we get scheduled again, all tasks have exited and we're good to go.
         log.debug("run_in_stack completed")
+
+    if RPC_MANAGER.unhandled_exception is not None:
+        raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
 
 class Stack(ComponentResource):
@@ -92,7 +94,7 @@ class Stack(ComponentResource):
         try:
             func()
         finally:
-            self.register_outputs(self.outputs)
+            self.register_outputs(massage(self.outputs, []))
             # Intentionally leave this resource installed in case subsequent async work uses it.
 
     def output(self, name: str, value: Any):
@@ -100,3 +102,87 @@ class Stack(ComponentResource):
         Export a stack output with a given name and value.
         """
         self.outputs[name] = value
+
+# Note: we use a List here instead of a set as many objects are unhashable.  This is inefficient,
+# but python seems to offer no alternative.
+def massage(attr: Any, seen: List[Any]):
+    """
+    massage takes an arbitrary python value and attempts to *deeply* convert it into
+    plain-old-python-value that can registered as an output.  In general, this means leaving alone
+    things like strings, ints, bools. However, it does mean trying to make other values into either
+    lists or dictionaries as appropriate.  In general, iterable things are turned into lists, and
+    dictionary-like things are turned into dictionaries.
+    """
+
+    # Basic primitive types (numbers, booleans, strings, etc.) don't need any special handling.
+
+    if is_primitive(attr):
+        return attr
+
+    # from this point on, we have complex objects.  If we see them again, we don't want to emit them
+    # again fully or else we'd loop infinitely.
+    if reference_contains(attr, seen):
+        # Note: for Resources we hit again, emit their urn so cycles can be easily understood in
+        # the popo objects.
+        if isinstance(attr, Resource):
+            return attr.urn
+
+        # otherwise just emit as nothing to stop the looping.
+        return None
+
+    seen.append(attr)
+
+    # first check if the value is an actual dictionary.  If so, massage the values of it to deeply
+    # make sure this is a popo.
+    if isinstance(attr, dict):
+        result = {}
+        for key, value in attr.items():
+            # ignore private keys
+            if not key.startswith("_"):
+                result[key] = massage(value, seen)
+
+        return result
+
+    if isinstance(attr, Output):
+        return attr.apply(lambda v: massage(v, seen))
+
+    if isawaitable(attr):
+        return Output.from_input(attr).apply(lambda v: massage(v, seen))
+
+    if hasattr(attr, "__dict__"):
+        # recurse on the dictionary itself.  It will be handled above.
+        return massage(attr.__dict__, seen)
+
+    # finally, recurse through iterables, converting into a list of massaged values.
+    return [massage(a, seen) for a in attr]
+
+
+def reference_contains(val1: Any, seen: List[Any]) -> bool:
+    for val2 in seen:
+        if val1 is val2:
+            return True
+
+    return False
+
+
+def is_primitive(attr: Any) -> bool:
+    if attr is None:
+        return True
+
+    if isinstance(attr, str):
+        return True
+
+    # dictionaries, lists and dictionary-like things are not primitive.
+    if isinstance(attr, dict):
+        return False
+
+    if hasattr(attr, "__dict__"):
+        return False
+
+    try:
+        iter(attr)
+        return False
+    except TypeError:
+        pass
+
+    return True

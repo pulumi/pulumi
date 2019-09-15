@@ -97,6 +97,12 @@ class Output(Generic[T]):
 
     def future(self) -> Awaitable[T]:
         return self._future
+
+    def is_known(self) -> Awaitable[bool]:
+        return self._is_known
+
+    def is_secret(self) -> Awaitable[bool]:
+        return self._is_secret
     # End private implementation details.
 
     def apply(self, func: Callable[[T], Input[U]]) -> 'Output[U]':

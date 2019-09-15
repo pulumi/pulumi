@@ -34,7 +34,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -54,12 +54,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const PythonRuntime = "python"
+const NodeJSRuntime = "nodejs"
+const GoRuntime = "go"
+
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
 	Deployment   *apitype.DeploymentV3
 	RootResource apitype.ResourceV3
 	Outputs      map[string]interface{}
+	Events       []apitype.EngineEvent
 }
 
 // EditDir is an optional edit to apply to the example, as subsequent deployments.
@@ -131,6 +136,8 @@ type ProgramTestOptions struct {
 	Config map[string]string
 	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
 	Secrets map[string]string
+	// SecretsProvider is the optional custom secrets provider to use instead of the default.
+	SecretsProvider string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
@@ -166,6 +173,8 @@ type ProgramTestOptions struct {
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
 	RunBuild bool
+	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
+	RunUpdateTest bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
@@ -355,6 +364,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
 	}
+	if overrides.RunUpdateTest {
+		opts.RunUpdateTest = overrides.RunUpdateTest
+	}
 	return opts
 }
 
@@ -399,7 +411,7 @@ func GetLogs(
 	stackInfo RuntimeValidationStackInfo,
 	query operations.LogQuery) *[]operations.LogEntry {
 
-	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment)
+	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment, stack.DefaultSecretsProvider)
 	assert.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
@@ -521,12 +533,15 @@ type programTester struct {
 	yarnBin   string              // the `yarn` binary we are using.
 	goBin     string              // the `go` binary we are using.
 	pipenvBin string              // The `pipenv` binary we are using.
+	eventLog  string              // The path to the event log for this test.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
+	stackName := opts.GetStackName()
 	return &programTester{
-		t:    t,
-		opts: opts,
+		t:        t,
+		opts:     opts,
+		eventLog: path.Join(os.TempDir(), string(stackName)+"-events.json"),
 	}
 }
 
@@ -755,7 +770,41 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
+	if pt.opts.RunUpdateTest {
+
+		err = upgradeProjectDeps(projdir, pt)
+		if err != nil {
+			return errors.Wrap(err, "upgrading project dependencies")
+		}
+
+		if err = pt.testPreviewUpdateAndEdits(projdir); err != nil {
+			return errors.Wrap(err, "running test preview, update, and edits")
+		}
+	}
+
 	testFinished = true
+	return nil
+}
+
+func upgradeProjectDeps(projectDir string, pt *programTester) error {
+	projInfo, err := pt.getProjinfo(projectDir)
+	if err != nil {
+		return errors.Wrap(err, "getting project info")
+	}
+
+	switch rt := projInfo.Proj.Runtime.Name(); rt {
+	case NodeJSRuntime:
+		if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+			return err
+		}
+	case PythonRuntime:
+		if err = pt.installPipPackageDeps(projectDir); err != nil {
+			return err
+		}
+	default:
+		return errors.Errorf("unrecognized project runtime: %s", rt)
+	}
+
 	return nil
 }
 
@@ -791,8 +840,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		loginArgs := []string{"login"}
 		loginArgs = addFlagIfNonNil(loginArgs, "--cloud-url", pt.opts.CloudURL)
 
-		// If this is a local login, then don't attach the owner to the stack-name.
-		if strings.HasPrefix(pt.opts.CloudURL, "file://") {
+		// If this is a local OR cloud login, then don't attach the owner to the stack-name.
+		if pt.opts.CloudURL != "" {
 			stackInitName = string(pt.opts.GetStackName())
 		}
 
@@ -803,6 +852,9 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 
 	// Stack init
 	stackInitArgs := []string{"stack", "init", stackInitName}
+	if pt.opts.SecretsProvider != "" {
+		stackInitArgs = append(stackInitArgs, "--secrets-provider", pt.opts.SecretsProvider)
+	}
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
@@ -919,7 +971,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	expectNopUpdate bool) error {
 
 	preview := []string{"preview", "--non-interactive"}
-	update := []string{"up", "--non-interactive", "--skip-preview"}
+	update := []string{"up", "--non-interactive", "--skip-preview", "--event-log", pt.eventLog}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
@@ -1159,12 +1211,31 @@ func (pt *programTester) performExtraRuntimeValidation(
 		}
 	}
 
+	// Read the event log.
+	eventsFile, err := os.Open(pt.eventLog)
+	if err != nil && !os.IsNotExist(err) {
+		return errors.Wrapf(err, "expected to be able to open event log file %s", pt.eventLog)
+	}
+	defer contract.IgnoreClose(eventsFile)
+	decoder, events := json.NewDecoder(eventsFile), []apitype.EngineEvent{}
+	for {
+		var event apitype.EngineEvent
+		if err = decoder.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrapf(err, "decoding engine event")
+		}
+		events = append(events, event)
+	}
+
 	// Populate stack info object with all of this data to pass to the validation function
 	stackInfo := RuntimeValidationStackInfo{
 		StackName:    pt.opts.GetStackName(),
 		Deployment:   &deployment,
 		RootResource: rootResource,
 		Outputs:      outputs,
+		Events:       events,
 	}
 
 	fprintf(pt.opts.Stdout, "Performing extra runtime validation.\n")
@@ -1254,11 +1325,11 @@ func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
-	case "nodejs":
+	case NodeJSRuntime:
 		return pt.prepareNodeJSProject(projinfo)
-	case "python":
+	case PythonRuntime:
 		return pt.preparePythonProject(projinfo)
-	case "go":
+	case GoRuntime:
 		return pt.prepareGoProject(projinfo)
 	default:
 		return errors.Errorf("unrecognized project runtime: %s", rt)
@@ -1326,8 +1397,8 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	for _, dependency := range pt.opts.Dependencies {
-		if err = pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+	if !pt.opts.RunUpdateTest {
+		if err = pt.yarnLinkPackageDeps(cwd); err != nil {
 			return err
 		}
 	}
@@ -1387,13 +1458,35 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// Install the package's dependencies, which Pipenv infers from a requirements.txt file in the root of the project.
-	if err = pt.runPipenvCommand("pipenv-install", []string{"install", "--skip-lock"}, cwd); err != nil {
+	// Install the package's dependencies. We do this by running `pip` inside the virtualenv that `pipenv` has created.
+	// We don't use `pipenv install` because we don't want a lock file and prefer the similar model of `pip install`
+	// which matches what our customers do
+	err = pt.runPipenvCommand("pipenv-install", []string{"run", "pip", "install", "-r", "requirements.txt"}, cwd)
+	if err != nil {
 		return err
 	}
 
-	// Install each package's dependencies, as requested. Dependencies can be either file paths or package names.
-	// Package names are installed from pypi while file paths are installed directly from the file system.
+	if !pt.opts.RunUpdateTest {
+		if err = pt.installPipPackageDeps(cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *programTester) installPipPackageDeps(cwd string) error {
+	var err error
 	for _, dep := range pt.opts.Dependencies {
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
 		// operating inside of a random folder in /tmp.
@@ -1404,7 +1497,7 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			}
 		}
 
-		err = pt.runPipenvCommand("pipenv-install-package", []string{"install", "--skip-lock", "-e", dep}, cwd)
+		err := pt.runPipenvCommand("pipenv-install-package", []string{"run", "pip", "install", "-e", dep}, cwd)
 		if err != nil {
 			return err
 		}

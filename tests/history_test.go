@@ -22,6 +22,14 @@ import (
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 )
 
+// deleteIfNotFailed deletes the files in the testing environment if the testcase has
+// not failed. (Otherwise they are left to aid debugging.)
+func deleteIfNotFailed(e *ptesting.Environment) {
+	if !e.T.Failed() {
+		e.DeleteEnvironment()
+	}
+}
+
 // assertHasNoHistory runs `pulumi history` and confirms an error that the stack has not
 // ever been updated.
 func assertHasNoHistory(e *ptesting.Environment) {

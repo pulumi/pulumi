@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -103,6 +104,32 @@ func TestEngineEventPerf(t *testing.T) {
 		// Don't run in parallel since it is sensitive to system resources.
 		NoParallel: true,
 	})
+}
+
+// TestEngineEvents ensures that the test framework properly records and reads engine events.
+func TestEngineEvents(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "single_resource",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure that we have a non-empty list of events.
+			assert.NotEmpty(t, stackInfo.Events)
+
+			// Ensure that we have two "ResourcePre" events: one for the stack and one for our resource.
+			preEventResourceTypes := []string{}
+			for _, e := range stackInfo.Events {
+				if e.ResourcePreEvent != nil {
+					preEventResourceTypes = append(preEventResourceTypes, e.ResourcePreEvent.Metadata.Type)
+				}
+			}
+
+			assert.Equal(t, 2, len(preEventResourceTypes))
+			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
+			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
+		},
+	})
+
 }
 
 // TestProjectMain tests out the ability to override the main entrypoint.
@@ -411,7 +438,6 @@ func TestStackDependencyGraph(t *testing.T) {
 			assert.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
-			fmt.Println(latest.Resources)
 			sawFirst := false
 			sawSecond := false
 			for _, res := range latest.Resources {
@@ -764,4 +790,77 @@ func TestResourceWithSecretSerialization(t *testing.T) {
 			assert.Truef(t, isString, "non-secret output was not a string")
 		},
 	})
+}
+
+func TestStackReferenceSecrets(t *testing.T) {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+	if owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	d := "stack_reference_secrets"
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          path.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Config: map[string]string{
+			"org": owner,
+		},
+		Quick: true,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:             path.Join(d, "step2"),
+				Additive:        true,
+				ExpectNoChanges: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					_, isString := stackInfo.Outputs["refNormal"].(string)
+					assert.Truef(t, isString, "referenced non-secret output was not a string")
+
+					secretPropValue, ok := stackInfo.Outputs["refSecret"].(map[string]interface{})
+					assert.Truef(t, ok, "secret output was not serialized as a secret")
+					assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+				},
+			},
+		},
+	})
+}
+
+func TestCloudSecretProvider(t *testing.T) {
+	kmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
+	if kmsKeyAlias == "" {
+		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
+	}
+
+	testOptions := integration.ProgramTestOptions{
+		Dir:             "cloud_secrets_provider",
+		Dependencies:    []string{"@pulumi/pulumi"},
+		SecretsProvider: fmt.Sprintf("awskms://alias/%s", kmsKeyAlias),
+		Secrets: map[string]string{
+			"mysecret": "THISISASECRET",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			secretsProvider := stackInfo.Deployment.SecretsProviders
+			assert.NotNil(t, secretsProvider)
+			assert.Equal(t, secretsProvider.Type, "cloud")
+
+			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
+			assert.NoError(t, err)
+
+			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
+		},
+	}
+
+	localTestOptions := testOptions.With(integration.ProgramTestOptions{
+		CloudURL: "file://~",
+	})
+
+	// Run with default Pulumi service backend
+	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
+
+	// Also run with local backend
+	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
 }

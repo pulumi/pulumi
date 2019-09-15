@@ -197,17 +197,8 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 	diagInfo := data.diagInfo
 	diagInfo.LastDiag = &payload
 
-	switch payload.Severity {
-	case diag.Error:
+	if payload.Severity == diag.Error {
 		diagInfo.LastError = &payload
-	case diag.Warning:
-		diagInfo.LastWarning = &payload
-	case diag.Infoerr:
-		diagInfo.LastInfoError = &payload
-	case diag.Info:
-		diagInfo.LastInfo = &payload
-	case diag.Debug:
-		diagInfo.LastDebug = &payload
 	}
 
 	if diagInfo.StreamIDToDiagPayloads == nil {
@@ -401,19 +392,18 @@ func (data *resourceRowData) getInfoColumn() string {
 				c, colors.SpecDebug, english.PluralWord(c, "debug", ""), colors.Reset))
 		}
 	} else {
-		// If we're not totally done, and we're in the tree-view, just print out the worst diagnostic next to the
-		// status message. This is helpful for long running tasks to know what's going on. However, once done, we
-		// print the diagnostics at the bottom, so we don't need to show this.
+		// If we're not totally done, and we're in the tree-view, just print out the last error (if
+		// there is one) next to the status message. This is helpful for long running tasks to know
+		// something bad has happened. However, once done, we print the diagnostics at the bottom, so we don't
+		// need to show this.
 		//
-		// if we're not in the tree-view (i.e. non-interactive mode), then we want to print out whatever the last
-		// diagnostics was that we got.  This way, as we're hearing about diagnostic events, we're always printing
-		// out the last one.
+		// if we're not in the tree-view (i.e. non-interactive mode), then we want to print out
+		// whatever the last diagnostics was that we got.  This way, as we're hearing about
+		// diagnostic events, we're always printing out the last one.
 
-		var diagnostic *engine.DiagEventPayload
-		if data.display.isTerminal {
-			diagnostic = data.diagInfo.LastDiag
-		} else {
-			diagnostic = getWorstDiagnostic(data.diagInfo)
+		diagnostic := data.diagInfo.LastDiag
+		if data.display.isTerminal && data.diagInfo.LastError != nil {
+			diagnostic = data.diagInfo.LastError
 		}
 
 		if diagnostic != nil {
@@ -524,19 +514,4 @@ func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
 
 		writeString(b, colors.Reset)
 	}
-}
-
-// Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
-// any resource if it has had any issues.
-func getWorstDiagnostic(diagInfo *DiagInfo) *engine.DiagEventPayload {
-	if diagInfo.LastError != nil {
-		return diagInfo.LastError
-	} else if diagInfo.LastWarning != nil {
-		return diagInfo.LastWarning
-	} else if diagInfo.LastInfoError != nil {
-		return diagInfo.LastInfoError
-	} else if diagInfo.LastInfo != nil {
-		return diagInfo.LastInfo
-	}
-	return diagInfo.LastDebug
 }

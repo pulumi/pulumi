@@ -36,6 +36,7 @@ CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\python\dist\pulumi-resource-pulumi-python.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\nodejs\dist\pulumi-analyzer-policy.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\python\cmd\pulumi-language-python-exec" "$PublishDir\bin"
 
 # By default, if the archive already exists, 7zip will just add files to it, so blow away the existing

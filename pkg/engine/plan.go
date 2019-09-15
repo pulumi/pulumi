@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -135,21 +134,9 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		return nil, err
 	}
 
-	// If there are any analyzers in the project file, add them.
-	var analyzers []tokens.QName
-	if as := projinfo.Proj.Analyzers; as != nil {
-		for _, a := range *as {
-			analyzers = append(analyzers, a)
-		}
-	}
-
-	// Append any analyzers from the command line.
-	for _, a := range opts.Analyzers {
-		analyzers = append(analyzers, tokens.QName(a))
-	}
-
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan, err := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, dryRun, ctx.BackendClient)
+	plan, err := deploy.NewPlan(
+		plugctx, target, target.Snapshot, source, opts.LocalPolicyPackPaths, dryRun, ctx.BackendClient)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err

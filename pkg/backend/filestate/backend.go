@@ -26,17 +26,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-
-	"gocloud.dev/blob/gcsblob"
-
 	"github.com/pkg/errors"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
-
-	// driver for gs://
-	_ "gocloud.dev/blob/s3blob" // driver for s3://
+	"gocloud.dev/blob/gcsblob"     // driver for gs://
+	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -51,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -115,7 +112,7 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 	// for gcp we want to support additional credentials
 	// schemes on top of go-cloud's default credentials mux.
 	if strings.HasPrefix(u, gcsblob.Scheme) {
-		blobmux, err = GoogleCredentialsMux()
+		blobmux, err = GoogleCredentialsMux(context.TODO())
 		if err != nil {
 			return nil, err
 		}
@@ -227,8 +224,18 @@ func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
+// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *localBackend) SupportsOrganizations() bool {
+	return false
+}
+
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+}
+
+func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
+	// Local backends don't really have multiple projects, so just return false here.
+	return false, nil
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
@@ -268,7 +275,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	stackName := stackRef.Name()
 	snapshot, path, err := b.getStack(stackName)
 	switch {
-	case os.IsNotExist(errors.Cause(err)):
+	case gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err
@@ -278,12 +285,14 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 }
 
 func (b *localBackend) ListStacks(
-	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
+	ctx context.Context, _ backend.ListStacksFilter) ([]backend.StackSummary, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
 		return nil, err
 	}
 
+	// Note that the provided stack filter is not honored, since fields like
+	// organizations and tags aren't persisted in the local backend.
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
 		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
@@ -321,19 +330,23 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	// Ensure the destination stack does not already exist.
-	_, err = os.Stat(b.stackPath(newName))
-	if err == nil {
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
+	if err != nil {
+		return err
+	}
+	if hasExisting {
 		return errors.Errorf("a stack named %s already exists", newName)
-	} else if !os.IsNotExist(err) {
-		return err
 	}
 
-	// Rewrite the checkpoint and save it with the new name.
-	if err = edit.RenameStack(snap, newName); err != nil {
-		return err
+	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
+	if snap != nil {
+		if err = edit.RenameStack(snap, newName); err != nil {
+			return err
+		}
 	}
 
-	if _, err = b.saveStack(newName, snap, snap.SecretsManager); err != nil {
+	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot)
+	if _, err = b.saveStack(newName, snap, nil); err != nil {
 		return err
 	}
 
@@ -341,11 +354,8 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 	file := b.stackPath(stackName)
 	backupTarget(b.bucket, file)
 
-	// And move the history over as well.
-	oldHistoryDir := b.historyDirectory(stackName)
-	newHistoryDir := b.historyDirectory(newName)
-
-	return os.Rename(oldHistoryDir, newHistoryDir)
+	// And rename the histoy folder as well.
+	return b.renameHistory(stackName, newName)
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
@@ -666,7 +676,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	snap, err := stack.DeserializeUntypedDeployment(deployment)
+	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}

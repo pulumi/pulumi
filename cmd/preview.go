@@ -32,8 +32,9 @@ func newPreviewCmd() *cobra.Command {
 	var stack string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
+	var policyPackPaths []string
 	var diffDisplay bool
+	var eventLogPath string
 	var jsonDisplay bool
 	var parallel int
 	var showConfig bool
@@ -66,10 +67,10 @@ func newPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					Analyzers:     analyzers,
-					Parallel:      parallel,
-					Debug:         debug,
-					UseLegacyDiff: useLegacyDiff(),
+					LocalPolicyPackPaths: policyPackPaths,
+					Parallel:             parallel,
+					Debug:                debug,
+					UseLegacyDiff:        useLegacyDiff(),
 				},
 				Display: display.Options{
 					Color:                cmdutil.GetGlobalColorization(),
@@ -80,6 +81,7 @@ func newPreviewCmd() *cobra.Command {
 					IsInteractive:        cmdutil.Interactive(),
 					Type:                 displayType,
 					JSONDisplay:          jsonDisplay,
+					EventLogPath:         eventLogPath,
 					Debug:                debug,
 				},
 			}
@@ -89,7 +91,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := readProject(pulumiAppProj)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -148,9 +150,11 @@ func newPreviewCmd() *cobra.Command {
 		"Optional message to associate with the preview operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this update")
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringSliceVar(
+			&policyPackPaths, "policy-pack", []string{},
+			"Run one or more analyzers as part of this update")
+	}
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
@@ -173,5 +177,10 @@ func newPreviewCmd() *cobra.Command {
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }

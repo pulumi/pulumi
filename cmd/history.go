@@ -40,7 +40,7 @@ func newHistoryCmd() *cobra.Command {
 		Use:        "history",
 		Aliases:    []string{"hist"},
 		SuggestFor: []string{"updates"},
-		Short:      "Update history for a stack",
+		Short:      "[PREVIEW] Update history for a stack",
 		Long: `Update history for a stack
 
 This command lists data about previous updates for a stack.`,

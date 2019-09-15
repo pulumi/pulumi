@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // StepCompleteFunc is the type of functions returned from Step.Apply. These functions are to be called
@@ -577,7 +578,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	resourceStatus := resource.StatusOK
 	// Unlike most steps, Read steps run during previews. The only time
 	// we can't run is if the ID we are given is unknown.
-	if id == "" || id == plugin.UnknownStringValue {
+	if id == plugin.UnknownStringValue {
 		s.new.Outputs = resource.PropertyMap{}
 	} else {
 		prov, err := getProvider(s)
@@ -599,7 +600,15 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			}
 		}
 
+		// If there is no such resource, return an error indicating as such.
+		if result.Outputs == nil {
+			return resource.StatusOK, nil, errors.Errorf("resource '%s' does not exist", id)
+		}
 		s.new.Outputs = result.Outputs
+
+		if result.ID != "" {
+			s.new.ID = result.ID
+		}
 	}
 
 	// If we were asked to replace an existing, non-External resource, pend the
@@ -666,6 +675,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		complete = func() { close(s.done) }
 	}
 
+	resourceID := s.old.ID
+
 	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
 		return resource.StatusOK, complete, nil
@@ -678,7 +689,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	var initErrors []string
-	refreshed, rst, err := prov.Read(s.old.URN, s.old.ID, s.old.Inputs, s.old.Outputs)
+	refreshed, rst, err := prov.Read(s.old.URN, resourceID, s.old.Inputs, s.old.Outputs)
 	if err != nil {
 		if rst != resource.StatusPartialFailure {
 			return rst, nil, err
@@ -705,7 +716,15 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	if outputs != nil {
-		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, s.old.ID, inputs, outputs,
+		// There is a chance that the ID has changed. We want to allow this change to happen
+		// it will have changed already in the outputs, but we need to persist this change
+		// at a state level because the Id
+		if refreshed.ID != "" && refreshed.ID != resourceID {
+			logging.V(7).Infof("Refreshing ID; oldId=%s, newId=%s", resourceID, refreshed.ID)
+			resourceID = refreshed.ID
+		}
+
+		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
 			&s.old.CustomTimeouts)
@@ -807,6 +826,9 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return resource.StatusOK, nil, errors.Errorf(
 			"provider does not support importing resources; please try updating the '%v' plugin",
 			s.new.URN.Type().Package())
+	}
+	if read.ID != "" {
+		s.new.ID = read.ID
 	}
 	s.new.Outputs = read.Outputs
 

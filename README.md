@@ -8,8 +8,9 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-> See the [Get Started](https://www.pulumi.com/docs/quickstart/) guide to quickly get started with
-Pulumi on your platform and cloud of choice.
+<a href="https://www.pulumi.com/docs/get-started/" title="Get Started">
+    <img src="https://www.pulumi.com/images/get-started.svg" align="right" width="120">
+</a>
 
 **Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that use
 containers, serverless functions, hosted services, and infrastructure, on any cloud.
@@ -45,16 +46,23 @@ for (let i = 0; i < 3; i++) {
 Or a simple serverless timer that archives Hacker News every day at 8:30AM:
 
 ```typescript
-const cloud = require("@pulumi/cloud");
-const snapshots = new cloud.Table("snapshots");
-cloud.timer.daily("daily-yc-snapshot", { hourUTC: 8, minuteUTC: 30 }, () => {
-    const req = require("https").get("https://news.ycombinator.com", res => {
+const aws = require("@pulumi/aws");
+
+const snapshots = new aws.dynamodb.Table("snapshots", {
+    attributes: [{ name: "id", type: "S", }],
+    hashKey: "id", billingMode: "PAY_PER_REQUEST",
+});
+
+aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", () => {
+    require("https").get("https://news.ycombinator.com", res => {
         let content = "";
         res.setEncoding("utf8");
         res.on("data", chunk => content += chunk);
-        res.on("end", () => snapshots.insert({ date: Date.now(), content }));
-    });
-    req.end();
+        res.on("end", () => new aws.sdk.DynamoDB.DocumentClient().put({
+            TableName: snapshots.name.get(),
+            Item: { date: Date.now(), content },
+        }).promise());
+    }).end();
 });
 ```
 
@@ -82,7 +90,7 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 * **[Community Slack](https://slack.pulumi.com)**: join us over at our community Slack channel.  Any and all
   discussion or questions are welcome.
 
-* **[Roadmap](https://github.com/pulumi/pulumi/wiki/Roadmap)**: check out what's on the roadmap for the Pulumi 
+* **[Roadmap](https://github.com/pulumi/pulumi/wiki/Roadmap)**: check out what's on the roadmap for the Pulumi
   project over the coming months.
 
 ## <a name="getting-started"></a>Getting Started
@@ -166,10 +174,10 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 |    | Language | Status | Runtime |
 | -- | -------- | ------ | ------- |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 8+  |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 8+  |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.6+ |
-| <img src="https://www.pulumi.com/assets/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Preview | Go 1.x      |
+| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 8+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 8+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.6+ |
+| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Preview | Go 1.x      |
 
 ### Clouds
 

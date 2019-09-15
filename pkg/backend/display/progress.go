@@ -71,9 +71,9 @@ type DiagInfo struct {
 	// to keep printing out the most significant diagnostic over and over again.
 	LastDiag *engine.DiagEventPayload
 
-	// The last event of each severity kind.  We'll print out the most significant of these (in the
-	// tree-view) next to a resource while it is in progress.
-	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.DiagEventPayload
+	// The last error we received.  If we have an error, and we're in tree-view, we'll prefer to
+	// show this over the last non-error diag so that users know about something bad early on.
+	LastError *engine.DiagEventPayload
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last diagnostic
 	// in the status region while a resource is in progress.  At the end we'll print out all

@@ -248,19 +248,35 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	// Else, deserialize the possible fields.
 	var hash string
 	if v, has := obj[AssetHashProperty]; has {
-		hash = v.(string)
+		h, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset hash of type %T", v)
+		}
+		hash = h
 	}
 	var text string
 	if v, has := obj[AssetTextProperty]; has {
-		text = v.(string)
+		t, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset text of type %T", v)
+		}
+		text = t
 	}
 	var path string
 	if v, has := obj[AssetPathProperty]; has {
-		path = v.(string)
+		p, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset path of type %T", v)
+		}
+		path = p
 	}
 	var uri string
 	if v, has := obj[AssetURIProperty]; has {
-		uri = v.(string)
+		u, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset URI of type %T", v)
+		}
+		uri = u
 	}
 
 	return &Asset{Hash: hash, Text: text, Path: path, URI: uri}, true, nil
@@ -573,14 +589,23 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 
 	var hash string
 	if v, has := obj[ArchiveHashProperty]; has {
-		hash = v.(string)
+		h, ok := v.(string)
+		if !ok {
+			return &Archive{}, false, errors.Errorf("unexpected archive hash of type %T", v)
+		}
+		hash = h
 	}
 
 	var assets map[string]interface{}
 	if v, has := obj[ArchiveAssetsProperty]; has {
 		assets = make(map[string]interface{})
 		if v != nil {
-			for k, elem := range v.(map[string]interface{}) {
+			m, ok := v.(map[string]interface{})
+			if !ok {
+				return &Archive{}, false, errors.Errorf("unexpected archive contents of type %T", v)
+			}
+
+			for k, elem := range m {
 				switch t := elem.(type) {
 				case *Asset:
 					assets[k] = t
@@ -602,18 +627,26 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 						assets[k] = arch
 					}
 				default:
-					return &Archive{}, false, nil
+					return &Archive{}, false, errors.Errorf("archive member '%v' is not an asset or archive", k)
 				}
 			}
 		}
 	}
 	var path string
 	if v, has := obj[ArchivePathProperty]; has {
-		path = v.(string)
+		p, ok := v.(string)
+		if !ok {
+			return &Archive{}, false, errors.Errorf("unexpected archive path of type %T", v)
+		}
+		path = p
 	}
 	var uri string
 	if v, has := obj[ArchiveURIProperty]; has {
-		uri = v.(string)
+		u, ok := v.(string)
+		if !ok {
+			return &Archive{}, false, errors.Errorf("unexpected archive URI of type %T", v)
+		}
+		uri = u
 	}
 
 	return &Archive{Hash: hash, Assets: assets, Path: path, URI: uri}, true, nil

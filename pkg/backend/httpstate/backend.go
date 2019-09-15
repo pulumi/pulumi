@@ -141,7 +141,7 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -213,6 +213,9 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 		return nil, err
 	}
 
+	// Welcome the user since this was an interactive login.
+	WelcomeUser(opts)
+
 	return New(d, cloudURL)
 }
 
@@ -223,7 +226,12 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	// If we have a saved access token, and it is valid, use it.
 	existingToken, err := workspace.GetAccessToken(cloudURL)
 	if err == nil && existingToken != "" {
-		if valid, _ := IsValidAccessToken(ctx, cloudURL, existingToken); valid {
+		valid, err := IsValidAccessToken(ctx, cloudURL, existingToken)
+		if err != nil {
+			return nil, err
+		}
+
+		if valid {
 			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
 			if err = workspace.StoreAccessToken(cloudURL, existingToken, true); err != nil {
 				return nil, err
@@ -296,8 +304,11 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			}
 
 			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL)
+				return loginWithBrowser(ctx, d, cloudURL, opts)
 			}
+
+			// Welcome the user since this was an interactive login.
+			WelcomeUser(opts)
 		}
 	}
 
@@ -317,6 +328,27 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	return New(d, cloudURL)
 }
 
+// WelcomeUser prints a Welcome to Pulumi message.
+func WelcomeUser(opts display.Options) {
+	fmt.Printf(`
+
+  %s
+
+  Pulumi  helps you create, deploy, and manage infrastructure on any cloud using
+  your favorite language. You can get started today with Pulumi at:
+
+      https://www.pulumi.com/docs/get-started/
+
+  %s Resources you create with Pulumi are given unique names (a randomly
+  generated suffix) by default. To learn more about auto-naming or customizing resource
+  names see https://www.pulumi.com/docs/intro/concepts/programming-model/#autonaming.
+
+
+`,
+		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
+		opts.Color.Colorize(colors.SpecSubHeadline+"Tip of the day:"+colors.Reset))
+}
+
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -327,7 +359,7 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 
 	url := b.CloudConsoleURL(path)
 	if url == "" {
-		return "", errors.New("could not determine clould console URL")
+		return "", errors.New("could not determine cloud console URL")
 	}
 	return url, nil
 }
@@ -389,6 +421,11 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 			policyPackRef.OrgName(), policyPackRef.Name()),
 		b:  b,
 		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
+}
+
+// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *cloudBackend) SupportsOrganizations() bool {
+	return true
 }
 
 func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
@@ -473,6 +510,16 @@ func (b *cloudBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.CloudURL())
 }
 
+// DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
+func (b *cloudBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
+	owner, err := b.client.GetPulumiAccountName(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return b.client.DoesProjectExist(ctx, owner, projectName)
+}
+
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -520,15 +567,24 @@ func (b *cloudBackend) CreateStack(
 }
 
 func (b *cloudBackend) ListStacks(
-	ctx context.Context, projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
-
-	var cleanedProjectName *string
-	if projectFilter != nil {
-		clean := cleanProjectName(string(*projectFilter))
-		cleanedProjectName = &clean
+	ctx context.Context, filter backend.ListStacksFilter) ([]backend.StackSummary, error) {
+	// Sanitize the project name as needed, so when communicating with the Pulumi Service we
+	// always use the name the service expects. (So that a similar, but not technically valid
+	// name may be put in Pulumi.yaml without causing problems.)
+	if filter.Project != nil {
+		cleanedProj := cleanProjectName(*filter.Project)
+		filter.Project = &cleanedProj
 	}
 
-	apiSummaries, err := b.client.ListStacks(ctx, cleanedProjectName)
+	// Duplicate type to avoid circular dependency.
+	clientFilter := client.ListStacksFilter{
+		Organization: filter.Organization,
+		Project:      filter.Project,
+		TagName:      filter.TagName,
+		TagValue:     filter.TagValue,
+	}
+
+	apiSummaries, err := b.client.ListStacks(ctx, clientFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -674,6 +730,10 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
+		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
+			conflict := backend.ConflictingUpdateError{Err: err}
+			return client.UpdateIdentifier{}, 0, "", conflict
+		}
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 	// Any non-preview update will be considered part of the stack's update history.

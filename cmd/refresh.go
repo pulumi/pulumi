@@ -34,8 +34,8 @@ func newRefreshCmd() *cobra.Command {
 	var stack string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
 	var diffDisplay bool
+	var eventLogPath string
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -81,6 +81,7 @@ func newRefreshCmd() *cobra.Command {
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				Type:                 displayType,
+				EventLogPath:         eventLogPath,
 				Debug:                debug,
 			}
 
@@ -89,7 +90,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := readProject(pulumiAppProj)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -110,7 +111,6 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Analyzers:     analyzers,
 				Parallel:      parallel,
 				Debug:         debug,
 				UseLegacyDiff: useLegacyDiff(),
@@ -157,9 +157,6 @@ func newRefreshCmd() *cobra.Command {
 		"Optional message to associate with the update operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", nil,
-		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
@@ -182,5 +179,10 @@ func newRefreshCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
 
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }

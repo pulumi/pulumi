@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -22,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
@@ -48,6 +50,10 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		return nil, err
 	}
 
+	if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
+		return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
+	}
+
 	if ps.EncryptionSalt != "" {
 		return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
 	}
@@ -63,9 +69,16 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 }
 
 func validateSecretsProvider(typ string) error {
-	if typ != "default" && typ != "passphrase" {
-		return errors.Errorf("unknown secrets provider type '%s' (supported values: default, passphrase)", typ)
+	kind := strings.SplitN(typ, ":", 2)[0]
+	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
+	for _, supportedKind := range supportedKinds {
+		if kind == supportedKind {
+			return nil
+		}
 	}
-
-	return nil
+	return errors.Errorf(
+		"unknown secrets provider type '%s' (supported values: %s)",
+		kind,
+		strings.Join(supportedKinds, ","),
+	)
 }

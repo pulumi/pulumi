@@ -47,8 +47,8 @@ type RequiredPolicy interface {
 // linter.
 // nolint: structcheck
 type UpdateOptions struct {
-	// an optional set of analyzers to run as part of this deployment.
-	Analyzers []string
+	// an optional set of paths of policy packs to run as part of this deployment.
+	LocalPolicyPackPaths []string
 
 	// RequiredPolicies is the set of policies that are required to run as part of the update.
 	RequiredPolicies []RequiredPolicy
@@ -79,7 +79,10 @@ type ResourceChanges map[deploy.StepOp]int
 func (changes ResourceChanges) HasChanges() bool {
 	var c int
 	for op, count := range changes {
-		if op != deploy.OpSame {
+		if op != deploy.OpSame &&
+			op != deploy.OpRead &&
+			op != deploy.OpReadDiscard &&
+			op != deploy.OpReadReplacement {
 			c += count
 		}
 	}

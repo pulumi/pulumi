@@ -52,8 +52,9 @@ func newUpCmd() *cobra.Command {
 	var configArray []string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
+	var policyPackPaths []string
 	var diffDisplay bool
+	var eventLogPath string
 	var parallel int
 	var refresh bool
 	var showConfig bool
@@ -83,7 +84,7 @@ func newUpCmd() *cobra.Command {
 			}
 		}
 
-		proj, root, err := readProject()
+		proj, root, err := readProject(pulumiAppProj)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -104,11 +105,11 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			Analyzers:     analyzers,
-			Parallel:      parallel,
-			Debug:         debug,
-			Refresh:       refresh,
-			UseLegacyDiff: useLegacyDiff(),
+			LocalPolicyPackPaths: policyPackPaths,
+			Parallel:             parallel,
+			Debug:                debug,
+			Refresh:              refresh,
+			UseLegacyDiff:        useLegacyDiff(),
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -216,7 +217,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		proj, root, err := readProject()
+		proj, root, err := readProject(pulumiAppProj)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -229,7 +230,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(stack, name, false /*setCurrent*/, yes,
+			if s, err = promptAndCreateStack(promptForValue, stack, name, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}
@@ -262,10 +263,10 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			Analyzers: analyzers,
-			Parallel:  parallel,
-			Debug:     debug,
-			Refresh:   refresh,
+			LocalPolicyPackPaths: policyPackPaths,
+			Parallel:             parallel,
+			Debug:                debug,
+			Refresh:              refresh,
 		}
 
 		// TODO for the URL case:
@@ -335,6 +336,7 @@ func newUpCmd() *cobra.Command {
 				SuppressOutputs:      suppressOutputs,
 				IsInteractive:        interactive,
 				Type:                 displayType,
+				EventLogPath:         eventLogPath,
 				Debug:                debug,
 			}
 
@@ -363,17 +365,19 @@ func newUpCmd() *cobra.Command {
 		"Config to use during the update")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase). Only used when creating a new stack from "+
-			"an existing template")
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
+			"used when creating a new stack from an existing template")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the update operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this update")
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringSliceVar(
+			&policyPackPaths, "policy-pack", []string{},
+			"Run one or more policy packs as part of this update")
+	}
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
@@ -402,6 +406,11 @@ func newUpCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
 
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }
 

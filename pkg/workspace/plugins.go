@@ -15,8 +15,6 @@
 package workspace
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,10 +29,14 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/util/archive"
+
 	"github.com/blang/semver"
+	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -238,49 +240,17 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		contract.IgnoreError(os.RemoveAll(tempDir))
 	}()
 
-	// Unzip and untar the file as we go. We do this inside a function so that the `defer`'s to close files happen
-	// before we later try to rename the directory. Otherwise, the open file handles cause issues on Windows.
+	// Uncompress the plugin. We do this inside a function so that the `defer`'s to close files
+	// happen before we later try to rename the directory. Otherwise, the open file handles cause
+	// issues on Windows.
 	err = (func() error {
 		defer contract.IgnoreClose(tarball)
-		gzr, err := gzip.NewReader(tarball)
+		tarballBytes, err := ioutil.ReadAll(tarball)
 		if err != nil {
-			return errors.Wrapf(err, "unzipping")
-		}
-		r := tar.NewReader(gzr)
-		for {
-			header, err := r.Next()
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return errors.Wrapf(err, "untarring")
-			}
-
-			path := filepath.Join(tempDir, header.Name)
-
-			switch header.Typeflag {
-			case tar.TypeDir:
-				// Create any directories as needed.
-				if _, err := os.Stat(path); err != nil {
-					if err = os.MkdirAll(path, 0700); err != nil {
-						return errors.Wrapf(err, "untarring dir %s", path)
-					}
-				}
-			case tar.TypeReg:
-				// Expand files into the target directory.
-				dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-				if err != nil {
-					return errors.Wrapf(err, "opening file %s for untar", path)
-				}
-				defer contract.IgnoreClose(dst)
-				if _, err = io.Copy(dst, r); err != nil {
-					return errors.Wrapf(err, "untarring file %s", path)
-				}
-			default:
-				return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
-			}
+			return err
 		}
 
-		return nil
+		return archive.Untgz(tarballBytes, tempDir)
 	})()
 	if err != nil {
 		return err
@@ -398,7 +368,7 @@ func GetPolicyPath(name, version string) (string, bool, error) {
 		return "", false, err
 	}
 
-	policyPackPath := path.Join(policiesDir, fmt.Sprintf("pulumi-analyzer-%s%s", name, version))
+	policyPackPath := path.Join(policiesDir, fmt.Sprintf("pulumi-analyzer-%s-v%s", name, version))
 
 	file, err := os.Stat(policyPackPath)
 	if err == nil && file.IsDir() {
@@ -630,6 +600,27 @@ func SelectCompatiblePlugin(
 	return bestMatch, nil
 }
 
+// ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
+func ReadCloserProgressBar(
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization) io.ReadCloser {
+	if size == -1 {
+		return closer
+	}
+
+	// If we know the length of the download, show a progress bar.
+	bar := pb.New(int(size))
+	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
+	bar.Postfix(colorization.Colorize(colors.Reset))
+	bar.SetMaxWidth(80)
+	bar.SetUnits(pb.U_BYTES)
+	bar.Start()
+
+	return &barCloser{
+		bar:        bar,
+		readCloser: bar.NewProxyReader(closer),
+	}
+}
+
 // getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
 // probing for an executable file.
 func getCandidateExtensions() []string {
@@ -640,17 +631,28 @@ func getCandidateExtensions() []string {
 	return []string{""}
 }
 
-// pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].
+// pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(
 	"^(?P<Kind>[a-z]+)-" + // KIND
 		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
 		"v(?P<Version>.*)$") // VERSION
+
+// installingPluginRegexp matches the name of folders for plugins which are being installed. During installation
+// we extract plugins to a folder with a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number, from
+// ioutil.TempFile. We should ignore these plugins as they have not yet been successfully installed.
+var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
 func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 	// Only directories contain plugins.
 	if !file.IsDir() {
 		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
+		return "", "", semver.Version{}, false
+	}
+
+	// Ignore plugins which are being installed
+	if installingPluginRegexp.MatchString(file.Name()) {
+		logging.V(11).Infof("skipping plugin %s which is being installed", file.Name())
 		return "", "", semver.Version{}, false
 	}
 
@@ -721,4 +723,18 @@ func getPluginSize(path string) (int64, error) {
 		size += file.Size()
 	}
 	return size, nil
+}
+
+type barCloser struct {
+	bar        *pb.ProgressBar
+	readCloser io.ReadCloser
+}
+
+func (bc *barCloser) Read(dest []byte) (int, error) {
+	return bc.readCloser.Read(dest)
+}
+
+func (bc *barCloser) Close() error {
+	bc.bar.Finish()
+	return bc.readCloser.Close()
 }

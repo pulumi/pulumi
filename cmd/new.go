@@ -18,275 +18,323 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/npm"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/workspace"
-
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/spf13/cobra"
-
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
+	isValidFn func(value string) error, opts display.Options) (string, error)
+
+type newArgs struct {
+	configArray       []string
+	description       string
+	dir               string
+	force             bool
+	generateOnly      bool
+	interactive       bool
+	name              string
+	offline           bool
+	prompt            promptForValueFunc
+	secretsProvider   string
+	stack             string
+	templateNameOrURL string
+	yes               bool
+}
+
+func runNew(args newArgs) error {
+	if !args.interactive {
+		args.yes = true // auto-approve changes, since we cannot prompt.
+	}
+
+	// Prepare options.
+	opts := display.Options{
+		Color:         cmdutil.GetGlobalColorization(),
+		IsInteractive: args.interactive,
+	}
+
+	// Validate name (if specified) before further prompts/operations.
+	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
+		return errors.Errorf("'%s' is not a valid project name. %s.", args.name, workspace.ValidateProjectName(args.name))
+	}
+
+	// Validate secrets provider type
+	if err := validateSecretsProvider(args.secretsProvider); err != nil {
+		return err
+	}
+
+	// Get the current working directory.
+	cwd, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(err, "getting the working directory")
+	}
+	originalCwd := cwd
+
+	// If dir was specified, ensure it exists and use it as the
+	// current working directory.
+	if args.dir != "" {
+		// Ensure the directory exists.
+		if err = os.MkdirAll(args.dir, os.ModePerm); err != nil {
+			return errors.Wrap(err, "creating the directory")
+		}
+
+		// Change the working directory to the specified directory.
+		if err = os.Chdir(args.dir); err != nil {
+			return errors.Wrap(err, "changing the working directory")
+		}
+
+		// Get the new working directory.
+		if cwd, err = os.Getwd(); err != nil {
+			return errors.Wrap(err, "getting the working directory")
+		}
+	}
+
+	// Return an error if the directory isn't empty.
+	if !args.force {
+		if err = errorIfNotEmptyDirectory(cwd); err != nil {
+			return err
+		}
+	}
+
+	// If we're going to be creating a stack, get the current backend, which
+	// will kick off the login flow (if not already logged-in).
+	if !args.generateOnly {
+		if _, err = currentBackend(opts); err != nil {
+			return err
+		}
+	}
+
+	// Ensure the project doesn't already exist.
+	if args.name != "" {
+		if err := validateProjectName(args.name, args.generateOnly, opts); err != nil {
+			return err
+		}
+	}
+
+	// Retrieve the template repo.
+	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		contract.IgnoreError(repo.Delete())
+	}()
+
+	// List the templates from the repo.
+	templates, err := repo.Templates()
+	if err != nil {
+		return err
+	}
+
+	var template workspace.Template
+	if len(templates) == 0 {
+		return errors.New("no templates")
+	} else if len(templates) == 1 {
+		template = templates[0]
+	} else {
+		if template, err = chooseTemplate(templates, opts); err != nil {
+			return err
+		}
+	}
+
+	// Do a dry run, if we're not forcing files to be overwritten.
+	if !args.force {
+		if err = template.CopyTemplateFilesDryRun(cwd); err != nil {
+			if os.IsNotExist(err) {
+				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+			}
+			return err
+		}
+	}
+
+	// If a stack was specified via --stack, see if it already exists.
+	// Only do the lookup for fully-qualified stack names `org/project/stack` because
+	// otherwise `getStack` will fail to detect the project folder and fail.
+	// The main purpose of this lookup is getting a proper start with a project
+	// created via the web app.
+	var s backend.Stack
+	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
+		existingStack, existingName, existingDesc, err := getStack(args.stack, opts)
+		if err != nil {
+			return err
+		}
+		s = existingStack
+		if args.name == "" {
+			args.name = existingName
+		}
+		if args.description == "" {
+			args.description = existingDesc
+		}
+	}
+
+	// Show instructions, if we're going to show at least one prompt.
+	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
+	if !args.yes && hasAtLeastOnePrompt {
+		fmt.Println("This command will walk you through creating a new Pulumi project.")
+		fmt.Println()
+		fmt.Println(
+			opts.Color.Colorize(
+				colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
+					"<ENTER>", colors.BrightCyan+colors.Bold)))
+		fmt.Println(
+			opts.Color.Colorize(
+				colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
+		fmt.Println()
+	}
+
+	// Prompt for the project name, if it wasn't already specified.
+	if args.name == "" {
+		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
+		if err := validateProjectName(defaultValue, args.generateOnly, opts); err != nil {
+			// Do not suggest an invalid or existing name as the default project name.
+			defaultValue = ""
+		}
+		validate := func(s string) error { return validateProjectName(s, args.generateOnly, opts) }
+		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Prompt for the project description, if it wasn't already specified.
+	if args.description == "" {
+		defaultValue := workspace.ValueOrDefaultProjectDescription(
+			args.description, template.ProjectDescription, template.Description)
+		args.description, err = args.prompt(
+			args.yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Actually copy the files.
+	if err = template.CopyTemplateFiles(cwd, args.force, args.name, args.description); err != nil {
+		if os.IsNotExist(err) {
+			return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+		}
+		return err
+	}
+
+	fmt.Printf("Created project '%s'\n", args.name)
+	fmt.Println()
+
+	// Load the project, update the name & description, remove the template section, and save it.
+	proj, _, err := readProject(pulumiAppProj)
+	if err != nil {
+		return err
+	}
+	proj.Name = tokens.PackageName(args.name)
+	proj.Description = &args.description
+	proj.Template = nil
+	if err = workspace.SaveProject(proj); err != nil {
+		return errors.Wrap(err, "saving project")
+	}
+
+	// Create the stack, if needed.
+	if !args.generateOnly && s == nil {
+		if s, err = promptAndCreateStack(args.prompt,
+			args.stack, args.name, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
+			return err
+		}
+		// The backend will print "Created stack '<stack>'" on success.
+		fmt.Println()
+	}
+
+	// Prompt for config values (if needed) and save.
+	if !args.generateOnly {
+		if err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, opts); err != nil {
+			return err
+		}
+	}
+
+	// Ensure the stack is selected.
+	if !args.generateOnly && s != nil {
+		contract.IgnoreError(state.SetCurrentStack(s.Ref().String()))
+	}
+
+	// Install dependencies.
+	if !args.generateOnly {
+		if err := installDependencies(); err != nil {
+			return err
+		}
+	}
+
+	fmt.Println(
+		opts.Color.Colorize(
+			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset) +
+			" " + cmdutil.EmojiOr("✨", ""))
+	fmt.Println()
+
+	// Print out next steps.
+	printNextSteps(proj, originalCwd, cwd, args.generateOnly, opts)
+
+	if template.Quickstart != "" {
+		fmt.Println(template.Quickstart)
+	}
+
+	return nil
+}
+
+// newNewCmd creates a New command with default dependencies.
 // Intentionally disabling here for cleaner err declaration/assignment.
 // nolint: vetshadow
 func newNewCmd() *cobra.Command {
-	var configArray []string
-	var description string
-	var dir string
-	var force bool
-	var generateOnly bool
-	var name string
-	var offline bool
-	var stack string
-	var yes bool
-	var secretsProvider string
+	var args = newArgs{
+		interactive: cmdutil.Interactive(),
+		prompt:      promptForValue,
+	}
 
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
 		Short:      "Create a new Pulumi project",
-		Args:       cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := cmdutil.Interactive()
-			if !interactive {
-				yes = true // auto-approve changes, since we cannot prompt.
+		Long: "Create a new Pulumi project and stack from a template.\n" +
+			"\n" +
+			"To create a project from a specific template, pass the template name (such as `aws-typescript`\n" +
+			"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
+			"which can be selected interactively.\n" +
+			"\n" +
+			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
+			"provider and a stack created using the local or cloud object storage backend will use the\n" +
+			"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
+			"`--secrets-provider` flag.\n" +
+			"\n" +
+			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
+			"* `pulumi new --secrets-provider=passphrase`\n" +
+			"\n" +
+			"To use a cloud secrets provider with any backend, use one of the following:\n" +
+			"* `pulumi new --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
+			"* `pulumi new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
+			"* `pulumi new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
+			"* `pulumi new --secrets-provider=\"gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k\"`\n" +
+			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`",
+		Args: cmdutil.MaximumNArgs(1),
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			if len(cliArgs) > 0 {
+				args.templateNameOrURL = cliArgs[0]
 			}
-
-			// Prepare options.
-			opts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			// Validate name (if specified) before further prompts/operations.
-			if name != "" && workspace.ValidateProjectName(name) != nil {
-				return errors.Errorf("'%s' is not a valid project name. %s.", name, workspace.ValidateProjectName(name))
-			}
-
-			// Validate secrets provider type
-			if err := validateSecretsProvider(secretsProvider); err != nil {
-				return err
-			}
-
-			// Get the current working directory.
-			cwd, err := os.Getwd()
-			if err != nil {
-				return errors.Wrap(err, "getting the working directory")
-			}
-			originalCwd := cwd
-
-			// If dir was specified, ensure it exists and use it as the
-			// current working directory.
-			if dir != "" {
-				// Ensure the directory exists.
-				if err = os.MkdirAll(dir, os.ModePerm); err != nil {
-					return errors.Wrap(err, "creating the directory")
-				}
-
-				// Change the working directory to the specified directory.
-				if err = os.Chdir(dir); err != nil {
-					return errors.Wrap(err, "changing the working directory")
-				}
-
-				// Get the new working directory.
-				if cwd, err = os.Getwd(); err != nil {
-					return errors.Wrap(err, "getting the working directory")
-				}
-			}
-
-			// Return an error if the directory isn't empty.
-			if !force {
-				if err = errorIfNotEmptyDirectory(cwd); err != nil {
-					return err
-				}
-			}
-
-			// If we're going to be creating a stack, get the current backend, which
-			// will kick off the login flow (if not already logged-in).
-			if !generateOnly {
-				if _, err = currentBackend(opts); err != nil {
-					return err
-				}
-			}
-
-			templateNameOrURL := ""
-			if len(args) > 0 {
-				templateNameOrURL = args[0]
-			}
-
-			// Retrieve the template repo.
-			repo, err := workspace.RetrieveTemplates(templateNameOrURL, offline)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				contract.IgnoreError(repo.Delete())
-			}()
-
-			// List the templates from the repo.
-			templates, err := repo.Templates()
-			if err != nil {
-				return err
-			}
-
-			var template workspace.Template
-			if len(templates) == 0 {
-				return errors.New("no templates")
-			} else if len(templates) == 1 {
-				template = templates[0]
-			} else {
-				if template, err = chooseTemplate(templates, opts); err != nil {
-					return err
-				}
-			}
-
-			// Do a dry run, if we're not forcing files to be overwritten.
-			if !force {
-				if err = template.CopyTemplateFilesDryRun(cwd); err != nil {
-					if os.IsNotExist(err) {
-						return errors.Wrapf(err, "template '%s' not found", templateNameOrURL)
-					}
-					return err
-				}
-			}
-
-			// If a stack was specified via --stack, see if it already exists.
-			var s backend.Stack
-			if stack != "" {
-				existingStack, existingName, existingDesc, err := getStack(stack, opts)
-				if err != nil {
-					return err
-				}
-				s = existingStack
-				if name == "" {
-					name = existingName
-				}
-				if description == "" {
-					description = existingDesc
-				}
-			}
-
-			// Show instructions, if we're going to show at least one prompt.
-			hasAtLeastOnePrompt := (name == "") || (description == "") || (!generateOnly && stack == "")
-			if !yes && hasAtLeastOnePrompt {
-				fmt.Println("This command will walk you through creating a new Pulumi project.")
-				fmt.Println()
-				fmt.Println(
-					opts.Color.Colorize(
-						colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
-							"<ENTER>", colors.BrightCyan+colors.Bold)))
-				fmt.Println(
-					opts.Color.Colorize(
-						colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
-				fmt.Println()
-			}
-
-			// Prompt for the project name, if it wasn't already specified.
-			if name == "" {
-				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, filepath.Base(cwd))
-				name, err = promptForValue(
-					yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts)
-				if err != nil {
-					return err
-				}
-			}
-
-			// Prompt for the project description, if it wasn't already specified.
-			if description == "" {
-				defaultValue := workspace.ValueOrDefaultProjectDescription(
-					description, template.ProjectDescription, template.Description)
-				description, err = promptForValue(
-					yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts)
-				if err != nil {
-					return err
-				}
-			}
-
-			// Actually copy the files.
-			if err = template.CopyTemplateFiles(cwd, force, name, description); err != nil {
-				if os.IsNotExist(err) {
-					return errors.Wrapf(err, "template '%s' not found", templateNameOrURL)
-				}
-				return err
-			}
-
-			fmt.Printf("Created project '%s'\n", name)
-			fmt.Println()
-
-			// Load the project, update the name & description, remove the template section, and save it.
-			proj, _, err := readProject()
-			if err != nil {
-				return err
-			}
-			proj.Name = tokens.PackageName(name)
-			proj.Description = &description
-			proj.Template = nil
-			if err = workspace.SaveProject(proj); err != nil {
-				return errors.Wrap(err, "saving project")
-			}
-
-			// Create the stack, if needed.
-			if !generateOnly && s == nil {
-				if s, err = promptAndCreateStack(stack, name, true /*setCurrent*/, yes, opts, secretsProvider); err != nil {
-					return err
-				}
-				// The backend will print "Created stack '<stack>'" on success.
-				fmt.Println()
-			}
-
-			// Prompt for config values (if needed) and save.
-			if !generateOnly {
-				if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts); err != nil {
-					return err
-				}
-			}
-
-			// Ensure the stack is selected.
-			if !generateOnly && s != nil {
-				contract.IgnoreError(state.SetCurrentStack(s.Ref().String()))
-			}
-
-			// Install dependencies.
-			if !generateOnly {
-				if err := installDependencies(); err != nil {
-					return err
-				}
-			}
-
-			fmt.Println(
-				opts.Color.Colorize(
-					colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset) +
-					" " + cmdutil.EmojiOr("✨", ""))
-			fmt.Println()
-
-			// Print out next steps.
-			printNextSteps(proj, originalCwd, cwd, generateOnly, opts)
-
-			if template.Quickstart != "" {
-				fmt.Println(template.Quickstart)
-			}
-
-			return nil
+			return runNew(args)
 		}),
 	}
 
@@ -312,7 +360,7 @@ func newNewCmd() *cobra.Command {
 
 		// If we have any templates, show them.
 		if len(templates) > 0 {
-			available, _ := templatesToOptionArrayAndMap(templates)
+			available, _ := templatesToOptionArrayAndMap(templates, true)
 			fmt.Println("")
 			fmt.Println("Available Templates:")
 			for _, t := range available {
@@ -322,35 +370,35 @@ func newNewCmd() *cobra.Command {
 	})
 
 	cmd.PersistentFlags().StringArrayVarP(
-		&configArray, "config", "c", []string{},
+		&args.configArray, "config", "c", []string{},
 		"Config to save")
 	cmd.PersistentFlags().StringVarP(
-		&description, "description", "d", "",
+		&args.description, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
 	cmd.PersistentFlags().StringVar(
-		&dir, "dir", "",
+		&args.dir, "dir", "",
 		"The location to place the generated project; if not specified, the current directory is used")
 	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
+		&args.force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
 	cmd.PersistentFlags().BoolVarP(
-		&generateOnly, "generate-only", "g", false,
+		&args.generateOnly, "generate-only", "g", false,
 		"Generate the project only; do not create a stack, save config, or install dependencies")
 	cmd.PersistentFlags().StringVarP(
-		&name, "name", "n", "",
+		&args.name, "name", "n", "",
 		"The project name; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
-		&offline, "offline", "o", false,
+		&args.offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&args.stack, "stack", "s", "",
 		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+		&args.yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase)")
+		&args.secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
 
 	return cmd
 }
@@ -365,6 +413,31 @@ func errorIfNotEmptyDirectory(path string) error {
 	if len(infos) > 0 {
 		return errors.Errorf("%s is not empty; "+
 			"rerun in an empty directory, pass the path to an empty directory to --dir, or use --force", path)
+	}
+
+	return nil
+}
+
+func validateProjectName(projectName string, generateOnly bool, opts display.Options) error {
+	err := workspace.ValidateProjectName(projectName)
+	if err != nil {
+		return err
+	}
+
+	if !generateOnly {
+		b, err := currentBackend(opts)
+		if err != nil {
+			return err
+		}
+
+		exists, err := b.DoesProjectExist(commandContext(), projectName)
+		if err != nil {
+			return err
+		}
+
+		if exists {
+			return errors.New("A project with this name already exists")
+		}
 	}
 
 	return nil
@@ -401,7 +474,7 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func promptAndCreateStack(
+func promptAndCreateStack(prompt promptForValueFunc,
 	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string) (backend.Stack, error) {
 
@@ -418,8 +491,14 @@ func promptAndCreateStack(
 		return s, nil
 	}
 
+	if b.SupportsOrganizations() {
+		fmt.Print("Please enter your desired stack name.\n" +
+			"To create a stack in an organization, " +
+			"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
+	}
+
 	for {
-		stackName, err := promptForValue(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
+		stackName, err := prompt(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -461,20 +540,12 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 func installDependencies() error {
-	proj, _, err := readProject()
+	proj, _, err := readProject(pulumiAppProj)
 	if err != nil {
 		return err
 	}
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	var command string
-	var c *exec.Cmd
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		command = "npm install"
-		// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
-		// `description`, `repository`, and `license` fields in the package.json file.
-		c = exec.Command("npm", "install", "--loglevel=error")
-	} else {
+	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		return nil
 	}
 
@@ -482,17 +553,11 @@ func installDependencies() error {
 	fmt.Println()
 
 	// Run the command.
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	if err := c.Run(); err != nil {
-		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment", command)
-	}
-
-	// Ensure the "node_modules" directory exists.
-	if _, err := os.Stat("node_modules"); os.IsNotExist(err) {
-		return errors.Errorf("installing dependencies; rerun '%s' manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment", command)
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	err = npm.Install("", os.Stdout, os.Stderr)
+	if err != nil {
+		return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment")
 	}
 
 	fmt.Println("Finished installing dependencies")
@@ -599,18 +664,39 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
+	showAll := false
+	var selectedOption workspace.Template
 
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: len(options),
-	}, &option, nil); err != nil {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
+	for {
+
+		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, showAll)
+
+		// If showAll was false and we got only a single result, force showAll to be true and try
+		// again.
+		if !showAll && len(options) <= 1 {
+			showAll = true
+			continue
+		}
+
+		var option string
+		if err := survey.AskOne(&survey.Select{
+			Message:  message,
+			Options:  options,
+			PageSize: len(options),
+		}, &option, nil); err != nil {
+			return workspace.Template{}, errors.New(chooseTemplateErr)
+		}
+
+		var has bool
+		selectedOption, has = optionToTemplateMap[option]
+		if has {
+			break
+		} else {
+			showAll = true
+		}
 	}
 
-	return optionToTemplateMap[option], nil
+	return selectedOption, nil
 }
 
 // parseConfig parses the config values passed via command line flags.
@@ -818,7 +904,9 @@ func promptForValue(
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
-func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map[string]workspace.Template) {
+func templatesToOptionArrayAndMap(templates []workspace.Template,
+	showAll bool) ([]string, map[string]workspace.Template) {
+
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
@@ -831,6 +919,10 @@ func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map
 	var options []string
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
+		// If showAll is false, then only include templates marked Important
+		if !showAll && !template.Important {
+			continue
+		}
 		// Create the option string that combines the name, padding, and description.
 		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
@@ -840,6 +932,12 @@ func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map
 		nameToTemplateMap[option] = template
 	}
 	sort.Strings(options)
+
+	if !showAll {
+		// If showAll is false, include an option to show all
+		option := "Show additional templates"
+		options = append(options, option)
+	}
 
 	return options, nameToTemplateMap
 }

@@ -199,8 +199,7 @@ describe("rpc", () => {
         "resource_thens": {
             program: path.join(base, "005.resource_thens"),
             expectResourceCount: 2,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string,
-                               res: any, dependencies: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, dependencies) => {
                 let id: ID | undefined;
                 let props: any | undefined;
                 switch (t) {
@@ -218,12 +217,9 @@ describe("rpc", () => {
                         assert.deepEqual(dependencies, ["test:index:ResourceA::resourceA"]);
 
                         if (dryrun) {
-                            // If this is a dry-run, we will have the values of the original
-                            // resource copied over as outputs.  Note: this should really
-                            // only be done for values known to be stable.  This is tracked
-                            // by: https://github.com/pulumi/pulumi/issues/1055
+                            // If this is a dry-run, we will have no known values.
                             assert.deepEqual(res, {
-                                otherIn: 777,
+                                otherIn: runtime.unknownValue,
                                 otherOut: runtime.unknownValue,
                             });
                         }
@@ -303,26 +299,26 @@ describe("rpc", () => {
             },
         },
         // A simple test of the invocation RPC pathways.
-        // "invoke": {
-        //     program: path.join(base, "009.invoke"),
-        //     expectResourceCount: 0,
-        //     invoke: (ctx: any, tok: string, args: any) => {
-        //         assert.strictEqual(tok, "invoke:index:echo");
-        //         assert.deepEqual(args, {
-        //             a: "hello",
-        //             b: true,
-        //             c: [ 0.99, 42, { z: "x" } ],
-        //             id: "some-id",
-        //             urn: "some-urn",
-        //         });
-        //         return { failures: undefined, ret: args };
-        //     },
-        //     registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        //         assert.strictEqual(t, "test:index:MyResource");
-        //         assert.strictEqual(name, "testResource1");
-        //         return { urn: makeUrn(t, name), id: undefined, props: undefined };
-        //     },
-        // },
+        "invoke": {
+            program: path.join(base, "009.invoke"),
+            expectResourceCount: 0,
+            invoke: (ctx: any, tok: string, args: any, version: string) => {
+                assert.strictEqual(tok, "invoke:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [ 0.99, 42, { z: "x" } ],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
         // Simply test that certain runtime properties are available.
         "runtimeSettings": {
             project: "runtimeSettingsProject",
@@ -359,6 +355,40 @@ describe("rpc", () => {
             program: path.join(base, "012.assets_archive"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.deepEqual(res, {
+                    "archive": {
+                        "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
+                        "__pulumiArchive": true,
+                        "assets": {
+                            "archive": {
+                                "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
+                                "__pulumiArchive": true,
+                                "assets": {},
+                            },
+                            "asset": {
+                                "4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+                                "__pulumiAsset": true,
+                                "text": "foo",
+                            },
+                        },
+                    },
+                    "archiveP": {
+                        "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
+                        "__pulumiArchive": true,
+                        "assets": {
+                            "foo": {
+                                "4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+                                "__pulumiAsset": true,
+                                "text": "bar",
+                            },
+                        },
+                    },
+                    "assetP": {
+                        "4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
+                        "__pulumiAsset": true,
+                        "text": "baz",
+                    },
+                });
                 return { urn: makeUrn(t, name), id: undefined, props: res };
             },
         },
@@ -500,8 +530,7 @@ describe("rpc", () => {
             program: path.join(base, "001.one_resource"),
             expectResourceCount: 2,
             showRootResourceRegistration: true,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
-                               custom: boolean, protect: boolean, parent: string) => {
+            registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
                 if (t === "pulumi:pulumi:Stack") {
                     ctx.stackUrn = makeUrn(t, name);
                     return { urn: makeUrn(t, name), id: undefined, props: undefined };
@@ -518,8 +547,7 @@ describe("rpc", () => {
             expectResourceCount: 2,
             skipRootResourceEndpoints: true,
             showRootResourceRegistration: true,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
-                               custom: boolean, protect: boolean, parent: string) => {
+            registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
                 if (t === "pulumi:pulumi:Stack") {
                     ctx.stackUrn = makeUrn(t, name);
                     return { urn: makeUrn(t, name), id: undefined, props: undefined };
@@ -534,10 +562,7 @@ describe("rpc", () => {
         "property_dependencies": {
             program: path.join(base, "020.property_dependencies"),
             expectResourceCount: 5,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
-                               custom: boolean, protect: boolean, parent: string, provider: string,
-                               propertyDeps: any) => {
-
+            registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent, provider, propertyDeps) => {
                 assert.strictEqual(t, "test:index:MyResource");
 
                 switch (name) {
@@ -584,7 +609,7 @@ describe("rpc", () => {
             pwd: path.join(base, "021.parent_child_dependencies"),
             program: "./index.js",
             expectResourceCount: 2,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "cust1": assert.deepStrictEqual(deps, []); break;
                     case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
@@ -597,7 +622,7 @@ describe("rpc", () => {
             pwd: path.join(base, "022.parent_child_dependencies_2"),
             program: "./index.js",
             expectResourceCount: 3,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "cust1": assert.deepStrictEqual(deps, []); break;
                     case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
@@ -617,7 +642,7 @@ describe("rpc", () => {
             pwd: path.join(base, "024.parent_child_dependencies_4"),
             program: "./index.js",
             expectResourceCount: 3,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "cust1": assert.deepStrictEqual(deps, []); break;
                     case "cust2": assert.deepStrictEqual(deps, []); break;
@@ -631,7 +656,7 @@ describe("rpc", () => {
             pwd: path.join(base, "025.parent_child_dependencies_5"),
             program: "./index.js",
             expectResourceCount: 4,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "cust1": assert.deepStrictEqual(deps, []); break;
                     case "cust2": assert.deepStrictEqual(deps, []); break;
@@ -646,7 +671,7 @@ describe("rpc", () => {
             pwd: path.join(base, "026.parent_child_dependencies_6"),
             program: "./index.js",
             expectResourceCount: 6,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "comp1": assert.deepStrictEqual(deps, []); break;
                     case "cust1": assert.deepStrictEqual(deps, []); break;
@@ -663,7 +688,7 @@ describe("rpc", () => {
             pwd: path.join(base, "027.parent_child_dependencies_7"),
             program: "./index.js",
             expectResourceCount: 10,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "comp1": assert.deepStrictEqual(deps, []); break;
                     case "cust1": assert.deepStrictEqual(deps, []); break;
@@ -684,7 +709,7 @@ describe("rpc", () => {
             pwd: path.join(base, "028.parent_child_dependencies_8"),
             program: "./index.js",
             expectResourceCount: 6,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "comp1": assert.deepStrictEqual(deps, []); break;
                     case "cust1": assert.deepStrictEqual(deps, []); break;
@@ -701,7 +726,7 @@ describe("rpc", () => {
             pwd: path.join(base, "029.parent_child_dependencies_9"),
             program: "./index.js",
             expectResourceCount: 3,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[]) => {
+            registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
                     case "cust1": assert.deepStrictEqual(deps, []); break;
                     case "cust2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
@@ -830,19 +855,35 @@ describe("rpc", () => {
         "import_resource": {
             program: path.join(base, "030.import_resource"),
             expectResourceCount: 1,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, deps: string[],
-                               custom: boolean, protect: boolean, parent: string, provider: string,
-                               propertyDeps: any, ignoreChanges: string[], version: string, importID: string) => {
+            registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent, provider, propertyDeps, ignoreChanges, version, importID) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 assert.strictEqual(name, "testResource1");
                 assert.strictEqual(importID, "testID");
                 return { urn: makeUrn(t, name), id: importID, props: {} };
             },
         },
+        // Test stack outputs via exports.
+        "recursive_stack_exports": {
+            program: path.join(base, "046.recursive_stack_exports"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    m: { a: { b: 1 } },
+                    n: { a: { b: 1 } },
+                    o: { b: 1 },
+                    p: 1,
+                    obj2: { x: { y: 1, x: undefined }, obj2: undefined },
+                    obj2_x: { y: 1, x: undefined },
+                    obj2_x_y: 1,
+                });
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("depends_on_non_resource") < 0) {
+        // if (casename.indexOf("recursive_stack_exports") < 0) {
         //     continue;
         // }
 
@@ -907,7 +948,7 @@ describe("rpc", () => {
                                 const provider: string = req.getProvider();
                                 const ignoreChanges: string[] = req.getIgnorechangesList().sort();
                                 const propertyDeps: any = Array.from(req.getPropertydependenciesMap().entries())
-                                    .reduce((o: any, [key, value]: [any, any]) => {
+                                    .reduce((o: any, [key, value]: any) => {
                                         return { ...o, [key]: value.getUrnsList().sort() };
                                     }, {});
                                 const version: string = req.getVersion();

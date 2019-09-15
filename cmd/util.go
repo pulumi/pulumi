@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -59,7 +60,14 @@ func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
 
+// backendInstance is used to inject a backend mock from tests.
+var backendInstance backend.Backend
+
 func currentBackend(opts display.Options) (backend.Backend, error) {
+	if backendInstance != nil {
+		return backendInstance, nil
+	}
+
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get cloud url")
@@ -95,14 +103,24 @@ func createStack(
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	// As part of creating the stack, we also need to configure the secrets provider for the stack. Today, we only
-	// have to do this configuration step when you are using the passphrase provider (which is used for all filestate,
-	// stacks and well as httpstate stacks that opted into this by passing --secrets-provider passphrase
-	// while initialing a stack).  The only other supported provider today (the provider that uses the pulumi service
-	// does not need to be initialized explicitly, as creating the stack inside the Pulumi service does this).
-	if _, ok := b.(filestate.Backend); ok || secretsProvider == "passphrase" {
+	// As part of creating the stack, we also need to configure the secrets provider for the stack.
+	// We need to do this configuration step for cases where we will be using with the passphrase
+	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
+	// for the Pulumi service backend secrets provider.
+	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
+	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
+		// The default when using the filestate backend is the passphrase secrets provider
+		secretsProvider = passphrase.Type
+	}
+	if secretsProvider == passphrase.Type {
 		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
 			return nil, pharseErr
+		}
+	} else if !isDefaultSecretsProvider {
+		// All other non-default secrets providers are handled by the cloud secrets provider which
+		// uses a URL schema to identify the provider
+		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
+			return nil, secretsErr
 		}
 	}
 
@@ -205,11 +223,13 @@ func chooseStack(
 	}
 
 	// List stacks as available options.
-	var options []string
-	summaries, err := b.ListStacks(commandContext(), &proj.Name)
+	project := string(proj.Name)
+	summaries, err := b.ListStacks(commandContext(), backend.ListStacksFilter{Project: &project})
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
+
+	var options []string
 	for _, summary := range summaries {
 		name := summary.Name().String()
 		options = append(options, name)
@@ -255,10 +275,12 @@ func chooseStack(
 	}
 
 	if option == newOption {
-		stackName, readErr := cmdutil.ReadConsole(
-			"Please enter your desired stack name.\n" +
-				"To create a stack in an organization, " +
-				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)")
+		hint := "Please enter your desired stack name."
+		if b.SupportsOrganizations() {
+			hint += "\nTo create a stack in an organization, " +
+				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)"
+		}
+		stackName, readErr := cmdutil.ReadConsole(hint)
 		if readErr != nil {
 			return nil, readErr
 		}
@@ -291,11 +313,21 @@ func chooseStack(
 	return stack, nil
 }
 
-// readProject attempts to detect and read the project for the current workspace. If an error occurs, it will be
-// printed to Stderr, and the returned value will be nil. If the project is successfully detected and read, it
-// is returned along with the path to its containing directory, which will be used as the root of the project's
-// Pulumi program.
-func readProject() (*workspace.Project, string, error) {
+// projType represents the various types of Pulumi project. All Pulumi projects are denoted by a
+// Pulumi.yaml in the root of the workspace.
+type projType string
+
+const (
+	// pulumiAppProj is a Pulumi application project.
+	pulumiAppProj projType = "pulumi-app"
+	// pulumiPolicyProj is a Pulumi resource policy project.
+	pulumiPolicyProj projType = "pulumi-policy"
+)
+
+// readProject attempts to detect and read a project of type `projType` for the current workspace.
+// If the project is successfully detected and read, it is returned along with the path to its
+// containing directory, which will be used as the root of the project's Pulumi program.
+func readProject(projType projType) (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
@@ -304,19 +336,29 @@ func readProject() (*workspace.Project, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", errors.Wrapf(err,
-			"could not locate Pulumi.yaml project file (searching upwards from %s)", pwd)
+		return nil, "", errors.Wrapf(err, "failed to find current Pulumi project because of "+
+			"an error when searching for the Pulumi.yaml file (searching upwards from %s)", pwd)
 	} else if path == "" {
-		return nil, "", errors.Errorf(
-			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-				"created a project yet, use `pulumi new` to do so", pwd)
+		return nil, "", errReadProjNoPulumiYAML(projType, pwd)
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.Wrapf(err, "failed to load Pulumi project located at %q", path)
 	}
 
 	return proj, filepath.Dir(path), nil
+}
+
+func errReadProjNoPulumiYAML(projType projType, pwd string) error {
+	switch projType {
+	case pulumiPolicyProj:
+		return fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s)", pwd)
+
+	default:
+		return fmt.Errorf(
+			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+				"created a project yet, use `pulumi new` to do so", pwd)
+	}
 }
 
 // anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a

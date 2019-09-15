@@ -83,7 +83,14 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
         // If there were failures, propagate them.
         const failures: any = resp.getFailuresList();
         if (failures && failures.length) {
-            throw new Error(`Invoke of '${tok}' failed: ${failures[0].reason} (${failures[0].property})`);
+            let reasons = "";
+            for (let i = 0; i < failures.length; i++) {
+                if (reasons !== "") {
+                    reasons += "; ";
+                }
+                reasons += `${failures[i].getReason()} (${failures[i].getProperty()})`;
+            }
+            throw new Error(`Invoke of '${tok}' failed: ${reasons}`);
         }
 
         // Finally propagate any other properties that were given to us as outputs.

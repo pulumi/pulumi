@@ -131,7 +131,7 @@ export abstract class Resource {
      * urn is the stable logical URN used to distinctly address a resource, both before and after
      * deployments.
      */
-    public readonly urn: Output<URN>;
+    public readonly urn!: Output<URN>;
 
     /**
      * @internal
@@ -566,7 +566,7 @@ export abstract class CustomResource extends Resource {
      * id is the provider-assigned unique ID for this managed resource.  It is set during
      * deployments and may be missing (undefined) during planning phases.
      */
-    public readonly id: Output<ID>;
+    public readonly id!: Output<ID>;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -758,7 +758,7 @@ function expandProviders(options: ComponentResourceOptions) {
 
     // Convert 'providers' map to array form.
     if (options.providers && !Array.isArray(options.providers)) {
-        options.providers = Object.values(options.providers);
+        options.providers = utils.values(options.providers);
     }
 
     delete options.provider;

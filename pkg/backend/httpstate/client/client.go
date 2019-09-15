@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"time"
@@ -81,6 +82,12 @@ func (pc *Client) updateRESTCall(ctx context.Context, method, path string, query
 	token updateAccessToken, httpOptions httpCallOptions) error {
 
 	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
+}
+
+// getProjectPath returns the API path for the given owner and the given project name joined with path separators
+// and appended to the stack root.
+func getProjectPath(owner string, projectName string) string {
+	return fmt.Sprintf("/api/stacks/%s/%s", owner, projectName)
 }
 
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
@@ -159,17 +166,30 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 	return latestSem, oldestSem, nil
 }
 
-// ListStacks lists all stacks the current user has access to, optionally filtered by project.
-func (pc *Client) ListStacks(ctx context.Context, projectFilter *string) ([]apitype.StackSummary, error) {
+// ListStacksFilter describes optional filters when listing stacks.
+type ListStacksFilter struct {
+	Project      *string
+	Organization *string
+	TagName      *string
+	TagValue     *string
+}
 
-	var resp apitype.ListStacksResponse
-	var queryFilter interface{}
-	if projectFilter != nil {
-		queryFilter = struct {
-			ProjectFilter string `url:"project"`
-		}{ProjectFilter: *projectFilter}
+// ListStacks lists all stacks the current user has access to, optionally filtered by project.
+func (pc *Client) ListStacks(
+	ctx context.Context, filter ListStacksFilter) ([]apitype.StackSummary, error) {
+	queryFilter := struct {
+		Project      *string `url:"project,omitempty"`
+		Organization *string `url:"organization,omitempty"`
+		TagName      *string `url:"tagName,omitempty"`
+		TagValue     *string `url:"tagValue,omitempty"`
+	}{
+		Project:      filter.Project,
+		Organization: filter.Organization,
+		TagName:      filter.TagName,
+		TagValue:     filter.TagValue,
 	}
 
+	var resp apitype.ListStacksResponse
 	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &resp); err != nil {
 		return nil, err
 	}
@@ -212,6 +232,19 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 	}
 
 	return cfg, nil
+}
+
+// DoesProjectExist returns true if a project with the given name exists, or false otherwise.
+func (pc *Client) DoesProjectExist(ctx context.Context, owner string, projectName string) (bool, error) {
+	if err := pc.restCall(ctx, "HEAD", getProjectPath(owner, projectName), nil, nil, nil); err != nil {
+		// If this was a 404, return false - project not found.
+		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
+			return false, nil
+		}
+
+		return false, err
+	}
+	return true, nil
 }
 
 // GetStack retrieves the stack with the given name.
@@ -369,7 +402,7 @@ func (pc *Client) CreateUpdate(
 		Description: description,
 		Config:      wireConfig,
 		Options: apitype.UpdateOptions{
-			Analyzers:            opts.Analyzers,
+			LocalPolicyPackPaths: opts.LocalPolicyPackPaths,
 			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
 			DryRun:               dryRun,
 			Parallel:             opts.Parallel,
@@ -508,16 +541,26 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyPac
 }
 
 // DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
-func (pc *Client) DownloadPolicyPack(ctx context.Context, locationPath string) ([]byte, error) {
-	fmt.Println("Downloading policy pack from", locationPath)
+func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) ([]byte, error) {
+	fmt.Println("Downloading policy pack")
 
-	pack := []byte{}
-	err := pc.restCall(ctx, "GET", "/api/"+locationPath, nil, nil, &pack)
+	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "HTTP GET to download policy pack at %q failed", locationPath)
+		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
 	}
 
-	return pack, nil
+	resp, err := http.DefaultClient.Do(getS3Req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
+	}
+	defer resp.Body.Close()
+
+	tarball, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
+	}
+
+	return tarball, nil
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
