@@ -144,7 +144,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracing, "tracing", "",
-		"Emit tracing to a Zipkin-compatible tracing endpoint")
+		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
@@ -175,6 +175,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newPluginCmd())
 	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newHistoryCmd())
+	cmd.AddCommand(newViewTraceCmd())
 
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenCompletionCmd(cmd))
