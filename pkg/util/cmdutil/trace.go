@@ -17,18 +17,37 @@ package cmdutil
 import (
 	"io"
 	"log"
+	"net/url"
+	"os"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
+	"sourcegraph.com/sourcegraph/appdash"
+	appdash_opentracing "sourcegraph.com/sourcegraph/appdash/opentracing"
 )
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
 var TracingEndpoint string
+var TracingToFile bool
 var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
+
+type localStore struct {
+	path  string
+	store *appdash.MemoryStore
+}
+
+func (s *localStore) Close() error {
+	f, err := os.Create(s.path)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(f)
+	return s.store.Write(f)
+}
 
 func IsTracingEnabled() bool {
 	return TracingEndpoint != ""
@@ -44,25 +63,58 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 	// Store the tracing endpoint
 	TracingEndpoint = tracingEndpoint
 
-	// Jaeger tracer can be initialized with a transport that will
-	// report tracing Spans to a Zipkin backend
-	transport, err := zipkin.NewHTTPTransport(
-		tracingEndpoint,
-		zipkin.HTTPBatchSize(1),
-		zipkin.HTTPLogger(jaeger.StdLogger),
-	)
+	endpointURL, err := url.Parse(tracingEndpoint)
 	if err != nil {
-		log.Fatalf("Cannot initialize HTTP transport: %v", err)
+		log.Fatalf("invalid tracing endpoint: %v", err)
 	}
 
-	// create Jaeger tracer
-	tracer, closer := jaeger.NewTracer(
-		name,
-		jaeger.NewConstSampler(true), // sample all traces
-		jaeger.NewRemoteReporter(transport))
+	var tracer opentracing.Tracer
+	switch {
+	case endpointURL.Scheme == "file":
+		// If the endpoint is a file:// URL, use a local tracer.
+		TracingToFile = true
 
-	// Store the closer so that we can flush the Jaeger span cache on process exit
-	traceCloser = closer
+		path := endpointURL.Path
+		if path == "" {
+			path = endpointURL.Opaque
+		}
+		if path == "" {
+			log.Fatalf("invalid tracing endpoint: %v", err)
+		}
+
+		store := &localStore{
+			path:  path,
+			store: appdash.NewMemoryStore(),
+		}
+		traceCloser = store
+
+		collector := appdash.NewLocalCollector(store.store)
+		tracer = appdash_opentracing.NewTracer(collector)
+	case endpointURL.Scheme == "tcp":
+		// If the endpoint scheme is tcp, use an Appdash endpoint.
+		collector := appdash.NewRemoteCollector(tracingEndpoint)
+		traceCloser = collector
+		tracer = appdash_opentracing.NewTracer(collector)
+	default:
+		// Jaeger tracer can be initialized with a transport that will
+		// report tracing Spans to a Zipkin backend
+		transport, err := zipkin.NewHTTPTransport(
+			tracingEndpoint,
+			zipkin.HTTPBatchSize(1),
+			zipkin.HTTPLogger(jaeger.StdLogger),
+		)
+		if err != nil {
+			log.Fatalf("Cannot initialize HTTP transport: %v", err)
+		}
+
+		// create Jaeger tracer
+		t, closer := jaeger.NewTracer(
+			name,
+			jaeger.NewConstSampler(true), // sample all traces
+			jaeger.NewRemoteReporter(transport))
+
+		tracer, traceCloser = t, closer
+	}
 
 	// Set the ambient tracer
 	opentracing.SetGlobalTracer(tracer)

@@ -28,12 +28,13 @@ import (
 )
 
 type QueryOptions struct {
-	Events     eventEmitter // the channel to write events from the engine to.
-	Diag       diag.Sink    // the sink to use for diag'ing.
-	StatusDiag diag.Sink    // the sink to use for diag'ing status messages.
-	host       plugin.Host  // the plugin host to use for this query.
-	pwd, main  string
-	plugctx    *plugin.Context
+	Events      eventEmitter // the channel to write events from the engine to.
+	Diag        diag.Sink    // the sink to use for diag'ing.
+	StatusDiag  diag.Sink    // the sink to use for diag'ing status messages.
+	host        plugin.Host  // the plugin host to use for this query.
+	pwd, main   string
+	plugctx     *plugin.Context
+	tracingSpan opentracing.Span
 }
 
 func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
@@ -76,17 +77,18 @@ func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
 	}
 
 	return query(ctx, u, QueryOptions{
-		Events:     emitter,
-		Diag:       diag,
-		StatusDiag: statusDiag,
-		host:       opts.host,
-		pwd:        pwd,
-		main:       main,
-		plugctx:    plugctx,
+		Events:      emitter,
+		Diag:        diag,
+		StatusDiag:  statusDiag,
+		host:        opts.host,
+		pwd:         pwd,
+		main:        main,
+		plugctx:     plugctx,
+		tracingSpan: tracingSpan,
 	})
 }
 
-func newQuerySource(cancel context.Context, client deploy.BackendClient, u UpdateInfo,
+func newQuerySource(ctx context.Context, client deploy.BackendClient, u UpdateInfo,
 	opts QueryOptions) (deploy.QuerySource, error) {
 
 	allPlugins, _, err := installPlugins(u.GetProject(), opts.pwd,
@@ -104,9 +106,13 @@ func newQuerySource(cancel context.Context, client deploy.BackendClient, u Updat
 		return nil, err
 	}
 
+	if opts.tracingSpan != nil {
+		ctx = opentracing.ContextWithSpan(ctx, opts.tracingSpan)
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
-	return deploy.NewQuerySource(cancel, opts.plugctx, client, &deploy.EvalRunInfo{
+	return deploy.NewQuerySource(ctx, opts.plugctx, client, &deploy.EvalRunInfo{
 		Proj:    u.GetProject(),
 		Pwd:     opts.pwd,
 		Program: opts.main,
