@@ -46,7 +46,7 @@ func newViewTraceCmd() *cobra.Command {
 		Short: "Display a trace from the Pulumi CLI",
 		Long: "Display a trace from the Pulumi CLI.\n" +
 			"\n" +
-			"This command is used to isplay execution traces collected by a prior\n" +
+			"This command is used to display execution traces collected by a prior\n" +
 			"invocation of the Pulumi CLI.\n" +
 			"\n" +
 			"This command loads trace data from the indicated file and starts a\n" +
