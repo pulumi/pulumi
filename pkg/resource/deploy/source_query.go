@@ -184,7 +184,7 @@ func newQueryResourceMonitor(builtins *builtinProvider) (*queryResmon, error) {
 			pulumirpc.RegisterResourceMonitorServer(srv, queryResmon)
 			return nil
 		},
-	})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}

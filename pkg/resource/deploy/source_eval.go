@@ -17,12 +17,14 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
@@ -87,13 +89,13 @@ func (src *evalSource) Info() interface{} { return src.runinfo }
 func (src *evalSource) Iterate(
 	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {
 
-	contract.Ignore(ctx) // TODO[pulumi/pulumi#1714]
+	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
-	mon, err := newResourceMonitor(src, providers, regChan, regOutChan, regReadChan)
+	mon, err := newResourceMonitor(src, providers, regChan, regOutChan, regReadChan, tracingSpan)
 	if err != nil {
 		return nil, result.FromError(errors.Wrap(err, "failed to start resource monitor"))
 	}
@@ -403,7 +405,8 @@ var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
-	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent) (*resmon, error) {
+	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent,
+	tracingSpan opentracing.Span) (*resmon, error) {
 
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -434,7 +437,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-	})
+	}, tracingSpan)
 	if err != nil {
 		return nil, err
 	}

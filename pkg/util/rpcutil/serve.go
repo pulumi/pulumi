@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -36,7 +37,9 @@ func IsBenignCloseErr(err error) bool {
 // the port number.  The return values are: the chosen port (the same as supplied if non-0), a channel that may
 // eventually return an error, and an error, in case something went wrong.  The channel is non-nil and waits until
 // the server is finished, in the case of a successful launch of the RPC server.
-func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (int, chan error, error) {
+func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
+	parentSpan opentracing.Span) (int, chan error, error) {
+
 	// Listen on a TCP port, but let the kernel choose a free port for us.
 	lis, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
 	if err != nil {
@@ -44,7 +47,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (in
 	}
 
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
-	srv := grpc.NewServer(grpc.UnaryInterceptor(OpenTracingServerInterceptor()))
+	srv := grpc.NewServer(grpc.UnaryInterceptor(OpenTracingServerInterceptor(parentSpan)))
 	for _, register := range registers {
 		if err := register(srv); err != nil {
 			return port, nil, errors.Errorf("failed to register RPC handler: %v", err)
