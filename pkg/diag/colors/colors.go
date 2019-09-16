@@ -159,7 +159,5 @@ var (
 	SpecDelete            = Red           // for deletes (in the diff sense).
 	SpecCreateReplacement = BrightGreen   // for replacement creates (in the diff sense).
 	SpecDeleteReplaced    = BrightRed     // for replacement deletes (in the diff sense).
-
-	// for reads (relatively unimportant).  Just use the standard terminal text color.
-	SpecRead = Reset
+	SpecRead              = BrightCyan    // for reads
 )
