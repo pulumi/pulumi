@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
+  [#3238](https://github.com/pulumi/pulumi/pull/3238)
+
 ## 1.1.0 (2019-09-11)
 
 - Fix a bug that caused the Python runtime to ignore unhandled exceptions and erroneously report that a Pulumi program executed successfully.
