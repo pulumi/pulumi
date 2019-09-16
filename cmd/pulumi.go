@@ -175,7 +175,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newPluginCmd())
 	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newHistoryCmd())
-	cmd.AddCommand(newViewTraceCmd())
 
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenCompletionCmd(cmd))
@@ -189,6 +188,8 @@ func NewPulumiCmd() *cobra.Command {
 		cmd.AddCommand(newQueryCmd())
 		//     - Policy Management Commands:
 		cmd.AddCommand(newPolicyCmd())
+		//     - Diagnostic Commands:
+		cmd.AddCommand(newViewTraceCmd())
 	}
 
 	return cmd
