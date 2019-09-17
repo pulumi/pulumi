@@ -51,6 +51,7 @@ type Options struct {
 	Parallel          int    // the degree of parallelism for resource operations (<=1 for serial).
 	Refresh           bool   // whether or not to refresh before executing the plan.
 	RefreshOnly       bool   // whether or not to exit after refreshing.
+	DestroyOnly       bool   // whether or to delete all resources.
 	TrustDependencies bool   // whether or not to trust the resource dependency graph.
 	UseLegacyDiff     bool   // whether or not to use legacy diffing behavior.
 }

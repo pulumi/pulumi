@@ -45,6 +45,7 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 		Events:        emitter,
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
+		isDestroy:     true,
 	}, dryRun)
 }
 
@@ -70,7 +71,6 @@ func newDestroySource(
 		return nil, err
 	}
 
-	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
-	// engine to destroy the entire existing state.
-	return deploy.NullSource, nil
+	// Just return an error source. Destroy doesn't use its source.
+	return deploy.NewErrorSource(proj.Name), nil
 }

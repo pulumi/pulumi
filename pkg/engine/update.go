@@ -43,7 +43,7 @@ type RequiredPolicy interface {
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
-// This structre is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
+// This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
 // linter.
 // nolint: structcheck
 type UpdateOptions struct {
@@ -61,6 +61,9 @@ type UpdateOptions struct {
 
 	// true if the plan should refresh before executing.
 	Refresh bool
+
+	// true if the plan should delete all resources.
+	Delete bool
 
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool

@@ -97,6 +97,9 @@ type planOptions struct {
 	// true if we're planning a refresh.
 	isRefresh bool
 
+	// true if we're planning to destroy the stack.
+	isDestroy bool
+
 	// true if we should trust the dependency graph reported by the language host. Not all Pulumi-supported languages
 	// correctly report their dependencies, in which case this will be false.
 	trustDependencies bool
@@ -181,6 +184,7 @@ func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, pre
 			Parallel:          planResult.Options.Parallel,
 			Refresh:           planResult.Options.Refresh,
 			RefreshOnly:       planResult.Options.isRefresh,
+			DestroyOnly:       planResult.Options.isDestroy,
 			TrustDependencies: planResult.Options.trustDependencies,
 			UseLegacyDiff:     planResult.Options.UseLegacyDiff,
 		}
