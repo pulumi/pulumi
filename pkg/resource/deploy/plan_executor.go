@@ -366,8 +366,11 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 // destroy destroys all resources
 func (pe *planExecutor) destroy(callerCtx context.Context, opts Options, preview bool) result.Result {
-	deleteSteps := pe.stepGen.GenerateDeletes()
-	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
+	// Set up a step generator for this plan.
+	stepGen := newStepGenerator(pe.plan, opts)
+
+	deleteSteps := stepGen.GenerateDeletes()
+	deletes := stepGen.ScheduleDeletes(deleteSteps)
 
 	ctx, cancel := context.WithCancel(callerCtx)
 	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, false /*continueOnError*/)
