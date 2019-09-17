@@ -487,11 +487,10 @@ func getDiffInfo(step engine.StepEventMetadata) string {
 			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
 			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
 			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
-
-			fprintIgnoreError(changesBuf, colors.Reset)
 		}
 	}
 
+	fprintIgnoreError(changesBuf, colors.Reset)
 	return changesBuf.String()
 }
 
