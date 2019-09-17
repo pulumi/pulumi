@@ -5,6 +5,8 @@ CHANGELOG
 
 - Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
   [#3238](https://github.com/pulumi/pulumi/pull/3238)
+- Fix parsing of GitLab urls with subgroups.
+  [#3239](https://github.com/pulumi/pulumi/pull/3239)
 
 ## 1.1.0 (2019-09-11)
 
