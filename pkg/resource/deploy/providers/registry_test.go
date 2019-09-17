@@ -467,7 +467,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
 
-		// Since this is not a preview, the provider should not yet be configured.
+		// The provider should not yet be configured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
@@ -575,10 +575,24 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
 
-		// Since this is a preview, the provider should be configured.
+		// The provider should not yet be configured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
 		assert.True(t, ok)
-		assert.True(t, p.(*testProvider).configured)
+		assert.False(t, p.(*testProvider).configured)
+
+		// Create
+		id, outs, status, err := r.Create(urn, inputs, 0, true)
+		assert.NoError(t, err)
+		assert.NotEqual(t, "", id)
+		assert.Equal(t, resource.ID(UnknownID), id)
+		assert.Equal(t, resource.PropertyMap{}, outs)
+		assert.Equal(t, resource.StatusOK, status)
+
+		// The new provider should be registered.
+		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
+		assert.True(t, ok)
+		assert.Equal(t, p, p2)
+		assert.True(t, p2.(*testProvider).configured)
 	}
 
 	// Update the existing provider for the first entry in olds.
@@ -596,22 +610,33 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
 
-		// Since this is a preview, the provider should be configured.
+		// The provider should not yet be configured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
-		assert.True(t, p.(*testProvider).configured)
+		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{}, diff)
 
-		// The new provider should be registered.
+		// The old provider should still be registered.
 		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
 		assert.True(t, ok)
-		assert.False(t, p2 == old)
-		assert.True(t, p2 == p)
+		assert.Equal(t, old, p2)
+
+		// Update
+		outs, status, err := r.Update(urn, id, olds, inputs, 0, nil, true)
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{}, outs)
+		assert.Equal(t, resource.StatusOK, status)
+
+		// The new provider should be registered.
+		p3, ok := r.GetProvider(Reference{urn: urn, id: id})
+		assert.True(t, ok)
+		assert.True(t, p3 == p)
+		assert.True(t, p3.(*testProvider).configured)
 	}
 
 	// Replace the existing provider for the last entry in olds.
@@ -629,11 +654,11 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
 
-		// Since this is a preview, the provider should be configured.
+		// The provider should be not yet configured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
-		assert.True(t, p.(*testProvider).configured)
+		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
