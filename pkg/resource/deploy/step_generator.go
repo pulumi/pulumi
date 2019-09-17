@@ -601,7 +601,9 @@ func (sg *stepGenerator) computeResourcesToDelete(root resource.URN) (map[resour
 		for urn := range resourcesToDelete {
 			current := sg.plan.prev.TryGetResource(urn)
 			if current == nil {
-				return nil, result.Errorf("Resource to delete (%v) could not be found in the stack.", urn)
+				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", urn)
+				sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), urn)
+				return nil, result.Bail()
 			}
 
 			// the item the user is asking to destroy may cause downstream replacements.  Clean those up

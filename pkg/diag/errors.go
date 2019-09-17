@@ -58,3 +58,11 @@ func GetDuplicateResourceAliasError(urn resource.URN) *Diag {
 		"Duplicate resource alias '%v' applied to resource with URN '%v' conflicting with resource with URN '%v'",
 	)
 }
+
+func GetResourceToDeleteCouldNotBeFoundError() *Diag {
+	return newError("", 2009, "Resource to delete (%v) could not be found in the stack.")
+}
+
+func GetResourceToRefreshCouldNotBeFoundError() *Diag {
+	return newError("", 2010, "Resource to refresh (%v) could not be found in the stack.")
+}

@@ -308,7 +308,8 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		for _, target := range opts.RefreshTargets {
 			res := pe.plan.prev.TryGetResource(target)
 			if res == nil {
-				return result.Errorf("Resource to refresh (%v) could not be found in the stack.", target)
+				pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
+				return result.Bail()
 			}
 		}
 	}
