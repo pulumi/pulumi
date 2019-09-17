@@ -398,6 +398,27 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 	return b.query(ctx, op, nil /*events*/)
 }
 
+func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReference,
+	op backend.UpdateOperation) result.Result {
+	// Get the stack.
+	stack, err := b.GetStack(ctx, stackRef)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	opts := backend.ApplierOptions{
+		DryRun:   false,
+		ShowLink: false,
+	}
+
+	for {
+		_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+		if res != nil {
+			return res
+		}
+	}
+}
+
 // apply actually performs the provided type of update on a locally hosted stack.
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,

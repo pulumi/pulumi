@@ -80,6 +80,10 @@ func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
+func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation) result.Result {
+	return backend.WatchStack(ctx, s, op)
+}
+
 func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 	return backend.GetStackLogs(ctx, s, cfg, query)
