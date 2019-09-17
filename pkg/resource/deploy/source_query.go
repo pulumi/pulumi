@@ -20,6 +20,7 @@ import (
 	"math"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
@@ -39,7 +40,7 @@ type QuerySource interface {
 
 // NewQuerySource creates a `QuerySource` for some target runtime environment specified by
 // `runinfo`, and supported by language plugins provided in `plugctx`.
-func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client BackendClient,
+func NewQuerySource(ctx context.Context, plugctx *plugin.Context, client BackendClient,
 	runinfo *EvalRunInfo) (QuerySource, error) {
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
@@ -50,7 +51,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	//
 	// NOTE: Using the queryResourceMonitor here is *VERY* important, as its job is to disallow
 	// resource operations in query mode!
-	mon, err := newQueryResourceMonitor(builtins)
+	mon, err := newQueryResourceMonitor(builtins, opentracing.SpanFromContext(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
@@ -62,7 +63,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 		runinfo:       runinfo,
 		runLangPlugin: runLangPlugin,
 		finChan:       make(chan result.Result),
-		cancel:        cancel,
+		cancel:        ctx,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -167,7 +168,7 @@ func runLangPlugin(src *querySource) result.Result {
 
 // newQueryResourceMonitor creates a new resource monitor RPC server intended to be used in Pulumi's
 // "query mode".
-func newQueryResourceMonitor(builtins *builtinProvider) (*queryResmon, error) {
+func newQueryResourceMonitor(builtins *builtinProvider, tracingSpan opentracing.Span) (*queryResmon, error) {
 
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -184,7 +185,7 @@ func newQueryResourceMonitor(builtins *builtinProvider) (*queryResmon, error) {
 			pulumirpc.RegisterResourceMonitorServer(srv, queryResmon)
 			return nil
 		},
-	})
+	}, tracingSpan)
 	if err != nil {
 		return nil, err
 	}

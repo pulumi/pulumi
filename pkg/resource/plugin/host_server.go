@@ -56,7 +56,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 			lumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-	})
+	}, ctx.tracingSpan)
 	if err != nil {
 		return nil, err
 	}

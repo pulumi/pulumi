@@ -61,7 +61,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 			pulumirpc.RegisterResourceProviderServer(srv, prov)
 			return nil
 		},
-	})
+	}, nil)
 	if err != nil {
 		return errors.Errorf("fatal: %v", err)
 	}

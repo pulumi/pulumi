@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
+  [#3238](https://github.com/pulumi/pulumi/pull/3238)
+- Fix parsing of GitLab urls with subgroups.
+  [#3239](https://github.com/pulumi/pulumi/pull/3239)
 - `pulumi refresh` can now be scoped to refresh a subset of resources by adding a `--target urn` or
   `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
 

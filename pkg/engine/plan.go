@@ -168,6 +168,11 @@ func (planResult *planResult) Chdir() (func(), error) {
 func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) result.Result {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
+	// Inject our opentracing span into the context.
+	if planResult.Ctx.TracingSpan != nil {
+		ctx = opentracing.ContextWithSpan(ctx, planResult.Ctx.TracingSpan)
+	}
+
 	done := make(chan bool)
 	var walkResult result.Result
 	go func() {
