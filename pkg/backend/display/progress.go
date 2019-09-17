@@ -741,8 +741,12 @@ func (display *ProgressDisplay) processEndSteps() {
 	var wroteOutputs bool
 	if display.stackUrn != "" && display.seenStackOutputs && !display.opts.SuppressOutputs {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+
+		// We want to hide same outputs if we're doing a read and the user didn't ask to see
+		// things that are the same.
+		hideSames := stackStep.Op == deploy.OpRead && !display.opts.ShowSameResources
 		props := engine.GetResourceOutputsPropertiesString(
-			stackStep, 1, display.isPreview, display.opts.Debug, false /* refresh */)
+			stackStep, 1, display.isPreview, display.opts.Debug, false /* refresh */, !hideSames)
 		if props != "" {
 			if !wroteDiagnosticHeader {
 				display.writeBlankLine()

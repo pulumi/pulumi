@@ -241,7 +241,7 @@ func PrintObject(
 // GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
-	step StepEventMetadata, indent int, planning bool, debug bool, refresh bool) string {
+	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
 	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
 	//   1) not doing a preview
 	//   2) doing a refresh
@@ -288,6 +288,11 @@ func GetResourceOutputsPropertiesString(
 		outputDiff = step.Old.Outputs.Diff(outs, IsInternalPropertyKey)
 	}
 
+	// If we asked to not show-sames, and no outputs changed then don't show anything at all here.
+	if outputDiff == nil && !showSames {
+		return ""
+	}
+
 	var keys []resource.PropertyKey
 	if outputDiff == nil {
 		keys = outs.StableKeys()
@@ -308,6 +313,12 @@ func GetResourceOutputsPropertiesString(
 			print := true
 			if in, has := ins[k]; has && !refresh {
 				print = (out.Diff(in, IsInternalPropertyKey) != nil)
+			}
+
+			// If we asked to not show-sames, and this is a same output, then filter it out of what
+			// we display.
+			if !showSames && outputDiff != nil && outputDiff.Same(k) {
+				continue
 			}
 
 			if print {

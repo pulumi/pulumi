@@ -120,9 +120,6 @@ type resourceRowData struct {
 	step        engine.StepEventMetadata
 	outputSteps []engine.StepEventMetadata
 
-	// True if we should diff outputs instead of inputs for this row.
-	diffOutputs bool
-
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	tick int
@@ -163,9 +160,6 @@ func (data *resourceRowData) Step() engine.StepEventMetadata {
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
 	data.step = step
-	if step.Op == deploy.OpRefresh {
-		data.diffOutputs = true
-	}
 }
 
 func (data *resourceRowData) AddOutputStep(step engine.StepEventMetadata) {
@@ -367,7 +361,7 @@ func (data *resourceRowData) getInfoColumn() string {
 		diagMsg += msg
 	}
 
-	changes := data.getDiffInfo(step)
+	changes := getDiffInfo(step)
 	if colors.Never.Colorize(changes) != "" {
 		appendDiagMessage("[" + changes + "]")
 	}
@@ -422,13 +416,14 @@ func (data *resourceRowData) getInfoColumn() string {
 	return diagMsg
 }
 
-func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
+func getDiffInfo(step engine.StepEventMetadata) string {
+	diffOutputs := step.Op == deploy.OpRefresh
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
 		if step.DetailedDiff != nil {
 			diff = translateDetailedDiff(step)
-		} else if data.diffOutputs {
+		} else if diffOutputs {
 			if step.Old.Outputs != nil && step.New.Outputs != nil {
 				diff = step.Old.Outputs.Diff(step.New.Outputs)
 			}
@@ -492,10 +487,11 @@ func (data *resourceRowData) getDiffInfo(step engine.StepEventMetadata) string {
 			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
 			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
 			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
+
+			fprintIgnoreError(changesBuf, colors.Reset)
 		}
 	}
 
-	fprintIgnoreError(changesBuf, colors.Reset)
 	return changesBuf.String()
 }
 
