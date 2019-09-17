@@ -156,6 +156,8 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
+					// We're done here - signal completion so that the step executor knows to terminate.
+					pe.stepExec.SignalCompletion()
 					return false, nil
 				}
 
