@@ -367,13 +367,13 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 // destroy destroys all resources
 func (pe *planExecutor) destroy(callerCtx context.Context, opts Options, preview bool) result.Result {
 	// Set up a step generator for this plan.
-	stepGen := newStepGenerator(pe.plan, opts)
+	pe.stepGen = newStepGenerator(pe.plan, opts)
 
-	deleteSteps := stepGen.GenerateDeletes()
-	deletes := stepGen.ScheduleDeletes(deleteSteps)
+	deleteSteps := pe.stepGen.GenerateDeletes()
+	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
 	ctx, cancel := context.WithCancel(callerCtx)
-	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, false /*continueOnError*/)
+	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview, false /*continueOnError*/)
 
 	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 	// in parallel, but each list must execute completes before the next list can safely begin
@@ -384,13 +384,13 @@ func (pe *planExecutor) destroy(callerCtx context.Context, opts Options, preview
 	// is conservative, but correct.
 	for _, antichain := range deletes {
 		logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
-		tok := stepExec.ExecuteParallel(antichain)
+		tok := pe.stepExec.ExecuteParallel(antichain)
 		tok.Wait(ctx)
 		logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
 	}
 
-	stepExec.SignalCompletion()
-	stepExec.WaitForCompletion()
+	pe.stepExec.SignalCompletion()
+	pe.stepExec.WaitForCompletion()
 
 	resources := []*resource.State{}
 	olds := make(map[resource.URN]*resource.State)
@@ -401,7 +401,7 @@ func (pe *planExecutor) destroy(callerCtx context.Context, opts Options, preview
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
 
-	if stepExec.Errored() {
+	if pe.stepExec.Errored() {
 		pe.reportExecResult("failed", preview)
 		return result.Bail()
 	} else if canceled {
