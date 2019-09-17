@@ -152,7 +152,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					return pe.performDeletes(ctx)
+					return pe.performDeletes(ctx, opts)
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
@@ -194,9 +194,55 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	return res
 }
 
-func (pe *planExecutor) performDeletes(ctx context.Context) (bool, result.Result) {
+func (pe *planExecutor) tryGetResource(urn resource.URN) *resource.State {
+	for _, res := range pe.plan.prev.Resources {
+		if res.URN == urn {
+			return res
+		}
+	}
+
+	return nil
+}
+
+func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool, result.Result) {
 	deleteSteps := pe.stepGen.GenerateDeletes()
 	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
+
+	if opts.DestroyTarget != "" {
+		destroyRoot := pe.tryGetResource(opts.DestroyTarget)
+		if destroyRoot == nil {
+			return false, result.Errorf("Resource to delete (%v) could not be found in the stack.", opts.DestroyTarget)
+		}
+
+		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
+		// as well
+		dependents, res := pe.stepGen.calculateDependentReplacements(destroyRoot)
+		if res != nil {
+			return false, res
+		}
+
+		// Only delete the items we have to delete.
+		urnsToDelete := make(map[resource.URN]bool)
+		urnsToDelete[opts.DestroyTarget] = true
+		for _, dep := range dependents {
+			urnsToDelete[dep.res.URN] = true
+		}
+
+		// Now, filter down to only the steps that delete the actual resources that the user
+		// asked to delete.
+		for i := range deletes {
+			antichain = deletes[i]
+			updatedChain := []Step{}
+
+			for _, step := range antichain {
+				if _, has := urnsToDelete[step.URN]; has {
+					updatedChain = append(updatedChain, step)
+				}
+			}
+
+			deletes[i] = updatedChain
+		}
+	}
 
 	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
 	// parallel, but each list must execute completes before the next list can safely begin executing.
@@ -205,6 +251,10 @@ func (pe *planExecutor) performDeletes(ctx context.Context) (bool, result.Result
 	// deleting but we won't until the previous set of deletes fully completes. This approximation is
 	// conservative, but correct.
 	for _, antichain := range deletes {
+		if len(antichain) == 0 {
+			continue
+		}
+
 		logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
 		tok := pe.stepExec.ExecuteParallel(antichain)
 		tok.Wait(ctx)
@@ -292,6 +342,14 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	prev := pe.plan.prev
 	if prev == nil || len(prev.Resources) == 0 {
 		return nil
+	}
+
+	if len(opts.RefreshTargets) > 0 {
+		for _, target := range opts.RefreshTargets {
+			if pe.tryGetResource(target) == nil {
+				return result.Errorf("Resource to refresh (%v) could not be found in the stack.", opts.DestroyTarget)
+			}
+		}
 	}
 
 	// If the user did not provide any --target's, create a refresh step for each resource in the
