@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -190,6 +191,16 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			}
 
 			urns[urn] = state
+		}
+	}
+
+	return nil
+}
+
+func (snap *Snapshot) TryGetResource(urn resource.URN) *resource.State{
+	for _, res := range snap.Resources {
+		if res.URN == urn {
+			return res
 		}
 	}
 

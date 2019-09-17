@@ -194,30 +194,20 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	return res
 }
 
-func (pe *planExecutor) tryGetResource(urn resource.URN) *resource.State {
-	for _, res := range pe.plan.prev.Resources {
-		if res.URN == urn {
-			return res
-		}
-	}
-
-	return nil
-}
-
 func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool, result.Result) {
-	var destroyRoot *resource.State
-	if opts.DestroyTarget != "" {
-		destroyRoot = pe.tryGetResource(opts.DestroyTarget)
-		if destroyRoot == nil {
-			return false, result.Errorf("Resource to delete (%v) could not be found in the stack.", opts.DestroyTarget)
-		}
-	}
+	defer func() {
+		// We're done here - signal completion so that the step executor knows to terminate.
+		pe.stepExec.SignalCompletion()
+	}()
 
-	deleteSteps, res := pe.stepGen.GenerateDeletes(destroyRoot)
+	logging.V(7).Infof("performDeletes(...): beginning")
+
+	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTarget)
 	if res != nil {
+		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
 		return false, res
 	}
-	
+
 	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
 	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
@@ -227,18 +217,12 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 	// deleting but we won't until the previous set of deletes fully completes. This approximation is
 	// conservative, but correct.
 	for _, antichain := range deletes {
-		if len(antichain) == 0 {
-			continue
-		}
-
 		logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
 		tok := pe.stepExec.ExecuteParallel(antichain)
 		tok.Wait(ctx)
 		logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
 	}
 
-	// We're done here - signal completion so that the step executor knows to terminate.
-	pe.stepExec.SignalCompletion()
 	return false, nil
 }
 
@@ -322,8 +306,9 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 	if len(opts.RefreshTargets) > 0 {
 		for _, target := range opts.RefreshTargets {
-			if pe.tryGetResource(target) == nil {
-				return result.Errorf("Resource to refresh (%v) could not be found in the stack.", opts.DestroyTarget)
+			res := pe.plan.prev.TryGetResource(target)
+			if res == nil {
+				return result.Errorf("Resource to refresh (%v) could not be found in the stack.", target)
 			}
 		}
 	}

@@ -501,7 +501,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes(root *resource.State) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateDeletes(targetOpt resource.URN) ([]Step, result.Result) {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -556,24 +556,24 @@ func (sg *stepGenerator) GenerateDeletes(root *resource.State) ([]Step, result.R
 		}
 	}
 
-	if root != nil {
-		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
-		// as well
-		dependents, res := sg.calculateDependentReplacements(root)
+	if targetOpt != "" {
+		logging.V(7).Infof("Planner was asked to only delete '%v'", targetOpt)
+
+		resourcesToDelete, res := sg.computeResourcesToDelete(targetOpt)
 		if res != nil {
 			return nil, res
 		}
 
-		// Only delete the items we have to delete.
-		urnsToDelete := make(map[resource.URN]bool)
-		urnsToDelete[root.URN] = true
-		for _, dep := range dependents {
-			urnsToDelete[dep.res.URN] = true
+		keys := []resource.URN{}
+		for k := range resourcesToDelete {
+			keys = append(keys, k)
 		}
+
+		logging.V(7).Infof("Planner will delete all of '%v'", keys)
 
 		filtered := []Step{}
 		for _, step := range dels {
-			if _, has := urnsToDelete[step.URN()]; has {
+			if _, has := resourcesToDelete[step.URN()]; has {
 				filtered = append(filtered, step)
 			}
 		}
@@ -582,6 +582,66 @@ func (sg *stepGenerator) GenerateDeletes(root *resource.State) ([]Step, result.R
 	}
 
 	return dels, nil
+}
+
+func (sg *stepGenerator) computeResourcesToDelete(root resource.URN) (map[resource.URN]bool, result.Result) {
+	// we keep looping until we reach a fixed point.  Specifically, we want to spread out from the
+	// root to both dependencies and children.  If we're deleting this resource, we need to delete
+	// them as well (and anything transitively reachable.)
+
+	resourcesToDelete := make(map[resource.URN]bool)
+	resourcesToDelete[root] = true
+	logging.V(7).Infof("computeResourcesToDelete(...): Starting with: %v", root)
+
+	for {
+		initialLen := len(resourcesToDelete)
+		logging.V(7).Infof("computeResourcesToDelete(...): Initial length: %v", initialLen)
+
+		toAdd := []resource.URN{}
+		for urn := range resourcesToDelete {
+			current := sg.plan.prev.TryGetResource(urn)
+			if current == nil {
+				return nil, result.Errorf("Resource to delete (%v) could not be found in the stack.", urn)
+			}
+
+			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
+			// as well
+			dependents, res := sg.calculateDependentReplacements(current)
+			if res != nil {
+				logging.V(7).Infof("Planner produced error generating dependent replacements")
+				return nil, res
+			}
+
+			for _, dep := range dependents {
+				logging.V(7).Infof("computeResourcesToDelete(...): Adding dependent: %v", dep.res.URN)
+				toAdd = append(toAdd, dep.res.URN)
+			}
+
+			// Also see if any resources have a resource we're deleting as a parent.
+			// If so, we need to delete them as well.
+			for _, sibling := range sg.plan.prev.Resources {
+				if sibling.Parent != "" {
+					if _, has := resourcesToDelete[sibling.Parent]; has {
+						logging.V(7).Infof("computeResourcesToDelete(...): Adding child: %v", sibling.URN)
+						toAdd = append(toAdd, sibling.URN)
+					}
+				}
+			}
+		}
+
+		for _, urn := range toAdd {
+			resourcesToDelete[urn] = true
+		}
+
+		logging.V(7).Infof("computeResourcesToDelete(...): Current length: %v", len(resourcesToDelete))
+
+		if initialLen == len(resourcesToDelete) {
+			// reached a fixed point
+			break
+		}
+	}
+
+	return resourcesToDelete, nil
 }
 
 // GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
