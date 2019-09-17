@@ -62,9 +62,6 @@ type UpdateOptions struct {
 	// true if the plan should refresh before executing.
 	Refresh bool
 
-	// true if the plan should delete all resources.
-	Delete bool
-
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 
