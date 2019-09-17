@@ -152,25 +152,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					deleteSteps := pe.stepGen.GenerateDeletes()
-					deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
-
-					// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
-					// parallel, but each list must execute completes before the next list can safely begin executing.
-					//
-					// This is not "true" delete parallelism, since there may be resources that could safely begin
-					// deleting but we won't until the previous set of deletes fully completes. This approximation is
-					// conservative, but correct.
-					for _, antichain := range deletes {
-						logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
-						tok := pe.stepExec.ExecuteParallel(antichain)
-						tok.Wait(ctx)
-						logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
-					}
-
-					// We're done here - signal completion so that the step executor knows to terminate.
-					pe.stepExec.SignalCompletion()
-					return false, nil
+					return pe.performDeletes(ctx)
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
@@ -210,6 +192,28 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	}
 
 	return res
+}
+
+func (pe *planExecutor) performDeletes(ctx context.Context) (bool, result.Result) {
+	deleteSteps := pe.stepGen.GenerateDeletes()
+	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
+
+	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
+	// parallel, but each list must execute completes before the next list can safely begin executing.
+	//
+	// This is not "true" delete parallelism, since there may be resources that could safely begin
+	// deleting but we won't until the previous set of deletes fully completes. This approximation is
+	// conservative, but correct.
+	for _, antichain := range deletes {
+		logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
+		tok := pe.stepExec.ExecuteParallel(antichain)
+		tok.Wait(ctx)
+		logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
+	}
+
+	// We're done here - signal completion so that the step executor knows to terminate.
+	pe.stepExec.SignalCompletion()
+	return false, nil
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs

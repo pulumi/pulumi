@@ -52,6 +52,7 @@ type Options struct {
 	Refresh           bool           // whether or not to refresh before executing the plan.
 	RefreshOnly       bool           // whether or not to exit after refreshing.
 	RefreshTargets    []resource.URN // The specific resources to refresh during a refresh op.
+	DestroyTarget     resource.URN   // Specific resource to destroy.
 	TrustDependencies bool           // whether or not to trust the resource dependency graph.
 	UseLegacyDiff     bool           // whether or not to use legacy diffing behavior.
 }
