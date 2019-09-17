@@ -155,6 +155,10 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					return false, result.Bail()
 				}
 
+				if event.Event == nil {
+					return false, nil
+				}
+
 				if res := pe.handleSingleEvent(event.Event); res != nil {
 					if resErr := res.Error(); resErr != nil {
 						logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
