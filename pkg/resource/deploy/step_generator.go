@@ -501,7 +501,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes() []Step {
+func (sg *stepGenerator) GenerateDeletes(root *resource.State) ([]Step, result.Result) {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -555,7 +555,33 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 			}
 		}
 	}
-	return dels
+
+	if root != nil {
+		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
+		// as well
+		dependents, res := sg.calculateDependentReplacements(root)
+		if res != nil {
+			return nil, res
+		}
+
+		// Only delete the items we have to delete.
+		urnsToDelete := make(map[resource.URN]bool)
+		urnsToDelete[root.URN] = true
+		for _, dep := range dependents {
+			urnsToDelete[dep.res.URN] = true
+		}
+
+		filtered := []Step{}
+		for _, step := range dels {
+			if _, has := urnsToDelete[step.URN()]; has {
+				filtered = append(filtered, step)
+			}
+		}
+
+		dels = filtered
+	}
+
+	return dels, nil
 }
 
 // GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be

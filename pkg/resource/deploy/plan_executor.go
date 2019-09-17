@@ -205,44 +205,20 @@ func (pe *planExecutor) tryGetResource(urn resource.URN) *resource.State {
 }
 
 func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool, result.Result) {
-	deleteSteps := pe.stepGen.GenerateDeletes()
-	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
-
+	var destroyRoot *resource.State
 	if opts.DestroyTarget != "" {
-		destroyRoot := pe.tryGetResource(opts.DestroyTarget)
+		destroyRoot = pe.tryGetResource(opts.DestroyTarget)
 		if destroyRoot == nil {
 			return false, result.Errorf("Resource to delete (%v) could not be found in the stack.", opts.DestroyTarget)
 		}
-
-		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
-		// as well
-		dependents, res := pe.stepGen.calculateDependentReplacements(destroyRoot)
-		if res != nil {
-			return false, res
-		}
-
-		// Only delete the items we have to delete.
-		urnsToDelete := make(map[resource.URN]bool)
-		urnsToDelete[opts.DestroyTarget] = true
-		for _, dep := range dependents {
-			urnsToDelete[dep.res.URN] = true
-		}
-
-		// Now, filter down to only the steps that delete the actual resources that the user
-		// asked to delete.
-		for i := range deletes {
-			antichain = deletes[i]
-			updatedChain := []Step{}
-
-			for _, step := range antichain {
-				if _, has := urnsToDelete[step.URN]; has {
-					updatedChain = append(updatedChain, step)
-				}
-			}
-
-			deletes[i] = updatedChain
-		}
 	}
+
+	deleteSteps, res := pe.stepGen.GenerateDeletes(destroyRoot)
+	if res != nil {
+		return false, res
+	}
+	
+	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
 	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
 	// parallel, but each list must execute completes before the next list can safely begin executing.
