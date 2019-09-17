@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -392,10 +393,10 @@ func (pe *planExecutor) destroy(callerCtx context.Context, opts Options, preview
 	pe.stepExec.SignalCompletion()
 	pe.stepExec.WaitForCompletion()
 
-	resources := []*resource.State{}
-	olds := make(map[resource.URN]*resource.State)
-	pe.plan.prev.Resources = resources
-	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
+	// resources := []*resource.State{}
+	// olds := make(map[resource.URN]*resource.State)
+	// pe.plan.prev.Resources = resources
+	// pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
 
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
