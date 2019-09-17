@@ -890,7 +890,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	// At this point, all events should relate to resources.
 	eventUrn, metadata := getEventUrnAndMetadata(event)
-	if metadata != nil {
+
+	// If we're suppressing reads from the tree-view, then convert notifications about reads into
+	// ephemeral messages that will go into the info column.
+	if metadata != nil && !display.opts.ShowReads {
 		if metadata.Op == deploy.OpReadDiscard || metadata.Op == deploy.OpReadReplacement {
 			// just flat out ignore read discards/replace.  They're only relevant in the context of
 			// 'reads', and we only present reads as an ephemeral diagnostic anyways.

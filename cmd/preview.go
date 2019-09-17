@@ -40,6 +40,7 @@ func newPreviewCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var showReads bool
 	var suppressOutputs bool
 
 	var cmd = &cobra.Command{
@@ -77,6 +78,7 @@ func newPreviewCmd() *cobra.Command {
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
+					ShowReads:            showReads,
 					SuppressOutputs:      suppressOutputs,
 					IsInteractive:        cmdutil.Interactive(),
 					Type:                 displayType,
@@ -170,9 +172,14 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
+
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&showReads, "show-reads", false,
+		"Show resources that are being read in, alongside those being managed directly in the stack")
+
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
