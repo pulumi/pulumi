@@ -98,6 +98,9 @@ func (prov *testProvider) Close() error {
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
+func (prov *testProvider) SupportsDryRun() bool {
+	return false
+}
 func (prov *testProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.checkConfig(urn, olds, news, allowUnknowns)
@@ -117,7 +120,7 @@ func (prov *testProvider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
+func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, _ bool) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
@@ -130,7 +133,7 @@ func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float64, ignoreChanges []string) (resource.PropertyMap,
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64, _ []string, _ bool) (resource.PropertyMap,
 	resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
@@ -435,7 +438,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Create
-		id, outs, status, err := r.Create(urn, inputs, timeout)
+		id, outs, status, err := r.Create(urn, inputs, timeout, false)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", id)
 		assert.NotEqual(t, UnknownID, id)
@@ -481,7 +484,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, olds, inputs, timeout, nil)
+		outs, status, err := r.Update(urn, id, olds, inputs, timeout, nil, false)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)

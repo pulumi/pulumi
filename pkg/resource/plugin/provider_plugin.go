@@ -50,14 +50,15 @@ const kubernetesProviderType = "pulumi:providers:kubernetes"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx           *Context                         // a plugin context for caching, etc.
-	pkg           tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug          *plugin                          // the actual plugin process wrapper.
-	clientRaw     pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr        error                            // non-nil if a configure call fails.
-	cfgknown      bool                             // true if all configuration values are known.
-	cfgdone       chan bool                        // closed when configuration has completed.
-	acceptSecrets bool                             // true if this provider plugin can consume strongly typed secret.
+	ctx            *Context                         // a plugin context for caching, etc.
+	pkg            tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug           *plugin                          // the actual plugin process wrapper.
+	clientRaw      pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr         error                            // non-nil if a configure call fails.
+	cfgknown       bool                             // true if all configuration values are known.
+	cfgdone        chan bool                        // closed when configuration has completed.
+	acceptSecrets  bool                             // true if this provider plugin can consume strongly typed secret.
+	supportsDryRun bool                             // true if this provider can dry-run Create and Update operations.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -96,6 +97,11 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
+}
+
+func (p *provider) SupportsDryRun() bool {
+	contract.IgnoreError(p.ensureConfigured())
+	return p.supportsDryRun
 }
 
 // isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
@@ -383,7 +389,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		}
 		switch {
 		case v.IsComputed():
-			p.cfgknown, p.acceptSecrets = false, false
+			p.cfgknown, p.acceptSecrets, p.supportsDryRun = false, false, false
 			close(p.cfgdone)
 			return nil
 		case v.IsString():
@@ -410,7 +416,8 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfgknown, p.acceptSecrets, p.cfgerr = true, resp.GetAcceptSecrets(), err
+		p.acceptSecrets, p.supportsDryRun = resp.GetAcceptSecrets(), resp.GetSupportsDryRun()
+		p.cfgknown, p.cfgerr = true, err
 		close(p.cfgdone)
 	}()
 
@@ -583,7 +590,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
+func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, dryRun bool) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
@@ -607,6 +614,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assert(p.cfgknown)
+	contract.Assert(!dryRun || p.supportsDryRun)
 
 	var id resource.ID
 	var liveObject *_struct.Struct
@@ -616,6 +624,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 		Urn:        string(urn),
 		Properties: mprops,
 		Timeout:    timeout,
+		DryRun:     dryRun,
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, resourceError = parseError(err)
@@ -637,7 +646,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label:          fmt.Sprintf("%s.outputs", label),
-		RejectUnknowns: true,
+		RejectUnknowns: !dryRun,
 		KeepSecrets:    true,
 	})
 	if err != nil {
@@ -777,7 +786,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	ignoreChanges []string, dryRun bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
@@ -811,6 +820,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assert(p.cfgknown)
+	contract.Assert(!dryRun || p.supportsDryRun)
 
 	var liveObject *_struct.Struct
 	var resourceError error
@@ -837,7 +847,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label:          fmt.Sprintf("%s.outputs", label),
-		RejectUnknowns: true,
+		RejectUnknowns: !dryRun,
 		KeepSecrets:    true,
 	})
 	if err != nil {

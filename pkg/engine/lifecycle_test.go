@@ -2096,7 +2096,7 @@ func TestProviderCancellation(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN,
-					inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap,
+					inputs resource.PropertyMap, timeout float64, dryRun bool) (resource.ID, resource.PropertyMap,
 					resource.Status, error) {
 
 					// Inform the waiter that we've entered a provider op and wait for cancellation.
@@ -2216,8 +2216,9 @@ func TestUpdatePartialFailure(t *testing.T) {
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, dryRun bool) (resource.PropertyMap, resource.Status, error) {
+
 					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 						"output_prop": 42,
 					})
@@ -2985,8 +2986,8 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return plugin.DiffResult{}, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, dryRun bool) (resource.PropertyMap, resource.Status, error) {
 
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return resource.PropertyMap{}, resource.StatusOK, nil
@@ -3738,8 +3739,8 @@ func TestImport(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					dryRun bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},

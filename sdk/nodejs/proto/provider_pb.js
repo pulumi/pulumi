@@ -300,7 +300,8 @@ proto.pulumirpc.ConfigureResponse.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.ConfigureResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    acceptsecrets: jspb.Message.getFieldWithDefault(msg, 1, false)
+    acceptsecrets: jspb.Message.getFieldWithDefault(msg, 1, false),
+    supportsdryrun: jspb.Message.getFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -341,6 +342,10 @@ proto.pulumirpc.ConfigureResponse.deserializeBinaryFromReader = function(msg, re
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsecrets(value);
       break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSupportsdryrun(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -377,6 +382,13 @@ proto.pulumirpc.ConfigureResponse.serializeBinaryToWriter = function(message, wr
       f
     );
   }
+  f = message.getSupportsdryrun();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -394,6 +406,23 @@ proto.pulumirpc.ConfigureResponse.prototype.getAcceptsecrets = function() {
 /** @param {boolean} value */
 proto.pulumirpc.ConfigureResponse.prototype.setAcceptsecrets = function(value) {
   jspb.Message.setProto3BooleanField(this, 1, value);
+};
+
+
+/**
+ * optional bool supportsDryRun = 2;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureResponse.prototype.getSupportsdryrun = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 2, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.ConfigureResponse.prototype.setSupportsdryrun = function(value) {
+  jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
 
@@ -2702,7 +2731,8 @@ proto.pulumirpc.CreateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: +jspb.Message.getFieldWithDefault(msg, 3, 0.0)
+    timeout: +jspb.Message.getFieldWithDefault(msg, 3, 0.0),
+    dryrun: jspb.Message.getFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -2752,6 +2782,10 @@ proto.pulumirpc.CreateRequest.deserializeBinaryFromReader = function(msg, reader
       var value = /** @type {number} */ (reader.readDouble());
       msg.setTimeout(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDryrun(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2800,6 +2834,13 @@ proto.pulumirpc.CreateRequest.serializeBinaryToWriter = function(message, writer
   if (f !== 0.0) {
     writer.writeDouble(
       3,
+      f
+    );
+  }
+  f = message.getDryrun();
+  if (f) {
+    writer.writeBool(
+      4,
       f
     );
   }
@@ -2863,6 +2904,23 @@ proto.pulumirpc.CreateRequest.prototype.getTimeout = function() {
 /** @param {number} value */
 proto.pulumirpc.CreateRequest.prototype.setTimeout = function(value) {
   jspb.Message.setProto3FloatField(this, 3, value);
+};
+
+
+/**
+ * optional bool dryRun = 4;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.CreateRequest.prototype.getDryrun = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 4, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.CreateRequest.prototype.setDryrun = function(value) {
+  jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -3598,7 +3656,8 @@ proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     timeout: +jspb.Message.getFieldWithDefault(msg, 5, 0.0),
-    ignorechangesList: jspb.Message.getRepeatedField(msg, 6)
+    ignorechangesList: jspb.Message.getRepeatedField(msg, 6),
+    dryrun: jspb.Message.getFieldWithDefault(msg, 7, false)
   };
 
   if (includeInstance) {
@@ -3660,6 +3719,10 @@ proto.pulumirpc.UpdateRequest.deserializeBinaryFromReader = function(msg, reader
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.addIgnorechanges(value);
+      break;
+    case 7:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDryrun(value);
       break;
     default:
       reader.skipField();
@@ -3731,6 +3794,13 @@ proto.pulumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer
   if (f.length > 0) {
     writer.writeRepeatedString(
       6,
+      f
+    );
+  }
+  f = message.getDryrun();
+  if (f) {
+    writer.writeBool(
+      7,
       f
     );
   }
@@ -3868,6 +3938,23 @@ proto.pulumirpc.UpdateRequest.prototype.addIgnorechanges = function(value, opt_i
 
 proto.pulumirpc.UpdateRequest.prototype.clearIgnorechangesList = function() {
   this.setIgnorechangesList([]);
+};
+
+
+/**
+ * optional bool dryRun = 7;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.UpdateRequest.prototype.getDryrun = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 7, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.UpdateRequest.prototype.setDryrun = function(value) {
+  jspb.Message.setProto3BooleanField(this, 7, value);
 };
 
 

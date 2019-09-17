@@ -39,6 +39,9 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
+	// SupportsDryRun returns true iff the provider is able to dry-run Create and Update operations.
+	SupportsDryRun() bool
+
 	// CheckConfig validates the configuration for this resource provider.
 	CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
@@ -56,7 +59,7 @@ type Provider interface {
 	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(urn resource.URN, news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap,
+	Create(urn resource.URN, news resource.PropertyMap, timeout float64, dryRun bool) (resource.ID, resource.PropertyMap,
 		resource.Status, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
@@ -66,7 +69,7 @@ type Provider interface {
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-		ignoreChanges []string) (resource.PropertyMap, resource.Status, error)
+		ignoreChanges []string, dryRun bool) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
 	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
 	// Invoke dynamically executes a built-in function in the provider.

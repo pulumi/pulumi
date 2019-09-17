@@ -180,15 +180,15 @@ func (s *CreateStep) Logical() bool                                { return !s.r
 func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	if !preview {
-		if s.new.Custom {
-			// Invoke the Create RPC function for this provider:
-			prov, err := getProvider(s)
-			if err != nil {
-				return resource.StatusOK, nil, err
-			}
+	if s.new.Custom {
+		// Invoke the Create RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
+		}
 
-			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create)
+		if prov.SupportsDryRun() || !preview {
+			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, preview)
 			if err != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, err
@@ -406,17 +406,17 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	if !preview {
-		if s.new.Custom {
-			// Invoke the Update RPC function for this provider:
-			prov, err := getProvider(s)
-			if err != nil {
-				return resource.StatusOK, nil, err
-			}
+	if s.new.Custom {
+		// Invoke the Update RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
+		}
 
+		if prov.SupportsDryRun() || !preview {
 			// Update to the combination of the old "all" state, but overwritten with new inputs.
 			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
-				s.new.CustomTimeouts.Update, s.ignoreChanges)
+				s.new.CustomTimeouts.Update, s.ignoreChanges, preview)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, upderr

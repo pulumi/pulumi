@@ -180,6 +180,10 @@ func (r *Registry) Pkg() tokens.Package {
 	return "pulumi"
 }
 
+func (r *Registry) SupportsDryRun() bool {
+	return false
+}
+
 func (r *Registry) label() string {
 	return "ProviderRegistry"
 }
@@ -308,7 +312,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 //
 // The provider must have been loaded by a prior call to Check.
 func (r *Registry) Create(urn resource.URN,
-	news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	news resource.PropertyMap, timeout float64, dryRun bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(!r.isPreview)
 
@@ -335,7 +339,7 @@ func (r *Registry) Create(urn resource.URN,
 //
 // THe provider must have been loaded by a prior call to Check.
 func (r *Registry) Update(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	timeout float64, ignoreChanges []string, dryRun bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(!r.isPreview)
 

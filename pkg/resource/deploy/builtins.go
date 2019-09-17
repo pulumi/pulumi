@@ -37,6 +37,10 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
+func (p *builtinProvider) SupportsDryRun() bool {
+	return false
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -96,8 +100,8 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs r
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
-func (p *builtinProvider) Create(urn resource.URN,
-	inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap,
+	timeout float64, dryRun bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
@@ -110,7 +114,7 @@ func (p *builtinProvider) Create(urn resource.URN,
 }
 
 func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
-	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	timeout float64, ignoreChanges []string, dryRun bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Failf("unexpected update for builtin resource %v", urn)
 	contract.Assert(urn.Type() == stackReferenceType)
