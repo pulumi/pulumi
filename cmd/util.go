@@ -275,9 +275,9 @@ func chooseStack(
 	}
 
 	if option == newOption {
-		hint := "Please enter your desired stack name."
+		hint := "Please enter your desired stack name"
 		if b.SupportsOrganizations() {
-			hint += "\nTo create a stack in an organization, " +
+			hint += ".\nTo create a stack in an organization, " +
 				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`)"
 		}
 		stackName, readErr := cmdutil.ReadConsole(hint)
