@@ -27,6 +27,7 @@ const (
 	AzurePipelines              SystemName = "Azure Pipelines"
 	Buildkite                   SystemName = "Buildkite"
 	CircleCI                    SystemName = "CircleCI"
+	Codefresh                   SystemName = "Codefresh"
 	Codeship                    SystemName = "Codeship"
 	Drone                       SystemName = "Drone"
 
