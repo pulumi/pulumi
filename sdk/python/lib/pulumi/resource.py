@@ -424,7 +424,7 @@ def _expand_providers(options: 'ResourceOptions'):
 
     # Convert 'providers' map to list form.
     if options.providers is not None and not isinstance(options.providers, list):
-        options.providers = options.providers.values()
+        options.providers = list(options.providers.values())
 
     options.provider = None
 
