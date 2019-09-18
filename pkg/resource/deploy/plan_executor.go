@@ -211,6 +211,18 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 
 	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
+	initialResources := []*resource.State{}
+	resourceToStep := make(map[*resource.State]Step)
+	if pe.plan.prev != nil {
+		for _, res := range pe.plan.prev.Resources {
+			initialResources = append(initialResources, res)
+		}
+	}
+
+	for _, step := range deleteSteps {
+		resourceToStep[pe.plan.olds[step.URN()]] = step
+	}
+
 	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 	// in parallel, but each list must execute completes before the next list can safely begin
 	// executing.
@@ -227,37 +239,8 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 
 	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
-
 	if len(opts.DestroyTargets) > 0 {
-		deletedUrns := make(map[resource.URN]bool)
-		for _, step := range deleteSteps {
-			deletedUrns[step.URN()] = true
-		}
-
-		resources := []*resource.State{}
-		olds := make(map[resource.URN]*resource.State)
-		for _, res := range pe.plan.prev.Resources {
-			// skip resources that were already deleted.
-			if _, has := deletedUrns[res.URN]; has {
-				continue
-			}
-
-			// Remove any deleted resources from this resource's dependency list.
-			if len(res.Dependencies) != 0 {
-				deps := []resource.URN{}
-				for _, d := range res.Dependencies {
-					if _, has := deletedUrns[d]; !has {
-						deps = append(deps, d)
-					}
-				}
-				res.Dependencies = deps
-			}
-
-			resources = append(resources, res)
-		}
-
-		pe.plan.prev.Resources = resources
-		pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
+		pe.rebuildDependencyGraph(initialResources, resourceToStep, false /*refresh*/)
 	}
 
 	return false, nil
@@ -376,6 +359,27 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
+	pe.rebuildDependencyGraph(initialResources, resourceToStep, true /*refresh*/)
+
+	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+	// cancellation from internally-initiated cancellation.
+	canceled := callerCtx.Err() != nil
+
+	if stepExec.Errored() {
+		pe.reportExecResult("failed", preview)
+		return result.Bail()
+	} else if canceled {
+		pe.reportExecResult("canceled", preview)
+		return result.Bail()
+	}
+	return nil
+}
+
+func (pe *planExecutor) rebuildDependencyGraph(
+	initialResources []*resource.State,
+	resourceToStep map[*resource.State]Step,
+	refresh bool) {
+
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
@@ -422,14 +426,16 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		}
 
 		if new == nil {
-			contract.Assert(old.Custom)
-			contract.Assert(!providers.IsProviderType(old.Type))
+			if refresh {
+				contract.Assert(old.Custom)
+				contract.Assert(!providers.IsProviderType(old.Type))
+			}
 			continue
 		}
 
 		// Remove any deleted resources from this resource's dependency list.
 		if len(new.Dependencies) != 0 {
-			deps := make([]resource.URN, 0, len(new.Dependencies))
+			deps := []resource.URN{}
 			for _, d := range new.Dependencies {
 				if referenceable[d] {
 					deps = append(deps, d)
@@ -450,19 +456,6 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 	pe.plan.prev.Resources = resources
 	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
-
-	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
-	// cancellation from internally-initiated cancellation.
-	canceled := callerCtx.Err() != nil
-
-	if stepExec.Errored() {
-		pe.reportExecResult("failed", preview)
-		return result.Bail()
-	} else if canceled {
-		pe.reportExecResult("canceled", preview)
-		return result.Bail()
-	}
-	return nil
 }
 
 func shouldRefresh(opts Options, res *resource.State) bool {
