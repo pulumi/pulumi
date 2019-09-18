@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -288,6 +289,19 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	prev := pe.plan.prev
 	if prev == nil || len(prev.Resources) == 0 {
 		return nil
+	}
+
+	if len(opts.RefreshTargets) > 0 {
+		for _, target := range opts.RefreshTargets {
+			if _, has := pe.plan.olds[target]; !has {
+				if strings.Contains(string(target), "$") {
+					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
+				} else {
+					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundDidYouForgetError(), target)
+				}
+				return result.Bail()
+			}
+		}
 	}
 
 	// If the user did not provide any --target's, create a refresh step for each resource in the
