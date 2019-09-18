@@ -59,10 +59,10 @@ func GetDuplicateResourceAliasError(urn resource.URN) *Diag {
 	)
 }
 
-func GetResourceToDeleteCouldNotBeFoundError() *Diag {
-	return newError("", 2009, "Resource to delete (%v) could not be found in the stack.")
-}
-
 func GetResourceToRefreshCouldNotBeFoundError() *Diag {
 	return newError("", 2010, "Resource to refresh (%v) could not be found in the stack.")
+}
+
+func GetResourceToDeleteCouldNotBeFoundError() *Diag {
+	return newError("", 2009, "Resource to delete (%v) could not be found in the stack.")
 }
