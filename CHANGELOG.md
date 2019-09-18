@@ -10,7 +10,7 @@ CHANGELOG
 - `pulumi refresh` can now be scoped to refresh a subset of resources by adding a `--target urn` or
   `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
 - `pulumi destroy` can now be scoped to delete a single resource (and its dependents) by adding a
-  `--target urn` or `-t urn` argument.
+  `--target urn` or `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
 
 ## 1.1.0 (2019-09-11)
 
