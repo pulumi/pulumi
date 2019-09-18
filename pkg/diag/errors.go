@@ -64,7 +64,8 @@ func GetResourceToRefreshCouldNotBeFoundError() *Diag {
 }
 
 func GetResourceToRefreshCouldNotBeFoundDidYouForgetError() *Diag {
-	return newError("", 2011, "Resource to refresh '%v' could not be found in the stack. Did you forget to escape $ in your shell?")
+	return newError("", 2011, "Resource to refresh '%v' could not be found in the stack. "+
+		"Did you forget to escape $ in your shell?")
 }
 
 func GetResourceToDeleteCouldNotBeFoundError() *Diag {
@@ -72,5 +73,6 @@ func GetResourceToDeleteCouldNotBeFoundError() *Diag {
 }
 
 func GetResourceToDeleteCouldNotBeFoundDidYouForgetError() *Diag {
-	return newError("", 2013, "Resource to delete '%v' could not be found in the stack. Did you forget to escape $ in your shell?")
+	return newError("", 2013, "Resource to delete '%v' could not be found in the stack. "+
+		"Did you forget to escape $ in your shell?")
 }
