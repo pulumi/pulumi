@@ -371,9 +371,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	return nil
 }
 
-func (pe *planExecutor) rebuildDependencyGraph(
-	resourceToStep map[*resource.State]Step, refresh bool) {
-
+func (pe *planExecutor) rebuildDependencyGraph(resourceToStep map[*resource.State]Step, refresh bool) {
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
