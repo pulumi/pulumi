@@ -201,6 +201,11 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 		pe.stepExec.SignalCompletion()
 	}()
 
+	prev := pe.plan.prev
+	if prev == nil || len(prev.Resources) == 0 {
+		return false, nil
+	}
+
 	logging.V(7).Infof("performDeletes(...): beginning")
 
 	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTargets)
@@ -211,14 +216,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 
 	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
-	initialResources := []*resource.State{}
 	resourceToStep := make(map[*resource.State]Step)
-	if pe.plan.prev != nil {
-		for _, res := range pe.plan.prev.Resources {
-			initialResources = append(initialResources, res)
-		}
-	}
-
 	for _, step := range deleteSteps {
 		resourceToStep[pe.plan.olds[step.URN()]] = step
 	}
@@ -240,7 +238,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
 	if len(opts.DestroyTargets) > 0 {
-		pe.rebuildDependencyGraph(initialResources, resourceToStep, false /*refresh*/)
+		pe.rebuildDependencyGraph(resourceToStep, false /*refresh*/)
 	}
 
 	return false, nil
@@ -341,10 +339,8 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
-	initialResources := []*resource.State{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
-		initialResources = append(initialResources, res)
 		if shouldRefresh(opts, res) {
 			step := NewRefreshStep(pe.plan, res, nil)
 			steps = append(steps, step)
@@ -359,7 +355,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
-	pe.rebuildDependencyGraph(initialResources, resourceToStep, true /*refresh*/)
+	pe.rebuildDependencyGraph(resourceToStep, true /*refresh*/)
 
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
@@ -376,9 +372,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 }
 
 func (pe *planExecutor) rebuildDependencyGraph(
-	initialResources []*resource.State,
-	resourceToStep map[*resource.State]Step,
-	refresh bool) {
+	resourceToStep map[*resource.State]Step, refresh bool) {
 
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
@@ -411,7 +405,7 @@ func (pe *planExecutor) rebuildDependencyGraph(
 	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
-	for _, s := range initialResources {
+	for _, s := range pe.plan.prev.Resources {
 		var old, new *resource.State
 		if step, has := resourceToStep[s]; has {
 			// We produces a refresh step for this specific resource.  Use the new information about
