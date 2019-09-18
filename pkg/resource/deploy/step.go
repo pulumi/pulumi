@@ -208,6 +208,8 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			s.new.ID = id
 			s.new.Outputs = outs
 		}
+	} else {
+		s.new.Outputs = s.new.Inputs
 	}
 
 	// Mark the old resource as pending deletion if necessary.
@@ -433,6 +435,8 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			// Now copy any output state back in case the update triggered cascading updates to other properties.
 			s.new.Outputs = outs
 		}
+	} else {
+		s.new.Outputs = s.new.Inputs
 	}
 
 	// Finally, mark this operation as complete.
