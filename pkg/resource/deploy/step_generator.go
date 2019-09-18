@@ -608,15 +608,9 @@ func (sg *stepGenerator) computeResourcesToDelete(root resource.URN) (map[resour
 
 			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
 			// as well
-			dependents, res := sg.calculateDependentReplacements(current)
-			if res != nil {
-				logging.V(7).Infof("Planner produced error generating dependent replacements")
-				return nil, res
-			}
-
-			for _, dep := range dependents {
-				logging.V(7).Infof("computeResourcesToDelete(...): Adding dependent: %v", dep.res.URN)
-				toAdd = append(toAdd, dep.res.URN)
+			for _, dep := range sg.plan.depGraph.DependingOn(current) {
+				logging.V(7).Infof("computeResourcesToDelete(...): Adding dependent: %v", dep.URN)
+				toAdd = append(toAdd, dep.URN)
 			}
 
 			// Also see if any resources have a resource we're deleting as a parent.
