@@ -76,6 +76,9 @@ type cachingSecretsManager struct {
 	cache   map[*resource.Secret]cacheEntry
 }
 
+// NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
+// secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be wrapped
+// in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
 	return &cachingSecretsManager{
 		manager: manager,
@@ -127,7 +130,11 @@ func (c *cachingCrypter) DecryptValue(ciphertext string) (string, error) {
 	return c.decrypter.DecryptValue(ciphertext)
 }
 
+// encryptSecret encrypts the plaintext associated with the given secret value.
 func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
+	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
+	//
+	// Otherwise, re-encrypt the plaintext and update the cache.
 	entry, ok := c.cache[secret]
 	if ok && entry.plaintext == plaintext {
 		return entry.ciphertext, nil
@@ -140,6 +147,7 @@ func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string
 	return ciphertext, nil
 }
 
+// insert associates the given secret with the given plain- and ciphertext in the cache.
 func (c *cachingCrypter) insert(secret *resource.Secret, plaintext, ciphertext string) {
 	c.cache[secret] = cacheEntry{plaintext, ciphertext}
 }
