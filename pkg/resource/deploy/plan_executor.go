@@ -293,8 +293,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 	if len(opts.RefreshTargets) > 0 {
 		for _, target := range opts.RefreshTargets {
-			res := pe.plan.prev.TryGetResource(target)
-			if res == nil {
+			if _, has := pe.plan.olds[target]; !has {
 				if strings.Contains(string(target), "$") {
 					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
 				} else {
