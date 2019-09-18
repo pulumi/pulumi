@@ -361,7 +361,16 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter) (
 		if err != nil {
 			return nil, errors.Wrap(err, "encoding serialized property value")
 		}
-		ciphertext, err := enc.EncryptValue(string(bytes))
+		plaintext := string(bytes)
+
+		// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
+		// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
+		var ciphertext string
+		if cachingCrypter, ok := enc.(*cachingCrypter); ok {
+			ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
+		} else {
+			ciphertext, err = enc.EncryptValue(plaintext)
+		}
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to encrypt secret value")
 		}
@@ -476,7 +485,13 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter) (resource.Pro
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
-					return resource.MakeSecret(ev), nil
+					prop := resource.MakeSecret(ev)
+					// If the decrypter is a cachingCrypter, insert the plain- and ciphertext into the cache with the
+					// new *resource.Secret as the key.
+					if cachingCrypter, ok := dec.(*cachingCrypter); ok {
+						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
+					}
+					return prop, nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}

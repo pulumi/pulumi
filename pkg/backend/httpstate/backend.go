@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 
@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -881,8 +882,13 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
-	// the Snapshot (checkpoint file) in the HTTP backend.
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, op.SecretsManager)
+	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
+	// to ensure that secrets are not re-encrypted on each update.
+	sm := op.SecretsManager
+	if secrets.AreCompatible(sm, u.GetTarget().Snapshot.SecretsManager) {
+		sm = u.GetTarget().Snapshot.SecretsManager
+	}
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, sm)
 	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
