@@ -38,6 +38,10 @@ type Manager interface {
 
 // AreCompatible returns true if the two Managers are of the same type and have the same state.
 func AreCompatible(a, b Manager) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+
 	if a.Type() != b.Type() {
 		return false
 	}
