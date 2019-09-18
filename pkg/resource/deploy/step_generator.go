@@ -591,14 +591,18 @@ func (sg *stepGenerator) computeResourcesToDelete(root resource.URN) (map[resour
 
 	resourcesToDelete := make(map[resource.URN]bool)
 	resourcesToDelete[root] = true
-	logging.V(7).Infof("computeResourcesToDelete(...): Starting with: %v", root)
 
-	for {
-		initialLen := len(resourcesToDelete)
-		logging.V(7).Infof("computeResourcesToDelete(...): Initial length: %v", initialLen)
+	// The current list of resources we need to check.
+	worklist := []resource.URN{root}
 
+	// Keep looping until we have discovered no new deps to delete.
+	for len(worklist) > 0 {
+		logging.V(7).Infof("computeResourcesToDelete(...): worklist: %v", worklist)
+
+		// Walk the list of resources to check, looking for dependencies that would
+		// need to be deleted.
 		toAdd := []resource.URN{}
-		for urn := range resourcesToDelete {
+		for _, urn := range worklist {
 			current := sg.plan.prev.TryGetResource(urn)
 			if current == nil {
 				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", urn)
@@ -625,15 +629,14 @@ func (sg *stepGenerator) computeResourcesToDelete(root resource.URN) (map[resour
 			}
 		}
 
+		// Now, clear out the existing list that we just processed, and add any *new* resources to
+		// it that we haven't processed yet.
+		worklist = []resource.URN{}
 		for _, urn := range toAdd {
-			resourcesToDelete[urn] = true
-		}
-
-		logging.V(7).Infof("computeResourcesToDelete(...): Current length: %v", len(resourcesToDelete))
-
-		if initialLen == len(resourcesToDelete) {
-			// reached a fixed point
-			break
+			if _, has := resourcesToDelete[urn]; !has {
+				resourcesToDelete[urn] = true
+				worklist = append(worklist, urn)
+			}
 		}
 	}
 
