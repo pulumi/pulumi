@@ -7,6 +7,8 @@ CHANGELOG
   [#3238](https://github.com/pulumi/pulumi/pull/3238)
 - Fix parsing of GitLab urls with subgroups.
   [#3239](https://github.com/pulumi/pulumi/pull/3239)
+- `pulumi refresh` can now be scoped to refresh a subset of resources by adding a `--target urn` or
+  `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
 
 ## 1.1.0 (2019-09-11)
 

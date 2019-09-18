@@ -62,6 +62,9 @@ type UpdateOptions struct {
 	// true if the plan should refresh before executing.
 	Refresh bool
 
+	// Specific resources to refresh during a refresh operation.
+	RefreshTargets []resource.URN
+
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 

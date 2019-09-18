@@ -290,10 +290,19 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return nil
 	}
 
-	// Create a refresh step for each resource in the old snapshot.
-	steps := make([]Step, len(prev.Resources))
-	for i := range prev.Resources {
-		steps[i] = NewRefreshStep(pe.plan, prev.Resources[i], nil)
+	// If the user did not provide any --target's, create a refresh step for each resource in the
+	// old snapshot.  If they did provider --target's then only create refresh steps for those
+	// specific targets.
+	steps := []Step{}
+	initialResources := []*resource.State{}
+	resourceToStep := map[*resource.State]Step{}
+	for _, res := range prev.Resources {
+		initialResources = append(initialResources, res)
+		if shouldRefresh(opts, res) {
+			step := NewRefreshStep(pe.plan, res, nil)
+			steps = append(steps, step)
+			resourceToStep[res] = step
+		}
 	}
 
 	// Fire up a worker pool and issue each refresh in turn.
@@ -303,39 +312,54 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
-	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted resources and repairing
-	// dependency lists as necessary. Note that this updates the base snapshot _in memory_, so it is critical that any
-	// components that use the snapshot refer to the same instance and avoid reading it concurrently with this rebuild.
+	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted
+	// resources and repairing dependency lists as necessary. Note that this updates the base
+	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
+	// the same instance and avoid reading it concurrently with this rebuild.
 	//
-	// The process of repairing dependency lists is a bit subtle. Because multiple physical resources may share a URN,
-	// the ability of a particular URN to be referenced in a dependency list can change based on the dependent
-	// resource's position in the resource list. For example, consider the following list of resources, where each
-	// resource is a (URN, ID, Dependencies) tuple:
+	// The process of repairing dependency lists is a bit subtle. Because multiple physical
+	// resources may share a URN, the ability of a particular URN to be referenced in a dependency
+	// list can change based on the dependent resource's position in the resource list. For example,
+	// consider the following list of resources, where each resource is a (URN, ID, Dependencies)
+	// tuple:
 	//
 	//     [ (A, 0, []), (B, 0, [A]), (A, 1, []), (A, 2, []), (C, 0, [A]) ]
 	//
-	// Let `(A, 0, [])` and `(A, 2, [])` be deleted by the refresh. This produces the following intermediate list
-	// before dependency lists are repaired:
+	// Let `(A, 0, [])` and `(A, 2, [])` be deleted by the refresh. This produces the following
+	// intermediate list before dependency lists are repaired:
 	//
 	//     [ (B, 0, [A]), (A, 1, []), (C, 0, [A]) ]
 	//
-	// In order to repair the dependency lists, we iterate over the intermediate resource list, keeping track of which
-	// URNs refer to at least one physical resource at each point in the list, and remove any dependencies that refer
-	// to URNs that do not refer to any physical resources. This process produces the following final list:
+	// In order to repair the dependency lists, we iterate over the intermediate resource list,
+	// keeping track of which URNs refer to at least one physical resource at each point in the
+	// list, and remove any dependencies that refer to URNs that do not refer to any physical
+	// resources. This process produces the following final list:
 	//
 	//     [ (B, 0, []), (A, 1, []), (C, 0, [A]) ]
 	//
-	// Note that the correctness of this process depends on the fact that the list of resources is a topological sort
-	// of its corresponding dependency graph, so a resource always appears in the list after any resources on which it
-	// may depend.
-	resources := make([]*resource.State, 0, len(prev.Resources))
+	// Note that the correctness of this process depends on the fact that the list of resources is a
+	// topological sort of its corresponding dependency graph, so a resource always appears in the
+	// list after any resources on which it may depend.
+	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
-	for _, s := range steps {
-		new := s.New()
+	for _, s := range initialResources {
+		var old, new *resource.State
+		if step, has := resourceToStep[s]; has {
+			// We produces a refresh step for this specific resource.  Use the new information about
+			// its dependencies during the update.
+			old = step.Old()
+			new = step.New()
+		} else {
+			// We didn't do anything with this resource.  However, we still may want to update its
+			// dependencies.  So use this resource itself as the 'new' one to update.
+			old = s
+			new = s
+		}
+
 		if new == nil {
-			contract.Assert(s.Old().Custom)
-			contract.Assert(!providers.IsProviderType(s.Old().Type))
+			contract.Assert(old.Custom)
+			contract.Assert(!providers.IsProviderType(old.Type))
 			continue
 		}
 
@@ -359,6 +383,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 			olds[new.URN] = new
 		}
 	}
+
 	pe.plan.prev.Resources = resources
 	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
 
@@ -374,4 +399,19 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return result.Bail()
 	}
 	return nil
+}
+
+func shouldRefresh(opts Options, res *resource.State) bool {
+	if len(opts.RefreshTargets) == 0 {
+		return true
+	}
+
+	//var found = false
+	for _, urn := range opts.RefreshTargets {
+		if urn == res.URN {
+			return true
+		}
+	}
+
+	return false
 }
