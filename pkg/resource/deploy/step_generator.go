@@ -559,17 +559,60 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 	if len(targets) > 0 {
 		logging.V(7).Infof("Planner was asked to only delete '%v'", targets)
 
-		resourcesToDelete, res := sg.computeResourcesToDelete(targets)
-		if res != nil {
-			return nil, res
+		resourcesToDelete := make(map[resource.URN]bool)
+
+		for _, target := range targets {
+			current, has := sg.plan.olds[target]
+			if !has {
+				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
+				if strings.Contains(string(target), "$") {
+					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), target)
+				} else {
+					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundDidYouForgetError(), target)
+				}
+				return nil, result.Bail()
+			}
+
+			resourcesToDelete[target] = true
+
+			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
+			// as well. Use the standard delete-before-replace computation to determine the minimal
+			// set of downstream resources that are affected.
+			deps, res := sg.calculateDependentReplacements(current)
+			if res != nil {
+				return nil, res
+			}
+
+			for _, dep := range deps {
+				logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
+				resourcesToDelete[dep.res.URN] = true
+			}
 		}
 
-		keys := []resource.URN{}
-		for k := range resourcesToDelete {
-			keys = append(keys, k)
+		// Also see if any resources have a resource we're deleting as a parent.
+		// If so, we need to delete them as well.
+		for _, sibling := range sg.plan.prev.Resources {
+			if sibling.Parent != "" {
+				if _, has := resourcesToDelete[sibling.URN]; has {
+					// already deleting this sibling
+					continue
+				}
+
+				if _, has := resourcesToDelete[sibling.Parent]; has {
+					sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(), sibling.Parent, sibling.URN)
+					return nil, result.Bail()
+				}
+			}
 		}
 
-		logging.V(7).Infof("Planner will delete all of '%v'", keys)
+		if logging.V(7) {
+			keys := []resource.URN{}
+			for k := range resourcesToDelete {
+				keys = append(keys, k)
+			}
+
+			logging.V(7).Infof("Planner will delete all of '%v'", keys)
+		}
 
 		filtered := []Step{}
 		for _, step := range dels {
@@ -582,78 +625,6 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 	}
 
 	return dels, nil
-}
-
-func (sg *stepGenerator) computeResourcesToDelete(roots []resource.URN) (map[resource.URN]bool, result.Result) {
-	// we keep looping until we reach a fixed point.  Specifically, we want to spread out from the
-	// root to both dependencies and children.  If we're deleting this resource, we need to delete
-	// them as well (and anything transitively reachable.)
-
-	resourcesToDelete := make(map[resource.URN]bool)
-
-	// The current list of resources we need to check.
-	worklist := []resource.URN{}
-
-	for _, root := range roots {
-		resourcesToDelete[root] = true
-		worklist = append(worklist, root)
-	}
-
-	// Keep looping until we have discovered no new deps to delete.
-	for len(worklist) > 0 {
-		logging.V(7).Infof("computeResourcesToDelete(...): worklist: %v", worklist)
-
-		// Walk the list of resources to check, looking for dependencies that would
-		// need to be deleted.
-		toAdd := []resource.URN{}
-		for _, urn := range worklist {
-			current, has := sg.plan.olds[urn]
-			if !has {
-				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", urn)
-				if strings.Contains(string(urn), "$") {
-					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), urn)
-				} else {
-					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundDidYouForgetError(), urn)
-				}
-				return nil, result.Bail()
-			}
-
-			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
-			// as well
-			deps, res := sg.calculateDependentReplacements(current)
-			if res != nil {
-				return nil, res
-			}
-
-			for _, dep := range deps {
-				logging.V(7).Infof("computeResourcesToDelete(...): Adding dependent: %v", dep.res.URN)
-				toAdd = append(toAdd, dep.res.URN)
-			}
-
-			// Also see if any resources have a resource we're deleting as a parent.
-			// If so, we need to delete them as well.
-			for _, sibling := range sg.plan.prev.Resources {
-				if sibling.Parent != "" {
-					if _, has := resourcesToDelete[sibling.Parent]; has {
-						logging.V(7).Infof("computeResourcesToDelete(...): Adding child: %v", sibling.URN)
-						toAdd = append(toAdd, sibling.URN)
-					}
-				}
-			}
-		}
-
-		// Now, clear out the existing list that we just processed, and add any *new* resources to
-		// it that we haven't processed yet.
-		worklist = []resource.URN{}
-		for _, urn := range toAdd {
-			if _, has := resourcesToDelete[urn]; !has {
-				resourcesToDelete[urn] = true
-				worklist = append(worklist, urn)
-			}
-		}
-	}
-
-	return resourcesToDelete, nil
 }
 
 // GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
