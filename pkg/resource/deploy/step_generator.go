@@ -501,7 +501,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes(targetOpt resource.URN) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result.Result) {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -556,10 +556,10 @@ func (sg *stepGenerator) GenerateDeletes(targetOpt resource.URN) ([]Step, result
 		}
 	}
 
-	if targetOpt != "" {
-		logging.V(7).Infof("Planner was asked to only delete '%v'", targetOpt)
+	if len(targets) > 0 {
+		logging.V(7).Infof("Planner was asked to only delete '%v'", targets)
 
-		resourcesToDelete, res := sg.computeResourcesToDelete(targetOpt)
+		resourcesToDelete, res := sg.computeResourcesToDelete(targets)
 		if res != nil {
 			return nil, res
 		}
@@ -584,16 +584,20 @@ func (sg *stepGenerator) GenerateDeletes(targetOpt resource.URN) ([]Step, result
 	return dels, nil
 }
 
-func (sg *stepGenerator) computeResourcesToDelete(root resource.URN) (map[resource.URN]bool, result.Result) {
+func (sg *stepGenerator) computeResourcesToDelete(roots []resource.URN) (map[resource.URN]bool, result.Result) {
 	// we keep looping until we reach a fixed point.  Specifically, we want to spread out from the
 	// root to both dependencies and children.  If we're deleting this resource, we need to delete
 	// them as well (and anything transitively reachable.)
 
 	resourcesToDelete := make(map[resource.URN]bool)
-	resourcesToDelete[root] = true
 
 	// The current list of resources we need to check.
-	worklist := []resource.URN{root}
+	worklist := []resource.URN{}
+
+	for _, root := range roots {
+		resourcesToDelete[root] = true
+		worklist = append(worklist, root)
+	}
 
 	// Keep looping until we have discovered no new deps to delete.
 	for len(worklist) > 0 {

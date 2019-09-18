@@ -46,7 +46,7 @@ func newDestroyCmd() *cobra.Command {
 	var skipPreview bool
 	var suppressOutputs bool
 	var yes bool
-	var target string
+	var targets *[]string
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -112,12 +112,17 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
 			}
 
+			targetUrns := []resource.URN{}
+			for _, t := range *targets {
+				targetUrns = append(targetUrns, resource.URN(t))
+			}
+
 			opts.Engine = engine.UpdateOptions{
-				Parallel:      parallel,
-				Debug:         debug,
-				Refresh:       refresh,
-				DestroyTarget: resource.URN(target),
-				UseLegacyDiff: useLegacyDiff(),
+				Parallel:       parallel,
+				Debug:          debug,
+				Refresh:        refresh,
+				DestroyTargets: targetUrns,
+				UseLegacyDiff:  useLegacyDiff(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
@@ -130,7 +135,7 @@ func newDestroyCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 			})
 
-			if res == nil && target == "" {
+			if res == nil && len(*targets) == 0 {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 					"associated with the stack are still maintained. \nIf you want to remove the stack "+
 					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
@@ -153,9 +158,10 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
-	cmd.PersistentFlags().StringVarP(
-		&target, "target", "t", "",
-		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed.")
+
+	targets = cmd.PersistentFlags().StringArrayP(
+		"target", "t", []string{},
+		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed. Multiple resources can be specified using: --target urn1 --target urn2")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(

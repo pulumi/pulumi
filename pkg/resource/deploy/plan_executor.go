@@ -202,7 +202,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 
 	logging.V(7).Infof("performDeletes(...): beginning")
 
-	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTarget)
+	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTargets)
 	if res != nil {
 		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
 		return false, res
