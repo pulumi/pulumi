@@ -933,7 +933,7 @@ func (op StepOp) Color() string {
 	case OpDeleteReplaced:
 		return colors.SpecDeleteReplaced
 	case OpRead:
-		return colors.SpecCreate
+		return colors.SpecRead
 	case OpReadReplacement, OpImportReplacement:
 		return colors.SpecReplace
 	case OpRefresh:

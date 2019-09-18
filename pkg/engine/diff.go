@@ -241,7 +241,7 @@ func PrintObject(
 // GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
-	step StepEventMetadata, indent int, planning bool, debug bool, refresh bool) string {
+	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
 	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
 	//   1) not doing a preview
 	//   2) doing a refresh
@@ -288,6 +288,11 @@ func GetResourceOutputsPropertiesString(
 		outputDiff = step.Old.Outputs.Diff(outs, IsInternalPropertyKey)
 	}
 
+	// If we asked to not show-sames, and no outputs changed then don't show anything at all here.
+	if outputDiff == nil && !showSames {
+		return ""
+	}
+
 	var keys []resource.PropertyKey
 	if outputDiff == nil {
 		keys = outs.StableKeys()
@@ -305,18 +310,23 @@ func GetResourceOutputsPropertiesString(
 		// - the property that is present in the inputs is different
 		// - we are doing a refresh, in which case we always want to show state differences
 		if outputDiff != nil || (!IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
-			print := true
 			if in, has := ins[k]; has && !refresh {
-				print = (out.Diff(in, IsInternalPropertyKey) != nil)
+				if out.Diff(in, IsInternalPropertyKey) == nil {
+					continue
+				}
 			}
 
-			if print {
-				if outputDiff != nil {
-					printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
-				} else {
-					printPropertyTitle(b, string(k), maxkey, indent, op, false)
-					printPropertyValue(b, out, planning, indent, op, false, debug)
-				}
+			// If we asked to not show-sames, and this is a same output, then filter it out of what
+			// we display.
+			if !showSames && outputDiff != nil && outputDiff.Same(k) {
+				continue
+			}
+
+			if outputDiff != nil {
+				printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
+			} else {
+				printPropertyTitle(b, string(k), maxkey, indent, op, false)
+				printPropertyValue(b, out, planning, indent, op, false, debug)
 			}
 		}
 	}
