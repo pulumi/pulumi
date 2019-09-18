@@ -87,6 +87,10 @@ type Output struct {
 }
 
 // Secret indicates that the underlying value should be persisted securely.
+//
+// In order to facilitate the ability to distinguish secrets with identical plaintext in downstream code that may
+// want to cache a secret's ciphertext, secret PropertyValues hold the address of the Secret. If a secret must be
+// copied, its value--not its address--should be copied.
 type Secret struct {
 	Element PropertyValue
 }
