@@ -601,7 +601,8 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 				}
 
 				if _, has := resourcesToDelete[sibling.Parent]; has {
-					sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(), sibling.Parent, sibling.URN)
+					sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(),
+						sibling.Parent, sibling.URN)
 					return nil, result.Bail()
 				}
 			}

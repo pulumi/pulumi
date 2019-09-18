@@ -225,7 +225,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 		logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
 	}
 
-	// After executing targetted deletes, we may now have resources that depend on the resource that
+	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
 
 	if len(opts.DestroyTargets) > 0 {

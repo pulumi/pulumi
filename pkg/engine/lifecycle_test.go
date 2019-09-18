@@ -4378,7 +4378,10 @@ func TestDeleteTarget(t *testing.T) {
 	})
 }
 
-func deleteSpecificTargets(t *testing.T, names []string, targets []string, validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
+func deleteSpecificTargets(
+	t *testing.T, names []string, targets []string,
+	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
+
 	//             A
 	//    _________|_________
 	//    B        C        D
