@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -294,7 +295,11 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		for _, target := range opts.RefreshTargets {
 			res := pe.plan.prev.TryGetResource(target)
 			if res == nil {
-				pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
+				if strings.Contains(string(target), "$") {
+					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
+				} else {
+					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundDidYouForgetError(), target)
+				}
 				return result.Bail()
 			}
 		}

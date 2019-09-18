@@ -60,5 +60,9 @@ func GetDuplicateResourceAliasError(urn resource.URN) *Diag {
 }
 
 func GetResourceToRefreshCouldNotBeFoundError() *Diag {
-	return newError("", 2010, "Resource to refresh (%v) could not be found in the stack.")
+	return newError("", 2010, "Resource to refresh '%v' could not be found in the stack.")
+}
+
+func GetResourceToRefreshCouldNotBeFoundDidYouForgetError() *Diag {
+	return newError("", 2011, "Resource to refresh '%v' could not be found in the stack. Did you forget to escape $ in your shell?")
 }
