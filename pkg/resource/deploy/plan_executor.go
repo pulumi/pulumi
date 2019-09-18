@@ -211,17 +211,53 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 
 	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
-	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
-	// parallel, but each list must execute completes before the next list can safely begin executing.
+	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
+	// in parallel, but each list must execute completes before the next list can safely begin
+	// executing.
 	//
 	// This is not "true" delete parallelism, since there may be resources that could safely begin
-	// deleting but we won't until the previous set of deletes fully completes. This approximation is
-	// conservative, but correct.
+	// deleting but we won't until the previous set of deletes fully completes. This approximation
+	// is conservative, but correct.
 	for _, antichain := range deletes {
 		logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
 		tok := pe.stepExec.ExecuteParallel(antichain)
 		tok.Wait(ctx)
 		logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
+	}
+
+	// After executing targetted deletes, we may now have resources that depend on the resource that
+	// were deleted.  Go through and clean things up accordingly for them.
+
+	if len(opts.DestroyTargets) > 0 {
+		deletedUrns := make(map[resource.URN]bool)
+		for _, step := range deleteSteps {
+			deletedUrns[step.URN()] = true
+		}
+
+		resources := []*resource.State{}
+		olds := make(map[resource.URN]*resource.State)
+		for _, res := range pe.plan.prev.Resources {
+			// skip resources that were already deleted.
+			if _, has := deletedUrns[res.URN]; has {
+				continue
+			}
+
+			// Remove any deleted resources from this resource's dependency list.
+			if len(res.Dependencies) != 0 {
+				deps := []resource.URN{}
+				for _, d := range res.Dependencies {
+					if _, has := deletedUrns[d]; !has {
+						deps = append(deps, d)
+					}
+				}
+				res.Dependencies = deps
+			}
+
+			resources = append(resources, res)
+		}
+
+		pe.plan.prev.Resources = resources
+		pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
 	}
 
 	return false, nil
