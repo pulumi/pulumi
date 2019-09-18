@@ -290,6 +290,16 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return nil
 	}
 
+	if len(opts.RefreshTargets) > 0 {
+		for _, target := range opts.RefreshTargets {
+			res := pe.plan.prev.TryGetResource(target)
+			if res == nil {
+				pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
+				return result.Bail()
+			}
+		}
+	}
+
 	// If the user did not provide any --target's, create a refresh step for each resource in the
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
