@@ -607,10 +607,14 @@ func (sg *stepGenerator) computeResourcesToDelete(roots []resource.URN) (map[res
 		// need to be deleted.
 		toAdd := []resource.URN{}
 		for _, urn := range worklist {
-			current := sg.plan.prev.TryGetResource(urn)
-			if current == nil {
+			current, has := sg.plan.olds[urn]
+			if !has {
 				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", urn)
-				sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), urn)
+				if strings.Contains(string(urn), "$") {
+					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), urn)
+				} else {
+					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundDidYouForgetError(), urn)
+				}
 				return nil, result.Bail()
 			}
 

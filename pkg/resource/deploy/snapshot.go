@@ -195,13 +195,3 @@ func (snap *Snapshot) VerifyIntegrity() error {
 
 	return nil
 }
-
-func (snap *Snapshot) TryGetResource(urn resource.URN) *resource.State {
-	for _, res := range snap.Resources {
-		if res.URN == urn {
-			return res
-		}
-	}
-
-	return nil
-}
