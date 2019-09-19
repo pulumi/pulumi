@@ -31,6 +31,7 @@ func newPreviewCmd() *cobra.Command {
 	var message string
 	var stack string
 	var configArray []string
+	var path bool
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
@@ -95,7 +96,7 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			// Save any config values passed via flags.
-			if err := parseAndSaveConfigArray(s, configArray); err != nil {
+			if err := parseAndSaveConfigArray(s, configArray, path); err != nil {
 				return result.FromError(err)
 			}
 
@@ -155,6 +156,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the preview")
+	cmd.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"Config keys contain a path to a property in a map or list to set")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

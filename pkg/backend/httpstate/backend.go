@@ -1007,10 +1007,18 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 		if err != nil {
 			return nil, err
 		}
-		if rawV.Secret {
-			c[k] = config.NewSecureValue(rawV.String)
+		if rawV.Object {
+			if rawV.Secret {
+				c[k] = config.NewSecureObjectValue(rawV.String)
+			} else {
+				c[k] = config.NewObjectValue(rawV.String)
+			}
 		} else {
-			c[k] = config.NewValue(rawV.String)
+			if rawV.Secret {
+				c[k] = config.NewSecureValue(rawV.String)
+			} else {
+				c[k] = config.NewValue(rawV.String)
+			}
 		}
 	}
 	return c, nil

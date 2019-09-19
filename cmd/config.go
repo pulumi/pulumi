@@ -86,11 +86,18 @@ func newConfigCmd() *cobra.Command {
 
 func newConfigGetCmd(stack *string) *cobra.Command {
 	var jsonOut bool
+	var path bool
 
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a single configuration value",
-		Args:  cmdutil.SpecificArgs([]string{"key"}),
+		Long: "Get a single configuration value.\n\n" +
+			"The `--path` flag can be used to get a value inside a map or list:\n\n" +
+			"    - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
+			"if the value of `outer` is a map `inner: value`.\n" +
+			"    - `pulumi config get --path names[0]` will get the value of the first item, " +
+			"if the value of `names` is a list.",
+		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -106,21 +113,32 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			return getConfig(s, key, jsonOut)
+			return getConfig(s, key, path, jsonOut)
 		}),
 	}
 	getCmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
 		"Emit output as JSON")
+	getCmd.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"The key contains a path to a property in a map or list to get")
 
 	return getCmd
 }
 
 func newConfigRmCmd(stack *string) *cobra.Command {
+	var path bool
+
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
 		Short: "Remove configuration value",
-		Args:  cmdutil.SpecificArgs([]string{"key"}),
+		Long: "Remove configuration value.\n\n" +
+			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
+			"    - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
+			"if the value of `outer` is a map `inner: value`.\n" +
+			"    - `pulumi config rm --path names[0]` will remove the first item, " +
+			"if the value of `names` is a list.",
+		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -141,13 +159,17 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			if ps.Config != nil {
-				delete(ps.Config, key)
+			err = ps.Config.Remove(key, path)
+			if err != nil {
+				return err
 			}
 
 			return saveProjectStack(s, ps)
 		}),
 	}
+	rmCmd.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"The key contains a path to a property in a map or list to remove")
 
 	return rmCmd
 }
@@ -226,13 +248,19 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 func newConfigSetCmd(stack *string) *cobra.Command {
 	var plaintext bool
 	var secret bool
+	var path bool
 
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
 		Short: "Set configuration value",
 		Long: "Configuration values can be accessed when a stack is being deployed and used to configure behavior. \n" +
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
-			"may be set by piping a file to standard in.",
+			"may be set by piping a file to standard in.\n\n" +
+			"The `--path` flag can be used to set a value inside a map or list:\n\n" +
+			"    - `pulumi config set --path outer.inner value` " +
+			"will set the value of `outer` to a map `inner: value`.\n" +
+			"    - `pulumi config set --path names[0] a` " +
+			"will set the value to a list with the first item `a`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -301,12 +329,18 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps.Config[key] = v
+			err = ps.Config.Set(key, v, path)
+			if err != nil {
+				return err
+			}
 
 			return saveProjectStack(s, ps)
 		}),
 	}
 
+	setCmd.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"The key contains a path to a property in a map or list to set")
 	setCmd.PersistentFlags().BoolVar(
 		&plaintext, "plaintext", false,
 		"Save the value as plaintext (unencrypted)")
@@ -376,8 +410,10 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 // structure in the future, we should not change existing fields.
 type configValueJSON struct {
 	// When the value is encrypted and --show-secrets was not passed, the value will not be set.
-	Value  *string `json:"value,omitempty"`
-	Secret bool    `json:"secret"`
+	Value       *string     `json:"value,omitempty"`
+	Secret      bool        `json:"secret"`
+	Object      bool        `json:"object"`
+	ObjectValue interface{} `json:"objectValue,omitempty"`
 }
 
 func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
@@ -411,6 +447,7 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 		for _, key := range keys {
 			entry := configValueJSON{
 				Secret: cfg[key].Secure(),
+				Object: cfg[key].Object(),
 			}
 
 			decrypted, err := cfg[key].Value(decrypter)
@@ -419,11 +456,20 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 			}
 			entry.Value = &decrypted
 
+			if cfg[key].Object() {
+				var obj interface{}
+				if err := json.Unmarshal([]byte(decrypted), &obj); err != nil {
+					return err
+				}
+				entry.ObjectValue = obj
+			}
+
 			// If the value was a secret value and we aren't showing secrets, then the above would have set value
 			// to "[secret]" which is reasonable when printing for human display, but for our JSON output, we'd rather
 			// just elide the value.
 			if cfg[key].Secure() && !showSecrets {
 				entry.Value = nil
+				entry.ObjectValue = nil
 			}
 
 			configValues[key.String()] = entry
@@ -453,7 +499,7 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	return nil
 }
 
-func getConfig(stack backend.Stack, key config.Key, jsonOut bool) error {
+func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -461,7 +507,11 @@ func getConfig(stack backend.Stack, key config.Key, jsonOut bool) error {
 
 	cfg := ps.Config
 
-	if v, ok := cfg[key]; ok {
+	v, ok, err := cfg.Get(key, path)
+	if err != nil {
+		return err
+	}
+	if ok {
 		var d config.Decrypter
 		if v.Secure() {
 			var err error
@@ -480,6 +530,15 @@ func getConfig(stack backend.Stack, key config.Key, jsonOut bool) error {
 			value := configValueJSON{
 				Value:  &raw,
 				Secret: v.Secure(),
+				Object: v.Object(),
+			}
+
+			if v.Object() {
+				var obj interface{}
+				if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+					return err
+				}
+				value.ObjectValue = obj
 			}
 
 			out, err := json.MarshalIndent(value, "", "  ")

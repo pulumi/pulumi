@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -118,11 +119,20 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 		for k, v := range update.Config {
 			configValue := configValueJSON{
 				Secret: v.Secure(),
+				Object: v.Object(),
 			}
 			if !v.Secure() || (v.Secure() && decrypter != nil) {
 				value, err := v.Value(decrypter)
 				contract.AssertNoError(err)
 				configValue.Value = makeStringRef(value)
+
+				if v.Object() {
+					var obj interface{}
+					if err := json.Unmarshal([]byte(value), &obj); err != nil {
+						return err
+					}
+					configValue.ObjectValue = obj
+				}
 			}
 
 			info.Config[k.String()] = configValue

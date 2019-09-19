@@ -51,6 +51,7 @@ func newUpCmd() *cobra.Command {
 	var message string
 	var stack string
 	var configArray []string
+	var path bool
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
@@ -78,7 +79,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(s, configArray); err != nil {
+		if err := parseAndSaveConfigArray(s, configArray, path); err != nil {
 			return result.FromError(err)
 		}
 
@@ -253,7 +254,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts.Display); err != nil {
+		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
@@ -379,6 +380,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
+	cmd.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
@@ -454,6 +458,7 @@ func handleConfig(
 	template workspace.Template,
 	configArray []string,
 	yes bool,
+	path bool,
 	opts display.Options) error {
 
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
@@ -480,7 +485,7 @@ func handleConfig(
 		// the stack's `pulumi:template` config value.
 	} else {
 		// Get config values passed on the command line.
-		commandLineConfig, parseErr := parseConfig(configArray)
+		commandLineConfig, parseErr := parseConfig(configArray, path)
 		if parseErr != nil {
 			return parseErr
 		}

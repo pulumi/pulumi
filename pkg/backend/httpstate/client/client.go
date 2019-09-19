@@ -224,10 +224,18 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 		if err != nil {
 			return nil, err
 		}
-		if v.Secret {
-			cfg[newKey] = config.NewSecureValue(v.String)
+		if v.Object {
+			if v.Secret {
+				cfg[newKey] = config.NewSecureObjectValue(v.String)
+			} else {
+				cfg[newKey] = config.NewObjectValue(v.String)
+			}
 		} else {
-			cfg[newKey] = config.NewValue(v.String)
+			if v.Secret {
+				cfg[newKey] = config.NewSecureValue(v.String)
+			} else {
+				cfg[newKey] = config.NewValue(v.String)
+			}
 		}
 	}
 
@@ -387,6 +395,7 @@ func (pc *Client) CreateUpdate(
 		wireConfig[k.String()] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
+			Object: cv.Object(),
 		}
 	}
 
