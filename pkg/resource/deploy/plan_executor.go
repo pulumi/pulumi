@@ -427,7 +427,7 @@ func (pe *planExecutor) rebuildDependencyGraph(resourceToStep map[*resource.Stat
 
 		// Remove any deleted resources from this resource's dependency list.
 		if len(new.Dependencies) != 0 {
-			deps := []resource.URN{}
+			deps := make([]resource.URN, 0, len(new.Dependencies))
 			for _, d := range new.Dependencies {
 				if referenceable[d] {
 					deps = append(deps, d)
