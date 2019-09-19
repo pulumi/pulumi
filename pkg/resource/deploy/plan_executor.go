@@ -153,7 +153,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					return pe.performDeletes(ctx, opts)
+					return false, pe.performDeletes(ctx, opts)
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
@@ -195,7 +195,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	return res
 }
 
-func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool, result.Result) {
+func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result.Result {
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
 		pe.stepExec.SignalCompletion()
@@ -203,7 +203,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 
 	prev := pe.plan.prev
 	if prev == nil || len(prev.Resources) == 0 {
-		return false, nil
+		return nil
 	}
 
 	logging.V(7).Infof("performDeletes(...): beginning")
@@ -211,7 +211,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTargets)
 	if res != nil {
 		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
-		return false, res
+		return res
 	}
 
 	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
@@ -241,7 +241,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) (bool,
 		pe.rebuildDependencyGraph(resourceToStep, false /*refresh*/)
 	}
 
-	return false, nil
+	return nil
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
