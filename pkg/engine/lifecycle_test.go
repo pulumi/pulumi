@@ -1570,19 +1570,14 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 	assert.Equal(t, len(urns), len(names))
 	assert.Contains(t, names, target)
 
-	var index = -1
 	for i, name := range names {
 		if name == target {
-			index = i
-			break
+			return urns[i]
 		}
 	}
 
-	if index == -1 {
-		t.Fatalf("Could not find target: %v in %v", target, names)
-	}
-
-	return urns[index]
+	t.Fatalf("Could not find target: %v in %v", target, names)
+	return ""
 }
 
 // Tests that dependencies are correctly rewritten when refresh removes deleted resources.
