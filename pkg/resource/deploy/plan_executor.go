@@ -329,7 +329,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
-	targetMap, res := pe.plan.CheckTargets(opts.RefreshTargets)
+	targetMapOpt, res := pe.plan.CheckTargets(opts.RefreshTargets)
 	if res != nil {
 		return res
 	}
