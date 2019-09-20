@@ -597,16 +597,16 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 		// the delete.  It's a little painful.  But can be worked around by explicitly deleting
 		// children before parents.  Note: in almost all cases, people will want to delete children,
 		// so this restriction should not be too onerous.
-		for _, sibling := range sg.plan.prev.Resources {
-			if sibling.Parent != "" {
-				if _, has := resourcesToDelete[sibling.URN]; has {
+		for _, res := range sg.plan.prev.Resources {
+			if res.Parent != "" {
+				if _, has := resourcesToDelete[res.URN]; has {
 					// already deleting this sibling
 					continue
 				}
 
-				if _, has := resourcesToDelete[sibling.Parent]; has {
+				if _, has := resourcesToDelete[res.Parent]; has {
 					sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(),
-						sibling.Parent, sibling.URN)
+						res.Parent, res.URN)
 					return nil, result.Bail()
 				}
 			}
