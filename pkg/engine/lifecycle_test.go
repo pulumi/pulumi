@@ -2633,13 +2633,15 @@ func TestLoadFailureShutdown(t *testing.T) {
 	<-done
 }
 
+var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
+
 func generateComplexTestDependencyGraph(
-	t *testing.T, p *TestPlan) ([]string, []resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+	t *testing.T, p *TestPlan) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 
 	resType := tokens.Type("pkgA:m:typA")
 	type propertyDependencies map[resource.PropertyKey][]resource.URN
 
-	names := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
+	names := complexTestDependencyGraphNames
 
 	urnA := p.NewProviderURN("pkgA", names[0], "")
 	urnB := p.NewURN(resType, names[1], "")
@@ -2741,7 +2743,7 @@ func generateComplexTestDependencyGraph(
 		return nil
 	})
 
-	return names, urns, old, program
+	return urns, old, program
 }
 
 func TestDeleteBeforeReplace(t *testing.T) {
@@ -2765,7 +2767,8 @@ func TestDeleteBeforeReplace(t *testing.T) {
 
 	p := &TestPlan{}
 
-	names, urns, old, program := generateComplexTestDependencyGraph(t, p)
+	urns, old, program := generateComplexTestDependencyGraph(t, p)
+	names := complexTestDependencyGraphNames
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -4362,10 +4365,8 @@ func TestImportUpdatedID(t *testing.T) {
 }
 
 func TestDeleteTarget(t *testing.T) {
-	names := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
-
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
-	subsets := combinations.All(names)
+	subsets := combinations.All(complexTestDependencyGraphNames)
 
 	for _, subset := range subsets {
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
@@ -4377,6 +4378,7 @@ func TestDeleteTarget(t *testing.T) {
 
 	deleteSpecificTargets(t, []string{"A"}, func(urns []resource.URN, deleted map[resource.URN]bool) {
 		// when deleting 'A' we expect A, B, C, E, F, and K to be deleted
+		names := complexTestDependencyGraphNames
 		assert.Equal(t, map[resource.URN]bool{
 			pickURN(t, urns, names, "A"): true,
 			pickURN(t, urns, names, "B"): true,
@@ -4402,7 +4404,7 @@ func deleteSpecificTargets(
 
 	p := &TestPlan{}
 
-	names, urns, old, program := generateComplexTestDependencyGraph(t, p)
+	urns, old, program := generateComplexTestDependencyGraph(t, p)
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -4433,7 +4435,7 @@ func deleteSpecificTargets(
 
 	destroyTargets := []resource.URN{}
 	for _, target := range targets {
-		destroyTargets = append(destroyTargets, pickURN(t, urns, names, target))
+		destroyTargets = append(destroyTargets, pickURN(t, urns, complexTestDependencyGraphNames, target))
 	}
 
 	p.Options.DestroyTargets = destroyTargets
