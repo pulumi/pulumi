@@ -16,7 +16,6 @@ package deploy
 
 import (
 	"context"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -84,28 +83,18 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}
 
+	res := pe.plan.CheckTargets(opts.UpdateTargets)
+	if res != nil {
+		return res
+	}
+
 	// The set of targets to update.  'nil' means 'update everything'.  Non-nill means 'update only
 	// in this set'
 	var updateTargetsOpt map[resource.URN]bool
 	if len(opts.UpdateTargets) > 0 {
 		updateTargetsOpt = make(map[resource.URN]bool)
-		hasUnknownTarget := false
 		for _, target := range opts.UpdateTargets {
-			if _, has := pe.plan.olds[target]; !has {
-				hasUnknownTarget = true
-				logging.V(7).Infof("Resource to update (%v) could not be found in the stack.", target)
-				if strings.Contains(string(target), "$") {
-					pe.plan.Diag().Errorf(diag.GetResourceToUpdateCouldNotBeFoundError(), target)
-				} else {
-					pe.plan.Diag().Errorf(diag.GetResourceToUpdateCouldNotBeFoundDidYouForgetError(), target)
-				}
-			}
-
 			updateTargetsOpt[target] = true
-		}
-
-		if hasUnknownTarget {
-			return result.Bail()
 		}
 	}
 
@@ -347,22 +336,10 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return nil
 	}
 
-	if len(opts.RefreshTargets) > 0 {
-		hasUnknownTarget := false
-		for _, target := range opts.RefreshTargets {
-			if _, has := pe.plan.olds[target]; !has {
-				hasUnknownTarget = true
-				if strings.Contains(string(target), "$") {
-					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
-				} else {
-					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundDidYouForgetError(), target)
-				}
-			}
-		}
-
-		if hasUnknownTarget {
-			return result.Bail()
-		}
+	// Make sure if there were any targets specified, that they all refer to existing resources.
+	res := pe.plan.CheckTargets(opts.RefreshTargets)
+	if res != nil {
+		return res
 	}
 
 	// If the user did not provide any --target's, create a refresh step for each resource in the

@@ -59,26 +59,17 @@ func GetDuplicateResourceAliasError(urn resource.URN) *Diag {
 	)
 }
 
-func GetResourceToRefreshCouldNotBeFoundError() *Diag {
-	return newError("", 2010, "Resource to refresh '%v' could not be found in the stack.")
+func GetTargetCouldNotBeFoundError() *Diag {
+	return newError("", 2010, "Target '%v' could not be found in the stack.")
 }
 
-func GetResourceToRefreshCouldNotBeFoundDidYouForgetError() *Diag {
-	return newError("", 2011, "Resource to refresh '%v' could not be found in the stack. "+
-		"Did you forget to escape $ in your shell?")
-}
-
-func GetResourceToDeleteCouldNotBeFoundError() *Diag {
-	return newError("", 2012, "Resource to delete '%v' could not be found in the stack.")
-}
-
-func GetResourceToDeleteCouldNotBeFoundDidYouForgetError() *Diag {
-	return newError("", 2013, "Resource to delete '%v' could not be found in the stack. "+
+func GetTargetCouldNotBeFoundDidYouForgetError() *Diag {
+	return newError("", 2011, "Target '%v' could not be found in the stack. "+
 		"Did you forget to escape $ in your shell?")
 }
 
 func GetCannotDeleteParentResourceWithoutAlsoDeletingChildError() *Diag {
-	return newError("", 2014, "Cannot delete parent resource '%v' without also deleting child '%v'.")
+	return newError("", 2012, "Cannot delete parent resource '%v' without also deleting child '%v'.")
 }
 
 func GetResourceToUpdateCouldNotBeFoundError() *Diag {

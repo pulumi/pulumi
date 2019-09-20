@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"strings"
 	"math"
 
 	"github.com/blang/semver"
@@ -30,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // BackendClient provides an interface for retrieving information about other stacks.
@@ -331,4 +333,28 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) result.Result {
 	planExec := &planExecutor{plan: p}
 	return planExec.Execute(ctx, opts, preview)
+}
+
+// CheckTargets validates that all the targets passed in refer to existing resources.  Diagnostics
+// are generated for any target that cannot be found.
+func (p * Plan) CheckTargets(targets []resource.URN) result.Result {
+	// Do an initial pass first to ensure that all the targets mentioned are ones we know about.
+	hasUnknownTarget := false
+	for _, target := range targets {
+		if _, has := p.olds[target]; !has {
+			hasUnknownTarget = true
+			logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
+			if strings.Contains(string(target), "$") {
+				p.Diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
+			} else {
+				p.Diag().Errorf(diag.GetTargetCouldNotBeFoundDidYouForgetError(), target)
+			}
+		}
+	}
+
+	if hasUnknownTarget {
+		return result.Bail()
+	}
+
+	return nil
 }
