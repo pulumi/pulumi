@@ -4468,194 +4468,99 @@ func deleteSpecificTargets(
 	p.Run(t, old)
 }
 
-// func TestRefreshTarget(t *testing.T) {
-// 	names := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
+func TestUpdateTarget(t *testing.T) {
+	// Try refreshing a stack with combinations of the above resources as target to destroy.
+	subsets := combinations.All(complexTestDependencyGraphNames)
 
-// 	// Try refreshing a stack with combinations of the above resources as target to destroy.
-// 	subsets := combinations.All(names)
+	for _, subset := range subsets {
+		// limit to up to 3 resources to destroy.  This keeps the test running time under
+		// control as it only generates a few hundred combinations instead of several thousand.
+		if len(subset) <= 3 {
+			updateSpecificTargets(t, subset)
+		}
+	}
+}
 
-// 	for _, subset := range subsets {
-// 		// limit to up to 3 resources to destroy.  This keeps the test running time under
-// 		// control as it only generates a few hundred combinations instead of several thousand.
-// 		if len(subset) <= 3 {
-// 			refreshSpecificTargets(t, names, subset)
-// 		}
-// 	}
-// }
+func updateSpecificTargets(t *testing.T, targets []string) {
 
-// func refreshSpecificTargets(
-// 	t *testing.T, names []string, targets []string) {
+	//             A
+	//    _________|_________
+	//    B        C        D
+	//          ___|___  ___|___
+	//          E  F  G  H  I  J
+	//             |__|
+	//             K  L
 
-// 	//             A
-// 	//    _________|_________
-// 	//    B        C        D
-// 	//          ___|___  ___|___
-// 	//          E  F  G  H  I  J
-// 	//             |__|
-// 	//             K  L
+	p := &TestPlan{}
 
-// 	p := &TestPlan{}
+	urns, old, program := generateComplexTestDependencyGraph(t, p)
 
-// 	const resType = "pkgA:m:typA"
-// 	type propertyDependencies map[resource.PropertyKey][]resource.URN
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
 
-// 	urnA := p.NewProviderURN("pkgA", names[0], "")
-// 	urnB := p.NewURN(resType, names[1], "")
-// 	urnC := p.NewProviderURN("pkgA", names[2], "")
-// 	urnD := p.NewProviderURN("pkgA", names[3], "")
-// 	urnE := p.NewURN(resType, names[4], "")
-// 	urnF := p.NewURN(resType, names[5], "")
-// 	urnG := p.NewURN(resType, names[6], "")
-// 	urnH := p.NewURN(resType, names[7], "")
-// 	urnI := p.NewURN(resType, names[8], "")
-// 	urnJ := p.NewURN(resType, names[9], "")
-// 	urnK := p.NewURN(resType, names[10], "")
-// 	urnL := p.NewURN(resType, names[11], "")
-// 	urns := []resource.URN{
-// 		urnA, urnB, urnC, urnD, urnE, urnF,
-// 		urnG, urnH, urnI, urnJ, urnK, urnL,
-// 	}
+					// all resources will change.
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+					}, nil
+				},
 
-// 	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
-// 		propertyDeps propertyDependencies, outputs resource.PropertyMap) *resource.State {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+					outputs := olds.Copy()
 
-// 		inputs := resource.PropertyMap{}
-// 		for k := range propertyDeps {
-// 			inputs[k] = resource.NewStringProperty("foo")
-// 		}
+					outputs["output_prop"] = resource.NewPropertyValue(42)
+					return outputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
 
-// 		return &resource.State{
-// 			Type:                 urn.Type(),
-// 			URN:                  urn,
-// 			Custom:               true,
-// 			Delete:               false,
-// 			ID:                   id,
-// 			Inputs:               inputs,
-// 			Outputs:              outputs,
-// 			Dependencies:         dependencies,
-// 			Provider:             provider,
-// 			PropertyDependencies: propertyDeps,
-// 		}
-// 	}
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
-// 	old := &deploy.Snapshot{
-// 		Resources: []*resource.State{
-// 			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewStringProperty("foo")}),
-// 			newResource(urnB, "1", string(urnA)+"::0", nil, nil, nil),
-// 			newResource(urnC, "2", "",
-// 				[]resource.URN{urnA},
-// 				propertyDependencies{"A": []resource.URN{urnA}},
-// 				resource.PropertyMap{"A": resource.NewStringProperty("bar")}),
-// 			newResource(urnD, "3", "",
-// 				[]resource.URN{urnA},
-// 				propertyDependencies{"B": []resource.URN{urnA}}, nil),
-// 			newResource(urnE, "4", string(urnC)+"::2", nil, nil, nil),
-// 			newResource(urnF, "5", "",
-// 				[]resource.URN{urnC},
-// 				propertyDependencies{"A": []resource.URN{urnC}}, nil),
-// 			newResource(urnG, "6", "",
-// 				[]resource.URN{urnC},
-// 				propertyDependencies{"B": []resource.URN{urnC}}, nil),
-// 			newResource(urnH, "4", string(urnD)+"::3", nil, nil, nil),
-// 			newResource(urnI, "5", "",
-// 				[]resource.URN{urnD},
-// 				propertyDependencies{"A": []resource.URN{urnD}}, nil),
-// 			newResource(urnJ, "6", "",
-// 				[]resource.URN{urnD},
-// 				propertyDependencies{"B": []resource.URN{urnD}}, nil),
-// 			newResource(urnK, "7", "",
-// 				[]resource.URN{urnF, urnG},
-// 				propertyDependencies{"A": []resource.URN{urnF, urnG}}, nil),
-// 			newResource(urnL, "8", "",
-// 				[]resource.URN{urnF, urnG},
-// 				propertyDependencies{"B": []resource.URN{urnF, urnG}}, nil),
-// 		},
-// 	}
+	updateTargets := []resource.URN{}
+	for _, target := range targets {
+		updateTargets = append(updateTargets,
+			pickURN(t, urns, complexTestDependencyGraphNames, target))
+	}
 
-// 	loaders := []*deploytest.ProviderLoader{
-// 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-// 			return &deploytest.Provider{
-// 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-// 					ignoreChanges []string) (plugin.DiffResult, error) {
-// 					if !olds["A"].DeepEquals(news["A"]) {
-// 						return plugin.DiffResult{
-// 							ReplaceKeys:         []resource.PropertyKey{"A"},
-// 							DeleteBeforeReplace: true,
-// 						}, nil
-// 					}
-// 					return plugin.DiffResult{}, nil
-// 				},
-// 				DiffF: func(urn resource.URN, id resource.ID,
-// 					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+	p.Options.UpdateTargets = updateTargets
+	t.Logf("Updating targets: %v", updateTargets)
 
-// 					if !olds["A"].DeepEquals(news["A"]) {
-// 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
-// 					}
-// 					return plugin.DiffResult{}, nil
-// 				},
-// 			}, nil
-// 		}),
-// 	}
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: false,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
 
-// 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-// 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
-// 			_, id, _, err := monitor.RegisterResource(urn.Type(), string(urn.Name()), true, deploytest.ResourceOptions{
-// 				Provider: provider,
-// 				Inputs:   inputs,
-// 			})
-// 			assert.NoError(t, err)
-// 			return id
-// 		}
+			assert.Nil(t, res)
+			assert.True(t, len(j.Entries) > 0)
 
-// 		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewStringProperty("bar")})
-// 		register(urnB, string(urnA)+"::"+string(idA), nil)
-// 		idC := register(urnC, "", nil)
-// 		idD := register(urnD, "", nil)
-// 		register(urnE, string(urnC)+"::"+string(idC), nil)
-// 		register(urnF, "", nil)
-// 		register(urnG, "", nil)
-// 		register(urnH, string(urnD)+"::"+string(idD), nil)
-// 		register(urnI, "", nil)
-// 		register(urnJ, "", nil)
-// 		register(urnK, "", nil)
-// 		register(urnL, "", nil)
+			updated := make(map[resource.URN]bool)
+			sames := make(map[resource.URN]bool)
+			for _, entry := range j.Entries {
+				if entry.Step.Op() == deploy.OpUpdate {
+					updated[entry.Step.URN()] = true
+				} else if entry.Step.Op() == deploy.OpSame {
+					sames[entry.Step.URN()] = true
+				} else {
+					assert.FailNowf(t, "", "Got a step that wasn't a same/update: %v", entry.Step.Op())
+				}
+			}
 
-// 		return nil
-// 	})
+			for _, target := range p.Options.UpdateTargets {
+				assert.Contains(t, updated, target)
+			}
 
-// 	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+			for _, target := range p.Options.UpdateTargets {
+				assert.NotContains(t, sames, target)
+			}
 
-// 	destroyTargets := []resource.URN{}
-// 	for _, target := range targets {
-// 		destroyTargets = append(destroyTargets, pickURN(t, urns, names, target))
-// 	}
+			return res
+		},
+	}}
 
-// 	p.Options.DestroyTargets = destroyTargets
-// 	t.Logf("Destroying targets: %v", destroyTargets)
-
-// 	p.Steps = []TestStep{{
-// 		Op:            Destroy,
-// 		ExpectFailure: false,
-// 		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-// 			evts []Event, res result.Result) result.Result {
-
-// 			assert.Nil(t, res)
-// 			assert.True(t, len(j.Entries) > 0)
-
-// 			deleted := make(map[resource.URN]bool)
-// 			for _, entry := range j.Entries {
-// 				assert.Equal(t, deploy.OpDelete, entry.Step.Op())
-// 				deleted[entry.Step.URN()] = true
-// 			}
-
-// 			for _, target := range p.Options.DestroyTargets {
-// 				assert.Contains(t, deleted, target)
-// 			}
-
-// 			validate(urns, deleted)
-// 			return res
-// 		},
-// 	}}
-
-// 	p.Run(t, old)
-// }
+	p.Run(t, old)
+}
