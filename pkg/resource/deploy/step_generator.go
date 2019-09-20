@@ -610,18 +610,18 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
-	res := sg.plan.CheckTargets(targets)
+	targetMapOpt, res := sg.plan.CheckTargets(targets)
 	if res != nil {
 		return nil, res
 	}
 
-	if len(targets) > 0 {
+	if targetMapOpt != nil {
 		logging.V(7).Infof("Planner was asked to only delete '%v'", targets)
 
 		resourcesToDelete := make(map[resource.URN]bool)
 
 		// Now actually use all the requested targets to figure out the exact set to delete.
-		for _, target := range targets {
+		for target := range targetMapOpt {
 			current := sg.plan.olds[target]
 			resourcesToDelete[target] = true
 

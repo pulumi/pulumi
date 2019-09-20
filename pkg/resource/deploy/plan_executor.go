@@ -337,7 +337,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
-	res := pe.plan.CheckTargets(opts.RefreshTargets)
+	targetMap, res := pe.plan.CheckTargets(opts.RefreshTargets)
 	if res != nil {
 		return res
 	}
@@ -348,7 +348,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
-		if shouldRefresh(opts, res) {
+		if shouldRefresh(targetMap, res) {
 			step := NewRefreshStep(pe.plan, res, nil)
 			steps = append(steps, step)
 			resourceToStep[res] = step
@@ -457,17 +457,11 @@ func (pe *planExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step
 	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
 }
 
-func shouldRefresh(opts Options, res *resource.State) bool {
-	if len(opts.RefreshTargets) == 0 {
+func shouldRefresh(targetMapOpt map[resource.URN]bool, res *resource.State) bool {
+	if targetMapOpt == nil {
 		return true
 	}
 
-	//var found = false
-	for _, urn := range opts.RefreshTargets {
-		if urn == res.URN {
-			return true
-		}
-	}
-
-	return false
+	_, has := targetMapOpt[res.URN]
+	return has
 }
