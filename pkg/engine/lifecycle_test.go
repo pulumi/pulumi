@@ -4371,11 +4371,11 @@ func TestDeleteTarget(t *testing.T) {
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
 		// control as it only generates a few hundred combinations instead of several thousand.
 		if len(subset) <= 3 {
-			deleteSpecificTargets(t, names, subset, func(urns []resource.URN, deleted map[resource.URN]bool) {})
+			deleteSpecificTargets(t, subset, func(urns []resource.URN, deleted map[resource.URN]bool) {})
 		}
 	}
 
-	deleteSpecificTargets(t, names, []string{"A"}, func(urns []resource.URN, deleted map[resource.URN]bool) {
+	deleteSpecificTargets(t, []string{"A"}, func(urns []resource.URN, deleted map[resource.URN]bool) {
 		// when deleting 'A' we expect A, B, C, E, F, and K to be deleted
 		assert.Equal(t, map[resource.URN]bool{
 			pickURN(t, urns, names, "A"): true,
@@ -4389,7 +4389,7 @@ func TestDeleteTarget(t *testing.T) {
 }
 
 func deleteSpecificTargets(
-	t *testing.T, names []string, targets []string,
+	t *testing.T, targets []string,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
 
 	//             A
