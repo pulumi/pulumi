@@ -124,7 +124,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 //
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
-func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, event RegisterResourceEvent) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateSteps(
+	updateTargetsOpt map[resource.URN]bool, event RegisterResourceEvent) ([]Step, result.Result) {
+
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -348,7 +350,8 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothin but create a SameStep for it.
 		if !shouldUpdate(updateTargetsOpt, urn) {
-			logging.V(7).Infof("Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
+			logging.V(7).Infof(
+				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
 			updateSteps, res := sg.generateDiffUpdates(
 				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
@@ -369,8 +372,6 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
-		if logging.V(7) {
-		}
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
 

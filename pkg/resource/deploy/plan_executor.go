@@ -83,19 +83,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}
 
-	res := pe.plan.CheckTargets(opts.UpdateTargets)
-	if res != nil {
-		return res
-	}
-
 	// The set of targets to update.  'nil' means 'update everything'.  Non-nill means 'update only
 	// in this set'
-	var updateTargetsOpt map[resource.URN]bool
-	if len(opts.UpdateTargets) > 0 {
-		updateTargetsOpt = make(map[resource.URN]bool)
-		for _, target := range opts.UpdateTargets {
-			updateTargetsOpt[target] = true
-		}
+	updateTargetsOpt, res := pe.plan.CheckTargets(opts.UpdateTargets)
+	if res != nil {
+		return res
 	}
 
 	// Begin iterating the source.
