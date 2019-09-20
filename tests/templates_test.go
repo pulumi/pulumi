@@ -27,6 +27,8 @@ import (
 )
 
 func TestTemplates(t *testing.T) {
+	t.Parallel()
+
 	awsRegion := os.Getenv("AWS_REGION")
 	if awsRegion == "" {
 		awsRegion = "us-west-1"
