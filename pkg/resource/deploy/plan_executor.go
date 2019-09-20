@@ -89,19 +89,23 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	var updateTargetsOpt map[resource.URN]bool
 	if len(opts.UpdateTargets) > 0 {
 		updateTargetsOpt = make(map[resource.URN]bool)
+		hasUnknownTarget := false
 		for _, target := range opts.UpdateTargets {
 			if _, has := pe.plan.olds[target]; !has {
+				hasUnknownTarget = true
 				logging.V(7).Infof("Resource to update (%v) could not be found in the stack.", target)
 				if strings.Contains(string(target), "$") {
 					pe.plan.Diag().Errorf(diag.GetResourceToUpdateCouldNotBeFoundError(), target)
 				} else {
 					pe.plan.Diag().Errorf(diag.GetResourceToUpdateCouldNotBeFoundDidYouForgetError(), target)
 				}
-
-				return result.Bail()
 			}
 
 			updateTargetsOpt[target] = true
+		}
+
+		if hasUnknownTarget {
+			return result.Bail()
 		}
 	}
 
@@ -344,15 +348,20 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 
 	if len(opts.RefreshTargets) > 0 {
+		hasUnknownTarget := false
 		for _, target := range opts.RefreshTargets {
 			if _, has := pe.plan.olds[target]; !has {
+				hasUnknownTarget = true
 				if strings.Contains(string(target), "$") {
 					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
 				} else {
 					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundDidYouForgetError(), target)
 				}
-				return result.Bail()
 			}
+		}
+
+		if hasUnknownTarget {
+			return result.Bail()
 		}
 	}
 
