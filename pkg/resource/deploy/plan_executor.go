@@ -153,25 +153,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					deleteSteps := pe.stepGen.GenerateDeletes()
-					deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
-
-					// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed in
-					// parallel, but each list must execute completes before the next list can safely begin executing.
-					//
-					// This is not "true" delete parallelism, since there may be resources that could safely begin
-					// deleting but we won't until the previous set of deletes fully completes. This approximation is
-					// conservative, but correct.
-					for _, antichain := range deletes {
-						logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
-						tok := pe.stepExec.ExecuteParallel(antichain)
-						tok.Wait(ctx)
-						logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
-					}
-
-					// We're done here - signal completion so that the step executor knows to terminate.
-					pe.stepExec.SignalCompletion()
-					return false, nil
+					return false, pe.performDeletes(ctx, opts)
 				}
 
 				if res := pe.handleSingleEvent(event.Event); res != nil {
@@ -211,6 +193,55 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	}
 
 	return res
+}
+
+func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result.Result {
+	defer func() {
+		// We're done here - signal completion so that the step executor knows to terminate.
+		pe.stepExec.SignalCompletion()
+	}()
+
+	prev := pe.plan.prev
+	if prev == nil || len(prev.Resources) == 0 {
+		return nil
+	}
+
+	logging.V(7).Infof("performDeletes(...): beginning")
+
+	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTargets)
+	if res != nil {
+		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
+		return res
+	}
+
+	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
+
+	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
+	// in parallel, but each list must execute completes before the next list can safely begin
+	// executing.
+	//
+	// This is not "true" delete parallelism, since there may be resources that could safely begin
+	// deleting but we won't until the previous set of deletes fully completes. This approximation
+	// is conservative, but correct.
+	for _, antichain := range deletes {
+		logging.V(4).Infof("planExecutor.Execute(...): beginning delete antichain")
+		tok := pe.stepExec.ExecuteParallel(antichain)
+		tok.Wait(ctx)
+		logging.V(4).Infof("planExecutor.Execute(...): antichain complete")
+	}
+
+	// After executing targeted deletes, we may now have resources that depend on the resource that
+	// were deleted.  Go through and clean things up accordingly for them.
+	if len(opts.DestroyTargets) > 0 {
+		resourceToStep := make(map[*resource.State]Step)
+		for _, step := range deleteSteps {
+			resourceToStep[pe.plan.olds[step.URN()]] = step
+		}
+
+		pe.rebuildBaseState(resourceToStep, false /*refresh*/)
+	}
+
+	return nil
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
@@ -308,10 +339,8 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
-	initialResources := []*resource.State{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
-		initialResources = append(initialResources, res)
 		if shouldRefresh(opts, res) {
 			step := NewRefreshStep(pe.plan, res, nil)
 			steps = append(steps, step)
@@ -326,6 +355,23 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
+	pe.rebuildBaseState(resourceToStep, true /*refresh*/)
+
+	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+	// cancellation from internally-initiated cancellation.
+	canceled := callerCtx.Err() != nil
+
+	if stepExec.Errored() {
+		pe.reportExecResult("failed", preview)
+		return result.Bail()
+	} else if canceled {
+		pe.reportExecResult("canceled", preview)
+		return result.Bail()
+	}
+	return nil
+}
+
+func (pe *planExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step, refresh bool) {
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
@@ -357,7 +403,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
-	for _, s := range initialResources {
+	for _, s := range pe.plan.prev.Resources {
 		var old, new *resource.State
 		if step, has := resourceToStep[s]; has {
 			// We produces a refresh step for this specific resource.  Use the new information about
@@ -372,8 +418,10 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		}
 
 		if new == nil {
-			contract.Assert(old.Custom)
-			contract.Assert(!providers.IsProviderType(old.Type))
+			if refresh {
+				contract.Assert(old.Custom)
+				contract.Assert(!providers.IsProviderType(old.Type))
+			}
 			continue
 		}
 
@@ -400,19 +448,6 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 	pe.plan.prev.Resources = resources
 	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
-
-	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
-	// cancellation from internally-initiated cancellation.
-	canceled := callerCtx.Err() != nil
-
-	if stepExec.Errored() {
-		pe.reportExecResult("failed", preview)
-		return result.Bail()
-	} else if canceled {
-		pe.reportExecResult("canceled", preview)
-		return result.Bail()
-	}
-	return nil
 }
 
 func shouldRefresh(opts Options, res *resource.State) bool {
