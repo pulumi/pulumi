@@ -216,11 +216,6 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 
 	deletes := pe.stepGen.ScheduleDeletes(deleteSteps)
 
-	resourceToStep := make(map[*resource.State]Step)
-	for _, step := range deleteSteps {
-		resourceToStep[pe.plan.olds[step.URN()]] = step
-	}
-
 	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 	// in parallel, but each list must execute completes before the next list can safely begin
 	// executing.
@@ -238,6 +233,11 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
 	if len(opts.DestroyTargets) > 0 {
+		resourceToStep := make(map[*resource.State]Step)
+		for _, step := range deleteSteps {
+			resourceToStep[pe.plan.olds[step.URN()]] = step
+		}
+
 		pe.rebuildDependencyGraph(resourceToStep, false /*refresh*/)
 	}
 
