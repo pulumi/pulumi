@@ -561,9 +561,9 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 
 		resourcesToDelete := make(map[resource.URN]bool)
 
+		// Do an initial pass first to ensure that all the targets mentioned are ones we know about.
 		for _, target := range targets {
-			current, has := sg.plan.olds[target]
-			if !has {
+			if _, has := sg.plan.olds[target]; !has {
 				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
 				if strings.Contains(string(target), "$") {
 					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), target)
@@ -572,7 +572,11 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 				}
 				return nil, result.Bail()
 			}
+		}
 
+		// Now actually use all the requested targets to figure out the exact set to delete.
+		for _, target := range targets {
+			current := sg.plan.olds[target]
 			resourcesToDelete[target] = true
 
 			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
