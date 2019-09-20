@@ -163,32 +163,6 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
 	if hasOld {
-		// If the user requested only specific resources to update, and this resource was not in
-		// that set, then just act as if no inputs for the resource changed.  To accomplish this we
-		// simply state that all properties are in the 'ignore changes' list.  This allows us to
-		// execute and keep as much the logic the same as possible.
-		if !shouldUpdate(updateTargetsOpt, urn) {
-			logging.V(4).Infof("Ignoring all changes to '%v'", urn)
-			// logging.V(4).Infof("oldInputs: %v", oldInputs)
-			// logging.V(4).Infof("inputs: %v", inputs)
-
-			ignoreChangesSet := make(map[string]bool)
-			for key := range oldInputs {
-				ignoreChangesSet[string(key)] = true
-			}
-			for key := range inputs {
-				ignoreChangesSet[string(key)] = true
-			}
-			ignoreChanges := []string{}
-			for v := range ignoreChangesSet {
-				ignoreChanges = append(ignoreChanges, v)
-			}
-			goal.IgnoreChanges = ignoreChanges
-			logging.V(4).Infof("Ignoring changes list '%v'", goal.IgnoreChanges)
-		} else {
-			logging.V(4).Infof("Not ignoring all changes to '%v'", urn)
-		}
-
 		// Set inputs back to their old values (if any) for any "ignored" properties
 		processedInputs, res := processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
 		if res != nil {
@@ -365,155 +339,28 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
 		contract.Assert(old != nil)
-		diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
-		if err != nil {
-			// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
-			// report the message contained in the error.
-			if _, ok := err.(plugin.DiffUnavailableError); ok {
-				diff = plugin.DiffResult{Changes: plugin.DiffSome}
-				sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
-			} else {
-				return nil, result.FromError(err)
-			}
-		}
 
-		// Ensure that we received a sensible response.
-		if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
-			return nil, result.Errorf(
-				"unrecognized diff state for %s: %d", urn, diff.Changes)
-		}
+		// If the user requested only specific resources to update, and this resource was not in
+		// that set, then do nothin but create a SameStep for it.
+		if shouldUpdate(updateTargetsOpt, urn) {
+			updateSteps, res := sg.generateUpdates(
+				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
-		// If there were changes, check for a replacement vs. an in-place update.
-		if diff.Changes == plugin.DiffSome {
-			if diff.Replace() {
-				// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
-				// therefore incompatible with the goal state.
-				if goal.ID != "" {
-					const message = "previously-imported resources that still specify an ID may not be replaced; " +
-						"please remove the `import` declaration from your program"
-					if sg.plan.preview {
-						sg.plan.ctx.Diag.Warningf(diag.StreamMessage(urn, message, 0))
-					} else {
-						return nil, result.Errorf(message)
-					}
-				}
-
-				sg.replaces[urn] = true
-
-				// If we are going to perform a replacement, we need to recompute the default values.  The above logic
-				// had assumed that we were going to carry them over from the old resource, which is no longer true.
-				if prov != nil {
-					var failures []plugin.CheckFailure
-					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
-					if err != nil {
-						return nil, result.FromError(err)
-					} else if issueCheckErrors(sg.plan, new, urn, failures) {
-						return nil, result.Bail()
-					}
-					new.Inputs = inputs
-				}
-
-				if logging.V(7) {
-					logging.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)",
-						urn, oldInputs, new.Inputs)
-				}
-
-				// We have two approaches to performing replacements:
-				//
-				//     * CreateBeforeDelete: the default mode first creates a new instance of the resource, then
-				//       updates all dependent resources to point to the new one, and finally after all of that,
-				//       deletes the old resource.  This ensures minimal downtime.
-				//
-				//     * DeleteBeforeCreate: this mode can be used for resources that cannot be tolerate having
-				//       side-by-side old and new instances alive at once.  This first deletes the resource and
-				//       then creates the new one.  This may result in downtime, so is less preferred.  Note that
-				//       until pulumi/pulumi#624 is resolved, we cannot safely perform this operation on resources
-				//       that have dependent resources (we try to delete the resource while they refer to it).
-				//
-				// The provider is responsible for requesting which of these two modes to use. The user can override
-				// the provider's decision by setting the `deleteBeforeReplace` field of `ResourceOptions` to either
-				// `true` or `false`.
-				deleteBeforeReplace := diff.DeleteBeforeReplace
-				if goal.DeleteBeforeReplace != nil {
-					deleteBeforeReplace = *goal.DeleteBeforeReplace
-				}
-				if deleteBeforeReplace {
-					logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
-					contract.Assert(sg.plan.depGraph != nil)
-
-					// DeleteBeforeCreate implies that we must immediately delete the resource. For correctness,
-					// we must also eagerly delete all resources that depend directly or indirectly on the resource
-					// being replaced and would be replaced by a change to the relevant dependency.
-					//
-					// To do this, we'll utilize the dependency information contained in the snapshot if it is
-					// trustworthy, which is interpreted by the DependencyGraph type.
-					var steps []Step
-					if sg.opts.TrustDependencies {
-						toReplace, res := sg.calculateDependentReplacements(old)
-						if res != nil {
-							return nil, res
-						}
-
-						// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
-						// order, so we iterate in reverse.
-						for i := len(toReplace) - 1; i >= 0; i-- {
-							dependentResource := toReplace[i].res
-
-							// If we already deleted this resource due to some other DBR, don't do it again.
-							if sg.deletes[dependentResource.URN] {
-								continue
-							}
-
-							sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
-
-							logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
-								dependentResource.URN, urn)
-
-							steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, true))
-							// Mark the condemned resource as deleted. We won't know until later in the plan whether
-							// or not we're going to be replacing this resource.
-							sg.deletes[dependentResource.URN] = true
-						}
-					}
-
-					return append(steps,
-						NewDeleteReplacementStep(sg.plan, old, true),
-						NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
-						NewCreateReplacementStep(
-							sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
-					), nil
-				}
-
-				return []Step{
-					NewCreateReplacementStep(
-						sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
-					NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
-					// note that the delete step is generated "later" on, after all creates/updates finish.
-				}, nil
+			if res != nil {
+				return nil, res
 			}
 
-			// If we fell through, it's an update.
-			sg.updates[urn] = true
-			if logging.V(7) {
-				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
+			if len(updateSteps) > 0 {
+				return updateSteps, nil
 			}
-			return []Step{
-				NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
-					goal.IgnoreChanges),
-			}, nil
-		}
-
-		// If resource was unchanged, but there were initialization errors, generate an empty update
-		// step to attempt to "continue" awaiting initialization.
-		if len(old.InitErrors) > 0 {
-			sg.updates[urn] = true
-			return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
+			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
+		} else {
+			logging.V(7).Infof("Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		}
 
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
 		if logging.V(7) {
-			logging.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
 		}
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
@@ -524,6 +371,167 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
+}
+
+func (sg *stepGenerator) generateUpdates(
+	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
+	oldInputs, oldOutputs, inputs resource.PropertyMap,
+	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
+
+	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
+	allowUnknowns := sg.plan.preview
+
+	diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
+	if err != nil {
+		// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
+		// report the message contained in the error.
+		if _, ok := err.(plugin.DiffUnavailableError); ok {
+			diff = plugin.DiffResult{Changes: plugin.DiffSome}
+			sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
+		} else {
+			return nil, result.FromError(err)
+		}
+	}
+
+	// Ensure that we received a sensible response.
+	if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
+		return nil, result.Errorf(
+			"unrecognized diff state for %s: %d", urn, diff.Changes)
+	}
+
+	// If there were changes, check for a replacement vs. an in-place update.
+	if diff.Changes == plugin.DiffSome {
+		if diff.Replace() {
+			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
+			// therefore incompatible with the goal state.
+			if goal.ID != "" {
+				const message = "previously-imported resources that still specify an ID may not be replaced; " +
+					"please remove the `import` declaration from your program"
+				if sg.plan.preview {
+					sg.plan.ctx.Diag.Warningf(diag.StreamMessage(urn, message, 0))
+				} else {
+					return nil, result.Errorf(message)
+				}
+			}
+
+			sg.replaces[urn] = true
+
+			// If we are going to perform a replacement, we need to recompute the default values.  The above logic
+			// had assumed that we were going to carry them over from the old resource, which is no longer true.
+			if prov != nil {
+				var failures []plugin.CheckFailure
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+				if err != nil {
+					return nil, result.FromError(err)
+				} else if issueCheckErrors(sg.plan, new, urn, failures) {
+					return nil, result.Bail()
+				}
+				new.Inputs = inputs
+			}
+
+			if logging.V(7) {
+				logging.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)",
+					urn, oldInputs, new.Inputs)
+			}
+
+			// We have two approaches to performing replacements:
+			//
+			//     * CreateBeforeDelete: the default mode first creates a new instance of the resource, then
+			//       updates all dependent resources to point to the new one, and finally after all of that,
+			//       deletes the old resource.  This ensures minimal downtime.
+			//
+			//     * DeleteBeforeCreate: this mode can be used for resources that cannot be tolerate having
+			//       side-by-side old and new instances alive at once.  This first deletes the resource and
+			//       then creates the new one.  This may result in downtime, so is less preferred.  Note that
+			//       until pulumi/pulumi#624 is resolved, we cannot safely perform this operation on resources
+			//       that have dependent resources (we try to delete the resource while they refer to it).
+			//
+			// The provider is responsible for requesting which of these two modes to use. The user can override
+			// the provider's decision by setting the `deleteBeforeReplace` field of `ResourceOptions` to either
+			// `true` or `false`.
+			deleteBeforeReplace := diff.DeleteBeforeReplace
+			if goal.DeleteBeforeReplace != nil {
+				deleteBeforeReplace = *goal.DeleteBeforeReplace
+			}
+			if deleteBeforeReplace {
+				logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
+				contract.Assert(sg.plan.depGraph != nil)
+
+				// DeleteBeforeCreate implies that we must immediately delete the resource. For correctness,
+				// we must also eagerly delete all resources that depend directly or indirectly on the resource
+				// being replaced and would be replaced by a change to the relevant dependency.
+				//
+				// To do this, we'll utilize the dependency information contained in the snapshot if it is
+				// trustworthy, which is interpreted by the DependencyGraph type.
+				var steps []Step
+				if sg.opts.TrustDependencies {
+					toReplace, res := sg.calculateDependentReplacements(old)
+					if res != nil {
+						return nil, res
+					}
+
+					// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
+					// order, so we iterate in reverse.
+					for i := len(toReplace) - 1; i >= 0; i-- {
+						dependentResource := toReplace[i].res
+
+						// If we already deleted this resource due to some other DBR, don't do it again.
+						if sg.deletes[dependentResource.URN] {
+							continue
+						}
+
+						sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
+
+						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
+							dependentResource.URN, urn)
+
+						steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, true))
+						// Mark the condemned resource as deleted. We won't know until later in the plan whether
+						// or not we're going to be replacing this resource.
+						sg.deletes[dependentResource.URN] = true
+					}
+				}
+
+				return append(steps,
+					NewDeleteReplacementStep(sg.plan, old, true),
+					NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
+					NewCreateReplacementStep(
+						sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
+				), nil
+			}
+
+			return []Step{
+				NewCreateReplacementStep(
+					sg.plan, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
+				NewReplaceStep(sg.plan, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
+				// note that the delete step is generated "later" on, after all creates/updates finish.
+			}, nil
+		}
+
+		// If we fell through, it's an update.
+		sg.updates[urn] = true
+		if logging.V(7) {
+			logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
+		}
+		return []Step{
+			NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
+				goal.IgnoreChanges),
+		}, nil
+	}
+
+	// If resource was unchanged, but there were initialization errors, generate an empty update
+	// step to attempt to "continue" awaiting initialization.
+	if len(old.InitErrors) > 0 {
+		sg.updates[urn] = true
+		return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
+	}
+
+	// No need to update anything, the properties didn't change.
+	sg.sames[urn] = true
+	if logging.V(7) {
+		logging.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
+	}
+	return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 }
 
 func shouldUpdate(updateTargetsOpt map[resource.URN]bool, urn resource.URN) bool {
