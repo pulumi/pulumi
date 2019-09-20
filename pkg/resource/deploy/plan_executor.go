@@ -84,6 +84,27 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}
 
+	// The set of targets to update.  'nil' means 'update everything'.  Non-nill means 'update only
+	// in this set'
+	var updateTargetsOpt map[resource.URN]bool
+	if len(opts.UpdateTargets) > 0 {
+		updateTargetsOpt = make(map[resource.URN]bool)
+		for _, target := range opts.UpdateTargets {
+			if _, has := pe.plan.olds[target]; !has {
+				logging.V(7).Infof("Resource to update (%v) could not be found in the stack.", target)
+				if strings.Contains(string(target), "$") {
+					pe.plan.Diag().Errorf(diag.GetResourceToUpdateCouldNotBeFoundError(), target)
+				} else {
+					pe.plan.Diag().Errorf(diag.GetResourceToUpdateCouldNotBeFoundDidYouForgetError(), target)
+				}
+
+				return result.Bail()
+			}
+
+			updateTargetsOpt[target] = true
+		}
+	}
+
 	// Begin iterating the source.
 	src, res := pe.plan.source.Iterate(callerCtx, opts, pe.plan)
 	if res != nil {
@@ -156,7 +177,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					return false, pe.performDeletes(ctx, opts)
 				}
 
-				if res := pe.handleSingleEvent(event.Event); res != nil {
+				if res := pe.handleSingleEvent(updateTargetsOpt, event.Event); res != nil {
 					if resErr := res.Error(); resErr != nil {
 						logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
@@ -246,7 +267,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
+func (pe *planExecutor) handleSingleEvent(updateTargetsOpt map[resource.URN]bool, event SourceEvent) result.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
@@ -254,7 +275,7 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, res = pe.stepGen.GenerateSteps(e)
+		steps, res = pe.stepGen.GenerateSteps(updateTargetsOpt, e)
 	case ReadResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, res = pe.stepGen.GenerateReadSteps(e)

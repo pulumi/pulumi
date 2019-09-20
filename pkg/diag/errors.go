@@ -80,3 +80,12 @@ func GetResourceToDeleteCouldNotBeFoundDidYouForgetError() *Diag {
 func GetCannotDeleteParentResourceWithoutAlsoDeletingChildError() *Diag {
 	return newError("", 2014, "Cannot delete parent resource '%v' without also deleting child '%v'.")
 }
+
+func GetResourceToUpdateCouldNotBeFoundError() *Diag {
+	return newError("", 2015, "Resource to update '%v' could not be found in the stack.")
+}
+
+func GetResourceToUpdateCouldNotBeFoundDidYouForgetError() *Diag {
+	return newError("", 2016, "Resource to update '%v' could not be found in the stack. "+
+		"Did you forget to escape $ in your shell?")
+}

@@ -119,13 +119,12 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 	}, nil
 }
 
-// GenerateSteps produces one or more steps required to achieve the goal state
-// specified by the incoming RegisterResourceEvent.
+// GenerateSteps produces one or more steps required to achieve the goal state specified by the
+// incoming RegisterResourceEvent.
 //
-// If the given resource is a custom resource, the step generator will invoke Diff
-// and Check on the provider associated with that resource. If those fail, an error
-// is returned.
-func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
+// If the given resource is a custom resource, the step generator will invoke Diff and Check on the
+// provider associated with that resource. If those fail, an error is returned.
+func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, event RegisterResourceEvent) ([]Step, result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -138,9 +137,9 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 	sg.urns[urn] = true
 
-	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or to diff.  We look
-	// up first by URN and then by any provided aliases.  If it is found using an alias, record that alias so that we do
-	// not delete the aliased resource later.
+	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
+	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
+	// alias, record that alias so that we do not delete the aliased resource later.
 	var oldInputs resource.PropertyMap
 	var oldOutputs resource.PropertyMap
 	var old *resource.State
@@ -164,6 +163,32 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
 	if hasOld {
+		// If the user requested only specific resources to update, and this resource was not in
+		// that set, then just act as if no inputs for the resource changed.  To accomplish this we
+		// simply state that all properties are in the 'ignore changes' list.  This allows us to
+		// execute and keep as much the logic the same as possible.
+		if !shouldUpdate(updateTargetsOpt, urn) {
+			logging.V(4).Infof("Ignoring all changes to '%v'", urn)
+			// logging.V(4).Infof("oldInputs: %v", oldInputs)
+			// logging.V(4).Infof("inputs: %v", inputs)
+
+			ignoreChangesSet := make(map[string]bool)
+			for key := range oldInputs {
+				ignoreChangesSet[string(key)] = true
+			}
+			for key := range inputs {
+				ignoreChangesSet[string(key)] = true
+			}
+			ignoreChanges := []string{}
+			for v := range ignoreChangesSet {
+				ignoreChanges = append(ignoreChanges, v)
+			}
+			goal.IgnoreChanges = ignoreChanges
+			logging.V(4).Infof("Ignoring changes list '%v'", goal.IgnoreChanges)
+		} else {
+			logging.V(4).Infof("Not ignoring all changes to '%v'", urn)
+		}
+
 		// Set inputs back to their old values (if any) for any "ignored" properties
 		processedInputs, res := processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
 		if res != nil {
@@ -499,6 +524,17 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
+}
+
+func shouldUpdate(updateTargetsOpt map[resource.URN]bool, urn resource.URN) bool {
+	// If the user specific specific resources to update, and this resource was not in that
+	// set, then just act as if no inputs for the resource changed.
+	if updateTargetsOpt == nil {
+		return true
+	}
+
+	_, has := updateTargetsOpt[urn]
+	return has
 }
 
 func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result.Result) {
