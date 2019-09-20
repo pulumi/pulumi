@@ -70,7 +70,7 @@ class OutputImpl<T> implements OutputInstance<T> {
      */
     public readonly resources: () => Set<Resource>;
 
-    public readonly apply: <U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean) => Output<U>;
+    public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
     public readonly get: () => T;
 
     /**
@@ -132,7 +132,18 @@ class OutputImpl<T> implements OutputInstance<T> {
             isKnown: Promise<boolean>,
             isSecret: Promise<boolean>) {
 
-        isKnown = isKnown.then(known => !known ? false : promise.then(v => !containsUnknowns(v), () => false));
+        isKnown = isKnown.then(known => {
+            if (!known) {
+               // If we were explicitly not-known, then we do not have to examine the value of the output at all.
+               // This is also desirable as it means if the value of the output is 'rejected' it doesn't affect the
+               // known/not-known promise for us.
+               return false;
+            }
+
+            // Otherwise, we are only known if the resolved value of the output contains no distinguished unknown
+            // values and if the value's promise is not rejected.
+            return promise.then(v => !containsUnknowns(v), () => false);
+        });
 
         this.isKnown = isKnown;
         this.isSecret = isSecret;
@@ -178,6 +189,10 @@ This function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
 
+        // runWithUnknowns requests that `func` is run even if `isKnown` resolves to `false`. This is used to allow
+        // callers to process fully- or partially-unknown values and return a known result. the output proxy takes
+        // advantage of this to allow proxied property accesses to return known values even if other properties of
+        // the containing object are unknown.
         this.apply = <U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean) => {
             let innerDetailsResolve: (val: {isKnown: boolean, isSecret: boolean}) => void;
             const innerDetails = new Promise<any>(resolve => {
@@ -187,6 +202,12 @@ This function may throw in a future version of @pulumi/pulumi.`;
             // The known state of the output we're returning depends on if we're known as well, and
             // if a potential lifted inner Output is known.  If we get an inner Output, and it is
             // not known itself, then the result we return should not be known.
+            //
+            // Note that the result is only known if the inner result is also known. We will allow the
+            // outer result to be unknown if the caller has explicitly requested that the callback run
+            // even with unknown values. This allows a callback to process an unknown value and return
+            // a known value. This is necessary for the proxy to return known values for properties in
+            // objects that contain unknowns.
             const resultIsKnown = Promise.all([isKnown, innerDetails]).then(([k1, k2]) => {
                 return (k1 || runWithUnknowns) && k2.isKnown;
             });
@@ -307,16 +328,19 @@ To manipulate the value of this Output, use '.apply' instead.`);
 
                 // Else for *any other* property lookup, succeed the lookup and return a lifted
                 // `apply` on the underlying `Output`.
-                return obj.apply(ob => {
+                return (<any>obj.apply)((ob: any) => {
                     if (ob === undefined || ob === null) {
                         return undefined;
                     }
                     else if (isUnknown(ob)) {
+                        // If the value of this output is unknown, the result of the access should also be unknown.
+                        // This is conceptually consistent, and also prevents us from returning a "known undefined"
+                        // value from the `ob[prop]` expression below.
                         return unknown;
                     }
 
                     return ob[prop];
-                }, true);
+                }, /*runWithUnknowns:*/ true);
             },
         });
     }
@@ -369,10 +393,10 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
         // For a promise, we can just treat the same as an output that points to that resource. So
         // we just create an Output around the Promise, and immediately apply the unwrap function on
         // it to transform the value it points at.
-        return <any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true), /*isSecret*/ Promise.resolve(false)).apply(output, true);
+        return <any>(<any>new Output(new Set(), val, /*isKnown*/ Promise.resolve(true), /*isSecret*/ Promise.resolve(false))).apply(output, true);
     }
     else if (Output.isInstance(val)) {
-        return <any>val.apply(output, true);
+        return <any>(<any>val).apply(output, /*runWithUnknowns:*/ true);
     }
     else if (val instanceof Array) {
         return <any>all(val.map(output));
@@ -473,9 +497,14 @@ function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Resource[]
 }
 
 /**
- * Unknown represents a value that is unknown.
+ * Unknown represents a value that is unknown. These values correspond to unknown property values received from the
+ * Pulumi engine as part of the result of a resource registration (see runtime/rpc.ts). User code is not typically
+ * exposed to these values: any Output<> that contains an Unknown will itself be unknown, so any user callbacks
+ * passed to `apply` will not be run. Internal callers of `apply` can request that they are run even with unknown
+ * values; the output proxy takes advantage of this to allow proxied property accesses to return known values even
+ * if other properties of the containing object are unknown.
  */
-export class Unknown {
+class Unknown {
      /**
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
@@ -495,6 +524,7 @@ export class Unknown {
 }
 
 /**
+ * @internal
  * unknown is the singleton unknown value.
  */
 export const unknown = new Unknown();
@@ -510,6 +540,8 @@ export function isUnknown(val: any): boolean {
  * containsUnknowns returns true if the given value is or contains unknown values.
  */
 export function containsUnknowns(value: any): boolean {
+    return impl(value, new Set<any>());
+
     function impl(val: any, seen: Set<any>): boolean {
         if (val === null || typeof val !== "object") {
             return false;
@@ -520,16 +552,15 @@ export function containsUnknowns(value: any): boolean {
         else if (seen.has(val)) {
             return false;
         }
-        else if (val instanceof Array) {
-            seen.add(val);
+
+        seen.add(val);
+        if (val instanceof Array) {
             return val.some(e => impl(e, seen));
         }
         else {
-            seen.add(val);
             return Object.keys(val).some(k => impl(val[k], seen));
         }
     }
-    return impl(value, new Set<any>());
 }
 
 /**
@@ -639,9 +670,9 @@ export interface OutputInstance<T> {
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.
      */
-    apply<U>(func: (t: T) => Promise<U>, runWithUnknowns?: boolean): Output<U>;
-    apply<U>(func: (t: T) => OutputInstance<U>, runWithUnknowns?: boolean): Output<U>;
-    apply<U>(func: (t: T) => U, runWithUnknowns?: boolean): Output<U>;
+    apply<U>(func: (t: T) => Promise<U>): Output<U>;
+    apply<U>(func: (t: T) => OutputInstance<U>): Output<U>;
+    apply<U>(func: (t: T) => U): Output<U>;
 
     /**
      * Retrieves the underlying value of this dependency.

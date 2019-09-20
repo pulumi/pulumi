@@ -4,7 +4,7 @@ import * as assert from "assert";
 import * as pulumi from "@pulumi/pulumi";
 import { Resource } from "./resource";
 
-const unknown = <any>pulumi.output(pulumi.runtime.isDryRun() ? pulumi.unknown : "foo");
+const unknown = <any>pulumi.output(pulumi.runtime.isDryRun() ? { __pulumiUnknown: true } : "foo");
 
 let a = new Resource("res", {
     foo: "foo",

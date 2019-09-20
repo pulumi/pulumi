@@ -812,7 +812,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Filter out partially-known values if the requestor does not support them.
 	state, outputs := result.State, result.State.Outputs
-	if !req.GetSupportsPartiallyKnownProperties() {
+	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", state.URN)
 		filtered := resource.PropertyMap{}
 		for k, v := range outputs {

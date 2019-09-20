@@ -324,9 +324,9 @@ describe("output", () => {
             const r1 = o1.apply(v => unknown);
             const r2 = o1.apply(v => [v, unknown]);
             const r3 = o1.apply(v => <any>{v, unknown});
-            const r4 = o1.apply(v => unknown).apply(v => v, true);
-            const r5 = o1.apply(v => [v, unknown]).apply(v => v, true);
-            const r6 = o1.apply(v => <any>{v, unknown}).apply(v => v, true);
+            const r4 = (<any>o1.apply(v => unknown)).apply((v: any) => v, true);
+            const r5 = (<any>o1.apply(v => [v, unknown])).apply((v: any) => v, true);
+            const r6 = (<any>o1.apply(v => <any>{v, unknown})).apply((v: any) => v, true);
 
             assert.equal(await r1.isKnown, false);
             assert.equal(await r2.isKnown, false);
@@ -457,6 +457,22 @@ describe("output", () => {
             const result3 = output1.baz;
             assert.equal(await result3.isKnown, false);
             assert.equal(await result3.promise(), unknown);
+
+            const result4 = (<any>output1.baz).qux;
+            assert.equal(await result4.isKnown, false);
+            assert.equal(await result4.promise(), unknown);
+
+            const output2 = output([ "foo", unknown ]);
+
+            assert.equal(await output2.isKnown, false);
+
+            const result5 = output2[0];
+            assert.equal(await result5.isKnown, true);
+            assert.equal(await result5.promise(), "foo");
+
+            const result6 = output2[1];
+            assert.equal(await result6.isKnown, false);
+            assert.equal(await result6.promise(), unknown);
         }));
     });
 });

@@ -211,7 +211,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value's property with the given name.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: getattr(v, item), True)
+        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else getattr(v, item), True)
 
 
     def __getitem__(self, key: Any) -> 'Output[Any]':
@@ -222,7 +222,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: v[key], True)
+        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else v[key], True)
 
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':

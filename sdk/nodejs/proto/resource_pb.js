@@ -1047,7 +1047,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     importid: jspb.Message.getFieldWithDefault(msg, 16, ""),
     customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
     deletebeforereplacedefined: jspb.Message.getFieldWithDefault(msg, 18, false),
-    supportspartiallyknownproperties: jspb.Message.getFieldWithDefault(msg, 19, false)
+    supportspartialvalues: jspb.Message.getFieldWithDefault(msg, 19, false)
   };
 
   if (includeInstance) {
@@ -1162,7 +1162,7 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       break;
     case 19:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSupportspartiallyknownproperties(value);
+      msg.setSupportspartialvalues(value);
       break;
     default:
       reader.skipField();
@@ -1318,7 +1318,7 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       f
     );
   }
-  f = message.getSupportspartiallyknownproperties();
+  f = message.getSupportspartialvalues();
   if (f) {
     writer.writeBool(
       19,
@@ -2057,18 +2057,18 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setDeletebeforereplacedefined 
 
 
 /**
- * optional bool supportsPartiallyKnownProperties = 19;
+ * optional bool supportsPartialValues = 19;
  * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
  * You should avoid comparisons like {@code val === true/false} in those cases.
  * @return {boolean}
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.getSupportspartiallyknownproperties = function() {
+proto.pulumirpc.RegisterResourceRequest.prototype.getSupportspartialvalues = function() {
   return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 19, false));
 };
 
 
 /** @param {boolean} value */
-proto.pulumirpc.RegisterResourceRequest.prototype.setSupportspartiallyknownproperties = function(value) {
+proto.pulumirpc.RegisterResourceRequest.prototype.setSupportspartialvalues = function(value) {
   jspb.Message.setProto3BooleanField(this, 19, value);
 };
 

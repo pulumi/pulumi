@@ -311,6 +311,21 @@ class NextSerializationTests(unittest.TestCase):
         self.assertFalse(await r3.is_known())
         self.assertEqual(await r3.future(), UNKNOWN)
 
+        r4 = out["baz"]["qux"]
+        self.assertFalse(await r4.is_known())
+        self.assertEqual(await r4.future(), UNKNOWN)
+
+        out = Output.from_input([ "foo", UNKNOWN ])
+
+        r5 = out[0]
+        self.assertTrue(await r5.is_known())
+        self.assertEqual(await r5.future(), "foo")
+
+        r6 = out[1]
+        self.assertFalse(await r6.is_known())
+        self.assertEqual(await r6.future(), UNKNOWN)
+
+
     @async_test
     async def test_output_coros(self):
         # Ensure that Outputs function properly when the input value and is_known are coroutines. If the implementation

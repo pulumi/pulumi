@@ -360,7 +360,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 importId=opts.import_,
                 customTimeouts=opts.custom_timeouts,
                 aliases=resolver.aliases,
-                supportsPartiallyKnownProperties=True,
+                supportsPartialValues=True,
             )
 
             from ..resource import create_urn
