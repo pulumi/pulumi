@@ -332,9 +332,14 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
 	//  It must be an update or a replace. Which operation we do depends on the the specific change made to the
 	//  resource's properties:
+	//
+	//  - if the user has requested that only specific resources be updated, and this resource is
+	//    not in that set, do no 'Diff' and just treat the resource as 'same' (i.e. unchanged).
+	//
 	//  - If the resource's provider reference changed, the resource must be replaced. This behavior is founded upon
 	//    the assumption that providers are recreated iff their configuration changed in such a way that they are no
 	//    longer able to manage existing resources.
+	//
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
@@ -342,8 +347,10 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothin but create a SameStep for it.
-		if shouldUpdate(updateTargetsOpt, urn) {
-			updateSteps, res := sg.generateUpdates(
+		if !shouldUpdate(updateTargetsOpt, urn) {
+			logging.V(7).Infof("Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
+		} else {
+			updateSteps, res := sg.generateDiffUpdates(
 				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
 			if res != nil {
@@ -351,11 +358,13 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 			}
 
 			if len(updateSteps) > 0 {
+				// 'Diff' produced update steps.  We're done at this point.
 				return updateSteps, nil
 			}
+
+			// Diff didn't produce any steps for this resource.  Fall through and indicate that it
+			// is same/unchanged.
 			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
-		} else {
-			logging.V(7).Infof("Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -373,7 +382,7 @@ func (sg *stepGenerator) GenerateSteps(updateTargetsOpt map[resource.URN]bool, e
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) generateUpdates(
+func (sg *stepGenerator) generateDiffUpdates(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
