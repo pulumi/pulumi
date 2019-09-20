@@ -598,16 +598,21 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 		resourcesToDelete := make(map[resource.URN]bool)
 
 		// Do an initial pass first to ensure that all the targets mentioned are ones we know about.
+		hasUnknownTarget := false
 		for _, target := range targets {
 			if _, has := sg.plan.olds[target]; !has {
+				hasUnknownTarget = true
 				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
 				if strings.Contains(string(target), "$") {
 					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), target)
 				} else {
 					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundDidYouForgetError(), target)
 				}
-				return nil, result.Bail()
 			}
+		}
+
+		if hasUnknownTarget {
+			return nil, result.Bail()
 		}
 
 		// Now actually use all the requested targets to figure out the exact set to delete.
