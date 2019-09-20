@@ -340,7 +340,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
-		if shouldRefresh(targetMap, res) {
+		if shouldRefresh(targetMapOpt, res) {
 			step := NewRefreshStep(pe.plan, res, nil)
 			steps = append(steps, step)
 			resourceToStep[res] = step
