@@ -887,11 +887,12 @@ type dependentReplace struct {
 }
 
 func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]dependentReplace, result.Result) {
-	// We need to compute the set of resources that may be replaced by a change to the resource under consideration.
-	// We do this by taking the complete set of transitive dependents on the resource under consideration and
-	// removing any resources that would not be replaced by changes to their dependencies. We determine whether or not
-	// a resource may be replaced by substituting unknowns for input properties that may change due to deletion of the
-	// resources their value depends on and calling the resource provider's `Diff` method.
+	// We need to compute the set of resources that may be replaced by a change to the resource
+	// under consideration. We do this by taking the complete set of transitive dependents on the
+	// resource under consideration and removing any resources that would not be replaced by changes
+	// to their dependencies. We determine whether or not a resource may be replaced by substituting
+	// unknowns for input properties that may change due to deletion of the resources their value
+	// depends on and calling the resource provider's `Diff` method.
 	//
 	// This is perhaps clearer when described by example. Consider the following dependency graph:
 	//
@@ -901,12 +902,14 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	//     |  _|_
 	//     D  E F
 	//
-	// In this graph, all of B, C, D, E, and F transitively depend on A. It may be the case, however, that changes to
-	// the specific properties of any of those resources R that would occur if a resource on the path to A were deleted
-	// and recreated may not cause R to be replaced. For example, the edge from B to A may be a simple `dependsOn` edge
-	// such that a change to B does not actually influence any of B's input properties.  More commonly, the edge from B
-	// to A may be due to a property from A being used as the input to a property of B that does not require B to be
-	// replaced upon a change. In these cases, neither B nor D would need to be deleted before A could be deleted.
+	// In this graph, all of B, C, D, E, and F transitively depend on A. It may be the case,
+	// however, that changes to the specific properties of any of those resources R that would occur
+	// if a resource on the path to A were deleted and recreated may not cause R to be replaced. For
+	// example, the edge from B to A may be a simple `dependsOn` edge such that a change to B does
+	// not actually influence any of B's input properties.  More commonly, the edge from B to A may
+	// be due to a property from A being used as the input to a property of B that does not require
+	// B to be replaced upon a change. In these cases, neither B nor D would need to be deleted
+	// before A could be deleted.
 	var toReplace []dependentReplace
 	replaceSet := map[resource.URN]bool{root.URN: true}
 

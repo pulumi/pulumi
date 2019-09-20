@@ -3,14 +3,33 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
+  [#3238](https://github.com/pulumi/pulumi/pull/3238)
+- Fix parsing of GitLab urls with subgroups.
+  [#3239](https://github.com/pulumi/pulumi/pull/3239)
+- `pulumi refresh` can now be scoped to refresh a subset of resources by adding a `--target urn` or
+  `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
+- Avoid re-encrypting secret values on each checkpoint write. These changes should improve update times for stacks
+  that contain secret values.
+  [#3183](https://github.com/pulumi/pulumi/pull/3183)
+
+## 1.1.0 (2019-09-11)
+
 - Fix a bug that caused the Python runtime to ignore unhandled exceptions and erroneously report that a Pulumi program executed successfully.
   [#3170](https://github.com/pulumi/pulumi/pull/3170)
 - Read operations are no longer considered changes for the purposes of `--expect-no-changes`.
   [#3197](https://github.com/pulumi/pulumi/pull/3197)
 - Increase the MaxCallRecvMsgSize for interacting with the gRPC server.
   [#3201](https://github.com/pulumi/pulumi/pull/3201)
+- Do not ask for a passphrase in non-interactive sessions (fix [#2758](https://github.com/pulumi/pulumi/issues/2758)).
+  [#3204](https://github.com/pulumi/pulumi/pull/3204)
 - Support combining the filestate backend (local or remote storage) with the cloud-backed secrets providers (KMS, etc.).
   [#3198](https://github.com/pulumi/pulumi/pull/3198)
+- Moved `@pulumi/pulumi` to target `es2016` instead of `es6`.  As `@pulumi/pulumi` programs run
+  inside Nodejs, this should not change anything externally as Nodejs already provides es2016
+  support. Internally, this makes more APIs available for `@pulumi/pulumi` to use in its implementation.
+- Fix the --stack option of the `pulumi new` command.
+  ([#3131](https://github.com/pulumi/pulumi/pull/3131) fixes [#2880](https://github.com/pulumi/pulumi/issues/2880))
 
 ### Compat
 
@@ -31,7 +50,6 @@ CHANGELOG
 
 - Filter the list of templates shown by default during `pulumi new`.
   [#3147](https://github.com/pulumi/pulumi/pull/3147)
-
 ## 1.0.0-beta.4 (2019-08-22)
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of

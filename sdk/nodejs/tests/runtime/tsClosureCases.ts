@@ -111,6 +111,7 @@ return function () { console.log(this); };
 
     cases.push({
         title: "Function closure with this and arguments capture",
+        // @ts-ignore: this is just test code.
         func: function () { console.log(this + arguments); },
         expectText: `exports.handler = __f0;
 
@@ -145,6 +146,7 @@ return () => { };
 
     cases.push({
         title: "Arrow closure with this capture",
+        // @ts-ignore: this is just test code.
         func: () => { console.log(this); },
         expectText: undefined,
         error:
@@ -198,6 +200,7 @@ return () => __awaiter(void 0, void 0, void 0, function* () { });
 
     cases.push({
         title: "Async lambda that does capture this",
+        // @ts-ignore: this is just test code.
         func: async () => { console.log(this); },
         expectText: `exports.handler = __f0;
 ${awaiterCode}
@@ -253,6 +256,7 @@ return function () {
 
     cases.push({
         title: "Arrow closure with this and arguments capture",
+        // @ts-ignore: this is just test code.
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expectText: undefined,
         error: `Error serializing function '<anonymous>': tsClosureCases.js(0,0)
@@ -284,6 +288,7 @@ return function () { () => { console.log(this); }; };
 
     cases.push({
         title: "Arrow closure with this and arguments capture inside function closure",
+        // @ts-ignore: this is just test code.
         func: function () { () => { console.log(this + arguments); } },
         expectText: `exports.handler = __f0;
 
@@ -3505,6 +3510,7 @@ return function () { console.log(o.c()); };
     }
 
     {
+      // @ts-ignore: this is just test code.
         const o = { a: 1, b: 2, c() { const v = function () { return this; }; } };
 
         cases.push({

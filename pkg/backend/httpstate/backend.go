@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 
@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -226,7 +227,12 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	// If we have a saved access token, and it is valid, use it.
 	existingToken, err := workspace.GetAccessToken(cloudURL)
 	if err == nil && existingToken != "" {
-		if valid, _ := IsValidAccessToken(ctx, cloudURL, existingToken); valid {
+		valid, err := IsValidAccessToken(ctx, cloudURL, existingToken)
+		if err != nil {
+			return nil, err
+		}
+
+		if valid {
 			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
 			if err = workspace.StoreAccessToken(cloudURL, existingToken, true); err != nil {
 				return nil, err
@@ -725,6 +731,10 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
+		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
+			conflict := backend.ConflictingUpdateError{Err: err}
+			return client.UpdateIdentifier{}, 0, "", conflict
+		}
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 	// Any non-preview update will be considered part of the stack's update history.
@@ -872,8 +882,13 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
-	// the Snapshot (checkpoint file) in the HTTP backend.
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, op.SecretsManager)
+	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
+	// to ensure that secrets are not re-encrypted on each update.
+	sm := op.SecretsManager
+	if secrets.AreCompatible(sm, u.GetTarget().Snapshot.SecretsManager) {
+		sm = u.GetTarget().Snapshot.SecretsManager
+	}
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, sm)
 	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and

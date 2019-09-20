@@ -221,8 +221,8 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 			args = append(args, "-v="+strconv.Itoa(logging.Verbose))
 		}
 	}
-	// Always flow tracing settings.
-	if cmdutil.TracingEndpoint != "" {
+	// Flow tracing settings if we are using a remote collector.
+	if cmdutil.TracingEndpoint != "" && !cmdutil.TracingToFile {
 		args = append(args, "--tracing", cmdutil.TracingEndpoint)
 	}
 	args = append(args, pluginArgs...)

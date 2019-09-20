@@ -68,20 +68,20 @@ class Stack extends ComponentResource {
         await setRootResource(this);
         let outputs: Inputs | undefined;
         try {
-            outputs = init();
+            outputs = await massage(init(), []);
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            super.registerOutputs(massage(outputs, new Set()));
+            super.registerOutputs(outputs);
         }
 
         return outputs;
     }
 }
 
-async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
+async function massage(prop: any, objectStack: any[]): Promise<any> {
     if (prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
@@ -92,27 +92,49 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
     }
 
     if (prop instanceof Promise) {
-        return await massage(await prop, seenObjects);
+        return await massage(await prop, objectStack);
     }
 
     if (Output.isInstance(prop)) {
-        return prop.apply(v => massage(v, seenObjects));
+        const result = prop.apply(v => massage(v, objectStack));
+        // explicitly await the underlying promise of the output here.  This is necessary to get a
+        // deterministic walk of the object graph.  We need that deterministic walk, otherwise our
+        // actual cycle detection logic (using 'objectStack') doesn't work.  i.e. if we don't do
+        // this then the main walking logic will be interleaved with the async function this output
+        // is executing.  This interleaving breaks out assumption about pushing/popping values onto
+        // objectStack'
+        await result.promise();
+        return result;
     }
 
     // from this point on, we have complex objects.  If we see them again, we don't want to emit
     // them again fully or else we'd loop infinitely.
-    if (seenObjects.has(prop)) {
+    if (objectStack.indexOf(prop) >= 0) {
         // Note: for Resources we hit again, emit their urn so cycles can be easily understood
         // in the pojo objects.
         if (Resource.isInstance(prop)) {
-            return await massage(prop.urn, seenObjects);
+            return await massage(prop.urn, objectStack);
         }
 
         return undefined;
     }
 
-    seenObjects.add(prop);
+    try {
+        // push and pop what we see into a stack.  That way if we see the same object through
+        // different paths, we will still print it out.  We only skip it if it would truly cause
+        // recursion.
+        objectStack.push(prop);
+        return await massageComplex(prop, objectStack);
+    }
+    finally {
+        const popped = objectStack.pop();
+        if (popped !== prop) {
+            throw new Error("Invariant broken when processing stack outputs");
+        }
+    }
+}
 
+async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
     if (asset.Asset.isInstance(prop)) {
         if ((<asset.FileAsset>prop).path !== undefined) {
             return { path: (<asset.FileAsset>prop).path };
@@ -129,7 +151,7 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
 
     if (asset.Archive.isInstance(prop)) {
         if ((<asset.AssetArchive>prop).assets) {
-            return { assets: massage((<asset.AssetArchive>prop).assets, seenObjects) };
+            return { assets: await massage((<asset.AssetArchive>prop).assets, objectStack) };
         }
         else if ((<asset.FileArchive>prop).path !== undefined) {
             return { path: (<asset.FileArchive>prop).path };
@@ -150,7 +172,7 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
     if (prop instanceof Array) {
         const result = [];
         for (let i = 0; i < prop.length; i++) {
-            result[i] = await massage(prop[i], seenObjects);
+            result[i] = await massage(prop[i], objectStack);
         }
 
         return result;
@@ -162,7 +184,7 @@ async function massage(prop: any, seenObjects: Set<any>): Promise<any> {
         const obj: Record<string, any> = {};
         for (const k of Object.keys(prop)) {
             if (include(k)) {
-                obj[k] = await massage(prop[k], seenObjects);
+                obj[k] = await massage(prop[k], objectStack);
             }
         }
 

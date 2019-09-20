@@ -14,7 +14,7 @@ const provider: pulumi.dynamic.ResourceProvider = {
 }
 
 export class R extends dynamic.Resource {
-    public prefix: pulumi.Output<string>;
+    public prefix!: pulumi.Output<string>;
 
     constructor(name: string, props: RArgs, opts?: pulumi.CustomResourceOptions) {
         super(provider, name, props, opts)
