@@ -238,7 +238,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 			resourceToStep[pe.plan.olds[step.URN()]] = step
 		}
 
-		pe.rebuildDependencyGraph(resourceToStep, false /*refresh*/)
+		pe.rebuildBaseState(resourceToStep, false /*refresh*/)
 	}
 
 	return nil
@@ -355,7 +355,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
-	pe.rebuildDependencyGraph(resourceToStep, true /*refresh*/)
+	pe.rebuildBaseState(resourceToStep, true /*refresh*/)
 
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
@@ -371,7 +371,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	return nil
 }
 
-func (pe *planExecutor) rebuildDependencyGraph(resourceToStep map[*resource.State]Step, refresh bool) {
+func (pe *planExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step, refresh bool) {
 	// Rebuild this plan's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
