@@ -16,8 +16,8 @@ package deploy
 
 import (
 	"context"
-	"strings"
 	"math"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -30,8 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // BackendClient provides an interface for retrieving information about other stacks.
@@ -336,7 +336,15 @@ func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) result.R
 
 // CheckTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.
-func (p * Plan) CheckTargets(targets []resource.URN) result.Result {
+//
+// A map is returned of all the target URNs to facilitate later callers.  The map can be 'nil'
+// indicating no targets, or will be non-nil and non-empty if there are targets.
+func (p *Plan) CheckTargets(targets []resource.URN) (map[resource.URN]bool, result.Result) {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+
+	targetMap := make(map[resource.URN]bool)
 	// Do an initial pass first to ensure that all the targets mentioned are ones we know about.
 	hasUnknownTarget := false
 	for _, target := range targets {
@@ -349,11 +357,13 @@ func (p * Plan) CheckTargets(targets []resource.URN) result.Result {
 				p.Diag().Errorf(diag.GetTargetCouldNotBeFoundDidYouForgetError(), target)
 			}
 		}
+
+		targetMap[target] = true
 	}
 
 	if hasUnknownTarget {
-		return result.Bail()
+		return nil, result.Bail()
 	}
 
-	return nil
+	return targetMap, nil
 }
