@@ -13,6 +13,14 @@ CHANGELOG
   that contain secret values.
   [#3183](https://github.com/pulumi/pulumi/pull/3183)
 
+### Compat
+
+- Accessing a property on an `undefined-Output` (i.e. `output(undefined).prop`) will now throw
+  instead of producing a fresh `undefined-Output`.  This is to match normal JS semantics around
+  property access.  This may cause errors to happen in existing Pulumi applications.  However, this
+  is felt to be preferable over the previous behavior which could mask errors and cause strange
+  behavior as it would allow `undefined` values to flow into Resource causing unexpected changes.
+
 ## 1.1.0 (2019-09-11)
 
 - Fix a bug that caused the Python runtime to ignore unhandled exceptions and erroneously report that a Pulumi program executed successfully.
@@ -30,14 +38,6 @@ CHANGELOG
   support. Internally, this makes more APIs available for `@pulumi/pulumi` to use in its implementation.
 - Fix the --stack option of the `pulumi new` command.
   ([#3131](https://github.com/pulumi/pulumi/pull/3131) fixes [#2880](https://github.com/pulumi/pulumi/issues/2880))
-
-### Compat
-
-- Accessing a property on an `undefined-Output` (i.e. `output(undefined).prop`) will now throw
-  instead of producing a fresh `undefined-Output`.  This is to match normal JS semantics around
-  property access.  This may cause errors to happen in existing Pulumi applications.  However, this
-  is felt to be preferable over the previous behavior which could mask errors and cause strange
-  behavior as it would allow `undefined` values to flow into Resource causing unexpected changes.
 
 ## 1.0.0 (2019-09-03)
 
