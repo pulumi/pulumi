@@ -338,8 +338,9 @@ func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) result.R
 // CheckTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.
 //
-// A map is returned of all the target URNs to facilitate later callers.  The map can be 'nil'
-// indicating no targets, or will be non-nil and non-empty if there are targets.
+// A set is returned of all the target URNs to facilitate later callers.  The set can be 'nil'
+// indicating no targets, or will be non-nil and non-empty if there are targets.  Only URNs to delete
+// are in the set.  i.e. it's only checked for containment.  The value of the map is unused.
 func (p *Plan) CheckTargets(targets []resource.URN) (map[resource.URN]bool, result.Result) {
 	if len(targets) == 0 {
 		return nil, nil
