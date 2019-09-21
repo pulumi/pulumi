@@ -16,7 +16,6 @@ package deploy
 
 import (
 	"context"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -322,17 +321,10 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 		return nil
 	}
 
-	if len(opts.RefreshTargets) > 0 {
-		for _, target := range opts.RefreshTargets {
-			if _, has := pe.plan.olds[target]; !has {
-				if strings.Contains(string(target), "$") {
-					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundError(), target)
-				} else {
-					pe.plan.Diag().Errorf(diag.GetResourceToRefreshCouldNotBeFoundDidYouForgetError(), target)
-				}
-				return result.Bail()
-			}
-		}
+	// Make sure if there were any targets specified, that they all refer to existing resources.
+	targetMapOpt, res := pe.plan.CheckTargets(opts.RefreshTargets)
+	if res != nil {
+		return res
 	}
 
 	// If the user did not provide any --target's, create a refresh step for each resource in the
@@ -341,7 +333,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
-		if shouldRefresh(opts, res) {
+		if targetMapOpt == nil || targetMapOpt[res.URN] {
 			step := NewRefreshStep(pe.plan, res, nil)
 			steps = append(steps, step)
 			resourceToStep[res] = step
@@ -448,19 +440,4 @@ func (pe *planExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step
 
 	pe.plan.prev.Resources = resources
 	pe.plan.olds, pe.plan.depGraph = olds, graph.NewDependencyGraph(resources)
-}
-
-func shouldRefresh(opts Options, res *resource.State) bool {
-	if len(opts.RefreshTargets) == 0 {
-		return true
-	}
-
-	//var found = false
-	for _, urn := range opts.RefreshTargets {
-		if urn == res.URN {
-			return true
-		}
-	}
-
-	return false
 }

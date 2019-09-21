@@ -97,7 +97,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 	// we do not need to delete the resource - we know exactly what resource we are going
 	// to get from the read.
 	//
-	// This operation is tenatively called "relinquish" - it semantically represents the
+	// This operation is tentatively called "relinquish" - it semantically represents the
 	// release of a resource from the management of Pulumi.
 	if hasOld && !old.External && old.ID != event.ID() {
 		logging.V(7).Infof(
@@ -556,31 +556,19 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 		}
 	}
 
-	if len(targets) > 0 {
+	// Make sure if there were any targets specified, that they all refer to existing resources.
+	targetMapOpt, res := sg.plan.CheckTargets(targets)
+	if res != nil {
+		return nil, res
+	}
+
+	if targetMapOpt != nil {
 		logging.V(7).Infof("Planner was asked to only delete '%v'", targets)
 
 		resourcesToDelete := make(map[resource.URN]bool)
 
-		// Do an initial pass first to ensure that all the targets mentioned are ones we know about.
-		hasUnknownTarget := false
-		for _, target := range targets {
-			if _, has := sg.plan.olds[target]; !has {
-				hasUnknownTarget = true
-				logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
-				if strings.Contains(string(target), "$") {
-					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundError(), target)
-				} else {
-					sg.plan.Diag().Errorf(diag.GetResourceToDeleteCouldNotBeFoundDidYouForgetError(), target)
-				}
-			}
-		}
-
-		if hasUnknownTarget {
-			return nil, result.Bail()
-		}
-
 		// Now actually use all the requested targets to figure out the exact set to delete.
-		for _, target := range targets {
+		for target := range targetMapOpt {
 			current := sg.plan.olds[target]
 			resourcesToDelete[target] = true
 
