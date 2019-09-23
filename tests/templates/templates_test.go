@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tests
+package templates
 
 import (
 	"fmt"
@@ -121,5 +121,13 @@ func TestTemplates(t *testing.T) {
 				integration.ProgramTest(t, &example)
 			}
 		})
+	}
+}
+
+// deleteIfNotFailed deletes the files in the testing environment if the testcase has
+// not failed. (Otherwise they are left to aid debugging.)
+func deleteIfNotFailed(e *ptesting.Environment) {
+	if !e.T.Failed() {
+		e.DeleteEnvironment()
 	}
 }
