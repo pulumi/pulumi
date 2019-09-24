@@ -333,7 +333,6 @@ func renderDiffResourceOutputsEvent(
 				payload.Metadata, indent+1, payload.Planning,
 				payload.Debug, refresh, opts.ShowSameResources)
 			if text != "" {
-
 				header := fmt.Sprintf("%v%v--outputs:--%v\n",
 					payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
 				fprintfIgnoreError(out, opts.Color.Colorize(header))
