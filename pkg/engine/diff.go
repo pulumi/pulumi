@@ -271,15 +271,16 @@ func GetResourceOutputsPropertiesString(
 	b := &bytes.Buffer{}
 
 	// Only certain kinds of steps have output properties associated with them.
-	new := step.New
-	if new == nil || new.Outputs == nil {
-		return ""
+	var ins resource.PropertyMap
+	var outs resource.PropertyMap
+	if step.New == nil || step.New.Outputs == nil {
+		ins = make(resource.PropertyMap)
+		outs = make(resource.PropertyMap)
+	} else {
+		ins = step.New.Inputs
+		outs = step.New.Outputs
 	}
 	op := step.Op
-
-	// First fetch all the relevant property maps that we may consult.
-	ins := new.Inputs
-	outs := new.Outputs
 
 	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
 	// the new outputs, we want to print the diffs.

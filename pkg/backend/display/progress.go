@@ -739,7 +739,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// If we get stack outputs, display them at the end.
 	var wroteOutputs bool
-	if display.stackUrn != "" && display.seenStackOutputs && !display.opts.SuppressOutputs {
+	if display.stackUrn != "" && !display.opts.SuppressOutputs {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
 		// We want to hide same outputs if we're doing a read and the user didn't ask to see
