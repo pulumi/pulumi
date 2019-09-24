@@ -243,12 +243,9 @@ func PrintObject(
 func GetResourceOutputsPropertiesString(
 	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
 
-	if !showSames {
-		if step.URN.Type() == resource.RootStackType && !planning {
-			// For the actual update we always show all the outputs for the stack, even if they are
-			// unchanged.
-			showSames = true
-		}
+	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
+	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
+		showSames = true
 	}
 
 	// We should only print outputs for normal resources if the outputs are known to be complete.
