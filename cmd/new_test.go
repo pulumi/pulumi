@@ -154,6 +154,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		interactive:       true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		stack:             stackName,
 		templateNameOrURL: "typescript",
 		yes:               true,
 	}
@@ -161,7 +162,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t, "dev")
+	removeStack(t, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
@@ -180,13 +181,14 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		name:              uniqueProjectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
 
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t, "dev")
+	removeStack(t, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
