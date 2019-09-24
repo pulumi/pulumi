@@ -329,9 +329,10 @@ func renderDiffResourceOutputsEvent(
 		if !opts.SuppressOutputs {
 			// We want to hide same outputs if we're doing a read and the user didn't ask to see
 			// things that are the same.
-			hideSames := payload.Metadata.Op == deploy.OpRead && !opts.ShowSameResources
-			if text := engine.GetResourceOutputsPropertiesString(
-				payload.Metadata, indent+1, payload.Planning, payload.Debug, refresh, !hideSames); text != "" {
+			text := engine.GetResourceOutputsPropertiesString(
+				payload.Metadata, indent+1, payload.Planning,
+				payload.Debug, refresh, opts.ShowSameResources)
+			if text != "" {
 
 				header := fmt.Sprintf("%v%v--outputs:--%v\n",
 					payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)

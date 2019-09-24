@@ -242,21 +242,29 @@ func PrintObject(
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
 	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
-	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
+
+	// We should only print outputs for normal resources if the outputs are known to be complete.
+	// This will be the case if we are:
+	//
 	//   1) not doing a preview
 	//   2) doing a refresh
 	//   3) doing a read
 	//   4) doing an import
 	//
-	// Technically, 2-4 are the same, since they're all bottoming out at a provider's implementation of Read, but
-	// the upshot is that either way we're ending up with outputs that are exactly accurate. If we are not sure that we
-	// are in one of the above states, we shouldn't try to print outputs.
+	// Technically, 2-4 are the same, since they're all bottoming out at a provider's implementation
+	// of Read, but the upshot is that either way we're ending up with outputs that are exactly
+	// accurate. If we are not sure that we are in one of the above states, we shouldn't try to
+	// print outputs.
+	//
+	// Note: we always show the outputs for the stack itself.  These are valuable enough to want
+	// to always see.
 	if planning {
 		printOutputDuringPlanning := refresh ||
 			step.Op == deploy.OpRead ||
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
-			step.Op == deploy.OpImportReplacement
+			step.Op == deploy.OpImportReplacement ||
+			step.URN.Type() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""
 		}
@@ -267,8 +275,6 @@ func GetResourceOutputsPropertiesString(
 	if step.Old != nil && len(step.Old.InitErrors) > 0 {
 		return ""
 	}
-
-	b := &bytes.Buffer{}
 
 	// Only certain kinds of steps have output properties associated with them.
 	var ins resource.PropertyMap
@@ -301,6 +307,8 @@ func GetResourceOutputsPropertiesString(
 		keys = outputDiff.Keys()
 	}
 	maxkey := maxKey(keys)
+
+	b := &bytes.Buffer{}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	for _, k := range keys {
