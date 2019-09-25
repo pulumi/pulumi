@@ -376,6 +376,13 @@ func (sg *stepGenerator) GenerateSteps(
 	}
 
 	if updateTargetsOpt != nil {
+		// The user asked to only update specific targets.  But they ran an app that produced new
+		// resources.  Error and bail out in this case.
+		//
+		// Note: we could attempt to support this in the future by allowing them to explicitly
+		// specify resource URNs that they're ok creating. Right now though it's too complex to try
+		// to ignore these resources as that can break downstream resources that expect to reference
+		// it (as well as no place to register outputs to, etc. etc.).
 		sg.plan.Diag().Errorf(diag.GetCannotCreateResourceWhenUpdateTargetsAreSpecified(urn), urn)
 		return nil, result.Bail()
 	}
