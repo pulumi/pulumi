@@ -36,6 +36,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const tokenSourceLogLevel = 10 // log level for tokenSource diagnostics.
+
 type tokenRequest chan<- tokenResponse
 
 type tokenResponse struct {
@@ -51,23 +53,41 @@ type tokenSource struct {
 
 func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
+	logging.V(tokenSourceLogLevel).Infof("Created new token source for update ID %q. Duration %v.", update.UpdateID, duration)
+	// When a system is under heavy CPU load, the OS may not respond to the timer request in a timely fashion.
+	// If extremely delayed, we may not request a new lease token until after the lease token has expired. So we
+	// are more agressive than necessary here, to ensure that the ticker will fire before the token has expired.
+	const tickerInterval = 30 * time.Second
+	contract.Assertf(tickerInterval < duration, "default ticker interval less than lease token duration")
 
 	// Perform an initial lease renewal.
 	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
 	if err != nil {
 		return nil, err
 	}
+	timeSinceLeaseRenewed := time.Now()
 
 	requests, done := make(chan tokenRequest), make(chan bool)
 	go func() {
-		// We will renew the lease after 50% of the duration has elapsed to allow more time for retries.
-		ticker := time.NewTicker(duration / 2)
+		ticker := time.NewTicker(tickerInterval)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
+				// Don't renew the lease token until
+				if timeSinceLeaseRenewed <= duration/2 {
+					break
+				}
+
+				logging.V(tokenSourceLogLevel).Infof("Renewing update lease token. Last renewed %v ago.", timeSinceLeaseRenewed)
 				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
+
+				// Log so we can see the actual time it took to complete the request. (Since it's possible the HTTP request was quick,
+				// but took an unexpected amount of time to be sent.)
+				logging.V(tokenSourceLogLevel).Info("Got new update lease token. err: %v", err)
+				timeSinceLeaseRenewed = time.Now()
+
 				if err != nil {
 					ticker.Stop()
 				} else {
