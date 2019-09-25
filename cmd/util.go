@@ -324,9 +324,9 @@ const (
 	pulumiPolicyProj projType = "pulumi-policy"
 )
 
-// parseAndSaveConfigArray
+// parseAndSaveConfigArray parses the config array and saves it as a config for
+// the provided stack.
 func parseAndSaveConfigArray(s backend.Stack, configArray []string) error {
-	// Save any config values passed via flags.
 	if len(configArray) == 0 {
 		return nil
 	}
