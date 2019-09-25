@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -39,7 +38,7 @@ import (
 )
 
 const (
-	defaultParallel = math.MaxInt32
+	defaultParallel = 100
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
