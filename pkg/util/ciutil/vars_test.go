@@ -38,6 +38,11 @@ func TestDetectVars(t *testing.T) {
 			"CIRCLECI":         "true",
 			"CIRCLE_BUILD_NUM": buildID,
 		},
+		Codefresh: {
+			"TRAVIS":       "",
+			"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
+			"CF_BUILD_ID":  buildID,
+		},
 		GenericCI: {
 			"TRAVIS":             "",
 			"PULUMI_CI_SYSTEM":   "generic-ci-system",

@@ -14,6 +14,7 @@ CHANGELOG
 - Avoid re-encrypting secret values on each checkpoint write. These changes should improve update times for stacks
   that contain secret values.
   [#3183](https://github.com/pulumi/pulumi/pull/3183)
+- Add Codefresh CI detection.
 
 ## 1.1.0 (2019-09-11)
 
