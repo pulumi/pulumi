@@ -58,6 +58,12 @@ var detectors = map[SystemName]system{
 			EnvVarsToDetect: []string{"CIRCLECI"},
 		},
 	},
+	Codefresh: codefreshCI{
+		baseCI: baseCI{
+			Name:            Codefresh,
+			EnvVarsToDetect: []string{"CF_BUILD_URL"},
+		},
+	},
 	Codeship: baseCI{
 		Name:              Codeship,
 		EnvValuesToDetect: map[string]string{"CI_NAME": "codeship"},
