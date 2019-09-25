@@ -83,11 +83,19 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}
 
-	// The set of targets to update.  'nil' means 'update everything'.  Non-nill means 'update only
+	// The set of -t targets provided on hte command line.  'nil' means 'update everything'.  Non-nill means 'update only
 	// in this set'
 	updateTargetsOpt, res := pe.plan.CheckTargets(opts.UpdateTargets)
 	if res != nil {
 		return res
+	}
+	destroyTargetsOpt, res := pe.plan.CheckTargets(opts.DestroyTargets)
+	if res != nil {
+		return res
+	}
+
+	if updateTargetsOpt != nil && destroyTargetsOpt != nil {
+		panic("Should not be possible to have both .DestroyTargets and .UpdateTargets")
 	}
 
 	// Begin iterating the source.
@@ -159,7 +167,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					return false, pe.performDeletes(ctx, opts)
+					return false, pe.performDeletes(ctx, updateTargetsOpt, destroyTargetsOpt)
 				}
 
 				if res := pe.handleSingleEvent(updateTargetsOpt, event.Event); res != nil {
@@ -201,7 +209,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	return res
 }
 
-func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result.Result {
+func (pe *planExecutor) performDeletes(
+	ctx context.Context, updateTargetsOpt, destroyTargetsOpt map[resource.URN]bool) result.Result {
+
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
 		pe.stepExec.SignalCompletion()
@@ -214,7 +224,17 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 
 	logging.V(7).Infof("performDeletes(...): beginning")
 
-	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTargets)
+	// At this point we have generated the set of resources above that we would normally want to
+	// delete.  However, if the user provided -target's we will only actually delete the specific
+	// resources that are in the set explicitly asked for.
+	var targetsOpt map[resource.URN]bool
+	if updateTargetsOpt != nil {
+		targetsOpt = updateTargetsOpt
+	} else if destroyTargetsOpt != nil {
+		targetsOpt = destroyTargetsOpt
+	}
+
+	deleteSteps, res := pe.stepGen.GenerateDeletes(targetsOpt)
 	if res != nil {
 		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
 		return res
@@ -238,7 +258,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 
 	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
-	if len(opts.DestroyTargets) > 0 {
+	if targetsOpt != nil {
 		resourceToStep := make(map[*resource.State]Step)
 		for _, step := range deleteSteps {
 			resourceToStep[pe.plan.olds[step.URN()]] = step

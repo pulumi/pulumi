@@ -349,7 +349,7 @@ func (sg *stepGenerator) GenerateSteps(
 
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothin but create a SameStep for it.
-		if !shouldUpdate(updateTargetsOpt, urn) {
+		if updateTargetsOpt != nil && !updateTargetsOpt[urn] {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
@@ -536,21 +536,10 @@ func (sg *stepGenerator) generateStepsFromDiff(
 		return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
 	}
 
-	return nil, nil;
+	return nil, nil
 }
 
-func shouldUpdate(updateTargetsOpt map[resource.URN]bool, urn resource.URN) bool {
-	// If the user specific specific resources to update, and this resource was not in that
-	// set, then just act as if no inputs for the resource changed.
-	if updateTargetsOpt == nil {
-		return true
-	}
-
-	_, has := updateTargetsOpt[urn]
-	return has
-}
-
-func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]Step, result.Result) {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -605,67 +594,17 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 		}
 	}
 
-	// Make sure if there were any targets specified, that they all refer to existing resources.
-	targetMapOpt, res := sg.plan.CheckTargets(targets)
+	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
+	// resources that were specified.
+	allowedResourcesToDelete, res := sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
 	if res != nil {
 		return nil, res
 	}
 
-	if targetMapOpt != nil {
-		logging.V(7).Infof("Planner was asked to only delete '%v'", targets)
-
-		resourcesToDelete := make(map[resource.URN]bool)
-
-		// Now actually use all the requested targets to figure out the exact set to delete.
-		for target := range targetMapOpt {
-			current := sg.plan.olds[target]
-			resourcesToDelete[target] = true
-
-			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
-			// as well. Use the standard delete-before-replace computation to determine the minimal
-			// set of downstream resources that are affected.
-			deps, res := sg.calculateDependentReplacements(current)
-			if res != nil {
-				return nil, res
-			}
-
-			for _, dep := range deps {
-				logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
-				resourcesToDelete[dep.res.URN] = true
-			}
-		}
-
-		// Also see if any resources have a resource we're deleting as a parent. If so, we'll block
-		// the delete.  It's a little painful.  But can be worked around by explicitly deleting
-		// children before parents.  Note: in almost all cases, people will want to delete children,
-		// so this restriction should not be too onerous.
-		for _, res := range sg.plan.prev.Resources {
-			if res.Parent != "" {
-				if _, has := resourcesToDelete[res.URN]; has {
-					// already deleting this sibling
-					continue
-				}
-
-				if _, has := resourcesToDelete[res.Parent]; has {
-					sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(),
-						res.Parent, res.URN)
-					return nil, result.Bail()
-				}
-			}
-		}
-
-		if logging.V(7) {
-			keys := []resource.URN{}
-			for k := range resourcesToDelete {
-				keys = append(keys, k)
-			}
-
-			logging.V(7).Infof("Planner will delete all of '%v'", keys)
-		}
-
+	if allowedResourcesToDelete != nil {
 		filtered := []Step{}
 		for _, step := range dels {
-			if _, has := resourcesToDelete[step.URN()]; has {
+			if _, has := allowedResourcesToDelete[step.URN()]; has {
 				filtered = append(filtered, step)
 			}
 		}
@@ -674,6 +613,65 @@ func (sg *stepGenerator) GenerateDeletes(targets []resource.URN) ([]Step, result
 	}
 
 	return dels, nil
+}
+
+func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
+	if targetsOpt == nil {
+		// no specific targets, so we won't filter down anything
+		return nil, nil
+	}
+
+	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
+	resourcesToDelete := make(map[resource.URN]bool)
+
+	// Now actually use all the requested targets to figure out the exact set to delete.
+	for target := range targetsOpt {
+		current := sg.plan.olds[target]
+		resourcesToDelete[target] = true
+
+		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
+		// as well. Use the standard delete-before-replace computation to determine the minimal
+		// set of downstream resources that are affected.
+		deps, res := sg.calculateDependentReplacements(current)
+		if res != nil {
+			return nil, res
+		}
+
+		for _, dep := range deps {
+			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
+			resourcesToDelete[dep.res.URN] = true
+		}
+	}
+
+	// Also see if any resources have a resource we're deleting as a parent. If so, we'll block
+	// the delete.  It's a little painful.  But can be worked around by explicitly deleting
+	// children before parents.  Note: in almost all cases, people will want to delete children,
+	// so this restriction should not be too onerous.
+	for _, res := range sg.plan.prev.Resources {
+		if res.Parent != "" {
+			if _, has := resourcesToDelete[res.URN]; has {
+				// already deleting this sibling
+				continue
+			}
+
+			if _, has := resourcesToDelete[res.Parent]; has {
+				sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(),
+					res.Parent, res.URN)
+				return nil, result.Bail()
+			}
+		}
+	}
+
+	if logging.V(7) {
+		keys := []resource.URN{}
+		for k := range resourcesToDelete {
+			keys = append(keys, k)
+		}
+
+		logging.V(7).Infof("Planner will delete all of '%v'", keys)
+	}
+
+	return resourcesToDelete, nil
 }
 
 // GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
