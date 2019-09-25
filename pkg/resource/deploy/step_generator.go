@@ -353,7 +353,7 @@ func (sg *stepGenerator) GenerateSteps(
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
-			updateSteps, res := sg.generateDiffUpdates(
+			updateSteps, res := sg.generateStepsFromDiff(
 				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
 			if res != nil {
@@ -383,7 +383,7 @@ func (sg *stepGenerator) GenerateSteps(
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) generateDiffUpdates(
+func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
