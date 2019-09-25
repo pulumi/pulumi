@@ -74,15 +74,8 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Save any config values passed via flags.
-		if len(configArray) > 0 {
-			commandLineConfig, err := parseConfig(configArray)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			if err = saveConfig(s, commandLineConfig); err != nil {
-				return result.FromError(errors.Wrap(err, "saving config"))
-			}
+		if err := parseAndSaveConfigArray(s, configArray); err != nil {
+			return result.FromError(err)
 		}
 
 		proj, root, err := readProject(pulumiAppProj)

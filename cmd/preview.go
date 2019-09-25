@@ -30,6 +30,7 @@ func newPreviewCmd() *cobra.Command {
 	var expectNop bool
 	var message string
 	var stack string
+	var configArray []string
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
@@ -93,6 +94,11 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			// Save any config values passed via flags.
+			if err := parseAndSaveConfigArray(s, configArray); err != nil {
+				return result.FromError(err)
+			}
+
 			proj, root, err := readProject(pulumiAppProj)
 			if err != nil {
 				return result.FromError(err)
@@ -146,6 +152,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	cmd.PersistentFlags().StringArrayVarP(
+		&configArray, "config", "c", []string{},
+		"Config to use during the preview")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
