@@ -40,7 +40,7 @@ func TestDetectVars(t *testing.T) {
 		},
 		Codefresh: {
 			"TRAVIS":       "",
-			"CF_BUILD_URL": "https://g.codefresh.io//build/99f5d825577e23c56f8c6b2a",
+			"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
 			"CF_BUILD_ID":  buildID,
 		},
 		GenericCI: {
