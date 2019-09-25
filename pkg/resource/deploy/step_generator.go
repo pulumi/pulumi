@@ -375,6 +375,11 @@ func (sg *stepGenerator) GenerateSteps(
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
 
+	if updateTargetsOpt != nil {
+		sg.plan.Diag().Errorf(diag.GetCannotCreateResourceWhenUpdateTargetsAreSpecified(urn), urn)
+		return nil, result.Bail()
+	}
+
 	// Case 4: Not Case 1, 2, or 3
 	//  If a resource isn't being recreated and it's not being updated or replaced,
 	//  it's just being created.
@@ -655,7 +660,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(targetsOpt
 			}
 
 			if _, has := resourcesToDelete[res.Parent]; has {
-				sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(),
+				sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(res.Parent),
 					res.Parent, res.URN)
 				return nil, result.Bail()
 			}
