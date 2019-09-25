@@ -28,7 +28,8 @@ type genericCICI struct {
 
 // DetectVars detects the env vars for a Generic CI system.
 func (g genericCICI) DetectVars() Vars {
-	v := Vars{Name: g.Name}
+	v := Vars{}
+	v.Name = SystemName(os.Getenv("PULUMI_CI_SYSTEM"))
 	v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
 	v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
 	v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")

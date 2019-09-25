@@ -74,7 +74,7 @@ var detectors = map[SystemName]system{
 	GenericCI: genericCICI{
 		baseCI: baseCI{
 			Name:            SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
-			EnvVarsToDetect: []string{"GENERIC_CI_SYSTEM"},
+			EnvVarsToDetect: []string{"PULUMI_CI_SYSTEM"},
 		},
 	},
 
