@@ -53,10 +53,10 @@ type tokenSource struct {
 
 func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
-	logging.V(tokenSourceLogLevel).Infof("Created new token source for update ID %q. Duration %v.", update.UpdateID, duration)
+	logging.V(tokenSourceLogLevel).Infof("New token source for update ID %q. (duration %v)", update.UpdateID, duration)
 	// When a system is under heavy CPU load, the OS may not respond to the timer request in a timely fashion.
 	// If extremely delayed, we may not request a new lease token until after the lease token has expired. So we
-	// are more agressive than necessary here, to ensure that the ticker will fire before the token has expired.
+	// are more aggressive than necessary here, to ensure that the ticker will fire before the token has expired.
 	const tickerInterval = 30 * time.Second
 	contract.Assertf(tickerInterval < duration, "default ticker interval less than lease token duration")
 
@@ -65,7 +65,7 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 	if err != nil {
 		return nil, err
 	}
-	timeSinceLeaseRenewed := time.Now()
+	lastLeaseUpdate := time.Now()
 
 	requests, done := make(chan tokenRequest), make(chan bool)
 	go func() {
@@ -76,17 +76,17 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 			select {
 			case <-ticker.C:
 				// Don't renew the lease token until
-				if timeSinceLeaseRenewed <= duration/2 {
+				if time.Since(lastLeaseUpdate) <= duration/2 {
 					break
 				}
 
-				logging.V(tokenSourceLogLevel).Infof("Renewing update lease token. Last renewed %v ago.", timeSinceLeaseRenewed)
+				logging.V(tokenSourceLogLevel).Infof("Renewing update lease token. Last updated at %v.", lastLeaseUpdate)
 				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
 
-				// Log so we can see the actual time it took to complete the request. (Since it's possible the HTTP request was quick,
-				// but took an unexpected amount of time to be sent.)
-				logging.V(tokenSourceLogLevel).Info("Got new update lease token. err: %v", err)
-				timeSinceLeaseRenewed = time.Now()
+				// Log so we can see the actual time it took to complete the request. (Since it's possible the HTTP request was
+				// quick, but took an unexpected amount of time to be sent.)
+				logging.V(tokenSourceLogLevel).Infof("Got new update lease token. err: %v", err)
+				lastLeaseUpdate = time.Now()
 
 				if err != nil {
 					ticker.Stop()
