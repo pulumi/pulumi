@@ -15,6 +15,7 @@ CHANGELOG
   that contain secret values.
   [#3183](https://github.com/pulumi/pulumi/pull/3183)
 - Add Codefresh CI detection.
+- Add `-c` (config array) flag to the `preview` command.
 
 ## 1.1.0 (2019-09-11)
 
