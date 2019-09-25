@@ -536,12 +536,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 		return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
 	}
 
-	// No need to update anything, the properties didn't change.
-	sg.sames[urn] = true
-	if logging.V(7) {
-		logging.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
-	}
-	return []Step{NewSameStep(sg.plan, event, old, new)}, nil
+	return nil, nil;
 }
 
 func shouldUpdate(updateTargetsOpt map[resource.URN]bool, urn resource.URN) bool {
