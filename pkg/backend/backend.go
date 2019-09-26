@@ -60,11 +60,11 @@ type StackReference interface {
 	fmt.Stringer
 	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
-	// but that informaion is not part of the StackName() we pass to the engine.
+	// but that information is not part of the StackName() we pass to the engine.
 	Name() tokens.QName
 }
 
-// PolicyPackReference is an opaque type that refers to a PolicyPack managedby a backend. The CLI
+// PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
 // uses the ParsePolicyPackReference method to turn a string like "myOrg/mySecurityRules" into a
 // PolicyPackReference that can be used to interact with the PolicyPack via the backend.
 // PolicyPackReferences are specific to a given backend and different back ends may interpret the

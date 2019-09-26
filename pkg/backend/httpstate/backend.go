@@ -552,6 +552,13 @@ func (b *cloudBackend) CreateStack(
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
+	// Confirm the stack identity matches the environment. e.g. stack init foo/bar/baz shouldn't work
+	// if the project name in Pulumi.yaml is anything other than "bar".
+	projNameTag, ok := tags[apitype.ProjectNameTag]
+	if ok && stackID.Project != projNameTag {
+		return nil, errors.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
+	}
+
 	apistack, err := b.client.CreateStack(ctx, stackID, tags)
 	if err != nil {
 		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
