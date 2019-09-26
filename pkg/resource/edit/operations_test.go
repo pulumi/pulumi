@@ -288,7 +288,7 @@ func TestRenameStack(t *testing.T) {
 
 	// Rename just the stack.
 	t.Run("JustTheStack", func(t *testing.T) {
-		err := RenameStack(snap, tokens.QName("new-stack"), nil)
+		err := RenameStack(snap, tokens.QName("new-stack"), tokens.PackageName(""))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -307,8 +307,7 @@ func TestRenameStack(t *testing.T) {
 
 	// Rename the stack and project.
 	t.Run("StackAndProject", func(t *testing.T) {
-		newProject := tokens.PackageName("new-project")
-		err := RenameStack(snap, tokens.QName("new-stack2"), &newProject)
+		err := RenameStack(snap, tokens.QName("new-stack2"), tokens.PackageName("new-project"))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}

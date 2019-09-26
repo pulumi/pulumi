@@ -328,7 +328,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newName, nil /*new project*/); err != nil {
+		if err = edit.RenameStack(snap, newName, ""); err != nil {
 			return err
 		}
 	}
