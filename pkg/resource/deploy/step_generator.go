@@ -627,7 +627,9 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	return dels, nil
 }
 
-func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
+func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
+	targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
+
 	if targetsOpt == nil {
 		// no specific targets, so we won't filter down anything
 		return nil, nil
