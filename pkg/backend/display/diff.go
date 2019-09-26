@@ -182,6 +182,31 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 		}
 	}
 
+	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
+	if len(event.PolicyPacks) > 0 {
+		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sPolicy Packs run:%s\n",
+			colors.SpecHeadline, colors.Reset)))
+
+		// Calculate column width for the `name` column
+		const nameColHeader = "Name"
+		maxNameLen := len(nameColHeader)
+		for pp := range event.PolicyPacks {
+			if l := len(pp); l > maxNameLen {
+				maxNameLen = l
+			}
+		}
+
+		// Print the column headers and the policy packs.
+		fprintIgnoreError(out, opts.Color.Colorize(
+			fmt.Sprintf("    %s%s%s\n",
+				columnHeader(nameColHeader), messagePadding(nameColHeader, maxNameLen, 2),
+				columnHeader("Version"))))
+		for pp, ver := range event.PolicyPacks {
+			fprintIgnoreError(out, opts.Color.Colorize(
+				fmt.Sprintf("    %s%s%s\n", pp, messagePadding(pp, maxNameLen, 2), ver)))
+		}
+	}
+
 	summaryPieces := []string{}
 	if changeKindCount >= 2 {
 		// Only if we made multiple types of changes do we need to print out the total number of
