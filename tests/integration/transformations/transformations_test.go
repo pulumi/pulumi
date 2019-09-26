@@ -28,28 +28,52 @@ func TestNodejsAliases(t *testing.T) {
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					foundRes1 := false
+					foundRes2Child := false
+					foundRes3 := false
+					foundRes4Child := false
 					for _, res := range stack.Deployment.Resources {
 						// "res1" has a transformation which adds additionalSecretOutputs
 						if res.URN.Name() == "res1" {
+							foundRes1 = true
 							assert.Equal(t, res.Type, tokens.Type("pulumi-nodejs:dynamic:Resource"))
 							assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
 						}
 						// "res2" has a transformation which adds additionalSecretOutputs to it's
 						// "child"
-						if res.URN.Name() == "child" {
+						if res.URN.Name() == "res2-child" {
+							foundRes2Child = true
 							assert.Equal(t, res.Type, tokens.Type("pulumi-nodejs:dynamic:Resource"))
 							assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 							assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
+							assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output2"))
 						}
 						// "res3" is impacted by a global stack transformation which sets
 						// optionalDefault to "stackDefault"
 						if res.URN.Name() == "res3" {
+							foundRes3 = true
 							assert.Equal(t, res.Type, tokens.Type("pulumi-nodejs:dynamic:Resource"))
 							optionalInput := res.Inputs["optionalInput"]
 							assert.NotNil(t, optionalInput)
 							assert.Equal(t, optionalInput.(string), "stackDefault")
 						}
+						// "res4" is impacted by both a global stack transformation which sets
+						// optionalDefault to "stackDefault" and then two component parent
+						// transformations which set optionalDefault to "default1" and then finally
+						// "default2".  The end result should be "default2".
+						if res.URN.Name() == "res4-child" {
+							foundRes4Child = true
+							assert.Equal(t, res.Type, tokens.Type("pulumi-nodejs:dynamic:Resource"))
+							assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
+							optionalInput := res.Inputs["optionalInput"]
+							assert.NotNil(t, optionalInput)
+							assert.Equal(t, optionalInput.(string), "default2")
+						}
 					}
+					assert.True(t, foundRes1)
+					assert.True(t, foundRes2Child)
+					assert.True(t, foundRes3)
+					assert.True(t, foundRes4Child)
 				},
 			})
 		})

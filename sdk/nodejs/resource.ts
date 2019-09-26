@@ -405,10 +405,10 @@ export interface Alias {
 
 // collapseAliasToUrn turns an Alias into a URN given a set of default data
 function collapseAliasToUrn(
-    alias: Input<Alias | string>,
-    defaultName: string,
-    defaultType: string,
-    defaultParent: Resource | undefined): Output<URN> {
+        alias: Input<Alias | string>,
+        defaultName: string,
+        defaultType: string,
+        defaultParent: Resource | undefined): Output<URN> {
 
     return output(alias).apply(a => {
         if (typeof a === "string") {
@@ -506,8 +506,23 @@ export interface CustomTimeouts {
     delete?: string;
 }
 
+/**
+ * ResourceTransformation is the callback signature for the `transformations` resource option.  A
+ * transformation is passed the same set of inputs provided to the `Resource` constructor, and can
+ * optionally return back alternate values for the `props` and/or `opts` prior to the resource
+ * actually being created.  The effect will be as though those props and opts were passed in place
+ * of the original call to the `Resource` constructor.  If the transformation returns undefined,
+ * this indicates that the resource will not be transformed.
+ */
 export type ResourceTransformation =
-    (type: string, name: string, props: Inputs, opts: ResourceOptions) => { props: Inputs, opts: ResourceOptions } | undefined;
+    (type: string, name: string, props: Inputs, opts: ResourceOptions) => ResourceTransformationResult | undefined;
+
+/**
+ * ResourceTransformationResult is the result that must be returned by a resource transformation
+ * callback.  It includes new values to use for the `props` and `opts` of the `Resource` in place of
+ * the originally provided values.
+ */
+export type ResourceTransformationResult = { props: Inputs, opts: ResourceOptions };
 
 /**
  * CustomResourceOptions is a bag of optional settings that control a custom resource's behavior.
