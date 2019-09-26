@@ -91,10 +91,11 @@ type PreludeEventPayload struct {
 }
 
 type SummaryEventPayload struct {
-	IsPreview       bool            // true if this summary is for a plan operation
-	MaybeCorrupt    bool            // true if one or more resources may be corrupt
-	Duration        time.Duration   // the duration of the entire update operation (zero values for previews)
-	ResourceChanges ResourceChanges // count of changed resources, useful for reporting
+	IsPreview       bool              // true if this summary is for a plan operation
+	MaybeCorrupt    bool              // true if one or more resources may be corrupt
+	Duration        time.Duration     // the duration of the entire update operation (zero values for previews)
+	ResourceChanges ResourceChanges   // count of changed resources, useful for reporting
+	PolicyPacks     map[string]string // {policy-pack: version} for each policy pack applied
 }
 
 type ResourceOperationFailedPayload struct {
@@ -424,7 +425,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	}
 }
 
-func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges) {
+func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.Chan <- Event{
@@ -434,12 +435,13 @@ func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges) {
 			MaybeCorrupt:    false,
 			Duration:        0,
 			ResourceChanges: resourceChanges,
+			PolicyPacks:     policyPacks,
 		},
 	}
 }
 
 func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
-	duration time.Duration, resourceChanges ResourceChanges) {
+	duration time.Duration, resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.Chan <- Event{
@@ -449,6 +451,7 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 			MaybeCorrupt:    maybeCorrupt,
 			Duration:        duration,
 			ResourceChanges: resourceChanges,
+			PolicyPacks:     policyPacks,
 		},
 	}
 }

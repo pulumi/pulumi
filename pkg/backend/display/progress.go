@@ -296,25 +296,14 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 func (display *ProgressDisplay) getMessagePadding(
 	uncolorizedColumns []string, columnIndex int, maxColumnLengths []int) string {
 
-	extraWhitespace := 1
-
-	// In the terminal we try to align the status messages for each resource.
-	// do not bother with this in the non-terminal case.
+	extraWhitespace := " "
 	if columnIndex >= 0 && display.isTerminal {
 		column := uncolorizedColumns[columnIndex]
 		maxLength := maxColumnLengths[columnIndex]
-
-		extraWhitespace = maxLength - utf8.RuneCountInString(column)
-		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxLength, column)
-
-		// Place two spaces between all columns (except after the first column).  The first
-		// column already has a ": " so it doesn't need the extra space.
-		if columnIndex >= 0 {
-			extraWhitespace += 2
-		}
+		extraWhitespace = messagePadding(column, maxLength, 2)
 	}
 
-	return strings.Repeat(" ", extraWhitespace)
+	return extraWhitespace
 }
 
 // Gets the fully padded message to be shown.  The message will always include the ID of the

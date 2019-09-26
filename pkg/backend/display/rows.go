@@ -86,12 +86,8 @@ func (data *headerRowData) SetDisplayOrderIndex(time int) {
 
 func (data *headerRowData) ColorizedColumns() []string {
 	if len(data.columns) == 0 {
-		blue := func(msg string) string {
-			return colors.Underline + colors.BrightBlue + msg + colors.Reset
-		}
-
 		header := func(msg string) string {
-			return blue(msg)
+			return columnHeader(msg)
 		}
 
 		var statusColumn string
