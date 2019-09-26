@@ -38,8 +38,8 @@ export function getStackResource(): Stack | undefined {
  */
 export function runInPulumiStack(init: () => any): Promise<Inputs | undefined> {
     if (!isQueryMode()) {
-        stackResource = new Stack(init);
-        return stackResource.outputs.promise();
+        const stack = new Stack(init);
+        return stack.outputs.promise();
     } else {
         return Promise.resolve(init());
     }
@@ -71,8 +71,11 @@ class Stack extends ComponentResource {
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
-
         await setRootResource(this);
+
+        // Set the global reference to the stack resource before invoking this init() function
+        stackResource = this;
+
         let outputs: Inputs | undefined;
         try {
             outputs = await massage(init(), []);
@@ -204,7 +207,7 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
  */
 export function registerStackTransformation(t: ResourceTransformation) {
     if (!stackResource) {
-        throw new Error();
+        throw new Error("The root stack resource was referenced before it was initialized.");
     }
     stackResource.__transformations = [...(stackResource.__transformations || []), t];
 }

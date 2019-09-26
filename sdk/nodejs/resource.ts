@@ -483,7 +483,9 @@ export interface ResourceOptions {
      */
     customTimeouts?: CustomTimeouts;
     /**
-     * Optional list of transformations to apply to this resource during construction.
+     * Optional list of transformations to apply to this resource during construction. The
+     * transformations are applied in order, and transformations applied to parents are applied in
+     * order of specificity prior to transformations on this resources.
      */
     transformations?: ResourceTransformation[];
 
@@ -522,7 +524,16 @@ export type ResourceTransformation =
  * callback.  It includes new values to use for the `props` and `opts` of the `Resource` in place of
  * the originally provided values.
  */
-export type ResourceTransformationResult = { props: Inputs, opts: ResourceOptions };
+export interface ResourceTransformationResult {
+    /**
+     * The new properties to use in place of the original `props`
+     */
+    props: Inputs;
+    /**
+     * The new resource options to use in place of the original `opts`
+     */
+    opts: ResourceOptions;
+}
 
 /**
  * CustomResourceOptions is a bag of optional settings that control a custom resource's behavior.
