@@ -324,6 +324,23 @@ const (
 	pulumiPolicyProj projType = "pulumi-policy"
 )
 
+// parseAndSaveConfigArray parses the config array and saves it as a config for
+// the provided stack.
+func parseAndSaveConfigArray(s backend.Stack, configArray []string) error {
+	if len(configArray) == 0 {
+		return nil
+	}
+	commandLineConfig, err := parseConfig(configArray)
+	if err != nil {
+		return err
+	}
+
+	if err = saveConfig(s, commandLineConfig); err != nil {
+		return errors.Wrap(err, "saving config")
+	}
+	return nil
+}
+
 // readProject attempts to detect and read a project of type `projType` for the current workspace.
 // If the project is successfully detected and read, it is returned along with the path to its
 // containing directory, which will be used as the root of the project's Pulumi program.
