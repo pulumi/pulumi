@@ -283,7 +283,7 @@ export abstract class Resource {
 
         // Combine transformations inherited from the parent with transformations provided in opts.
         const parent = opts.parent || getStackResource() || { __transformations: undefined };
-        this.__transformations = [...(parent.__transformations || []), ...(opts.transformations || [])];
+        this.__transformations = [ ...(opts.transformations || []), ...(parent.__transformations || []) ];
 
         this.__protect = !!opts.protect;
 
@@ -484,8 +484,8 @@ export interface ResourceOptions {
     customTimeouts?: CustomTimeouts;
     /**
      * Optional list of transformations to apply to this resource during construction. The
-     * transformations are applied in order, and transformations applied to parents are applied in
-     * order of specificity prior to transformations on this resources.
+     * transformations are applied in order, and are applied prior to transformation applied to
+     * parents walking from the resource up to the stack.
      */
     transformations?: ResourceTransformation[];
 

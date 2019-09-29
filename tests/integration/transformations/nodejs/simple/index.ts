@@ -77,11 +77,11 @@ pulumi.runtime.registerStackTransformation(({ type, props, opts }) => {
 
 const res3 = new SimpleResource("res3", { input: "hello" });
 
-// Scenario #4 - transformations are applied in order of increasing specificity
-// 1. Stack transformation
+// Scenario #4 - transformations are applied in order of decreasing specificity
+// 1. (not in this example) Child transformation
 // 2. First parent transformation
 // 3. Second parent transformation
-// 4. (not in this example) Child transformation
+// 4. Stack transformation
 const res4 = new MyComponent("res4", {
     transformations: [
         ({ type, props, opts }) => {

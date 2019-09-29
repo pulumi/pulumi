@@ -58,17 +58,17 @@ func TestNodejsAliases(t *testing.T) {
 							assert.NotNil(t, optionalInput)
 							assert.Equal(t, "stackDefault", optionalInput.(string))
 						}
-						// "res4" is impacted by both a global stack transformation which sets
-						// optionalDefault to "stackDefault" and then two component parent
-						// transformations which set optionalDefault to "default1" and then finally
-						// "default2".  The end result should be "default2".
+						// "res4" is impacted by two component parent transformations which set
+						// optionalDefault to "default1" and then "default2" and also a global stack
+						// transformation which sets optionalDefault to "stackDefault".  The end
+						// result should be "stackDefault".
 						if res.URN.Name() == "res4-child" {
 							foundRes4Child = true
 							assert.Equal(t, res.Type, tokens.Type("pulumi-nodejs:dynamic:Resource"))
 							assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 							optionalInput := res.Inputs["optionalInput"]
 							assert.NotNil(t, optionalInput)
-							assert.Equal(t, "default2", optionalInput.(string))
+							assert.Equal(t, "stackDefault", optionalInput.(string))
 						}
 						// "res5" modifies one of its children to depend on another of its children.
 						if res.URN.Name() == "res5-child1" {
