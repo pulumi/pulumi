@@ -516,8 +516,33 @@ export interface CustomTimeouts {
  * of the original call to the `Resource` constructor.  If the transformation returns undefined,
  * this indicates that the resource will not be transformed.
  */
-export type ResourceTransformation =
-    (type: string, name: string, props: Inputs, opts: ResourceOptions) => ResourceTransformationResult | undefined;
+export type ResourceTransformation = (args: ResourceTransformationArgs) => ResourceTransformationResult | undefined;
+
+/**
+ * ResourceTransformationArgs is the argument bag passed to a resource transformation.
+ */
+export interface ResourceTransformationArgs {
+    /**
+     * The Resource instance that is being transformed.
+     */
+    resource: Resource;
+    /**
+     * The type of the Resource.
+     */
+    type: string;
+    /**
+     * The name of the Resource.
+     */
+    name: string;
+    /**
+     * The original properties passed to the Resource constructor.
+     */
+    props: Inputs;
+    /**
+     * The original resource options passed to the Resource constructor.
+     */
+    opts: ResourceOptions;
+}
 
 /**
  * ResourceTransformationResult is the result that must be returned by a resource transformation

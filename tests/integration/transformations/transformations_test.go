@@ -32,6 +32,7 @@ func TestNodejsAliases(t *testing.T) {
 					foundRes2Child := false
 					foundRes3 := false
 					foundRes4Child := false
+					foundRes5Child := false
 					for _, res := range stack.Deployment.Resources {
 						// "res1" has a transformation which adds additionalSecretOutputs
 						if res.URN.Name() == "res1" {
@@ -55,7 +56,7 @@ func TestNodejsAliases(t *testing.T) {
 							assert.Equal(t, res.Type, tokens.Type("pulumi-nodejs:dynamic:Resource"))
 							optionalInput := res.Inputs["optionalInput"]
 							assert.NotNil(t, optionalInput)
-							assert.Equal(t, optionalInput.(string), "stackDefault")
+							assert.Equal(t, "stackDefault", optionalInput.(string))
 						}
 						// "res4" is impacted by both a global stack transformation which sets
 						// optionalDefault to "stackDefault" and then two component parent
@@ -67,13 +68,28 @@ func TestNodejsAliases(t *testing.T) {
 							assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 							optionalInput := res.Inputs["optionalInput"]
 							assert.NotNil(t, optionalInput)
-							assert.Equal(t, optionalInput.(string), "default2")
+							assert.Equal(t, "default2", optionalInput.(string))
+						}
+						// "res5" modifies one of its children to depend on another of its children.
+						if res.URN.Name() == "res5-child1" {
+							foundRes5Child = true
+							assert.Equal(t, res.Type, tokens.Type("pulumi-nodejs:dynamic:Resource"))
+							assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
+							// TODO[pulumi/pulumi#3282] Due to this bug, the dependency information
+							// will not be correctly recorded in the state file, and so cannot be
+							// verified here.
+							//
+							// assert.Len(t, res.PropertyDependencies, 1)
+							input := res.Inputs["input"]
+							assert.NotNil(t, input)
+							assert.Equal(t, "b", input.(string))
 						}
 					}
 					assert.True(t, foundRes1)
 					assert.True(t, foundRes2Child)
 					assert.True(t, foundRes3)
 					assert.True(t, foundRes4Child)
+					assert.True(t, foundRes5Child)
 				},
 			})
 		})

@@ -166,7 +166,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // If there are transformations registered, invoke them in order to transform the properties and
     // options assigned to this resource.
     for (const transformation of (res.__transformations || [])) {
-        const tres = transformation(t, name, props, opts);
+        const tres = transformation({ resource: res, type: t, name, props, opts });
         if (tres) {
             props = tres.props;
             opts = tres.opts;
