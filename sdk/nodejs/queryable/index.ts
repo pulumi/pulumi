@@ -22,7 +22,7 @@ import { Resource } from "../resource";
  */
 export type ResolvedResource<T extends Resource> = PulumiOmit<Resolved<T>, "urn" | "getProvider">;
 
-type Resolved<T> = T extends Promise<infer U1>
+export type Resolved<T> = T extends Promise<infer U1>
     ? ResolvedSimple<U1>
     : T extends OutputInstance<infer U2>
     ? ResolvedSimple<U2>
