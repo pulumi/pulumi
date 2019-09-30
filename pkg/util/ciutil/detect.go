@@ -58,6 +58,12 @@ var detectors = map[SystemName]system{
 			EnvVarsToDetect: []string{"CIRCLECI"},
 		},
 	},
+	Codefresh: codefreshCI{
+		baseCI: baseCI{
+			Name:            Codefresh,
+			EnvVarsToDetect: []string{"CF_BUILD_URL"},
+		},
+	},
 	Codeship: baseCI{
 		Name:              Codeship,
 		EnvValuesToDetect: map[string]string{"CI_NAME": "codeship"},
@@ -74,7 +80,7 @@ var detectors = map[SystemName]system{
 	GenericCI: genericCICI{
 		baseCI: baseCI{
 			Name:            SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
-			EnvVarsToDetect: []string{"GENERIC_CI_SYSTEM"},
+			EnvVarsToDetect: []string{"PULUMI_CI_SYSTEM"},
 		},
 	},
 

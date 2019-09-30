@@ -215,6 +215,9 @@ type AppendUpdateLogEntryRequest struct {
 }
 
 // StackRenameRequest is the shape of the request to change an existing stack's name.
+// If either NewName or NewProject is the empty string, the current project/name will
+// be preserved. (But at least one should be set.)
 type StackRenameRequest struct {
-	NewName string `json:"newName"`
+	NewName    string `json:"newName"`
+	NewProject string `json:"newProject"`
 }

@@ -230,6 +230,11 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		return nil, result.FromError(err)
 	}
 
+	policies := map[string]string{}
+	for _, p := range opts.RequiredPolicies {
+		policies[p.Name()] = p.Version()
+	}
+
 	var resourceChanges ResourceChanges
 	var res result.Result
 	if planResult != nil {
@@ -244,7 +249,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, res = printPlan(ctx, planResult, dryRun)
+			resourceChanges, res = printPlan(ctx, planResult, dryRun, policies)
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			opts.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
@@ -257,8 +262,10 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			resourceChanges = ResourceChanges(actions.Ops)
 
 			if len(resourceChanges) != 0 {
+
 				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
+				opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start),
+					resourceChanges, policies)
 			}
 		}
 	}

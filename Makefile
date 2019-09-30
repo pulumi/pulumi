@@ -4,7 +4,8 @@ include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
 PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v /vendor/)
+EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/)
+TEMPLATES_PKGS  := $(shell go list ./tests/templates)
 VERSION         := $(shell scripts/get-version)
 
 TESTPARALLELISM := 10
@@ -31,6 +32,9 @@ test_all::
 	$(GO_TEST) ${PROJECT_PKGS}
 	$(GO_TEST) -v -p=1 ${EXTRA_TEST_PKGS}
 
+test_templates::
+	$(GO_TEST) ${TEMPLATES_PKGS}
+
 .PHONY: publish_tgz
 publish_tgz:
 	$(call STEP_MESSAGE)
@@ -48,7 +52,7 @@ coverage:
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
-travis_cron: all coverage
+travis_cron: all coverage test_templates
 travis_push: only_build publish_tgz only_test publish_packages
 travis_pull_request: all
 travis_api: all

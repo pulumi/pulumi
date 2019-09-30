@@ -94,18 +94,23 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 }
 
 // RenameStack changes the `stackName` component of every URN in a snapshot. In addition, it rewrites the name of
-// the root Stack resource itself.
-func RenameStack(snap *deploy.Snapshot, newName tokens.QName) error {
+// the root Stack resource itself. May optionally change the project/package name as well.
+func RenameStack(snap *deploy.Snapshot, newName tokens.QName, newProject tokens.PackageName) error {
 	contract.Require(snap != nil, "snap")
 
 	rewriteUrn := func(u resource.URN) resource.URN {
+		project := u.Project()
+		if newProject != "" {
+			project = newProject
+		}
+
 		// The pulumi:pulumi:Stack resource's name component is of the form `<project>-<stack>` so we want
 		// to rename the name portion as well.
 		if u.QualifiedType() == "pulumi:pulumi:Stack" {
-			return resource.NewURN(newName, u.Project(), "", u.QualifiedType(), tokens.QName(u.Project())+"-"+newName)
+			return resource.NewURN(newName, project, "", u.QualifiedType(), tokens.QName(project)+"-"+newName)
 		}
 
-		return resource.NewURN(newName, u.Project(), "", u.QualifiedType(), u.Name())
+		return resource.NewURN(newName, project, "", u.QualifiedType(), u.Name())
 	}
 
 	rewriteState := func(res *resource.State) {

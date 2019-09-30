@@ -4468,6 +4468,7 @@ func deleteSpecificTargets(
 	p.Run(t, old)
 }
 
+<<<<<<< HEAD
 func TestUpdateTarget(t *testing.T) {
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
@@ -4482,7 +4483,6 @@ func TestUpdateTarget(t *testing.T) {
 }
 
 func updateSpecificTargets(t *testing.T, targets []string) {
-
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -4563,4 +4563,70 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 	}}
 
 	p.Run(t, old)
+}
+
+func TestPreviewInputPropagation(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	preview := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		if !preview {
+			computed = "alpha"
+		}
+
+		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"foo": "bar",
+			"baz": map[string]interface{}{
+				"a": 42,
+				"b": computed,
+			},
+			"qux": []interface{}{
+				computed,
+				24,
+			},
+			"zed": computed,
+		})
+
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		assert.True(t, state.DeepEquals(ins))
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run a preview. The inputs should be propagated to the outputs during the create.
+	preview = true
+	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Run an update.
+	preview = false
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Run another preview. The inputs should be propagated to the outputs during the update.
+	preview = true
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	assert.Nil(t, res)
 }

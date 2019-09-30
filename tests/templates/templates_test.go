@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tests
+package templates
 
 import (
 	"fmt"
@@ -85,7 +85,7 @@ func TestTemplates(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			e.RunCommand("pulumi", "new", template.Name, "-f")
+			e.RunCommand("pulumi", "new", template.Name, "-f", "-s", "template-test")
 
 			path, err := workspace.DetectProjectPathFrom(e.RootPath)
 			assert.NoError(t, err)
@@ -121,5 +121,13 @@ func TestTemplates(t *testing.T) {
 				integration.ProgramTest(t, &example)
 			}
 		})
+	}
+}
+
+// deleteIfNotFailed deletes the files in the testing environment if the testcase has
+// not failed. (Otherwise they are left to aid debugging.)
+func deleteIfNotFailed(e *ptesting.Environment) {
+	if !e.T.Failed() {
+		e.DeleteEnvironment()
 	}
 }

@@ -163,6 +163,16 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
 
+    // If there are transformations registered, invoke them in order to transform the properties and
+    // options assigned to this resource.
+    for (const transformation of (res.__transformations || [])) {
+        const tres = transformation({ resource: res, type: t, name, props, opts });
+        if (tres) {
+            props = tres.props;
+            opts = tres.opts;
+        }
+    }
+
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, custom, props, opts);
 
@@ -192,6 +202,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");
+        req.setSupportspartialvalues(true);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {

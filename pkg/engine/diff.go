@@ -242,21 +242,34 @@ func PrintObject(
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
 	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
-	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
+
+	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
+	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
+		showSames = true
+	}
+
+	// We should only print outputs for normal resources if the outputs are known to be complete.
+	// This will be the case if we are:
+	//
 	//   1) not doing a preview
 	//   2) doing a refresh
 	//   3) doing a read
 	//   4) doing an import
 	//
-	// Technically, 2-4 are the same, since they're all bottoming out at a provider's implementation of Read, but
-	// the upshot is that either way we're ending up with outputs that are exactly accurate. If we are not sure that we
-	// are in one of the above states, we shouldn't try to print outputs.
+	// Technically, 2-4 are the same, since they're all bottoming out at a provider's implementation
+	// of Read, but the upshot is that either way we're ending up with outputs that are exactly
+	// accurate. If we are not sure that we are in one of the above states, we shouldn't try to
+	// print outputs.
+	//
+	// Note: we always show the outputs for the stack itself.  These are valuable enough to want
+	// to always see.
 	if planning {
 		printOutputDuringPlanning := refresh ||
 			step.Op == deploy.OpRead ||
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
-			step.Op == deploy.OpImportReplacement
+			step.Op == deploy.OpImportReplacement ||
+			step.URN.Type() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""
 		}
@@ -268,18 +281,17 @@ func GetResourceOutputsPropertiesString(
 		return ""
 	}
 
-	b := &bytes.Buffer{}
-
 	// Only certain kinds of steps have output properties associated with them.
-	new := step.New
-	if new == nil || new.Outputs == nil {
-		return ""
+	var ins resource.PropertyMap
+	var outs resource.PropertyMap
+	if step.New == nil || step.New.Outputs == nil {
+		ins = make(resource.PropertyMap)
+		outs = make(resource.PropertyMap)
+	} else {
+		ins = step.New.Inputs
+		outs = step.New.Outputs
 	}
 	op := step.Op
-
-	// First fetch all the relevant property maps that we may consult.
-	ins := new.Inputs
-	outs := new.Outputs
 
 	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
 	// the new outputs, we want to print the diffs.
@@ -300,6 +312,8 @@ func GetResourceOutputsPropertiesString(
 		keys = outputDiff.Keys()
 	}
 	maxkey := maxKey(keys)
+
+	b := &bytes.Buffer{}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	for _, k := range keys {

@@ -3,6 +3,13 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Propagate resource inputs to resource state during preview, including first-class unknown values. This allows the
+  preview to better estimate the state of a resource after an update, including property values that were populated
+  using defaults calculated by the provider.
+  [#3245](https://github.com/pulumi/pulumi/pull/3245)
+
+## 1.2.0 (2019-09-26)
+
 - Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
   [#3238](https://github.com/pulumi/pulumi/pull/3238)
 - Fix parsing of GitLab urls with subgroups.
@@ -16,6 +23,11 @@ CHANGELOG
 - Avoid re-encrypting secret values on each checkpoint write. These changes should improve update times for stacks
   that contain secret values.
   [#3183](https://github.com/pulumi/pulumi/pull/3183)
+- Add Codefresh CI detection.
+- Add `-c` (config array) flag to the `preview` command.
+- Adds the ability to provide transformations to modify the properties and resource options that
+  will be used for any child resource of a component or stack.
+  [#3174](https://github.com/pulumi/pulumi/pull/3174)
 
 ## 1.1.0 (2019-09-11)
 
@@ -46,6 +58,7 @@ CHANGELOG
 
 - Filter the list of templates shown by default during `pulumi new`.
   [#3147](https://github.com/pulumi/pulumi/pull/3147)
+
 ## 1.0.0-beta.4 (2019-08-22)
 
 - Fix a crash when using StackReference from the `1.0.0-beta.3` version of

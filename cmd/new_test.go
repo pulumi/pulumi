@@ -28,6 +28,8 @@ import (
 )
 
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -48,6 +50,8 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -68,6 +72,8 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -90,6 +96,8 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedOrgName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -112,6 +120,8 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -133,6 +143,8 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 }
 
 func TestCreatingProjectWithDefaultName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -142,6 +154,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		interactive:       true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		stack:             stackName,
 		templateNameOrURL: "typescript",
 		yes:               true,
 	}
@@ -149,13 +162,15 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t, "dev")
+	removeStack(t, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 }
 
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -166,19 +181,22 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		name:              uniqueProjectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
 
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t, "dev")
+	removeStack(t, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
 func TestCreatingProjectWithPromptedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -201,6 +219,8 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -225,6 +245,8 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -248,6 +270,8 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -276,6 +300,8 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -303,6 +329,8 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -329,6 +357,8 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -354,7 +384,10 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 }
 
 func TestInvalidTemplateName(t *testing.T) {
+	skipIfShort(t)
+
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
+		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -371,6 +404,7 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
+		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -390,6 +424,8 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
+		t.Parallel()
+
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -459,4 +495,10 @@ func removeStack(t *testing.T, name string) {
 	assert.NoError(t, err)
 	_, err = b.RemoveStack(context.Background(), ref, false)
 	assert.NoError(t, err)
+}
+
+func skipIfShort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipped in short test run")
+	}
 }

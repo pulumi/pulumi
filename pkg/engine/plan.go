@@ -216,7 +216,9 @@ func (planResult *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChanges, result.Result) {
+func printPlan(ctx *Context, planResult *planResult, dryRun bool, policies map[string]string,
+) (ResourceChanges, result.Result) {
+
 	planResult.Options.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
@@ -231,7 +233,7 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChang
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
-	planResult.Options.Events.previewSummaryEvent(changes)
+	planResult.Options.Events.previewSummaryEvent(changes, policies)
 	return changes, nil
 }
 

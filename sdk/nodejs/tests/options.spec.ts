@@ -103,6 +103,31 @@ describe("options", () => {
             });
         });
 
+        describe("arrayTransformations", () => {
+            const a = () => undefined;
+            const b = () => undefined;
+            it("keeps value from opts1 if not provided in opts2", asyncTest(async () => {
+                const result = mergeOptions({ transformations: [a] }, {});
+                assert.deepStrictEqual(result.transformations, [a]);
+            }));
+            it("keeps value from opts2 if not provided in opts1", asyncTest(async () => {
+                const result = mergeOptions({ }, { transformations: [a] });
+                assert.deepStrictEqual(result.transformations, [a]);
+            }));
+            it("does nothing to value from opts1 if given null in opts2", asyncTest(async () => {
+                const result = mergeOptions({ transformations: [a] }, { transformations: null! });
+                assert.deepStrictEqual(result.transformations, [a]);
+            }));
+            it("does nothing to value from opts1 if given undefined in opts2", asyncTest(async () => {
+                const result = mergeOptions({ transformations: [a] }, { transformations: undefined });
+                assert.deepStrictEqual(result.transformations, [a]);
+            }));
+            it("merges values from opts1 if given value in opts2", asyncTest(async () => {
+                const result = mergeOptions({ transformations: [a] }, { transformations: [b] });
+                assert.deepStrictEqual(result.transformations, [a, b]);
+            }));
+        });
+
         describe("providers", () => {
             const awsProvider = <ProviderResource>{ getPackage: () => "aws" };
             const azureProvider = <ProviderResource>{ getPackage: () => "azure" };
