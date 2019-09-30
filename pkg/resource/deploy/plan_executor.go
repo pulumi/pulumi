@@ -64,7 +64,10 @@ func (pe *planExecutor) checkTargets(targets []resource.URN) result.Result {
 	}
 
 	olds := pe.plan.olds
-	news := pe.stepGen.creates
+	var news map[resource.URN]bool
+	if pe.stepGen != nil && pe.stepGen.creates != nil {
+		news = pe.stepGen.creates
+	}
 
 	hasUnknownTarget := false
 	for _, target := range targets {
@@ -73,7 +76,7 @@ func (pe *planExecutor) checkTargets(targets []resource.URN) result.Result {
 			hasOld = true
 		}
 
-		hasNew := news[target]
+		hasNew := news != nil && news[target]
 		if !hasOld && !hasNew {
 			hasUnknownTarget = true
 
