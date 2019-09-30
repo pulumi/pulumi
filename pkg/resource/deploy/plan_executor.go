@@ -252,7 +252,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// Now that we've performed all steps in the plan, ensure that the list of targets to update was
 	// valid.  We have to do this *after* performing the steps as the target list may have referred
 	// to a resource that was created in one of hte steps.
-	res = pe.checkTargets(opts.UpdateTargets)
+	if res == nil {
+		res = pe.checkTargets(opts.UpdateTargets)
+	}
 
 	if res != nil && res.IsBail() {
 		return res
