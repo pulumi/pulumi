@@ -361,7 +361,6 @@ type Stack struct {
 	StackName   tokens.QName `json:"stackName"`
 
 	ActiveUpdate string                  `json:"activeUpdate"`
-	Resources    []ResourceV1            `json:"resources,omitempty"`
 	Tags         map[StackTagName]string `json:"tags,omitempty"`
 
 	Version int `json:"version"`
