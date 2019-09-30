@@ -3,6 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Propagate resource inputs to resource state during preview, including first-class unknown values. This allows the
+  preview to better estimate the state of a resource after an update, including property values that were populated
+  using defaults calculated by the provider.
+  [#3245](https://github.com/pulumi/pulumi/pull/3245)
+
 ## 1.2.0 (2019-09-26)
 
 - Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
