@@ -72,6 +72,6 @@ func GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(urn resource.URN
 	return newError(urn, 2012, "Cannot delete parent resource '%v' without also deleting child '%v'.")
 }
 
-func GetCannotCreateResourceWhenUpdateTargetsAreSpecified(urn resource.URN) *Diag {
-	return newError(urn, 2013, "Cannot create resource '%v' when update targets are specified.")
+func GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn resource.URN) *Diag {
+	return newError(urn, 2013, "Resource '%v' is being created but was not specified in -target list.")
 }

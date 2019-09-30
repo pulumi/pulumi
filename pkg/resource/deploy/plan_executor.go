@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -35,6 +36,61 @@ type planExecutor struct {
 
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
+}
+
+// A set is returned of all the target URNs to facilitate later callers.  The set can be 'nil'
+// indicating no targets, or will be non-nil and non-empty if there are targets.  Only URNs in the
+// original array are in the set.  i.e. it's only checked for containment.  The value of the map is
+// unused.
+func createTargetMap(targets []resource.URN) map[resource.URN]bool {
+	if len(targets) == 0 {
+		return nil
+	}
+
+	targetMap := make(map[resource.URN]bool)
+	for _, target := range targets {
+		targetMap[target] = true
+	}
+
+	return targetMap
+}
+
+// checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
+// are generated for any target that cannot be found.  The target must either have existed in the stack
+// prior to running the operation, or it must be the urn for a resource that was created.
+func (pe *planExecutor) checkTargets(targets []resource.URN) result.Result {
+	if len(targets) == 0 {
+		return nil
+	}
+
+	olds := pe.plan.olds
+	news := pe.stepGen.creates
+
+	hasUnknownTarget := false
+	for _, target := range targets {
+		hasOld := false
+		if _, has := olds[target]; has {
+			hasOld = true
+		}
+
+		hasNew := news[target]
+		if !hasOld && !hasNew {
+			hasUnknownTarget = true
+
+			logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
+			if strings.Contains(string(target), "$") {
+				pe.plan.Diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
+			} else {
+				pe.plan.Diag().Errorf(diag.GetTargetCouldNotBeFoundDidYouForgetError(), target)
+			}
+		}
+	}
+
+	if hasUnknownTarget {
+		return result.Bail()
+	}
+
+	return nil
 }
 
 // reportExecResult issues an appropriate diagnostic depending on went wrong.
@@ -83,14 +139,13 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}
 
-	// The set of -t targets provided on hte command line.  'nil' means 'update everything'.  Non-nill means 'update only
-	// in this set'
-	updateTargetsOpt, res := pe.plan.CheckTargets(opts.UpdateTargets)
-	if res != nil {
-		return res
-	}
-	destroyTargetsOpt, res := pe.plan.CheckTargets(opts.DestroyTargets)
-	if res != nil {
+	// The set of -t targets provided on hte command line.  'nil' means 'update everything'.
+	// Non-nill means 'update only in this set'.  We don't error if the user specifies an target
+	// during `update` that we don't know about because it might be the urn for a resource they
+	// want to create.
+	updateTargetsOpt := createTargetMap(opts.UpdateTargets)
+	destroyTargetsOpt := createTargetMap(opts.DestroyTargets)
+	if res := pe.checkTargets(opts.DestroyTargets); res != nil {
 		return res
 	}
 
@@ -190,6 +245,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 	pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
+
+	// Now that we've performed all steps in the plan, ensure that the list of targets to update was
+	// valid.  We have to do this *after* performing the steps as the target list may have referred
+	// to a resource that was created in one of hte steps.
+	res = pe.checkTargets(opts.UpdateTargets)
 
 	if res != nil && res.IsBail() {
 		return res
@@ -349,8 +409,8 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
-	targetMapOpt, res := pe.plan.CheckTargets(opts.RefreshTargets)
-	if res != nil {
+	targetMapOpt := createTargetMap(opts.RefreshTargets)
+	if res := pe.checkTargets(opts.RefreshTargets); res != nil {
 		return res
 	}
 

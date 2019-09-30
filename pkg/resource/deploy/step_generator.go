@@ -375,15 +375,10 @@ func (sg *stepGenerator) GenerateSteps(
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
 
-	if updateTargetsOpt != nil {
-		// The user asked to only update specific targets.  But they ran an app that produced new
-		// resources.  Error and bail out in this case.
-		//
-		// Note: we could attempt to support this in the future by allowing them to explicitly
-		// specify resource URNs that they're ok creating. Right now though it's too complex to try
-		// to ignore these resources as that can break downstream resources that expect to reference
-		// it (as well as no place to register outputs to, etc. etc.).
-		sg.plan.Diag().Errorf(diag.GetCannotCreateResourceWhenUpdateTargetsAreSpecified(urn), urn)
+	if updateTargetsOpt != nil && !updateTargetsOpt[urn] {
+		// Targets were specified, but didn't include this resource to create.  Give a particular
+		// error in that case.
+		sg.plan.Diag().Errorf(diag.GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn), urn)
 		return nil, result.Bail()
 	}
 
@@ -409,7 +404,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	if _, ok := err.(plugin.DiffUnavailableError); ok {
 		diff = plugin.DiffResult{Changes: plugin.DiffSome}
 		sg.plan.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
-	} else {
+	} else if err != nil {
 		return nil, result.FromError(err)
 	}
 
