@@ -153,7 +153,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	}
 
 	if updateTargetsOpt != nil && destroyTargetsOpt != nil {
-		panic("Should not be possible to have both .DestroyTargets and .UpdateTargets")
+		contract.Failf("Should not be possible to have both .DestroyTargets and .UpdateTargets")
 	}
 
 	// Begin iterating the source.
