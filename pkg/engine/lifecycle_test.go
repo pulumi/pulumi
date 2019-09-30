@@ -4468,7 +4468,6 @@ func deleteSpecificTargets(
 	p.Run(t, old)
 }
 
-<<<<<<< HEAD
 func TestUpdateTarget(t *testing.T) {
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
