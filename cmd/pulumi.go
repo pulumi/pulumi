@@ -428,7 +428,7 @@ func getLatestBrewFormulaVersion() (semver.Version, bool, error) {
 	}
 
 	url, err := url.Parse("https://formulae.brew.sh/api/formula/pulumi.json")
-	contract.Assert(err == nil)
+	contract.AssertNoError(err)
 
 	resp, err := httputil.DoWithRetry(&http.Request{
 		Method: http.MethodGet,
