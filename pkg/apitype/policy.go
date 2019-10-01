@@ -100,11 +100,11 @@ type Policy struct {
 
 // PolicyConfigurationMetadata describes the configuration data a policy supports at runtime.
 type PolicyConfigurationMetadata struct {
-	Variables []PolicyConfigurationVariables `json:"variables"`
+	Variables []PolicyConfigurationVariable `json:"variables"`
 }
 
-// PolicyConfigurationVariables describes a single configuration variable a policy uses.
-type PolicyConfigurationVariables struct {
+// PolicyConfigurationVariable describes a single configuration variable a policy uses.
+type PolicyConfigurationVariable struct {
 	// Description of what the configuration variable does.
 	// "comma-separated ARN list of elastic IPs"
 	// "AWS region requirement"
