@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -35,6 +36,64 @@ type planExecutor struct {
 
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
+}
+
+// A set is returned of all the target URNs to facilitate later callers.  The set can be 'nil'
+// indicating no targets, or will be non-nil and non-empty if there are targets.  Only URNs in the
+// original array are in the set.  i.e. it's only checked for containment.  The value of the map is
+// unused.
+func createTargetMap(targets []resource.URN) map[resource.URN]bool {
+	if len(targets) == 0 {
+		return nil
+	}
+
+	targetMap := make(map[resource.URN]bool)
+	for _, target := range targets {
+		targetMap[target] = true
+	}
+
+	return targetMap
+}
+
+// checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
+// are generated for any target that cannot be found.  The target must either have existed in the stack
+// prior to running the operation, or it must be the urn for a resource that was created.
+func (pe *planExecutor) checkTargets(targets []resource.URN) result.Result {
+	if len(targets) == 0 {
+		return nil
+	}
+
+	olds := pe.plan.olds
+	var news map[resource.URN]bool
+	if pe.stepGen != nil && pe.stepGen.creates != nil {
+		news = pe.stepGen.creates
+	}
+
+	hasUnknownTarget := false
+	for _, target := range targets {
+		hasOld := false
+		if _, has := olds[target]; has {
+			hasOld = true
+		}
+
+		hasNew := news != nil && news[target]
+		if !hasOld && !hasNew {
+			hasUnknownTarget = true
+
+			logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
+			if strings.Contains(string(target), "$") {
+				pe.plan.Diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
+			} else {
+				pe.plan.Diag().Errorf(diag.GetTargetCouldNotBeFoundDidYouForgetError(), target)
+			}
+		}
+	}
+
+	if hasUnknownTarget {
+		return result.Bail()
+	}
+
+	return nil
 }
 
 // reportExecResult issues an appropriate diagnostic depending on went wrong.
@@ -81,6 +140,20 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		if opts.RefreshOnly {
 			return nil
 		}
+	}
+
+	// The set of -t targets provided on hte command line.  'nil' means 'update everything'.
+	// Non-nill means 'update only in this set'.  We don't error if the user specifies an target
+	// during `update` that we don't know about because it might be the urn for a resource they
+	// want to create.
+	updateTargetsOpt := createTargetMap(opts.UpdateTargets)
+	destroyTargetsOpt := createTargetMap(opts.DestroyTargets)
+	if res := pe.checkTargets(opts.DestroyTargets); res != nil {
+		return res
+	}
+
+	if updateTargetsOpt != nil && destroyTargetsOpt != nil {
+		contract.Failf("Should not be possible to have both .DestroyTargets and .UpdateTargets")
 	}
 
 	// Begin iterating the source.
@@ -152,10 +225,10 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
-					return false, pe.performDeletes(ctx, opts)
+					return false, pe.performDeletes(ctx, updateTargetsOpt, destroyTargetsOpt)
 				}
 
-				if res := pe.handleSingleEvent(event.Event); res != nil {
+				if res := pe.handleSingleEvent(updateTargetsOpt, event.Event); res != nil {
 					if resErr := res.Error(); resErr != nil {
 						logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
@@ -176,6 +249,13 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
 
+	// Now that we've performed all steps in the plan, ensure that the list of targets to update was
+	// valid.  We have to do this *after* performing the steps as the target list may have referred
+	// to a resource that was created in one of hte steps.
+	if res == nil {
+		res = pe.checkTargets(opts.UpdateTargets)
+	}
+
 	if res != nil && res.IsBail() {
 		return res
 	}
@@ -194,7 +274,9 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	return res
 }
 
-func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result.Result {
+func (pe *planExecutor) performDeletes(
+	ctx context.Context, updateTargetsOpt, destroyTargetsOpt map[resource.URN]bool) result.Result {
+
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
 		pe.stepExec.SignalCompletion()
@@ -207,7 +289,17 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 
 	logging.V(7).Infof("performDeletes(...): beginning")
 
-	deleteSteps, res := pe.stepGen.GenerateDeletes(opts.DestroyTargets)
+	// At this point we have generated the set of resources above that we would normally want to
+	// delete.  However, if the user provided -target's we will only actually delete the specific
+	// resources that are in the set explicitly asked for.
+	var targetsOpt map[resource.URN]bool
+	if updateTargetsOpt != nil {
+		targetsOpt = updateTargetsOpt
+	} else if destroyTargetsOpt != nil {
+		targetsOpt = destroyTargetsOpt
+	}
+
+	deleteSteps, res := pe.stepGen.GenerateDeletes(targetsOpt)
 	if res != nil {
 		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
 		return res
@@ -231,7 +323,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 
 	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
-	if len(opts.DestroyTargets) > 0 {
+	if targetsOpt != nil {
 		resourceToStep := make(map[*resource.State]Step)
 		for _, step := range deleteSteps {
 			resourceToStep[pe.plan.olds[step.URN()]] = step
@@ -245,7 +337,7 @@ func (pe *planExecutor) performDeletes(ctx context.Context, opts Options) result
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
+func (pe *planExecutor) handleSingleEvent(updateTargetsOpt map[resource.URN]bool, event SourceEvent) result.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
@@ -253,7 +345,7 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, res = pe.stepGen.GenerateSteps(e)
+		steps, res = pe.stepGen.GenerateSteps(updateTargetsOpt, e)
 	case ReadResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, res = pe.stepGen.GenerateReadSteps(e)
@@ -322,8 +414,8 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
-	targetMapOpt, res := pe.plan.CheckTargets(opts.RefreshTargets)
-	if res != nil {
+	targetMapOpt := createTargetMap(opts.RefreshTargets)
+	if res := pe.checkTargets(opts.RefreshTargets); res != nil {
 		return res
 	}
 

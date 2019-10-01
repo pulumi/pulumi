@@ -68,6 +68,9 @@ type UpdateOptions struct {
 	// Specific resources to destroy during a destroy operation.
 	DestroyTargets []resource.URN
 
+	// Specific resources to update during an update operation.
+	UpdateTargets []resource.URN
+
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 

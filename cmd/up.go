@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -65,6 +66,7 @@ func newUpCmd() *cobra.Command {
 	var suppressOutputs bool
 	var yes bool
 	var secretsProvider string
+	var targets *[]string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -98,12 +100,18 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
+		targetUrns := []resource.URN{}
+		for _, t := range *targets {
+			targetUrns = append(targetUrns, resource.URN(t))
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPackPaths: policyPackPaths,
 			Parallel:             parallel,
 			Debug:                debug,
 			Refresh:              refresh,
 			UseLegacyDiff:        useLegacyDiff(),
+			UpdateTargets:        targetUrns,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -366,6 +374,11 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the update operation")
+
+	targets = cmd.PersistentFlags().StringArrayP(
+		"target", "t", []string{},
+		"Specify a single resource URN to update. Other resources will not be updated."+
+			" Multiple resources can be specified using: --target urn1 --target urn2")
 
 	// Flags for engine.UpdateOptions.
 	if hasDebugCommands() {

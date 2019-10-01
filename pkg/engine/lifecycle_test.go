@@ -2633,42 +2633,33 @@ func TestLoadFailureShutdown(t *testing.T) {
 	<-done
 }
 
-func TestDeleteBeforeReplace(t *testing.T) {
-	//             A
-	//    _________|_________
-	//    B        C        D
-	//          ___|___  ___|___
-	//          E  F  G  H  I  J
-	//             |__|
-	//             K  L
-	//
-	// For a given resource R in (A, C, D):
-	// - R will be the provider for its first dependent
-	// - A change to R will require that its second dependent be replaced
-	// - A change to R will not require that its third dependent be replaced
-	//
-	// In addition, K will have a requires-replacement property that depends on both F and G, and
-	// L will have a normal property that depends on both F and G.
-	//
-	// With that in mind, the following resources should require replacement: A, B, C, E, F, and K
+var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
 
-	p := &TestPlan{}
+func generateComplexTestDependencyGraph(
+	t *testing.T, p *TestPlan) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 
-	const resType = "pkgA:m:typA"
+	resType := tokens.Type("pkgA:m:typA")
 	type propertyDependencies map[resource.PropertyKey][]resource.URN
 
-	urnA := p.NewProviderURN("pkgA", "A", "")
-	urnB := p.NewURN(resType, "B", "")
-	urnC := p.NewProviderURN("pkgA", "C", "")
-	urnD := p.NewProviderURN("pkgA", "D", "")
-	urnE := p.NewURN(resType, "E", "")
-	urnF := p.NewURN(resType, "F", "")
-	urnG := p.NewURN(resType, "G", "")
-	urnH := p.NewURN(resType, "H", "")
-	urnI := p.NewURN(resType, "I", "")
-	urnJ := p.NewURN(resType, "J", "")
-	urnK := p.NewURN(resType, "K", "")
-	urnL := p.NewURN(resType, "L", "")
+	names := complexTestDependencyGraphNames
+
+	urnA := p.NewProviderURN("pkgA", names[0], "")
+	urnB := p.NewURN(resType, names[1], "")
+	urnC := p.NewProviderURN("pkgA", names[2], "")
+	urnD := p.NewProviderURN("pkgA", names[3], "")
+	urnE := p.NewURN(resType, names[4], "")
+	urnF := p.NewURN(resType, names[5], "")
+	urnG := p.NewURN(resType, names[6], "")
+	urnH := p.NewURN(resType, names[7], "")
+	urnI := p.NewURN(resType, names[8], "")
+	urnJ := p.NewURN(resType, names[9], "")
+	urnK := p.NewURN(resType, names[10], "")
+	urnL := p.NewURN(resType, names[11], "")
+
+	urns := []resource.URN{
+		urnA, urnB, urnC, urnD, urnE, urnF,
+		urnG, urnH, urnI, urnJ, urnK, urnL,
+	}
 
 	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
 		propertyDeps propertyDependencies, outputs resource.PropertyMap) *resource.State {
@@ -2726,31 +2717,6 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		},
 	}
 
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-					if !olds["A"].DeepEquals(news["A"]) {
-						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"A"},
-							DeleteBeforeReplace: true,
-						}, nil
-					}
-					return plugin.DiffResult{}, nil
-				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
-					if !olds["A"].DeepEquals(news["A"]) {
-						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
-					}
-					return plugin.DiffResult{}, nil
-				},
-			}, nil
-		}),
-	}
-
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
 			_, id, _, err := monitor.RegisterResource(urn.Type(), string(urn.Name()), true, deploytest.ResourceOptions{
@@ -2777,6 +2743,58 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		return nil
 	})
 
+	return urns, old, program
+}
+
+func TestDeleteBeforeReplace(t *testing.T) {
+	//             A
+	//    _________|_________
+	//    B        C        D
+	//          ___|___  ___|___
+	//          E  F  G  H  I  J
+	//             |__|
+	//             K  L
+	//
+	// For a given resource R in (A, C, D):
+	// - R will be the provider for its first dependent
+	// - A change to R will require that its second dependent be replaced
+	// - A change to R will not require that its third dependent be replaced
+	//
+	// In addition, K will have a requires-replacement property that depends on both F and G, and
+	// L will have a normal property that depends on both F and G.
+	//
+	// With that in mind, the following resources should require replacement: A, B, C, E, F, and K
+
+	p := &TestPlan{}
+
+	urns, old, program := generateComplexTestDependencyGraph(t, p)
+	names := complexTestDependencyGraphNames
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
 	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p.Steps = []TestStep{{
@@ -2796,12 +2814,12 @@ func TestDeleteBeforeReplace(t *testing.T) {
 			}
 
 			assert.Equal(t, map[resource.URN]bool{
-				urnA: true,
-				urnB: true,
-				urnC: true,
-				urnE: true,
-				urnF: true,
-				urnK: true,
+				pickURN(t, urns, names, "A"): true,
+				pickURN(t, urns, names, "B"): true,
+				pickURN(t, urns, names, "C"): true,
+				pickURN(t, urns, names, "E"): true,
+				pickURN(t, urns, names, "F"): true,
+				pickURN(t, urns, names, "K"): true,
 			}, replaced)
 
 			return res
@@ -4347,21 +4365,20 @@ func TestImportUpdatedID(t *testing.T) {
 }
 
 func TestDeleteTarget(t *testing.T) {
-	names := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
-
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
-	subsets := combinations.All(names)
+	subsets := combinations.All(complexTestDependencyGraphNames)
 
 	for _, subset := range subsets {
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
 		// control as it only generates a few hundred combinations instead of several thousand.
 		if len(subset) <= 3 {
-			deleteSpecificTargets(t, names, subset, func(urns []resource.URN, deleted map[resource.URN]bool) {})
+			deleteSpecificTargets(t, subset, func(urns []resource.URN, deleted map[resource.URN]bool) {})
 		}
 	}
 
-	deleteSpecificTargets(t, names, []string{"A"}, func(urns []resource.URN, deleted map[resource.URN]bool) {
+	deleteSpecificTargets(t, []string{"A"}, func(urns []resource.URN, deleted map[resource.URN]bool) {
 		// when deleting 'A' we expect A, B, C, E, F, and K to be deleted
+		names := complexTestDependencyGraphNames
 		assert.Equal(t, map[resource.URN]bool{
 			pickURN(t, urns, names, "A"): true,
 			pickURN(t, urns, names, "B"): true,
@@ -4374,7 +4391,7 @@ func TestDeleteTarget(t *testing.T) {
 }
 
 func deleteSpecificTargets(
-	t *testing.T, names []string, targets []string,
+	t *testing.T, targets []string,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
 
 	//             A
@@ -4387,81 +4404,7 @@ func deleteSpecificTargets(
 
 	p := &TestPlan{}
 
-	const resType = "pkgA:m:typA"
-	type propertyDependencies map[resource.PropertyKey][]resource.URN
-
-	urnA := p.NewProviderURN("pkgA", names[0], "")
-	urnB := p.NewURN(resType, names[1], "")
-	urnC := p.NewProviderURN("pkgA", names[2], "")
-	urnD := p.NewProviderURN("pkgA", names[3], "")
-	urnE := p.NewURN(resType, names[4], "")
-	urnF := p.NewURN(resType, names[5], "")
-	urnG := p.NewURN(resType, names[6], "")
-	urnH := p.NewURN(resType, names[7], "")
-	urnI := p.NewURN(resType, names[8], "")
-	urnJ := p.NewURN(resType, names[9], "")
-	urnK := p.NewURN(resType, names[10], "")
-	urnL := p.NewURN(resType, names[11], "")
-	urns := []resource.URN{
-		urnA, urnB, urnC, urnD, urnE, urnF,
-		urnG, urnH, urnI, urnJ, urnK, urnL,
-	}
-
-	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
-		propertyDeps propertyDependencies, outputs resource.PropertyMap) *resource.State {
-
-		inputs := resource.PropertyMap{}
-		for k := range propertyDeps {
-			inputs[k] = resource.NewStringProperty("foo")
-		}
-
-		return &resource.State{
-			Type:                 urn.Type(),
-			URN:                  urn,
-			Custom:               true,
-			Delete:               false,
-			ID:                   id,
-			Inputs:               inputs,
-			Outputs:              outputs,
-			Dependencies:         dependencies,
-			Provider:             provider,
-			PropertyDependencies: propertyDeps,
-		}
-	}
-
-	old := &deploy.Snapshot{
-		Resources: []*resource.State{
-			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewStringProperty("foo")}),
-			newResource(urnB, "1", string(urnA)+"::0", nil, nil, nil),
-			newResource(urnC, "2", "",
-				[]resource.URN{urnA},
-				propertyDependencies{"A": []resource.URN{urnA}},
-				resource.PropertyMap{"A": resource.NewStringProperty("bar")}),
-			newResource(urnD, "3", "",
-				[]resource.URN{urnA},
-				propertyDependencies{"B": []resource.URN{urnA}}, nil),
-			newResource(urnE, "4", string(urnC)+"::2", nil, nil, nil),
-			newResource(urnF, "5", "",
-				[]resource.URN{urnC},
-				propertyDependencies{"A": []resource.URN{urnC}}, nil),
-			newResource(urnG, "6", "",
-				[]resource.URN{urnC},
-				propertyDependencies{"B": []resource.URN{urnC}}, nil),
-			newResource(urnH, "4", string(urnD)+"::3", nil, nil, nil),
-			newResource(urnI, "5", "",
-				[]resource.URN{urnD},
-				propertyDependencies{"A": []resource.URN{urnD}}, nil),
-			newResource(urnJ, "6", "",
-				[]resource.URN{urnD},
-				propertyDependencies{"B": []resource.URN{urnD}}, nil),
-			newResource(urnK, "7", "",
-				[]resource.URN{urnF, urnG},
-				propertyDependencies{"A": []resource.URN{urnF, urnG}}, nil),
-			newResource(urnL, "8", "",
-				[]resource.URN{urnF, urnG},
-				propertyDependencies{"B": []resource.URN{urnF, urnG}}, nil),
-		},
-	}
+	urns, old, program := generateComplexTestDependencyGraph(t, p)
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -4488,37 +4431,11 @@ func deleteSpecificTargets(
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
-			_, id, _, err := monitor.RegisterResource(urn.Type(), string(urn.Name()), true, deploytest.ResourceOptions{
-				Provider: provider,
-				Inputs:   inputs,
-			})
-			assert.NoError(t, err)
-			return id
-		}
-
-		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewStringProperty("bar")})
-		register(urnB, string(urnA)+"::"+string(idA), nil)
-		idC := register(urnC, "", nil)
-		idD := register(urnD, "", nil)
-		register(urnE, string(urnC)+"::"+string(idC), nil)
-		register(urnF, "", nil)
-		register(urnG, "", nil)
-		register(urnH, string(urnD)+"::"+string(idD), nil)
-		register(urnI, "", nil)
-		register(urnJ, "", nil)
-		register(urnK, "", nil)
-		register(urnL, "", nil)
-
-		return nil
-	})
-
 	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	destroyTargets := []resource.URN{}
 	for _, target := range targets {
-		destroyTargets = append(destroyTargets, pickURN(t, urns, names, target))
+		destroyTargets = append(destroyTargets, pickURN(t, urns, complexTestDependencyGraphNames, target))
 	}
 
 	p.Options.DestroyTargets = destroyTargets
@@ -4544,6 +4461,102 @@ func deleteSpecificTargets(
 			}
 
 			validate(urns, deleted)
+			return res
+		},
+	}}
+
+	p.Run(t, old)
+}
+
+func TestUpdateTarget(t *testing.T) {
+	// Try refreshing a stack with combinations of the above resources as target to destroy.
+	subsets := combinations.All(complexTestDependencyGraphNames)
+
+	for _, subset := range subsets {
+		// limit to up to 3 resources to destroy.  This keeps the test running time under
+		// control as it only generates a few hundred combinations instead of several thousand.
+		if len(subset) <= 3 {
+			updateSpecificTargets(t, subset)
+		}
+	}
+}
+
+func updateSpecificTargets(t *testing.T, targets []string) {
+	//             A
+	//    _________|_________
+	//    B        C        D
+	//          ___|___  ___|___
+	//          E  F  G  H  I  J
+	//             |__|
+	//             K  L
+
+	p := &TestPlan{}
+
+	urns, old, program := generateComplexTestDependencyGraph(t, p)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
+					// all resources will change.
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+					}, nil
+				},
+
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+					outputs := olds.Copy()
+
+					outputs["output_prop"] = resource.NewPropertyValue(42)
+					return outputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	updateTargets := []resource.URN{}
+	for _, target := range targets {
+		updateTargets = append(updateTargets,
+			pickURN(t, urns, complexTestDependencyGraphNames, target))
+	}
+
+	p.Options.UpdateTargets = updateTargets
+	t.Logf("Updating targets: %v", updateTargets)
+
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: false,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+			assert.True(t, len(j.Entries) > 0)
+
+			updated := make(map[resource.URN]bool)
+			sames := make(map[resource.URN]bool)
+			for _, entry := range j.Entries {
+				if entry.Step.Op() == deploy.OpUpdate {
+					updated[entry.Step.URN()] = true
+				} else if entry.Step.Op() == deploy.OpSame {
+					sames[entry.Step.URN()] = true
+				} else {
+					assert.FailNowf(t, "", "Got a step that wasn't a same/update: %v", entry.Step.Op())
+				}
+			}
+
+			for _, target := range p.Options.UpdateTargets {
+				assert.Contains(t, updated, target)
+			}
+
+			for _, target := range p.Options.UpdateTargets {
+				assert.NotContains(t, sames, target)
+			}
+
 			return res
 		},
 	}}

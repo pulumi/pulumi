@@ -17,7 +17,6 @@ package deploy
 import (
 	"context"
 	"math"
-	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -30,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
@@ -55,6 +53,7 @@ type Options struct {
 	RefreshOnly       bool           // whether or not to exit after refreshing.
 	RefreshTargets    []resource.URN // The specific resources to refresh during a refresh op.
 	DestroyTargets    []resource.URN // Specific resources to destroy.
+	UpdateTargets     []resource.URN // Specific resources to update.
 	TrustDependencies bool           // whether or not to trust the resource dependency graph.
 	UseLegacyDiff     bool           // whether or not to use legacy diffing behavior.
 }
@@ -332,38 +331,4 @@ func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
 func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) result.Result {
 	planExec := &planExecutor{plan: p}
 	return planExec.Execute(ctx, opts, preview)
-}
-
-// CheckTargets validates that all the targets passed in refer to existing resources.  Diagnostics
-// are generated for any target that cannot be found.
-//
-// A map is returned of all the target URNs to facilitate later callers.  The map can be 'nil'
-// indicating no targets, or will be non-nil and non-empty if there are targets.
-func (p *Plan) CheckTargets(targets []resource.URN) (map[resource.URN]bool, result.Result) {
-	if len(targets) == 0 {
-		return nil, nil
-	}
-
-	targetMap := make(map[resource.URN]bool)
-	// Do an initial pass first to ensure that all the targets mentioned are ones we know about.
-	hasUnknownTarget := false
-	for _, target := range targets {
-		if _, has := p.olds[target]; !has {
-			hasUnknownTarget = true
-			logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
-			if strings.Contains(string(target), "$") {
-				p.Diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
-			} else {
-				p.Diag().Errorf(diag.GetTargetCouldNotBeFoundDidYouForgetError(), target)
-			}
-		}
-
-		targetMap[target] = true
-	}
-
-	if hasUnknownTarget {
-		return nil, result.Bail()
-	}
-
-	return targetMap, nil
 }

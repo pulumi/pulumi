@@ -68,6 +68,10 @@ func GetTargetCouldNotBeFoundDidYouForgetError() *Diag {
 		"Did you forget to escape $ in your shell?")
 }
 
-func GetCannotDeleteParentResourceWithoutAlsoDeletingChildError() *Diag {
-	return newError("", 2012, "Cannot delete parent resource '%v' without also deleting child '%v'.")
+func GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(urn resource.URN) *Diag {
+	return newError(urn, 2012, "Cannot delete parent resource '%v' without also deleting child '%v'.")
+}
+
+func GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn resource.URN) *Diag {
+	return newError(urn, 2013, "Resource '%v' is being created but was not specified in -target list.")
 }
