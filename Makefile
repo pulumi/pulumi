@@ -33,7 +33,7 @@ test_all::
 	$(GO_TEST) -v -p=1 ${EXTRA_TEST_PKGS}
 
 test_templates::
-	$(GO_TEST) ${TEMPLATES_PKGS}
+	$(GO_TEST) -v ${TEMPLATES_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
