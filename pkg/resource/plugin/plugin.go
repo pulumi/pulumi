@@ -249,8 +249,7 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 
 func (p *plugin) Close() error {
 	if p.Conn != nil {
-		closerr := p.Conn.Close()
-		contract.IgnoreError(closerr)
+		contract.IgnoreClose(p.Conn)
 	}
 
 	var result error
