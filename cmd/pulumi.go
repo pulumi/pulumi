@@ -229,18 +229,19 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 		return latest, oldest, err
 	}
 
+	client := client.NewClient(httpstate.DefaultURL(), "", cmdutil.Diag())
+	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
 	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
 	if isBrew {
-		return brewLatest, brewLatest, nil
-	}
-
-	client := client.NewClient(httpstate.DefaultURL(), "", cmdutil.Diag())
-	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
-	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		// When consulting Homebrew for version info, we just use the latest version as the oldest allowed.
+		latest, oldest = brewLatest, brewLatest
 	}
 
 	err = cacheVersionInfo(latest, oldest)
