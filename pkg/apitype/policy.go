@@ -54,6 +54,10 @@ type RequiredPolicy struct {
 
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
+
+	// Maps Policy names to the configuration to use for that policy.
+	// If Policy name is not in the map, use the default configuration.
+	Configuration map[string]PolicyConfiguration `json:"configuration"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -64,12 +68,31 @@ type Policy struct {
 	DisplayName string `json:"displayName"`
 
 	// Description is used to provide more context about the purpose of the policy.
-	Description      string           `json:"description"`
+	Description string `json:"description"`
+
+	// This enforcement level will be deprecated in favor of enforcement
+	// level specified by the default configuration.
 	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
 
 	// Message is the message that will be displayed to end users when they violate
 	// this policy.
 	Message string `json:"message"`
+
+	// DefaultConfiguration is used to specify the default configuration
+	// for the Policy.
+	DefaultConfiguration PolicyConfiguration `json:"defaultConfiguration"`
+}
+
+// PolicyConfiguration defines the configurable values of a
+// specific Policy.
+type PolicyConfiguration struct {
+	// If true, the policy is not run. Defaults to false.
+	Disabled         bool             `json:"disabled"`
+	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
+
+	// Key-value pairs that can be used to pass configurable values
+	// to a Policy.
+	Variables map[string]string `json:"variable"`
 }
 
 // EnforcementLevel indicates how a policy should be enforced
@@ -106,4 +129,13 @@ type ApplyPolicyPackRequest struct {
 type GetStackPolicyPacksResponse struct {
 	// RequiredPolicies is a list of required Policy Packs to run during the update.
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
+}
+
+// ConfigurePolicyPackRequest defines the configuration for a Policy
+// Pack.
+type ConfigurePolicyPackRequest struct {
+	// Maps Policy names to the configuration to use for that policy.
+	// If Policy name is not in the map, the default configuration
+	// specified by the Policy Pack will be used.
+	Configuration map[string]PolicyConfiguration `json:"configuration"`
 }
