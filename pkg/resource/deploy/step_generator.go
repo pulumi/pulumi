@@ -376,10 +376,20 @@ func (sg *stepGenerator) GenerateSteps(
 	}
 
 	if updateTargetsOpt != nil && !updateTargetsOpt[urn] {
-		// Targets were specified, but didn't include this resource to create.  Give a particular
-		// error in that case.
-		sg.plan.Diag().Errorf(diag.GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn), urn)
-		return nil, result.Bail()
+		d := diag.GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn)
+
+		if sg.plan.preview {
+			// During preview we only warn here but let the planning proceed.  This allows the user
+			// to hear about *all* the potential resources they'd need to add a -target arg for.
+			// This prevents the annoying scenario where you get notified about a problem, fix it,
+			// rerun and then get notified about the very next problem.
+			sg.plan.Diag().Warningf(d, urn)
+		} else {
+			// Targets were specified, but didn't include this resource to create.  Give a particular
+			// error in that case and stop immediately.
+			sg.plan.Diag().Errorf(d, urn)
+			return nil, result.Bail()
+		}
 	}
 
 	// Case 4: Not Case 1, 2, or 3
