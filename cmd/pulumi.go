@@ -19,6 +19,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -41,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -226,6 +229,14 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 		return latest, oldest, err
 	}
 
+	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+	if isBrew {
+		return brewLatest, brewLatest, nil
+	}
+
 	client := client.NewClient(httpstate.DefaultURL(), "", cmdutil.Diag())
 	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
 	if err != nil {
@@ -399,6 +410,49 @@ func isBrewInstall(exe string) (bool, error) {
 
 	brewPrefixExePath := filepath.Join(brewPrefixPath, "bin", "pulumi")
 	return exePath == brewPrefixExePath, nil
+}
+
+func getLatestBrewFormulaVersion() (semver.Version, bool, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+
+	isBrew, err := isBrewInstall(exe)
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+	if !isBrew {
+		return semver.Version{}, false, nil
+	}
+
+	url, err := url.Parse("https://formulae.brew.sh/api/formula/pulumi.json")
+	contract.Assert(err == nil)
+
+	resp, err := httputil.DoWithRetry(&http.Request{
+		Method: http.MethodGet,
+		URL:    url,
+	}, http.DefaultClient)
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+	defer contract.IgnoreClose(resp.Body)
+
+	type versions struct {
+		Stable string `json:"stable"`
+	}
+	var formula struct {
+		Versions versions `json:"versions"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&formula); err != nil {
+		return semver.Version{}, false, err
+	}
+
+	stable, err := semver.ParseTolerant(formula.Versions.Stable)
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+	return stable, true, nil
 }
 
 func isDevVersion(s semver.Version) bool {
