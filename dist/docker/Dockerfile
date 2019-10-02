@@ -46,6 +46,12 @@ RUN apt-get update -y && \
   # Clean up the lists work
   rm -rf /var/lib/apt/lists/*
 
+# Install Helm, pull default repository packages
+RUN curl -s https://get.helm.sh/helm-v2.14.3-linux-amd64.tar.gz | tar -xvz -C /tmp && \
+    mv /tmp/linux-amd64/helm /bin && \
+    rm -Rf /tmp/linux-amd64 && \
+    helm init --client-only
+
 # Passing --build-arg PULUMI_VERSION=vX.Y.Z will use that version
 # of the SDK. Otherwise, we use whatever get.pulumi.com thinks is
 # the latest
