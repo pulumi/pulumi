@@ -11,6 +11,9 @@ CHANGELOG
 - Fetch version information from the Homebrew JSON API for CLIs installed using `brew`.
   [#3290](https://github.com/pulumi/pulumi/pull/3290)
 
+- Add `helm` to `pulumi/pulumi` Dockerhub container
+  [#3294](https://github.com/pulumi/pulumi/pull/3294)
+
 ## 1.2.0 (2019-09-26)
 
 - Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
