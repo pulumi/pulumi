@@ -547,6 +547,20 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         return combined;
     }
 
+    // Finds nodes of the form `(...expr...).PropName` or `(...expr...)["PropName"]`
+    // For element access expressions, the argument must be a string literal.
+    function isPropertyOrElementAccessExpression(node: ts.Node): node is (ts.PropertyAccessExpression | ts.ElementAccessExpression) {
+        if (ts.isPropertyAccessExpression(node)) {
+            return true;
+        }
+
+        if (ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression)) {
+            return true;
+        }
+
+        return false;
+    }
+
     function determineCapturedPropertyChain(node: ts.Node): CapturedPropertyChain | undefined {
         let infos: CapturedPropertyInfo[] | undefined;
 
@@ -554,22 +568,27 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // something that isn't a property-access.
         while (node &&
                node.parent &&
-               ts.isPropertyAccessExpression(node.parent) &&
+               isPropertyOrElementAccessExpression(node.parent) &&
                node.parent.expression === node) {
-
-            const propertyAccess = <ts.PropertyAccessExpression>node.parent;
-            const invoked = propertyAccess.parent !== undefined &&
-                            ts.isCallExpression(propertyAccess.parent) &&
-                            propertyAccess.parent.expression === propertyAccess;
 
             if (!infos) {
                 infos = [];
             }
 
+            const propOrElementAccess = node.parent;
+
+            const name = ts.isPropertyAccessExpression(propOrElementAccess)
+                ? propOrElementAccess.name.text
+                : (<ts.StringLiteral>propOrElementAccess.argumentExpression).text;
+
+            const invoked = propOrElementAccess.parent !== undefined &&
+                            ts.isCallExpression(propOrElementAccess.parent) &&
+                            propOrElementAccess.parent.expression === propOrElementAccess;
+
             // Keep track if this name was invoked.  If so, we'll have to analyze it later
             // to see if it captured 'this'
-            infos.push({ name: node.parent.name.text, invoked });
-            node = node.parent;
+            infos.push({ name, invoked });
+            node = propOrElementAccess;
         }
 
         if (infos) {
