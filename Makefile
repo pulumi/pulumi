@@ -31,8 +31,6 @@ test_fast::
 test_all::
 	$(GO_TEST) ${PROJECT_PKGS}
 	$(GO_TEST) -v -p=1 ${EXTRA_TEST_PKGS}
-	#temporary added to test CI timing
-	$(GO_TEST) -v ${TEMPLATES_PKGS}
 
 test_templates::
 	$(GO_TEST) -v ${TEMPLATES_PKGS}
