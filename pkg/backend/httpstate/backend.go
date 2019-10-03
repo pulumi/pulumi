@@ -625,7 +625,27 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 		return err
 	}
 
-	return b.client.RenameStack(ctx, stack, string(newName))
+	// Support a qualified stack name, which would also rename the stack's project too.
+	// e.g. if you want to change the project name on the Pulumi Console to reflect a
+	// new value in Pulumi.yaml.
+	newRef, err := b.ParseStackReference(string(newName))
+	if err != nil {
+		return err
+	}
+	newIdentity, err := b.getCloudStackIdentifier(newRef)
+	if err != nil {
+		return err
+	}
+
+	// Transferring stack ownership is available to Pulumi admins, but isn't quite ready
+	// for general use yet.
+	if stack.Owner != newIdentity.Owner {
+		errMsg := "You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
+			"of a stack to another organization, please contact support@pulumi.com."
+		return errors.Errorf(errMsg)
+	}
+
+	return b.client.RenameStack(ctx, stack, newIdentity)
 }
 
 func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
