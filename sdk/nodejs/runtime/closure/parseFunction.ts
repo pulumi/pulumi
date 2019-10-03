@@ -571,19 +571,19 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
                isPropertyOrElementAccessExpression(node.parent) &&
                node.parent.expression === node) {
 
-            const propOrElementAccess = node.parent;
-
-            const invoked = propOrElementAccess.parent !== undefined &&
-                            ts.isCallExpression(propOrElementAccess.parent) &&
-                            propOrElementAccess.parent.expression === propOrElementAccess;
-
             if (!infos) {
                 infos = [];
             }
 
+            const propOrElementAccess = node.parent;
+
             const name = ts.isPropertyAccessExpression(propOrElementAccess)
                 ? propOrElementAccess.name.text
                 : (<ts.StringLiteral>propOrElementAccess.argumentExpression).text;
+
+            const invoked = propOrElementAccess.parent !== undefined &&
+                            ts.isCallExpression(propOrElementAccess.parent) &&
+                            propOrElementAccess.parent.expression === propOrElementAccess;
 
             // Keep track if this name was invoked.  If so, we'll have to analyze it later
             // to see if it captured 'this'
