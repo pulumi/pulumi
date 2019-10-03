@@ -547,6 +547,8 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         return combined;
     }
 
+    // Finds nodes of the form `(...expr...).PropName` or `(...expr...)["PropName"]`
+    // For element access expressions, the argument must be a string literal.
     function isPropertyOrElementAccessExpression(node: ts.Node): node is (ts.PropertyAccessExpression | ts.ElementAccessExpression) {
         if (ts.isPropertyAccessExpression(node)) {
             return true;
