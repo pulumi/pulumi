@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -84,18 +83,17 @@ type Credentials struct {
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
 // whether it exists or not.
 func getCredsFilePath() (string, error) {
-	user, err := user.Current()
-	if user == nil || err != nil {
-		return "", errors.Wrapf(err, "getting creds file path: failed to get current user")
-	}
-
 	// Allow the folder we use to store credentials to be overridden by tests
 	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
 	if pulumiFolder == "" {
-		pulumiFolder = filepath.Join(user.HomeDir, BookkeepingDir)
+		folder, err := GetPulumiBookkeepingPath()
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to get the bookkeeping path")
+		}
+		pulumiFolder = folder
 	}
 
-	err = os.MkdirAll(pulumiFolder, 0700)
+	err := os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
 	}

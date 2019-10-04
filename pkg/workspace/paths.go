@@ -61,6 +61,10 @@ const (
 	WorkspaceFile = "workspace.json"
 	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
 	CachedVersionFile = ".cachedVersionInfo"
+
+	// PulumiBookkeepingDirEnvVar is a path to the folder where '.pulumi' folder is stored.
+	// The path should not include '.pulumi' itself. It defaults to the user's home dir if not specified.
+	PulumiBookkeepingDirEnvVar = "PULUMI_BOOKKEEPING_DIR"
 )
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.
@@ -180,10 +184,32 @@ func isMarkupFile(path string, expect string) bool {
 // GetCachedVersionFilePath returns the location where the CLI caches information from pulumi.com on the newest
 // available version of the CLI
 func GetCachedVersionFilePath() (string, error) {
-	user, err := user.Current()
+	return GetPulumiPath(CachedVersionFile)
+}
+
+// GetPulumiBookkeepingPath returns the path of the '.pulumi' folder where Pulumi puts its artifacts.
+func GetPulumiBookkeepingPath() (string, error) {
+	// Allow the folder we use to be overridden by an environment variable
+	dir := os.Getenv(PulumiBookkeepingDirEnvVar)
+	if dir == "" {
+		// Otherwise, use the current user's home dir
+		user, err := user.Current()
+		if err != nil {
+			return "", errors.Wrapf(err, "getting current user")
+		}
+		dir = user.HomeDir
+	}
+
+	return filepath.Join(dir, BookkeepingDir), nil
+}
+
+// GetPulumiPath returns the path to a file or directory under the '.pulumi' folder. It joins the path of
+// the '.pulumi' folder with elements passed as arguments.
+func GetPulumiPath(elem ...string) (string, error) {
+	bookkeepingPath, err := GetPulumiBookkeepingPath()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(user.HomeDir, BookkeepingDir, CachedVersionFile), nil
+	return filepath.Join(append([]string{bookkeepingPath}, elem...)...), nil
 }

@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -167,11 +166,10 @@ func (pw *projectWorkspace) readSettings() error {
 }
 
 func (pw *projectWorkspace) settingsPath() string {
-	user, err := user.Current()
-	contract.AssertNoErrorf(err, "could not get current user")
-
 	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + WorkspaceFile
-	return filepath.Join(user.HomeDir, BookkeepingDir, WorkspaceDir, uniqueFileName)
+	path, err := GetPulumiPath(WorkspaceDir, uniqueFileName)
+	contract.AssertNoErrorf(err, "could not get workspace path")
+	return path
 }
 
 // sha1HexString returns a hex string of the sha1 hash of value.

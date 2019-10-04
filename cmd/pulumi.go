@@ -23,7 +23,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -335,11 +334,6 @@ func getUpgradeMessage(latest semver.Version, current semver.Version) string {
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how
 // the CLI was installed, the empty string is returned.
 func getUpgradeCommand() string {
-	curUser, err := user.Current()
-	if err != nil {
-		return ""
-	}
-
 	exe, err := os.Executable()
 	if err != nil {
 		return ""
@@ -353,7 +347,8 @@ func getUpgradeCommand() string {
 		return "$ brew upgrade pulumi"
 	}
 
-	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, ".pulumi", "bin") {
+	path, err := workspace.GetPulumiPath("bin")
+	if filepath.Dir(exe) != path || err != nil {
 		return ""
 	}
 

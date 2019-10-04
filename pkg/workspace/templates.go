@@ -18,14 +18,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 
 	"github.com/texttheater/golang-levenshtein/levenshtein"
-	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pkg/errors"
@@ -382,17 +381,12 @@ func (template Template) CopyTemplateFiles(
 func GetTemplateDir() (string, error) {
 	// Allow the folder we use to store templates to be overridden.
 	dir := os.Getenv(pulumiLocalTemplatePathEnvVar)
-
-	// Use the classic template directory if there is no override.
-	if dir == "" {
-		u, err := user.Current()
-		if u == nil || err != nil {
-			return "", errors.Wrap(err, "getting user home directory")
-		}
-		dir = filepath.Join(u.HomeDir, BookkeepingDir, TemplateDir)
+	if dir != "" {
+		return dir, nil
 	}
 
-	return dir, nil
+	// Use the classic template directory if there is no override.
+	return GetPulumiPath(TemplateDir)
 }
 
 // We are moving towards a world where these restrictions will be enforced by all our backends. When we get there,
