@@ -62,9 +62,9 @@ const (
 	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
 	CachedVersionFile = ".cachedVersionInfo"
 
-	// PulumiBookkeepingDirEnvVar is a path to the folder where '.pulumi' folder is stored.
+	// PulumiBookkeepingLocationEnvVar is a path to the folder where '.pulumi' folder is stored.
 	// The path should not include '.pulumi' itself. It defaults to the user's home dir if not specified.
-	PulumiBookkeepingDirEnvVar = "PULUMI_BOOKKEEPING_DIR"
+	PulumiBookkeepingLocationEnvVar = "PULUMI_BOOKKEEPING_LOCATION"
 )
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.
@@ -190,7 +190,7 @@ func GetCachedVersionFilePath() (string, error) {
 // GetPulumiBookkeepingPath returns the path of the '.pulumi' folder where Pulumi puts its artifacts.
 func GetPulumiBookkeepingPath() (string, error) {
 	// Allow the folder we use to be overridden by an environment variable
-	dir := os.Getenv(PulumiBookkeepingDirEnvVar)
+	dir := os.Getenv(PulumiBookkeepingLocationEnvVar)
 	if dir == "" {
 		// Otherwise, use the current user's home dir
 		user, err := user.Current()
