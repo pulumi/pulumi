@@ -441,13 +441,15 @@ func (pc *Client) CreateUpdate(
 	}, updateResponse.RequiredPolicies, nil
 }
 
-func (pc *Client) RenameStack(ctx context.Context, stack StackIdentifier, newName string) error {
+// RenameStack renames the provided stack to have the new identifier.
+func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentifier) error {
 	req := apitype.StackRenameRequest{
-		NewName: newName,
+		NewName:    newID.Stack,
+		NewProject: newID.Project,
 	}
 	var resp apitype.ImportStackResponse
 
-	return pc.restCall(ctx, "POST", getStackPath(stack, "rename"), nil, &req, &resp)
+	return pc.restCall(ctx, "POST", getStackPath(currentID, "rename"), nil, &req, &resp)
 }
 
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used

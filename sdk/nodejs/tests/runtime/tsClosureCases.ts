@@ -3398,6 +3398,29 @@ return function () { console.log(o.a); };
     }
 
     {
+        const o = { a: 1, b: 2 };
+
+        cases.push({
+            title: "Capture subset of properties #1.1",
+            func: function () { console.log(o["a"]); },
+            expectText: `exports.handler = __f0;
+
+var __o = {a: 1};
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["a"]); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const o = { a: 1, b: 2, c: 3 };
 
         cases.push({
@@ -3412,6 +3435,29 @@ function __f0() {
     with({ o: __o }) {
 
 return function () { console.log(o.b + o.c); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: 2, c: 3 };
+
+        cases.push({
+            title: "Capture subset of properties #2.1",
+            func: function () { console.log(o["b"] + o["c"]); },
+            expectText: `exports.handler = __f0;
+
+var __o = {b: 2, c: 3};
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["b"] + o["c"]); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -3447,7 +3493,7 @@ return function () { console.log(o); };
         const o = { a: 1, b: 2, c() { return this; } };
 
         cases.push({
-            title: "Capture all if object property is invoked, and it uses this.",
+            title: "Capture all if object property is invoked, and it uses this. #1",
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
@@ -3468,6 +3514,39 @@ function __f0() {
     with({ o: __o }) {
 
 return function () { console.log(o.c()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: 2, c() { return this; } };
+
+        cases.push({
+            title: "Capture all if object property is invoked, and it uses this. #1.1",
+            func: function () { console.log(o["c"]()); },
+            expectText: `exports.handler = __f0;
+
+var __o = {a: 1, b: 2, c: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*c*/() { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["c"]()); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -3547,7 +3626,7 @@ return function () { console.log(o.c()); };
         const o = { a: 1, b: 2, c() { return this; } };
 
         cases.push({
-            title: "Capture one if object property is captured, uses this, but is not invoked",
+            title: "Capture one if object property is captured, uses this, but is not invoked. #1",
             func: function () { console.log(o.c); },
             expectText: `exports.handler = __f0;
 
@@ -3577,10 +3656,43 @@ return function () { console.log(o.c); };
     }
 
     {
+        const o = { a: 1, b: 2, c() { return this; } };
+
+        cases.push({
+            title: "Capture one if object property is captured, uses this, but is not invoked. #1.1",
+            func: function () { console.log(o["c"]); },
+            expectText: `exports.handler = __f0;
+
+var __o = {c: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*c*/() { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["c"]); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const o = { a: 1, b: 2, c() { return 0; } };
 
         cases.push({
-            title: "Capture one if object property is invoked, and it does not use this.",
+            title: "Capture one if object property is invoked, and it does not use this. #1",
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
@@ -3610,10 +3722,43 @@ return function () { console.log(o.c()); };
     }
 
     {
+        const o = { a: 1, b: 2, c() { return 0; } };
+
+        cases.push({
+            title: "Capture one if object property is invoked, and it does not use this. #1.1",
+            func: function () { console.log(o["c"]()); },
+            expectText: `exports.handler = __f0;
+
+var __o = {c: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*c*/() { return 0; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["c"]()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const o = { a: 1, b: { c() { return this; } } };
 
         cases.push({
-            title: "Capture subset if sub object property is invoked.",
+            title: "Capture subset if sub object property is invoked. #1",
             func: function () { console.log(o.b.c()); },
             expectText: `exports.handler = __f0;
 
@@ -3645,10 +3790,45 @@ return function () { console.log(o.b.c()); };
     }
 
     {
+        const o = { a: 1, b: { c() { return this; } } };
+
+        cases.push({
+            title: "Capture subset if sub object property is invoked. #1.1",
+            func: function () { console.log(o["b"]["c"]()); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {c: __f1};
+__o.b = __o_b;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*c*/() { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["b"]["c"]()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
         const o = { a: 1, get b() { return this; } };
 
         cases.push({
-            title: "Capture all if getter and getter uses this.",
+            title: "Capture all if getter and getter uses this. #1",
             func: function () { console.log(o.b); },
             expectText: `exports.handler = __f0;
 
@@ -3680,10 +3860,45 @@ return function () { console.log(o.b); };
     }
 
     {
+        const o = { a: 1, get b() { return this; } };
+
+        cases.push({
+            title: "Capture all if getter and getter uses this. #1.1",
+            func: function () { console.log(o["b"]); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+__o.a = 1;
+Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*b*/() { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["b"]); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
         const o = { a: 1, get b() { return 0; } };
 
         cases.push({
-            title: "Capture one if getter and getter does not use this.",
+            title: "Capture one if getter and getter does not use this. #1",
             func: function () { console.log(o.b); },
             expectText: `exports.handler = __f0;
 
@@ -3705,6 +3920,40 @@ function __f0() {
     with({ o: __o }) {
 
 return function () { console.log(o.b); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const o = { a: 1, get b() { return 0; } };
+
+        cases.push({
+            title: "Capture one if getter and getter does not use this. #1.1",
+            func: function () { console.log(o["b"]); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*b*/() { return 0; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o["b"]); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -3760,6 +4009,52 @@ return function /*f1*/() {
     }
 
     {
+        const o = { a: 1, b: 1, c: 2 };
+        function f1() {
+            console.log(o["a"]);
+            f2();
+        }
+
+        function f2() {
+            console.log(o["c"]);
+        }
+
+        cases.push({
+            title: "Capture multi props from different contexts #1.1",
+            func: f1,
+            expectText: `exports.handler = __f1;
+
+var __o = {a: 1, c: 2};
+
+function __f2() {
+  return (function() {
+    with({ o: __o, f2: __f2 }) {
+
+return function /*f2*/() {
+            console.log(o["c"]);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
+
+return function /*f1*/() {
+            console.log(o["a"]);
+            f2();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
         const o = { a: 1 };
         function f1() {
             // @ts-ignore
@@ -3767,7 +4062,7 @@ return function /*f1*/() {
         }
 
         cases.push({
-            title: "Do not capture non-existent prop",
+            title: "Do not capture non-existent prop #1",
             func: f1,
             expectText: `exports.handler = __f1;
 
@@ -3780,6 +4075,36 @@ function __f1() {
 return function /*f1*/() {
             // @ts-ignore
             console.log(o.c);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const o = { a: 1 };
+        function f1() {
+            // @ts-ignore
+            console.log(o["c"]);
+        }
+
+        cases.push({
+            title: "Do not capture non-existent prop #1.1",
+            func: f1,
+            expectText: `exports.handler = __f1;
+
+var __o = {};
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f1: __f1 }) {
+
+return function /*f1*/() {
+            // @ts-ignore
+            console.log(o["c"]);
         };
 
     }
@@ -3838,6 +4163,52 @@ return function /*f1*/() {
     {
         const o = { a: 1, b: 1, c: 2 };
         function f1() {
+            console.log(o["a"]);
+            f2();
+        }
+
+        function f2() {
+            console.log(o);
+        }
+
+        cases.push({
+            title: "Capture all props from different contexts #1.1",
+            func: f1,
+            expectText: `exports.handler = __f1;
+
+var __o = {a: 1, b: 1, c: 2};
+
+function __f2() {
+  return (function() {
+    with({ o: __o, f2: __f2 }) {
+
+return function /*f2*/() {
+            console.log(o);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
+
+return function /*f1*/() {
+            console.log(o["a"]);
+            f2();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const o = { a: 1, b: 1, c: 2 };
+        function f1() {
             console.log(o);
             f2();
         }
@@ -3859,6 +4230,52 @@ function __f2() {
 
 return function /*f2*/() {
             console.log(o.a);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
+
+return function /*f1*/() {
+            console.log(o);
+            f2();
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const o = { a: 1, b: 1, c: 2 };
+        function f1() {
+            console.log(o);
+            f2();
+        }
+
+        function f2() {
+            console.log(o["a"]);
+        }
+
+        cases.push({
+            title: "Capture all props from different contexts #2.1",
+            func: f1,
+            expectText: `exports.handler = __f1;
+
+var __o = {a: 1, b: 1, c: 2};
+
+function __f2() {
+  return (function() {
+    with({ o: __o, f2: __f2 }) {
+
+return function /*f2*/() {
+            console.log(o["a"]);
         };
 
     }
@@ -3954,6 +4371,69 @@ return function () { o.m(); };
                 this.b = 2;
             }
 
+            m() { console.log(this); }
+        }
+        const o = new C();
+
+        cases.push({
+            title: "Capture all props if prototype is and uses this #1.1",
+            func: function () { o["m"](); },
+            expectText: `exports.handler = __f0;
+
+var __o_proto = {};
+__f1.prototype = __o_proto;
+Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__o_proto, "m", { configurable: true, writable: true, value: __f2 });
+var __o = Object.create(__o_proto);
+__o.a = 1;
+__o.b = 2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.a = 1;
+                this.b = 2;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { console.log(this); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o["m"](); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            a: number;
+            b: number;
+
+            constructor() {
+                this.a = 1;
+                this.b = 2;
+            }
+
             m() { }
         }
         const o = new C();
@@ -3981,6 +4461,51 @@ function __f0() {
     with({ o: __o }) {
 
 return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            a: number;
+            b: number;
+
+            constructor() {
+                this.a = 1;
+                this.b = 2;
+            }
+
+            m() { }
+        }
+        const o = new C();
+
+        cases.push({
+            title: "Capture no props if prototype is used but does not use this #1.1",
+            func: function () { o["m"](); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+Object.defineProperty(__o, "m", { configurable: true, writable: true, value: __f1 });
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o["m"](); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -4078,6 +4603,103 @@ function __f0() {
     with({ o: __o }) {
 
 return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            a: number;
+
+            constructor() {
+                this.a = 1;
+            }
+
+            m() { (<any>this).n(); }
+        }
+
+        class D extends C {
+            b: number;
+            constructor() {
+                super();
+                this.b = 2;
+            }
+            n() {}
+        }
+        const o = new D();
+
+        cases.push({
+            title: "Capture all props if prototype is accessed #2.1",
+            func: function () { o["m"](); },
+            expectText: `exports.handler = __f0;
+
+var __o_proto_proto = {};
+__f1.prototype = __o_proto_proto;
+Object.defineProperty(__o_proto_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__o_proto_proto, "m", { configurable: true, writable: true, value: __f2 });
+var __o_proto = Object.create(__o_proto_proto);
+__f3.prototype = __o_proto;
+Object.setPrototypeOf(__f3, __f1);
+Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__o_proto, "n", { configurable: true, writable: true, value: __f4 });
+var __o = Object.create(__o_proto);
+__o.a = 1;
+__o.b = 2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.a = 1;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __super: __f1 }) {
+
+return function /*constructor*/() {
+    __super.call(this);
+    this.b = 2;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({ __super: __f1 }) {
+
+return function /*n*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o["m"](); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

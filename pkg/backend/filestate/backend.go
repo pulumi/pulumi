@@ -333,7 +333,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 		}
 	}
 
-	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot)
+	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
 	if _, err = b.saveStack(newName, snap, nil); err != nil {
 		return err
 	}

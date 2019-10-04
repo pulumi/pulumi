@@ -11,6 +11,9 @@ CHANGELOG
 - Fetch version information from the Homebrew JSON API for CLIs installed using `brew`.
   [#3290](https://github.com/pulumi/pulumi/pull/3290)
 
+- Support renaming stack projects via `pulumi stack rename`.
+  [#3292](https://github.com/pulumi/pulumi/pull/3292)
+  
 - Add `helm` to `pulumi/pulumi` Dockerhub container
   [#3294](https://github.com/pulumi/pulumi/pull/3294)
 

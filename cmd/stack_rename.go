@@ -41,7 +41,11 @@ func newStackRenameCmd() *cobra.Command {
 			"Note: Because renaming a stack will change the value of `getStack()` inside a Pulumi program, if this\n" +
 			"name is used as part of a resource's name, the next `pulumi up` will want to delete the old resource and\n" +
 			"create a new copy. For now, if you don't want these changes to be applied, you should rename your stack\n" +
-			"back to its previous name.",
+			"back to its previous name." +
+			"\n" +
+			"You can also rename the stack's project by passing a fully-qualified stack name as well. For example:\n" +
+			"'robot-co/new-project-name/production'. However in order to update the stack again, you would also need\n" +
+			"to update the name field of Pulumi.yaml, so the project names match.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -66,10 +70,20 @@ func newStackRenameCmd() *cobra.Command {
 				return err
 			}
 
-			if err := os.Rename(oldConfigPath, newConfigPath); err != nil {
-				return errors.Wrapf(err, "renaming %s to %s", filepath.Base(oldConfigPath), filepath.Base(newConfigPath))
+			// Move the configuration data stored in Pulumi.<stack-name>.yaml.
+			_, configStatErr := os.Stat(oldConfigPath)
+			switch {
+			case os.IsNotExist(configStatErr):
+				// Stack doesn't have any configuration, ignore.
+			case configStatErr == nil:
+				if err := os.Rename(oldConfigPath, newConfigPath); err != nil {
+					return errors.Wrapf(err, "renaming configuration file to %s", filepath.Base(newConfigPath))
+				}
+			default:
+				return errors.Wrapf(err, "checking current configuration file %v", oldConfigPath)
 			}
 
+			// Update the current workspace state to have selected the new stack.
 			if err := state.SetCurrentStack(args[0]); err != nil {
 				return errors.Wrap(err, "setting current stack")
 			}
