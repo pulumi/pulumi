@@ -13,6 +13,9 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
+  
+- Make the location of `.pulumi` folder configurable with an environment variable.
+  [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
 
 ## 1.2.0 (2019-09-26)
 
