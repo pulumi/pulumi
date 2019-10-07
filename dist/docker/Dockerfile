@@ -12,6 +12,7 @@ RUN apt-get update -y && \
     build-essential \
     ca-certificates \
     curl \
+    jq \
     git \
     gnupg \
     software-properties-common \
@@ -46,11 +47,16 @@ RUN apt-get update -y && \
   # Clean up the lists work
   rm -rf /var/lib/apt/lists/*
 
-# Install Helm, pull default repository packages
-RUN curl -s https://get.helm.sh/helm-v2.14.3-linux-amd64.tar.gz | tar -xvz -C /tmp && \
+# Install Helm, passing --build-arg HELM_VERSION=vX.Y.Z will use that version
+# Otherwise, we use the latest stable release from github
+ARG HELM_VERSION=latest
+RUN if [ "$HELM_VERSION" = "latest" ]; then \
+        curl -s "https://get.helm.sh/helm-$(curl -s https://api.github.com/repos/helm/helm/releases/latest | jq -r .tag_name)-linux-amd64.tar.gz" | tar -xvz -C /tmp; \
+    else \
+        curl -s "https://get.helm.sh/helm-$HELM_VERSION-linux-amd64.tar.gz" | tar -xvz -C /tmp; \
+    fi && \
     mv /tmp/linux-amd64/helm /bin && \
-    rm -Rf /tmp/linux-amd64 && \
-    helm init --client-only
+    rm -Rf /tmp/linux-amd64
 
 # Passing --build-arg PULUMI_VERSION=vX.Y.Z will use that version
 # of the SDK. Otherwise, we use whatever get.pulumi.com thinks is
