@@ -88,7 +88,7 @@ func getCredsFilePath() (string, error) {
 	if pulumiFolder == "" {
 		folder, err := GetPulumiHomeDir()
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to get the bookkeeping path")
+			return "", errors.Wrapf(err, "failed to get the home path")
 		}
 		pulumiFolder = folder
 	}

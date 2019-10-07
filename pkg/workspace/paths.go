@@ -208,10 +208,10 @@ func GetPulumiHomeDir() (string, error) {
 // GetPulumiPath returns the path to a file or directory under the '.pulumi' folder. It joins the path of
 // the '.pulumi' folder with elements passed as arguments.
 func GetPulumiPath(elem ...string) (string, error) {
-	bookkeepingPath, err := GetPulumiHomeDir()
+	homeDir, err := GetPulumiHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(append([]string{bookkeepingPath}, elem...)...), nil
+	return filepath.Join(append([]string{homeDir}, elem...)...), nil
 }
