@@ -86,7 +86,7 @@ func getCredsFilePath() (string, error) {
 	// Allow the folder we use to store credentials to be overridden by tests
 	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
 	if pulumiFolder == "" {
-		folder, err := GetPulumiBookkeepingPath()
+		folder, err := GetPulumiHomeDir()
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to get the bookkeeping path")
 		}
