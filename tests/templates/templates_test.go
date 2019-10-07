@@ -69,6 +69,7 @@ func TestTemplates(t *testing.T) {
 		Overrides:            overrides,
 		Quick:                true,
 		SkipRefresh:          true,
+		NoParallel:           true, // we mark tests as Parallel manually when instantiating
 	}
 
 	// Retrieve the template repo.
@@ -81,11 +82,14 @@ func TestTemplates(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, template := range templates {
-		t.Run(template.Name, func(t *testing.T) {
+		templateName := template.Name
+		t.Run(templateName, func(t *testing.T) {
+			t.Parallel()
+
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			e.RunCommand("pulumi", "new", template.Name, "-f", "-s", "template-test")
+			e.RunCommand("pulumi", "new", templateName, "-f", "-s", "template-test")
 
 			path, err := workspace.DetectProjectPathFrom(e.RootPath)
 			assert.NoError(t, err)
@@ -94,15 +98,15 @@ func TestTemplates(t *testing.T) {
 
 			run :=
 				// Skip packet templates for now - waiting for credentials
-				!strings.Contains(template.Name, "packet") &&
+				!strings.Contains(templateName, "packet") &&
 					// Skip go templates for now - not suppored yet
-					!strings.Contains(template.Name, "go") &&
+					!strings.Contains(templateName, "go") &&
 					// Skip kubernetes templates - no kubeconfig to run them with
-					!strings.Contains(template.Name, "kubernetes") &&
+					!strings.Contains(templateName, "kubernetes") &&
 					// Skip Digital Ocean templates - they all try to create a domain which is occupied
-					!strings.Contains(template.Name, "digitalocean") &&
+					!strings.Contains(templateName, "digitalocean") &&
 					// Skip gcp templates for now - waiting for gcp
-					!strings.Contains(template.Name, "gcp")
+					!strings.Contains(templateName, "gcp")
 
 			if run {
 				example := base.With(integration.ProgramTestOptions{
