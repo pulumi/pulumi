@@ -313,11 +313,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Secrets[k] = v
 	}
-	if overrides.CloudURL != "" {
-		opts.CloudURL = overrides.CloudURL
-	}
-	if overrides.Tracing != "" {
-		opts.Tracing = overrides.Tracing
+	if overrides.SecretsProvider != "" {
+		opts.SecretsProvider = overrides.SecretsProvider
 	}
 	if overrides.EditDirs != nil {
 		opts.EditDirs = overrides.EditDirs
@@ -328,11 +325,11 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.RelativeWorkDir != "" {
 		opts.RelativeWorkDir = overrides.RelativeWorkDir
 	}
-	if overrides.ReportStats != nil {
-		opts.ReportStats = overrides.ReportStats
+	if overrides.AllowEmptyPreviewChanges {
+		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
 	}
-	if overrides.RunBuild {
-		opts.RunBuild = overrides.RunBuild
+	if overrides.AllowEmptyUpdateChanges {
+		opts.AllowEmptyUpdateChanges = overrides.AllowEmptyUpdateChanges
 	}
 	if overrides.ExpectFailure {
 		opts.ExpectFailure = overrides.ExpectFailure
@@ -346,14 +343,50 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.SkipStackRemoval {
 		opts.SkipStackRemoval = overrides.SkipStackRemoval
 	}
-	if overrides.AllowEmptyPreviewChanges {
-		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
+	if overrides.Quick {
+		opts.Quick = overrides.Quick
 	}
-	if overrides.AllowEmptyUpdateChanges {
-		opts.AllowEmptyUpdateChanges = overrides.AllowEmptyUpdateChanges
+	if overrides.PreviewCommandlineFlags != nil {
+		opts.PreviewCommandlineFlags = append(opts.PreviewCommandlineFlags, overrides.PreviewCommandlineFlags...)
 	}
-	if overrides.Bin != "" {
-		opts.Bin = overrides.Bin
+	if overrides.UpdateCommandlineFlags != nil {
+		opts.UpdateCommandlineFlags = append(opts.UpdateCommandlineFlags, overrides.UpdateCommandlineFlags...)
+	}
+	if overrides.QueryCommandlineFlags != nil {
+		opts.QueryCommandlineFlags = append(opts.QueryCommandlineFlags, overrides.QueryCommandlineFlags...)
+	}
+	if overrides.RunBuild {
+		opts.RunBuild = overrides.RunBuild
+	}
+	if overrides.RunUpdateTest {
+		opts.RunUpdateTest = overrides.RunUpdateTest
+	}
+	if overrides.CloudURL != "" {
+		opts.CloudURL = overrides.CloudURL
+	}
+	if overrides.StackName != "" {
+		opts.StackName = overrides.StackName
+	}
+	if overrides.Tracing != "" {
+		opts.Tracing = overrides.Tracing
+	}
+	if overrides.NoParallel {
+		opts.NoParallel = overrides.NoParallel
+	}
+	if overrides.PrePulumiCommand != nil {
+		opts.PrePulumiCommand = overrides.PrePulumiCommand
+	}
+	if overrides.ReportStats != nil {
+		opts.ReportStats = overrides.ReportStats
+	}
+	if overrides.Stdout != nil {
+		opts.Stdout = overrides.Stdout
+	}
+	if overrides.Stderr != nil {
+		opts.Stderr = overrides.Stderr
+	}
+	if overrides.Verbose {
+		opts.Verbose = overrides.Verbose
 	}
 	if overrides.DebugLogLevel != 0 {
 		opts.DebugLogLevel = overrides.DebugLogLevel
@@ -361,11 +394,20 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.DebugUpdates {
 		opts.DebugUpdates = overrides.DebugUpdates
 	}
+	if overrides.Bin != "" {
+		opts.Bin = overrides.Bin
+	}
+	if overrides.YarnBin != "" {
+		opts.YarnBin = overrides.YarnBin
+	}
+	if overrides.GoBin != "" {
+		opts.GoBin = overrides.GoBin
+	}
+	if overrides.PipenvBin != "" {
+		opts.PipenvBin = overrides.PipenvBin
+	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
-	}
-	if overrides.RunUpdateTest {
-		opts.RunUpdateTest = overrides.RunUpdateTest
 	}
 	return opts
 }
