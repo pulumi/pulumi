@@ -17,6 +17,7 @@ package deploy
 import (
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -45,6 +46,15 @@ type stepGenerator struct {
 	// events and report them all at once.
 	hasPolicyViolations bool
 
+	// The mutex used to control acces to shared state, including the resource lock condition variable.
+	mutex sync.RWMutex
+	// The set of resources that are locked for planning. This is used to ensure that multiple changes to the same
+	// resource are not being planned in parallel. This is possible if a resource is part of two DBR trees or is
+	// being registered concurrently with a DBR.
+	resourceLocks map[resource.URN]bool
+	// The condition variable used to control access to resourceLocks. Must use the mutex above for locking.
+	resourceCond sync.Cond
+
 	urns           map[resource.URN]bool            // set of URNs discovered for this plan
 	reads          map[resource.URN]bool            // set of URNs read for this plan
 	deletes        map[resource.URN]bool            // set of URNs deleted in this plan
@@ -54,6 +64,7 @@ type stepGenerator struct {
 	sames          map[resource.URN]bool            // set of URNs that were not changed in this plan
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
+
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
@@ -61,10 +72,90 @@ type stepGenerator struct {
 	aliased map[resource.URN]resource.URN
 }
 
+func (sg *stepGenerator) rlocked(fn func()) {
+	sg.mutex.RLock()
+	defer sg.mutex.RUnlock()
+
+	fn()
+}
+
+func (sg *stepGenerator) locked(fn func()) {
+	sg.mutex.Lock()
+	defer sg.mutex.Unlock()
+
+	fn()
+}
+
+// Locks a single resource by URN. The mutex must not be held by the caller prior to calling this function.
+func (sg *stepGenerator) lockResource(urn resource.URN) {
+	sg.resourceCond.L.Lock()
+	defer sg.resourceCond.L.Unlock()
+
+	for sg.resourceLocks[urn] {
+		sg.resourceCond.Wait()
+	}
+	sg.resourceLocks[urn] = true
+}
+
+// Unlocks a single resource by URN. The mutex must not be held by the caller prior to calling this function.
+func (sg *stepGenerator) unlockResource(urn resource.URN) {
+	sg.resourceCond.L.Lock()
+	defer func() {
+		sg.resourceCond.L.Unlock()
+		sg.resourceCond.Signal()
+	}()
+
+	delete(sg.resourceLocks, urn)
+}
+
+// Attempts to lock a set of resources; returns true if all resource locks were acquired. The mutex *must* be held by
+// the caller prior to calling this function.
+func (sg *stepGenerator) tryLockResourcesLocked(resources []*resource.State) bool {
+	for _, r := range resources {
+		if sg.resourceLocks[r.URN] {
+			return false
+		}
+	}
+	for _, r := range resources {
+		sg.resourceLocks[r.URN] = true
+	}
+	return true
+}
+
+// Unlocks the list of resources. The mutex must not be held by the caller prior to calling this function.
+func (sg *stepGenerator) unlockResources(resources []*resource.State) {
+	sg.resourceCond.L.Lock()
+	defer func() {
+		sg.resourceCond.L.Unlock()
+		sg.resourceCond.Signal()
+	}()
+
+	for _, r := range resources {
+		delete(sg.resourceLocks, r.URN)
+	}
+}
+
+// Unlocks the resources listed in the dependent replaces. The mutex must not be held by the caller prior to calling
+// this function.
+func (sg *stepGenerator) unlockDependentReplaces(toReplace []dependentReplace) {
+	sg.resourceCond.L.Lock()
+	defer func() {
+		sg.resourceCond.L.Unlock()
+		sg.resourceCond.Signal()
+	}()
+
+	for _, r := range toReplace {
+		delete(sg.resourceLocks, r.res.URN)
+	}
+}
+
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, result.Result) {
 	urn := sg.plan.generateURN(event.Parent(), event.Type(), event.Name())
+	sg.lockResource(urn)
+	defer sg.unlockResource(urn)
+
 	newState := resource.NewState(event.Type(),
 		urn,
 		true,  /*custom*/
@@ -102,7 +193,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 	if hasOld && !old.External && old.ID != event.ID() {
 		logging.V(7).Infof(
 			"stepGenerator.GenerateReadSteps(...): replacing existing resource %s, ids don't match", urn)
-		sg.replaces[urn] = true
+		sg.locked(func() {
+			sg.replaces[urn] = true
+		})
 		return []Step{
 			NewReadReplacementStep(sg.plan, event, old, newState),
 			NewReplaceStep(sg.plan, old, newState, nil, nil, nil, true),
@@ -113,7 +206,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
-	sg.reads[urn] = true
+	sg.locked(func() {
+		sg.reads[urn] = true
+	})
 	return []Step{
 		NewReadStep(sg.plan, event, old, newState),
 	}, nil
@@ -130,37 +225,43 @@ func (sg *stepGenerator) GenerateSteps(
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
-	// generate an URN for this new resource.
-	urn := sg.plan.generateURN(goal.Parent, goal.Type, goal.Name)
-	if sg.urns[urn] {
-		invalid = true
-		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
-	}
-	sg.urns[urn] = true
 
-	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
-	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
-	// alias, record that alias so that we do not delete the aliased resource later.
+	// Generate an URN for this new resource, then check for an old resource so that we can figure out if this is a
+	// create, delete, etc., and/or to diff.  We look up first by URN and then by any provided aliases.  If it is found
+	// using an alias, record that alias so that we do not delete the aliased resource later.
 	var oldInputs resource.PropertyMap
 	var oldOutputs resource.PropertyMap
 	var old *resource.State
 	var hasOld bool
-	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
-		old, hasOld = sg.plan.Olds()[urnOrAlias]
-		if hasOld {
-			oldInputs = old.Inputs
-			oldOutputs = old.Outputs
-			if urnOrAlias != urn {
-				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
-					invalid = true
-					sg.plan.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
-				}
-				sg.aliased[urnOrAlias] = urn
-			}
-			break
+
+	urn := sg.plan.generateURN(goal.Parent, goal.Type, goal.Name)
+	sg.lockResource(urn)
+	defer sg.unlockResource(urn)
+
+	sg.locked(func() {
+		if sg.urns[urn] {
+			invalid = true
+			// TODO[pulumi/pulumi-framework#19]: improve this error message!
+			sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 		}
-	}
+		sg.urns[urn] = true
+
+		for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
+			old, hasOld = sg.plan.Olds()[urnOrAlias]
+			if hasOld {
+				oldInputs = old.Inputs
+				oldOutputs = old.Outputs
+				if urnOrAlias != urn {
+					if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
+						invalid = true
+						sg.plan.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+					}
+					sg.aliased[urnOrAlias] = urn
+				}
+				break
+			}
+		}
+	})
 
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
@@ -182,7 +283,9 @@ func (sg *stepGenerator) GenerateSteps(
 	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
 	// of resources that use this provider.
 	if providers.IsProviderType(goal.Type) {
-		sg.providers[urn] = new
+		sg.locked(func() {
+			sg.providers[urn] = new
+		})
 	}
 
 	// Fetch the provider for this resource.
@@ -195,7 +298,10 @@ func (sg *stepGenerator) GenerateSteps(
 	allowUnknowns := sg.plan.preview
 
 	// We may be re-creating this resource if it got deleted earlier in the execution of this plan.
-	_, recreating := sg.deletes[urn]
+	var recreating bool
+	sg.rlocked(func() {
+		_, recreating = sg.deletes[urn]
+	})
 
 	// We may be creating this resource if it previously existed in the snapshot as an External resource
 	wasExternal := hasOld && old.External
@@ -270,7 +376,9 @@ func (sg *stepGenerator) GenerateSteps(
 				if !sg.plan.preview {
 					invalid = true
 				}
-				sg.hasPolicyViolations = true
+				sg.locked(func() {
+					sg.hasPolicyViolations = true
+				})
 			}
 			sg.opts.Events.OnPolicyViolation(new.URN, d)
 		}
@@ -300,9 +408,12 @@ func (sg *stepGenerator) GenerateSteps(
 		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
 
 		// Unmark this resource as deleted, we now know it's being replaced instead.
-		delete(sg.deletes, urn)
-		sg.replaces[urn] = true
-		keys := sg.dependentReplaceKeys[urn]
+		var keys []resource.PropertyKey
+		sg.locked(func() {
+			delete(sg.deletes, urn)
+			sg.replaces[urn] = true
+			keys = sg.dependentReplaceKeys[urn]
+		})
 		return []Step{
 			NewReplaceStep(sg.plan, old, new, nil, nil, nil, false),
 			NewCreateReplacementStep(sg.plan, event, old, new, keys, nil, nil, false),
@@ -319,11 +430,9 @@ func (sg *stepGenerator) GenerateSteps(
 	//  read until the end of the plan.
 	if wasExternal {
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
-		sg.creates[urn] = true
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-
+		sg.locked(func() {
+			sg.creates[urn] = true
+		})
 		return []Step{
 			NewCreateReplacementStep(sg.plan, event, old, new, nil, nil, nil, true),
 			NewReplaceStep(sg.plan, old, new, nil, nil, nil, true),
@@ -371,7 +480,9 @@ func (sg *stepGenerator) GenerateSteps(
 		}
 
 		// No need to update anything, the properties didn't change.
-		sg.sames[urn] = true
+		sg.locked(func() {
+			sg.sames[urn] = true
+		})
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
 
@@ -395,7 +506,9 @@ func (sg *stepGenerator) GenerateSteps(
 	// Case 4: Not Case 1, 2, or 3
 	//  If a resource isn't being recreated and it's not being updated or replaced,
 	//  it's just being created.
-	sg.creates[urn] = true
+	sg.locked(func() {
+		sg.creates[urn] = true
+	})
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
@@ -439,7 +552,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				}
 			}
 
-			sg.replaces[urn] = true
+			sg.locked(func() {
+				sg.replaces[urn] = true
+			})
 
 			// If we are going to perform a replacement, we need to recompute the default values.  The above logic
 			// had assumed that we were going to carry them over from the old resource, which is no longer true.
@@ -494,27 +609,30 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					if res != nil {
 						return nil, res
 					}
+					defer sg.unlockDependentReplaces(toReplace)
 
 					// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 					// order, so we iterate in reverse.
-					for i := len(toReplace) - 1; i >= 0; i-- {
-						dependentResource := toReplace[i].res
+					sg.locked(func() {
+						for i := len(toReplace) - 1; i >= 0; i-- {
+							dependentResource := toReplace[i].res
 
-						// If we already deleted this resource due to some other DBR, don't do it again.
-						if sg.deletes[dependentResource.URN] {
-							continue
+							// If we already deleted this resource due to some other DBR, don't do it again.
+							if sg.deletes[dependentResource.URN] {
+								continue
+							}
+
+							sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
+
+							logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
+								dependentResource.URN, urn)
+
+							steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, true))
+							// Mark the condemned resource as deleted. We won't know until later in the plan whether
+							// or not we're going to be replacing this resource.
+							sg.deletes[dependentResource.URN] = true
 						}
-
-						sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
-
-						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
-							dependentResource.URN, urn)
-
-						steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, true))
-						// Mark the condemned resource as deleted. We won't know until later in the plan whether
-						// or not we're going to be replacing this resource.
-						sg.deletes[dependentResource.URN] = true
-					}
+					})
 				}
 
 				return append(steps,
@@ -534,7 +652,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 		}
 
 		// If we fell through, it's an update.
-		sg.updates[urn] = true
+		sg.locked(func() {
+			sg.updates[urn] = true
+		})
 		if logging.V(7) {
 			logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 		}
@@ -547,7 +667,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// If resource was unchanged, but there were initialization errors, generate an empty update
 	// step to attempt to "continue" awaiting initialization.
 	if len(old.InitErrors) > 0 {
-		sg.updates[urn] = true
+		sg.locked(func() {
+			sg.updates[urn] = true
+		})
 		return []Step{NewUpdateStep(sg.plan, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
 	}
 
@@ -658,6 +780,8 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
 			resourcesToDelete[dep.res.URN] = true
 		}
+
+		sg.unlockDependentReplaces(deps)
 	}
 
 	// Also see if any resources have a resource we're deleting as a parent. If so, we'll block
@@ -853,7 +977,11 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 
 	oldRes, ok := sg.plan.olds[oldRef.URN()]
 	contract.Assertf(ok, "old state didn't have provider, despite resource using it?")
-	newRes, ok := sg.providers[newRef.URN()]
+
+	var newRes *resource.State
+	sg.rlocked(func() {
+		newRes, ok = sg.providers[newRef.URN()]
+	})
 	contract.Assertf(ok, "new plan didn't have provider, despite resource using it?")
 
 	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true, nil)
@@ -1106,16 +1234,40 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// dependents can only have been _removed_ from the base dependency graph: for a dependent to have been added,
 	// it would have had to have been registered prior to the root, which is not a valid operation. This means that
 	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
-	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
-	// encountered while walking the old dependency graph to determine the set of dependents.
-	impossibleDependents := sg.urns
-	for _, d := range sg.plan.depGraph.DependingOn(root, impossibleDependents) {
+	// that have already been registered or are in the process of being registered must not depend on the root. Thus,
+	// we ignore these resources if they are encountered while walking the old dependency graph to determine the set
+	// of dependents.
+	//
+	// In addition to calculating the set of resources we may need to delete before deleting the root, we need to lock
+	// all of these resources in order to prevent concurrent resource registrations or concurrent DBR calculations from
+	// planning different operations. We will unlock any resources we do not plan on deleting prior to returning from
+	// this function. It is up to the caller to unlock the set of dependent replaces this function returns.
+	dependents := func() []*resource.State {
+		sg.resourceCond.L.Lock()
+		defer sg.resourceCond.L.Unlock()
+
+		for {
+			// Calculate the set of dependents and attempt to lock them. If we succeed at locking all of the
+			// dependents, return. Otherwise, wait on the condition variable and loop.
+			dependents := sg.plan.depGraph.DependingOn(root, sg.urns)
+			if sg.tryLockResourcesLocked(dependents) {
+				return dependents
+			}
+			sg.resourceCond.Wait()
+		}
+	}()
+
+	for i, d := range dependents {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
+			sg.unlockDependentReplaces(toReplace)
+			sg.unlockResources(dependents[i:])
 			return nil, res
 		}
 		if replace {
 			toReplace, replaceSet[d.URN] = append(toReplace, dependentReplace{res: d, keys: keys}), true
+		} else {
+			sg.unlockResource(d.URN)
 		}
 	}
 
@@ -1125,9 +1277,10 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 // newStepGenerator creates a new step generator that operates on the given plan.
 func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
-	return &stepGenerator{
+	sg := &stepGenerator{
 		plan:                 plan,
 		opts:                 opts,
+		resourceLocks:        make(map[resource.URN]bool),
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
@@ -1140,4 +1293,6 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 	}
+	sg.resourceCond.L = &sg.mutex
+	return sg
 }

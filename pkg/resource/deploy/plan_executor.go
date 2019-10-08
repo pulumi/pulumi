@@ -17,6 +17,8 @@ package deploy
 import (
 	"context"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -174,7 +176,57 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// execution fails.
 	ctx, cancel := context.WithCancel(callerCtx)
 
-	// Set up a step generator and executor for this plan.
+	// Start a set of goroutines for step generation.
+	var genGroup sync.WaitGroup
+	var genError atomic.Value
+	handleEvent := func(event SourceEvent) {
+		if res := pe.handleSingleEvent(updateTargetsOpt, event); res != nil {
+			if resErr := res.Error(); resErr != nil {
+				logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
+				pe.reportError(pe.plan.generateEventURN(event), resErr)
+			}
+			genError.Store(true)
+			cancel()
+		}
+	}
+	worker := func(events <-chan SourceEvent, launchAsync bool) {
+		defer genGroup.Done()
+
+		for {
+			select {
+			case event := <-events:
+				if event == nil {
+					return
+				}
+
+				if launchAsync {
+					genGroup.Add(1)
+					go func() {
+						defer genGroup.Done()
+						handleEvent(event)
+					}()
+				} else {
+					handleEvent(event)
+				}
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	genEvents := make(chan SourceEvent)
+	if opts.InfiniteParallelism() {
+		genGroup.Add(1)
+		go worker(genEvents, true)
+	} else {
+		for i := 0; i < opts.DegreeOfParallelism(); i++ {
+			genGroup.Add(1)
+			go worker(genEvents, false)
+		}
+	}
+
+	// Set up a step executor for this plan.
 	pe.stepExec = newStepExecutor(ctx, cancel, pe.plan, opts, preview, false)
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
@@ -225,17 +277,13 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 				}
 
 				if event.Event == nil {
+					close(genEvents)
+					genGroup.Wait()
+
 					return false, pe.performDeletes(ctx, updateTargetsOpt, destroyTargetsOpt)
 				}
 
-				if res := pe.handleSingleEvent(updateTargetsOpt, event.Event); res != nil {
-					if resErr := res.Error(); resErr != nil {
-						logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
-						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
-					}
-					cancel()
-					return false, result.Bail()
-				}
+				genEvents <- event.Event
 			case <-ctx.Done():
 				logging.V(4).Infof("planExecutor.Execute(...): context finished: %v", ctx.Err())
 
@@ -246,8 +294,13 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}()
 
+	genGroup.Wait()
 	pe.stepExec.WaitForCompletion()
 	logging.V(4).Infof("planExecutor.Execute(...): step executor has completed")
+
+	if ge := genError.Load(); ge != nil && ge.(bool) {
+		return result.Bail()
+	}
 
 	// Now that we've performed all steps in the plan, ensure that the list of targets to update was
 	// valid.  We have to do this *after* performing the steps as the target list may have referred
