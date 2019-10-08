@@ -13,6 +13,9 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
+  
+- Make the location of `.pulumi` folder configurable with an environment variable.
+  [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
 
 - `pulumi update` can now be scoped to update a single resource by adding a `--target urn` or `-t urn`
   argument.  Multiple resources can be specified using `-t urn1 -t urn2`.

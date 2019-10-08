@@ -353,7 +353,7 @@ func getUpgradeCommand() string {
 		return "$ brew upgrade pulumi"
 	}
 
-	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, ".pulumi", "bin") {
+	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, workspace.BookkeepingDir, "bin") {
 		return ""
 	}
 
