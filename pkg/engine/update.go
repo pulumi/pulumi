@@ -43,11 +43,11 @@ type RequiredPolicy interface {
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
-// This structre is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
+// This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
 // linter.
 // nolint: structcheck
 type UpdateOptions struct {
-	// an optional set of paths of policy packs to run as part of this deployment.
+	// LocalPolicyPackPaths contains an optional set of paths to policy packs to run as part of this deployment.
 	LocalPolicyPackPaths []string
 
 	// RequiredPolicies is the set of policies that are required to run as part of the update.
@@ -233,6 +233,9 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	policies := map[string]string{}
 	for _, p := range opts.RequiredPolicies {
 		policies[p.Name()] = p.Version()
+	}
+	for _, path := range opts.LocalPolicyPackPaths {
+		policies[path] = "(local)"
 	}
 
 	var resourceChanges ResourceChanges
