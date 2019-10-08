@@ -14,6 +14,13 @@ CHANGELOG
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
 
+- `pulumi update` can now be scoped to update a single resource by adding a `--target urn` or `-t urn`
+  argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
+
+- Adds the ability to provide transformations to modify the properties and resource options that
+  will be used for any child resource of a component or stack.
+  [#3174](https://github.com/pulumi/pulumi/pull/3174)
+
 ## 1.2.0 (2019-09-26)
 
 - Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
@@ -28,9 +35,6 @@ CHANGELOG
 - `pulumi destroy` can now be scoped to delete a single resource (and its dependents) by adding a
   `--target urn` or `-t urn` argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
 
-- `pulumi update` can now be scoped to update a single resource by adding a `--target urn` or `-t urn`
-  argument.  Multiple resources can be specified using `-t urn1 -t urn2`.
-
 - Avoid re-encrypting secret values on each checkpoint write. These changes should improve update times for stacks
   that contain secret values.
   [#3183](https://github.com/pulumi/pulumi/pull/3183)
@@ -38,10 +42,6 @@ CHANGELOG
 - Add Codefresh CI detection.
 
 - Add `-c` (config array) flag to the `preview` command.
-
-- Adds the ability to provide transformations to modify the properties and resource options that
-  will be used for any child resource of a component or stack.
-  [#3174](https://github.com/pulumi/pulumi/pull/3174)
 
 ## 1.1.0 (2019-09-11)
 
