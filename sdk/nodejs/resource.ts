@@ -13,8 +13,10 @@
 // limitations under the License.
 
 import { util } from "protobufjs";
-import { ResourceError, RunError } from "./errors";
-import { all, Input, Inputs, interpolate, Output, output } from "./output";
+
+import * as asset from "./asset";
+import { ResourceError } from "./errors";
+import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getStackResource } from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
@@ -692,7 +694,10 @@ export abstract class ProviderResource extends CustomResource {
      * @param props The configuration to use for this provider.
      * @param opts A bag of options that control this provider's behavior.
      */
-    constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
+    constructor(pkg: string, name: string, props: Inputs = {}, opts: ResourceOptions = {}) {
+        // provider properties must be marshaled as JSON strings. Convert everything over here,
+        // trying to do things in a synchronous fashion if possible.
+        props = stringifyProviderInputs(props);
         super(`pulumi:providers:${pkg}`, name, props, opts);
         this.pkg = pkg;
     }
@@ -700,6 +705,65 @@ export abstract class ProviderResource extends CustomResource {
     /** @internal */
     public getPackage() {
         return this.pkg;
+    }
+}
+
+function stringifyProviderInputs(props: Inputs): Inputs {
+    const result: Inputs = {};
+    for (const key in props) {
+        if (props.hasOwnProperty(key)) {
+            result[key] = stringifyProviderInput(props[key]);
+        }
+    }
+
+    return result;
+}
+
+function stringifyProviderInput(prop: any): string | Output<string> {
+    if (typeof prop === "string") {
+        // already in string form.
+        return prop;
+    }
+
+    // if we contain an output or promise, then we have to wrap everything up in an output and JSON
+    // the result.  Wrapping the whole prop in an output removes all outputs/promises from the
+    // actual inner value, allowing us to effectively stringify the result.
+    if (containsOutputOrPromise(prop)) {
+        return output(prop).apply(p => JSON.stringify(p));
+    }
+
+    // For anything else (i.e. numbers, bools, undefined, null, arrays, objects (not containing
+    // promises/outputs)), we can just synchronously convert to JSON here.
+    return JSON.stringify(prop);
+
+    function containsOutputOrPromise(prop: any): boolean {
+        if (prop === null || prop === undefined) {
+            return false;
+        }
+
+        if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+            throw new Error("Should not pass an Asset or Archive as an input to a provider.");
+        }
+
+        if (Resource.isInstance(prop)) {
+            throw new Error("Should not pass an Resource as an input to a provider.");
+        }
+
+        if (prop instanceof Promise || Output.isInstance(prop)) {
+            return true;
+        }
+
+        if (prop instanceof Array) {
+            return prop.some(v => containsOutputOrPromise(v));
+        }
+
+        for (const k of Object.keys(prop)) {
+            if (containsOutputOrPromise(prop[k])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
