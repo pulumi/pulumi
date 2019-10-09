@@ -3,6 +3,12 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Added `pulumi:async-invokes` config option to disallow pulumi from making synchronous calls when
+  calling into a data-source (i.e. something like `aws.lb.getLoadBalancer(...)`).  Perform these
+  calls synchronously is causing stability issues for some OSX users.  This flag forces these
+  data-sources to perform asynchronously.  Setting this flag may potentially require additional code
+  changes downstream (i.e. updating to call `await aws.lb.getLoadBalancers(...)`).
+
 ## 1.3.0 (2019-10-09)
 
 - Propagate resource inputs to resource state during preview, including first-class unknown values. This allows the
@@ -15,7 +21,7 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
-  
+
 - Make the location of `.pulumi` folder configurable with an environment variable.
   [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
 

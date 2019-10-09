@@ -17,6 +17,21 @@ import * as deasync from "deasync";
 import { InvokeOptions } from "./invoke";
 
 /**
+ * `true` if the `pulumi:async-invokes=true` flag was set.  When this is set any call to a data
+ * source will only return a Promise, and all calls to the synchronous methods on `StackReference`
+ * will throw.
+ */
+export function asyncInvokesOnly(opts: InvokeOptions)  {
+    if (opts.async === true) {
+        return true;
+    }
+
+    // Prevent module loading circularities by deferring this entirely until we are called.
+    const config = require("./config");
+    return new config.Config("pulumi").getBoolean("async-invokes") === true;
+}
+
+/**
  * Common code for doing RTTI typechecks.  RTTI is done by having a boolean property on an object
  * with a special name (like "__resource" or "__asset").  This function checks that the object
  * exists, has a **boolean** property with that name, and that that boolean property has the value
@@ -65,6 +80,12 @@ export function values(obj: object): any[] {
  * @internal
  */
 export function promiseResult<T>(promise: Promise<T>): T {
+    if (asyncInvokesOnly({})) {
+        throw new Error(
+`An attempt was made to synchronously block an operation.
+This is not allowed when pulumi:async-invokes is set.`);
+    }
+
     enum State {
         running,
         finishedSuccessfully,
@@ -104,14 +125,14 @@ export function promiseResult<T>(promise: Promise<T>): T {
  * Pulumi application.
  */
 export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {}): Promise<T> & T {
-    if (opts.async) {
+    if (asyncInvokesOnly(opts)) {
         // Caller just wants the async side of the result.  That's what we have, so just return it
         // as is.
         //
         // Note: this cast isn't actually safe (since 'promise' doesn't actually provide the T side
         // of things).  That's ok.  By default the return signature will be correct, and users will
         // only get into this code path when specifically trying to force asynchrony.  Given that,
-        // it's fine to expect them to have to know what they're doing and that they shoud only use
+        // it's fine to expect them to have to know what they're doing and that they should only use
         // the Promise side of things.
         return <Promise<T> & T>promise;
     }
