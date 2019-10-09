@@ -105,6 +105,7 @@ const res4 = new MyComponent("res4", {
     ],
 });
 
+// Scenario #5 - cross-resource transformations that inject dependencies on one resource into another.
 class MyOtherComponent extends pulumi.ComponentResource {
     child1: SimpleResource;
     child2: SimpleResource;
