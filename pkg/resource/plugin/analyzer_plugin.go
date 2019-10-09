@@ -95,7 +95,7 @@ func NewPolicyAnalyzer(
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("the Pulumi SDK used with this stack does not appear to support policy as code.\n" +
-				"Upgrading the a newer version of the Pulumi SDK may fix this problem.")
+				"Upgrading to a newer version of the Pulumi SDK may fix this problem.")
 		}
 		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
 	}
