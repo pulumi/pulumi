@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/spf13/cobra"
@@ -49,14 +50,19 @@ func newPolicyPublishCmd() *cobra.Command {
 			// Load metadata about the current project.
 			//
 
-			proj, root, err := readProject(pulumiPolicyProj)
+			proj, root, err := readPolicyProject()
 			if err != nil {
 				return err
 			}
 
-			projinfo := &engine.Projinfo{Proj: proj, Root: root}
-			_ /*pwd*/, _ /*main*/, plugctx, err := engine.ProjectInfoContext(
-				projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), nil)
+			projinfo := &engine.PolicyPackInfo{Proj: proj, Root: root}
+			pwd, _, err := projinfo.GetPwdMain()
+			if err != nil {
+				return err
+			}
+
+			plugctx, err := plugin.NewContext(cmdutil.Diag(), cmdutil.Diag(), nil, nil, pwd,
+				projinfo.Proj.Runtime.Options(), nil)
 			if err != nil {
 				return err
 			}
@@ -66,7 +72,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			//
 
 			res := policyPack.Publish(commandContext(), backend.PublishOperation{
-				Root: root, PlugCtx: plugctx, Scopes: cancellationScopes})
+				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes})
 			if res != nil && res.Error() != nil {
 				return res.Error()
 			}
