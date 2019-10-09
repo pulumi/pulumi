@@ -250,7 +250,7 @@ func (sg *stepGenerator) GenerateSteps(
 		if err != nil {
 			return nil, result.FromError(err)
 		} else if analyzer == nil {
-			return nil, result.Errorf("analyzer could not be loaded from path '%s'", path)
+			return nil, result.Errorf("analyzer could not be loaded from path %q", path)
 		}
 	}
 
