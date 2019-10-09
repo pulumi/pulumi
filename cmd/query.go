@@ -60,7 +60,7 @@ func newQueryCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject(pulumiAppProj)
+			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
