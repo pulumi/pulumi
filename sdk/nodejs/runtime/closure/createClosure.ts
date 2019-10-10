@@ -345,8 +345,19 @@ async function analyzeFunctionInfoAsync(
 
     // logInfo = logInfo || func.name === "addHandler";
 
-    const { file, line, column } = await v8.getFunctionLocationAsync(func);
-    const functionString = func.toString();
+    // Some libraries may have wrapped a function up in a proxy (for example 'sequelize' does this).
+    // That's problematic if they then also provide their own static toString.  For example:
+    //
+    //     return new Proxy(class C { static toString() { ... } }, {})
+    //
+    // In order to support this, we need to first unwrap the proxy to get at the underlying function
+    // that has been wrapped.  Then, we also need to ensure that we call Function's toString method,
+    // not any particular static derivation this function may have provided itself.  We need the
+    // original user code code for this
+    const unwrappedFunction = await v8.unwrapIfProxyAsync(func);
+    const functionString = Function.prototype.toString.call(unwrappedFunction);
+
+    const { file, line, column } = await v8.getFunctionLocationAsync(unwrappedFunction);
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
     context.frames.push(frame);

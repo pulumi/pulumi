@@ -20,6 +20,7 @@ build_package::
 	./node_modules/.bin/tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
+	cp tests/runtime/jsClosureCases_11.js bin/tests/runtime
 	cp README.md ../../LICENSE package.json ./dist/* bin/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
@@ -44,7 +45,7 @@ install_plugin::
 install:: install_package install_plugin
 
 istanbul_tests::
-	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/closureLoader.spec.js'
 	istanbul report text-summary
 	istanbul report text
 

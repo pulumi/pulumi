@@ -133,6 +133,10 @@ export async function lookupCapturedVariableValueAsync(
     return undefined;
 }
 
+export async function unwrapIfProxyAsync(func: Function): Promise<Function> {
+    return func;
+}
+
 // The last two intrinsics are `GetFunctionScopeCount` and `GetFunctionScopeDetails`.
 // The former function returns the number of scopes in a given function's scope chain, while
 // the latter function returns the i'th entry in a function's scope chain, given a function and

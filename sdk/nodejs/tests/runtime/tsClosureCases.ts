@@ -39,7 +39,7 @@ export const exportedValue = 42;
 
 // This group of tests ensure that we serialize closures properly.
 describe("closure", () => {
-    const cases: ClosureCase[] = [];
+    let cases: ClosureCase[] = [];
 
     cases.push({
         title: "Empty function closure",
@@ -6523,17 +6523,24 @@ return function () { console.log(regex); foo(); };
         });
     }
 
+    cases = [];
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
     // function.
-    if (semver.gte(process.version, "8.0.0")) {
-        const jsCases = require("./jsClosureCases_8");
-        cases.push(...jsCases.cases);
-    }
+    // if (semver.gte(process.version, "8.0.0")) {
+    //     const jsCases = require("./jsClosureCases_8");
+    //     cases.push(...jsCases.cases);
+    // }
 
-    if (semver.gte(process.version, "10.4.0")) {
-        const jsCases = require("./jsClosureCases_10_4");
+    // if (semver.gte(process.version, "10.4.0")) {
+    //     const jsCases = require("./jsClosureCases_10_4");
+    //     cases.push(...jsCases.cases);
+    // }
+
+    if (semver.gte(process.version, "11.0.0")) {
+        const jsCases = require("./jsClosureCases_11");
         cases.push(...jsCases.cases);
     }
 

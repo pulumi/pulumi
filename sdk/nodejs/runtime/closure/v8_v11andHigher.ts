@@ -93,6 +93,47 @@ export async function lookupCapturedVariableValueAsync(
     return undefined;
 }
 
+export async function unwrapIfProxyAsync(func: Function): Promise<Function> {
+    console.log("trying to unwrap proxy: " + func.toString());
+    console.log("util.types: " + (util.types !== undefined));
+    console.log("util.types.isProxy: " + (util.types.isProxy !== undefined));
+    console.log("util.types.isProxy(f): " + util.types.isProxy(func));
+    while (util.types && util.types.isProxy && util.types.isProxy(func)) {
+        console.log("Got proxy");
+        // First, find the runtime's internal id for this function.
+        const functionId = await getRuntimeIdForFunctionAsync(func);
+
+        // Now, query for the internal properties the runtime sets up for it.
+        const { internalProperties } = await runtimeGetPropertiesAsync(functionId, /*ownProperties:*/ false);
+
+        const target = internalProperties.find(p => p.name === "[[Target]]");
+        if (!target) {
+            throw new Error("Could not find [[Target]] property on proxied function");
+        }
+
+        if (!target.value) {
+            throw new Error("[[Target]] property did not have [value]");
+        }
+
+        if (!target.value.objectId) {
+            throw new Error("[[Target]].value have objectId");
+        }
+
+        const result = await getValueForObjectId(target.value.objectId);
+        if (!result) {
+            throw new Error("Could not retrieve target function of proxy.");
+        }
+
+        if (!(result instanceof Function)) {
+            throw new Error("Target of proxy was not a Function.");
+        }
+
+        func = result;
+    }
+
+    return func;
+}
+
 // We want to call util.promisify on inspector.Session.post. However, due to all the overloads of
 // that method, promisify gets confused.  To prevent this, we cast our session object down to an
 // interface containing only the single overload we care about.
@@ -161,8 +202,8 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
 }
 
 async function runtimeGetPropertiesAsync(
-        objectId: inspector.Runtime.RemoteObjectId,
-        ownProperties: boolean | undefined) {
+    objectId: inspector.Runtime.RemoteObjectId,
+    ownProperties: boolean | undefined) {
     const session = <GetPropertiesSession>await v8Hooks.getSessionAsync();
     const post = util.promisify(session.post);
 
@@ -210,11 +251,11 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
     // support typesafe '.call' calls.
     const retType = <inspector.Runtime.CallFunctionOnReturnType>await post.call(
         session, "Runtime.callFunctionOn", {
-            objectId,
-            functionDeclaration: `function () {
+        objectId,
+        functionDeclaration: `function () {
                 global.__inflightCalls["${tableId}"] = this;
             }`,
-        });
+    });
 
     if (retType.exceptionDetails) {
         throw new Error(`Error calling "Runtime.callFunction(${objectId})": `

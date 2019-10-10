@@ -49,3 +49,9 @@ export const lookupCapturedVariableValueAsync = versionSpecificV8Module.lookupCa
  * defined. Returns { "", 0, 0 } if the location cannot be found or if the given function has no Script.
  */
 export const getFunctionLocationAsync = versionSpecificV8Module.getFunctionLocationAsync;
+
+/**
+ * Given a function that is possibly a proxy wrapping a function, just return the true function
+ * being wrapped.
+ */
+export const unwrapIfProxyAsync = versionSpecificV8Module.unwrapIfProxyAsync;
