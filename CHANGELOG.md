@@ -26,13 +26,11 @@ CHANGELOG
   you are still running into crashes or hangs on OSX, it is recommended to take the following
   approach to fixing the issue:
 
-  1. Update the code where you create your provider to the following:
-
   ```ts
-  // from:
+  // Update the code where you create your provider from the following:
   const provider = new aws.Provider(...);
 
-  // to
+  // to:
   const provider = await ProviderRef.get(new aws.Provider(...));
   ```
 
