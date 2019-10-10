@@ -3,6 +3,22 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- A Pulumi JavaScript/TypeScript app can now consist of a single exported top level function. i.e.:
+
+```ts
+module.exports = async () => {
+}
+
+//
+
+export default async () => {
+
+}
+```
+
+  This allows for an easy approach to create a Pulumi app that needs to perform async/await
+  operations at the top-level of the program.
+
 ## 1.3.0 (2019-10-09)
 
 - Propagate resource inputs to resource state during preview, including first-class unknown values. This allows the
@@ -15,7 +31,7 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
-  
+
 - Make the location of `.pulumi` folder configurable with an environment variable.
   [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
 
