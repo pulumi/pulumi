@@ -610,6 +610,29 @@ class Resource:
         elif not isinstance(opts, ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')
 
+        # Before anything else - if there are transformations registered, give them a chance to run to modify the user provided
+        # properties and options assigned to this resource.
+        parent = opts.parent
+        if parent is None:
+            parent = get_root_resource()
+        parent_transformations = (parent._transformations or []) if parent is not None else []
+        self._transformations = (opts.transformations or []) + parent_transformations
+        if self._transformations is not None:
+            for transformation in self._transformations:
+                args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
+                tres = transformation(args)
+                if tres is not None:
+                    if tres.opts.parent != opts.parent:
+                        # This is currently not allowed because the parent tree is needed to establish what
+                        # transformation to apply in the first place, and to compute inheritance of other
+                        # resource options in the Resource constructor before transformations are run (so
+                        # modifying it here would only even partially take affect).  It's theoretically
+                        # possible this restriction could be lifted in the future, but for now just
+                        # disallow re-parenting resources in transformations to be safe.
+                        raise Exception("Transformations cannot currently be used to change the `parent` of a resource.")
+                    props = tres.props
+                    opts = tres.opts
+
         self._name = name
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
@@ -682,30 +705,6 @@ class Resource:
                     "Cannot read an existing resource unless it has a custom provider")
             read_resource(self, t, name, props, opts)
         else:
-            # If there are transformations registered, invoke them in order to transform the properties and
-            # options assigned to this resource.
-            if self._transformations is not None:
-                for transformation in self._transformations:
-                    args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
-                    tres = transformation(args)
-                    if tres is not None:
-                        if tres.opts.parent != opts.parent:
-                            # This is currently not allowed because the parent tree is needed to establish what
-                            # transformation to apply in the first place, and to compute inheritance of other
-                            # resource options in the Resource constructor before transformations are run (so
-                            # modifying it here would only even partially take affect).  It's theoretically
-                            # possible this restriction could be lifted in the future, but for now just
-                            # disallow re-parenting resources in transformations to be safe.
-                            raise Exception("Transformations cannot currently be used to change the `parent` of a resource.")
-                        if tres.opts.aliases != opts.aliases:
-                            # Alias information is currently computed and stored in `res.__aliases` in the
-                            # resource constructor instead of directly using `opts.aliases`.  So modifying the
-                            # latter here would not have any affect.  It's possible this restriction could be
-                            # lifted in the future, but for now just disallow change aliases on resources in
-                            # transformations to be safe.
-                            raise Exception("Transformations cannot currently be used to change the `aliases` of a resource.")
-                        props = tres.props
-                        opts = tres.opts
             register_resource(self, t, name, custom, props, opts)
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:

@@ -23,9 +23,9 @@ func TestNodejsTransformations(t *testing.T) {
 		d := path.Join("nodejs", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          d,
-				Dependencies: []string{"@pulumi/pulumi"},
-				Quick:        true,
+				Dir:                    d,
+				Dependencies:           []string{"@pulumi/pulumi"},
+				Quick:                  true,
 				ExtraRuntimeValidation: Validator("nodejs"),
 			})
 		})
@@ -37,20 +37,20 @@ func TestPythonTransformations(t *testing.T) {
 		d := path.Join("python", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          d,
+				Dir: d,
 				Dependencies: []string{
 					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 				},
-				Quick:        true,
+				Quick:                  true,
 				ExtraRuntimeValidation: Validator("python"),
 			})
 		})
 	}
 }
 
-func Validator(language string) func (t *testing.T, stack integration.RuntimeValidationStackInfo)  {
+func Validator(language string) func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	dynamicResName := "pulumi-" + language + ":dynamic:Resource"
-	return func (t *testing.T, stack integration.RuntimeValidationStackInfo) {
+	return func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 		foundRes1 := false
 		foundRes2Child := false
 		foundRes3 := false

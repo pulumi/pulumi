@@ -163,33 +163,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
 
-    // If there are transformations registered, invoke them in order to transform the properties and
-    // options assigned to this resource.
-    for (const transformation of (res.__transformations || [])) {
-        const tres = transformation({ resource: res, type: t, name, props, opts });
-        if (tres) {
-            if (tres.opts.parent !== opts.parent) {
-                // This is currently not allowed because the parent tree is needed to establish what
-                // transformation to apply in the first place, and to compute inheritance of other
-                // resource options in the Resource constructor before transformations are run (so
-                // modifying it here would only even partially take affect).  It's theoretically
-                // possible this restriction could be lifted in the future, but for now just
-                // disallow re-parenting resources in transformations to be safe.
-                throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
-            }
-            if (tres.opts.aliases !== opts.aliases) {
-                // Alias information is currently computed and stored in `res.__aliases` in the
-                // resource constructor instead of directly using `opts.aliases`.  So modifying the
-                // latter here would not have any affect.  It's possible this restriction could be
-                // lifted in the future, but for now just disallow change aliases on resources in
-                // transformations to be safe.
-                throw new Error("Transformations cannot currently be used to change the `aliases` of a resource.");
-            }
-            props = tres.props;
-            opts = tres.opts;
-        }
-    }
-
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, custom, props, opts);
 
