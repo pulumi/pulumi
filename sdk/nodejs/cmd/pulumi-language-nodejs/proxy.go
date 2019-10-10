@@ -217,7 +217,12 @@ func (p *monitorProxy) servePipes(
 	}
 }
 
-func (p *monitorProxy) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+// Forward all resource monitor calls that we're serving to nodejs back to the engine to actually
+// perform.
+
+func (p *monitorProxy) Invoke(
+	ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+
 	return p.target.Invoke(ctx, req)
 }
 
@@ -233,14 +238,14 @@ func (p *monitorProxy) RegisterResource(ctx context.Context,
 	return p.target.RegisterResource(ctx, req)
 }
 
-func (p *monitorProxy) RegisterResourceOutputs(ctx context.Context,
-	req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
+func (p *monitorProxy) RegisterResourceOutputs(
+	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
 
 	return p.target.RegisterResourceOutputs(ctx, req)
 }
 
-func (p *monitorProxy) SupportsFeature(ctx context.Context,
-	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
+func (p *monitorProxy) SupportsFeature(
+	ctx context.Context, req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
 
 	return p.target.SupportsFeature(ctx, req)
 }
