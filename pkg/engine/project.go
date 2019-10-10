@@ -32,8 +32,21 @@ type Projinfo struct {
 
 // GetPwdMain returns the working directory and main entrypoint to use for this package.
 func (projinfo *Projinfo) GetPwdMain() (string, string, error) {
-	pwd := projinfo.Root
-	main := projinfo.Proj.Main
+	return getPwdMain(projinfo.Root, projinfo.Proj.Main)
+}
+
+type PolicyPackInfo struct {
+	Proj *workspace.PolicyPackProject
+	Root string
+}
+
+// GetPwdMain returns the working directory and main entrypoint to use for this package.
+func (projinfo *PolicyPackInfo) GetPwdMain() (string, string, error) {
+	return getPwdMain(projinfo.Root, projinfo.Proj.Main)
+}
+
+func getPwdMain(root, main string) (string, string, error) {
+	pwd := root
 	if main == "" {
 		main = "."
 	} else {

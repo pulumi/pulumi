@@ -133,7 +133,7 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Compressing policy pack")
 
-	if runtime := pack.b.currentProject.Runtime.Name(); !strings.EqualFold(runtime, "nodejs") {
+	if runtime := op.PolicyPack.Runtime.Name(); !strings.EqualFold(runtime, "nodejs") {
 		return result.Errorf(
 			"failed to publish policies because Pulumi.yaml requests unsupported runtime %s",
 			runtime)

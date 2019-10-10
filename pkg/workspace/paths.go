@@ -66,6 +66,9 @@ const (
 	// The folder can have any name, not necessarily '.pulumi'.
 	// It defaults to the '<user's home>/.pulumi' if not specified.
 	PulumiHomeEnvVar = "PULUMI_HOME"
+
+	// PolicyPackFile is the base name of a Pulumi policy pack file.
+	PolicyPackFile = "PulumiPolicy"
 )
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.
@@ -99,6 +102,15 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 // hierarchy.  If no project is found, an empty path is returned.
 func DetectProjectPathFrom(path string) (string, error) {
 	return fsutil.WalkUp(path, isProject, func(s string) bool {
+		return true
+	})
+}
+
+// DetectPolicyPackPathFrom locates the closest Pulumi policy project from the given path,
+// searching "upwards" in the directory hierarchy.  If no project is found, an empty path is
+// returned.
+func DetectPolicyPackPathFrom(path string) (string, error) {
+	return fsutil.WalkUp(path, isPolicyPack, func(s string) bool {
 		return true
 	})
 }
@@ -155,6 +167,13 @@ func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func isProject(path string) bool {
 	return isMarkupFile(path, ProjectFile)
+}
+
+// isPolicyPack returns true if the path references what appears to be a valid policy pack project.
+// If problems are detected -- like an incorrect extension -- they are logged to the provided
+// diag.Sink (if non-nil).
+func isPolicyPack(path string) bool {
+	return isMarkupFile(path, PolicyPackFile)
 }
 
 func isMarkupFile(path string, expect string) bool {

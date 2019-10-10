@@ -1,3 +1,0 @@
-name: protect_resources
-description: A program that ensures we cannot delete protected resources.
-runtime: nodejs

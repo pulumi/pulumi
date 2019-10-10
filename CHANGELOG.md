@@ -19,6 +19,11 @@ export default async () => {
   This allows for an easy approach to create a Pulumi app that needs to perform async/await
   operations at the top-level of the program.
 
+## 1.3.1 (2019-10-09)
+
+- Revert "propagate resource inputs to resource state during preview". These changes had a critical issue that needs
+  further investigation.
+
 ## 1.3.0 (2019-10-09)
 
 - Propagate resource inputs to resource state during preview, including first-class unknown values. This allows the

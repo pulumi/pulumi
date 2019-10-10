@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { containsUnknowns, Input, Inputs, isSecretOutput, Output, unknown } from "../output";
+import { Input, Inputs, isSecretOutput, Output } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
@@ -190,7 +190,7 @@ export function resolveProperties(
             else {
                 // We're previewing. If the engine was able to give us a reasonable value back,
                 // then use it. Otherwise, inform the Output that the value isn't known.
-                const isKnown = !containsUnknowns(value);
+                const isKnown = value !== undefined;
                 resolve(value, isKnown, isSecret);
             }
         }
@@ -206,7 +206,7 @@ export function resolveProperties(
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
             const resolve = resolvers[k];
-            resolve(isDryRun() ? unknown : undefined, !isDryRun(), false);
+            resolve(undefined, !isDryRun(), false);
         }
     }
 }
@@ -394,7 +394,7 @@ export function deserializeProperty(prop: any): any {
         throw new Error("unexpected undefined property value during deserialization");
     }
     else if (prop === unknownValue) {
-        return isDryRun() ? unknown : undefined;
+        return undefined;
     }
     else if (prop === null || typeof prop === "boolean" || typeof prop === "number" || typeof prop === "string") {
         return prop;
