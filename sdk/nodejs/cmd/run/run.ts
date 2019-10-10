@@ -217,7 +217,7 @@ ${defaultMessage}`);
 
     programStarted();
 
-    const runProgram: () => Promise<any> = () => {
+    const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
@@ -226,17 +226,17 @@ ${defaultMessage}`);
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            // Execute the module and capture any module outputs it exported.
+            // Execute the module and capture any module outputs it exported. If the exported value
+            // was itself a Function, then just execute it.  This allows for exported top level
+            // async functions that pulumi programs can live in.  Finally, await the value we get
+            // back.  That way, if it is async and throws an exception, we properly capture it here
+            // and handle it.
             const reqResult = require(program);
-
-            // If the exported value was itself a Function, then just execute it.  This allows for
-            // exported top level async functions that pulumi programs can live in.
             const invokeResult = reqResult instanceof Function
                 ? reqResult()
                 : reqResult;
 
-            // Wrap whatever we have at the end with a promise to match our expected signature.
-            return Promise.resolve(invokeResult);
+            return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
             // not something we want to catch up here.
