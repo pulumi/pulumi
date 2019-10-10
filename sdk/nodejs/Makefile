@@ -44,7 +44,7 @@ install_plugin::
 install:: install_package install_plugin
 
 istanbul_tests::
-	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/run.spec.js'
+	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
 
