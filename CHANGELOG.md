@@ -3,6 +3,44 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## IMPORTANT - COMPAT
+
+- Mitigate issue causing [crashes](https://github.com/pulumi/pulumi/issues/3260) in many versions of
+  macOS and a [hang](https://github.com/pulumi/pulumi/issues/3309) in macOS Catalina (10.15) with
+  Nodejs 12.
+
+  The issue occurs when making a 'data source' call in Pulumi in a synchronous fashion.  i.e. code
+  like:
+
+  ```ts
+  // A call to some provider's `getXXX` data source function.
+  const lb = aws.lb.getLoadBalancer(...);
+  ```
+
+  The issue is mitigated in that it should occur much less for users in practice.  If your
+  data-source call does not pass in a `parent` or `provider` the issue should not appear anymore,
+  and you should not have to make any changes to your code.
+
+  If your data-source does pass in either of these values, this issue should only occur rarely.  If
+  it no longer occurs for you, you should not have to make any changes to your code.  However, if
+  you are still running into crashes or hangs on OSX, it is recommended to take the following
+  approach to fixing the issue:
+
+  1. Update the code where you create your provider to the following:
+
+  ```ts
+  // from:
+  const provider = new aws.Provider(...);
+
+  // to
+  const provider = await ProviderRef.get(new aws.Provider(...));
+  ```
+
+  This will now be a `ProviderRef` instead of a `Provider`.  However, it should be accepted with all the latest Pulumi libraries anywhere a `Provider` was previously accepted.
+
+  In a future version, Pulumi libraries *may* be updated to no longer accept a `Provider` to help
+  ensure this issue doesn't occur at all.
+
 ## 1.3.1 (2019-10-09)
 
 - Revert "propagate resource inputs to resource state during preview". These changes had a critical issue that needs
@@ -20,7 +58,7 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
-  
+
 - Make the location of `.pulumi` folder configurable with an environment variable.
   [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
 
