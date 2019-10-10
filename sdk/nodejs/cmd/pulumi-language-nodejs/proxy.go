@@ -147,13 +147,13 @@ func (p *monitorProxy) servePipes(ctx context.Context, resultChannel chan<- *pul
 
 		for {
 			// read a 4-byte request length
-			var reqLen uint32
-
 			logging.V(10).Infoln("Sync invoke: Reading length from request pipe")
+			var reqLen uint32
 			if err := binary.Read(invokeReqPipe, binary.BigEndian, &reqLen); err != nil {
 				// This is benign on shutdown.
 				if ctx.Err() == context.Canceled {
 					// We were asked to gracefully cancel.  Just exit now.
+					logging.V(10).Infof("Sync invoke: Gracefully shutting down")
 					return nil
 				}
 
@@ -162,14 +162,15 @@ func (p *monitorProxy) servePipes(ctx context.Context, resultChannel chan<- *pul
 			}
 
 			// read the request in full
-			reqBytes := make([]byte, reqLen)
 			logging.V(10).Infoln("Sync invoke: Reading message from request pipe")
+			reqBytes := make([]byte, reqLen)
 			if _, err := io.ReadFull(invokeReqPipe, reqBytes); err != nil {
 				logging.V(10).Infof("Sync invoke: Received error reading message from pipe: %s\n", err)
 				return err
 			}
 
 			// decode and dispatch the request
+			logging.V(10).Infof("Sync invoke: Unmarshalling request")
 			var req pulumirpc.InvokeRequest
 			if err := pbcodec.Unmarshal(reqBytes, &req); err != nil {
 				logging.V(10).Infof("Sync invoke: Received error reading full from pipe: %s\n", err)
@@ -184,6 +185,7 @@ func (p *monitorProxy) servePipes(ctx context.Context, resultChannel chan<- *pul
 			}
 
 			// encode the response
+			logging.V(10).Infof("Sync invoke: Marshalling response")
 			resBytes, err := pbcodec.Marshal(res)
 			if err != nil {
 				logging.V(10).Infof("Sync invoke: Received error marshalling: %s\n", err)
