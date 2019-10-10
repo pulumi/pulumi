@@ -88,7 +88,9 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State *resource.State // the resource state.
+	State   *resource.State        // the resource state.
+	Stable  bool                   // if true, the resource state is stable and may be trusted.
+	Stables []resource.PropertyKey // an optional list of specific resource properties that are stable.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.

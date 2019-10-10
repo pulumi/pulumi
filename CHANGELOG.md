@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Revert "propagate resource inputs to resource state during preview". These changes had a critical issue that needs
+  further investigation.
+
 ## 1.3.0 (2019-10-09)
 
 - Propagate resource inputs to resource state during preview, including first-class unknown values. This allows the

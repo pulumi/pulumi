@@ -17,7 +17,7 @@ import unittest
 from google.protobuf import struct_pb2
 from pulumi.resource import CustomResource
 from pulumi.runtime import rpc, known_types
-from pulumi.output import Output, UNKNOWN
+from pulumi.output import Output
 from pulumi.asset import (
     FileAsset,
     RemoteAsset,
@@ -175,9 +175,9 @@ class NextSerializationTests(unittest.TestCase):
 
         other = FakeCustomResource("some-other-resource")
         other_fut = asyncio.Future()
-        other_fut.set_result(UNKNOWN) # <- not known
+        other_fut.set_result(99)
         other_known_fut = asyncio.Future()
-        other_known_fut.set_result(False)
+        other_known_fut.set_result(False) # <- not known
         other_out = Output({other}, other_fut, other_known_fut)
 
         combined = Output.all(out, other_out)
@@ -249,101 +249,6 @@ class NextSerializationTests(unittest.TestCase):
 
         self.assertIsNotNone(error)
         self.assertEqual("unexpected input of type MyClass", str(error))
-
-    @async_test
-    async def test_distinguished_unknown_output(self):
-        fut = asyncio.Future()
-        fut.set_result(UNKNOWN)
-        known_fut = asyncio.Future()
-        known_fut.set_result(True)
-        out = Output({}, fut, known_fut)
-        self.assertFalse(await out.is_known())
-
-        fut = asyncio.Future()
-        fut.set_result(["foo", UNKNOWN])
-        out = Output({}, fut, known_fut)
-        self.assertFalse(await out.is_known())
-
-        fut = asyncio.Future()
-        fut.set_result({"foo": "foo", "bar": UNKNOWN})
-        out = Output({}, fut, known_fut)
-        self.assertFalse(await out.is_known())
-
-    @async_test
-    async def test_apply_unknown_output(self):
-        fut = asyncio.Future()
-        fut.set_result("foo")
-        known_fut = asyncio.Future()
-        known_fut.set_result(True)
-        out = Output({}, fut, known_fut)
-
-        r1 = out.apply(lambda v: UNKNOWN)
-        r2 = out.apply(lambda v: [v, UNKNOWN])
-        r3 = out.apply(lambda v: {"v": v, "unknown": UNKNOWN})
-        r4 = out.apply(lambda v: UNKNOWN).apply(lambda v: v, True)
-        r5 = out.apply(lambda v: [v, UNKNOWN]).apply(lambda v: v, True)
-        r6 = out.apply(lambda v: {"v": v, "unknown": UNKNOWN}).apply(lambda v: v, True)
-
-        self.assertFalse(await r1.is_known())
-        self.assertFalse(await r2.is_known())
-        self.assertFalse(await r3.is_known())
-        self.assertFalse(await r4.is_known())
-        self.assertFalse(await r5.is_known())
-        self.assertFalse(await r6.is_known())
-
-    @async_test
-    async def test_lifted_unknown(self):
-        fut = asyncio.Future()
-        fut.set_result(UNKNOWN)
-        out = Output.from_input({ "foo": "foo", "bar": UNKNOWN, "baz": fut})
-
-        self.assertFalse(await out.is_known())
-
-        r1 = out["foo"]
-        self.assertTrue(await r1.is_known())
-        self.assertEqual(await r1.future(), "foo")
-
-        r2 = out["bar"]
-        self.assertFalse(await r2.is_known())
-        self.assertEqual(await r2.future(), UNKNOWN)
-
-        r3 = out["baz"]
-        self.assertFalse(await r3.is_known())
-        self.assertEqual(await r3.future(), UNKNOWN)
-
-        r4 = out["baz"]["qux"]
-        self.assertFalse(await r4.is_known())
-        self.assertEqual(await r4.future(), UNKNOWN)
-
-        out = Output.from_input([ "foo", UNKNOWN ])
-
-        r5 = out[0]
-        self.assertTrue(await r5.is_known())
-        self.assertEqual(await r5.future(), "foo")
-
-        r6 = out[1]
-        self.assertFalse(await r6.is_known())
-        self.assertEqual(await r6.future(), UNKNOWN)
-
-
-    @async_test
-    async def test_output_coros(self):
-        # Ensure that Outputs function properly when the input value and is_known are coroutines. If the implementation
-        # is not careful to wrap these coroutines in Futures, they will be awaited more than once and the runtime will
-        # throw.
-        async def value():
-            await asyncio.sleep(0)
-            return 42
-        async def is_known():
-            await asyncio.sleep(0)
-            return True
-
-        out = Output({}, value(), is_known())
-
-        self.assertTrue(await out.is_known())
-        self.assertEqual(42, await out.future())
-        self.assertEqual(42, await out.apply(lambda v: v).future())
-
 
 class DeserializationTests(unittest.TestCase):
     def test_unsupported_sig(self):

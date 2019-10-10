@@ -95,9 +95,6 @@ async def serialize_property(value: 'Input[Any]',
 
         return props
 
-    if known_types.is_unknown(value):
-        return UNKNOWN
-
     if known_types.is_custom_resource(value):
         deps.append(value)
         return await serialize_property(value.id, deps, input_transformer)
@@ -189,7 +186,7 @@ async def serialize_property(value: 'Input[Any]',
     return value
 
 # pylint: disable=too-many-return-statements
-def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_properties(props_struct: struct_pb2.Struct) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
@@ -231,7 +228,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
     # since we can only set secret outputs on top level properties.
     output = {}
     for k, v in list(props_struct.items()):
-        value = deserialize_property(v, keep_unknowns)
+        value = deserialize_property(v)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
             output[k] = value
@@ -253,17 +250,17 @@ def unwrap_rpc_secret(value: Any) -> Any:
 
     return value
 
-def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_property(value: Any) -> Any:
     """
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
     """
     if value == UNKNOWN:
-        return known_types.new_unknown() if settings.is_dry_run() or keep_unknowns else None
+        return None
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
-        values = [deserialize_property(v, keep_unknowns) for v in value]
+        values = [deserialize_property(v) for v in value]
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
@@ -276,7 +273,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # Structs are projected to dictionaries
     if isinstance(value, struct_pb2.Struct):
-        props = deserialize_properties(value, keep_unknowns)
+        props = deserialize_properties(value)
         # If there are any secret values in the dictionary, push the secretness "up" a level by returning
         # a dictionary that is marked as a secret with raw values inside. Note: thje isinstance check here is
         # important, since deserialize_properties will return either a dictionary or a concret type (in the case of
@@ -368,22 +365,6 @@ def translate_output_properties(res: 'Resource', output: Any) -> Any:
     return output
 
 
-def contains_unknowns(val: Any) -> bool:
-    def impl(val: Any, stack: List[Any]) -> bool:
-        if known_types.is_unknown(val):
-            return True
-
-        if not any([x is val for x in stack]):
-            stack.append(val)
-            if isinstance(val, dict):
-                return any([impl(x, stack) for x in val.values()])
-            if isinstance(val, list):
-                return any([impl(x, stack) for x in val])
-        return False
-
-    return impl(val, [])
-
-
 async def resolve_outputs(res: 'Resource',
                           serialized_props: struct_pb2.Struct,
                           outputs: struct_pb2.Struct,
@@ -450,7 +431,7 @@ async def resolve_outputs(res: 'Resource',
         else:
             # We're previewing. If the engine was able to give us a reasonable value back,
             # then use it. Otherwise, inform the Output that the value isn't known.
-            resolve(value, value is not None and not contains_unknowns(value), is_secret, None)
+            resolve(value, value is not None, is_secret, None)
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
