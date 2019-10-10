@@ -14,9 +14,10 @@
 
 import * as fs from "fs";
 import * as grpc from "grpc";
+import * as asset from "../asset";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { Inputs } from "../output";
+import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { excessiveDebugOutput, getMonitor, getSyncInvokes, rpcKeepAlive } from "./settings";
@@ -84,17 +85,7 @@ export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {
             })), label);
 
         // If there were failures, propagate them.
-        const failures: any = resp.getFailuresList();
-        if (failures && failures.length) {
-            let reasons = "";
-            for (let i = 0; i < failures.length; i++) {
-                if (reasons !== "") {
-                    reasons += "; ";
-                }
-                reasons += `${failures[i].getReason()} (${failures[i].getProperty()})`;
-            }
-            throw new Error(`Invoke of '${tok}' failed: ${reasons}`);
-        }
+        processPotentialFailures(tok, resp);
 
         // Finally propagate any other properties that were given to us as outputs.
         return deserializeProperties(resp.getReturn());
@@ -112,7 +103,7 @@ export function invokeSync(tok: string, props: any): any {
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
-    const obj = gstruct.Struct.fromJavaScript(props);
+    const obj = gstruct.Struct.fromJavaScript(serializePropertiesSync(props));
     log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
     // Fetch the sync monitor and make an RPC request.
@@ -142,11 +133,75 @@ export function invokeSync(tok: string, props: any): any {
     const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
 
     // If there were failures, propagate them.
-    const failures: any = resp.getFailuresList();
-    if (failures && failures.length) {
-        throw new Error(`Invoke of '${tok}' failed: ${failures[0].reason} (${failures[0].property})`);
-    }
+    processPotentialFailures(tok, resp);
 
     // Finally propagate any other properties that were given to us as outputs.
     return deserializeProperties(resp.getReturn());
+}
+
+function serializePropertiesSync(prop: any): any {
+    if (prop === undefined ||
+        prop === null ||
+        typeof prop === "boolean" ||
+        typeof prop === "number" ||
+        typeof prop === "string") {
+
+        return prop;
+    }
+
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+        throw new Error("Assets and Archives be passed in as arguments to a data source call.");
+    }
+
+    if (prop instanceof Promise) {
+        throw new Error("Promises cannot be passed in as arguments to a data source call.");
+    }
+
+    if (Output.isInstance(prop)) {
+        throw new Error("Outputs cannot be passed in as arguments to a data source call.");
+    }
+
+    if (Resource.isInstance(prop)) {
+        throw new Error("Resources cannot be passed in as arguments to a data source call.");
+    }
+
+    if (prop instanceof Array) {
+        const result: any[] = [];
+        for (let i = 0; i < prop.length; i++) {
+            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
+            const elem = serializePropertiesSync(prop[i]);
+            result.push(elem === undefined ? null : elem);
+        }
+        return result;
+    }
+
+    return serializeAllKeys(prop, {});
+
+    function serializeAllKeys(innerProp: any, obj: any) {
+        for (const k of Object.keys(innerProp)) {
+            // When serializing an object, we omit any keys with undefined values. This matches JSON semantics.
+            const v = serializePropertiesSync(innerProp[k]);
+            if (v !== undefined) {
+                obj[k] = v;
+            }
+        }
+
+        return obj;
+    }
+}
+
+function processPotentialFailures(tok: string, resp: any) {
+    const failures: any = resp.getFailuresList();
+    if (failures && failures.length) {
+        let reasons = "";
+        for (let i = 0; i < failures.length; i++) {
+            if (reasons !== "") {
+                reasons += "; ";
+            }
+
+            reasons += `${failures[i].getReason()} (${failures[i].getProperty()})`;
+        }
+
+        throw new Error(`Invoke of '${tok}' failed: ${reasons}`);
+    }
 }

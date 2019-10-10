@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { Input, Inputs, isSecretOutput, Output } from "../output";
+import { Input, Inputs, Output } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
@@ -237,6 +237,10 @@ export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
 export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
+    // IMPORTANT:
+    // IMPORTANT: Keep this in sync with serializesPropertiesSync in invoke.ts
+    // IMPORTANT:
+
     if (prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
