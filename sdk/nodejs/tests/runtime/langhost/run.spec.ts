@@ -1019,7 +1019,7 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (!casename.startsWith("resource_creation_in_function")) {
+        // if (casename !== "stack_exports") {
         //     continue;
         // }
 
