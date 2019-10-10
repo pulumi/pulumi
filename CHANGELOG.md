@@ -14,6 +14,8 @@ CHANGELOG
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
 
+- Add resource transformations support in Python. [#3319](https://github.com/pulumi/pulumi/pull/3319)
+
 ## 1.2.0 (2019-09-26)
 
 - Support emitting high-level execution trace data to a file and add a debug-only command to view trace data.
