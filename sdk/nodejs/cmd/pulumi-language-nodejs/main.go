@@ -368,7 +368,7 @@ func getPluginVersion(info packageJSON) (string, error) {
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
-	// Set up a cancellable context for the proxy.  This will allow us to shut it down gracefull
+	// Set up a cancellable context for the proxy.  This will allow us to shut it down graceful
 	// when we return after exec'ing the nodejs process.
 	proxyCtx, proxyCancel := context.WithCancel(ctx)
 	defer proxyCancel()

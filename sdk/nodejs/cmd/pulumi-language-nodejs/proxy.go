@@ -54,7 +54,8 @@ type monitorProxy struct {
 // nodejs, we have no problem calling this synchronously, and can block until we get the
 // response which we can then synchronously send to nodejs.
 func newMonitorProxy(
-	ctx context.Context, responseChannel chan<- *pulumirpc.RunResponse, targetAddr string, tracingSpan opentracing.Span) (*monitorProxy, error) {
+	ctx context.Context, responseChannel chan<- *pulumirpc.RunResponse,
+	targetAddr string, tracingSpan opentracing.Span) (*monitorProxy, error) {
 
 	pipes, err := createPipes()
 	if err != nil {
@@ -118,7 +119,9 @@ func createPipes() (string, error) {
 	return dir, nil
 }
 
-func (p *monitorProxy) servePipes(ctx context.Context, resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
+func (p *monitorProxy) servePipes(
+	ctx context.Context, resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
+
 	// Once we're done using the pipes, let the server know it can shutdown gracefully.
 	defer func() {
 		serverCancel <- true
