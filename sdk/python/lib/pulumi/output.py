@@ -83,6 +83,13 @@ class Output(Generic[T]):
                  is_known: Awaitable[bool], is_secret: Optional[Awaitable[bool]] = None) -> None:
 
         future = asyncio.ensure_future(future)
+        is_known = asyncio.ensure_future(is_known)
+
+        async def future_value() -> T:
+            val = await future
+            if not await is_known and not contains_unknowns(val):
+                return UNKNOWN
+            return val
 
         async def is_value_known() -> bool:
             if not await is_known:
@@ -90,7 +97,7 @@ class Output(Generic[T]):
             return not contains_unknowns(await future)
 
         self._resources = resources
-        self._future = future
+        self._future = asyncio.ensure_future(future_value())
         self._is_known = asyncio.ensure_future(is_value_known())
 
         if is_secret is not None:
@@ -234,6 +241,7 @@ class Output(Generic[T]):
         :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
         :rtype: Output[T]
         """
+
         # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
             return val.apply(Output.from_input, True)

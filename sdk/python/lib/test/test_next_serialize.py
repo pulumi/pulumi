@@ -16,7 +16,7 @@ import unittest
 
 from google.protobuf import struct_pb2
 from pulumi.resource import CustomResource
-from pulumi.runtime import rpc, known_types
+from pulumi.runtime import rpc, known_types, settings
 from pulumi.output import Output, UNKNOWN
 from pulumi.asset import (
     FileAsset,
@@ -125,6 +125,13 @@ class NextSerializationTests(unittest.TestCase):
         prop = await rpc.serialize_property(out, deps)
         self.assertListEqual(deps, [existing, res])
         self.assertEqual(42, prop)
+
+        known_fut = asyncio.Future()
+        known_fut.set_result(False)
+        out = Output({}, fut, known_fut)
+
+        prop = await out.future()
+        self.assertEqual(UNKNOWN, prop)
 
     @async_test
     async def test_output_all(self):
@@ -293,6 +300,8 @@ class NextSerializationTests(unittest.TestCase):
 
     @async_test
     async def test_lifted_unknown(self):
+        settings.SETTINGS.dry_run = True
+
         fut = asyncio.Future()
         fut.set_result(UNKNOWN)
         out = Output.from_input({ "foo": "foo", "bar": UNKNOWN, "baz": fut})
@@ -324,6 +333,30 @@ class NextSerializationTests(unittest.TestCase):
         r6 = out[1]
         self.assertFalse(await r6.is_known())
         self.assertEqual(await r6.future(), UNKNOWN)
+
+        out = Output.all(Output.from_input("foo"), Output.from_input(UNKNOWN),
+            Output.from_input([ Output.from_input(UNKNOWN), Output.from_input("bar") ]))
+
+        self.assertFalse(await out.is_known())
+
+        r7 = out[0]
+        self.assertTrue(await r7.is_known())
+        self.assertEqual(await r7.future(), "foo")
+
+        r8 = out[1]
+        self.assertFalse(await r8.is_known())
+        self.assertEqual(await r8.future(), UNKNOWN)
+
+        r9 = out[2]
+        self.assertFalse(await r9.is_known())
+
+        r10 = r9[0]
+        self.assertFalse(await r10.is_known())
+        self.assertEqual(await r10.future(), UNKNOWN)
+
+        r11 = r9[1]
+        self.assertTrue(await r11.is_known())
+        self.assertEqual(await r11.future(), "bar")
 
 
     @async_test

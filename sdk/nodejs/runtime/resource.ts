@@ -17,7 +17,7 @@ import * as grpc from "grpc";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { Input, Inputs, Output, output } from "../output";
+import { Input, Inputs, Output, output, unknown } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     ComponentResource,

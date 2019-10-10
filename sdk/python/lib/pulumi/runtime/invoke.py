@@ -22,6 +22,7 @@ from .. import log
 from .settings import get_monitor
 from ..runtime.proto import provider_pb2
 from . import rpc
+from . import known_types
 from .rpc_manager import RPC_MANAGER
 
 # If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
@@ -127,7 +128,8 @@ def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> InvokeResult:
         provider_ref = None
         if opts.provider is not None:
             provider_urn = await opts.provider.urn.future()
-            provider_id = (await opts.provider.id.future()) or rpc.UNKNOWN
+            provider_id_val = await opts.provider.id.future()
+            provider_id = rpc.UNKNOWN if known_types.is_unknown(provider_id_val) else provider_id_val
             provider_ref = f"{provider_urn}::{provider_id}"
             log.debug(f"Invoke using provider {provider_ref}")
 

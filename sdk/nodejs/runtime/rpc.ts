@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { containsUnknowns, Input, Inputs, Output, unknown } from "../output";
+import { containsUnknowns, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
@@ -307,6 +307,10 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             };
         }
         return value;
+    }
+
+    if (isUnknown(prop)) {
+        return unknownValue;
     }
 
     if (CustomResource.isInstance(prop)) {

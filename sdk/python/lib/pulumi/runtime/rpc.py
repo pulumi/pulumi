@@ -171,6 +171,9 @@ async def serialize_property(value: 'Input[Any]',
             }
         return value
 
+    if known_types.is_unknown(value):
+        return UNKNOWN
+
     if isinstance(value, dict):
         obj = {}
         for k, v in value.items():
