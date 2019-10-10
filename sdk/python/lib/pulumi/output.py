@@ -31,7 +31,6 @@ from typing import (
 
 from . import runtime
 from .runtime import known_types
-from .runtime import rpc
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -82,19 +81,12 @@ class Output(Generic[T]):
     def __init__(self, resources: Set['Resource'], future: Awaitable[T],
                  is_known: Awaitable[bool], is_secret: Optional[Awaitable[bool]] = None) -> None:
 
-        future = asyncio.ensure_future(future)
-
-        async def is_value_known() -> bool:
-            if not await is_known:
-                return False
-            return not contains_unknowns(await future)
-
         self._resources = resources
         self._future = future
-        self._is_known = asyncio.ensure_future(is_value_known())
+        self._is_known = is_known
 
         if is_secret is not None:
-            self._is_secret = asyncio.ensure_future(is_secret)
+            self._is_secret = is_secret
         else:
             self._is_secret = asyncio.Future()
             self._is_secret.set_result(False)
@@ -113,7 +105,7 @@ class Output(Generic[T]):
         return self._is_secret
     # End private implementation details.
 
-    def apply(self, func: Callable[[T], Input[U]], run_with_unknowns: Optional[bool] = None) -> 'Output[U]':
+    def apply(self, func: Callable[[T], Input[U]]) -> 'Output[U]':
         """
         Transforms the data of the output with the provided func.  The result remains a
         Output so that dependent resources can be properly tracked.
@@ -141,7 +133,7 @@ class Output(Generic[T]):
         async def is_known() -> bool:
             inner = await inner_is_known
             known = await self._is_known
-            return inner and (known or run_with_unknowns)
+            return inner and known
 
         # The "is_secret" coroutine that we pass to the output we're about to create is derived from
         # the disjunction of the two is_secret that we know about: our own (self._is_secret) and a future
@@ -159,7 +151,7 @@ class Output(Generic[T]):
                     # During previews only perform the apply if the engine was able to
                     # give us an actual value for this Output.
                     apply_during_preview = await self._is_known
-                    if not apply_during_preview and not run_with_unknowns:
+                    if not apply_during_preview:
                         # We didn't actually run the function, our new Output is definitely
                         # **not** known and **not** secret
                         inner_is_known.set_result(False)
@@ -211,7 +203,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value's property with the given name.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else getattr(v, item), True)
+        return self.apply(lambda v: getattr(v, item))
 
 
     def __getitem__(self, key: Any) -> 'Output[Any]':
@@ -222,7 +214,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else v[key], True)
+        return self.apply(lambda v: v[key])
 
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
@@ -236,14 +228,14 @@ class Output(Generic[T]):
         """
         # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
-            return val.apply(Output.from_input, True)
+            return val.apply(Output.from_input)
 
         # Is a dict or list? Recurse into the values within them.
         if isinstance(val, dict):
             # Since Output.all works on lists early, serialize this dictionary into a list of lists first.
             # Once we have a output of the list of properties, we can use an apply to re-hydrate it back into a dict.
             transformed_items = [[k, Output.from_input(v)] for k, v in val.items()]
-            return Output.all(*transformed_items).apply(lambda props: {k: v for k, v in props}, True)
+            return Output.all(*transformed_items).apply(lambda props: {k: v for k, v in props})
 
         if isinstance(val, list):
             transformed_items = [Output.from_input(v) for v in val]
@@ -259,7 +251,7 @@ class Output(Generic[T]):
         # as the value future for a new output.
         if isawaitable(val):
             promise_output = Output(set(), asyncio.ensure_future(val), is_known_fut, is_secret_fut)
-            return promise_output.apply(Output.from_input, True)
+            return promise_output.apply(Output.from_input)
 
         # Is it a prompt value? Set up a new resolved future and use that as the value future.
         value_fut = asyncio.Future()
@@ -349,21 +341,3 @@ class Output(Generic[T]):
 
         transformed_items = [Output.from_input(v) for v in args]
         return Output.all(*transformed_items).apply("".join)
-
-
-@known_types.unknown
-class Unknown:
-    """
-    Unknown represents a value that is unknown.
-    """
-
-    def __init__(self):
-        pass
-
-UNKNOWN = Unknown()
-"""
-UNKNOWN is the singleton unknown value.
-"""
-
-def contains_unknowns(val: Any) -> bool:
-    return rpc.contains_unknowns(val)

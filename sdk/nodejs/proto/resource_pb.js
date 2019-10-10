@@ -1046,8 +1046,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     aliasesList: jspb.Message.getRepeatedField(msg, 15),
     importid: jspb.Message.getFieldWithDefault(msg, 16, ""),
     customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
-    deletebeforereplacedefined: jspb.Message.getFieldWithDefault(msg, 18, false),
-    supportspartialvalues: jspb.Message.getFieldWithDefault(msg, 19, false)
+    deletebeforereplacedefined: jspb.Message.getFieldWithDefault(msg, 18, false)
   };
 
   if (includeInstance) {
@@ -1159,10 +1158,6 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 18:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setDeletebeforereplacedefined(value);
-      break;
-    case 19:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSupportspartialvalues(value);
       break;
     default:
       reader.skipField();
@@ -1315,13 +1310,6 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f) {
     writer.writeBool(
       18,
-      f
-    );
-  }
-  f = message.getSupportspartialvalues();
-  if (f) {
-    writer.writeBool(
-      19,
       f
     );
   }
@@ -2053,23 +2041,6 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getDeletebeforereplacedefined 
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDeletebeforereplacedefined = function(value) {
   jspb.Message.setProto3BooleanField(this, 18, value);
-};
-
-
-/**
- * optional bool supportsPartialValues = 19;
- * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
- * You should avoid comparisons like {@code val === true/false} in those cases.
- * @return {boolean}
- */
-proto.pulumirpc.RegisterResourceRequest.prototype.getSupportspartialvalues = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 19, false));
-};
-
-
-/** @param {boolean} value */
-proto.pulumirpc.RegisterResourceRequest.prototype.setSupportspartialvalues = function(value) {
-  jspb.Message.setProto3BooleanField(this, 19, value);
 };
 
 
