@@ -373,8 +373,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	proxyCtx, proxyCancel := context.WithCancel(ctx)
 	defer proxyCancel()
 
-	// Provide channels for both the proxy and the launched nodejs process. to notify us about
-	// issues.
+	// Provide a channel for both the proxy gorouting and the launched nodejs process goroutine to
+	// notify us about issues.
 	responseChannel := make(chan *pulumirpc.RunResponse)
 	defer close(responseChannel)
 
