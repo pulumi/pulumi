@@ -20,6 +20,8 @@ import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { excessiveDebugOutput, getMonitor, rpcKeepAlive } from "./settings";
 
+import { ProviderRef, Resource } from "../resource";
+
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
 
@@ -28,15 +30,14 @@ const providerproto = require("../proto/provider_pb.js");
  * can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
-export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): Promise<any> {
+export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     const label = `Invoking function: tok=${tok}`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
-    opts = opts || {};
-    if (opts.parent && opts.provider === undefined) {
-        opts.provider = opts.parent.getProvider(tok);
-    }
+    const provider =
+        opts.provider ? opts.provider :
+        opts.parent ? opts.parent.getProvider(tok) : undefined;
 
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
@@ -49,10 +50,11 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
         const monitor: any = getMonitor();
 
         let providerRef: string | undefined;
-        if (opts.provider !== undefined) {
-            const providerURN = await opts.provider.urn.promise();
-            const providerID = await opts.provider.id.promise() || unknownValue;
-            providerRef = `${providerURN}::${providerID}`;
+        if (ProviderRef.isInstance(provider)) {
+            providerRef = provider.getValue();
+        }
+        else if (Resource.isInstance(provider)) {
+            providerRef = (await ProviderRef.get(provider)).getValue();
         }
 
         const req = new providerproto.InvokeRequest();
