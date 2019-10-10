@@ -530,7 +530,7 @@ describe("rpc", () => {
                     b: 42,
                     c: {
                         d: "a",
-                        e: true,
+                        e: false,
                     },
                 });
             },
@@ -1016,6 +1016,25 @@ describe("rpc", () => {
                 assert.deepEqual(outputs, { a: 1 });
             },
         },
+        "resource_creation_in_async_function_with_result": {
+            program: path.join(base, "052.resource_creation_in_async_function_with_result"),
+            expectResourceCount: 2,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.deepEqual(outputs, { a: 1 });
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -1027,7 +1046,7 @@ describe("rpc", () => {
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
             // For each test case, run it twice: first to preview and then to update.
             for (const dryrun of [true, false]) {
-                console.log(dryrun ? "PREVIEW:" : "UPDATE:");
+                // console.log(dryrun ? "PREVIEW:" : "UPDATE:");
 
                 // First we need to mock the resource monitor.
                 const ctx: any = {};
@@ -1378,8 +1397,9 @@ function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.Chil
             // The first line is the address; strip off the newline and resolve the promise.
             addrResolve(`0.0.0.0:${dataString}`);
             addrResolve = undefined;
+        } else {
+            console.log(`langhost.stdout: ${dataString}`);
         }
-        console.log(`langhost.stdout: ${dataString}`);
     });
     proc.stderr.on("data", (data) => {
         console.error(`langhost.stderr: ${stripEOL(data)}`);
