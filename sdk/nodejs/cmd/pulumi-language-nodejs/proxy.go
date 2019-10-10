@@ -24,7 +24,6 @@ import (
 )
 
 type monitorProxy struct {
-	targetConn    *grpc.ClientConn
 	target        pulumirpc.ResourceMonitorClient
 	addr          string
 	pipeDirectory string
@@ -55,20 +54,19 @@ type monitorProxy struct {
 // nodejs, we have no problem calling this synchronously, and can block until we get the
 // response which we can then synchronously send to nodejs.
 func newMonitorProxy(
-	ctx context.Context, targetAddr string, tracingSpan opentracing.Span) (*monitorProxy, <-chan error, error) {
+	ctx context.Context, responseChannel chan<- *pulumirpc.RunResponse, targetAddr string, tracingSpan opentracing.Span) (*monitorProxy, error) {
 
 	pipes, err := createPipes()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	conn, err := grpc.Dial(targetAddr, grpc.WithInsecure())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	proxy := &monitorProxy{
-		targetConn:    conn,
 		target:        pulumirpc.NewResourceMonitorClient(conn),
 		pipeDirectory: pipes,
 	}
@@ -83,30 +81,23 @@ func newMonitorProxy(
 		},
 	}, tracingSpan)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	pipeErrors := make(chan error)
-	go proxy.servePipes(ctx, serverCancel, pipeErrors)
 
 	proxy.addr = fmt.Sprintf("127.0.0.1:%d", port)
 
-	allErrors := mergeErrorChannels(serverErrors, pipeErrors)
+	// Lister for errors from the server and push them to the singular error stream if we receive one.
+	go func() {
+		err := <-serverErrors
+		if err != nil {
+			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
+		}
+	}()
 
-	return proxy, allErrors, nil
-}
+	// Now, kick off a goroutine to actually read and write from the pipes so we don't block.
+	go proxy.servePipes(ctx, responseChannel, serverCancel)
 
-func mergeErrorChannels(cs ...<-chan error) <-chan error {
-	out := make(chan error)
-
-	for _, c := range cs {
-		go func(c <-chan error) {
-			for v := range c {
-				out <- v
-			}
-		}(c)
-	}
-	return out
+	return proxy, nil
 }
 
 func createPipes() (string, error) {
@@ -127,8 +118,14 @@ func createPipes() (string, error) {
 	return dir, nil
 }
 
-func (p *monitorProxy) servePipes(ctx context.Context, serverCancel chan<- bool, pipeErrors chan<- error) {
-	servePipesImpl := func() error {
+func (p *monitorProxy) servePipes(ctx context.Context, resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
+	// Once we're done using the pipes, let the server know it can shutdown gracefully.
+	defer func () {
+		serverCancel <- true
+	}()
+
+	// Keep reading and writing from the pipes until we run into an error or are canceled.
+	err := func() error {
 		pbcodec := encoding.GetCodec(proto.Name)
 
 		defer contract.IgnoreError(os.Remove(p.pipeDirectory))
@@ -138,15 +135,15 @@ func (p *monitorProxy) servePipes(ctx context.Context, serverCancel chan<- bool,
 		if err != nil {
 			return err
 		}
-		defer contract.IgnoreClose(invokeReqPipe)
 		defer contract.IgnoreError(os.Remove(invokeReqPath))
+		defer contract.IgnoreClose(invokeReqPipe)
 
 		invokeResPipe, err := os.OpenFile(invokeResPath, os.O_WRONLY, 0)
 		if err != nil {
 			return err
 		}
-		defer contract.IgnoreClose(invokeResPipe)
 		defer contract.IgnoreError(os.Remove(invokeResPath))
+		defer contract.IgnoreClose(invokeResPipe)
 
 		for {
 			// read a 4-byte request length
@@ -207,16 +204,12 @@ func (p *monitorProxy) servePipes(ctx context.Context, serverCancel chan<- bool,
 				return err
 			}
 		}
-	}
+	}()
 
-	// Keep reading and writing from the pipes until we run into an error or are canceled.
-	err := servePipesImpl()
 	if err != nil {
-		pipeErrors <- err
+		// If we received an error serving pipes, then notify our caller so they can pass it along.
+		resultChannel <- &pulumirpc.RunResponse{Error: err.Error()}
 	}
-
-	// once done, let the server know it can shutdown.
-	serverCancel <- true
 }
 
 func (p *monitorProxy) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {

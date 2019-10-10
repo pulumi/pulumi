@@ -371,109 +371,103 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	// Set up a cancellable context for the proxy.  This will allow us to shut it down gracefull
 	// when we return after exec'ing the nodejs process.
 	proxyCtx, proxyCancel := context.WithCancel(ctx)
+	defer proxyCancel()
 
 	// Provide channels for both the proxy and the launched nodejs process. to notify us about
-	// issue.
-	proxyResult := make(chan *pulumirpc.RunResponse)
-	execResult := make(chan *pulumirpc.RunResponse)
-	allResult := mergeResponseChannels(proxyResult, execResult)
-	defer close(proxyResult)
-	defer close(execResult)
-	defer close(allResult)
+	// issues.
+	responseChannel := make(chan *pulumirpc.RunResponse)
+	defer close(responseChannel)
 
 	// fire up a proxy resource monitor
-	monitor, proxyErrors, err := newMonitorProxy(proxyResult, proxyCtx, req.GetMonitorAddress(), tracingSpan)
+	monitor, err := newMonitorProxy(proxyCtx, responseChannel, req.GetMonitorAddress(), tracingSpan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create monitor proxy")
 	}
 
-	go host.execNodejs(execResult, req, monitor, proxyCancel)
+	go host.execNodejs(responseChannel, proxyCancel, req, monitor)
 
-	return <-allResult, nil
-}
-
-func mergeResponseChannels(cs ...<-chan *pulumirpc.RunResponse) chan *pulumirpc.RunResponse {
-	out := make(chan *pulumirpc.RunResponse)
-
-	for _, c := range cs {
-		go func(c <-chan *pulumirpc.RunResponse) {
-			for v := range c {
-				out <- v
-			}
-		}(c)
-	}
-	return out
+	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
+	// (in the case of errors), or the launched nodejs completing.
+	return <-responseChannel, nil
 }
 
 func (host *nodeLanguageHost) execNodejs(
-	req *pulumirpc.RunRequest, monitor *monitorProxy, proxyCancel context.CancelFunc) {
+	responseChannel chan<- *pulumirpc.RunResponse, proxyCancel context.CancelFunc,
+	req *pulumirpc.RunRequest, monitor *monitorProxy) {
 
-	// At the end of executing the nodejs process, let the proxy know it should stop doing everything
+	// At the end of executing the nodejs process, let the proxy know it should stop trying to read
+	// from the pipes to the nodejs process.
 	defer proxyCancel()
 
-	args := host.constructArguments(req, monitor)
-	config, err := host.constructConfig(req)
-	if err != nil {
-		err = errors.Wrap(err, "failed to serialize configuration")
-		return nil, err
-	}
-
-	env := os.Environ()
-	env = append(env, pulumiConfigVar+"="+config)
-
-	if host.typescript {
-		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
-	}
-
-	if logging.V(5) {
-		commandStr := strings.Join(args, " ")
-		logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
-	}
-
-	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	var errResult string
-	cmd := exec.Command(host.nodeBin, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = env
-	if err := cmd.Run(); err != nil {
-		// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
-		// process writes using console.out and console.err synchronously, but it does not process writes using
-		// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
-		// writes on those file descriptors at the time that the Node process exits.
-		//
-		// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
-		// error messages in the engine.
-		contract.IgnoreError(os.Stdout.Sync())
-		contract.IgnoreError(os.Stderr.Sync())
-		if exiterr, ok := err.(*exec.ExitError); ok {
-			// If the program ran, but exited with a non-zero error code.  This will happen often,
-			// since user errors will trigger this.  So, the error message should look as nice as
-			// possible.
-			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				// Check if we got special exit code that means "we already gave the user an
-				// actionable message". In that case, we can simply bail out and terminate `pulumi`
-				// without showing any more messages.
-				if status.ExitStatus() == nodeJSProcessExitedAfterShowingUserActionableMessage {
-					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
-				}
-
-				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
-			} else {
-				err = errors.Wrapf(exiterr, "Program exited unexpectedly")
-			}
-		} else {
-			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-			err = errors.Wrapf(err, "Problem executing program (could not run language executor)")
+	// Go lunch nodejs and process the result of it into an appropriate response object.
+	response := func() *pulumirpc.RunResponse {
+		args := host.constructArguments(req, monitor)
+		config, err := host.constructConfig(req)
+		if err != nil {
+			err = errors.Wrap(err, "failed to serialize configuration")
+			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
 
-		errResult = err.Error()
-	}
+		env := os.Environ()
+		env = append(env, pulumiConfigVar+"="+config)
 
-	// Let our proxy know we're done and it should cleanup after itself.
-	proxyCancel()
-	return &pulumirpc.RunResponse{Error: errResult}, nil
+		if host.typescript {
+			env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+		}
+
+		if logging.V(5) {
+			commandStr := strings.Join(args, " ")
+			logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
+		}
+
+		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+		var errResult string
+		cmd := exec.Command(host.nodeBin, args...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = env
+		if err := cmd.Run(); err != nil {
+			// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
+			// process writes using console.out and console.err synchronously, but it does not process writes using
+			// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
+			// writes on those file descriptors at the time that the Node process exits.
+			//
+			// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
+			// error messages in the engine.
+			contract.IgnoreError(os.Stdout.Sync())
+			contract.IgnoreError(os.Stderr.Sync())
+			if exiterr, ok := err.(*exec.ExitError); ok {
+				// If the program ran, but exited with a non-zero error code.  This will happen often,
+				// since user errors will trigger this.  So, the error message should look as nice as
+				// possible.
+				if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+					// Check if we got special exit code that means "we already gave the user an
+					// actionable message". In that case, we can simply bail out and terminate `pulumi`
+					// without showing any more messages.
+					if status.ExitStatus() == nodeJSProcessExitedAfterShowingUserActionableMessage {
+						return &pulumirpc.RunResponse{Error: "", Bail: true}
+					}
+
+					err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+				} else {
+					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+				}
+			} else {
+				// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+				// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+				err = errors.Wrapf(err, "Problem executing program (could not run language executor)")
+			}
+
+			errResult = err.Error()
+		}
+
+		return &pulumirpc.RunResponse{Error: errResult}
+	}()
+
+	// notify our caller of the response we got from the nodejs process.  Note: this is done
+	// unilaterally. this is how we signal to nodeLanguageHost.Run that we are done and it can
+	// return to its caller.
+	responseChannel <- response
 }
 
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
