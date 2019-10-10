@@ -384,13 +384,18 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		return nil, errors.Wrap(err, "failed to create monitor proxy")
 	}
 
+	// now, launch the nodejs process and actually run the user code in it.
 	go host.execNodejs(responseChannel, proxyCancel, req, monitor)
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
-	// (in the case of errors), or the launched nodejs completing.
+	// (in the case of errors), or the launched nodejs completing (either successfully, or with
+	// errors).
 	return <-responseChannel, nil
 }
 
+// Launch the nodejs process and wait for it to complete.  Report success or any errors using the
+// `responseChannel` arg.  When done, let the proxy monitor know it can shutdown using
+// `proxyChannel`.
 func (host *nodeLanguageHost) execNodejs(
 	responseChannel chan<- *pulumirpc.RunResponse, proxyCancel context.CancelFunc,
 	req *pulumirpc.RunRequest, monitor *monitorProxy) {
@@ -399,7 +404,7 @@ func (host *nodeLanguageHost) execNodejs(
 	// from the pipes to the nodejs process.
 	defer proxyCancel()
 
-	// Go lunch nodejs and process the result of it into an appropriate response object.
+	// Actually launch nodejs and process the result of it into an appropriate response object.
 	response := func() *pulumirpc.RunResponse {
 		args := host.constructArguments(req, monitor)
 		config, err := host.constructConfig(req)

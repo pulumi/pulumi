@@ -94,7 +94,9 @@ func newMonitorProxy(
 		}
 	}()
 
-	// Now, kick off a goroutine to actually read and write from the pipes so we don't block.
+	// Now, kick off a goroutine to actually read and write from the pipes.  Any errors should be
+	// reported to `responseChannel`.  When complete, `serverCancel` should be called to let the
+	// server know it can shutdown gracefully.
 	go proxy.servePipes(ctx, responseChannel, serverCancel)
 
 	return proxy, nil
@@ -102,16 +104,14 @@ func newMonitorProxy(
 
 func createPipes() (string, error) {
 	dir, err := ioutil.TempDir("", "pulumi-node-pipes")
+
 	if err != nil {
 		return "", err
 	}
-
-	invokeReqPath, invokeResPath := path.Join(dir, "invoke_req"), path.Join(dir, "invoke_res")
-
-	if err := syscall.Mkfifo(invokeReqPath, 0600); err != nil {
+	if err := syscall.Mkfifo(path.Join(dir, "invoke_req"), 0600); err != nil {
 		return "", err
 	}
-	if err := syscall.Mkfifo(invokeResPath, 0600); err != nil {
+	if err := syscall.Mkfifo(path.Join(dir, "invoke_res"), 0600); err != nil {
 		return "", err
 	}
 
@@ -120,7 +120,7 @@ func createPipes() (string, error) {
 
 func (p *monitorProxy) servePipes(ctx context.Context, resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
 	// Once we're done using the pipes, let the server know it can shutdown gracefully.
-	defer func () {
+	defer func() {
 		serverCancel <- true
 	}()
 
