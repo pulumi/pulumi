@@ -1,4 +1,4 @@
-module.exports = async () => {
+module.exports = () => {
     return {
         a: Promise.resolve({
             x: Promise.resolve(99),

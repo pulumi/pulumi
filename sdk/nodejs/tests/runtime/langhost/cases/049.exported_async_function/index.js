@@ -1,5 +1,5 @@
-module.exports = () => {
-    return Promise.resolve({
+module.exports = async () => {
+    return {
         a: Promise.resolve({
             x: Promise.resolve(99),
             y: "z",
@@ -9,5 +9,5 @@ module.exports = () => {
             d: "a",
             e: false,
         },
-    });
+    };
 };
