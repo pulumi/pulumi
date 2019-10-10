@@ -23,13 +23,14 @@ import { deserializeProperties, serializeProperties, unknownValue } from "./rpc"
 import { excessiveDebugOutput, getMonitor, getSyncInvokes, rpcKeepAlive } from "./settings";
 
 import { ProviderRef, Resource } from "../resource";
+import * as utils from "../utils";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
 
 /**
- * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
- * can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
+ * invoke dynamically invokes the function, `tok`, which is offered by a provider plugin.  The
+ * inputs can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
 export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
@@ -37,9 +38,7 @@ export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
-    const provider =
-        opts.provider ? opts.provider :
-        opts.parent ? opts.parent.getProvider(tok) : undefined;
+    const provider = getProvider(tok, opts);
 
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
@@ -96,9 +95,25 @@ export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {
 }
 
 /**
- * invokeSync dynamically invokes the function, tok, which is offered by a provider plugin.
+ * invokeSync dynamically and synchronously invokes the function, `tok`, which is offered by a
+ * provider plugin.  The inputs must be a bag of simple values, and the result is the result that
+ * the Provider produced.
+ *
+ * Simple values are:
+ *  1. undefined, null, string, number or boolean values.
+ *  2. arrays of simple values.
+ *  3. objects containing only simple values.
+ *
+ * Importantly, simple values does *not* include:
+ *  1. Promises
+ *  2. Outputs
+ *  3. Assets or Archives
+ *  4. Resources.
+ *
+ * All of these contain async values that would prevent invokeSync from being able to operate
+ * synchronously.
  */
-export function invokeSync(tok: string, props: any): any {
+export function invokeSync(tok: string, props: any, opts: InvokeOptions = {}): any {
     const label = `Invoking function: tok=${tok}`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
@@ -109,9 +124,22 @@ export function invokeSync(tok: string, props: any): any {
     // Fetch the sync monitor and make an RPC request.
     const syncInvokes = getSyncInvokes();
 
+    const provider = getProvider(tok, opts);
+
+    let providerRef: string | undefined;
+    if (ProviderRef.isInstance(provider)) {
+        providerRef = provider.getValue();
+    }
+    else if (Resource.isInstance(provider)) {
+        // TODO(cyrusn): issue warning here that we are synchronously blocking an rpc call.
+        providerRef = utils.promiseResult(ProviderRef.get(provider)).getValue();
+    }
+
     const req = new providerproto.InvokeRequest();
     req.setTok(tok);
     req.setArgs(obj);
+    req.setProvider(providerRef);
+    req.setVersion(opts.version || "");
 
     // Encode the request.
     const reqBytes = Buffer.from(req.serializeBinary());
@@ -137,6 +165,11 @@ export function invokeSync(tok: string, props: any): any {
 
     // Finally propagate any other properties that were given to us as outputs.
     return deserializeProperties(resp.getReturn());
+}
+
+function getProvider(tok: string, opts: InvokeOptions) {
+    return opts.provider ? opts.provider :
+           opts.parent ? opts.parent.getProvider(tok) : undefined;
 }
 
 function serializePropertiesSync(prop: any): any {
