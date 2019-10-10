@@ -15,7 +15,7 @@
 import { util } from "protobufjs";
 import { ResourceError, RunError } from "./errors";
 import { all, Input, Inputs, interpolate, Output, output } from "./output";
-import { getStackResource } from "./runtime";
+import { getStackResource, unknownValue } from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
@@ -700,6 +700,30 @@ export abstract class ProviderResource extends CustomResource {
     /** @internal */
     public getPackage() {
         return this.pkg;
+    }
+
+    public async getRef(): Promise<ProviderRef> {
+        const providerURN = await this.urn.promise();
+        const providerID = await this.id.promise() || unknownValue;
+        return new ProviderRef(`${providerURN}::${providerID}`);
+    }
+}
+
+/**
+ * A reference to a `ProviderResource`.  Should be used as much as possible when referring to
+ * `Provider`s from other locations.  For example, when specifying the `Provider` for a `Resource`
+ * or the `Provider` for an `data source` `invoke` call, a `ProviderRef` should be provided instead
+ * of a `Provider`.
+ *
+ * A `ProviderRef` can be obtained by calling `await provider.getRef()` on a `Provider` instance.
+ */
+export class ProviderRef {
+    /** @internal */
+    public getValue: () => string;
+
+    /** @internal */
+    constructor(value: string) {
+        this.getValue = () => value;
     }
 }
 
