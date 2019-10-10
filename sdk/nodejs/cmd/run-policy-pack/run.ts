@@ -231,7 +231,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     opts.programStarted();
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    const runProgram = () => {
+    const runProgram: () => Promise<any> = () => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think
@@ -242,7 +242,10 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         // loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            return require(program);
+            const reqResult = require(program);
+            return reqResult instanceof Function
+                ? reqResult()
+                : reqResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
             // not something we want to catch up here.
@@ -262,5 +265,5 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
     // NOTE: `Promise.resolve(runProgram())` to coerce the result of `runProgram` into a promise,
     // just in case it wasn't already a promise.
-    return opts.runInStack ? runInPulumiStack(runProgram) : Promise.resolve(runProgram());
+    return opts.runInStack ? runInPulumiStack(runProgram) : runProgram();
 }

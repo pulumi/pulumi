@@ -521,7 +521,7 @@ describe("rpc", () => {
                     b: 42,
                     c: {
                         d: "a",
-                        e: false,
+                        e: true,
                     },
                 });
             },
@@ -878,6 +878,91 @@ describe("rpc", () => {
                     obj2_x: { y: 1, x: undefined },
                     obj2_x_y: 1,
                 });
+            },
+        },
+        "exported_function": {
+            program: path.join(base, "047.exported_function"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    a: {
+                        x: 99,
+                        y: "z",
+                    },
+                    b: 42,
+                    c: {
+                        d: "a",
+                        e: true,
+                    },
+                });
+            },
+        },
+        "exported_promise_function": {
+            program: path.join(base, "048.exported_promise_function"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    a: {
+                        x: 99,
+                        y: "z",
+                    },
+                    b: 42,
+                    c: {
+                        d: "a",
+                        e: true,
+                    },
+                });
+            },
+        },
+        "exported_async_function": {
+            program: path.join(base, "049.exported_async_function"),
+            expectResourceCount: 0,
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {
+                    a: {
+                        x: 99,
+                        y: "z",
+                    },
+                    b: 42,
+                    c: {
+                        d: "a",
+                        e: true,
+                    },
+                });
+            },
+        },
+        "resource_creation_in_function": {
+            program: path.join(base, "050.resource_creation_in_function"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {});
+            },
+        },
+        "resource_creation_in_function_with_result": {
+            program: path.join(base, "051.resource_creation_in_function_with_result"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+            registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
+                                      t: string, name: string, res: any, outputs: any | undefined) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs, {});
             },
         },
     };

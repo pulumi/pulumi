@@ -217,8 +217,7 @@ ${defaultMessage}`);
 
     programStarted();
 
-    // Construct a `Stack` resource to represent the outputs of the program.
-    return runtime.runInPulumiStack(() => {
+    const runProgram: () => Promise<any> = () => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
@@ -227,7 +226,10 @@ ${defaultMessage}`);
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            return require(program);
+            const reqResult = require(program);
+            return reqResult instanceof Function
+                ? Promise.resolve(reqResult())
+                : Promise.resolve(reqResult);
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
             // not something we want to catch up here.
@@ -243,5 +245,8 @@ ${defaultMessage}`);
 
             throw e;
         }
-    });
+    };
+
+    // Construct a `Stack` resource to represent the outputs of the program.
+    return runtime.runInPulumiStack(runProgram);
 }
