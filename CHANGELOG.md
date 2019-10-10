@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 1.3.1 (2019-10-09)
+
 - Revert "propagate resource inputs to resource state during preview". These changes had a critical issue that needs
   further investigation.
 
