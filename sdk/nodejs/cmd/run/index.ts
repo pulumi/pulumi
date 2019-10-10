@@ -94,7 +94,7 @@ function usage(): void {
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      [required] the RPC address for a resource monitor to connect to`);
     console.error(`        --engine=addr       the RPC address for a resource engine to connect to`);
-    console.error(`        --sync=path         path to synchronous endpoints`);
+    console.error(`        --sync=path         path to synchronous 'invoke' endpoints`);
     console.error(`        --tracing=url       a Zipkin-compatible endpoint to send tracing data to`);
     console.error(``);
     console.error(`    and [program] is a JavaScript program to run in Node.js, and [arg]... optional args to it.`);
