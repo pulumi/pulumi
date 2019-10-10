@@ -28,13 +28,19 @@ import * as utils from "../utils";
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
 
+export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}) {
+    return opts.async
+        ? invokeAsync(tok, props, opts)
+        : invokeSync(tok, props, opts);
+}
+
 /**
  * invoke dynamically invokes the function, `tok`, which is offered by a provider plugin.  The
  * inputs can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
-export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    const label = `Invoking function: tok=${tok}`;
+export async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
+    const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
@@ -114,7 +120,7 @@ export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {
  * synchronously.
  */
 export function invokeSync(tok: string, props: any, opts: InvokeOptions = {}): any {
-    const label = `Invoking function: tok=${tok}`;
+    const label = `Invoking function: tok=${tok} synchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
