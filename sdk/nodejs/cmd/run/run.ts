@@ -226,10 +226,17 @@ ${defaultMessage}`);
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
+            // Execute the module and capture any module outputs it exported.
             const reqResult = require(program);
-            return reqResult instanceof Function
-                ? Promise.resolve(reqResult())
-                : Promise.resolve(reqResult);
+
+            // If the exported value was itself a Function, then just execute it.  This allows for
+            // exported top level async functions that pulumi programs can live in.
+            const invokeResult = reqResult instanceof Function
+                ? reqResult()
+                : reqResult;
+
+            // Wrap whatever we have at the end with a promise to match our expected signature.
+            return Promise.resolve(invokeResult);
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
             // not something we want to catch up here.
