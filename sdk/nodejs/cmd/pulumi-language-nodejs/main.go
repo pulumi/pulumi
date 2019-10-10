@@ -366,13 +366,50 @@ func getPluginVersion(info packageJSON) (string, error) {
 
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	// fire up a proxy resource monitor
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
-	monitor, err := newMonitorProxy(req.GetMonitorAddress(), tracingSpan)
+	// Set up a cancellable context for the proxy.  This will allow us to shut it down gracefull
+	// when we return after exec'ing the nodejs process.
+	proxyCtx, proxyCancel := context.WithCancel(ctx)
+
+	// Provide channels for both the proxy and the launched nodejs process. to notify us about
+	// issue.
+	proxyResult := make(chan *pulumirpc.RunResponse)
+	execResult := make(chan *pulumirpc.RunResponse)
+	allResult := mergeResponseChannels(proxyResult, execResult)
+	defer close(proxyResult)
+	defer close(execResult)
+	defer close(allResult)
+
+	// fire up a proxy resource monitor
+	monitor, proxyErrors, err := newMonitorProxy(proxyResult, proxyCtx, req.GetMonitorAddress(), tracingSpan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create monitor proxy")
 	}
+
+	go host.execNodejs(execResult, req, monitor, proxyCancel)
+
+	return <-allResult, nil
+}
+
+func mergeResponseChannels(cs ...<-chan *pulumirpc.RunResponse) chan *pulumirpc.RunResponse {
+	out := make(chan *pulumirpc.RunResponse)
+
+	for _, c := range cs {
+		go func(c <-chan *pulumirpc.RunResponse) {
+			for v := range c {
+				out <- v
+			}
+		}(c)
+	}
+	return out
+}
+
+func (host *nodeLanguageHost) execNodejs(
+	req *pulumirpc.RunRequest, monitor *monitorProxy, proxyCancel context.CancelFunc) {
+
+	// At the end of executing the nodejs process, let the proxy know it should stop doing everything
+	defer proxyCancel()
 
 	args := host.constructArguments(req, monitor)
 	config, err := host.constructConfig(req)
@@ -434,6 +471,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		errResult = err.Error()
 	}
 
+	// Let our proxy know we're done and it should cleanup after itself.
+	proxyCancel()
 	return &pulumirpc.RunResponse{Error: errResult}, nil
 }
 
