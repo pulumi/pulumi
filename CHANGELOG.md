@@ -34,7 +34,8 @@ CHANGELOG
   const provider = await ProviderRef.get(new aws.Provider(...));
   ```
 
-  This will now be a `ProviderRef` instead of a `Provider`.  However, it should be accepted with all the latest Pulumi libraries anywhere a `Provider` was previously accepted.
+  This will now be a `ProviderRef` instead of a `Provider`.  However, it should be accepted with all
+  the latest Pulumi libraries anywhere a `Provider` was previously accepted.
 
   In a future version, Pulumi libraries *may* be updated to no longer accept a `Provider` to help
   ensure this issue doesn't occur at all.
