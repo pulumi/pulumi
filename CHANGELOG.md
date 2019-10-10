@@ -17,7 +17,7 @@ CHANGELOG
   const lb = aws.lb.getLoadBalancer(...);
   ```
 
-  The issue is mitigated in that it should occur much less for users in practice.  If your
+  The issue is mitigated such that it should occur much less for users in practice.  If your
   data-source call does not pass in a `parent` or `provider` the issue should not appear anymore,
   and you should not have to make any changes to your code.
 
