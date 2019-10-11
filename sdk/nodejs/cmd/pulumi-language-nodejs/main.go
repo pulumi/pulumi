@@ -388,8 +388,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 }
 
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
-// `responseChannel` arg.  When done, let the proxy monitor know it can shutdown using
-// `proxyChannel`.
+// `responseChannel` arg.
 func (host *nodeLanguageHost) execNodejs(
 	responseChannel chan<- *pulumirpc.RunResponse,
 	req *pulumirpc.RunRequest, monitor *monitorProxy) {
