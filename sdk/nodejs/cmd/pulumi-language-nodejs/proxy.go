@@ -48,7 +48,7 @@ type pipes interface {
 	directory() string
 
 	// Attempt to create and connect to the read and write streams
-	connect() error
+	connect(done chan<- error)
 
 	// The stream that we will use to read in requests send to us by the nodejs process.
 	reader() io.Reader
@@ -149,8 +149,11 @@ func (p *monitorProxy) servePipes(
 	err := func() error {
 		pbcodec := encoding.GetCodec(proto.Name)
 
-		err := p.pipes.connect()
+		connectDone := make(chan error)
+		defer close(connectDone)
+		go p.pipes.connect(connectDone)
 
+		err := <-connectDone
 		if err != nil {
 			logging.V(10).Infof("Sync invoke: Error connecting to pipes: %s\n", err)
 			return err

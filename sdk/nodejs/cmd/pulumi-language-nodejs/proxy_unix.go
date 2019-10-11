@@ -59,30 +59,34 @@ func (p *unixPipes) writer() io.Writer {
 	return p.resPipe
 }
 
-func (p *unixPipes) connect() error {
-	if err := syscall.Mkfifo(path.Join(p.dir, "invoke_req"), 0600); err != nil {
-		logging.V(10).Infof("createPipes: Received error opening request pipe: %s\n", err)
-		return err
-	}
+func (p *unixPipes) connect(done chan<- error) {
+	err := func() error {
+		if err := syscall.Mkfifo(path.Join(p.dir, "invoke_req"), 0600); err != nil {
+			logging.V(10).Infof("createPipes: Received error opening request pipe: %s\n", err)
+			return err
+		}
 
-	if err := syscall.Mkfifo(path.Join(p.dir, "invoke_res"), 0600); err != nil {
-		logging.V(10).Infof("createPipes: Received error opening result pipe: %s\n", err)
-		return err
-	}
+		if err := syscall.Mkfifo(path.Join(p.dir, "invoke_res"), 0600); err != nil {
+			logging.V(10).Infof("createPipes: Received error opening result pipe: %s\n", err)
+			return err
+		}
 
-	invokeReqPipe, err := os.OpenFile(p.reqPath, os.O_RDONLY, 0)
-	if err != nil {
-		return err
-	}
-	p.reqPipe = invokeReqPipe
+		invokeReqPipe, err := os.OpenFile(p.reqPath, os.O_RDONLY, 0)
+		if err != nil {
+			return err
+		}
+		p.reqPipe = invokeReqPipe
 
-	invokeResPipe, err := os.OpenFile(p.resPath, os.O_WRONLY, 0)
-	if err != nil {
-		return err
-	}
-	p.resPipe = invokeResPipe
+		invokeResPipe, err := os.OpenFile(p.resPath, os.O_WRONLY, 0)
+		if err != nil {
+			return err
+		}
+		p.resPipe = invokeResPipe
 
-	return nil
+		return nil
+	}()
+
+	done <- err
 }
 
 func (p *unixPipes) shutdown() {

@@ -420,6 +420,7 @@ func (host *nodeLanguageHost) execNodejs(
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = env
+
 		if err := cmd.Run(); err != nil {
 			// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
 			// process writes using console.out and console.err synchronously, but it does not process writes using

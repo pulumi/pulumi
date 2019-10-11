@@ -21,7 +21,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"path"
 	"time"
 
 	winio "github.com/Microsoft/go-winio"
@@ -30,18 +29,13 @@ import (
 )
 
 func createPipes() (pipes, error) {
-	fmt.Printf("Creating windows named pipes\n");
-
 	// Generate a random pipe name so that we don't collide with other pipes made by other pulumi
 	// instances.
 	rand := uint32(time.Now().UnixNano() + int64(os.Getpid()))
 	dir := fmt.Sprintf("\\\\.\\pipe\\pulumi%v", rand)
 
-
-	fmt.Printf("Using: %s\n", dir);
-
-	reqPipeName := path.Join(dir, "invoke_req")
-	resPipeName := path.Join(dir, "invoke_res")
+	reqPipeName := dir + "\\" + "invoke_req"
+	resPipeName := dir + "\\" + "invoke_res"
 	reqListener, err := winio.ListenPipe(reqPipeName, nil)
 	if err != nil {
 		logging.V(10).Infof("createPipes: Received error trying to create request pipe %s: %s\n", reqPipeName, err)
@@ -53,7 +47,6 @@ func createPipes() (pipes, error) {
 		logging.V(10).Infof("createPipes: Received error trying to create response pipe %s: %s\n", resPipeName, err)
 		return nil, err
 	}
-
 	return &windowsPipes{
 		dir:         dir,
 		reqListener: reqListener,
@@ -79,20 +72,38 @@ func (p *windowsPipes) writer() io.Writer {
 	return p.resConn
 }
 
-func (p *windowsPipes) connect() error {
-	reqConn, err := p.reqListener.Accept()
-	if err != nil {
-		return err
-	}
-	p.reqConn = reqConn
+func (p *windowsPipes) connect(done chan<- error) {
+	acceptDone := make(chan error)
+	defer close(acceptDone)
 
-	resConn, err := p.resListener.Accept()
-	if err != nil {
-		return err
-	}
-	p.resConn = resConn
+	go func() {
+		reqConn, err := p.reqListener.Accept()
+		if err != nil {
+			acceptDone <- err
+		}
+		p.reqConn = reqConn
+		acceptDone <- nil
+	}()
 
-	return nil
+	go func() {
+		resConn, err := p.resListener.Accept()
+		if err != nil {
+			acceptDone <- err
+		}
+		p.resConn = resConn
+		acceptDone <- nil
+	}()
+
+	res1 := <-acceptDone
+	res2 := <-acceptDone
+
+	if res1 != nil {
+		done <- res1
+	} else if res2 != nil {
+		done <- res2
+	} else {
+		done <- nil
+	}
 }
 
 func (p *windowsPipes) shutdown() {
