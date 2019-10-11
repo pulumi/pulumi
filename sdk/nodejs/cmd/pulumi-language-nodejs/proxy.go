@@ -19,10 +19,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"path"
-	"syscall"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -31,16 +27,23 @@ import (
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 type monitorProxy struct {
-	target        pulumirpc.ResourceMonitorClient
-	addr          string
-	pipeDirectory string
+	target pulumirpc.ResourceMonitorClient
+	addr   string
+	pipes  pipes
+}
+
+type pipes interface {
+	directory() string
+	reader() io.Reader
+	writer() io.Writer
+
+	shutdown()
 }
 
 // When talking to the nodejs runtime we have three parties involved:
@@ -82,8 +85,8 @@ func newMonitorProxy(
 	}
 
 	proxy := &monitorProxy{
-		target:        pulumirpc.NewResourceMonitorClient(conn),
-		pipeDirectory: pipes,
+		target: pulumirpc.NewResourceMonitorClient(conn),
+		pipes:  pipes,
 	}
 
 	// Channel to control the server lifetime.  The pipe reading code will ask the server to
@@ -117,22 +120,6 @@ func newMonitorProxy(
 	return proxy, nil
 }
 
-func createPipes() (string, error) {
-	dir, err := ioutil.TempDir("", "pulumi-node-pipes")
-
-	if err != nil {
-		return "", err
-	}
-	if err := syscall.Mkfifo(path.Join(dir, "invoke_req"), 0600); err != nil {
-		return "", err
-	}
-	if err := syscall.Mkfifo(path.Join(dir, "invoke_res"), 0600); err != nil {
-		return "", err
-	}
-
-	return dir, nil
-}
-
 func (p *monitorProxy) servePipes(
 	ctx context.Context, resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
 
@@ -145,30 +132,13 @@ func (p *monitorProxy) servePipes(
 	err := func() error {
 		pbcodec := encoding.GetCodec(proto.Name)
 
-		defer contract.IgnoreError(os.Remove(p.pipeDirectory))
-
-		invokeReqPath, invokeResPath := path.Join(p.pipeDirectory, "invoke_req"), path.Join(p.pipeDirectory, "invoke_res")
-		invokeReqPipe, err := os.OpenFile(invokeReqPath, os.O_RDONLY, 0)
-		if err != nil {
-			logging.V(10).Infof("Sync invoke: Received error opening request pipe: %s\n", err)
-			return err
-		}
-		defer contract.IgnoreError(os.Remove(invokeReqPath))
-		defer contract.IgnoreClose(invokeReqPipe)
-
-		invokeResPipe, err := os.OpenFile(invokeResPath, os.O_WRONLY, 0)
-		if err != nil {
-			logging.V(10).Infof("Sync invoke: Received error opening result pipe: %s\n", err)
-			return err
-		}
-		defer contract.IgnoreError(os.Remove(invokeResPath))
-		defer contract.IgnoreClose(invokeResPipe)
+		defer p.pipes.shutdown()
 
 		for {
 			// read a 4-byte request length
 			logging.V(10).Infoln("Sync invoke: Reading length from request pipe")
 			var reqLen uint32
-			if err := binary.Read(invokeReqPipe, binary.BigEndian, &reqLen); err != nil {
+			if err := binary.Read(p.pipes.reader(), binary.BigEndian, &reqLen); err != nil {
 				// This is benign on shutdown.
 				if err == io.EOF {
 					// We were asked to gracefully cancel.  Just exit now.
@@ -183,7 +153,7 @@ func (p *monitorProxy) servePipes(
 			// read the request in full
 			logging.V(10).Infoln("Sync invoke: Reading message from request pipe")
 			reqBytes := make([]byte, reqLen)
-			if _, err := io.ReadFull(invokeReqPipe, reqBytes); err != nil {
+			if _, err := io.ReadFull(p.pipes.reader(), reqBytes); err != nil {
 				logging.V(10).Infof("Sync invoke: Received error reading message from pipe: %s\n", err)
 				return err
 			}
@@ -213,14 +183,14 @@ func (p *monitorProxy) servePipes(
 
 			// write the 4-byte response length
 			logging.V(10).Infoln("Sync invoke: Writing length to request pipe")
-			if err := binary.Write(invokeResPipe, binary.BigEndian, uint32(len(resBytes))); err != nil {
+			if err := binary.Write(p.pipes.writer(), binary.BigEndian, uint32(len(resBytes))); err != nil {
 				logging.V(10).Infof("Sync invoke: Error writing length to pipe: %s\n", err)
 				return err
 			}
 
 			// write the response in full
 			logging.V(10).Infoln("Sync invoke: Writing message to request pipe")
-			if _, err := invokeResPipe.Write(resBytes); err != nil {
+			if _, err := p.pipes.writer().Write(resBytes); err != nil {
 				logging.V(10).Infof("Sync invoke: Error writing message to pipe: %s\n", err)
 				return err
 			}
