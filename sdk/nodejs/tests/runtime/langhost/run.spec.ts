@@ -897,10 +897,70 @@ describe("rpc", () => {
                 });
             },
         },
+        "provider_invokes": {
+            program: path.join(base, "060.provider_invokes"),
+            expectResourceCount: 1,
+            invoke: (ctx: any, tok: string, args: any, version: string) => {
+                assert.strictEqual(tok, "invoke:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
+        "provider_in_parent_invokes": {
+            program: path.join(base, "061.provider_in_parent_invokes"),
+            expectResourceCount: 2,
+            invoke: (ctx: any, tok: string, args: any, version: string) => {
+                assert.strictEqual(tok, "invoke:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
+        "providerref_invokes": {
+            program: path.join(base, "062.providerref_invokes"),
+            expectResourceCount: 1,
+            invoke: (ctx: any, tok: string, args: any, version: string) => {
+                assert.strictEqual(tok, "invoke:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
+        "providerref_in_parent_invokes": {
+            program: path.join(base, "063.providerref_in_parent_invokes"),
+            expectResourceCount: 2,
+            invoke: (ctx: any, tok: string, args: any, version: string) => {
+                assert.strictEqual(tok, "invoke:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename !== "versions") {
+        // if (casename.indexOf("invoke") < 0) {
         //     continue;
         // }
 
