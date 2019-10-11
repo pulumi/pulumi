@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"net"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -32,6 +33,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
+var v net.Listener
+
 type monitorProxy struct {
 	target pulumirpc.ResourceMonitorClient
 	addr   string
@@ -40,9 +43,10 @@ type monitorProxy struct {
 
 type pipes interface {
 	directory() string
+
+	connect() error
 	reader() io.Reader
 	writer() io.Writer
-
 	shutdown()
 }
 
@@ -132,7 +136,13 @@ func (p *monitorProxy) servePipes(
 	err := func() error {
 		pbcodec := encoding.GetCodec(proto.Name)
 
+		err := p.pipes.connect()
 		defer p.pipes.shutdown()
+
+		if err != nil {
+			logging.V(10).Infof("Sync invoke: Error connecting to pipes: %s\n", err)
+			return err
+		}
 
 		for {
 			// read a 4-byte request length

@@ -477,7 +477,7 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, prox
 
 	maybeAppendArg("monitor", proxy.addr)
 	maybeAppendArg("engine", host.engineAddress)
-	maybeAppendArg("sync", proxy.pipeDirectory)
+	maybeAppendArg("sync", proxy.pipes.directory())
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.GetPwd())

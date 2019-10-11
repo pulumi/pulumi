@@ -17,24 +17,79 @@
 package main
 
 import (
-	"context"
-	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"net"
 	"os"
 	"path"
-	"syscall"
+	"time"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	opentracing "github.com/opentracing/opentracing-go"
+	winio "github.com/Microsoft/go-winio"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/encoding"
-	"google.golang.org/grpc/encoding/proto"
-
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
+
+func createPipes() (pipes, error) {
+	// Generate a random pipe name so that we don't collide with other pipes made by other pulumi
+	// instances.
+	rand := uint32(time.Now().UnixNano() + int64(os.Getpid()))
+	dir := fmt.Sprintf("\\\\.\\pipe\\pulumi%v", rand)
+	reqPipeName := path.Join(dir, "invoke_req")
+	resPipeName := path.Join(dir, "invoke_res")
+	reqListener, err := winio.ListenPipe(reqPipeName, nil)
+	if err != nil {
+		logging.V(10).Infof("createPipes: Received error trying to create request pipe %s: %s\n", reqPipeName, err)
+		return nil, err
+	}
+
+	resListener, err := winio.ListenPipe(resPipeName, nil)
+	if err != nil {
+		logging.V(10).Infof("createPipes: Received error trying to create response pipe %s: %s\n", resPipeName, err)
+		return nil, err
+	}
+
+	return &windowsPipes{
+		dir:         dir,
+		reqListener: reqListener,
+		resListener: resListener,
+	}, nil
+}
+
+type windowsPipes struct {
+	dir                      string
+	reqListener, resListener net.Listener
+	reqConn, resConn         net.Conn
+}
+
+func (p *windowsPipes) directory() string {
+	return p.dir
+}
+
+func (p *windowsPipes) reader() io.Reader {
+	return p.reqConn
+}
+
+func (p *windowsPipes) writer() io.Writer {
+	return p.resConn
+}
+
+func (p *windowsPipes) connect() error {
+	reqConn, err := p.reqListener.Accept()
+	if err != nil {
+		return err
+	}
+	p.reqConn = reqConn
+
+	resConn, err := p.resListener.Accept()
+	if err != nil {
+		return err
+	}
+	p.resConn = resConn
+
+	return nil
+}
+
+func (p *windowsPipes) shutdown() {
+	// Don't need to do anything here.  Named pipes are cleaned up when all processes that are using
+	// them terminate.
+}
