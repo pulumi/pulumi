@@ -27,6 +27,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
+// Unix specific pipe implementation. Fairly simple as  on top of a pair of standard fifo files that
+// we can communicate over.  Slightly complex as this involves extra cleanup steps to ensure they're
+// cleaned up when we're done.
 func createPipes() (pipes, error) {
 	dir, err := ioutil.TempDir("", "pulumi-node-pipes")
 	if err != nil {

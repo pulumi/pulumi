@@ -28,6 +28,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
+// Windows specific pipe implementation. Slightly complex as it sits on top of a pair of named pipes
+// that have to asynchronously accept connections to.  But also fairly simple as windows will take
+// care of cleaning things up once our processes complete.
 func createPipes() (pipes, error) {
 	// Generate a random pipe name so that we don't collide with other pipes made by other pulumi
 	// instances.
