@@ -12,7 +12,9 @@ let args = {
 };
 
 let result1 = pulumi.runtime.invoke("invoke:index:echo", args);
-assert.deepEqual(result1, args);
+for (const key in args) {
+    assert.deepEqual(result1[key], args[key]);
+}
 
 let result2 = pulumi.runtime.invoke("invoke:index:echo", args);
 result2.then((v) => {
