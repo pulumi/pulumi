@@ -54,7 +54,8 @@ type monitorProxy struct {
 // nodejs, we have no problem calling this synchronously, and can block until we get the
 // response which we can then synchronously send to nodejs.
 func newMonitorProxy(
-	responseChannel chan<- *pulumirpc.RunResponse, targetAddr string, tracingSpan opentracing.Span) (*monitorProxy, error) {
+	responseChannel chan<- *pulumirpc.RunResponse, targetAddr string,
+	tracingSpan opentracing.Span) (*monitorProxy, error) {
 
 	pipes, err := createPipes()
 	if err != nil {
