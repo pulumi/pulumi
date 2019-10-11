@@ -12,16 +12,28 @@ let args = {
 };
 
 let result1 = pulumi.runtime.invoke("invoke:index:echo", args);
+
+// When invoking synchronously: Ensure the properties come back synchronously and are present on the
+// result.
 for (const key in args) {
     assert.deepEqual(result1[key], args[key]);
 }
 
-let result2 = pulumi.runtime.invoke("invoke:index:echo", args);
-result2.then((v) => {
+// When invoking synchronously: Ensure the properties are available asynchronously through normal
+// Promise semantics.
+result1.then(v => {
     assert.deepEqual(v, args);
 });
 
-let result3 = pulumi.runtime.invoke("invoke:index:echo", args, { async: true });
-result3.then((v) => {
+let result2 = pulumi.runtime.invoke("invoke:index:echo", args, { async: true });
+
+// When invoking asynchronously: Ensure the properties are *not* present on the result.
+for (const key in args) {
+    assert.notDeepEqual(result2[key], args[key]);
+}
+
+// When invoking asynchronously: Ensure the properties are available asynchronously through normal
+// Promise semantics.
+result2.then(v => {
     assert.deepEqual(v, args);
 });
