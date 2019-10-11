@@ -121,7 +121,7 @@ func newMonitorProxy(
 
 	proxy.addr = fmt.Sprintf("127.0.0.1:%d", port)
 
-	// Lister for errors from the server and push them to the singular error stream if we receive one.
+	// Listen for errors from the server and push them to the singular error stream if we receive one.
 	go func() {
 		err := <-serverErrors
 		if err != nil {
