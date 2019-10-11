@@ -20,181 +20,297 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func TestExamples(t *testing.T) {
-	cwd, err := os.Getwd()
-	if !assert.NoError(t, err, "expected a valid working directory: %v", err) {
-		return
-	}
+func TestAccMinimal(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "minimal"),
+			Config: map[string]string{
+				"name": "Pulumi",
+			},
+			Secrets: map[string]string{
+				"secret": "this is my secret message",
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Simple runtime validation that just ensures the checkpoint was written and read.
+				assert.NotNil(t, stackInfo.Deployment)
+			},
+			RunBuild: true,
+		})
 
-	getExamples := func() []integration.ProgramTestOptions {
-		var formattableStdout, formattableStderr bytes.Buffer
-		return []integration.ProgramTestOptions{
-			{
-				Dir:          path.Join(cwd, "minimal"),
-				Dependencies: []string{"@pulumi/pulumi"},
-				Config: map[string]string{
-					"name": "Pulumi",
-				},
-				Secrets: map[string]string{
-					"secret": "this is my secret message",
-				},
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					// Simple runtime validation that just ensures the checkpoint was written and read.
-					assert.NotNil(t, stackInfo.Deployment)
-				},
-				RunBuild: true,
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccMinimal_withLocalState(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "minimal"),
+			Config: map[string]string{
+				"name": "Pulumi",
 			},
-			{
-				Dir:          path.Join(cwd, "dynamic-provider/simple"),
-				Dependencies: []string{"@pulumi/pulumi"},
-				Config: map[string]string{
-					"simple:config:w": "1",
-					"simple:config:x": "1",
-					"simple:config:y": "1",
-				},
+			Secrets: map[string]string{
+				"secret": "this is my secret message",
 			},
-			{
-				Dir:          path.Join(cwd, "dynamic-provider/class-with-comments"),
-				Dependencies: []string{"@pulumi/pulumi"},
-				Config:       map[string]string{},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Simple runtime validation that just ensures the checkpoint was written and read.
+				assert.NotNil(t, stackInfo.Deployment)
 			},
-			{
-				Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
-				Dependencies: []string{"@pulumi/pulumi"},
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					for _, res := range stackInfo.Deployment.Resources {
-						if !providers.IsProviderType(res.Type) && res.Parent == "" {
-							assert.Equal(t, stackInfo.RootResource.URN, res.URN,
-								"every resource but the root resource should have a parent, but %v didn't", res.URN)
+			RunBuild: true,
+			CloudURL: "file://~",
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderSimple(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "dynamic-provider/simple"),
+			Config: map[string]string{
+				"simple:config:w": "1",
+				"simple:config:x": "1",
+				"simple:config:y": "1",
+			},
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "dynamic-provider/simple"),
+			Config: map[string]string{
+				"simple:config:w": "1",
+				"simple:config:x": "1",
+				"simple:config:y": "1",
+			},
+			CloudURL: "file://~",
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderClassWithComments(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "dynamic-provider/class-with-comments"),
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir:      path.Join(getCwd(t), "dynamic-provider/class-with-comments"),
+			CloudURL: "file://~",
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderMultipleTurns(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns"),
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				for _, res := range stackInfo.Deployment.Resources {
+					if !providers.IsProviderType(res.Type) && res.Parent == "" {
+						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
+							"every resource but the root resource should have a parent, but %v didn't", res.URN)
+					}
+				}
+			},
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns"),
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				for _, res := range stackInfo.Deployment.Resources {
+					if !providers.IsProviderType(res.Type) && res.Parent == "" {
+						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
+							"every resource but the root resource should have a parent, but %v didn't", res.URN)
+					}
+				}
+			},
+			CloudURL: "file://~",
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir:      path.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
+			CloudURL: "file://~",
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderDerivedInputs(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "dynamic-provider/derived-inputs"),
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir:      path.Join(getCwd(t), "dynamic-provider/derived-inputs"),
+			CloudURL: "file://~",
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccFormattable(t *testing.T) {
+	var formattableStdout, formattableStderr bytes.Buffer
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "formattable"),
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
+				stdout := formattableStdout.String()
+				assert.False(t, strings.Contains(stdout, "MISSING"))
+			},
+			Stdout: &formattableStdout,
+			Stderr: &formattableStderr,
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccFormattable_withLocalState(t *testing.T) {
+	var formattableStdout, formattableStderr bytes.Buffer
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "formattable"),
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
+				stdout := formattableStdout.String()
+				assert.False(t, strings.Contains(stdout, "MISSING"))
+			},
+			Stdout:   &formattableStdout,
+			Stderr:   &formattableStderr,
+			CloudURL: "file://~",
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+func TestAccSecrets(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "secrets"),
+			Config: map[string]string{
+				"message": "plaintext message",
+			},
+			Secrets: map[string]string{
+				"apiKey": "FAKE_API_KEY_FOR_TESTING",
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				assert.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
+
+				isEncrypted := func(v interface{}) bool {
+					if m, ok := v.(map[string]interface{}); ok {
+						sigKey := m[resource.SigKey]
+						if sigKey == nil {
+							return false
+						}
+
+						v, vOk := sigKey.(string)
+						if !vOk {
+							return false
+						}
+
+						if v != resource.SecretSig {
+							return false
+						}
+
+						ciphertext := m["ciphertext"]
+						if ciphertext == nil {
+							return false
+						}
+
+						_, cOk := ciphertext.(string)
+						return cOk
+					}
+
+					return false
+				}
+
+				assertEncryptedValue := func(m map[string]interface{}, key string) {
+					assert.Truef(t, isEncrypted(m[key]), "%s value should be encrypted", key)
+				}
+
+				assertPlaintextValue := func(m map[string]interface{}, key string) {
+					assert.Truef(t, !isEncrypted(m[key]), "%s value should not encrypted", key)
+				}
+
+				for _, res := range stackInfo.Deployment.Resources {
+					if res.Type == "pulumi-nodejs:dynamic:Resource" {
+						switch res.URN.Name() {
+						case "sValue", "sApply", "cValue", "cApply":
+							assertEncryptedValue(res.Inputs, "value")
+							assertEncryptedValue(res.Outputs, "value")
+						case "pValue", "pApply":
+							assertPlaintextValue(res.Inputs, "value")
+							assertPlaintextValue(res.Outputs, "value")
+						case "pDummy":
+							assertPlaintextValue(res.Outputs, "value")
+						case "sDummy":
+							// Creation of this resource passes in a custom resource options to ensure that "value" is
+							// treated as secret.  In the state file, we'll see this as an uncrypted input with an
+							// encrypted output.
+							assertEncryptedValue(res.Outputs, "value")
+						case "rValue":
+							assertEncryptedValue(res.Inputs["value"].(map[string]interface{}), "secret")
+							assertEncryptedValue(res.Outputs["value"].(map[string]interface{}), "secret")
+							assertPlaintextValue(res.Inputs["value"].(map[string]interface{}), "plain")
+							assertPlaintextValue(res.Outputs["value"].(map[string]interface{}), "plain")
+						default:
+							contract.Assertf(false, "unknown name type: %s", res.URN.Name())
 						}
 					}
-				},
-			},
-			{
-				Dir:          path.Join(cwd, "dynamic-provider/derived-inputs"),
-				Dependencies: []string{"@pulumi/pulumi"},
-			},
-			{
-				Dir:          path.Join(cwd, "formattable"),
-				Dependencies: []string{"@pulumi/pulumi"},
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
-					stdout := formattableStdout.String()
-					assert.False(t, strings.Contains(stdout, "MISSING"))
-				},
-				Stdout: &formattableStdout,
-				Stderr: &formattableStderr,
-			},
-			{
-				Dir:          path.Join(cwd, "dynamic-provider/multiple-turns-2"),
-				Dependencies: []string{"@pulumi/pulumi"},
-			},
-		}
-	}
-
-	// Get the entire set of examples first.
-	examples := getExamples()
-
-	// Now, add them again, this time using a local-login path. This helps test all the same
-	// scenarios against local paths to validate that they are working properly.
-	for _, test := range getExamples() {
-		examples = append(examples, test.With(integration.ProgramTestOptions{
-			CloudURL: "file://~",
-		}))
-	}
-
-	// Add a secrets example:  This deploys a program that spins up a bunch of custom resources with different sets
-	// of secret inputs.
-	examples = append(examples, integration.ProgramTestOptions{
-		Dir:          path.Join(cwd, "secrets"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Config: map[string]string{
-			"message": "plaintext message",
-		},
-		Secrets: map[string]string{
-			"apiKey": "FAKE_API_KEY_FOR_TESTING",
-		},
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
-
-			isEncrypted := func(v interface{}) bool {
-				if m, ok := v.(map[string]interface{}); ok {
-					sigKey := m[resource.SigKey]
-					if sigKey == nil {
-						return false
-					}
-
-					v, vOk := sigKey.(string)
-					if !vOk {
-						return false
-					}
-
-					if v != resource.SecretSig {
-						return false
-					}
-
-					ciphertext := m["ciphertext"]
-					if ciphertext == nil {
-						return false
-					}
-
-					_, cOk := ciphertext.(string)
-					return cOk
 				}
 
-				return false
-			}
+				assertEncryptedValue(stackInfo.Outputs, "combinedApply")
+				assertEncryptedValue(stackInfo.Outputs, "combinedMessage")
+				assertPlaintextValue(stackInfo.Outputs, "plaintextApply")
+				assertPlaintextValue(stackInfo.Outputs, "plaintextMessage")
+				assertEncryptedValue(stackInfo.Outputs, "secretApply")
+				assertEncryptedValue(stackInfo.Outputs, "secretMessage")
+				assertEncryptedValue(stackInfo.Outputs, "richStructure")
+			},
+		})
 
-			assertEncryptedValue := func(m map[string]interface{}, key string) {
-				assert.Truef(t, isEncrypted(m[key]), "%s value should be encrypted", key)
-			}
+	integration.ProgramTest(t, &test)
+}
 
-			assertPlaintextValue := func(m map[string]interface{}, key string) {
-				assert.Truef(t, !isEncrypted(m[key]), "%s value should not encrypted", key)
-			}
-
-			for _, res := range stackInfo.Deployment.Resources {
-				if res.Type == "pulumi-nodejs:dynamic:Resource" {
-					switch res.URN.Name() {
-					case "sValue", "sApply", "cValue", "cApply":
-						assertEncryptedValue(res.Inputs, "value")
-						assertEncryptedValue(res.Outputs, "value")
-					case "pValue", "pApply":
-						assertPlaintextValue(res.Inputs, "value")
-						assertPlaintextValue(res.Outputs, "value")
-					case "pDummy":
-						assertPlaintextValue(res.Outputs, "value")
-					case "sDummy":
-						// Creation of this resource passes in a custom resource options to ensure that "value" is
-						// treated as secret.  In the state file, we'll see this as an uncrypted input with an
-						// encrypted output.
-						assertEncryptedValue(res.Outputs, "value")
-					case "rValue":
-						assertEncryptedValue(res.Inputs["value"].(map[string]interface{}), "secret")
-						assertEncryptedValue(res.Outputs["value"].(map[string]interface{}), "secret")
-						assertPlaintextValue(res.Inputs["value"].(map[string]interface{}), "plain")
-						assertPlaintextValue(res.Outputs["value"].(map[string]interface{}), "plain")
-					default:
-						contract.Assertf(false, "unknown name type: %s", res.URN.Name())
-					}
-				}
-			}
-
-			assertEncryptedValue(stackInfo.Outputs, "combinedApply")
-			assertEncryptedValue(stackInfo.Outputs, "combinedMessage")
-			assertPlaintextValue(stackInfo.Outputs, "plaintextApply")
-			assertPlaintextValue(stackInfo.Outputs, "plaintextMessage")
-			assertEncryptedValue(stackInfo.Outputs, "secretApply")
-			assertEncryptedValue(stackInfo.Outputs, "secretMessage")
-			assertEncryptedValue(stackInfo.Outputs, "richStructure")
-		},
-	})
-
-	// The compat test only works on Node 6.10.X because its uses the old 0.10.0 pulumi package, which only supported
-	// a single node version, since it had the native runtime component.
-	if nodeVer, err := getNodeVersion(); err != nil && nodeVer.Major == 6 && nodeVer.Minor == 10 {
-		examples = append(examples, integration.ProgramTestOptions{
-			Dir: path.Join(cwd, "compat/v0.10.0/minimal"),
+func TestAccNodeCompatTests(t *testing.T) {
+	skipIfNotNode610(t)
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: path.Join(getCwd(t), "compat/v0.10.0/minimal"),
 			Config: map[string]string{
 				"name": "Pulumi",
 			},
@@ -203,15 +319,28 @@ func TestExamples(t *testing.T) {
 			},
 			RunBuild: true,
 		})
-	} else {
-		t.Log("Skipping 0.10.0 compat tests, because current node version is not 6.10.X")
-	}
 
-	for _, example := range examples {
-		ex := example
-		t.Run(example.Dir, func(t *testing.T) {
-			integration.ProgramTest(t, &ex)
-		})
+	integration.ProgramTest(t, &test)
+}
+
+func getCwd(t *testing.T) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Error("expected a valid working directory", err)
+	}
+	return cwd
+}
+
+func getBaseOptions() integration.ProgramTestOptions {
+	return integration.ProgramTestOptions{
+		Dependencies: []string{"@pulumi/pulumi"},
+	}
+}
+
+func skipIfNotNode610(t *testing.T) {
+	nodeVer, err := getNodeVersion()
+	if err != nil && nodeVer.Major == 6 && nodeVer.Minor == 10 {
+		t.Skip("Skipping 0.10.0 compat tests, because current node version is not 6.10.X")
 	}
 }
 
