@@ -35,7 +35,8 @@ const providerproto = require("../proto/provider_pb.js");
  * In the case where `{async:true}` is present in the options bag:
  *
  * 1. the result of `invoke` will be a Promise resolved to the result value of the provider plugin.
- * 2. the `props` inputs can be a bag of computed values (Ts or Promise<T>s).
+ * 2. the `props` inputs can be a bag of computed values (including, `T`s, `Promise<T>`s,
+ *    `Output<T>`s etc.).
  *
  *
  * In the case where `{async:true}` is not present in the options bag:
@@ -48,17 +49,17 @@ const providerproto = require("../proto/provider_pb.js");
  *    produced.
  *
  * Simple values are:
- *  1. undefined, null, string, number or boolean values.
+ *  1. `undefined`, `null`, string, number or boolean values.
  *  2. arrays of simple values.
  *  3. objects containing only simple values.
  *
- * Importantly, simple values does *not* include:
- *  1. Promises
- *  2. Outputs
- *  3. Assets or Archives
- *  4. Resources.
+ * Importantly, simple values do *not* include:
+ *  1. `Promise`s
+ *  2. `Output`s
+ *  3. `Asset`s or `Archive`s
+ *  4. `Resource`s.
  *
- * All of these contain async values that would prevent invokeSync from being able to operate
+ * All of these contain async values that would prevent `invoke from being able to operate
  * synchronously.
  */
 export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
