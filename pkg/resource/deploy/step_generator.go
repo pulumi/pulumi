@@ -1099,7 +1099,17 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	}
 
 	// Walk the root resource's dependents in order and build up the set of resources that require replacement.
-	for _, d := range sg.plan.depGraph.DependingOn(root) {
+	//
+	// NOTE: the dependency graph we use for this calculation is based on the dependency graph from the last snapshot.
+	// If there are resources in this graph that used to depend on the root but have been re-registered such that they
+	// no longer depend on the root, we may make incorrect decisions. To avoid that, we rely on the observation that
+	// dependents can only have been _removed_ from the base dependency graph: for a dependent to have been added,
+	// it would have had to have been registered prior to the root, which is not a valid operation. This means that
+	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
+	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
+	// encountered while walking the old dependency graph to determine the set of dependents.
+	impossibleDependents := sg.urns
+	for _, d := range sg.plan.depGraph.DependingOn(root, impossibleDependents) {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
 			return nil, res

@@ -41,7 +41,7 @@ func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) err
 	}
 
 	dg := graph.NewDependencyGraph(snapshot.Resources)
-	dependencies := dg.DependingOn(condemnedRes)
+	dependencies := dg.DependingOn(condemnedRes, nil)
 	if len(dependencies) != 0 {
 		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: dependencies}
 	}
