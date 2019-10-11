@@ -29,20 +29,45 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
 
 /**
- * `invokeSyncOrAsync` calls `invoke` or `invokeSync` depending on the value of `opts.async`.
+ * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`
+ * behaves differently in the case that options contains `{async:true}` or not.
+ *
+ * In the case where `{async:true}` is present in the options bag:
+ *
+ * 1. the result of `invoke` will be a Promise resolved to the result value of the provider plugin.
+ * 2. the `props` inputs can be a bag of computed values (Ts or Promise<T>s).
+ *
+ *
+ * In the case where `{async:true}` is not present in the options bag:
+ *
+ * 1. the result of `invoke` will be a Promise resolved to the result value of the provider call.
+ *    However, that Promise will *also* have the respective values of the Provider result exposed
+ *    directly on it as properties.
+ *
+ * 2. The inputs must be a bag of simple values, and the result is the result that the Provider
+ *    produced.
+ *
+ * Simple values are:
+ *  1. undefined, null, string, number or boolean values.
+ *  2. arrays of simple values.
+ *  3. objects containing only simple values.
+ *
+ * Importantly, simple values does *not* include:
+ *  1. Promises
+ *  2. Outputs
+ *  3. Assets or Archives
+ *  4. Resources.
+ *
+ * All of these contain async values that would prevent invokeSync from being able to operate
+ * synchronously.
  */
-export function invokeSyncOrAsync(tok: string, props: Inputs, opts: InvokeOptions = {}): any {
+export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     return opts.async
-        ? invoke(tok, props, opts)
+        ? invokeAsync(tok, props, opts)
         : invokeSync(tok, props, opts);
 }
 
-/**
- * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin.  The
- * inputs can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
- * resolves when the invoke finishes.
- */
-export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
+async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
@@ -103,26 +128,7 @@ export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {
     }
 }
 
-/**
- * `invokeSync` dynamically and synchronously invokes the function, `tok`, which is offered by a
- * provider plugin.  The inputs must be a bag of simple values, and the result is the result that
- * the Provider produced.
- *
- * Simple values are:
- *  1. undefined, null, string, number or boolean values.
- *  2. arrays of simple values.
- *  3. objects containing only simple values.
- *
- * Importantly, simple values does *not* include:
- *  1. Promises
- *  2. Outputs
- *  3. Assets or Archives
- *  4. Resources.
- *
- * All of these contain async values that would prevent invokeSync from being able to operate
- * synchronously.
- */
-export function invokeSync(tok: string, props: any, opts: InvokeOptions = {}): any {
+function invokeSync(tok: string, props: any, opts: InvokeOptions = {}): Promise<any> {
     const label = `Invoking function: tok=${tok} synchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
@@ -173,7 +179,13 @@ export function invokeSync(tok: string, props: any, opts: InvokeOptions = {}): a
     processPotentialFailures(tok, resp);
 
     // Finally propagate any other properties that were given to us as outputs.
-    return deserializeProperties(resp.getReturn());
+    const resultValue = deserializeProperties(resp.getReturn());
+
+    // Expose the properties of the actual result of invoke directly on the promise itself.
+    const promise = Promise.resolve(resultValue);
+    Object.assign(promise, resultValue);
+
+    return promise;
 }
 
 function getProvider(tok: string, opts: InvokeOptions) {
