@@ -67,7 +67,7 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
         : invokeSync(tok, props, opts);
 }
 
-async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
+async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
@@ -128,7 +128,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions = {})
     }
 }
 
-function invokeSync(tok: string, props: any, opts: InvokeOptions = {}): Promise<any> {
+function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} synchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
