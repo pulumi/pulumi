@@ -922,7 +922,6 @@ describe("rpc", () => {
             expectResourceCount: 2,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
-                                console.log("name: " + name);
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
             },
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
