@@ -47,7 +47,9 @@ type pipes interface {
 	// nodejs process so it can connect to our read and writes streams for communication.
 	directory() string
 
-	// Attempt to create and connect to the read and write streams
+	// Attempt to create and connect to the read and write streams.  Signals to the `done` channel
+	// when done. Will either send `nil` to the channel if this connects successfully, or an error
+	// if it doesn't.  Only one message will ever be sent.
 	connect(done chan<- error)
 
 	// The stream that we will use to read in requests send to us by the nodejs process.
