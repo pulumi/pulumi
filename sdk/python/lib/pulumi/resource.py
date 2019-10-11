@@ -617,21 +617,20 @@ class Resource:
             parent = get_root_resource()
         parent_transformations = (parent._transformations or []) if parent is not None else []
         self._transformations = (opts.transformations or []) + parent_transformations
-        if self._transformations is not None:
-            for transformation in self._transformations:
-                args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
-                tres = transformation(args)
-                if tres is not None:
-                    if tres.opts.parent != opts.parent:
-                        # This is currently not allowed because the parent tree is needed to establish what
-                        # transformation to apply in the first place, and to compute inheritance of other
-                        # resource options in the Resource constructor before transformations are run (so
-                        # modifying it here would only even partially take affect).  It's theoretically
-                        # possible this restriction could be lifted in the future, but for now just
-                        # disallow re-parenting resources in transformations to be safe.
-                        raise Exception("Transformations cannot currently be used to change the `parent` of a resource.")
-                    props = tres.props
-                    opts = tres.opts
+        for transformation in self._transformations:
+            args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
+            tres = transformation(args)
+            if tres is not None:
+                if tres.opts.parent != opts.parent:
+                    # This is currently not allowed because the parent tree is needed to establish what
+                    # transformation to apply in the first place, and to compute inheritance of other
+                    # resource options in the Resource constructor before transformations are run (so
+                    # modifying it here would only even partially take affect).  It's theoretically
+                    # possible this restriction could be lifted in the future, but for now just
+                    # disallow re-parenting resources in transformations to be safe.
+                    raise Exception("Transformations cannot currently be used to change the `parent` of a resource.")
+                props = tres.props
+                opts = tres.opts
 
         self._name = name
 
@@ -678,14 +677,6 @@ class Resource:
         else:
             providers = self._convert_providers(opts.provider, opts.providers)
             self._providers = {**self._providers, **providers}
-
-
-        # Combine transformations inherited from the parent with transformations provided in opts.
-        parent = opts.parent
-        if parent is None:
-            parent = get_root_resource()
-        parent_transformations = (parent._transformations or []) if parent is not None else []
-        self._transformations = (opts.transformations or []) + parent_transformations
 
         self._protect = bool(opts.protect)
 

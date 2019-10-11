@@ -224,7 +224,7 @@ export abstract class Resource {
         // options assigned to this resource.
         const parent = opts.parent || getStackResource() || { __transformations: undefined };
         this.__transformations = [ ...(opts.transformations || []), ...(parent.__transformations || []) ];
-        for (const transformation of (this.__transformations || [])) {
+        for (const transformation of this.__transformations) {
             const tres = transformation({ resource: this, type: t, name, props, opts });
             if (tres) {
                 if (tres.opts.parent !== opts.parent) {
