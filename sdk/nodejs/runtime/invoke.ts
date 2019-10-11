@@ -28,6 +28,9 @@ import * as utils from "../utils";
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
 
+/**
+ * `invokeSyncOrAsync` calls `invoke` or `invokeSync` depending on the value of `opts.async`.
+ */
 export function invokeSyncOrAsync(tok: string, props: Inputs, opts: InvokeOptions = {}): any {
     return opts.async
         ? invoke(tok, props, opts)
@@ -35,7 +38,7 @@ export function invokeSyncOrAsync(tok: string, props: Inputs, opts: InvokeOption
 }
 
 /**
- * invoke dynamically invokes the function, `tok`, which is offered by a provider plugin.  The
+ * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin.  The
  * inputs can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
@@ -101,7 +104,7 @@ export async function invoke(tok: string, props: Inputs, opts: InvokeOptions = {
 }
 
 /**
- * invokeSync dynamically and synchronously invokes the function, `tok`, which is offered by a
+ * `invokeSync` dynamically and synchronously invokes the function, `tok`, which is offered by a
  * provider plugin.  The inputs must be a bag of simple values, and the result is the result that
  * the Provider produced.
  *
