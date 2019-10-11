@@ -69,7 +69,6 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
 }
 
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
-    console.log("Performing async invoke.");
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
@@ -131,7 +130,6 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
 }
 
 function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> {
-    console.log("Performing synchronous invoke.");
     const label = `Invoking function: tok=${tok} synchronously`;
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
