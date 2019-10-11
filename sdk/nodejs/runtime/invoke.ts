@@ -28,7 +28,7 @@ import * as utils from "../utils";
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
 
-export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}) {
+export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     return opts.async
         ? invokeAsync(tok, props, opts)
         : invokeSync(tok, props, opts);
