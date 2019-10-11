@@ -900,7 +900,7 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename !== "stack_exports") {
+        // if (casename !== "versions") {
         //     continue;
         // }
 

@@ -368,24 +368,18 @@ func getPluginVersion(info packageJSON) (string, error) {
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
-	// Set up a cancellable context for the proxy.  This will allow us to shut it down graceful
-	// when we return after exec'ing the nodejs process.
-	proxyCtx, proxyCancel := context.WithCancel(ctx)
-	defer proxyCancel()
-
 	// Provide a channel for both the proxy gorouting and the launched nodejs process goroutine to
 	// notify us about issues.
 	responseChannel := make(chan *pulumirpc.RunResponse)
-	defer close(responseChannel)
 
 	// fire up a proxy resource monitor
-	monitor, err := newMonitorProxy(proxyCtx, responseChannel, req.GetMonitorAddress(), tracingSpan)
+	monitor, err := newMonitorProxy(responseChannel, req.GetMonitorAddress(), tracingSpan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create monitor proxy")
 	}
 
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(responseChannel, proxyCancel, req, monitor)
+	go host.execNodejs(responseChannel, req, monitor)
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with
@@ -397,12 +391,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // `responseChannel` arg.  When done, let the proxy monitor know it can shutdown using
 // `proxyChannel`.
 func (host *nodeLanguageHost) execNodejs(
-	responseChannel chan<- *pulumirpc.RunResponse, proxyCancel context.CancelFunc,
+	responseChannel chan<- *pulumirpc.RunResponse,
 	req *pulumirpc.RunRequest, monitor *monitorProxy) {
-
-	// At the end of executing the nodejs process, let the proxy know it should stop trying to read
-	// from the pipes to the nodejs process.
-	defer proxyCancel()
 
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	response := func() *pulumirpc.RunResponse {

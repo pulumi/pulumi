@@ -10,8 +10,11 @@ let args = {
     id: "some-id",
     urn: "some-urn",
 };
-let result = pulumi.runtime.invoke("invoke:index:echo", args);
-result.then((v) => {
+
+let result1 = pulumi.runtime.invokeSync("invoke:index:echo", args);
+assert.deepEqual(result1, args);
+
+let result2 = pulumi.runtime.invoke("invoke:index:echo", args);
+result2.then((v) => {
     assert.deepEqual(v, args);
 });
-
