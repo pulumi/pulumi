@@ -41,12 +41,26 @@ type monitorProxy struct {
 	pipes  pipes
 }
 
+// pipes is the platform agnostic abstraction over a pair of channels we can read and write binary
+// data over. It is provided through the `createPipes` functions provided in `proxy_unix.go` (where
+// it is implemented on top of fifo files), and in `proxy_windows.go` (where it is implemented on
+// top of named pipes).
 type pipes interface {
+	// The directory containing the two streams to read and write from.  This will be passed to the
+	// nodejs process so it can connect to our read and writes streams for communication.
 	directory() string
 
+	// Attempt to create and connect to the read and write streams
 	connect() error
+
+	// The stream that we will use to read in requests send to us by the nodejs process.
 	reader() io.Reader
+
+	// The stream we will write responses back to the nodejs process with.
 	writer() io.Writer
+
+	// called when we're done with the pipes and want to clean up any os resources we may have
+	// allocated (for example, actual files and directories on disk).
 	shutdown()
 }
 
