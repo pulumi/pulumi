@@ -68,8 +68,8 @@ type monitorProxy struct {
 // nodejs, we have no problem calling this synchronously, and can block until we get the
 // response which we can then synchronously send to nodejs.
 func newMonitorProxy(
-	responseChannel chan<- *pulumirpc.RunResponse, targetAddr string,
-	tracingSpan opentracing.Span) (*monitorProxy, error) {
+	ctx context.Context, responseChannel chan<- *pulumirpc.RunResponse,
+	targetAddr string, tracingSpan opentracing.Span) (*monitorProxy, error) {
 
 	pipes, err := createPipes()
 	if err != nil {
@@ -112,7 +112,7 @@ func newMonitorProxy(
 	// Now, kick off a goroutine to actually read and write from the pipes.  Any errors should be
 	// reported to `responseChannel`.  When complete, `serverCancel` should be called to let the
 	// server know it can shutdown gracefully.
-	go proxy.servePipes(responseChannel, serverCancel)
+	go proxy.servePipes(ctx, responseChannel, serverCancel)
 
 	return proxy, nil
 }
@@ -134,7 +134,7 @@ func createPipes() (string, error) {
 }
 
 func (p *monitorProxy) servePipes(
-	resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
+	ctx context.Context, resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
 
 	// Once we're done using the pipes, let the server know it can shutdown gracefully.
 	defer func() {
@@ -197,7 +197,7 @@ func (p *monitorProxy) servePipes(
 			}
 
 			logging.V(10).Infof("Sync invoke: Invoking: %s", req.GetTok())
-			res, err := p.Invoke(context.TODO(), &req)
+			res, err := p.Invoke(ctx, &req)
 			if err != nil {
 				logging.V(10).Infof("Sync invoke: Received error invoking: %s\n", err)
 				return err

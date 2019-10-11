@@ -373,7 +373,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	responseChannel := make(chan *pulumirpc.RunResponse)
 
 	// fire up a proxy resource monitor
-	monitor, err := newMonitorProxy(responseChannel, req.GetMonitorAddress(), tracingSpan)
+	monitor, err := newMonitorProxy(ctx, responseChannel, req.GetMonitorAddress(), tracingSpan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create monitor proxy")
 	}
