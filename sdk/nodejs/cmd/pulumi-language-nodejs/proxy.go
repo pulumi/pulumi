@@ -33,8 +33,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
-var v net.Listener
-
 type monitorProxy struct {
 	target pulumirpc.ResourceMonitorClient
 	addr   string
