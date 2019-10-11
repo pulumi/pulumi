@@ -114,6 +114,8 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	if err != nil {
 		return nil, result.FromError(err)
 	}
+	defer emitter.Close()
+
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,

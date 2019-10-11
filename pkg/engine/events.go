@@ -188,13 +188,62 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 
 	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
 
+	// Instead of sending to the source channel directly, buffer events to account for slow receivers.
+	//
+	// Buffering is done by a goroutine that concurrently receives from the senders and attempts to send events to the
+	// receiver. Events that are received while waiting for the receiver to catch up are buffered in a slice.
+	//
+	// We do not use a buffered channel because it is empirically less likely that the goroutine reading from a
+	// buffered channel will be scheduled when new data is placed in the channel.
+	buffer, done := make(chan Event), make(chan bool)
+	go func() {
+		defer close(done)
+
+		var queue []Event
+		for {
+			contract.Assert(buffer != nil)
+
+			e, ok := <-buffer
+			if !ok {
+				return
+			}
+			queue = append(queue, e)
+
+			// While there are events in the queue, attempt to send them to the waiting receiver. If the receiver is
+			// blocked and an event is received from the event senders, stick that event in the queue.
+			for len(queue) > 0 {
+				select {
+				case e, ok := <-buffer:
+					if !ok {
+						// If the event source has been closed, flush the queue.
+						for _, e := range queue {
+							events <- e
+							if e.Type == CancelEvent {
+								return
+							}
+						}
+						return
+					}
+					queue = append(queue, e)
+				case events <- queue[0]:
+					if queue[0].Type == CancelEvent {
+						return
+					}
+					queue = queue[1:]
+				}
+			}
+		}
+	}()
+
 	return eventEmitter{
-		Chan: events,
+		done: done,
+		ch:   buffer,
 	}, nil
 }
 
 type eventEmitter struct {
-	Chan chan<- Event
+	done <-chan bool
+	ch   chan<- Event
 }
 
 func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepEventMetadata {
@@ -362,12 +411,17 @@ func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.Pr
 		})
 }
 
+func (e *eventEmitter) Close() {
+	close(e.ch)
+	<-e.done
+}
+
 func (e *eventEmitter) resourceOperationFailedEvent(
 	step deploy.Step, status resource.Status, steps int, debug bool) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: ResourceOperationFailed,
 		Payload: ResourceOperationFailedPayload{
 			Metadata: makeStepEventMetadata(step.Op(), step, debug),
@@ -380,7 +434,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 func (e *eventEmitter) resourceOutputsEvent(op deploy.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: ResourceOutputsEvent,
 		Payload: ResourceOutputsEventPayload{
 			Metadata: makeStepEventMetadata(op, step, debug),
@@ -395,7 +449,7 @@ func (e *eventEmitter) resourcePreEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: ResourcePreEvent,
 		Payload: ResourcePreEventPayload{
 			Metadata: makeStepEventMetadata(step.Op(), step, debug),
@@ -416,7 +470,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 		configStringMap[keyString] = valueString
 	}
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: PreludeEvent,
 		Payload: PreludeEventPayload{
 			IsPreview: isPreview,
@@ -428,7 +482,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: SummaryEvent,
 		Payload: SummaryEventPayload{
 			IsPreview:       true,
@@ -444,7 +498,7 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 	duration time.Duration, resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: SummaryEvent,
 		Payload: SummaryEventPayload{
 			IsPreview:       false,
@@ -484,7 +538,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: PolicyViolationEvent,
 		Payload: PolicyViolationEventPayload{
 			ResourceURN:       urn,
@@ -503,7 +557,7 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 	ephemeral bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			URN:       d.URN,
