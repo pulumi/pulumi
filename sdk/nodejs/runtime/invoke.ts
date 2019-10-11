@@ -205,7 +205,7 @@ function serializePropertiesSync(prop: any): any {
     }
 
     if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
-        throw new Error("Assets and Archives be passed in as arguments to a data source call.");
+        throw new Error("Assets and Archives cannot be passed in as arguments to a data source call.");
     }
 
     if (prop instanceof Promise) {
