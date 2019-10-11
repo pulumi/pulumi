@@ -141,7 +141,9 @@ func newMonitorProxy(
 func (p *monitorProxy) servePipes(
 	ctx context.Context, resultChannel chan<- *pulumirpc.RunResponse, serverCancel chan<- bool) {
 
-	// Once we're done using the pipes, let the server know it can shutdown gracefully.
+	// Once we're done using the pipes clean them up so we don't leave anything around in the user
+	// file system.  Also let the server know it can shutdown gracefully.
+	defer p.pipes.shutdown()
 	defer func() {
 		serverCancel <- true
 	}()
@@ -151,7 +153,6 @@ func (p *monitorProxy) servePipes(
 		pbcodec := encoding.GetCodec(proto.Name)
 
 		err := p.pipes.connect()
-		defer p.pipes.shutdown()
 
 		if err != nil {
 			logging.V(10).Infof("Sync invoke: Error connecting to pipes: %s\n", err)
