@@ -11,6 +11,7 @@ import (
 // TestDeleteBeforeCreate tests a few different operational modes for
 // replacements done by deleting before creating.
 func TestDeleteBeforeCreate(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},

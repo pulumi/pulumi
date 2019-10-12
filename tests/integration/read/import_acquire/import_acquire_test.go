@@ -10,6 +10,7 @@ import (
 
 // Test that the engine is capable of assuming control of a resource that was external.
 func TestImportAcquire(t *testing.T) {
+	t.Parallel()
 	t.Skipf("import does not yet work with dynamic providers")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

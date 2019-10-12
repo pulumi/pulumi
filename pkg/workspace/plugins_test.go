@@ -22,6 +22,7 @@ import (
 )
 
 func TestPluginSelection_ExactMatch(t *testing.T) {
+	t.Parallel()
 	v1 := semver.MustParse("0.1.0")
 	v2 := semver.MustParse("0.2.0")
 	v3 := semver.MustParse("0.3.0")
@@ -61,6 +62,7 @@ func TestPluginSelection_ExactMatch(t *testing.T) {
 }
 
 func TestPluginSelection_ExactMatchNotFound(t *testing.T) {
+	t.Parallel()
 	v1 := semver.MustParse("0.1.0")
 	v2 := semver.MustParse("0.2.1")
 	v3 := semver.MustParse("0.3.0")
@@ -98,6 +100,7 @@ func TestPluginSelection_ExactMatchNotFound(t *testing.T) {
 }
 
 func TestPluginSelection_PatchVersionSlide(t *testing.T) {
+	t.Parallel()
 	v1 := semver.MustParse("0.1.0")
 	v2 := semver.MustParse("0.2.0")
 	v21 := semver.MustParse("0.2.1")
@@ -143,6 +146,7 @@ func TestPluginSelection_PatchVersionSlide(t *testing.T) {
 }
 
 func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
+	t.Parallel()
 	v1 := semver.MustParse("0.1.0")
 	v2 := semver.MustParse("0.2.1")
 	v3 := semver.MustParse("0.3.0")
@@ -187,6 +191,7 @@ func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
 }
 
 func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
+	t.Parallel()
 	v1 := semver.MustParse("0.1.0")
 	v2 := semver.MustParse("0.2.0")
 	v3 := semver.MustParse("0.3.0")

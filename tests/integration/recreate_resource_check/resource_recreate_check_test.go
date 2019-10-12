@@ -11,6 +11,7 @@ import (
 // Test that the engine does not consider old inputs when calling Check during re-creation of
 // a resource that was deleted due to a dependency on a DBR-replaced resource.
 func TestResourceRecreateCheck(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},

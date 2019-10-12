@@ -23,6 +23,7 @@ import (
 )
 
 func TestNewUniqueHex(t *testing.T) {
+	t.Parallel()
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 100
@@ -33,6 +34,7 @@ func TestNewUniqueHex(t *testing.T) {
 }
 
 func TestNewUniqueHexMaxLen2(t *testing.T) {
+	t.Parallel()
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 13
@@ -41,6 +43,7 @@ func TestNewUniqueHexMaxLen2(t *testing.T) {
 }
 
 func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
+	t.Parallel()
 	prefix := "prefix"
 	// Just enough space to have 8 chars of randomenss
 	randlen := 8
@@ -52,6 +55,7 @@ func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
 }
 
 func TestNewUniqueDefaults(t *testing.T) {
+	t.Parallel()
 	prefix := "prefix"
 	id, err := NewUniqueHex(prefix, -1, -1)
 	assert.Nil(t, err)
@@ -60,6 +64,7 @@ func TestNewUniqueDefaults(t *testing.T) {
 }
 
 func TestNewUniqueHexID(t *testing.T) {
+	t.Parallel()
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 100
@@ -70,6 +75,7 @@ func TestNewUniqueHexID(t *testing.T) {
 }
 
 func TestNewUniqueHexMaxLenID(t *testing.T) {
+	t.Parallel()
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 20
@@ -80,6 +86,7 @@ func TestNewUniqueHexMaxLenID(t *testing.T) {
 }
 
 func TestNewUniqueDefaultsID(t *testing.T) {
+	t.Parallel()
 	prefix := "prefix"
 	id, err := NewUniqueHexID(prefix, -1, -1)
 	assert.Nil(t, err)

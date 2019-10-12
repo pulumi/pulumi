@@ -24,6 +24,7 @@ import (
 // TestMappable ensures that we properly convert from resource property maps to their "weakly typed" JSON-like
 // equivalents.
 func TestMappable(t *testing.T) {
+	t.Parallel()
 	ma1 := map[string]interface{}{
 		"a": float64(42.3),
 		"b": false,
@@ -45,6 +46,7 @@ func TestMappable(t *testing.T) {
 // TestMapReplValues ensures that we properly convert from resource property maps to their "weakly typed" JSON-like
 // equivalents, but with additional and optional functions that replace values inline as we go.
 func TestMapReplValues(t *testing.T) {
+	t.Parallel()
 	// First, no replacements (nil repl).
 	ma1 := map[string]interface{}{
 		"a": float64(42.3),
@@ -109,6 +111,7 @@ func TestMapReplValues(t *testing.T) {
 }
 
 func TestMapReplKeys(t *testing.T) {
+	t.Parallel()
 	m := map[string]interface{}{
 		"a": float64(42.3),
 		"b": false,
@@ -135,6 +138,7 @@ func TestMapReplKeys(t *testing.T) {
 }
 
 func TestMapReplComputedOutput(t *testing.T) {
+	t.Parallel()
 	m := make(PropertyMap)
 	m["a"] = NewComputedProperty(Computed{Element: NewStringProperty("X")})
 	m["b"] = NewOutputProperty(Output{Element: NewNumberProperty(46)})
@@ -145,6 +149,7 @@ func TestMapReplComputedOutput(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
+	t.Parallel()
 	src := NewPropertyMapFromMap(map[string]interface{}{
 		"a": "str",
 		"b": 42,

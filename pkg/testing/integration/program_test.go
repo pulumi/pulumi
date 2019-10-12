@@ -28,6 +28,7 @@ import (
 )
 
 func TestPrefixer(t *testing.T) {
+	t.Parallel()
 	byts := make([]byte, 0, 1000)
 	buf := bytes.NewBuffer(byts)
 	prefixer := newPrefixer(buf, "OK: ")
@@ -38,6 +39,7 @@ func TestPrefixer(t *testing.T) {
 
 // Test that RunCommand writes the command's output to a log file.
 func TestRunCommandLog(t *testing.T) {
+	t.Parallel()
 	// Try to find node on the path. We need a program to run, and node is probably
 	// available on all platforms where we're testing. If it's not found, skip the test.
 	node, err := exec.LookPath("node")

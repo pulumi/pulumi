@@ -45,6 +45,7 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 }
 
 func TestBasicGraph(t *testing.T) {
+	t.Parallel()
 	pA := NewProviderResource("test", "pA", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA, a.URN)
@@ -83,6 +84,7 @@ func TestBasicGraph(t *testing.T) {
 
 // Tests that we don't add the same node to the DependingOn set twice.
 func TestGraphNoDuplicates(t *testing.T) {
+	t.Parallel()
 	a := NewResource("a", nil)
 	b := NewResource("b", nil, a.URN)
 	c := NewResource("c", nil, a.URN)
@@ -101,6 +103,7 @@ func TestGraphNoDuplicates(t *testing.T) {
 }
 
 func TestDependenciesOf(t *testing.T) {
+	t.Parallel()
 	pA := NewProviderResource("test", "pA", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA, a.URN)

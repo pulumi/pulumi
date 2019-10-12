@@ -22,6 +22,7 @@ import (
 
 // Test that the engine does not tolerate duplicate URNs in the same plan.
 func TestDuplicateURNs(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",
 		Dependencies:  []string{"@pulumi/pulumi"},

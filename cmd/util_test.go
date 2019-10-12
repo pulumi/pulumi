@@ -37,6 +37,7 @@ func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 // TestReadingGitRepo tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
 func TestReadingGitRepo(t *testing.T) {
+	t.Parallel()
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
 	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
@@ -192,6 +193,7 @@ func TestReadingGitRepo(t *testing.T) {
 // TestReadingGitLabMetadata tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
 func TestReadingGitLabMetadata(t *testing.T) {
+	t.Parallel()
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
 	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")

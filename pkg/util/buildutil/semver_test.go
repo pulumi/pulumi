@@ -21,6 +21,7 @@ import (
 )
 
 func TestVersions(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"v0.12.0":                                "0.12.0",
 		"v0.12.0+dirty":                          "0.12.0+dirty",

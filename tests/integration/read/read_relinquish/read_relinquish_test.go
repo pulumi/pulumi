@@ -10,6 +10,7 @@ import (
 
 // Test that the engine is capable of relinquishing control of a resource without deleting it.
 func TestReadRelinquish(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},

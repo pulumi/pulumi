@@ -21,6 +21,7 @@ import (
 )
 
 func TestAccMinimal(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "minimal"),
@@ -41,6 +42,7 @@ func TestAccMinimal(t *testing.T) {
 }
 
 func TestAccMinimal_withLocalState(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "minimal"),
@@ -62,6 +64,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 }
 
 func TestAccDynamicProviderSimple(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "dynamic-provider/simple"),
@@ -76,6 +79,7 @@ func TestAccDynamicProviderSimple(t *testing.T) {
 }
 
 func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "dynamic-provider/simple"),
@@ -91,6 +95,7 @@ func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 }
 
 func TestAccDynamicProviderClassWithComments(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "dynamic-provider/class-with-comments"),
@@ -100,6 +105,7 @@ func TestAccDynamicProviderClassWithComments(t *testing.T) {
 }
 
 func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      path.Join(getCwd(t), "dynamic-provider/class-with-comments"),
@@ -110,6 +116,7 @@ func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
 }
 
 func TestAccDynamicProviderMultipleTurns(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns"),
@@ -127,6 +134,7 @@ func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 }
 
 func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns"),
@@ -145,6 +153,7 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 }
 
 func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
@@ -154,6 +163,7 @@ func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
 }
 
 func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      path.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
@@ -164,6 +174,7 @@ func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 }
 
 func TestAccDynamicProviderDerivedInputs(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "dynamic-provider/derived-inputs"),
@@ -173,6 +184,7 @@ func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 }
 
 func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      path.Join(getCwd(t), "dynamic-provider/derived-inputs"),
@@ -183,6 +195,7 @@ func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 }
 
 func TestAccFormattable(t *testing.T) {
+	t.Parallel()
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -200,6 +213,7 @@ func TestAccFormattable(t *testing.T) {
 }
 
 func TestAccFormattable_withLocalState(t *testing.T) {
+	t.Parallel()
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -218,6 +232,7 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 }
 
 func TestAccSecrets(t *testing.T) {
+	t.Parallel()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: path.Join(getCwd(t), "secrets"),
@@ -307,6 +322,7 @@ func TestAccSecrets(t *testing.T) {
 }
 
 func TestAccNodeCompatTests(t *testing.T) {
+	t.Parallel()
 	skipIfNotNode610(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{

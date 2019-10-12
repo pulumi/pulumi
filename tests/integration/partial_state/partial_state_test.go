@@ -17,6 +17,7 @@ import (
 // The setup of this test uses a dynamic provider that will partially fail if a resource's state
 // value is the number 4.
 func TestPartialState(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",
 		Dependencies:  []string{"@pulumi/pulumi"},

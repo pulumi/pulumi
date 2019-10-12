@@ -10,6 +10,7 @@ import (
 )
 
 func TestAnnotateSecrets(t *testing.T) {
+	t.Parallel()
 	from := resource.PropertyMap{
 		"stringValue": resource.MakeSecret(resource.NewStringProperty("hello")),
 		"numberValue": resource.MakeSecret(resource.NewNumberProperty(1.00)),
@@ -58,6 +59,7 @@ func TestAnnotateSecrets(t *testing.T) {
 }
 
 func TestAnnotateSecretsDifferentProperties(t *testing.T) {
+	t.Parallel()
 	// ensure that if from and and to have different shapes, values on from are not put into to, values on to which
 	// are not present in from stay in to, but any secretness is propigated for shared keys.
 
@@ -114,6 +116,7 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 }
 
 func TestAnnotateSecretsArrays(t *testing.T) {
+	t.Parallel()
 	from := resource.PropertyMap{
 		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewStringProperty("a"),
@@ -159,6 +162,7 @@ func TestAnnotateSecretsArrays(t *testing.T) {
 }
 
 func TestNestedSecret(t *testing.T) {
+	t.Parallel()
 	from := resource.PropertyMap{
 		"secretString": resource.MakeSecret(resource.NewStringProperty("shh")),
 		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{

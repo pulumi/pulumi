@@ -54,6 +54,7 @@ func http2ServerAndClient(handler http.Handler) (*httptest.Server, *http.Client)
 
 // Test that DoWithRetry rewinds and resends the request body when retrying POSTs over HTTP/2.
 func TestRetryPostHTTP2(t *testing.T) {
+	t.Parallel()
 	tries := 0
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		tries++

@@ -41,6 +41,7 @@ import (
 )
 
 func TestStackCommands(t *testing.T) {
+	t.Parallel()
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
@@ -270,6 +271,7 @@ func TestStackCommands(t *testing.T) {
 }
 
 func TestStackBackups(t *testing.T) {
+	t.Parallel()
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -349,6 +351,7 @@ func TestStackBackups(t *testing.T) {
 }
 
 func TestStackRenameAfterCreate(t *testing.T) {
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {

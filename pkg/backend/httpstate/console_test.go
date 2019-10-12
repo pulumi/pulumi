@@ -20,6 +20,7 @@ import (
 )
 
 func TestConsoleURL(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t,
 		"https://app.pulumi.com/pulumi-bot/my-stack",
 		cloudConsoleURL("https://api.pulumi.com", "pulumi-bot", "my-stack"))

@@ -38,6 +38,7 @@ const (
 )
 
 func TestAssetSerialize(t *testing.T) {
+	t.Parallel()
 	// Ensure that asset and archive serialization round trips.
 	{
 		text := "a test asset"
@@ -283,6 +284,7 @@ func tempArchive(prefix string, fill bool) (string, error) {
 }
 
 func TestDeserializeMissingHash(t *testing.T) {
+	t.Parallel()
 	assetSer := (&Asset{Text: "asset"}).Serialize()
 	assetDes, isasset, err := DeserializeAsset(assetSer)
 	assert.Nil(t, err)
@@ -291,6 +293,7 @@ func TestDeserializeMissingHash(t *testing.T) {
 }
 
 func TestAssetFile(t *testing.T) {
+	t.Parallel()
 	asset, err := NewPathAsset("./testdata/Fox.txt")
 	assert.Nil(t, err)
 	assert.Equal(t, "85e5f2698ac92d10d50e2f2802ed0d51a13e7c81d0d0a5998a75349469e774c5", asset.Hash)
@@ -303,6 +306,7 @@ asset jumps over the archive.
 }
 
 func TestArchiveDir(t *testing.T) {
+	t.Parallel()
 	arch, err := NewPathArchive("./testdata/test_dir")
 	assert.Nil(t, err)
 	switch runtime.Version() {
@@ -316,6 +320,7 @@ func TestArchiveDir(t *testing.T) {
 }
 
 func TestArchiveTar(t *testing.T) {
+	t.Parallel()
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("./testdata/test_dir.tar")
 	assert.Nil(t, err)
@@ -324,6 +329,7 @@ func TestArchiveTar(t *testing.T) {
 }
 
 func TestArchiveTgz(t *testing.T) {
+	t.Parallel()
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("./testdata/test_dir.tgz")
 	assert.Nil(t, err)
@@ -332,6 +338,7 @@ func TestArchiveTgz(t *testing.T) {
 }
 
 func TestArchiveZip(t *testing.T) {
+	t.Parallel()
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("./testdata/test_dir.zip")
 	assert.Nil(t, err)
@@ -361,6 +368,7 @@ func findRepositoryRoot() (string, error) {
 }
 
 func TestArchiveTarFiles(t *testing.T) {
+	t.Parallel()
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
@@ -372,6 +380,7 @@ func TestArchiveTarFiles(t *testing.T) {
 }
 
 func TestArchiveZipFiles(t *testing.T) {
+	t.Parallel()
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
@@ -383,6 +392,7 @@ func TestArchiveZipFiles(t *testing.T) {
 }
 
 func TestNestedArchive(t *testing.T) {
+	t.Parallel()
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
 	assert.Nil(t, err)
@@ -422,6 +432,7 @@ func TestNestedArchive(t *testing.T) {
 }
 
 func TestFileReferencedThroughMultiplePaths(t *testing.T) {
+	t.Parallel()
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
 	assert.Nil(t, err)
@@ -457,6 +468,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 }
 
 func TestFileExtentionSniffing(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, ArchiveFormat(ZIPArchive), detectArchiveFormat("./some/path/my.zip"))
 	assert.Equal(t, ArchiveFormat(TarArchive), detectArchiveFormat("./some/path/my.tar"))
 	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.tar.gz"))
@@ -473,6 +485,7 @@ func TestFileExtentionSniffing(t *testing.T) {
 }
 
 func TestInvalidPathArchive(t *testing.T) {
+	t.Parallel()
 	// Create a temp file that is not an asset.
 	tmpFile, err := ioutil.TempFile("", "")
 	fileName := tmpFile.Name()

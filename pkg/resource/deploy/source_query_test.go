@@ -25,6 +25,7 @@ import (
 )
 
 func TestQuerySource_Trivial_Wait(t *testing.T) {
+	t.Parallel()
 	// Trivial querySource returns immediately with `Wait()`, even with multiple invocations.
 
 	// Success case.
@@ -63,6 +64,7 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 }
 
 func TestQuerySource_Async_Wait(t *testing.T) {
+	t.Parallel()
 	// `Wait()` executes asynchronously.
 
 	// Success case.
@@ -128,6 +130,7 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 }
 
 func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
+	t.Parallel()
 	rm := &queryResmon{}
 	_, err := rm.Invoke(context.TODO(), &pulumirpc.InvokeRequest{Tok: "foo"})
 	assert.Error(t, err)

@@ -10,6 +10,7 @@ import (
 
 // TestQuery creates a stack and runs a query over the stack's resource ouptputs.
 func TestQuery(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		// Create Pulumi resources.
 		Dir:          "step1",

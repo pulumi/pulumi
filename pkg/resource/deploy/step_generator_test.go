@@ -8,6 +8,7 @@ import (
 )
 
 func TestIgnoreChanges(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name          string
 		oldInputs     map[string]interface{}

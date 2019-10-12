@@ -23,6 +23,7 @@ import (
 )
 
 func TestMarshallNormalValueYAML(t *testing.T) {
+	t.Parallel()
 	v := NewValue("value")
 
 	b, err := yaml.Marshal(v)
@@ -35,6 +36,7 @@ func TestMarshallNormalValueYAML(t *testing.T) {
 }
 
 func TestMarshallSecureValueYAML(t *testing.T) {
+	t.Parallel()
 	v := NewSecureValue("value")
 
 	b, err := yaml.Marshal(v)
@@ -47,6 +49,7 @@ func TestMarshallSecureValueYAML(t *testing.T) {
 }
 
 func TestMarshallNormalValueJSON(t *testing.T) {
+	t.Parallel()
 	v := NewValue("value")
 
 	b, err := json.Marshal(v)
@@ -59,6 +62,7 @@ func TestMarshallNormalValueJSON(t *testing.T) {
 }
 
 func TestMarshallSecureValueJSON(t *testing.T) {
+	t.Parallel()
 	v := NewSecureValue("value")
 
 	b, err := json.Marshal(v)

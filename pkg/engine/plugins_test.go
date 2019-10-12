@@ -31,6 +31,7 @@ func mustMakeVersion(v string) *semver.Version {
 }
 
 func TestDefaultProvidersSingle(t *testing.T) {
+	t.Parallel()
 	logging.InitLogging(true, 7, false)
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
@@ -60,6 +61,7 @@ func TestDefaultProvidersSingle(t *testing.T) {
 }
 
 func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
+	t.Parallel()
 	logging.InitLogging(true, 7, false)
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
@@ -82,6 +84,7 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 }
 
 func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
+	t.Parallel()
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
@@ -108,6 +111,7 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 }
 
 func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
+	t.Parallel()
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name: "python",

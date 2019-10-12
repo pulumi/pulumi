@@ -24,17 +24,20 @@ import (
 )
 
 func TestRoundTripProviderType(t *testing.T) {
+	t.Parallel()
 	pkg := tokens.Package("abcd")
 
 	assert.True(t, IsProviderType(MakeProviderType(pkg)))
 }
 
 func TestParseReferenceInvalidURN(t *testing.T) {
+	t.Parallel()
 	str := "not::a:valid:urn::id"
 	assert.Panics(t, func() { _, _ = ParseReference(str) })
 }
 
 func TestParseReferenceInvalidModule(t *testing.T) {
+	t.Parallel()
 	// Wrong package and module
 	str := string(resource.NewURN("test", "test", "", "some:invalid:type", "test")) + "::id"
 	ref, err := ParseReference(str)
@@ -55,6 +58,7 @@ func TestParseReferenceInvalidModule(t *testing.T) {
 }
 
 func TestParseReference(t *testing.T) {
+	t.Parallel()
 	urn, id := resource.NewURN("test", "test", "", "pulumi:providers:type", "test"), resource.ID("id")
 	ref, err := ParseReference(string(urn) + "::" + string(id))
 	assert.NoError(t, err)
@@ -63,12 +67,14 @@ func TestParseReference(t *testing.T) {
 }
 
 func TestReferenceString(t *testing.T) {
+	t.Parallel()
 	urn, id := resource.NewURN("test", "test", "", "pulumi:providers:type", "test"), resource.ID("id")
 	ref := Reference{urn: urn, id: id}
 	assert.Equal(t, string(urn)+"::"+string(id), ref.String())
 }
 
 func TestRoundTripReference(t *testing.T) {
+	t.Parallel()
 	str := string(resource.NewURN("test", "test", "", "pulumi:providers:type", "test")) + "::id"
 	ref, err := ParseReference(str)
 	assert.NoError(t, err)

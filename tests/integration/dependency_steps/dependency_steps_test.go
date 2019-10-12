@@ -12,6 +12,7 @@ import (
 // resources is inverted between updates. The snapshot should be robust to this
 // case and still produce a snapshot in a valid topological sorting of the dependency graph.
 func TestDependencySteps(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},

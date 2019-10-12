@@ -219,6 +219,7 @@ type boggerdybogger struct {
 }
 
 func TestMultiplyNestedMapper(t *testing.T) {
+	t.Parallel()
 	md := New(nil)
 
 	// Test multilevel nesting (maps, fields, arrays, pointers).

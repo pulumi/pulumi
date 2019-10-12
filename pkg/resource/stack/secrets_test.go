@@ -55,6 +55,7 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 }
 
 func TestCachingCrypter(t *testing.T) {
+	t.Parallel()
 	sm := &testSecretsManager{}
 	csm := NewCachingSecretsManager(sm)
 

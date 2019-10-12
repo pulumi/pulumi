@@ -24,6 +24,7 @@ import (
 )
 
 func TestMarshalMapJSON(t *testing.T) {
+	t.Parallel()
 	m := Map{
 		Key{namespace: "my", name: "testKey"}:        NewValue("testValue"),
 		Key{namespace: "my", name: "anotherTestKey"}: NewValue("anotherTestValue"),
@@ -42,6 +43,7 @@ func TestMarshalMapJSON(t *testing.T) {
 }
 
 func TestMarshalMapYAML(t *testing.T) {
+	t.Parallel()
 	m := Map{
 		Key{namespace: "my", name: "testKey"}:        NewValue("testValue"),
 		Key{namespace: "my", name: "anotherTestKey"}: NewValue("anotherTestValue"),

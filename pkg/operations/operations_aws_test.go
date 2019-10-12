@@ -21,6 +21,7 @@ import (
 )
 
 func TestSessionCache(t *testing.T) {
+	t.Parallel()
 	// Create a default session in us-west-2.
 	sess1, err := getAWSSession("us-west-2", "", "", "")
 	assert.NoError(t, err)

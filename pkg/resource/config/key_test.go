@@ -23,6 +23,7 @@ import (
 )
 
 func TestParseKey(t *testing.T) {
+	t.Parallel()
 	k, err := ParseKey("test:config:key")
 	assert.NoError(t, err)
 	assert.Equal(t, "test", k.namespace)
@@ -41,6 +42,7 @@ func TestParseKey(t *testing.T) {
 }
 
 func TestMarshalKeyJSON(t *testing.T) {
+	t.Parallel()
 	k := Key{namespace: "test", name: "key"}
 
 	b, err := json.Marshal(k)
@@ -53,6 +55,7 @@ func TestMarshalKeyJSON(t *testing.T) {
 }
 
 func TestMarshalKeyYAML(t *testing.T) {
+	t.Parallel()
 	k := Key{namespace: "test", name: "key"}
 
 	b, err := yaml.Marshal(k)

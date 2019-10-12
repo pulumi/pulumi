@@ -39,6 +39,7 @@ func assertHasNoHistory(e *ptesting.Environment) {
 	assert.Equal(e.T, "Stack has never been updated\n", out)
 }
 func TestHistoryCommand(t *testing.T) {
+	t.Parallel()
 	// We fail if no stack is selected.
 	t.Run("NoStackSelected", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)

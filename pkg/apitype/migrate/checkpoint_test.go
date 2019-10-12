@@ -24,6 +24,7 @@ import (
 )
 
 func TestCheckpointV1ToV2(t *testing.T) {
+	t.Parallel()
 	v1 := apitype.CheckpointV1{
 		Stack: tokens.QName("mystack"),
 		Config: config.Map{
@@ -44,6 +45,7 @@ func TestCheckpointV1ToV2(t *testing.T) {
 }
 
 func TestCheckpointV1ToV2NilLatest(t *testing.T) {
+	t.Parallel()
 	v1 := apitype.CheckpointV1{
 		Stack: tokens.QName("mystack"),
 		Config: config.Map{

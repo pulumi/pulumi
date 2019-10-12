@@ -24,6 +24,7 @@ import (
 
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
+	t.Parallel()
 	// Create interesting inputs.
 	out, resolve, _ := NewOutput(nil)
 	resolve("outputty", true)
@@ -89,6 +90,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 }
 
 func TestUnmarshalUnsupportedSecret(t *testing.T) {
+	t.Parallel()
 	m, _, err := marshalInput(map[string]interface{}{
 		rpcTokenSpecialSigKey: rpcTokenSpecialSecretSig,
 	})
@@ -98,6 +100,7 @@ func TestUnmarshalUnsupportedSecret(t *testing.T) {
 }
 
 func TestUnmarshalUnknownSig(t *testing.T) {
+	t.Parallel()
 	m, _, err := marshalInput(map[string]interface{}{
 		rpcTokenSpecialSigKey: "foobar",
 	})

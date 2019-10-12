@@ -7,6 +7,7 @@ import (
 )
 
 func TestPropertyPath(t *testing.T) {
+	t.Parallel()
 	value := NewObjectProperty(NewPropertyMapFromMap(map[string]interface{}{
 		"root": map[string]interface{}{
 			"nested": map[string]interface{}{

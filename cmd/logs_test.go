@@ -23,6 +23,7 @@ import (
 )
 
 func TestParseSince(t *testing.T) {
+	t.Parallel()
 	a, _ := parseSince("", time.Now())
 	assert.Nil(t, a)
 

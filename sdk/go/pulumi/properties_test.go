@@ -22,6 +22,7 @@ import (
 )
 
 func TestBasicOutputs(t *testing.T) {
+	t.Parallel()
 	// Just test basic resolve and reject functionality.
 	{
 		out, resolve, _ := NewOutput(nil)
@@ -46,6 +47,7 @@ func TestBasicOutputs(t *testing.T) {
 }
 
 func TestArrayOutputs(t *testing.T) {
+	t.Parallel()
 	out, resolve, _ := NewOutput(nil)
 	go func() {
 		resolve([]interface{}{nil, 0, "x"}, true)
@@ -75,6 +77,7 @@ func TestArrayOutputs(t *testing.T) {
 }
 
 func TestBoolOutputs(t *testing.T) {
+	t.Parallel()
 	out, resolve, _ := NewOutput(nil)
 	go func() {
 		resolve(true, true)
@@ -95,6 +98,7 @@ func TestBoolOutputs(t *testing.T) {
 }
 
 func TestMapOutputs(t *testing.T) {
+	t.Parallel()
 	out, resolve, _ := NewOutput(nil)
 	go func() {
 		resolve(map[string]interface{}{
@@ -125,6 +129,7 @@ func TestMapOutputs(t *testing.T) {
 }
 
 func TestNumberOutputs(t *testing.T) {
+	t.Parallel()
 	out, resolve, _ := NewOutput(nil)
 	go func() {
 		resolve(42.345, true)
@@ -145,6 +150,7 @@ func TestNumberOutputs(t *testing.T) {
 }
 
 func TestStringOutputs(t *testing.T) {
+	t.Parallel()
 	out, resolve, _ := NewOutput(nil)
 	go func() {
 		resolve("a stringy output", true)
@@ -165,6 +171,7 @@ func TestStringOutputs(t *testing.T) {
 }
 
 func TestResolveOutputToOutput(t *testing.T) {
+	t.Parallel()
 	// Test that resolving an output to an output yields the value, not the output.
 	{
 		out, resolve, _ := NewOutput(nil)
@@ -193,6 +200,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 }
 
 func TestOutputApply(t *testing.T) {
+	t.Parallel()
 	// Test that resolved outputs lead to applies being run.
 	{
 		out, resolve, _ := NewOutput(nil)

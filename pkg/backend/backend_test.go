@@ -26,6 +26,7 @@ import (
 )
 
 func TestGetStackResourceOutputs(t *testing.T) {
+	t.Parallel()
 	// Create a `backendClient` that consults a (mock) `Backend` to make sure it can get the stack
 	// resource outputs correctly.
 

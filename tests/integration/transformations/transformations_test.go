@@ -20,6 +20,7 @@ var dirs = []string{
 // TestNodejsAliases tests a case where a resource's name changes but it provides an `alias`
 // pointing to the old URN to ensure the resource is preserved across the update.
 func TestNodejsAliases(t *testing.T) {
+	t.Parallel()
 	for _, dir := range dirs {
 		d := path.Join("nodejs", dir)
 		t.Run(d, func(t *testing.T) {

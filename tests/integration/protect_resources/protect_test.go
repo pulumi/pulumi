@@ -14,6 +14,7 @@ import (
 
 // TestProtectedResources tests some interesting operations on protected resources.
 func TestProtectedResources(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},

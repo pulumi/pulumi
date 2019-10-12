@@ -21,6 +21,7 @@ import (
 )
 
 func TestIntersect(t *testing.T) {
+	t.Parallel()
 	a := NewResource("a", nil)
 	b := NewResource("b", nil)
 	c := NewResource("c", nil)

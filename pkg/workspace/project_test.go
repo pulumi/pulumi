@@ -9,6 +9,7 @@ import (
 )
 
 func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
+	t.Parallel()
 	doTest := func(marshal func(interface{}) ([]byte, error), unmarshal func([]byte, interface{}) error) {
 		ri := NewProjectRuntimeInfo("nodejs", nil)
 		byts, err := marshal(ri)

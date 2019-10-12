@@ -21,6 +21,7 @@ import (
 )
 
 func TestInitLogging(t *testing.T) {
+	t.Parallel()
 	// Just ensure we can initialize logging (and reset it afterwards).
 	prevLog := LogToStderr
 	prevV := Verbose
@@ -33,6 +34,7 @@ func TestInitLogging(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
+	t.Parallel()
 	filter1 := CreateFilter([]string{"secret1", "secret2"}, "[secret]")
 	msg1 := filter1.Filter("These are my secrets: secret1, secret2, secret3, secret10")
 	assert.Equal(t, msg1, "These are my secrets: [secret], [secret], secret3, [secret]0")

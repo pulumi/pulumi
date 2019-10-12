@@ -32,6 +32,7 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 }
 
 func TestPendingOperationsPlan(t *testing.T) {
+	t.Parallel()
 	resourceA := newResource("a")
 	resourceB := newResource("b")
 	snap := newSnapshot([]*resource.State{

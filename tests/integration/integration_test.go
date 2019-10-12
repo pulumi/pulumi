@@ -58,6 +58,7 @@ func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("empty", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -67,6 +68,7 @@ func TestEmptyNodeJS(t *testing.T) {
 
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
@@ -78,6 +80,7 @@ func TestEmptyPython(t *testing.T) {
 
 // TestEmptyGo simply tests that we can run an empty Go project.
 func TestEmptyGo(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("empty", "go"),
 		Quick: true,
@@ -86,6 +89,7 @@ func TestEmptyGo(t *testing.T) {
 
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
+	t.Parallel()
 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
 	// Since then, it should now be down to ~4s, with additional padding,
 	// since some Travis machines (especially the macOS ones) seem quite slow
@@ -108,6 +112,7 @@ func TestEngineEventPerf(t *testing.T) {
 
 // TestEngineEvents ensures that the test framework properly records and reads engine events.
 func TestEngineEvents(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "single_resource",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -134,6 +139,7 @@ func TestEngineEvents(t *testing.T) {
 
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
+	t.Parallel()
 	test := integration.ProgramTestOptions{
 		Dir:          "project_main",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -179,6 +185,7 @@ func TestProjectMain(t *testing.T) {
 
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
 func TestStackProjectName(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_project_name",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -188,6 +195,7 @@ func TestStackProjectName(t *testing.T) {
 
 // TestStackTagValidation verifies various error scenarios related to stack names and tags.
 func TestStackTagValidation(t *testing.T) {
+	t.Parallel()
 	t.Run("Error_StackName", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -237,6 +245,7 @@ func TestStackTagValidation(t *testing.T) {
 }
 
 func TestRemoveWithResourcesBlocked(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
@@ -263,6 +272,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
 func TestStackOutputsNodeJS(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -285,6 +295,7 @@ func TestStackOutputsNodeJS(t *testing.T) {
 }
 
 func TestStackOutputsPython(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_outputs", "python"),
 		Dependencies: []string{
@@ -311,6 +322,7 @@ func TestStackOutputsPython(t *testing.T) {
 
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
 func TestStackOutputsJSON(t *testing.T) {
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -332,6 +344,7 @@ func TestStackOutputsJSON(t *testing.T) {
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
 func TestStackOutputsDisplayed(t *testing.T) {
+	t.Parallel()
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
@@ -351,6 +364,7 @@ func TestStackOutputsDisplayed(t *testing.T) {
 
 // TestStackOutputsSuppressed ensures that outputs whose values are intentionally suppresses don't show.
 func TestStackOutputsSuppressed(t *testing.T) {
+	t.Parallel()
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("stack_outputs", "nodejs"),
@@ -369,6 +383,7 @@ func TestStackOutputsSuppressed(t *testing.T) {
 
 // TestStackParenting tests out that stacks and components are parented correctly.
 func TestStackParenting(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_parenting",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -419,6 +434,7 @@ func TestStackParenting(t *testing.T) {
 }
 
 func TestStackBadParenting(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "stack_bad_parenting",
 		Dependencies:  []string{"@pulumi/pulumi"},
@@ -430,6 +446,7 @@ func TestStackBadParenting(t *testing.T) {
 // TestStackDependencyGraph tests that the dependency graph of a stack is saved
 // in the checkpoint file.
 func TestStackDependencyGraph(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_dependencies",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -462,6 +479,7 @@ func TestStackDependencyGraph(t *testing.T) {
 
 // TestConfigSave ensures that config commands in the Pulumi CLI work as expected.
 func TestConfigSave(t *testing.T) {
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -536,6 +554,7 @@ func TestConfigSave(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicNodeJS(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_basic", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -550,6 +569,7 @@ func TestConfigBasicNodeJS(t *testing.T) {
 }
 
 func TestConfigCaptureNodeJS(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -561,6 +581,7 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 }
 
 func TestInvalidVersionInPackageJson(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("invalid_package_json"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -571,6 +592,7 @@ func TestInvalidVersionInPackageJson(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
+	t.Parallel()
 	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("config_basic", "python"),
@@ -586,6 +608,7 @@ func TestConfigBasicPython(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi Go program.
 func TestConfigBasicGo(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("config_basic", "go"),
 		Quick: true,
@@ -600,6 +623,7 @@ func TestConfigBasicGo(t *testing.T) {
 
 // Tests an explicit provider instance.
 func TestExplicitProvider(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "explicit_provider",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -654,6 +678,7 @@ func TestExplicitProvider(t *testing.T) {
 
 // Tests that reads of unknown IDs do not fail.
 func TestGetCreated(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "get_created",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -663,6 +688,7 @@ func TestGetCreated(t *testing.T) {
 
 // Tests that stack references work in Node.
 func TestStackReferenceNodeJS(t *testing.T) {
+	t.Parallel()
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -689,6 +715,7 @@ func TestStackReferenceNodeJS(t *testing.T) {
 }
 
 func TestStackReferencePython(t *testing.T) {
+	t.Parallel()
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -709,6 +736,7 @@ func TestStackReferencePython(t *testing.T) {
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
 func TestPython3NotInstalled(t *testing.T) {
+	t.Parallel()
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
 	expectedError := fmt.Sprintf(
@@ -737,6 +765,7 @@ func TestPython3NotInstalled(t *testing.T) {
 
 // TestProviderSecretConfig that a first class provider can be created when it has secrets as part of its config.
 func TestProviderSecretConfig(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "provider_secret_config",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -746,6 +775,7 @@ func TestProviderSecretConfig(t *testing.T) {
 
 // Tests dynamic provider in Python.
 func TestDynamicPython(t *testing.T) {
+	t.Parallel()
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python"),
@@ -766,6 +796,7 @@ func TestDynamicPython(t *testing.T) {
 }
 
 func TestResourceWithSecretSerialization(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "secret_outputs",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -793,6 +824,7 @@ func TestResourceWithSecretSerialization(t *testing.T) {
 }
 
 func TestStackReferenceSecrets(t *testing.T) {
+	t.Parallel()
 	owner := os.Getenv("PULUMI_TEST_OWNER")
 	if owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
@@ -826,6 +858,7 @@ func TestStackReferenceSecrets(t *testing.T) {
 }
 
 func TestCloudSecretProvider(t *testing.T) {
+	t.Parallel()
 	kmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
 	if kmsKeyAlias == "" {
 		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")

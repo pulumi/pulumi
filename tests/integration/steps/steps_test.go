@@ -46,6 +46,7 @@ func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNam
 
 // TestSteps tests many combinations of creates, updates, deletes, replacements, and so on.
 func TestSteps(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},

@@ -28,6 +28,7 @@ import (
 )
 
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -50,6 +51,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -72,6 +74,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -96,6 +99,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedOrgName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -120,6 +124,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -143,6 +148,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 }
 
 func TestCreatingProjectWithDefaultName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -169,6 +175,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 }
 
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -195,6 +202,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 }
 
 func TestCreatingProjectWithPromptedName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -219,6 +227,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -245,6 +254,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -270,6 +280,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -300,6 +311,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -329,6 +341,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -357,6 +370,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
@@ -384,6 +398,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 }
 
 func TestInvalidTemplateName(t *testing.T) {
+	t.Parallel()
 	skipIfShort(t)
 
 	t.Run("NoTemplateSpecified", func(t *testing.T) {

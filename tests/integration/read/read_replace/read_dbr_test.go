@@ -11,6 +11,7 @@ import (
 // Test that the engine handles the replacement of an external resource with a
 // owned once gracefully.
 func TestReadReplace(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},

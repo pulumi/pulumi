@@ -33,6 +33,7 @@ func setProperty(s *structpb.Value, k string, v interface{}) {
 }
 
 func TestAssetSerialize(t *testing.T) {
+	t.Parallel()
 	// Ensure that asset and archive serialization round trips.
 	text := "a test asset"
 	asset, err := resource.NewTextAsset(text)
@@ -121,6 +122,7 @@ func TestAssetSerialize(t *testing.T) {
 }
 
 func TestComputedSerialize(t *testing.T) {
+	t.Parallel()
 	// Ensure that computed properties survive round trips.
 	opts := MarshalOptions{KeepUnknowns: true}
 	{
@@ -146,6 +148,7 @@ func TestComputedSerialize(t *testing.T) {
 }
 
 func TestComputedSkip(t *testing.T) {
+	t.Parallel()
 	// Ensure that computed properties are skipped when KeepUnknowns == false.
 	opts := MarshalOptions{KeepUnknowns: false}
 	{
@@ -165,6 +168,7 @@ func TestComputedSkip(t *testing.T) {
 }
 
 func TestComputedReject(t *testing.T) {
+	t.Parallel()
 	// Ensure that computed properties produce errors when RejectUnknowns == true.
 	opts := MarshalOptions{RejectUnknowns: true}
 	{
@@ -186,6 +190,7 @@ func TestComputedReject(t *testing.T) {
 }
 
 func TestAssetReject(t *testing.T) {
+	t.Parallel()
 	// Ensure that asset and archive properties produce errors when RejectAssets == true.
 
 	opts := MarshalOptions{RejectAssets: true}
@@ -224,6 +229,7 @@ func TestAssetReject(t *testing.T) {
 }
 
 func TestUnsupportedSecret(t *testing.T) {
+	t.Parallel()
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 	}))
@@ -234,6 +240,7 @@ func TestUnsupportedSecret(t *testing.T) {
 }
 
 func TestUnknownSig(t *testing.T) {
+	t.Parallel()
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: "foobar",
 	}))

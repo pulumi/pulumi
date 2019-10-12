@@ -21,6 +21,7 @@ import (
 )
 
 func TestParseTagFilter(t *testing.T) {
+	t.Parallel()
 	p := func(s string) *string {
 		return &s
 	}

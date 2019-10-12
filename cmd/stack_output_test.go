@@ -21,6 +21,7 @@ import (
 )
 
 func TestStringifyOutput(t *testing.T) {
+	t.Parallel()
 	num := 42
 	str := "ABC"
 	arr := []string{"hello", "goodbye"}

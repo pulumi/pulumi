@@ -23,6 +23,7 @@ import (
 )
 
 func TestTrimPartialCommand(t *testing.T) {
+	t.Parallel()
 	noPartial := Red + "foo" + Green + "bar" + Reset
 	assert.Equal(t, noPartial, TrimPartialCommand(noPartial))
 
@@ -37,6 +38,7 @@ func codes(codes ...string) string {
 }
 
 func TestColorizer(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		command, codes string
 	}{

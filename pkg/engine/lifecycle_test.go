@@ -563,6 +563,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 }
 
 func TestEmptyProgramLifecycle(t *testing.T) {
+	t.Parallel()
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
@@ -576,6 +577,7 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -597,6 +599,7 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -631,6 +634,7 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -726,6 +730,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderReplace(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -805,6 +810,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderReplace(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -896,6 +902,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1007,6 +1014,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestSingleResourceDiffUnavailable(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1062,6 +1070,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 }
 
 func TestDestroyWithPendingDelete(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -1138,6 +1147,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 }
 
 func TestUpdateWithPendingDelete(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -1212,6 +1222,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 }
 
 func TestParallelRefresh(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -1269,6 +1280,7 @@ func TestParallelRefresh(t *testing.T) {
 }
 
 func TestExternalRefresh(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -1311,6 +1323,7 @@ func TestExternalRefresh(t *testing.T) {
 }
 
 func TestRefreshInitFailure(t *testing.T) {
+	t.Parallel()
 	p := &TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -1425,6 +1438,7 @@ func TestRefreshInitFailure(t *testing.T) {
 // Test that ensures that we log diagnostics for resources that receive an error from Check. (Note that this
 // is distinct from receiving non-error failures from Check.)
 func TestCheckFailureRecord(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1472,6 +1486,7 @@ func TestCheckFailureRecord(t *testing.T) {
 
 // Test that checks that we emit diagnostics for properties that check says are invalid.
 func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1527,6 +1542,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 // Test that tests that Refresh can detect that resources have been deleted and removes them
 // from the snapshot.
 func TestRefreshWithDelete(t *testing.T) {
+	t.Parallel()
 	for _, parallelFactor := range []int{1, 4} {
 		t.Run(fmt.Sprintf("parallel-%d", parallelFactor), func(t *testing.T) {
 			loaders := []*deploytest.ProviderLoader{
@@ -1582,6 +1598,7 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 // Tests that dependencies are correctly rewritten when refresh removes deleted resources.
 func TestRefreshDeleteDependencies(t *testing.T) {
+	t.Parallel()
 	names := []string{"resA", "resB", "resC"}
 
 	// Try refreshing a stack with every combination of the three above resources as a target to
@@ -1740,6 +1757,7 @@ func containsURN(urns []resource.URN, urn resource.URN) bool {
 
 // Tests basic refresh functionality.
 func TestRefreshBasics(t *testing.T) {
+	t.Parallel()
 	names := []string{"resA", "resB", "resC"}
 
 	// Try refreshing a stack with every combination of the three above resources as a target to
@@ -1909,6 +1927,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 // Tests that an interrupted refresh leaves behind an expected state.
 func TestCanceledRefresh(t *testing.T) {
+	t.Parallel()
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -2062,6 +2081,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 // Tests that errors returned directly from the language host get logged by the engine.
 func TestLanguageHostDiagnostics(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -2116,6 +2136,7 @@ func (b brokenDecrypter) DecryptValue(ciphertext string) (string, error) {
 
 // Tests that the engine presents a reasonable error message when a decrypter fails to decrypt a config value.
 func TestBrokenDecrypter(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -2154,6 +2175,7 @@ func TestBrokenDecrypter(t *testing.T) {
 }
 
 func TestBadResourceType(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -2200,6 +2222,7 @@ func TestBadResourceType(t *testing.T) {
 
 // Tests that provider cancellation occurs as expected.
 func TestProviderCancellation(t *testing.T) {
+	t.Parallel()
 	const resourceCount = 4
 
 	// Set up a cancelable context for the refresh operation.
@@ -2272,6 +2295,7 @@ func TestProviderCancellation(t *testing.T) {
 
 // Tests that a preview works for a stack with pending operations.
 func TestPreviewWithPendingOperations(t *testing.T) {
+	t.Parallel()
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -2328,6 +2352,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
 func TestUpdatePartialFailure(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -2420,6 +2445,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 
 // Tests that the StackReference resource works as intended,
 func TestStackReference(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{}
 
 	// Test that the normal lifecycle works correctly.
@@ -2540,6 +2566,7 @@ func (cw *channelWriter) Write(d []byte) (int, error) {
 
 // Tests that a failed plugin load correctly shuts down the host.
 func TestLoadFailureShutdown(t *testing.T) {
+	t.Parallel()
 
 	// Note that the setup here is a bit baroque, and is intended to replicate the CLI architecture that lead to
 	// issue #2170. That issue--a panic on a closed channel--was caused by the intersection of several design choices:
@@ -2747,6 +2774,7 @@ func generateComplexTestDependencyGraph(
 }
 
 func TestDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -2830,6 +2858,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestPropertyDependenciesAdapter(t *testing.T) {
+	t.Parallel()
 	// Ensure that the eval source properly shims in property dependencies if none were reported (and does not if
 	// any were reported).
 
@@ -2903,6 +2932,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 }
 
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
 	p := &TestPlan{}
 
 	dbrDiff := false
@@ -3115,6 +3145,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestSingleResourceIgnoreChanges(t *testing.T) {
+	t.Parallel()
 	var expectedIgnoreChanges []string
 
 	loaders := []*deploytest.ProviderLoader{
@@ -3215,6 +3246,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 // TestDefaultProviderDiff tests that the engine can gracefully recover whenever a resource's default provider changes
 // and there is no diff in the provider's inputs.
 func TestDefaultProviderDiff(t *testing.T) {
+	t.Parallel()
 	const resName, resBName = "resA", "resB"
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
@@ -3325,6 +3357,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 // TestDefaultProviderDiffReplacement tests that, when replacing a default provider for a resource, the engine will
 // replace the resource if DiffConfig on the new provider returns a diff for the provider's new state.
 func TestDefaultProviderDiffReplacement(t *testing.T) {
+	t.Parallel()
 	const resName, resBName = "resA", "resB"
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
@@ -3457,6 +3490,7 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 }
 
 func TestAliases(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -3722,6 +3756,7 @@ func TestAliases(t *testing.T) {
 }
 
 func TestPersistentDiff(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -3798,6 +3833,7 @@ func TestPersistentDiff(t *testing.T) {
 }
 
 func TestDetailedDiffReplace(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -3857,6 +3893,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 }
 
 func TestImport(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -4105,6 +4142,7 @@ func TestImport(t *testing.T) {
 }
 
 func TestCustomTimeouts(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -4139,6 +4177,7 @@ func TestCustomTimeouts(t *testing.T) {
 }
 
 func TestProviderDiffMissingOldOutputs(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -4231,6 +4270,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 }
 
 func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
+	t.Parallel()
 	p := &TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -4291,6 +4331,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 }
 
 func TestMissingRead(t *testing.T) {
+	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -4316,6 +4357,7 @@ func TestMissingRead(t *testing.T) {
 }
 
 func TestImportUpdatedID(t *testing.T) {
+	t.Parallel()
 	p := &TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -4365,6 +4407,7 @@ func TestImportUpdatedID(t *testing.T) {
 }
 
 func TestDeleteTarget(t *testing.T) {
+	t.Parallel()
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 
@@ -4469,6 +4512,7 @@ func deleteSpecificTargets(
 }
 
 func TestUpdateTarget(t *testing.T) {
+	t.Parallel()
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 

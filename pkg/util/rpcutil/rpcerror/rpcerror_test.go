@@ -24,6 +24,7 @@ import (
 )
 
 func TestError(t *testing.T) {
+	t.Parallel()
 	err := New(codes.FailedPrecondition, "i failed a precondition")
 	rpcErr, ok := FromError(err)
 	if !assert.True(t, ok) {
@@ -36,6 +37,7 @@ func TestError(t *testing.T) {
 }
 
 func TestErrorf(t *testing.T) {
+	t.Parallel()
 	err := Newf(codes.AlreadyExists, "foo %d already exists", 42)
 
 	rpcErr, ok := FromError(err)
@@ -49,6 +51,7 @@ func TestErrorf(t *testing.T) {
 }
 
 func TestWrap(t *testing.T) {
+	t.Parallel()
 	first := errors.New("first error")
 	second := errors.Wrap(first, "second error")
 	third := errors.Wrap(second, "third error")
@@ -74,6 +77,7 @@ func TestWrap(t *testing.T) {
 }
 
 func TestWrapWithoutBase(t *testing.T) {
+	t.Parallel()
 	wrapped := errors.New("first error")
 	err := Wrap(codes.Unauthenticated, wrapped, "second error")
 
@@ -94,6 +98,7 @@ func TestWrapWithoutBase(t *testing.T) {
 }
 
 func TestFromErrorRoundtrip(t *testing.T) {
+	t.Parallel()
 	status := status.New(codes.NotFound, "this is a raw gRPC error")
 
 	// This scenario is exactly what RPC clients will see if they receive
@@ -120,6 +125,7 @@ func TestFromErrorRoundtrip(t *testing.T) {
 }
 
 func TestErrorString(t *testing.T) {
+	t.Parallel()
 	err := errors.New("oh no")
 	withCause := Wrap(codes.NotFound, err, "thing failed")
 	unwrapped, ok := FromError(withCause)

@@ -117,6 +117,7 @@ func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent reso
 }
 
 func TestRegisterNoDefaultProviders(t *testing.T) {
+	t.Parallel()
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},
@@ -214,6 +215,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 }
 
 func TestRegisterDefaultProviders(t *testing.T) {
+	t.Parallel()
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},
@@ -306,6 +308,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 }
 
 func TestReadInvokeNoDefaultProviders(t *testing.T) {
+	t.Parallel()
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},
@@ -396,6 +399,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 }
 
 func TestReadInvokeDefaultProviders(t *testing.T) {
+	t.Parallel()
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},

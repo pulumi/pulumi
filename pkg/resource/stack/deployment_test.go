@@ -27,6 +27,7 @@ import (
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
+	t.Parallel()
 	res := resource.NewState(
 		tokens.Type("Test"),
 		resource.NewURN(
@@ -155,6 +156,7 @@ func TestDeploymentSerialization(t *testing.T) {
 }
 
 func TestLoadTooNewDeployment(t *testing.T) {
+	t.Parallel()
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
@@ -166,6 +168,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 }
 
 func TestLoadTooOldDeployment(t *testing.T) {
+	t.Parallel()
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
@@ -177,6 +180,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 }
 
 func TestUnsupportedSecret(t *testing.T) {
+	t.Parallel()
 	rawProp := map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 	}
@@ -185,6 +189,7 @@ func TestUnsupportedSecret(t *testing.T) {
 }
 
 func TestUnknownSig(t *testing.T) {
+	t.Parallel()
 	rawProp := map[string]interface{}{
 		resource.SigKey: "foobar",
 	}
