@@ -35,10 +35,10 @@ func createPipes() (pipes, error) {
 	// Generate a random pipe name so that we don't collide with other pipes made by other pulumi
 	// instances.
 	rand := uint32(time.Now().UnixNano() + int64(os.Getpid()))
-	dir := fmt.Sprintf("\\\\.\\pipe\\pulumi%v", rand)
+	dir := fmt.Sprintf(`\\.\pipe\pulumi%v`, rand)
 
-	reqPipeName := dir + "\\" + "invoke_req"
-	resPipeName := dir + "\\" + "invoke_res"
+	reqPipeName := dir + `\invoke_req`
+	resPipeName := dir + `\invoke_res`
 	reqListener, err := winio.ListenPipe(reqPipeName, nil)
 	if err != nil {
 		logging.V(10).Infof("createPipes: Received error trying to create request pipe %s: %s\n", reqPipeName, err)
