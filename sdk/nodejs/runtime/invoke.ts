@@ -70,8 +70,7 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
 
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
-    log.debug(label +
-        excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
+    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
@@ -132,8 +131,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
 
 function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} synchronously`;
-    log.debug(label +
-        excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
+    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     const serialized = serializePropertiesSync(props);
     log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
