@@ -31,9 +31,9 @@ func command(s string) string {
 	return colorLeft + s + colorRight
 }
 
-// TrimPartialcommand returns the input string with any partial colorization command trimmed off of the right end of
+// TrimPartialCommand returns the input string with any partial colorization command trimmed off of the right end of
 // the string.
-func TrimPartialcommand(s string) string {
+func TrimPartialCommand(s string) string {
 	// First check for a partial left delimiter at the end of the string.
 	partialDelimLeft := colorLeft
 	if len(partialDelimLeft) > len(s) {
