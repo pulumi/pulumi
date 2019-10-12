@@ -22,7 +22,7 @@ import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { excessiveDebugOutput, getMonitor, getSyncInvokes, rpcKeepAlive } from "./settings";
 
-import { ProviderRef, Resource, ProviderResource } from "../resource";
+import { ProviderRef, Resource } from "../resource";
 import * as utils from "../utils";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
