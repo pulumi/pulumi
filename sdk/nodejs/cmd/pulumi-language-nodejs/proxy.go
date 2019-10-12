@@ -143,9 +143,7 @@ func (p *monitorProxy) servePipes(
 	// Once we're done using the pipes clean them up so we don't leave anything around in the user
 	// file system.  Also let the server know it can shutdown gracefully.
 	defer p.pipes.shutdown()
-	defer func() {
-		serverCancel <- true
-	}()
+	defer func() { serverCancel <- true }()
 
 	// Keep reading and writing from the pipes until we run into an error or are canceled.
 	err := func() error {
