@@ -22,7 +22,7 @@ import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { excessiveDebugOutput, getMonitor, getSyncInvokes, rpcKeepAlive } from "./settings";
 
-import { ProviderRef, Resource } from "../resource";
+import { ProviderRef, Resource, ProviderResource } from "../resource";
 import * as utils from "../utils";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -73,31 +73,18 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
-    const provider = getProvider(tok, opts);
-
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
-        const obj = gstruct.Struct.fromJavaScript(
-            await serializeProperties(`invoke:${tok}`, props));
-        log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
+        const serialized = await serializeProperties(`invoke:${tok}`, props);
+        log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
 
-        let providerRef: string | undefined;
-        if (ProviderRef.isInstance(provider)) {
-            providerRef = provider.getValue();
-        }
-        else if (Resource.isInstance(provider)) {
-            providerRef = (await ProviderRef.get(provider)).getValue();
-        }
+        const providerRef = await getProviderRefAsync();
+        const req = createInvokeRequest(tok, serialized, providerRef, opts);
 
-        const req = new providerproto.InvokeRequest();
-        req.setTok(tok);
-        req.setArgs(obj);
-        req.setProvider(providerRef);
-        req.setVersion(opts.version || "");
         const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
             monitor.invoke(req, (err: grpc.StatusObject, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
@@ -127,6 +114,20 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     finally {
         done();
     }
+
+    async function getProviderRefAsync() {
+        const provider = getProvider(tok, opts);
+
+        if (ProviderRef.isInstance(provider)) {
+            return provider;
+        }
+        else if (Resource.isInstance(provider)) {
+            return await ProviderRef.get(provider);
+        }
+        else {
+            return undefined;
+        }
+    }
 }
 
 function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> {
@@ -134,28 +135,14 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> 
     log.debug(label +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
-    const obj = gstruct.Struct.fromJavaScript(serializePropertiesSync(props));
-    log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
+    const serialized = serializePropertiesSync(props);
+    log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
     // Fetch the sync monitor and make an RPC request.
     const syncInvokes = getSyncInvokes();
 
-    const provider = getProvider(tok, opts);
-
-    let providerRef: string | undefined;
-    if (ProviderRef.isInstance(provider)) {
-        providerRef = provider.getValue();
-    }
-    else if (Resource.isInstance(provider)) {
-        // TODO(cyrusn): issue warning here that we are synchronously blocking an rpc call.
-        providerRef = utils.promiseResult(ProviderRef.get(provider)).getValue();
-    }
-
-    const req = new providerproto.InvokeRequest();
-    req.setTok(tok);
-    req.setArgs(obj);
-    req.setProvider(providerRef);
-    req.setVersion(opts.version || "");
+    const providerRef = getProviderRefSync();
+    const req = createInvokeRequest(tok, serialized, providerRef, opts);
 
     // Encode the request.
     const reqBytes = Buffer.from(req.serializeBinary());
@@ -187,6 +174,33 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> 
     Object.assign(promise, resultValue);
 
     return promise;
+
+    function getProviderRefSync() {
+        const provider = getProvider(tok, opts);
+
+        if (ProviderRef.isInstance(provider)) {
+            return provider;
+        }
+        else if (Resource.isInstance(provider)) {
+            // TODO(cyrusn): issue warning here that we are synchronously blocking an rpc call.
+            return utils.promiseResult(ProviderRef.get(provider));
+        }
+        else {
+            return undefined;
+        }
+    }
+}
+
+function createInvokeRequest(tok: string, serialized: any, providerRef: ProviderRef | undefined, opts: InvokeOptions) {
+    const obj = gstruct.Struct.fromJavaScript(serialized);
+    const provider = providerRef ? providerRef.getValue() : undefined;
+
+    const req = new providerproto.InvokeRequest();
+    req.setTok(tok);
+    req.setArgs(obj);
+    req.setProvider(provider);
+    req.setVersion(opts.version || "");
+    return req;
 }
 
 function getProvider(tok: string, opts: InvokeOptions) {
