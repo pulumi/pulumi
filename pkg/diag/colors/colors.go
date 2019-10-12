@@ -15,10 +15,9 @@
 package colors
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
-
-	"github.com/reconquest/loreley"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -26,19 +25,15 @@ import (
 const colorLeft = "<{%"
 const colorRight = "%}>"
 
-func init() {
-	// Change the Loreley delimiters from { and }, to something more complex, to avoid accidental collisions.
-	loreley.DelimLeft = colorLeft
-	loreley.DelimRight = colorRight
-}
+var disableColorization bool
 
-func Command(s string) string {
+func command(s string) string {
 	return colorLeft + s + colorRight
 }
 
-// TrimPartialCommand returns the input string with any partial colorization command trimmed off of the right end of
+// TrimPartialcommand returns the input string with any partial colorization command trimmed off of the right end of
 // the string.
-func TrimPartialCommand(s string) string {
+func TrimPartialcommand(s string) string {
 	// First check for a partial left delimiter at the end of the string.
 	partialDelimLeft := colorLeft
 	if len(partialDelimLeft) > len(s) {
@@ -69,26 +64,117 @@ func TrimPartialCommand(s string) string {
 }
 
 func Colorize(s fmt.Stringer) string {
-	txt := s.String()
-	return colorizeText(txt)
+	return colorizeText(s.String(), Always, -1)
 }
 
-func colorizeText(s string) string {
-	style, err := loreley.Compile(s, nil /*extensions*/)
-	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
+func writeCodes(buf *bytes.Buffer, codes ...string) {
+	buf.WriteString("\x1b[")
+	buf.WriteString(strings.Join(codes, ";"))
+	buf.WriteString("m")
+}
 
-	// Note: we only get into this codepath if we determined colors should be on.  This was either
-	// because we were in color=auto mode and our env detection determined colors were reasonable to
-	// have, or because we're in color=always mode.
-	//
-	// However, Loreley does its own tty detection and disables colors if there is no tty.  We don't
-	// want that behavior if we've determined colors should be on.  So we explicitly override their
-	// automatic detection.
-	style.NoColors = false
-	result, err := style.ExecuteToString(nil /*data*/)
-	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
+func writeDirective(buf *bytes.Buffer, c Colorization, directive string) {
+	if disableColorization || c == Never {
+		return
+	}
+	if c == Raw {
+		buf.WriteString(directive)
+		return
+	}
 
-	return result
+	switch directive {
+	case Reset: // command("reset")
+		writeCodes(buf, "0")
+	case Bold: // command("bold")
+		writeCodes(buf, "1")
+	case Underline: // command("underline")
+		writeCodes(buf, "4")
+	case Red: // command("fg 1")
+		writeCodes(buf, "38", "5", "1")
+	case Green: // command("fg 2")
+		writeCodes(buf, "38", "5", "2")
+	case Yellow: // command("fg 3")
+		writeCodes(buf, "38", "5", "3")
+	case Blue: // command("fg 4")
+		writeCodes(buf, "38", "5", "4")
+	case Magenta: // command("fg 5")
+		writeCodes(buf, "38", "5", "5")
+	case Cyan: // command("fg 6")
+		writeCodes(buf, "38", "5", "6")
+	case BrightRed: // command("fg 9")
+		writeCodes(buf, "38", "5", "9")
+	case BrightGreen: // command("fg 10")
+		writeCodes(buf, "38", "5", "10")
+	case BrightBlue: // command("fg 12")
+		writeCodes(buf, "38", "5", "12")
+	case BrightMagenta: // command("fg 13")
+		writeCodes(buf, "38", "5", "13")
+	case BrightCyan: // command("fg 14")
+		writeCodes(buf, "38", "5", "14")
+	case RedBackground: // command("bg 1")
+		writeCodes(buf, "48", "5", "1")
+	case GreenBackground: // command("bg 2")
+		writeCodes(buf, "48", "5", "2")
+	case YellowBackground: // command("bg 3")
+		writeCodes(buf, "48", "5", "3")
+	case BlueBackground: // command("bg 4")
+		writeCodes(buf, "48", "5", "4")
+	case Black: // command("fg 0") // Only use with background colors.
+		writeCodes(buf, "38", "5", "0")
+	}
+}
+
+func colorizeText(s string, c Colorization, maxLen int) string {
+	var buf bytes.Buffer
+
+	textLen := 0
+	for input := s; len(input) > 0; {
+		// Do we have another directive to process?
+		nextDirectiveStart := strings.Index(input, colorLeft)
+		if nextDirectiveStart == -1 {
+			// If there are no more directives and we still have the entire original string, return it as-is: there
+			// must not have been any directives.
+			if len(input) == len(s) {
+				if maxLen >= 0 && len(input) > maxLen {
+					return input[:maxLen]
+				}
+				return input
+			}
+
+			// Otherwise, write the remaining input into the buffer and terminate.
+			_, err := buf.WriteString(input)
+			contract.IgnoreError(err)
+			break
+		}
+		if buf.Cap() < len(input) {
+			buf.Grow(len(input))
+		}
+
+		// Copy the text up to but not including the delimiter into the buffer.
+		text := input[:nextDirectiveStart]
+		if maxLen >= 0 && textLen+len(text) > maxLen {
+			_, err := buf.WriteString(text[:maxLen])
+			contract.IgnoreError(err)
+			writeDirective(&buf, c, Reset)
+			break
+		}
+		_, err := buf.WriteString(input[:nextDirectiveStart])
+		contract.IgnoreError(err)
+		input = input[nextDirectiveStart+len(colorLeft):]
+
+		// If we have a start delimiter but no end delimiter, terminate. The partial command will not be present in the
+		// output.
+		nextDirectiveEnd := strings.Index(input, colorRight)
+		if nextDirectiveEnd == -1 {
+			break
+		}
+
+		directive := command(input[:nextDirectiveEnd])
+		writeDirective(&buf, c, directive)
+		input = input[nextDirectiveEnd+len(colorRight):]
+	}
+
+	return buf.String()
 }
 
 // Highlight takes an input string, a sequence of commands, and replaces all occurrences of that string with
@@ -98,38 +184,38 @@ func Highlight(s, text, commands string) string {
 }
 
 var (
-	Reset     = Command("reset")
-	Bold      = Command("bold")
-	Underline = Command("underline")
+	Reset     = command("reset")
+	Bold      = command("bold")
+	Underline = command("underline")
 )
 
 // Basic colors.
 var (
-	Red           = Command("fg 1")
-	Green         = Command("fg 2")
-	Yellow        = Command("fg 3")
-	Blue          = Command("fg 4")
-	Magenta       = Command("fg 5")
-	Cyan          = Command("fg 6")
-	BrightRed     = Command("fg 9")
-	BrightGreen   = Command("fg 10")
-	BrightBlue    = Command("fg 12")
-	BrightMagenta = Command("fg 13")
-	BrightCyan    = Command("fg 14")
+	Red           = command("fg 1")
+	Green         = command("fg 2")
+	Yellow        = command("fg 3")
+	Blue          = command("fg 4")
+	Magenta       = command("fg 5")
+	Cyan          = command("fg 6")
+	BrightRed     = command("fg 9")
+	BrightGreen   = command("fg 10")
+	BrightBlue    = command("fg 12")
+	BrightMagenta = command("fg 13")
+	BrightCyan    = command("fg 14")
 
-	RedBackground    = Command("bg 1")
-	GreenBackground  = Command("bg 2")
-	YellowBackground = Command("bg 3")
-	BlueBackground   = Command("bg 4")
+	RedBackground    = command("bg 1")
+	GreenBackground  = command("bg 2")
+	YellowBackground = command("bg 3")
+	BlueBackground   = command("bg 4")
 
 	// We explicitly do not expose blacks/whites.  They're problematic given that we don't know what
 	// terminal settings the user has.  Best to avoid them and not run into contrast problems.
 
-	Black = Command("fg 0") // Only use with background colors.
-	// White         = Command("fg 7")
-	// BrightBlack   = Command("fg 8")
-	// BrightYellow  = Command("fg 11")
-	// BrightWhite   = Command("fg 15")
+	Black = command("fg 0") // Only use with background colors.
+	// White         = command("fg 7")
+	// BrightBlack   = command("fg 8")
+	// BrightYellow  = command("fg 11")
+	// BrightWhite   = command("fg 15")
 )
 
 // Special predefined colors for logical conditions.
