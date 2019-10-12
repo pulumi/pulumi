@@ -147,16 +147,16 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> 
 
     // Write the request length.
     const reqLen = Buffer.alloc(4);
-    reqLen.writeUInt32BE(reqBytes.length, 0);
+    reqLen.writeUInt32BE(reqBytes.length, /*offset:*/ 0);
     fs.writeSync(syncInvokes.requests, reqLen);
     fs.writeSync(syncInvokes.requests, reqBytes);
 
     // Read the response.
     const respLenBytes = Buffer.alloc(4);
-    fs.readSync(syncInvokes.responses, respLenBytes, 0, 4, null);
-    const respLen = respLenBytes.readUInt32BE(0);
+    fs.readSync(syncInvokes.responses, respLenBytes, /*offset:*/ 0, /*length:*/ 4, /*position:*/ null);
+    const respLen = respLenBytes.readUInt32BE(/*offset:*/ 0);
     const respBytes = Buffer.alloc(respLen);
-    fs.readSync(syncInvokes.responses, respBytes, 0, respLen, null);
+    fs.readSync(syncInvokes.responses, respBytes, /*offset:*/ 0, /*length:*/ respLen, /*position:*/ null);
 
     // Decode the response.
     const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
@@ -167,7 +167,11 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> 
     // Finally propagate any other properties that were given to us as outputs.
     const resultValue = deserializeProperties(resp.getReturn());
 
-    // Expose the properties of the actual result of invoke directly on the promise itself.
+    // Expose the properties of the actual result of invoke directly on the promise itself. Note
+    // this doesn't actually involve any asynchrony.  The promise will be created synchronously and
+    // the values copied to it can be used immediately.  We simply make a Promise so that any
+    // consumers that do a `.then()` on it continue to work even though we've switched from bein
+    // async to sync.
     const promise = Promise.resolve(resultValue);
     Object.assign(promise, resultValue);
 
