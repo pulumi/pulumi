@@ -5,9 +5,9 @@ CHANGELOG
 
 ## IMPORTANT - COMPAT
 
-- Mitigate issue causing [crashes](https://github.com/pulumi/pulumi/issues/3260) in many versions of
-  macOS and a [hang](https://github.com/pulumi/pulumi/issues/3309) in macOS Catalina (10.15) with
-  Nodejs 12.
+- Mitigate issue causing [crashes](https://github.com/pulumi/pulumi/issues/3260) and
+  [hangs](https://github.com/pulumi/pulumi/issues/3309) across many OSs (primarily CentOS and macOS)
+  and several versions of nodejs (primarily 12.12 and up).
 
   The issue occurs when making a 'data source' call in Pulumi in a synchronous fashion.  i.e. code
   like:
