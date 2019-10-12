@@ -17,6 +17,7 @@ package colors
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -67,60 +68,64 @@ func Colorize(s fmt.Stringer) string {
 	return colorizeText(s.String(), Always, -1)
 }
 
-func writeCodes(buf *bytes.Buffer, codes ...string) {
-	buf.WriteString("\x1b[")
-	buf.WriteString(strings.Join(codes, ";"))
-	buf.WriteString("m")
+func writeCodes(w io.StringWriter, codes ...string) {
+	_, err := w.WriteString("\x1b[")
+	contract.IgnoreError(err)
+	_, err = w.WriteString(strings.Join(codes, ";"))
+	contract.IgnoreError(err)
+	_, err = w.WriteString("m")
+	contract.IgnoreError(err)
 }
 
-func writeDirective(buf *bytes.Buffer, c Colorization, directive string) {
+func writeDirective(w io.StringWriter, c Colorization, directive string) {
 	if disableColorization || c == Never {
 		return
 	}
 	if c == Raw {
-		buf.WriteString(directive)
+		_, err := w.WriteString(directive)
+		contract.IgnoreError(err)
 		return
 	}
 
 	switch directive {
 	case Reset: // command("reset")
-		writeCodes(buf, "0")
+		writeCodes(w, "0")
 	case Bold: // command("bold")
-		writeCodes(buf, "1")
+		writeCodes(w, "1")
 	case Underline: // command("underline")
-		writeCodes(buf, "4")
+		writeCodes(w, "4")
 	case Red: // command("fg 1")
-		writeCodes(buf, "38", "5", "1")
+		writeCodes(w, "38", "5", "1")
 	case Green: // command("fg 2")
-		writeCodes(buf, "38", "5", "2")
+		writeCodes(w, "38", "5", "2")
 	case Yellow: // command("fg 3")
-		writeCodes(buf, "38", "5", "3")
+		writeCodes(w, "38", "5", "3")
 	case Blue: // command("fg 4")
-		writeCodes(buf, "38", "5", "4")
+		writeCodes(w, "38", "5", "4")
 	case Magenta: // command("fg 5")
-		writeCodes(buf, "38", "5", "5")
+		writeCodes(w, "38", "5", "5")
 	case Cyan: // command("fg 6")
-		writeCodes(buf, "38", "5", "6")
+		writeCodes(w, "38", "5", "6")
 	case BrightRed: // command("fg 9")
-		writeCodes(buf, "38", "5", "9")
+		writeCodes(w, "38", "5", "9")
 	case BrightGreen: // command("fg 10")
-		writeCodes(buf, "38", "5", "10")
+		writeCodes(w, "38", "5", "10")
 	case BrightBlue: // command("fg 12")
-		writeCodes(buf, "38", "5", "12")
+		writeCodes(w, "38", "5", "12")
 	case BrightMagenta: // command("fg 13")
-		writeCodes(buf, "38", "5", "13")
+		writeCodes(w, "38", "5", "13")
 	case BrightCyan: // command("fg 14")
-		writeCodes(buf, "38", "5", "14")
+		writeCodes(w, "38", "5", "14")
 	case RedBackground: // command("bg 1")
-		writeCodes(buf, "48", "5", "1")
+		writeCodes(w, "48", "5", "1")
 	case GreenBackground: // command("bg 2")
-		writeCodes(buf, "48", "5", "2")
+		writeCodes(w, "48", "5", "2")
 	case YellowBackground: // command("bg 3")
-		writeCodes(buf, "48", "5", "3")
+		writeCodes(w, "48", "5", "3")
 	case BlueBackground: // command("bg 4")
-		writeCodes(buf, "48", "5", "4")
+		writeCodes(w, "48", "5", "4")
 	case Black: // command("fg 0") // Only use with background colors.
-		writeCodes(buf, "38", "5", "0")
+		writeCodes(w, "38", "5", "0")
 	}
 }
 
