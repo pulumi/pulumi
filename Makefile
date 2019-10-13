@@ -8,7 +8,7 @@ SLOW_TEST_PKGS  := $(shell go list ./examples/ ./tests/... | grep -v tests/templ
 TEMPLATES_PKGS  := $(shell go list ./tests/templates)
 VERSION         := $(shell scripts/get-version)
 
-TESTPARALLELISM := 10
+TESTPARALLELISM := 20
 
 build-proto::
 	cd sdk/proto && ./generate.sh
@@ -31,7 +31,7 @@ test_fast::
 test_all::
 #	$(GO_TEST) ${FAST_TEST_PKGS}
 	$(GO_TEST) -v ${SLOW_TEST_PKGS} &
-	PID=$$! ; while [ -d /proc/$$PID ]; do printf "."; sleep 20; done
+	PID=$$! ; while [ -d /proc/$$PID ]; do printf "."; sleep 20; done; wait $$PID;
 
 
 test_templates::
