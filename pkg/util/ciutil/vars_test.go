@@ -22,7 +22,6 @@ import (
 )
 
 func TestDetectVars(t *testing.T) {
-	t.Parallel()
 	buildID := "123"
 	systemAndEnvVars := map[SystemName]map[string]string{
 		// Since the `pulumi/pulumi` repo runs on Travis,
@@ -91,7 +90,6 @@ func TestDetectVars(t *testing.T) {
 }
 
 func TestDetectVarsBaseCI(t *testing.T) {
-	t.Parallel()
 	systemAndEnvVars := map[SystemName]map[string]string{
 		// Since the `pulumi/pulumi` repo runs on Travis,
 		// we set the TRAVIS env var to an empty string for all test cases
@@ -138,7 +136,6 @@ func TestDetectVarsBaseCI(t *testing.T) {
 }
 
 func TestDetectVarsDisableCIDetection(t *testing.T) {
-	t.Parallel()
 	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "nonEmptyString")
 	os.Setenv("TRAVIS", "true")
 	os.Setenv("TRAVIS_JOB_ID", "1234")
