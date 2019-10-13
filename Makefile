@@ -4,7 +4,7 @@ include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
 FAST_TEST_PKGS  := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/ | tac)
-SLOW_TEST_PKGS  := $(shell go list ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/ | tac)
+ALL_TEST_PKGS   := $(shell go list ./cmd/... ./pkg/... ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/ | tac)
 TEMPLATES_PKGS  := $(shell go list ./tests/templates)
 VERSION         := $(shell scripts/get-version)
 
@@ -29,8 +29,7 @@ test_fast::
 	$(GO_TEST_FAST) ${FAST_TEST_PKGS}
 
 test_all::
-#	$(GO_TEST) ${FAST_TEST_PKGS}
-	$(GO_TEST) -v ${SLOW_TEST_PKGS} & PID=$$! ; while [ -d /proc/$$PID ]; do printf "."; sleep 20; done; wait $$PID;
+	$(GO_TEST) -v ${ALL_TEST_PKGS} & PID=$$! ; while [ -d /proc/$$PID ]; do printf "."; sleep 20; done; wait $$PID;
 
 
 test_templates::
