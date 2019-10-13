@@ -501,6 +501,9 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		return
 	}
 
+	fmt.Printf("Starting test: %s\n", t.Name())
+	defer fmt.Printf("Finished test: %s\n", t.Name())
+
 	// If we have a matcher, ensure that this test matches its pattern.
 	if directoryMatcher.re != nil && !directoryMatcher.re.Match([]byte(opts.Dir)) {
 		t.Skip(fmt.Sprintf("Skipping: '%v' does not match '%v'", opts.Dir, directoryMatcher.re))
