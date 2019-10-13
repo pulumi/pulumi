@@ -272,7 +272,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 }
 
 func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
-	untypedDeployment, err := b.ExportDeployment(ctx, stackRef)
+	untypedDeployment, err := b.exportDeployment(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
