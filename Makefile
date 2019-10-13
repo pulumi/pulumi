@@ -3,8 +3,8 @@ SUB_PROJECTS := sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
-PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/)
+FAST_TEST_PKGS  := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
+ALL_TEST_PKGS   := $(shell go list ./cmd/... ./pkg/... ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/)
 TEMPLATES_PKGS  := $(shell go list ./tests/templates)
 VERSION         := $(shell scripts/get-version)
 
@@ -26,11 +26,10 @@ lint::
 	golangci-lint run
 
 test_fast::
-	$(GO_TEST_FAST) ${PROJECT_PKGS}
+	$(GO_TEST_FAST) ${FAST_TEST_PKGS}
 
 test_all::
-	$(GO_TEST) ${PROJECT_PKGS}
-	$(GO_TEST) -v ${EXTRA_TEST_PKGS}
+	$(GO_TEST) ${ALL_TEST_PKGS}
 
 test_templates::
 	$(GO_TEST) -v ${TEMPLATES_PKGS}
