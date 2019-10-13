@@ -23,7 +23,6 @@ import (
 )
 
 func TestGetValidDefaultProjectName(t *testing.T) {
-	t.Parallel()
 	// Valid names remain the same.
 	for _, name := range getValidProjectNamePrefixes() {
 		assert.Equal(t, name, getValidProjectName(name))
@@ -89,14 +88,12 @@ func getValidProjectNamePrefixes() []string {
 }
 
 func TestRetrieveNonExistingTemplate(t *testing.T) {
-	t.Parallel()
 	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
 	_, err := RetrieveTemplates(templateName, false)
 	assert.NotNil(t, err)
 }
 
 func TestRetrieveStandardTemplate(t *testing.T) {
-	t.Parallel()
 	templateName := "typescript"
 	repository, err := RetrieveTemplates(templateName, false)
 	assert.Nil(t, err)
@@ -112,7 +109,6 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 }
 
 func TestRetrieveHttpsTemplate(t *testing.T) {
-	t.Parallel()
 	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
 	repository, err := RetrieveTemplates(templateURL, false)
 	assert.Nil(t, err)
@@ -139,14 +135,12 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 }
 
 func TestRetrieveHttpsTemplateOffline(t *testing.T) {
-	t.Parallel()
 	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
 	_, err := RetrieveTemplates(templateURL, true)
 	assert.NotNil(t, err)
 }
 
 func TestRetrieveFileTemplate(t *testing.T) {
-	t.Parallel()
 	repository, err := RetrieveTemplates(".", false)
 	assert.Nil(t, err)
 	assert.Equal(t, false, repository.ShouldDelete)
