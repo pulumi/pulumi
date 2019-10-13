@@ -30,7 +30,7 @@ test_fast::
 
 test_all::
 	$(GO_TEST) ${FAST_TEST_PKGS}
-	$(GO_TEST) -v ${ALL_TEST_PKGS}
+	$(GO_TEST) -v ${SLOW_TEST_PKGS}
 
 test_templates::
 	$(GO_TEST) -v ${TEMPLATES_PKGS}
