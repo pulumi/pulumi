@@ -8,16 +8,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-// Test that the engine is capable of relinquishing control of a resource without deleting it.
-func TestReadRelinquish(t *testing.T) {
+// Test that the engine tolerates two deletions of the same URN in the same plan.
+func TestReadDBR(t *testing.T) {
 	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "step1",
+		Dir:          "read/dbr/step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
+				Dir:      "read/dbr/step2",
+				Additive: true,
+			},
+			{
+				Dir:      "read/dbr/step3",
 				Additive: true,
 			},
 		},

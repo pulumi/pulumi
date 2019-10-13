@@ -48,7 +48,7 @@ func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNam
 func TestSteps(t *testing.T) {
 	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "step1",
+		Dir:          "steps/step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -57,7 +57,7 @@ func TestSteps(t *testing.T) {
 		},
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
+				Dir:      "steps/step2",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Deployment)
@@ -65,7 +65,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step3",
+				Dir:      "steps/step3",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Deployment)
@@ -73,7 +73,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step4",
+				Dir:      "steps/step4",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Deployment)
@@ -81,7 +81,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step5",
+				Dir:      "steps/step5",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Deployment)
@@ -89,7 +89,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step6",
+				Dir:      "steps/step6",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Deployment)

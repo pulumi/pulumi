@@ -23,7 +23,7 @@ var dirs = []string{
 func TestNodejsAliases(t *testing.T) {
 	t.Parallel()
 	for _, dir := range dirs {
-		d := path.Join("nodejs", dir)
+		d := path.Join("aliases", "nodejs", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          path.Join(d, "step1"),
@@ -44,7 +44,7 @@ func TestNodejsAliases(t *testing.T) {
 func TestPythonAliases(t *testing.T) {
 	t.Parallel()
 	for _, dir := range dirs {
-		d := path.Join("python", dir)
+		d := path.Join("aliases", "python", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: path.Join(d, "step1"),

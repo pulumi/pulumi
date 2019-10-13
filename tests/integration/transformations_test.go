@@ -13,16 +13,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-var dirs = []string{
+var transformationDirs = []string{
 	"simple",
 }
 
 // TestNodejsAliases tests a case where a resource's name changes but it provides an `alias`
 // pointing to the old URN to ensure the resource is preserved across the update.
-func TestNodejsAliases(t *testing.T) {
+func TestNodejsTransformations(t *testing.T) {
 	t.Parallel()
-	for _, dir := range dirs {
-		d := path.Join("nodejs", dir)
+	for _, dir := range transformationDirs {
+		d := path.Join("transformations", "nodejs", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          d,

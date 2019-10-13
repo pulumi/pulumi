@@ -8,20 +8,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-// Test that the engine tolerates two deletions of the same URN in the same plan.
-func TestReadDBR(t *testing.T) {
+// Test that the engine does not consider old inputs when calling Check during re-creation of
+// a resource that was deleted due to a dependency on a DBR-replaced resource.
+func TestResourceRecreateCheck(t *testing.T) {
 	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "step1",
+		Dir:          "recreate_resource_check/step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
-				Additive: true,
-			},
-			{
-				Dir:      "step3",
+				Dir:      "recreate_resource_check/step2",
 				Additive: true,
 			},
 		},

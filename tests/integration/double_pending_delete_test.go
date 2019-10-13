@@ -15,12 +15,12 @@ import (
 func TestDoublePendingDelete(t *testing.T) {
 	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "step1",
+		Dir:          "double_pending_delete/step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:           "step2",
+				Dir:           "double_pending_delete/step2",
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -48,7 +48,7 @@ func TestDoublePendingDelete(t *testing.T) {
 				},
 			},
 			{
-				Dir:           "step3",
+				Dir:           "double_pending_delete/step3",
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -75,7 +75,7 @@ func TestDoublePendingDelete(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step4",
+				Dir:      "double_pending_delete/step4",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// We should have cleared out all of the pending deletes now.

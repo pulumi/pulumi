@@ -8,33 +8,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-// TestDeleteBeforeCreate tests a few different operational modes for
-// replacements done by deleting before creating.
-func TestDeleteBeforeCreate(t *testing.T) {
+// Test that the engine handles the replacement of an external resource with a
+// owned once gracefully.
+func TestReadReplace(t *testing.T) {
 	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "step1",
+		Dir:          "read/replace/step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
+				Dir:      "read/replace/step2",
 				Additive: true,
 			},
 			{
-				Dir:      "step3",
-				Additive: true,
-			},
-			{
-				Dir:      "step4",
-				Additive: true,
-			},
-			{
-				Dir:      "step5",
-				Additive: true,
-			},
-			{
-				Dir:      "step6",
+				Dir:      "read/replace/step3",
 				Additive: true,
 			},
 		},

@@ -8,17 +8,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-// Test that the engine does not consider old inputs when calling Check during re-creation of
-// a resource that was deleted due to a dependency on a DBR-replaced resource.
-func TestResourceRecreateCheck(t *testing.T) {
+// Test that the engine is capable of assuming control of a resource that was external.
+func TestImportAcquire(t *testing.T) {
 	t.Parallel()
+	t.Skipf("import does not yet work with dynamic providers")
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "step1",
+		Dir:          "read/import_acquire/step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
+				Dir:      "read/import_acquire/step2",
 				Additive: true,
 			},
 		},

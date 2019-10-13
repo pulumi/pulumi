@@ -24,22 +24,22 @@ import (
 func TestDuplicateURNs(t *testing.T) {
 	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:           "step1",
+		Dir:           "duplicate_urns/step1",
 		Dependencies:  []string{"@pulumi/pulumi"},
 		Quick:         true,
 		ExpectFailure: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
+				Dir:      "duplicate_urns/step2",
 				Additive: true,
 			},
 			{
-				Dir:           "step3",
+				Dir:           "duplicate_urns/step3",
 				Additive:      true,
 				ExpectFailure: true,
 			},
 			{
-				Dir:           "step4",
+				Dir:           "duplicate_urns/step4",
 				Additive:      true,
 				ExpectFailure: true,
 			},

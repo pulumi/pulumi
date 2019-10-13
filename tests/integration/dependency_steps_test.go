@@ -8,21 +8,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-// Test that the engine handles the replacement of an external resource with a
-// owned once gracefully.
-func TestReadReplace(t *testing.T) {
+// TestDependencySteps tests a case where the dependency graph between two
+// resources is inverted between updates. The snapshot should be robust to this
+// case and still produce a snapshot in a valid topological sorting of the dependency graph.
+func TestDependencySteps(t *testing.T) {
 	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "step1",
+		Dir:          "dependency_steps/step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
-				Additive: true,
-			},
-			{
-				Dir:      "step3",
+				Dir:      "dependency_steps/step2",
 				Additive: true,
 			},
 		},
