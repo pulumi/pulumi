@@ -49,7 +49,7 @@ func TestPythonAliases(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: path.Join(d, "step1"),
 				Dependencies: []string{
-					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
 				},
 				Quick: true,
 				EditDirs: []integration.EditDir{
