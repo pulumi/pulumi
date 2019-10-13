@@ -3,8 +3,8 @@ SUB_PROJECTS := sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
-FAST_TEST_PKGS  := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-ALL_TEST_PKGS   := $(shell go list ./cmd/... ./pkg/... ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/)
+FAST_TEST_PKGS  := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/ | tac)
+ALL_TEST_PKGS   := $(shell go list ./cmd/... ./pkg/... ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/ | tac)
 TEMPLATES_PKGS  := $(shell go list ./tests/templates)
 VERSION         := $(shell scripts/get-version)
 
