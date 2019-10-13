@@ -186,8 +186,6 @@ type ProgramTestOptions struct {
 
 	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocations.
 	Tracing string
-	// NoParallel will opt the test out of being ran in parallel.
-	NoParallel bool
 
 	// PrePulumiCommand specifies a callback that will be executed before each `pulumi` invocation. This callback may
 	// optionally return another callback to be invoked after the `pulumi` invocation completes.
@@ -370,9 +368,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
 	}
-	if overrides.NoParallel {
-		opts.NoParallel = overrides.NoParallel
-	}
 	if overrides.PrePulumiCommand != nil {
 		opts.PrePulumiCommand = overrides.PrePulumiCommand
 	}
@@ -515,11 +510,6 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	// backups of test stacks.
 	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
 		t.Errorf("error setting env var '%s': %v", filestate.DisableCheckpointBackupsEnvVar, err)
-	}
-
-	// We want tests to default into being ran in parallel, hence the odd double negative.
-	if !opts.NoParallel {
-		t.Parallel()
 	}
 
 	if ciutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {

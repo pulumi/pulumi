@@ -27,7 +27,9 @@ import (
 )
 
 func TestTemplates(t *testing.T) {
-	t.Parallel()
+	// Don't run in parallel.  We run so many templates we can easily go over our cloud limits
+	// t.Parallel();
+
 	awsRegion := os.Getenv("AWS_REGION")
 	if awsRegion == "" {
 		awsRegion = "us-west-1"
@@ -70,7 +72,6 @@ func TestTemplates(t *testing.T) {
 		Overrides:            overrides,
 		Quick:                true,
 		SkipRefresh:          true,
-		NoParallel:           true, // we mark tests as Parallel manually when instantiating
 	}
 
 	// Retrieve the template repo.
