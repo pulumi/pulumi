@@ -501,8 +501,8 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		return
 	}
 
-	fmt.Printf("Starting test: %s\n", t.Name())
-	defer fmt.Printf("Finished test: %s\n", t.Name())
+	fmt.Fprintf(os.Stderr, "Starting test: %s\n", t.Name())
+	defer fmt.Fprintf(os.Stderr, "Finished test: %s\n", t.Name())
 
 	// If we have a matcher, ensure that this test matches its pattern.
 	if directoryMatcher.re != nil && !directoryMatcher.re.Match([]byte(opts.Dir)) {
