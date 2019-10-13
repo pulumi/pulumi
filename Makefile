@@ -30,8 +30,7 @@ test_fast::
 
 test_all::
 #	$(GO_TEST) ${FAST_TEST_PKGS}
-	$(GO_TEST) -v ${SLOW_TEST_PKGS} &
-	PID=$$! ; while [ -d /proc/$$PID ]; do printf "."; sleep 20; done; wait $$PID;
+	$(GO_TEST) -v ${SLOW_TEST_PKGS} & PID=$$! ; while [ -d /proc/$$PID ]; do printf "."; sleep 20; done; wait $$PID;
 
 
 test_templates::
