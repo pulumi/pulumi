@@ -596,7 +596,6 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	duration time.Duration) (string, error) {
 
 	req := apitype.RenewUpdateLeaseRequest{
-		Token:    token,
 		Duration: int(duration / time.Second),
 	}
 	var resp apitype.RenewUpdateLeaseResponse
@@ -604,8 +603,8 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	// While renewing a lease uses POST, it is safe to send multiple requests (consider that we do this multiple times
 	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
 	// these POST operations.
-	if err := pc.restCallWithOptions(ctx, "POST", getUpdatePath(update, "renew_lease"), nil,
-		req, &resp, httpCallOptions{RetryAllMethods: true}); err != nil {
+	if err := pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil

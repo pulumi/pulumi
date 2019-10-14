@@ -172,8 +172,6 @@ type UpdateProgram struct {
 
 // RenewUpdateLeaseRequest defines the body of a request to the update lease renewal endpoint of the service API.
 type RenewUpdateLeaseRequest struct {
-	// The current, valid lease token.
-	Token string `json:"token"`
 	// The duration for which to renew the lease in seconds (maximum 300).
 	Duration int `json:"duration"`
 }
