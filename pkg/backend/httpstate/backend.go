@@ -610,17 +610,17 @@ func (b *cloudBackend) ListStacks(
 	return backendSummaries, nil
 }
 
-func (b *cloudBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
-	stack, err := b.getCloudStackIdentifier(stackRef)
+func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return false, err
 	}
 
-	return b.client.DeleteStack(ctx, stack, force)
+	return b.client.DeleteStack(ctx, stackID, force)
 }
 
-func (b *cloudBackend) RenameStack(ctx context.Context, stackRef backend.StackReference, newName tokens.QName) error {
-	stack, err := b.getCloudStackIdentifier(stackRef)
+func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, newName tokens.QName) error {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return err
 	}
@@ -639,33 +639,17 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 
 	// Transferring stack ownership is available to Pulumi admins, but isn't quite ready
 	// for general use yet.
-	if stack.Owner != newIdentity.Owner {
+	if stackID.Owner != newIdentity.Owner {
 		errMsg := "You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
 			"of a stack to another organization, please contact support@pulumi.com."
 		return errors.Errorf(errMsg)
 	}
 
-	return b.client.RenameStack(ctx, stack, newIdentity)
+	return b.client.RenameStack(ctx, stackID, newIdentity)
 }
 
-func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, err
-	} else if stack == nil {
-		return nil, errors.New("stack not found")
-	}
-
-	return stack, nil
-}
-
-func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	stack, err := getStack(ctx, b, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -675,41 +659,23 @@ func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 		ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
 }
 
-func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	stack, err := getStack(ctx, b, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	stack, err := getStack(ctx, b, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	stack, err := getStack(ctx, b, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Query(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) Query(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) result.Result {
-
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return result.FromError(err)
-	}
-
 	return b.query(ctx, stack, op, nil /*events*/)
 }
 
@@ -1031,9 +997,9 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 }
 
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
-	stackRef backend.StackReference) (config.Map, error) {
+	stack backend.Stack) (config.Map, error) {
 
-	stackID, err := b.getCloudStackIdentifier(stackRef)
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return nil, err
 	}
@@ -1075,18 +1041,10 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 	return c, nil
 }
 
-func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackReference, cfg backend.StackConfiguration,
+func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg backend.StackConfiguration,
 	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
 
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, err
-	}
-	if stack == nil {
-		return nil, errors.New("stack not found")
-	}
-
-	target, targetErr := b.getTarget(ctx, stackRef, cfg.Config, cfg.Decrypter)
+	target, targetErr := b.getTarget(ctx, stack.Ref(), cfg.Config, cfg.Decrypter)
 	if targetErr != nil {
 		return nil, targetErr
 	}
@@ -1094,8 +1052,12 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 }
 
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
-	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+	stack backend.Stack) (*apitype.UntypedDeployment, error) {
+	return b.exportDeployment(ctx, stack.Ref())
+}
 
+func (b *cloudBackend) exportDeployment(ctx context.Context,
+	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -1109,15 +1071,15 @@ func (b *cloudBackend) ExportDeployment(ctx context.Context,
 	return &deployment, nil
 }
 
-func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
-	stack, err := b.getCloudStackIdentifier(stackRef)
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return err
 	}
 
-	update, err := b.client.ImportStackDeployment(ctx, stack, deployment)
+	update, err := b.client.ImportStackDeployment(ctx, stackID, deployment)
 	if err != nil {
 		return err
 	}
@@ -1326,29 +1288,20 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 
 // GetStackTags fetches the stack's existing tags.
 func (b *cloudBackend) GetStackTags(ctx context.Context,
-	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
-
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, err
-	}
-	if stack == nil {
-		return nil, errors.New("stack not found")
-	}
-
+	stack backend.Stack) (map[apitype.StackTagName]string, error) {
 	return stack.(Stack).Tags(), nil
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func (b *cloudBackend) UpdateStackTags(ctx context.Context,
-	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
+	stack backend.Stack, tags map[apitype.StackTagName]string) error {
 
-	stack, err := b.getCloudStackIdentifier(stackRef)
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return err
 	}
 
-	return b.client.UpdateStackTags(ctx, stack, tags)
+	return b.client.UpdateStackTags(ctx, stackID, tags)
 }
 
 type httpstateBackendClient struct {

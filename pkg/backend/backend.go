@@ -123,42 +123,42 @@ type Backend interface {
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.
-	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
+	RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error)
 
-	RenameStack(ctx context.Context, stackRef StackReference, newName tokens.QName) error
+	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) error
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Update(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stackRef StackReference, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
 	// Query against the resource outputs in a stack's state checkpoint.
-	Query(ctx context.Context, stackRef StackReference, op UpdateOperation) result.Result
+	Query(ctx context.Context, stack Stack, op UpdateOperation) result.Result
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(ctx context.Context, stackRef StackReference, cfg StackConfiguration,
+	GetLogs(ctx context.Context, stack Stack, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
-	GetLatestConfiguration(ctx context.Context, stackRef StackReference) (config.Map, error)
+	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
 
 	// GetStackTags fetches the stack's existing tags.
-	GetStackTags(ctx context.Context, stackRef StackReference) (map[apitype.StackTagName]string, error)
+	GetStackTags(ctx context.Context, stack Stack) (map[apitype.StackTagName]string, error)
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
-	UpdateStackTags(ctx context.Context, stackRef StackReference, tags map[apitype.StackTagName]string) error
+	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
-	ExportDeployment(ctx context.Context, stackRef StackReference) (*apitype.UntypedDeployment, error)
+	ExportDeployment(ctx context.Context, stack Stack) (*apitype.UntypedDeployment, error)
 	// ImportDeployment imports the given deployment into the indicated stack.
-	ImportDeployment(ctx context.Context, stackRef StackReference, deployment *apitype.UntypedDeployment) error
+	ImportDeployment(ctx context.Context, stack Stack, deployment *apitype.UntypedDeployment) error
 	// Logout logs you out of the backend and removes any stored credentials.
 	Logout() error
 	// Returns the identity of the current user for the backend.
