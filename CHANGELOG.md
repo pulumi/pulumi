@@ -3,8 +3,6 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-## IMPORTANT - COMPAT
-
 - Fix hangs and crashes related to use of `getResource` (i.e. `aws.ec2.getSubnetIds(...)`) methods,
   including frequent hangs on Node.js 12. This fixes https://github.com/pulumi/pulumi/issues/3260)
   and [hangs](https://github.com/pulumi/pulumi/issues/3309).
