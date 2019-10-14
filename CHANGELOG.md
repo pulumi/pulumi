@@ -5,40 +5,14 @@ CHANGELOG
 
 ## IMPORTANT - COMPAT
 
-- Mitigate issue causing [crashes](https://github.com/pulumi/pulumi/issues/3260) and
-  [hangs](https://github.com/pulumi/pulumi/issues/3309) across many OSs (primarily CentOS and macOS)
-  and several versions of nodejs (primarily 12.12 and up).
+- Fix hangs and crashes related to use of `getResource` (i.e. `aws.ec2.getSubnetIds(...)`) methods,
+  including frequent hangs on Node.js 12.  Some less common existing styles of using `getResource`
+  calls are also deprecated as part of this change, and users should see [link] for details on
+  adjusting their code if needed.  This fixes https://github.com/pulumi/pulumi/issues/3260) and
+  [hangs](https://github.com/pulumi/pulumi/issues/3309).
 
-  The issue occurs when making a 'data source' call in Pulumi in a synchronous fashion.  i.e. code
-  like:
-
-  ```ts
-  // A call to some provider's `getXXX` data source function.
-  const lb = aws.lb.getLoadBalancer(...);
-  ```
-
-  The issue is mitigated such that it should occur much less for users in practice.  If your
-  data-source call does not pass in a `parent` or `provider` the issue should not appear anymore,
-  and you should not have to make any changes to your code.
-
-  If your data-source does pass in either of these values, this issue should only occur rarely.  If
-  it no longer occurs for you, you should not have to make any changes to your code.  However, if
-  you are still running into crashes or hangs on OSX, it is recommended to take the following
-  approach to fixing the issue:
-
-  ```ts
-  // Update the code where you create your provider from the following:
-  const provider = new aws.Provider(...);
-
-  // to:
-  const provider = await ProviderRef.get(new aws.Provider(...));
-  ```
-
-  This will now be a `ProviderRef` instead of a `Provider`.  However, it should be accepted with all
-  the latest Pulumi libraries anywhere a `Provider` was previously accepted.
-
-  In a future version, Pulumi libraries *may* be updated to no longer accept a `Provider` to help
-  ensure this issue doesn't occur at all.
+  See https://www.pulumi.com/docs/troubleshooting/#synchronous-call for more details on
+  this issue and what to do if you still encounter a warning here after updating Pulumi.
 
 ## 1.3.1 (2019-10-09)
 

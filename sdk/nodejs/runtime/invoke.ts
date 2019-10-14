@@ -185,8 +185,10 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
         }
 
         if (provider.__registrationId === undefined) {
-            // TODO(cyrusn): issue warning here that we are synchronously blocking an rpc call.
-            utils.promiseResult(ProviderResource.register(provider));
+            log.warn(
+`Synchronous call made to "${tok}" with an unregistered provider.
+For more details see: https://www.pulumi.com/docs/troubleshooting/#synchronous-call`);
+            return utils.promiseResult(ProviderResource.register(provider));
         }
 
         return provider.__registrationId;
