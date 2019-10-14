@@ -6,13 +6,12 @@ CHANGELOG
 ## IMPORTANT - COMPAT
 
 - Fix hangs and crashes related to use of `getResource` (i.e. `aws.ec2.getSubnetIds(...)`) methods,
-  including frequent hangs on Node.js 12.  Some less common existing styles of using `getResource`
-  calls are also deprecated as part of this change, and users should see [link] for details on
-  adjusting their code if needed.  This fixes https://github.com/pulumi/pulumi/issues/3260) and
-  [hangs](https://github.com/pulumi/pulumi/issues/3309).
+  including frequent hangs on Node.js 12. This fixes https://github.com/pulumi/pulumi/issues/3260)
+  and [hangs](https://github.com/pulumi/pulumi/issues/3309).
 
-  See https://www.pulumi.com/docs/troubleshooting/#synchronous-call for more details on
-  this issue and what to do if you still encounter a warning here after updating Pulumi.
+  Some less common existing styles of using `getResource` calls are also deprecated as part of this
+  change, and users should see https://www.pulumi.com/docs/troubleshooting/#synchronous-call for
+  details on adjusting their code if needed.
 
 ## 1.3.1 (2019-10-09)
 
