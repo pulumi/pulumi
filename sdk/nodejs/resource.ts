@@ -725,13 +725,38 @@ export class ProviderRef {
     /** @internal */
     public getValue: () => string;
 
+    // For SxS we make a ProviderRef *look* like a Provider.  i.e. we expose both `urn` and `id`
+    // directly off of it (just like they are on Provider).  This way if a ProviderRef is passed to
+    // an older `@pulumi/pulumi` then the older `@pulumi/pulumi` will still be able to do:
+    // https://github.com/pulumi/pulumi/blob/756534865edd64ab9d790575355cfea056d2b718/sdk/nodejs/runtime/invoke.ts#L52-L56
+    //
+    // ```ts
+    //  if (opts.provider !== undefined) {
+    //    const providerURN = await opts.provider.urn.promise();
+    //    const providerID = await opts.provider.id.promise() || unknownValue;
+    //    providerRef = `${providerURN}::${providerID}`;
+    //  }
+    // ```
+
+    /**
+     * urn is the stable logical URN used to distinctly address the Provider, both before and after
+     * deployments.
+     */
+    public readonly urn: Output<URN>;
+
+    /**
+     * id is the provider-assigned unique ID for this managed resource.  It is set during
+     * deployments and may be missing (undefined) during planning phases.
+     */
+    public readonly id: Output<ID>;
+
     /**
      * Asynchronously creates a new `ProviderRef` for the given `ProviderResource`.
      */
     public static async get(provider: ProviderResource): Promise<ProviderRef> {
         const providerURN = await provider.urn.promise();
         const providerID = await provider.id.promise() || unknownValue;
-        return new ProviderRef(provider.getPackage(), `${providerURN}::${providerID}`);
+        return new ProviderRef(provider.getPackage(), `${providerURN}::${providerID}`, provider.urn, provider.id);
     }
 
     /** @internal */
@@ -740,7 +765,9 @@ export class ProviderRef {
     }
 
     /** @internal */
-    constructor(pkg: string, value: string) {
+    constructor(pkg: string, value: string, urn: Output<URN>, id: Output<ID>) {
+        this.urn = urn;
+        this.id = id;
         this.getPackage = () => pkg;
         this.getValue = () => value;
     }
