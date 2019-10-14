@@ -14,16 +14,14 @@
 
 package apitype
 
-// StackReferenceRequest creates or updates a stack reference to the specified stack.
-type StackReferenceRequest struct {
+// CreateStackReferenceRequest creates a stack reference to the specified stack.
+type CreateStackReferenceRequest struct {
 	// OrgName is the organization name the stack being referenced is found in.
 	OrgName string `json:"orgName"`
 	// ProjectName is the name of the project the stack being referenced is associated with.
 	ProjectName string `json:"projectName"`
 	// StackName is the name of the stack being referenced.
 	StackName string `json:"stackName"`
-	// Outputs that the stack references.
-	Outputs []string `json:"outputs"`
 }
 
 // DeleteStackReferenceRequest deletes the stack reference to the specified stack.
