@@ -364,22 +364,91 @@ func getPluginVersion(info packageJSON) (string, error) {
 	return version, nil
 }
 
+// When talking to the nodejs runtime we have three parties involved:
+//
+//  Engine Monitor <==> Language Host (this code) <==> NodeJS sdk runtime.
+//
+// Instead of having the NodeJS sdk runtime communicating directly with the Engine Monitor, we
+// instead have it communicate with us and we send all those messages to the real engine monitor
+// itself.  We do that by having ourselves launch our own grpc monitor server and passing the
+// address of it to the NodeJS runtime.  As far as the NodeJS sdk runtime is concerned, it is
+// communicating directly with the engine.
+//
+// When NodeJS then communicates back with us over our server, we then forward the messages
+// along untouched to the Engine Monitor.  However, we also open an additional *non-grpc*
+// channel to allow the sdk runtime to send us messages on.  Specifically, this non-grpc channel
+// is used entirely to allow the sdk runtime to make 'invoke' calls in a synchronous fashion.
+// This is accomplished by avoiding grpc entirely (which has no facility for synchronous rpc
+// calls), and instead operating over a pair of files coordinated between us and the sdk
+// runtime. One file is used by it to send us messages, and one file is used by us to send
+// messages back.  Because these are just files, nodejs natively supports allowing both sides to
+// read and write from each synchronously.
+//
+// When we receive the sync-invoke messages from the nodejs sdk we deserialize things off of the
+// file and then make a synchronous call to the real engine `invoke` monitor endpoint.  Unlike
+// nodejs, we have no problem calling this synchronously, and can block until we get the
+// response which we can then synchronously send to nodejs.
+
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
-	// Provide a channel for both the proxy gorouting and the launched nodejs process goroutine to
-	// notify us about issues.
-	responseChannel := make(chan *pulumirpc.RunResponse)
-
-	// fire up a proxy resource monitor
-	monitor, err := newMonitorProxy(ctx, responseChannel, req.GetMonitorAddress(), tracingSpan)
+	// Make a connection to the real monitor that we will forward messages to.
+	conn, err := grpc.Dial(req.GetMonitorAddress(), grpc.WithInsecure())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create monitor proxy")
+		return nil, err
 	}
 
+	// Make a client around that connection.  We can then make our own server that will act as a
+	// monitor for the sdk and forward to the real monitor.
+	target := pulumirpc.NewResourceMonitorClient(conn)
+
+	// Channel to control the server lifetime.  Once `Run` finishes, we'll shutdown the server.
+	serverCancel := make(chan bool)
+	defer func() {
+		serverCancel <- true
+		close(serverCancel)
+	}()
+
+	// Launch the rpc server giving it the real monitor to forward messages to.
+	port, serverDone, err := rpcutil.Serve(0, serverCancel, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target})
+			return nil
+		},
+	}, tracingSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the pipes we'll use to communicate synchronously with the nodejs process. Once we're
+	// done using the pipes clean them up so we don't leave anything around in the user file system.
+	pipes, pipesDone, err := createAndServePipes(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+
+	// Channel producing the final response we want to issue to our caller. Will get the result of
+	// the actual nodejs process we launch, or any results caused by errors in our server/pipes.
+	responseChannel := make(chan *pulumirpc.RunResponse)
+	defer close(responseChannel)
+
+	// Forward any rpc server or pipe errors to our output channel.
+	go func() {
+		err := <-serverDone
+		if err != nil {
+			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
+		}
+	}()
+	go func() {
+		err := <-pipesDone
+		if err != nil {
+			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
+		}
+	}()
+
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(responseChannel, req, monitor)
+	go host.execNodejs(responseChannel, req, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with
@@ -390,12 +459,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
 func (host *nodeLanguageHost) execNodejs(
-	responseChannel chan<- *pulumirpc.RunResponse,
-	req *pulumirpc.RunRequest, monitor *monitorProxy) {
+	responseChannel chan<- *pulumirpc.RunResponse, req *pulumirpc.RunRequest,
+	address, pipesDirectory string) {
 
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	response := func() *pulumirpc.RunResponse {
-		args := host.constructArguments(req, monitor)
+		args := host.constructArguments(req, address, pipesDirectory)
 		config, err := host.constructConfig(req)
 		if err != nil {
 			err = errors.Wrap(err, "failed to serialize configuration")
@@ -468,7 +537,9 @@ func (host *nodeLanguageHost) execNodejs(
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
-func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, proxy *monitorProxy) []string {
+func (host *nodeLanguageHost) constructArguments(
+	req *pulumirpc.RunRequest, address, pipesDirectory string) []string {
+
 	args := []string{host.runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
@@ -476,13 +547,9 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, prox
 		}
 	}
 
-	maybeAppendArg("monitor", proxy.addr)
+	maybeAppendArg("monitor", address)
 	maybeAppendArg("engine", host.engineAddress)
-	if proxy.pipes != nil {
-		maybeAppendArg("sync", proxy.pipes.directory())
-	} else {
-		maybeAppendArg("sync", "")
-	}
+	maybeAppendArg("sync", pipesDirectory)
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.GetPwd())
