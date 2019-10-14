@@ -648,17 +648,6 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, new
 	return b.client.RenameStack(ctx, stackID, newIdentity)
 }
 
-func getStack(ctx context.Context, b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, err
-	} else if stack == nil {
-		return nil, errors.New("stack not found")
-	}
-
-	return stack, nil
-}
-
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
