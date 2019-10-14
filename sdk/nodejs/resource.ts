@@ -179,14 +179,14 @@ export abstract class Resource {
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
     // tslint:disable-next-line:variable-name
-    private readonly __providers: Record<string, ProviderResourceOrRef>;
+    private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
     // getProvider fetches the provider for the given module member, if any.
-    public getProvider(moduleMember: string): ProviderResourceOrRef | undefined {
+    public getProvider(moduleMember: string): ProviderResource | undefined {
         const memComponents = moduleMember.split(":");
         if (memComponents.length !== 3) {
             return undefined;
@@ -313,7 +313,7 @@ export abstract class Resource {
     }
 }
 
-function convertToProvidersMap(providers: Record<string, ProviderResourceOrRef> | ProviderResourceOrRef[] | undefined) {
+function convertToProvidersMap(providers: Record<string, ProviderResource> | ProviderResource[] | undefined) {
     if (!providers) {
         return {};
     }
@@ -322,7 +322,7 @@ function convertToProvidersMap(providers: Record<string, ProviderResourceOrRef> 
         return providers;
     }
 
-    const result: Record<string, ProviderResourceOrRef> = {};
+    const result: Record<string, ProviderResource> = {};
     for (const provider of providers) {
         result[provider.getPackage()] = provider;
     }
@@ -477,7 +477,7 @@ export interface ResourceOptions {
      *
      * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
      */
-    provider?: ProviderResourceOrRef;
+    provider?: ProviderResource;
     /**
      * An optional customTimeouts configuration block.
      */
@@ -608,7 +608,7 @@ export interface ComponentResourceOptions extends ResourceOptions {
      *
      * Note: do not provide both [provider] and [providers];
      */
-    providers?: Record<string, ProviderResourceOrRef> | ProviderResourceOrRef[];
+    providers?: Record<string, ProviderResource> | ProviderResource[];
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
@@ -684,6 +684,22 @@ export abstract class ProviderResource extends CustomResource {
     /** @internal */
     private readonly pkg: string;
 
+    /** @internal */
+    // tslint:disable-next-line: variable-name
+    public __registrationId?: string;
+
+    public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
+        if (provider === undefined) {
+            return undefined;
+        }
+
+        if (!provider.__registrationId) {
+            provider.__registrationId = `${await provider.urn}::${await provider.id}`;
+        }
+
+        return provider.__registrationId;
+    }
+
     /**
      * Creates and registers a new provider resource for a particular package.
      *
@@ -702,82 +718,6 @@ export abstract class ProviderResource extends CustomResource {
         return this.pkg;
     }
 }
-
-/**
- * A reference to a `ProviderResource`.  Should be used as much as possible when referring to
- * `Provider`s from other locations.  For example, when specifying the `Provider` for a `Resource`
- * or the `Provider` for an `data source` `invoke` call, a `ProviderRef` should be provided instead
- * of a `Provider`.
- *
- * A `ProviderRef` can be obtained by calling `await ProviderRef.get(provider)`.
- */
-export class ProviderRef {
-    /**
-     * @internal
-     * A private field to help with RTTI that works in SxS scenarios.
-     */
-    // tslint:disable-next-line: variable-name
-    public readonly __providerRefInstance = true;
-
-    /** @internal */
-    public getPackage: () => string;
-
-    /** @internal */
-    public getValue: () => string;
-
-    // For SxS we make a ProviderRef *look* like a Provider.  i.e. we expose both `urn` and `id`
-    // directly off of it (just like they are on Provider).  This way if a ProviderRef is passed to
-    // an older `@pulumi/pulumi` then the older `@pulumi/pulumi` will still be able to do:
-    // https://github.com/pulumi/pulumi/blob/756534865edd64ab9d790575355cfea056d2b718/sdk/nodejs/runtime/invoke.ts#L52-L56
-    //
-    // ```ts
-    //  if (opts.provider !== undefined) {
-    //    const providerURN = await opts.provider.urn.promise();
-    //    const providerID = await opts.provider.id.promise() || unknownValue;
-    //    providerRef = `${providerURN}::${providerID}`;
-    //  }
-    // ```
-
-    /**
-     * urn is the stable logical URN used to distinctly address the Provider, both before and after
-     * deployments.
-     */
-    public readonly urn: Output<URN>;
-
-    /**
-     * id is the provider-assigned unique ID for this managed resource.  It is set during
-     * deployments and may be missing (undefined) during planning phases.
-     */
-    public readonly id: Output<ID>;
-
-    /**
-     * Asynchronously creates a new `ProviderRef` for the given `ProviderResource`.
-     */
-    public static async get(provider: ProviderResource): Promise<ProviderRef> {
-        const providerURN = await provider.urn.promise();
-        const providerID = await provider.id.promise() || unknownValue;
-        return new ProviderRef(provider.getPackage(), `${providerURN}::${providerID}`, provider.urn, provider.id);
-    }
-
-    /** @internal */
-    public static isInstance(obj: any): obj is ProviderRef {
-        return utils.isInstance<ProviderRef>(obj, "__providerRefInstance");
-    }
-
-    /** @internal */
-    constructor(pkg: string, value: string, urn: Output<URN>, id: Output<ID>) {
-        this.urn = urn;
-        this.id = id;
-        this.getPackage = () => pkg;
-        this.getValue = () => value;
-    }
-}
-
-/**
- * Either a `ProviderResource` or a `ProviderRef`.  In general, `ProviderRef`s are preferred over
- * passing a `Provider`.
- */
-export type ProviderResourceOrRef = ProviderResource | ProviderRef;
 
 /**
  * ComponentResource is a resource that aggregates one or more other child resources into a higher
@@ -916,7 +856,7 @@ function expandProviders(options: ComponentResourceOptions) {
 
 function normalizeProviders(opts: ComponentResourceOptions) {
     // If we have only 0-1 providers, then merge that back down to the .provider field.
-    const providers = <ProviderResourceOrRef[]>opts.providers;
+    const providers = <ProviderResource[]>opts.providers;
     if (providers) {
         if (providers.length === 0) {
             delete opts.providers;

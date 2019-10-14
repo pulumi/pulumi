@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ProviderResourceOrRef, Resource } from "./resource";
+import { ProviderResource, Resource } from "./resource";
 
 /*
  * InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.
@@ -27,7 +27,7 @@ export interface InvokeOptions {
      * An optional provider to use for this invocation. If no provider is supplied, the default provider for the
      * invoked function's package will be used.
      */
-    provider?: ProviderResourceOrRef;
+    provider?: ProviderResource;
 
     /**
      * An optional version, corresponding to the version of the provider plugin that should be used when performing this
