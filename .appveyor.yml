@@ -20,8 +20,8 @@ environment:
     secure: T19RJk7Uv3trAChRRDB82OAUDI8k2q9PaSetU7yDFu4aC+MshdwAhTTN/TaPkwl/
 install:
 - rmdir C:\go /s /q
-- appveyor DownloadFile https://dl.google.com/go/go1.12.1.windows-amd64.zip
-- 7z x go1.12.1.windows-amd64.zip -y -oC:\ > NUL
+- appveyor DownloadFile https://dl.google.com/go/go1.12.9.windows-amd64.zip
+- 7z x go1.12.9.windows-amd64.zip -y -oC:\ > NUL
 - cmd: >-
     set GOPATH=%USERPROFILE%\go
 
