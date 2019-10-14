@@ -129,8 +129,8 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
                 }
             })), label);
 
-        // If there were failures, propagate them.
-        processPotentialFailures(tok, resp);
+        // If there were failures, throw them here.
+        propagateFailures(tok, resp);
 
         // Finally propagate any other properties that were given to us as outputs.
         return deserializeProperties(resp.getReturn());
@@ -183,8 +183,8 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
     // Decode the response.
     const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
 
-    // If there were failures, propagate them.
-    processPotentialFailures(tok, resp);
+    // If there were failures, throw them here.
+    propagateFailures(tok, resp);
 
     // Finally propagate any other properties that were given to us as outputs.
     const resultValue = deserializeProperties(resp.getReturn());
@@ -285,7 +285,7 @@ function serializePropertiesSync(prop: any): any {
     }
 }
 
-function processPotentialFailures(tok: string, resp: any) {
+function propagateFailures(tok: string, resp: any) {
     const failures: any = resp.getFailuresList();
     if (failures && failures.length) {
         let reasons = "";
