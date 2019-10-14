@@ -20,7 +20,7 @@ import * as log from "../log";
 import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
-import { excessiveDebugOutput, getMonitor, getSyncInvokes, rpcKeepAlive } from "./settings";
+import { excessiveDebugOutput, getMonitor, rpcKeepAlive, SyncInvokes, tryGetSyncInvokes } from "./settings";
 
 import { ProviderRef, Resource } from "../resource";
 import * as utils from "../utils";
@@ -63,9 +63,34 @@ const providerproto = require("../proto/provider_pb.js");
  * synchronously.
  */
 export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    return opts.async
-        ? invokeAsync(tok, props, opts)
-        : invokeSync(tok, props, opts);
+    if (opts.async) {
+        // Use specifically requested async invoking.  Respect that.
+        return invokeAsync(tok, props, opts);
+    }
+
+    const syncInvokes = tryGetSyncInvokes();
+    if (!syncInvokes) {
+        // We weren't launched from a pulumi CLI that supports sync-invokes.  Let the user know they
+        // should update and fall back to synchronously blocking on the async invoke.
+        return invokeFallbackToAsync(tok, props, opts);
+    }
+
+    return invokeSync(tok, props, opts, syncInvokes);
+}
+
+let issuedUpdateWarning: boolean | undefined;
+
+export function invokeFallbackToAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
+    if (!issuedUpdateWarning) {
+        issuedUpdateWarning = true;
+        log.warn(
+`Pulumi is out of date. To update to a more recent version see instructions at:
+https://www.pulumi.com/docs/get-started/install/`);
+    }
+
+    const asyncResult = invokeAsync(tok, props, opts);
+    const syncResult = utils.promiseResult(asyncResult);
+    return createLiftedPromise(syncResult);
 }
 
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
@@ -129,15 +154,12 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     }
 }
 
-function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> {
+function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): Promise<any> {
     const label = `Invoking function: tok=${tok} synchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     const serialized = serializePropertiesSync(props);
     log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
-
-    // Fetch the sync monitor and make an RPC request.
-    const syncInvokes = getSyncInvokes();
 
     const providerRef = getProviderRefSync();
     const req = createInvokeRequest(tok, serialized, providerRef, opts);
@@ -167,15 +189,7 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> 
     // Finally propagate any other properties that were given to us as outputs.
     const resultValue = deserializeProperties(resp.getReturn());
 
-    // Expose the properties of the actual result of invoke directly on the promise itself. Note
-    // this doesn't actually involve any asynchrony.  The promise will be created synchronously and
-    // the values copied to it can be used immediately.  We simply make a Promise so that any
-    // consumers that do a `.then()` on it continue to work even though we've switched from bein
-    // async to sync.
-    const promise = Promise.resolve(resultValue);
-    Object.assign(promise, resultValue);
-
-    return promise;
+    return createLiftedPromise(resultValue);
 
     function getProviderRefSync() {
         const provider = getProvider(tok, opts);
@@ -191,6 +205,16 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions): Promise<any> 
             return undefined;
         }
     }
+}
+
+// Expose the properties of the actual result of invoke directly on the promise itself. Note this
+// doesn't actually involve any asynchrony.  The promise will be created synchronously and the
+// values copied to it can be used immediately.  We simply make a Promise so that any consumers that
+// do a `.then()` on it continue to work even though we've switched from being async to sync.
+function createLiftedPromise(value: any): Promise<any> {
+    const promise = Promise.resolve(value);
+    Object.assign(promise, value);
+    return promise;
 }
 
 function createInvokeRequest(tok: string, serialized: any, providerRef: ProviderRef | undefined, opts: InvokeOptions) {

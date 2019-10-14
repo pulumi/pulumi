@@ -178,6 +178,7 @@ export function getMonitor(): Object | undefined {
     return monitor;
 }
 
+/** @internal */
 export interface SyncInvokes {
     requests: number;
     responses: number;
@@ -185,14 +186,15 @@ export interface SyncInvokes {
 
 let syncInvokes: SyncInvokes | undefined;
 
-export function getSyncInvokes(): SyncInvokes {
-    if (!syncInvokes) {
-        const dir = options.syncDir!;
-        const requests = fs.openSync(path.join(dir, "invoke_req"), fs.constants.O_WRONLY|fs.constants.O_SYNC);
-        const responses = fs.openSync(path.join(dir, "invoke_res"), fs.constants.O_RDONLY|fs.constants.O_SYNC);
+/** @internal */
+export function tryGetSyncInvokes(): SyncInvokes | undefined {
+    if (!syncInvokes && options.syncDir) {
+        const requests = fs.openSync(path.join(options.syncDir, "invoke_req"), fs.constants.O_WRONLY|fs.constants.O_SYNC);
+        const responses = fs.openSync(path.join(options.syncDir, "invoke_res"), fs.constants.O_RDONLY|fs.constants.O_SYNC);
         syncInvokes = { requests, responses };
     }
-    return syncInvokes!;
+
+    return syncInvokes;
 }
 
 /**
