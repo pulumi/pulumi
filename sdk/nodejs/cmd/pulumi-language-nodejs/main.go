@@ -538,7 +538,6 @@ func (host *nodeLanguageHost) execNodejs(
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
 func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, address, pipesDirectory string) []string {
-
 	args := []string{host.runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
