@@ -712,6 +712,10 @@ export abstract class ProviderResource extends CustomResource {
  * A `ProviderRef` can be obtained by calling `await ProviderRef.get(provider)`.
  */
 export class ProviderRef {
+    /**
+     * @internal
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
     // tslint:disable-next-line: variable-name
     public readonly __providerRefInstance = true;
 
