@@ -158,30 +158,25 @@ type monitorProxy struct {
 
 func (p *monitorProxy) Invoke(
 	ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-
 	return p.target.Invoke(ctx, req)
 }
 
-func (p *monitorProxy) ReadResource(ctx context.Context,
-	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
-
+func (p *monitorProxy) ReadResource(
+	ctx context.Context, req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
 	return p.target.ReadResource(ctx, req)
 }
 
-func (p *monitorProxy) RegisterResource(ctx context.Context,
-	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
-
+func (p *monitorProxy) RegisterResource(
+	ctx context.Context, req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
 	return p.target.RegisterResource(ctx, req)
 }
 
 func (p *monitorProxy) RegisterResourceOutputs(
 	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
-
 	return p.target.RegisterResourceOutputs(ctx, req)
 }
 
 func (p *monitorProxy) SupportsFeature(
 	ctx context.Context, req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
-
 	return p.target.SupportsFeature(ctx, req)
 }
