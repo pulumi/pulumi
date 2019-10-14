@@ -47,10 +47,8 @@ type pipes interface {
 	// nodejs process so it can connect to our read and writes streams for communication.
 	directory() string
 
-	// Attempt to create and connect to the read and write streams.  Signals to the `done` channel
-	// when done. Will either send `nil` to the channel if this connects successfully, or an error
-	// if it doesn't.  Only one message will ever be sent.
-	connect(done chan<- error)
+	// Attempt to create and connect to the read and write streams.
+	connect() error
 
 	// The stream that we will use to read in requests send to us by the nodejs process.
 	reader() io.Reader
@@ -149,11 +147,7 @@ func (p *monitorProxy) servePipes(
 	err := func() error {
 		pbcodec := encoding.GetCodec(proto.Name)
 
-		connectDone := make(chan error)
-		defer close(connectDone)
-		go p.pipes.connect(connectDone)
-
-		err := <-connectDone
+		err:= p.pipes.connect();
 		if err != nil {
 			logging.V(10).Infof("Sync invoke: Error connecting to pipes: %s\n", err)
 			return err
