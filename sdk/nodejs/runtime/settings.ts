@@ -188,7 +188,7 @@ let syncInvokes: SyncInvokes | undefined;
 
 /** @internal */
 export function tryGetSyncInvokes(): SyncInvokes | undefined {
-    if (!syncInvokes && options.syncDir) {
+    if (syncInvokes === undefined && options.syncDir) {
         const requests = fs.openSync(path.join(options.syncDir, "invoke_req"), fs.constants.O_WRONLY|fs.constants.O_SYNC);
         const responses = fs.openSync(path.join(options.syncDir, "invoke_res"), fs.constants.O_RDONLY|fs.constants.O_SYNC);
         syncInvokes = { requests, responses };
