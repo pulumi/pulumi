@@ -19,7 +19,7 @@ import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
-import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
+import { deserializeProperties, serializeProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, rpcKeepAlive, SyncInvokes, tryGetSyncInvokes } from "./settings";
 
 import { ProviderResource, Resource } from "../resource";
@@ -129,11 +129,8 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
                 }
             })), label);
 
-        // If there were failures, throw them here.
-        propagateFailures(tok, resp);
-
         // Finally propagate any other properties that were given to us as outputs.
-        return deserializeProperties(resp.getReturn());
+        return deserializeResponse(tok, resp);
     }
     finally {
         done();
@@ -168,12 +165,7 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
 
     // Decode the response.
     const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
-
-    // If there were failures, throw them here.
-    propagateFailures(tok, resp);
-
-    // Finally propagate any other properties that were given to us as outputs.
-    const resultValue = deserializeProperties(resp.getReturn());
+    const resultValue = deserializeResponse(tok, resp);
 
     return createLiftedPromise(resultValue);
 
@@ -272,7 +264,7 @@ function serializePropertiesSync(prop: any): any {
     }
 }
 
-function propagateFailures(tok: string, resp: any) {
+function deserializeResponse(tok: string, resp: any) {
     const failures: any = resp.getFailuresList();
     if (failures && failures.length) {
         let reasons = "";
@@ -286,4 +278,6 @@ function propagateFailures(tok: string, resp: any) {
 
         throw new Error(`Invoke of '${tok}' failed: ${reasons}`);
     }
+
+    return deserializeProperties(resp.getReturn());
 }
