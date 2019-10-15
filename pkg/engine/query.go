@@ -60,6 +60,7 @@ func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
 	if err != nil {
 		return result.FromError(err)
 	}
+	defer emitter.Close()
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.

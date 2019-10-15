@@ -39,6 +39,8 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	if err != nil {
 		return nil, result.FromError(err)
 	}
+	defer emitter.Close()
+
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
