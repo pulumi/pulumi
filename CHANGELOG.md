@@ -8,8 +8,9 @@ CHANGELOG
   and [hangs](https://github.com/pulumi/pulumi/issues/3309).
 
   Some less common existing styles of using `getResource` calls are also deprecated as part of this
-  change, and users should see https://www.pulumi.com/docs/troubleshooting/#synchronous-call for
-  details on adjusting their code if needed.
+  change, and users should see this
+  [troubleshooting-doc](https://www.pulumi.com/docs/troubleshooting/#synchronous-call) for details
+  on adjusting their code if needed.
 
 ## 1.3.1 (2019-10-09)
 
