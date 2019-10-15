@@ -21,129 +21,133 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDetectVars(t *testing.T) {
-	buildID := "123"
-	systemAndEnvVars := map[SystemName]map[string]string{
-		// Since the `pulumi/pulumi` repo runs on Travis,
-		// we set the TRAVIS env var to an empty string for all test cases
-		// except for the Travis one itself.
-		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
-		AzurePipelines: {
-			"TRAVIS":        "",
-			"TF_BUILD":      "true",
-			"BUILD_BUILDID": buildID,
-		},
-		CircleCI: {
-			"TRAVIS":           "",
-			"CIRCLECI":         "true",
-			"CIRCLE_BUILD_NUM": buildID,
-		},
-		Codefresh: {
-			"TRAVIS":       "",
-			"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
-			"CF_BUILD_ID":  buildID,
-		},
-		GenericCI: {
-			"TRAVIS":             "",
-			"PULUMI_CI_SYSTEM":   "generic-ci-system",
-			"PULUMI_CI_BUILD_ID": buildID,
-		},
-		GitLab: {
-			"TRAVIS":    "",
-			"GITLAB_CI": "true",
-			"CI_JOB_ID": buildID,
-		},
-		Travis: {
-			"TRAVIS":        "true",
-			"TRAVIS_JOB_ID": buildID,
-		},
-	}
+func TestVars(t *testing.T) {
+	t.Parallel()
 
-	for system := range systemAndEnvVars {
-		t.Run(fmt.Sprintf("Test_%v_Detection", system), func(t *testing.T) {
-			envVars := systemAndEnvVars[system]
-			originalEnvVars := make(map[string]string)
-			for envVar := range envVars {
-				// Save the original env value
-				if value, isSet := os.LookupEnv(envVar); isSet {
-					originalEnvVars[envVar] = value
+	t.Run("TestDetectVars", func(t *testing.T) {
+		buildID := "123"
+		systemAndEnvVars := map[SystemName]map[string]string{
+			// Since the `pulumi/pulumi` repo runs on Travis,
+			// we set the TRAVIS env var to an empty string for all test cases
+			// except for the Travis one itself.
+			// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
+			AzurePipelines: {
+				"TRAVIS":        "",
+				"TF_BUILD":      "true",
+				"BUILD_BUILDID": buildID,
+			},
+			CircleCI: {
+				"TRAVIS":           "",
+				"CIRCLECI":         "true",
+				"CIRCLE_BUILD_NUM": buildID,
+			},
+			Codefresh: {
+				"TRAVIS":       "",
+				"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
+				"CF_BUILD_ID":  buildID,
+			},
+			GenericCI: {
+				"TRAVIS":             "",
+				"PULUMI_CI_SYSTEM":   "generic-ci-system",
+				"PULUMI_CI_BUILD_ID": buildID,
+			},
+			GitLab: {
+				"TRAVIS":    "",
+				"GITLAB_CI": "true",
+				"CI_JOB_ID": buildID,
+			},
+			Travis: {
+				"TRAVIS":        "true",
+				"TRAVIS_JOB_ID": buildID,
+			},
+		}
+
+		for system := range systemAndEnvVars {
+			t.Run(fmt.Sprintf("Test_%v_Detection", system), func(t *testing.T) {
+				envVars := systemAndEnvVars[system]
+				originalEnvVars := make(map[string]string)
+				for envVar := range envVars {
+					// Save the original env value
+					if value, isSet := os.LookupEnv(envVar); isSet {
+						originalEnvVars[envVar] = value
+					}
+
+					os.Setenv(envVar, envVars[envVar])
 				}
+				vars := DetectVars()
+				assert.Equal(t,
+					buildID, vars.BuildID,
+					"%v did not set the expected build ID %v in the Vars struct.", system, buildID)
 
-				os.Setenv(envVar, envVars[envVar])
-			}
-			vars := DetectVars()
-			assert.Equal(t,
-				buildID, vars.BuildID,
-				"%v did not set the expected build ID %v in the Vars struct.", system, buildID)
-
-			// Restore any modified env vars back to their original value
-			// if we previously saved it. Otherwise, just unset it.
-			for envVar := range envVars {
-				if val, ok := originalEnvVars[envVar]; ok {
-					os.Setenv(envVar, val)
-				} else {
-					os.Unsetenv(envVar)
+				// Restore any modified env vars back to their original value
+				// if we previously saved it. Otherwise, just unset it.
+				for envVar := range envVars {
+					if val, ok := originalEnvVars[envVar]; ok {
+						os.Setenv(envVar, val)
+					} else {
+						os.Unsetenv(envVar)
+					}
 				}
-			}
-		})
-	}
-}
+			})
+		}
+	})
 
-func TestDetectVarsBaseCI(t *testing.T) {
-	systemAndEnvVars := map[SystemName]map[string]string{
-		// Since the `pulumi/pulumi` repo runs on Travis,
-		// we set the TRAVIS env var to an empty string for all test cases
-		// except for the Travis one itself.
-		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
-		AppVeyor: {
-			"TRAVIS":   "",
-			"APPVEYOR": "true",
-		},
-		Codeship: {
-			"TRAVIS":  "",
-			"CI_NAME": "codeship",
-		},
-	}
+	t.Run("TestDetectVarsBaseCI", func(t *testing.T) {
+		systemAndEnvVars := map[SystemName]map[string]string{
+			// Since the `pulumi/pulumi` repo runs on Travis,
+			// we set the TRAVIS env var to an empty string for all test cases
+			// except for the Travis one itself.
+			// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
+			AppVeyor: {
+				"TRAVIS":   "",
+				"APPVEYOR": "true",
+			},
+			Codeship: {
+				"TRAVIS":  "",
+				"CI_NAME": "codeship",
+			},
+		}
 
-	for system := range systemAndEnvVars {
-		t.Run(fmt.Sprintf("Test_%v_Detection", system), func(t *testing.T) {
-			envVars := systemAndEnvVars[system]
-			originalEnvVars := make(map[string]string)
-			for envVar := range envVars {
-				// Save the original env value
-				if value, isSet := os.LookupEnv(envVar); isSet {
-					originalEnvVars[envVar] = value
+		for system := range systemAndEnvVars {
+			t.Run(fmt.Sprintf("Test_%v_Detection", system), func(t *testing.T) {
+				envVars := systemAndEnvVars[system]
+				originalEnvVars := make(map[string]string)
+				for envVar := range envVars {
+					// Save the original env value
+					if value, isSet := os.LookupEnv(envVar); isSet {
+						originalEnvVars[envVar] = value
+					}
+
+					os.Setenv(envVar, envVars[envVar])
 				}
+				vars := DetectVars()
+				assert.Equal(t,
+					string(system), string(vars.Name),
+					"%v did not set the expected CI system name in the Vars struct.", system)
 
-				os.Setenv(envVar, envVars[envVar])
-			}
-			vars := DetectVars()
-			assert.Equal(t,
-				string(system), string(vars.Name),
-				"%v did not set the expected CI system name in the Vars struct.", system)
-
-			// Restore any modified env vars back to their original value
-			// if we previously saved it. Otherwise, just unset it.
-			for envVar := range envVars {
-				if val, ok := originalEnvVars[envVar]; ok {
-					os.Setenv(envVar, val)
-				} else {
-					os.Unsetenv(envVar)
+				// Restore any modified env vars back to their original value
+				// if we previously saved it. Otherwise, just unset it.
+				for envVar := range envVars {
+					if val, ok := originalEnvVars[envVar]; ok {
+						os.Setenv(envVar, val)
+					} else {
+						os.Unsetenv(envVar)
+					}
 				}
-			}
-		})
-	}
-}
+			})
+		}
+	})
 
-func TestDetectVarsDisableCIDetection(t *testing.T) {
-	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "nonEmptyString")
-	os.Setenv("TRAVIS", "true")
-	os.Setenv("TRAVIS_JOB_ID", "1234")
+	t.Run("TestDetectVarsDisableCIDetection", func(t *testing.T) {
+		os.Setenv("PULUMI_DISABLE_CI_DETECTION", "nonEmptyString")
+		os.Setenv("TRAVIS", "true")
+		os.Setenv("TRAVIS_JOB_ID", "1234")
 
-	v := DetectVars()
-	assert.Equal(t, "", v.BuildID)
+		v := DetectVars()
+		assert.Equal(t, "", v.BuildID)
 
-	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "")
-	os.Setenv("TRAVIS", "")
-	os.Setenv("TRAVIS_JOB_ID", "")
+		os.Setenv("PULUMI_DISABLE_CI_DETECTION", "")
+		os.Setenv("TRAVIS", "")
+		os.Setenv("TRAVIS_JOB_ID", "")
+	})
 }
