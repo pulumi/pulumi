@@ -26,7 +26,7 @@ install:
 before_script:
 - "${PULUMI_SCRIPTS}/ci/ensure-dependencies"
 script:
-- make travis_${TRAVIS_EVENT_TYPE}
+- travis_wait 60 make travis_${TRAVIS_EVENT_TYPE}
 - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./scripts/update_homebrew.sh; fi
 after_failure:
 - "${PULUMI_SCRIPTS}/ci/upload-failed-tests"
