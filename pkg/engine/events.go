@@ -218,17 +218,11 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 						// If the event source has been closed, flush the queue.
 						for _, e := range queue {
 							events <- e
-							if e.Type == CancelEvent {
-								return
-							}
 						}
 						return
 					}
 					queue = append(queue, e)
 				case events <- queue[0]:
-					if queue[0].Type == CancelEvent {
-						return
-					}
 					queue = queue[1:]
 				}
 			}
