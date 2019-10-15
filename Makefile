@@ -38,7 +38,7 @@ test_templates::
 .PHONY: publish_tgz
 publish_tgz:
 	$(call STEP_MESSAGE)
-	./scripts/publish_tgz.sh
+	time ./scripts/publish_tgz.sh
 
 .PHONY: publish_packages
 publish_packages:
