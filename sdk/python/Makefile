@@ -15,7 +15,7 @@ build_package::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	cp ../../README.md $(PYENVSRC)
-	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
+	cd $(PYENVSRC) && time pipenv run python setup.py build bdist_wheel --universal
 
 build_plugin::
 	time go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
