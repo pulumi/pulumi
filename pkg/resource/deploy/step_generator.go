@@ -1008,7 +1008,7 @@ func (sg *stepGenerator) loadResourceProvider(
 	}
 	p, ok := sg.plan.GetProvider(ref)
 	if !ok {
-		sg.plan.Diag().Errorf(diag.GetUnknownProviderError(urn), provider, urn, refErr)
+		sg.plan.Diag().Errorf(diag.GetUnknownProviderError(urn), provider, urn)
 		return nil, result.Bail()
 	}
 	return p, nil
