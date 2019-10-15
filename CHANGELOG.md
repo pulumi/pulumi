@@ -52,6 +52,8 @@ CHANGELOG
   change, and users should see https://www.pulumi.com/docs/troubleshooting/#synchronous-call for
   details on adjusting their code if needed.
 
+- Support for lists and maps in config.
+
 ## 1.3.1 (2019-10-09)
 
 - Revert "propagate resource inputs to resource state during preview". These changes had a critical issue that needs
