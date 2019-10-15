@@ -16,7 +16,7 @@ let pulumi = require("../../../../../");
         }
     }
 
-    const provider = await pulumi.ProviderRef.get(new Provider("p"));
+    const provider = await pulumi.ProviderResource.register(new Provider("p"));
     const parent = new Resource("r", { provider })
 
     let args = {

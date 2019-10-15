@@ -10,7 +10,7 @@ let pulumi = require("../../../../../");
         }
     }
 
-    const provider = await pulumi.ProviderRef.get(new Provider("p"));
+    const provider = await pulumi.ProviderResource.register(new Provider("p"));
 
     let args = {
         a: "hello",
