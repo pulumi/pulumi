@@ -4609,6 +4609,7 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 }
 
 func TestDependencyChangeDBR(t *testing.T) {
+	t.Parallel()
 	p := &TestPlan{}
 
 	loaders := []*deploytest.ProviderLoader{
