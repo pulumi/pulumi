@@ -323,6 +323,9 @@ type ConfigValue struct {
 	String string `json:"string"`
 	// Secret is true if this value is a secret and false otherwise.
 	Secret bool `json:"secret"`
+	// Object is true if this value is a JSON encoded object. If both `Object` and `Secret` is true,
+	// then the JSON encoded object contains at least one secure value.
+	Object bool `json:"object"`
 }
 
 // StackTagName is the key for the tags bag in stack. This is just a string, but we use a type alias to provide a richer
