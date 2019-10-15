@@ -184,7 +184,7 @@ func Login(d diag.Sink, url string) (Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return be, workspace.StoreAccessToken(be.URL(), "", true)
+	return be, workspace.StoreAccount(be.URL(), workspace.Account{}, true)
 }
 
 func (b *localBackend) local() {}
@@ -645,7 +645,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 }
 
 func (b *localBackend) Logout() error {
-	return workspace.DeleteAccessToken(b.originalURL)
+	return workspace.DeleteAccount(b.originalURL)
 }
 
 func (b *localBackend) CurrentUser() (string, error) {
