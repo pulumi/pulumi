@@ -497,7 +497,9 @@ func removeStack(t *testing.T, name string) {
 	assert.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	assert.NoError(t, err)
-	_, err = b.RemoveStack(context.Background(), ref, false)
+	stack, err := b.GetStack(context.Background(), ref)
+	assert.NoError(t, err)
+	_, err = b.RemoveStack(context.Background(), stack, false)
 	assert.NoError(t, err)
 }
 

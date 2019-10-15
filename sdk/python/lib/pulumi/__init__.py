@@ -62,6 +62,9 @@ from .resource import (
     create_urn,
     export,
     ROOT_STACK_RESOURCE,
+    ResourceTransformation,
+    ResourceTransformationArgs,
+    ResourceTransformationResult,
 )
 
 from .output import (

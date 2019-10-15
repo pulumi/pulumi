@@ -64,22 +64,58 @@ func TestBasicGraph(t *testing.T) {
 
 	assert.Equal(t, []*resource.State{
 		a, b, pB, c, d,
-	}, dg.DependingOn(pA))
+	}, dg.DependingOn(pA, nil))
 
 	assert.Equal(t, []*resource.State{
 		b, pB, c, d,
-	}, dg.DependingOn(a))
+	}, dg.DependingOn(a, nil))
 
 	assert.Equal(t, []*resource.State{
 		pB, c, d,
-	}, dg.DependingOn(b))
+	}, dg.DependingOn(b, nil))
 
 	assert.Equal(t, []*resource.State{
 		c,
-	}, dg.DependingOn(pB))
+	}, dg.DependingOn(pB, nil))
 
-	assert.Nil(t, dg.DependingOn(c))
-	assert.Nil(t, dg.DependingOn(d))
+	assert.Nil(t, dg.DependingOn(c, nil))
+	assert.Nil(t, dg.DependingOn(d, nil))
+
+	assert.Nil(t, dg.DependingOn(pA, map[resource.URN]bool{
+		a.URN: true,
+		b.URN: true,
+	}))
+
+	assert.Equal(t, []*resource.State{
+		a, pB, c,
+	}, dg.DependingOn(pA, map[resource.URN]bool{
+		b.URN: true,
+	}))
+
+	assert.Equal(t, []*resource.State{
+		b, pB, c, d,
+	}, dg.DependingOn(pA, map[resource.URN]bool{
+		a.URN: true,
+	}))
+
+	assert.Equal(t, []*resource.State{
+		c,
+	}, dg.DependingOn(a, map[resource.URN]bool{
+		b.URN:  true,
+		pB.URN: true,
+	}))
+
+	assert.Equal(t, []*resource.State{
+		pB, c,
+	}, dg.DependingOn(a, map[resource.URN]bool{
+		b.URN: true,
+	}))
+
+	assert.Equal(t, []*resource.State{
+		d,
+	}, dg.DependingOn(b, map[resource.URN]bool{
+		pB.URN: true,
+	}))
 }
 
 // Tests that we don't add the same node to the DependingOn set twice.
@@ -99,7 +135,7 @@ func TestGraphNoDuplicates(t *testing.T) {
 
 	assert.Equal(t, []*resource.State{
 		b, c, d,
-	}, dg.DependingOn(a))
+	}, dg.DependingOn(a, nil))
 }
 
 func TestDependenciesOf(t *testing.T) {

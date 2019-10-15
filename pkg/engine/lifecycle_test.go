@@ -4607,3 +4607,108 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 
 	p.Run(t, old)
 }
+
+func TestDependencyChangeDBR(t *testing.T) {
+	p := &TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					if !olds["B"].DeepEquals(news["B"]) {
+						return plugin.DiffResult{
+							Changes: plugin.DiffSome,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	const resType = "pkgA:index:typ"
+
+	inputsA := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+
+	var urnA, urnB resource.URN
+	var err error
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		assert.NoError(t, err)
+
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
+		urnB, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+			Inputs:       inputsB,
+			Dependencies: []resource.URN{urnA},
+			PropertyDeps: inputDepsB,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	inputsA["A"] = resource.NewStringProperty("bar")
+	program = deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urnB, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+			Inputs: inputsB,
+		})
+		assert.NoError(t, err)
+
+		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Steps = []TestStep{
+		{
+			Op: Update,
+			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+				evts []Event, res result.Result) result.Result {
+
+				assert.Nil(t, res)
+				assert.True(t, len(j.Entries) > 0)
+
+				resBDeleted, resBSame := false, false
+				for _, entry := range j.Entries {
+					if entry.Step.URN() == urnB {
+						switch entry.Step.Op() {
+						case deploy.OpDelete, deploy.OpDeleteReplaced:
+							resBDeleted = true
+						case deploy.OpSame:
+							resBSame = true
+						}
+					}
+				}
+				assert.True(t, resBSame)
+				assert.False(t, resBDeleted)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, snap)
+}
