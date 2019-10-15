@@ -216,7 +216,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	}
 
 	// Save the token and return the backend
-	account := workspace.Account{AccessToken: accessToken, Username: username}
+	account := workspace.Account{AccessToken: accessToken, Username: username, LastValidatedAt: time.Now()}
 	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
 		return nil, err
 	}
@@ -236,12 +236,12 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	if err == nil && existingAccount.AccessToken != "" {
 		// If the account was last verified less than an hour ago, assume the token is valid.
 		valid, username := true, existingAccount.Username
-		if username == "" || existingAccount.LastUse.Add(1*time.Hour).Before(time.Now()) {
+		if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(time.Now()) {
 			valid, username, err = IsValidAccessToken(ctx, cloudURL, existingAccount.AccessToken)
 			if err != nil {
 				return nil, err
 			}
-			existingAccount.LastUse = time.Now()
+			existingAccount.LastValidatedAt = time.Now()
 		}
 
 		if valid {
@@ -335,7 +335,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	}
 
 	// Save them.
-	account := workspace.Account{AccessToken: accessToken, Username: username}
+	account := workspace.Account{AccessToken: accessToken, Username: username, LastValidatedAt: time.Now()}
 	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
 		return nil, err
 	}

@@ -32,19 +32,24 @@ import (
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
 // GetAccount returns an account underneath a given key.
+//
+// Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
+// the caller to fill in the username and last validation time.
 func GetAccount(key string) (Account, error) {
 	creds, err := GetStoredCredentials()
 	if err != nil && !os.IsNotExist(err) {
 		return Account{}, err
 	}
-	if creds.Accounts == nil {
-		token, ok := creds.AccessTokens[key]
-		if !ok {
-			return Account{}, nil
-		}
-		return Account{AccessToken: token}, nil
+
+	// Try the account
+	if account, ok := creds.Accounts[key]; ok {
+		return account, nil
 	}
-	return creds.Accounts[key], nil
+	token, ok := creds.AccessTokens[key]
+	if !ok {
+		return Account{}, nil
+	}
+	return Account{AccessToken: token}, nil
 }
 
 // DeleteAccount deletes an account underneath the given key.
@@ -86,9 +91,9 @@ func StoreAccount(key string, account Account, current bool) error {
 
 // Account holds the information associated with a Pulumi account.
 type Account struct {
-	AccessToken string    `json:"accessToken,omitempty"` // The access token for this account.
-	Username    string    `json:"username,omitempty"`    // The username for this account.
-	LastUse     time.Time `json:"lastUse,omitempty"`     // The last time this token was used.
+	AccessToken     string    `json:"accessToken,omitempty"`     // The access token for this account.
+	Username        string    `json:"username,omitempty"`        // The username for this account.
+	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"` // The last time this token was validated.
 }
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
