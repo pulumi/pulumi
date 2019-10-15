@@ -31,7 +31,7 @@ import (
 func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
-	fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
+	fprintf(opts.Stdout, "Invoke: %v\n", command)
 
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
@@ -39,7 +39,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	go func() {
 		for !finished {
-			time.Sleep(120 * time.Second)
+			time.Sleep(180 * time.Second)
 			if !finished {
 				fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
 			}
@@ -105,10 +105,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	// If we collected any program output, write it to a log file -- success or failure.
 	if len(runout) > 0 {
-		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
+		if _, err := writeCommandOutput(name, wd, runout); err != nil {
 			fprintf(opts.Stderr, "Failed to write output: %v\n", err)
-		} else {
-			fprintf(opts.Stderr, "Wrote output to %s\n", logFile)
 		}
 	} else {
 		fprintf(opts.Stderr, "Command completed without output\n")
