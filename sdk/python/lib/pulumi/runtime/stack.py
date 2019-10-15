@@ -20,7 +20,7 @@ import collections
 from inspect import isawaitable
 from typing import Callable, Any, Dict, List
 
-from ..resource import ComponentResource, Resource
+from ..resource import ComponentResource, Resource, ResourceTransformation
 from .settings import get_project, get_stack, get_root_resource, set_root_resource
 from .rpc_manager import RPC_MANAGER
 from .. import log
@@ -186,3 +186,15 @@ def is_primitive(attr: Any) -> bool:
         pass
 
     return True
+
+def register_stack_transformation(t: ResourceTransformation):
+    """
+    Add a transformation to all future resources constructed in this Pulumi stack.
+    """
+    root_resource = get_root_resource()
+    if root_resource is None:
+        raise Exception("The root stack resource was referenced before it was initialized.")
+    if root_resource._transformations is None:
+        root_resource._transformations = [t]
+    else:
+        root_resource._transformations = root_resource._transformations + [t]
