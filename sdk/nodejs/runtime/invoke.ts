@@ -95,6 +95,7 @@ https://www.pulumi.com/docs/get-started/install/`);
 
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
+    console.log(label);
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     // Wait for all values to be available, and then perform the RPC.
@@ -139,12 +140,14 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
 
 function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): Promise<any> {
     const label = `Invoking function: tok=${tok} synchronously`;
+    console.log(label);
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     const serialized = serializePropertiesSync(props);
     log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
     const providerRef = getProviderRefSync();
+    console.log("ProviderRef: " + providerRef);
     const req = createInvokeRequest(tok, serialized, providerRef, opts);
 
     // Encode the request.
@@ -180,7 +183,7 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
             log.warn(
 `Synchronous call made to "${tok}" with an unregistered provider.
 For more details see: https://www.pulumi.com/docs/troubleshooting/#synchronous-call`);
-            return utils.promiseResult(ProviderResource.register(provider));
+            utils.promiseResult(ProviderResource.register(provider));
         }
 
         return provider.__registrationId;
@@ -198,6 +201,10 @@ function createLiftedPromise(value: any): Promise<any> {
 }
 
 function createInvokeRequest(tok: string, serialized: any, provider: string | undefined, opts: InvokeOptions) {
+    if (provider !== undefined && typeof provider !== "string") {
+        throw new Error("Incorrect provider type.");
+    }
+
     const obj = gstruct.Struct.fromJavaScript(serialized);
 
     const req = new providerproto.InvokeRequest();
