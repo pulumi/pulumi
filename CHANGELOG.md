@@ -3,6 +3,14 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix hangs and crashes related to use of `getResource` (i.e. `aws.ec2.getSubnetIds(...)`) methods,
+  including frequent hangs on Node.js 12. This fixes https://github.com/pulumi/pulumi/issues/3260)
+  and [hangs](https://github.com/pulumi/pulumi/issues/3309).
+
+  Some less common existing styles of using `getResource` calls are also deprecated as part of this
+  change, and users should see https://www.pulumi.com/docs/troubleshooting/#synchronous-call for
+  details on adjusting their code if needed.
+
 ## 1.3.1 (2019-10-09)
 
 - Revert "propagate resource inputs to resource state during preview". These changes had a critical issue that needs
@@ -20,7 +28,7 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
-  
+
 - Make the location of `.pulumi` folder configurable with an environment variable.
   [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
 

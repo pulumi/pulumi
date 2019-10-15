@@ -16,7 +16,7 @@
 
 import * as assert from "assert";
 import { asyncTest } from "./util";
-import { promiseResult, liftProperties } from "../utils";
+import { promiseResult } from "../utils";
 
 describe("deasync", () => {
     it("handles simple promise", () => {
@@ -55,54 +55,5 @@ describe("deasync", () => {
 
         const result = promiseResult(promise);
         assert.equal(result, actual);
-    });
-
-    it("lift properties", asyncTest(async () => {
-        const actual = { a: "foo", b: 4, c: true, d: [function() {}] };
-
-        const promise = new Promise<typeof actual>((resolve) => {
-            resolve(actual);
-        });
-
-        const combinedResult = liftProperties(promise);
-
-        // check that we've lifted the values properly.
-        for (const key of Object.keys(actual)) {
-            const value = (<any>actual)[key];
-            assert.deepStrictEqual(value, (<any>combinedResult)[key]);
-        }
-
-        // also check that we have a proper promise to work with:
-        const promiseValue = await combinedResult;
-        for (const key of Object.keys(actual)) {
-            const value = (<any>actual)[key];
-            assert.deepStrictEqual(value, (<any>promiseValue)[key]);
-        }
-
-        // also ensure that .then works
-        await combinedResult.then(v => {
-            for (const key of Object.keys(actual)) {
-                const value = (<any>actual)[key];
-                assert.deepStrictEqual(value, (<any>v)[key]);
-            }
-        });
-    }));
-
-    it("lift properties throws", () => {
-        const message = "etc";
-        const promise = new Promise<number>((resolve, reject) => {
-            reject(new Error(message));
-        });
-
-        try {
-            const result = liftProperties(promise);
-            assert.fail("Should not be able to reach here 1.")
-        }
-        catch (err) {
-            assert.equal(err.message, message);
-            return;
-        }
-
-        assert.fail("Should not be able to reach here 2.")
     });
 });

@@ -46,7 +46,7 @@ interface RunCase {
     };
     skipRootResourceEndpoints?: boolean;
     showRootResourceRegistration?: boolean;
-    invoke?: (ctx: any, tok: string, args: any, version: string) => { failures: any, ret: any };
+    invoke?: (ctx: any, tok: string, args: any, version: string, provider: string) => { failures: any, ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
         urn: URN | undefined, props: any | undefined,
     };
@@ -303,7 +303,8 @@ describe("rpc", () => {
         "invoke": {
             program: path.join(base, "009.invoke"),
             expectResourceCount: 0,
-            invoke: (ctx: any, tok: string, args: any, version: string) => {
+            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+                assert.strictEqual(provider, "");
                 assert.strictEqual(tok, "invoke:index:echo");
                 assert.deepEqual(args, {
                     a: "hello",
@@ -897,10 +898,92 @@ describe("rpc", () => {
                 });
             },
         },
+        "provider_invokes": {
+            program: path.join(base, "060.provider_invokes"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
+            },
+            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+                assert.strictEqual(provider, "pulumi:providers:test::p::1");
+                assert.strictEqual(tok, "test:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
+        "provider_in_parent_invokes": {
+            program: path.join(base, "061.provider_in_parent_invokes"),
+            expectResourceCount: 2,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
+                return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
+            },
+            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+                assert.strictEqual(provider, "pulumi:providers:test::p::1");
+                assert.strictEqual(tok, "test:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
+        "providerref_invokes": {
+            program: path.join(base, "062.providerref_invokes"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
+            },
+            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+                assert.strictEqual(provider, "pulumi:providers:test::p::1");
+                assert.strictEqual(tok, "test:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
+        "providerref_in_parent_invokes": {
+            program: path.join(base, "063.providerref_in_parent_invokes"),
+            expectResourceCount: 2,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
+                if (name === "c") {
+                    assert.equal(provider, "");
+                }
+
+                return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
+            },
+            invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
+                assert.strictEqual(provider, "pulumi:providers:test::p::1");
+                assert.strictEqual(tok, "test:index:echo");
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [0.99, 42, { z: "x" }],
+                    id: "some-id",
+                    urn: "some-urn",
+                });
+                return { failures: undefined, ret: args };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename !== "stack_exports") {
+        // if (casename.indexOf("provider_in_parent_invokes") < 0) {
         //     continue;
         // }
 
@@ -925,7 +1008,7 @@ describe("rpc", () => {
                             const args: any = req.getArgs().toJavaScript();
                             const version: string = req.getVersion();
                             const { failures, ret } =
-                                opts.invoke(ctx, req.getTok(), args, version);
+                                opts.invoke(ctx, req.getTok(), args, version, req.getProvider());
                             resp.setFailuresList(failures);
                             resp.setReturn(gstruct.Struct.fromJavaScript(ret));
                         }

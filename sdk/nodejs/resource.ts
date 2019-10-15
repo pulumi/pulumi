@@ -13,9 +13,9 @@
 // limitations under the License.
 
 import { util } from "protobufjs";
-import { ResourceError, RunError } from "./errors";
-import { all, Input, Inputs, interpolate, Output, output } from "./output";
-import { getStackResource } from "./runtime";
+import { ResourceError } from "./errors";
+import { Input, Inputs, interpolate, Output, output } from "./output";
+import { getStackResource, unknownValue } from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
@@ -700,6 +700,22 @@ export abstract class CustomResource extends Resource {
 export abstract class ProviderResource extends CustomResource {
     /** @internal */
     private readonly pkg: string;
+
+    /** @internal */
+    // tslint:disable-next-line: variable-name
+    public __registrationId?: string;
+
+    public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
+        if (provider === undefined) {
+            return undefined;
+        }
+
+        if (!provider.__registrationId) {
+            provider.__registrationId = `${await provider.urn.promise()}::${await provider.id.promise()}`;
+        }
+
+        return provider.__registrationId;
+    }
 
     /**
      * Creates and registers a new provider resource for a particular package.

@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
 import * as grpc from "grpc";
+import * as path from "path";
 import { RunError } from "../errors";
 import * as log from "../log";
 import { ComponentResource, URN } from "../resource";
@@ -41,6 +43,11 @@ export interface Options {
     readonly testModeEnabled?: boolean; // true if we're in testing mode (allows execution without the CLI).
     readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
+
+    /**
+     * Directory containing the send/receive files for making synchronous invokes to the engine.
+     */
+    readonly syncDir?: string;
 }
 
 /**
@@ -171,6 +178,25 @@ export function getMonitor(): Object | undefined {
     return monitor;
 }
 
+/** @internal */
+export interface SyncInvokes {
+    requests: number;
+    responses: number;
+}
+
+let syncInvokes: SyncInvokes | undefined;
+
+/** @internal */
+export function tryGetSyncInvokes(): SyncInvokes | undefined {
+    if (syncInvokes === undefined && options.syncDir) {
+        const requests = fs.openSync(path.join(options.syncDir, "invoke_req"), fs.constants.O_WRONLY|fs.constants.O_SYNC);
+        const responses = fs.openSync(path.join(options.syncDir, "invoke_res"), fs.constants.O_RDONLY|fs.constants.O_SYNC);
+        syncInvokes = { requests, responses };
+    }
+
+    return syncInvokes;
+}
+
 /**
  * engine is a live connection to the engine, used for logging, etc. (lazily initialized).
  */
@@ -226,6 +252,7 @@ function loadOptions(): Options {
         engineAddr: process.env["PULUMI_NODEJS_ENGINE"],
         testModeEnabled: (process.env["PULUMI_TEST_MODE"] === "true"),
         legacyApply: (process.env["PULUMI_ENABLE_LEGACY_APPLY"] === "true"),
+        syncDir: process.env["PULUMI_NODEJS_SYNC"],
     };
 }
 
