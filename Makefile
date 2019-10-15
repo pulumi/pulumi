@@ -11,19 +11,19 @@ VERSION         := $(shell scripts/get-version)
 TESTPARALLELISM := 20
 
 build-proto::
-	cd sdk/proto && ./generate.sh
+	time cd sdk/proto && ./generate.sh
 
 build::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
+	time go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 install::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
+	time GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
+	time go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 lint::
-	golangci-lint run
+	time golangci-lint run
 
 test_fast::
 	$(GO_TEST_FAST) ${FAST_TEST_PKGS}

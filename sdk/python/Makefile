@@ -8,7 +8,7 @@ PYENVSRC := $(PYENV)/src
 include ../../build/common.mk
 
 ensure::
-	pipenv --python 3 install --dev
+	time pipenv --python 3 install --dev
 	mkdir -p $(PYENVSRC)
 
 build_package::
@@ -18,27 +18,27 @@ build_package::
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	time go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
 lint::
-	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
-	golangci-lint run
+	time pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
+	time golangci-lint run
 
 install_package::
-	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
-	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
+	time cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
+	time cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
 
 install_plugin::
-	GOBIN=$(PULUMI_BIN) go install \
+	GOBIN=$(PULUMI_BIN) time go install \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
 test_fast::
-	pipenv run pip install ./env/src
-	pipenv run python -m unittest discover -s lib/test -v
+	time pipenv run pip install ./env/src
+	time pipenv run python -m unittest discover -s lib/test -v
 
 test_all:: test_fast
 

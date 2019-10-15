@@ -13,11 +13,11 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	golangci-lint run
+	time golangci-lint run
 	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
 
 build_package::
-	./node_modules/.bin/tsc
+	time ./node_modules/.bin/tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp README.md ../../LICENSE package.json ./dist/* bin/
@@ -28,7 +28,7 @@ build_package::
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	time go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 build:: build_package build_plugin
 
@@ -39,12 +39,12 @@ install_package::
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
 
 install_plugin::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	time GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 install:: install_package install_plugin
 
 istanbul_tests::
-	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	time istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
 
