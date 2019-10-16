@@ -78,16 +78,7 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
     return invokeSync(tok, props, opts, syncInvokes);
 }
 
-let issuedUpdateWarning: boolean | undefined;
-
 export function invokeFallbackToAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
-    if (!issuedUpdateWarning) {
-        issuedUpdateWarning = true;
-        log.warn(
-`Pulumi is out of date. To update to a more recent version see instructions at:
-https://www.pulumi.com/docs/get-started/install/`);
-    }
-
     const asyncResult = invokeAsync(tok, props, opts);
     const syncResult = utils.promiseResult(asyncResult);
     return createLiftedPromise(syncResult);
