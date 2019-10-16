@@ -260,13 +260,12 @@ interface OutputData<T> {
 
 async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: boolean, func: (t: T) => Input<U>): Promise<OutputData<U>> {
     if (runtime.isDryRun()) {
-        // During previews only perform the apply if the engine was able to
-        // give us an actual value for this Output.
+        // During previews only perform the apply if the engine was able to give us an actual value
+        // for this Output.
         const applyDuringPreview = isKnown;
 
         if (!applyDuringPreview) {
-            // We didn't actually run the function, our new Output is definitely
-            // **not** known.
+            // We didn't actually run the function, our new Output is definitely **not** known.
             return {
                 value: <U><any>undefined,
                 isKnown: false,
@@ -277,15 +276,15 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
 
     const transformed = await func(value);
     if (Output.isInstance(transformed)) {
-        // Note: if the func returned a Output, we unwrap that to get the inner value
-        // returned by that Output.  Note that we are *not* capturing the Resources of
-        // this inner Output.  That's intentional.  As the Output returned is only
-        // supposed to be related this *this* Output object, those resources should
-        // already be in our transitively reachable resource graph.
+        // Note: if the func returned a Output, we unwrap that to get the inner value returned by
+        // that Output.  Note that we are *not* capturing the Resources of this inner Output.
+        // That's intentional.  As the Output returned is only supposed to be related this *this*
+        // Output object, those resources should already be in our transitively reachable resource
+        // graph.
 
-        // The callback func has produced an inner Output that may be 'known' or 'unknown'.
-        // We have to properly forward that along to our outer output.  That way the Outer
-        // output doesn't consider itself 'known' then the inner Output did not.
+        // The callback func has produced an inner Output that may be 'known' or 'unknown'. We have
+        // to properly forward that along to our outer output.  That way the Outer output doesn't
+        // consider itself 'known' then the inner Output did not.
         const innerValue = await transformed.promise();
         const innerIsKnown = await transformed.isKnown;
         const innerIsSecret = await (transformed.isSecret || Promise.resolve(false));
@@ -295,14 +294,14 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
             isKnown: isKnown && innerIsKnown,
             isSecret: isSecret || innerIsSecret,
         };
-    } else {
-        // We successfully ran the inner function.  Our new Output should be considered known.
-        return {
-            value: transformed,
-            isKnown: true,
-            isSecret: false,
-        };
     }
+
+    // We successfully ran the inner function.  Our new Output should be considered known.
+    return {
+        value: transformed,
+        isKnown: true,
+        isSecret: false,
+    };
 }
 
 // Returns an promise denoting if the output is a secret or not. This is not the same as just calling `.isSecret`
