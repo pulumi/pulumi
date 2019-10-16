@@ -65,23 +65,25 @@ describe("output", () => {
         assert.equal(value, "inner");
     }));
 
-    it("can await even when isKnown is a rejected promise.", asyncTest(async () => {
+    it("can not await if isKnown is a rejected promise.", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
         const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error()), Promise.resolve(false)));
 
-        const isKnown = await output2.isKnown;
-        assert.equal(isKnown, false);
+        try {
+            const isKnown = await output2.isKnown;
+            assert.fail("Should not reach here");
+        }
+        catch (err) {
+        }
 
         try {
             const value = await output2.promise();
+            assert.fail("Should not reach here");
         }
         catch (err) {
-            return;
         }
-
-        assert.fail("Should not read here");
     }));
 
     it("propagates true isSecret bit from inner Output", asyncTest(async () => {

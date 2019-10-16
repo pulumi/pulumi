@@ -6539,6 +6539,7 @@ return function () { console.log(regex); foo(); };
 
     // Make a callback to keep running tests.
     let remaining = cases;
+    remaining = [];
     while (true) {
         const test = remaining.shift();
         if (!test) {
