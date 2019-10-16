@@ -296,11 +296,12 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
         };
     }
 
-    // We successfully ran the inner function.  Our new Output should be considered known.
+    // We successfully ran the inner function.  Our new Output should be considered known.  We
+    // preserve secretness from our original Output to the new one we're creating.
     return {
         value: transformed,
         isKnown: true,
-        isSecret: false,
+        isSecret,
     };
 }
 
