@@ -204,7 +204,7 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 		return errors.Wrap(err, "moving plugin")
 	}
 
-	proj, err := workspace.LoadProject(path.Join(finalDir, "Pulumi.yaml"))
+	proj, err := workspace.LoadPolicyPack(path.Join(finalDir, "PulumiPolicy.yaml"))
 	if err != nil {
 		return errors.Wrapf(err, "failed to load policy project at %s", finalDir)
 	}
