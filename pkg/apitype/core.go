@@ -319,12 +319,14 @@ type SecretV1 struct {
 
 // ConfigValue describes a single (possibly secret) configuration value.
 type ConfigValue struct {
-	// String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext (for secrets).
+	// When Object is false: String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext
+	// (for secrets). When Object is true: String is a JSON encoded object. If both Object and Secret are true, then the
+	// object contains at least one secure value. Secure values in an object are encoded as `{"secure":"ciphertext"}`
+	// where ciphertext is the base64-encoded ciphertext.
 	String string `json:"string"`
 	// Secret is true if this value is a secret and false otherwise.
 	Secret bool `json:"secret"`
-	// Object is true if this value is a JSON encoded object. If both `Object` and `Secret` is true,
-	// then the JSON encoded object contains at least one secure value.
+	// Object is true if this value is a JSON encoded object.
 	Object bool `json:"object"`
 }
 
