@@ -983,9 +983,9 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        if (casename.indexOf("provider_in_parent_invokes") < 0) {
-            continue;
-        }
+        // if (casename.indexOf("provider_in_parent_invokes") < 0) {
+        //     continue;
+        // }
 
         const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
