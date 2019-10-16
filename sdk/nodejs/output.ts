@@ -252,13 +252,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
     }
 }
 
-interface OutputData<T> {
-    value: T;
-    isKnown: boolean;
-    isSecret: boolean;
-}
-
-async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: boolean, func: (t: T) => Input<U>): Promise<OutputData<U>> {
+async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: boolean, func: (t: T) => Input<U>) {
     if (runtime.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
@@ -282,9 +276,8 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
         // Output object, those resources should already be in our transitively reachable resource
         // graph.
 
-        // The callback func has produced an inner Output that may be 'known' or 'unknown'. We have
-        // to properly forward that along to our outer output.  That way the Outer output doesn't
-        // consider itself 'known' then the inner Output did not.
+        // Note: we intentionally await all the promises of the transformed value.  This way we
+        // properly propogate any rejections of any of them through ourselves as well.
         const innerValue = await transformed.promise();
         const innerIsKnown = await transformed.isKnown;
         const innerIsSecret = await (transformed.isSecret || Promise.resolve(false));
