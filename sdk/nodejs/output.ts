@@ -247,10 +247,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
                                .then(([value, isKnown, isSecret]) => applyHelperAsync<T, U>(value, isKnown, isSecret, func));
 
         const result = new OutputImpl<U>(
-            this.resources(),
-            applied.then(a => a.value),
-            applied.then(a => a.isKnown),
-            applied.then(a => a.isSecret));
+            this.resources(), applied.then(a => a.value), applied.then(a => a.isKnown), applied.then(a => a.isSecret));
         return <Output<U>><any>result;
     }
 }
