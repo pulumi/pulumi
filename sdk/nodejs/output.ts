@@ -243,9 +243,8 @@ To manipulate the value of this Output, use '.apply' instead.`);
     }
 
     public apply<U>(func: (t: T) => Input<U>): Output<U> {
-        const applied: Promise<OutputData<U>> =
-            Promise.all([this.promise(), this.isKnown, this.isSecret])
-                   .then(([value, isKnown, isSecret]) => applyHelperAsync<T, U>(value, isKnown, isSecret, func));
+        const applied = Promise.all([this.promise(), this.isKnown, this.isSecret])
+                               .then(([value, isKnown, isSecret]) => applyHelperAsync<T, U>(value, isKnown, isSecret, func));
 
         const result = new OutputImpl<U>(
             this.resources(),
