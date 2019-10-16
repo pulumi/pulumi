@@ -711,7 +711,9 @@ export abstract class ProviderResource extends CustomResource {
         }
 
         if (!provider.__registrationId) {
-            provider.__registrationId = `${await provider.urn.promise()}::${await provider.id.promise()}`;
+            const providerURN = await provider.urn.promise();
+            const providerID = await provider.id.promise() || unknownValue;
+            provider.__registrationId = `${providerURN}::${providerID}`;
         }
 
         return provider.__registrationId;
