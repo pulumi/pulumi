@@ -17,11 +17,18 @@ package display
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
+// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
+//
+// See https://tools.ietf.org/html/rfc5424#section-6.2.3.
+const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
@@ -41,20 +48,31 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
 			p := e.Payload.(engine.DiagEventPayload)
-			s := renderDiffDiagEvent(p, opts)
-			fprintIgnoreError(os.Stdout, s)
+			if p.URN != "" {
+				s := renderDiffDiagEvent(p, opts)
+				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.URN.Name(), s)
+				fprintIgnoreError(os.Stdout, s)
+			}
+
 		case engine.ResourcePreEvent:
 			p := e.Payload.(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				s := fmt.Sprintf("%s %s[%s] %v\n",
-					p.Metadata.Op, p.Metadata.URN.Name(), p.Metadata.URN.Type(), p.Metadata.Diffs)
+				s := fmt.Sprintf("%s %s", p.Metadata.Op, p.Metadata.URN.Type())
+				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.Metadata.URN.Name(), s)
 				fprintIgnoreError(os.Stdout, s)
 			}
 		case engine.ResourceOutputsEvent:
 			p := e.Payload.(engine.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				s := fmt.Sprintf("done %s %s[%s]\n",
-					p.Metadata.Op, p.Metadata.URN.Name(), p.Metadata.URN.Type())
+				s := fmt.Sprintf("done %s %s", p.Metadata.Op, p.Metadata.URN.Type())
+				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.Metadata.URN.Name(), s)
+				fprintIgnoreError(os.Stdout, s)
+			}
+		case engine.ResourceOperationFailed:
+			p := e.Payload.(engine.ResourceOperationFailedPayload)
+			if shouldShow(p.Metadata, opts) {
+				s := fmt.Sprintf("failed %s %s", p.Metadata.Op, p.Metadata.URN.Type())
+				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.Metadata.URN.Name(), s)
 				fprintIgnoreError(os.Stdout, s)
 			}
 		default:

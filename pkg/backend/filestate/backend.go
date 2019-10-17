@@ -399,6 +399,12 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 	return b.query(ctx, op, nil /*events*/)
 }
 
+// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
+// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
+//
+// See https://tools.ietf.org/html/rfc5424#section-6.2.3.
+const timeFormat = "2006-01-02T15:04:05.000Z07:00"
+
 func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReference,
 	op backend.UpdateOperation) result.Result {
 	// Get the stack.
@@ -411,6 +417,32 @@ func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReferenc
 		DryRun:   false,
 		ShowLink: false,
 	}
+
+	startTime := time.Now()
+
+	go func() {
+		shown := map[operations.LogEntry]bool{}
+		for {
+			logs, err := b.GetLogs(ctx, stackRef, op.StackConfiguration, operations.LogQuery{
+				StartTime: &startTime,
+			})
+			if err != nil {
+				logging.V(5).Infof("failed to get logs: %v", err.Error())
+			}
+
+			for _, logEntry := range logs {
+				if _, shownAlready := shown[logEntry]; !shownAlready {
+					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
+
+					fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat),
+						logEntry.ID, logEntry.Message)
+
+					shown[logEntry] = true
+				}
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 
 	//TODO: This is macOS only - need to factor out to darwin build target
 	es := &fsevents.EventStream{
@@ -426,6 +458,8 @@ func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReferenc
 
 	for events := range es.Events {
 		if len(events) > 0 {
+			fmt.Printf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), "", op.Opts.Display.Color.Colorize(
+				colors.SpecImportant+"Updating..."+colors.Reset))
 			_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
 			if res != nil {
 				logging.V(5).Infof("watch update failed: %v", res.Error())
@@ -433,6 +467,8 @@ func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReferenc
 					return res
 				}
 			}
+			fmt.Printf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), "", op.Opts.Display.Color.Colorize(
+				colors.SpecImportant+"Done updating."+colors.Reset))
 		}
 	}
 
