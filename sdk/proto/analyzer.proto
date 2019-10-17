@@ -46,13 +46,13 @@ message AnalyzeRequest {
 // Resource defines the view of a Pulumi-managed resource as sent to Analyzers. The properties
 // of the resource are specific to the type of analysis being performed. See the Analyzer
 // service definition for more information.
-message Resource {
+message AnalyzerResource {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
 }
 
 message AnalyzeStackRequest {
-    repeated AnalyzeResource resources = 1;
+    repeated AnalyzerResource resources = 1;
 }
 
 message AnalyzeResponse {

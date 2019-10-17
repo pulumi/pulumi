@@ -55,6 +55,17 @@ function deserialize_pulumirpc_AnalyzeResponse(buffer_arg) {
   return analyzer_pb.AnalyzeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_AnalyzeStackRequest(arg) {
+  if (!(arg instanceof analyzer_pb.AnalyzeStackRequest)) {
+    throw new Error('Expected argument of type pulumirpc.AnalyzeStackRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AnalyzeStackRequest(buffer_arg) {
+  return analyzer_pb.AnalyzeStackRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_AnalyzerInfo(arg) {
   if (!(arg instanceof analyzer_pb.AnalyzerInfo)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzerInfo');
@@ -84,6 +95,7 @@ function deserialize_pulumirpc_PluginInfo(buffer_arg) {
 // issues -- style, policy, correctness, security, and so on.
 var AnalyzerService = exports.AnalyzerService = {
   // Analyze analyzes a single resource object, and returns any errors that it finds.
+  // Called with the "inputs" to the resource, before it is updated.
   analyze: {
     path: '/pulumirpc.Analyzer/Analyze',
     requestStream: false,
@@ -92,6 +104,20 @@ var AnalyzerService = exports.AnalyzerService = {
     responseType: analyzer_pb.AnalyzeResponse,
     requestSerialize: serialize_pulumirpc_AnalyzeRequest,
     requestDeserialize: deserialize_pulumirpc_AnalyzeRequest,
+    responseSerialize: serialize_pulumirpc_AnalyzeResponse,
+    responseDeserialize: deserialize_pulumirpc_AnalyzeResponse,
+  },
+  // AnalyzeStack analyzes all resources within a stack, at the end of a successful
+  // preview or update. The provided resources are the "outputs", after any mutations
+  // have taken place.
+  analyzeStack: {
+    path: '/pulumirpc.Analyzer/AnalyzeStack',
+    requestStream: false,
+    responseStream: false,
+    requestType: analyzer_pb.AnalyzeStackRequest,
+    responseType: analyzer_pb.AnalyzeResponse,
+    requestSerialize: serialize_pulumirpc_AnalyzeStackRequest,
+    requestDeserialize: deserialize_pulumirpc_AnalyzeStackRequest,
     responseSerialize: serialize_pulumirpc_AnalyzeResponse,
     responseDeserialize: deserialize_pulumirpc_AnalyzeResponse,
   },
