@@ -14,7 +14,94 @@ namespace Pulumi
 {
     public class Resource
     {
+        /// <summary>
+        /// The optional parent of this resource.
+        /// </summary>
+        private readonly Resource? _parentResource;
+
+        /// <summary>
+        /// The child resources of this resource.  We use these (only from a ComponentResource) to
+        /// allow code to dependOn a ComponentResource and have that effectively mean that it is
+        /// depending on all the CustomResource children of that component.
+        /// 
+        /// Important!  We only walk through ComponentResources.They're the only resources that
+        /// serve as an aggregation of other primitive(i.e.custom) resources.While a custom resource
+        /// can be a parent of other resources, we don't want to ever depend on those child
+        /// resource.  If we do, it's simple to end up in a situation where we end up depending on a
+        /// child resource that has a data cycle dependency due to the data passed into it. An
+        /// example of how this would be bad is:
+        /// 
+        /// ```ts
+        ///     var c1 = new CustomResource("c1");
+        ///         var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1
+        /// });
+        ///     var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
+        /// ```
+        /// 
+        /// The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
+        /// 'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
+        /// But 'c3' will be waiting in the same manner on 'c2', and a cycle forms. This normally
+        /// does not happen with ComponentResources as they do not have any data flowing into
+        /// them.The only way you would be able to have a problem is if you had this sort of coding
+        /// pattern:
+        /// 
+        /// ```ts
+        ///     var c1 = new ComponentResource("c1");
+        /// var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
+        ///     var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
+        /// ```
+        /// 
+        /// However, this would be pretty nonsensical as there is zero need for a custom resource to
+        /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
+        /// of pattern failed in practice.
+        /// </summary>
+        private readonly ImmutableHashSet<Resource> _childResources;
+
+        /// <summary>
+        /// Urn is the stable logical URN used to distinctly address a resource, both before and
+        /// after deployments.
+        /// </summary>
+        public Output<Urn> Urn { get; }
+
+        /// <summary>
+        /// When set to true, protect ensures this resource cannot be deleted.
+        /// </summary>
+        private readonly bool _protect;
+
+        /// <summary>
+        /// A collection of transformations to apply as part of resource registration.
+        /// </summary>
+        private readonly ImmutableArray<ResourceTransformation> _transformations;
+
+        /// <summary>
+        /// A list of aliases applied to this resource.
+        /// </summary>
+        private readonly ImmutableArray<Input<Urn>> _aliases;
+
+        /// <summary>
+        /// The name assigned to the resource at construction.
+        /// </summary>
+        private readonly string _name;
+
+        /// <summary>
+        /// The set of providers to use for child resources. Keyed by package name (e.g. "aws").
+        /// </summary>
+        private readonly ImmutableDictionary<string, ProviderResource> _providers;
+
+        // getProvider fetches the provider for the given module member, if any.
+        public ProviderResource? GetProvider(string moduleMember)
+        {
+            var memComponents = moduleMember.Split(":");
+            if (memComponents.Length != 3)
+            {
+                return null;
+            }
+
+            this._providers.TryGetValue(memComponents[0], out var result);
+            return result;
+        }
     }
+}
 }
 
 //using Google.Protobuf.Collections;

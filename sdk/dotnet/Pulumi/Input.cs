@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Pulumi
 {
-    public struct Input<T>
+    public class Input<T>
     {
         //[MaybeNull]
         //private readonly T _value;

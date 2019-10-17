@@ -12,6 +12,12 @@ using System.Threading.Tasks;
 
 namespace Pulumi
 {
+    /// <summary>
+    /// CustomResource is a resource whose create, read, update, and delete(CRUD) operations are
+    /// managed by performing external operations on some physical entity. The engine understands how
+    /// to diff and perform partial updates of them, and these CRUD operations are implemented in a
+    /// dynamically loaded plugin for the defining package.
+    /// </summary>
     public class CustomResource : Resource
     {
     }

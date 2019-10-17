@@ -13,6 +13,10 @@ namespace Pulumi
     {
         private Output<ImmutableDictionary<K, V>> _values;
 
+        internal InputMap() : this(Output.Create(ImmutableDictionary<K, V>.Empty))
+        {
+        }
+
         private InputMap(Output<ImmutableDictionary<K, V>> values)
             => _values = values;
 

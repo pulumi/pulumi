@@ -14,6 +14,10 @@ namespace Pulumi
     {
         private Output<ImmutableArray<T>> _values;
 
+        internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))
+        {
+        }
+
         private InputList(Output<ImmutableArray<T>> values)
             => _values = values;
 
