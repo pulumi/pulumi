@@ -61,7 +61,7 @@ type MockBackend struct {
 		UpdateOperation) (engine.ResourceChanges, result.Result)
 	DestroyF func(context.Context, Stack,
 		UpdateOperation) (engine.ResourceChanges, result.Result)
-	WatchF func(context.Context, StackReference,
+	WatchF func(context.Context, Stack,
 		UpdateOperation) result.Result
 	GetLogsF func(context.Context, Stack, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
@@ -191,11 +191,11 @@ func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Watch(ctx context.Context, stackRef StackReference,
+func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	op UpdateOperation) result.Result {
 
 	if be.WatchF != nil {
-		return be.WatchF(ctx, stackRef, op)
+		return be.WatchF(ctx, stack, op)
 	}
 	panic("not implemented")
 }

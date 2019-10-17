@@ -405,13 +405,8 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 // See https://tools.ietf.org/html/rfc5424#section-6.2.3.
 const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
-func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) result.Result {
-	// Get the stack.
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return result.FromError(err)
-	}
 
 	opts := backend.ApplierOptions{
 		DryRun:   false,
@@ -423,7 +418,7 @@ func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReferenc
 	go func() {
 		shown := map[operations.LogEntry]bool{}
 		for {
-			logs, err := b.GetLogs(ctx, stackRef, op.StackConfiguration, operations.LogQuery{
+			logs, err := b.GetLogs(ctx, stack, op.StackConfiguration, operations.LogQuery{
 				StartTime: &startTime,
 			})
 			if err != nil {
@@ -454,7 +449,7 @@ func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReferenc
 	es.Start()
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stackRef)
+		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
 
 	for events := range es.Events {
 		if len(events) > 0 {

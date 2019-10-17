@@ -94,7 +94,7 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 
 // WatchStack destroys all of this stack's resources.
 func WatchStack(ctx context.Context, s Stack, op UpdateOperation) result.Result {
-	return s.Backend().Watch(ctx, s.Ref(), op)
+	return s.Backend().Watch(ctx, s, op)
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.

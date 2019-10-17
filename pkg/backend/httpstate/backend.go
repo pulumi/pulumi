@@ -702,12 +702,8 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Watch(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) Watch(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) result.Result {
-	_, err := getStack(ctx, b, stackRef)
-	if err != nil {
-		return result.FromError(err)
-	}
 	return result.FromError(fmt.Errorf("not yet implemented"))
 }
 
