@@ -562,6 +562,252 @@ func TestConfigSave(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
+// TestConfigPaths ensures that config commands with paths work as expected.
+func TestConfigPaths(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	// Initialize an empty stack.
+	path := filepath.Join(e.RootPath, "Pulumi.yaml")
+	err := (&workspace.Project{
+		Name:    "testing-config",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+	}).Save(path)
+	assert.NoError(t, err)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "testing")
+
+	namespaces := []string{"", "my:"}
+
+	tests := []struct {
+		Key                   string
+		Value                 string
+		Secret                bool
+		Path                  bool
+		TopLevelKey           string
+		TopLevelExpectedValue string
+	}{
+		{
+			Key:                   "aConfigValue",
+			Value:                 "this value is a value",
+			TopLevelKey:           "aConfigValue",
+			TopLevelExpectedValue: "this value is a value",
+		},
+		{
+			Key:                   "bEncryptedSecret",
+			Value:                 "this super secret is encrypted",
+			Secret:                true,
+			TopLevelKey:           "bEncryptedSecret",
+			TopLevelExpectedValue: "this super secret is encrypted",
+		},
+		{
+			Key:                   "[]",
+			Value:                 "square brackets value",
+			TopLevelKey:           "[]",
+			TopLevelExpectedValue: "square brackets value",
+		},
+		{
+			Key:                   "x.y",
+			Value:                 "x.y value",
+			TopLevelKey:           "x.y",
+			TopLevelExpectedValue: "x.y value",
+		},
+		{
+			Key:                   "0",
+			Value:                 "0 value",
+			Path:                  true,
+			TopLevelKey:           "0",
+			TopLevelExpectedValue: "0 value",
+		},
+		{
+			Key:                   "true",
+			Value:                 "value",
+			Path:                  true,
+			TopLevelKey:           "true",
+			TopLevelExpectedValue: "value",
+		},
+		{
+			Key:                   `["test.Key"]`,
+			Value:                 "test key value",
+			Path:                  true,
+			TopLevelKey:           "test.Key",
+			TopLevelExpectedValue: "test key value",
+		},
+		{
+			Key:                   `nested["test.Key"]`,
+			Value:                 "nested test key value",
+			Path:                  true,
+			TopLevelKey:           "nested",
+			TopLevelExpectedValue: `{"test.Key":"nested test key value"}`,
+		},
+		{
+			Key:                   "outer.inner",
+			Value:                 "value",
+			Path:                  true,
+			TopLevelKey:           "outer",
+			TopLevelExpectedValue: `{"inner":"value"}`,
+		},
+		{
+			Key:                   "names[0]",
+			Value:                 "a",
+			Path:                  true,
+			TopLevelKey:           "names",
+			TopLevelExpectedValue: `["a"]`,
+		},
+		{
+			Key:                   "names[1]",
+			Value:                 "b",
+			Path:                  true,
+			TopLevelKey:           "names",
+			TopLevelExpectedValue: `["a","b"]`,
+		},
+		{
+			Key:                   "names[2]",
+			Value:                 "c",
+			Path:                  true,
+			TopLevelKey:           "names",
+			TopLevelExpectedValue: `["a","b","c"]`,
+		},
+		{
+			Key:                   "names[3]",
+			Value:                 "super secret name",
+			Path:                  true,
+			Secret:                true,
+			TopLevelKey:           "names",
+			TopLevelExpectedValue: `["a","b","c","super secret name"]`,
+		},
+		{
+			Key:                   "servers[0].port",
+			Value:                 "80",
+			Path:                  true,
+			TopLevelKey:           "servers",
+			TopLevelExpectedValue: `[{"port":80}]`,
+		},
+		{
+			Key:                   "servers[0].host",
+			Value:                 "example",
+			Path:                  true,
+			TopLevelKey:           "servers",
+			TopLevelExpectedValue: `[{"host":"example","port":80}]`,
+		},
+		{
+			Key:                   "a.b[0].c",
+			Value:                 "true",
+			Path:                  true,
+			TopLevelKey:           "a",
+			TopLevelExpectedValue: `{"b":[{"c":true}]}`,
+		},
+		{
+			Key:                   "a.b[1].c",
+			Value:                 "false",
+			Path:                  true,
+			TopLevelKey:           "a",
+			TopLevelExpectedValue: `{"b":[{"c":true},{"c":false}]}`,
+		},
+		{
+			Key:                   "tokens[0]",
+			Value:                 "shh",
+			Path:                  true,
+			Secret:                true,
+			TopLevelKey:           "tokens",
+			TopLevelExpectedValue: `["shh"]`,
+		},
+		{
+			Key:                   "foo.bar",
+			Value:                 "don't tell",
+			Path:                  true,
+			Secret:                true,
+			TopLevelKey:           "foo",
+			TopLevelExpectedValue: `{"bar":"don't tell"}`,
+		},
+		{
+			Key:                   "semiInner.a.b.c.d",
+			Value:                 "1",
+			Path:                  true,
+			TopLevelKey:           "semiInner",
+			TopLevelExpectedValue: `{"a":{"b":{"c":{"d":1}}}}`,
+		},
+		{
+			Key:                   "wayInner.a.b.c.d.e.f.g.h.i.j.k",
+			Value:                 "false",
+			Path:                  true,
+			TopLevelKey:           "wayInner",
+			TopLevelExpectedValue: `{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":{"j":{"k":false}}}}}}}}}}}`,
+		},
+	}
+
+	validateConfigGet := func(key string, value string, path bool) {
+		args := []string{"config", "get", key}
+		if path {
+			args = append(args, "--path")
+		}
+		stdout, stderr := e.RunCommand("pulumi", args...)
+		assert.Equal(t, fmt.Sprintf("%s\n", value), stdout)
+		assert.Equal(t, "", stderr)
+	}
+
+	for _, ns := range namespaces {
+		for _, test := range tests {
+			key := fmt.Sprintf("%s%s", ns, test.Key)
+			topLevelKey := fmt.Sprintf("%s%s", ns, test.TopLevelKey)
+
+			// Set the value.
+			args := []string{"config", "set"}
+			if test.Secret {
+				args = append(args, "--secret")
+			}
+			if test.Path {
+				args = append(args, "--path")
+			}
+			args = append(args, key, test.Value)
+			stdout, stderr := e.RunCommand("pulumi", args...)
+			assert.Equal(t, "", stdout)
+			assert.Equal(t, "", stderr)
+
+			// Get the value and validate it.
+			validateConfigGet(key, test.Value, test.Path)
+
+			// Get the top-level value and validate it.
+			validateConfigGet(topLevelKey, test.TopLevelExpectedValue, false /*path*/)
+		}
+	}
+
+	badKeys := []string{
+		// Syntax errors.
+		"root[",
+		`root["nested]`,
+		"root.array[abc]",
+		"root.[1]",
+
+		// First path segment must be a non-empty string.
+		`[""]`,
+		"[0]",
+
+		// Index out of range.
+		"names[-1]",
+		"names[5]",
+
+		// A "secure" key that is a map with a single string value is reserved by the system.
+		"key.secure",
+		"super.nested.map.secure",
+	}
+
+	for _, ns := range namespaces {
+		for _, badKey := range badKeys {
+			key := fmt.Sprintf("%s%s", ns, badKey)
+			stdout, stderr := e.RunCommandExpectError("pulumi", "config", "set", "--path", key, "value")
+			assert.Equal(t, "", stdout)
+			assert.NotEqual(t, "", stderr)
+		}
+	}
+
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+}
+
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -573,6 +819,19 @@ func TestConfigBasicNodeJS(t *testing.T) {
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "names[0]", Value: "a", Path: true},
+			{Key: "names[1]", Value: "b", Path: true},
+			{Key: "names[2]", Value: "c", Path: true},
+			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
+			{Key: "servers[0].port", Value: "80", Path: true},
+			{Key: "servers[0].host", Value: "example", Path: true},
+			{Key: "a.b[0].c", Value: "true", Path: true},
+			{Key: "a.b[1].c", Value: "false", Path: true},
+			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
 		},
 	})
 }
@@ -599,15 +858,30 @@ func TestInvalidVersionInPackageJson(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
-	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("config_basic", "python"),
+		Dir: filepath.Join("config_basic", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
 		Quick: true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a Pythonic value",
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super Pythonic secret is encrypted",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "names[0]", Value: "a", Path: true},
+			{Key: "names[1]", Value: "b", Path: true},
+			{Key: "names[2]", Value: "c", Path: true},
+			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
+			{Key: "servers[0].port", Value: "80", Path: true},
+			{Key: "servers[0].host", Value: "example", Path: true},
+			{Key: "a.b[0].c", Value: "true", Path: true},
+			{Key: "a.b[1].c", Value: "false", Path: true},
+			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
 		},
 	})
 }
@@ -623,6 +897,19 @@ func TestConfigBasicGo(t *testing.T) {
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
 		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "names[0]", Value: "a", Path: true},
+			{Key: "names[1]", Value: "b", Path: true},
+			{Key: "names[2]", Value: "c", Path: true},
+			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
+			{Key: "servers[0].port", Value: "80", Path: true},
+			{Key: "servers[0].host", Value: "example", Path: true},
+			{Key: "a.b[0].c", Value: "true", Path: true},
+			{Key: "a.b[1].c", Value: "false", Path: true},
+			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
 	})
 }
 
@@ -636,6 +923,19 @@ func TestConfigBasicDotNet(t *testing.T) {
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "names[0]", Value: "a", Path: true},
+			{Key: "names[1]", Value: "b", Path: true},
+			{Key: "names[2]", Value: "c", Path: true},
+			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
+			{Key: "servers[0].port", Value: "80", Path: true},
+			{Key: "servers[0].host", Value: "example", Path: true},
+			{Key: "a.b[0].c", Value: "true", Path: true},
+			{Key: "a.b[1].c", Value: "false", Path: true},
+			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
 		},
 	})
 }

@@ -954,36 +954,31 @@ func TestSetSuccess(t *testing.T) {
 func TestSetFail(t *testing.T) {
 	tests := []struct {
 		Key    string
-		Value  Value
 		Config Map
 	}{
+		// Syntax errors.
+		{Key: "my:root["},
+		{Key: `my:root["nested]`},
+		{Key: "my:root.array[abc]"},
+		{Key: "my:root.[1]"},
+
+		// First path component must be a string.
+		{Key: `my:[""]`},
+		{Key: "my:[0]"},
+
+		// Index out of range.
+		{Key: `my:name[-1]`},
+		{Key: `my:name[1]`},
 		{
-			Key:   `my:[""]`,
-			Value: NewValue("value"),
-		},
-		{
-			Key:   "my:[0]",
-			Value: NewValue("value"),
-		},
-		{
-			Key:   `my:name[-1]`,
-			Value: NewValue("value"),
-		},
-		{
-			Key:   `my:name[1]`,
-			Value: NewValue("value"),
-		},
-		{
-			Key:   `my:name[4]`,
-			Value: NewValue("value"),
+			Key: `my:name[4]`,
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
 		},
-		{
-			Key:   `my:key.secure`,
-			Value: NewValue("value"),
-		},
+
+		// A "secure" key that is a map with a single string value is reserved by the system.
+		{Key: `my:key.secure`},
+		{Key: `my:super.nested.map.secure`},
 	}
 
 	for _, test := range tests {
@@ -995,7 +990,7 @@ func TestSetFail(t *testing.T) {
 			key, err := ParseKey(test.Key)
 			assert.NoError(t, err)
 
-			err = test.Config.Set(key, test.Value, true /*path*/)
+			err = test.Config.Set(key, NewValue("value"), true /*path*/)
 			assert.Error(t, err)
 		})
 	}
