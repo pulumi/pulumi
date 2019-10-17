@@ -2,13 +2,7 @@
 
 #nullable enable
 
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Pulumi
 {
@@ -90,11 +84,10 @@ namespace Pulumi
             set => _resourceTransformations = value;
         }
 
-        //**
-        // * An optional list of aliases to treat this resource as matching.
-        // */
-        //aliases?: Input<URN | Alias>[];
-
+        /// <summary>
+        /// An optional list of aliases to treat this resource as matching.
+        /// </summary>
+        public List<InputList<UrnOrAlias>> Aliases { get; set; } = new List<InputList<UrnOrAlias>>();
     }
 }
 

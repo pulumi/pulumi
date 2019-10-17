@@ -12,6 +12,9 @@ using System.Threading.Tasks;
 
 namespace Pulumi
 {
+    /// <summary>
+    /// Resource represents a class whose CRUD operations are implemented by a provider plugin.
+    /// </summary>
     public class Resource
     {
         /// <summary>
@@ -45,9 +48,9 @@ namespace Pulumi
         /// them.The only way you would be able to have a problem is if you had this sort of coding
         /// pattern:
         /// 
-        /// ```ts
+        /// ```c#
         ///     var c1 = new ComponentResource("c1");
-        /// var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
+        ///     var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
         ///     var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
         /// ```
         /// 
@@ -55,7 +58,7 @@ namespace Pulumi
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
         /// </summary>
-        private readonly ImmutableHashSet<Resource> _childResources;
+        private readonly HashSet<Resource> _childResources = new HashSet<Resource>();
 
         /// <summary>
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
@@ -88,7 +91,170 @@ namespace Pulumi
         /// </summary>
         private readonly ImmutableDictionary<string, ProviderResource> _providers;
 
-        // getProvider fetches the provider for the given module member, if any.
+        /// <summary>
+        /// Creates and registers a new resource object.  <paramref name="type"/> is the fully
+        /// qualified type token and <paramref name="name"/> is the "name" part to use in creating a
+        /// stable and globally unique URN for the object. dependsOn is an optional list of other
+        /// resources that this resource depends on, controlling the order in which we perform
+        /// resource operations.
+        /// </summary>
+        /// <param name="type">The type of the resource.</param>
+        /// <param name="name">The unique name of the resource.</param>
+        /// <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
+        /// <param name="properties">The arguments to use to populate the new resource.</param>
+        /// <param name="options">A bag of options that control this resource's behavior.</param>
+        public Resource(
+            string type, string name, bool custom,
+            ImmutableDictionary<string, Input<object>> properties,
+            ResourceOptions opts)
+        {
+            if (string.IsNullOrEmpty(type))
+                throw new ArgumentException(nameof(type));
+
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentException(nameof(name));
+
+            //if (properties == null)
+            //    properties = ImmutableDictionary<string, Input<object>>.Empty;
+
+            //if (options == null)
+            //    options = new ResourceOptions();
+
+            // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
+            // options assigned to this resource.
+            var parent = opts.Parent ?? GetStackResource() /* ?? { __transformations: undefined }; */;
+            var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
+            transformations.AddRange(opts.ResourceTransformations);
+            if (parent != null)
+            {
+                transformations.AddRange(parent._transformations);
+            }
+            this._transformations = transformations.ToImmutable();
+
+            foreach (var transformation in this._transformations) {
+                var tres = transformation(this, type, name, properties, opts);
+                if (tres != null)
+                {
+                    if (tres.Value.options.Parent != opts.Parent)
+                    {
+                        // This is currently not allowed because the parent tree is needed to
+                        // establish what transformation to apply in the first place, and to compute
+                        // inheritance of other resource options in the Resource constructor before
+                        // transformations are run (so modifying it here would only even partially
+                        // take affect).  It's theoretically possible this restriction could be
+                        // lifted in the future, but for now just disallow re-parenting resources in
+                        // transformations to be safe.
+                        throw new ArgumentException("Transformations cannot currently be used to change the `parent` of a resource.");
+                    }
+
+                    properties = tres.Value.properties;
+                    opts = tres.Value.options;
+                }
+            }
+
+            this._name = name;
+
+            // Make a shallow clone of opts to ensure we don't modify the value passed in.
+            opts = opts.Clone();
+
+            if (opts.Provider != null &&
+                opts is ComponentResourceOptions componentOpts &&
+                componentOpts.Providers.Count > 0)
+            {
+                throw new ResourceException("Do not supply both 'provider' and 'providers' options to a ComponentResource.", opts.Parent);
+            }
+
+            // Check the parent type if one exists and fill in any default options.
+            this._providers = ImmutableDictionary<string, ProviderResource>.Empty;
+
+            var providers = ImmutableDictionary.CreateBuilder<string, ProviderResource>();
+            if (opts.Parent!= null)
+            {
+                this._parentResource = opts.Parent;
+                this._parentResource._childResources.Add(this);
+
+                if (opts.Protect == null)
+                    opts.Protect = opts.Parent._protect;
+
+                // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
+                opts.Aliases = opts.Aliases.ToList()
+                foreach (var parentAlias in opts.Parent._aliases)
+                {
+                    opts.Aliases.Add(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+                }
+
+                this._providers = opts.Parent._providers;
+            }
+
+            if (custom)
+            {
+                var customOpts = opts as CustomResourceOptions;
+
+                var provider =customOpts?.provider;
+                if (provider == null)
+                {
+                    if (opts.Parent != null)
+                    {
+                        // If no provider was given, but we have a parent, then inherit the
+                        // provider from our parent.
+                        (< CustomResourceOptions > opts).provider = opts.parent.getProvider(t);
+                    }
+                }
+                else
+                {
+                    // If a provider was specified, add it to the providers map under this type's package so that
+                    // any children of this resource inherit its provider.
+                    const typeComponents = t.split(":");
+                    if (typeComponents.length === 3)
+                    {
+                        const pkg = typeComponents[0];
+                        this.__providers = { ...this.__providers, [pkg]: provider
+    };
+}
+            }
+        }
+        else {
+            // Note: we checked above that at most one of opts.provider or opts.providers is set.
+
+            // If opts.provider is set, treat that as if we were given a array of provider with that
+            // single value in it.  Otherwise, take the array or map of providers, convert it to a
+            // map and combine with any providers we've already set from our parent.
+            const providers = opts.provider
+                ? convertToProvidersMap([opts.provider])
+                : convertToProvidersMap((<ComponentResourceOptions>opts).providers);
+            this.__providers = { ...this.__providers, ...providers };
+        }
+
+        this.__protect = !!opts.protect;
+
+        // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
+        // default `name` and `type` to apply until we are inside the resource constructor.
+        this.__aliases = [];
+        if (opts.aliases) {
+            for (const alias of opts.aliases) {
+    this.__aliases.push(collapseAliasToUrn(alias, name, t, opts.parent));
+}
+}
+
+        if (opts.id) {
+            // If this resource already exists, read its state rather than registering it anew.
+            if (!custom) {
+                throw new ResourceError(
+                    "Cannot read an existing resource unless it has a custom provider", opts.parent);
+            }
+            readResource(this, t, name, props, opts);
+        } else {
+            // Kick off the resource registration.  If we are actually performing a deployment, this
+            // resource's properties will be resolved asynchronously after the operation completes, so
+            // that dependent computations resolve normally.  If we are just planning, on the other
+            // hand, values will never resolve.
+            registerResource(this, t, name, custom, props, opts);
+        }
+        }
+
+        /// <summary>
+        /// Fetches the provider for the given module member, if any.
+        /// </summary>
         public ProviderResource? GetProvider(string moduleMember)
         {
             var memComponents = moduleMember.Split(":");
@@ -101,7 +267,6 @@ namespace Pulumi
             return result;
         }
     }
-}
 }
 
 //using Google.Protobuf.Collections;
