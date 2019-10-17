@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fsnotify/fsevents"
 	"github.com/pkg/errors"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
@@ -411,18 +412,31 @@ func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReferenc
 		ShowLink: false,
 	}
 
+	//TODO: This is macOS only - need to factor out to darwin build target
+	es := &fsevents.EventStream{
+		Paths:   []string{op.Root},
+		Latency: 100 * time.Millisecond,
+		EventID: fsevents.LatestEventID(),
+		Flags:   fsevents.FileEvents,
+	}
+	es.Start()
+
 	fmt.Printf(op.Opts.Display.Color.Colorize(
 		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stackRef)
 
-	for {
-		_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
-		if res != nil {
-			logging.V(5).Infof("watch update failed: %v", res.Error())
-			if res.Error() == context.Canceled {
-				return res
+	for events := range es.Events {
+		if len(events) > 0 {
+			_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+			if res != nil {
+				logging.V(5).Infof("watch update failed: %v", res.Error())
+				if res.Error() == context.Canceled {
+					return res
+				}
 			}
 		}
 	}
+
+	return nil
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
