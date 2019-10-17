@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 1.3.3 (2019-10-17)
+
+- Fix an issue with first-class providers introduced in 1.3.2.
+
 ## 1.3.2 (2019-10-16)
 
 - Fix hangs and crashes related to use of `getResource` (i.e. `aws.ec2.getSubnetIds(...)`) methods,
