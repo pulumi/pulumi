@@ -237,7 +237,7 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 
 	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
 	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
 	}
 	if isBrew {
 		// When consulting Homebrew for version info, we just use the latest version as the oldest allowed.
