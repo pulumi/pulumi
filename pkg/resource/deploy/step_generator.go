@@ -45,7 +45,9 @@ type stepGenerator struct {
 	// events and report them all at once.
 	hasPolicyViolations bool
 
-	urns           map[resource.URN]bool            // set of URNs discovered for this plan
+	// urns contains the set of URNs discovered for this plan, with their final resource state.
+	urns map[resource.URN]*resource.State
+
 	reads          map[resource.URN]bool            // set of URNs read for this plan
 	deletes        map[resource.URN]bool            // set of URNs deleted in this plan
 	replaces       map[resource.URN]bool            // set of URNs replaced in this plan
@@ -130,14 +132,13 @@ func (sg *stepGenerator) GenerateSteps(
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
-	// generate an URN for this new resource.
+	// Generate an URN for this new resource, confirm we haven't seen it before in this plan.
 	urn := sg.plan.generateURN(goal.Parent, goal.Type, goal.Name)
-	if sg.urns[urn] {
+	if _, ok := sg.urns[urn]; ok {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
-	sg.urns[urn] = true
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
@@ -178,6 +179,8 @@ func (sg *stepGenerator) GenerateSteps(
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts)
+	// Mark the URN/resource as having been seen.
+	sg.urns[urn] = new
 
 	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
 	// of resources that use this provider.
@@ -254,18 +257,20 @@ func (sg *stepGenerator) GenerateSteps(
 		}
 	}
 
-	// Get the final list of policy packs.
+	// Send the resource off to any Analyzers before being operated on.
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
-
 	for _, analyzer := range analyzers {
-		var diagnostics []plugin.AnalyzeDiagnostic
-		diagnostics, err = analyzer.Analyze(new.Type, inputs)
-		if err != nil {
-			return nil, result.FromError(err)
+		r := plugin.AnalyzerResource{
+			Type:       new.Type,
+			Properties: inputs,
+		}
+		diagnostics, aErr := analyzer.Analyze(r)
+		if aErr != nil {
+			return nil, result.FromError(aErr)
 		}
 		for _, d := range diagnostics {
-			// TODO(hausdorff): Batch up failures and report them all at once during preview. This
-			// will cause them to fail eagerly.
+			// TODO(hausdorff): Batch up failures and report them all at once during preview. This code here
+			// will cause them to fail eagerly, and stop the plan immediately.
 			if d.EnforcementLevel == apitype.Mandatory {
 				if !sg.plan.preview {
 					invalid = true
@@ -1108,7 +1113,10 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
 	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
 	// encountered while walking the old dependency graph to determine the set of dependents.
-	impossibleDependents := sg.urns
+	impossibleDependents := make(map[resource.URN]bool)
+	for urn := range sg.urns {
+		impossibleDependents[urn] = true
+	}
 	for _, d := range sg.plan.depGraph.DependingOn(root, impossibleDependents) {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
@@ -1128,7 +1136,7 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 	return &stepGenerator{
 		plan:                 plan,
 		opts:                 opts,
-		urns:                 make(map[resource.URN]bool),
+		urns:                 make(map[resource.URN]*resource.State),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
 		sames:                make(map[resource.URN]bool),
