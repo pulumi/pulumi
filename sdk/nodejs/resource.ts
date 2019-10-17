@@ -273,12 +273,12 @@ export abstract class Resource {
         }
 
         if (custom) {
-            const provider = (<CustomResourceOptions>opts).provider;
+            const provider = opts.provider;
             if (provider === undefined) {
                 if (opts.parent) {
                     // If no provider was given, but we have a parent, then inherit the
                     // provider from our parent.
-                    (<CustomResourceOptions>opts).provider = opts.parent.getProvider(t);
+                    opts.provider = opts.parent.getProvider(t);
                 }
             } else {
                 // If a provider was specified, add it to the providers map under this type's package so that
