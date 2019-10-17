@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net.Http.Headers;
 
 namespace Pulumi
 {
@@ -282,23 +283,22 @@ namespace Pulumi
                 }
 
                 var alias = a.Alias;
-                var name = alias.hasOwnProperty("name") ? a.name : defaultName;
-                const type = a.hasOwnProperty("type") ? a.type : defaultType;
+                var name = alias.Name.HasValue ? alias.Name.Value : defaultName;
+                var type = alias.Type.HasValue ? alias.Type.Value : defaultType;
+                var project = alias.Project.HasValue ? alias.Project.Value : Pulumi.Project.Current;
+                var stack = alias.Stack.HasValue ? alias.Stack.Value : Pulumi.Stack.Current;
+                if (alias.Parent.HasValue && alias.ParentUrn.HasValue)
+                    throw new ArgumentException("Alias cannot specify Parent and ParentUrn at the same time.");
+
                 const parent = a.hasOwnProperty("parent") ? a.parent : defaultParent;
-                const project = a.hasOwnProperty("project") ? a.project : getProject();
-                const stack = a.hasOwnProperty("stack") ? a.stack : getStack();
 
-                if (name === undefined)
-                {
-                    throw new Error("No valid 'name' passed in for alias.");
-                }
+                if (name == null)
+                    throw new Exception("No valid 'Name' passed in for alias.");
 
-                if (type === undefined)
-                {
-                    throw new Error("No valid 'type' passed in for alias.");
-                }
+                if (type == null)
+                    throw new Exception("No valid 'type' passed in for alias.");
 
-                return createUrn(name, type, parent, project, stack);
+                return Pulumi.Urn.Create(name, type, parent, project, stack);
             });
         }
     }

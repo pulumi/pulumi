@@ -7,14 +7,14 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Pulumi
 {
-    public class Input<T>
+    internal interface IProvidesOutputOfObj
     {
-        //[MaybeNull]
-        //private readonly T _value;
-        private readonly Output<T> _outputValue;
+        Output<object?> OutputOfObj { get; }
+    }
 
-        //private Input([MaybeNull]T value) : this()
-        //    => _value = value;
+    public class Input<T> : IProvidesOutputOfObj
+    {
+        private readonly Output<T> _outputValue;
 
         private Input(Output<T> outputValue)
             => _outputValue = outputValue ?? throw new ArgumentNullException(nameof(outputValue));
@@ -30,6 +30,9 @@ namespace Pulumi
 
         public Output<T> ToOutput()
             => this;
+
+        Output<object?> IProvidesOutputOfObj.OutputOfObj
+            => _outputValue.Apply(v => (object?)v);
     }
 }
 

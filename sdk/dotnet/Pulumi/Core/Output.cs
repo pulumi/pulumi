@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -28,9 +29,26 @@ namespace Pulumi
 
         public static Output<(X, Y, Z)> Tuple<X, Y, Z>(Input<X> item1, Input<Y> item2, Input<Z> item3)
             => Output<(X, Y, Z)>.Tuple(item1, item2, item3);
+
+        public static Output<string> Format(FormattableString formattableString)
+        {
+            var arguments = formattableString.GetArguments();
+            var inputs = new Input<object?>[arguments.Length];
+
+            for (var i = 0; i < arguments.Length; i++)
+            {
+                var arg = arguments[i];
+                inputs[i] = arg is IProvidesOutputOfObj provider
+                    ? provider.OutputOfObj
+                    : Create<object?>(arg);
+            }
+
+            return All(inputs).Apply(objs =>
+                string.Format(formattableString.Format, objs.ToArray()));
+         }
     }
 
-    public class Output<T>
+    public class Output<T> : IProvidesOutputOfObj
     {
         private readonly Task<OutputData<T>> _dataTask;
 
@@ -39,6 +57,9 @@ namespace Pulumi
             var data = await _dataTask.ConfigureAwait(false);
             return data.Value;
         }
+
+        Output<object?> IProvidesOutputOfObj.OutputOfObj
+            => this.Apply(v => (object?)v);
 
         internal async Task<bool> IsKnown()
         {
