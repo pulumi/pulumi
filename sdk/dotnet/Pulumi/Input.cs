@@ -1,3 +1,35 @@
+// Copyright 2016-2018, Pulumi Corporation
+
+#nullable enable
+
+using System;
+using System.Diagnostics.CodeAnalysis;
+
+namespace Pulumi
+{
+    public struct Input<T>
+    {
+        //[MaybeNull]
+        //private readonly T _value;
+        private readonly Output<T> _outputValue;
+
+        //private Input([MaybeNull]T value) : this()
+        //    => _value = value;
+
+        private Input(Output<T> outputValue) : this()
+            => _outputValue = outputValue ?? throw new ArgumentNullException(nameof(outputValue));
+
+        public static implicit operator Input<T>([MaybeNull]T value)
+            => Output.Create(value);
+
+        public static implicit operator Input<T>(Output<T> value)
+            => new Input<T>(value);
+
+        public static implicit operator Output<T>(Input<T> input)
+            => input._outputValue;
+    }
+}
+
 
 //using Google.Protobuf.WellKnownTypes;
 //using System;
@@ -47,8 +79,3 @@
 //        }
 //    }
 //}
-
-class Input
-{
-
-}
