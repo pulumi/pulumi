@@ -15,6 +15,7 @@
 package display
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -34,7 +35,7 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
 		// Events ocurring early:
-		case engine.PreludeEvent:
+		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
 			// Ignore it
 			continue
 		case engine.DiagEvent:
@@ -42,6 +43,20 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 			p := e.Payload.(engine.DiagEventPayload)
 			s := renderDiffDiagEvent(p, opts)
 			fprintIgnoreError(os.Stdout, s)
+		case engine.ResourcePreEvent:
+			p := e.Payload.(engine.ResourcePreEventPayload)
+			if shouldShow(p.Metadata, opts) {
+				s := fmt.Sprintf("%s %s[%s] %v\n",
+					p.Metadata.Op, p.Metadata.URN.Name(), p.Metadata.URN.Type(), p.Metadata.Diffs)
+				fprintIgnoreError(os.Stdout, s)
+			}
+		case engine.ResourceOutputsEvent:
+			p := e.Payload.(engine.ResourceOutputsEventPayload)
+			if shouldShow(p.Metadata, opts) {
+				s := fmt.Sprintf("done %s %s[%s]\n",
+					p.Metadata.Op, p.Metadata.URN.Name(), p.Metadata.URN.Type())
+				fprintIgnoreError(os.Stdout, s)
+			}
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
 		}

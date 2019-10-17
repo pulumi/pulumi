@@ -411,10 +411,16 @@ func (b *localBackend) Watch(ctx context.Context, stackRef backend.StackReferenc
 		ShowLink: false,
 	}
 
+	fmt.Printf(op.Opts.Display.Color.Colorize(
+		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stackRef)
+
 	for {
 		_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
 		if res != nil {
-			return res
+			logging.V(5).Infof("watch update failed: %v", res.Error())
+			if res.Error() == context.Canceled {
+				return res
+			}
 		}
 	}
 }
@@ -429,7 +435,7 @@ func (b *localBackend) apply(
 	stackName := stackRef.Name()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay {
+	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is a local deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
