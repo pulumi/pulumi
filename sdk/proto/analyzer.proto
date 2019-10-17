@@ -26,7 +26,12 @@ package pulumirpc;
 // issues -- style, policy, correctness, security, and so on.
 service Analyzer {
     // Analyze analyzes a single resource object, and returns any errors that it finds.
+    // Called with the "inputs" to the resource, before it is updated.
     rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
+    // AnalyzeStack analyzes all resources within a stack, at the end of a successful
+    // preview or update. The provided resources are the "outputs", after any mutations
+    // have taken place.
+    rpc AnalyzeStack(AnalyzeStackRequest) returns (AnalyzeResponse) {}
     // GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
     rpc GetAnalyzerInfo(google.protobuf.Empty) returns (AnalyzerInfo) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
@@ -36,6 +41,18 @@ service Analyzer {
 message AnalyzeRequest {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
+}
+
+// Resource defines the view of a Pulumi-managed resource as sent to Analyzers. The properties
+// of the resource are specific to the type of analysis being performed. See the Analyzer
+// service definition for more information.
+message Resource {
+    string type = 1;                       // the type token of the resource.
+    google.protobuf.Struct properties = 2; // the full properties to use for validation.
+}
+
+message AnalyzeStackRequest {
+    repeated AnalyzeResource resources = 1;
 }
 
 message AnalyzeResponse {
