@@ -1,17 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Pulumirpc\Pulumirpc.csproj" />
+    <PackageReference Include="Google.Protobuf" Version="3.10.0" />
+    <PackageReference Include="Grpc" Version="2.24.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.24.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
+    <Protobuf Include="..\..\proto\*.proto" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
     <PackageReference Include="Serilog" Version="2.7.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-  </PropertyGroup>
 
 </Project>
