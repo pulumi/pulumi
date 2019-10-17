@@ -3,6 +3,14 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Secret Manager based on Azure KeyVault uses credentials from the `az` command line if the environment variable 
+  `AZURE_KEYVAULT_AUTH_VIA_CLI` is set to `true`
+
+### Breaking Changes
+
+- Secret Manager based on Azure KeyVault expects a URL of the format `azurekeyvault://mykevaultname.vault.azure.net/keys/mykeyname/mykeyversion`
+  instead of `azurekeyvault://mykeyvaultname/mykeyname/mykeyversion`
+
 ## 1.3.2 (2019-10-16)
 
 - Fix hangs and crashes related to use of `getResource` (i.e. `aws.ec2.getSubnetIds(...)`) methods,
