@@ -20,7 +20,8 @@ import (
 
 // LogEntry is a row in the logs for a running compute service
 type LogEntry struct {
-	ID        string
+	ID string
+	// Timestamp is a Unix timestamp, in milliseconds
 	Timestamp int64
 	Message   string
 }

@@ -2,49 +2,47 @@ PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python
 VERSION          := $(shell ../../scripts/get-py-version)
 
-PYENV := env
-PYENVBIN := $(PYENV)/bin
+PYENV := ./env
 PYENVSRC := $(PYENV)/src
-PYENVLIB := $(PYENV)/lib
-
-GOMETALINTERBIN := gometalinter
-GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
 
 include ../../build/common.mk
 
 ensure::
-	$(PIP) install --user 'virtualenv>=15.2.0'
-	rm -rf $(PYENV) && virtualenv --python=$(PYTHON) $(PYENV)/
-	echo "export PYTHONPATH=$${PYTHONPATH}:$(shell pwd)/$(PYENVLIB)/python2.7/site-packages" >> $(PYENVBIN)/activate
-	( \
-		source $(PYENVBIN)/activate ; \
-		pip install --upgrade 'pip>=10.0.0' ; \
-		pip install -r requirements.txt ; \
-	)
+	pipenv --python 3 install --dev
 	mkdir -p $(PYENVSRC)
 
-build::
+build_package::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
-	( \
-		source $(PYENVBIN)/activate ; \
-		cd $(PYENVSRC) && python setup.py build bdist_wheel --universal ; \
-	)
+	cp ../../README.md $(PYENVSRC)
+	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
+
+build_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
-lint::
-	( \
-		source $(PYENVBIN)/activate ; \
-		cd $(PYENVSRC) && pylint -E ./pulumi --ignore-patterns '.*_pb2_.*.py' ; \
-	)
-	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
-	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
+build:: build_package build_plugin
 
-install::
-	cd $(PYENVSRC) && $(PIP) install --user -e .
+lint::
+	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
+	golangci-lint run
+
+install_package::
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
+	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
+
+install_plugin::
 	GOBIN=$(PULUMI_BIN) go install \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
+install:: install_package install_plugin
+
 test_fast::
-	$(PYTHON) -m unittest discover -s lib/test
+	pipenv run pip install ./env/src
+	pipenv run python -m unittest discover -s lib/test -v
+
+test_all:: test_fast
+
+dist::
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
+	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/

@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"time"
 
-	mobytime "github.com/moby/moby/api/types/time"
+	mobytime "github.com/docker/docker/api/types/time"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -38,15 +39,30 @@ func newLogsCmd() *cobra.Command {
 	var follow bool
 	var since string
 	var resource string
+	var jsonOut bool
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
-		Short: "Show aggregated logs for a stack",
+		Short: "[PREVIEW] Show aggregated logs for a stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(stack, false)
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
+			}
+
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				return errors.Wrap(err, "getting secrets manager")
+			}
+
+			cfg, err := getStackConfiguration(s, sm)
+			if err != nil {
+				return errors.Wrap(err, "getting stack configuration")
 			}
 
 			startTime, err := parseSince(since, time.Now())
@@ -59,11 +75,13 @@ func newLogsCmd() *cobra.Command {
 				resourceFilter = &rf
 			}
 
-			fmt.Printf(
-				colors.ColorizeText(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
-				s.Name().String(),
-				startTime.Format(timeFormat),
-			)
+			if !jsonOut {
+				fmt.Printf(
+					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
+					s.Ref().String(),
+					startTime.Format(timeFormat),
+				)
+			}
 
 			// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
 			// approach here to ensure we don't grow memory unboundedly while following logs.
@@ -73,7 +91,7 @@ func newLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(commandContext(), operations.LogQuery{
+				logs, err := s.GetLogs(commandContext(), cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})
@@ -81,10 +99,45 @@ func newLogsCmd() *cobra.Command {
 					return errors.Wrapf(err, "failed to get logs")
 				}
 
+				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.
+				if !follow && jsonOut {
+					entries := make([]logEntryJSON, 0, len(logs))
+
+					for _, logEntry := range logs {
+						if _, shownAlready := shown[logEntry]; !shownAlready {
+							eventTime := time.Unix(0, logEntry.Timestamp*1000000)
+
+							entries = append(entries, logEntryJSON{
+								ID:        logEntry.ID,
+								Timestamp: eventTime.UTC().Format(timeFormat),
+								Message:   logEntry.Message,
+							})
+
+							shown[logEntry] = true
+						}
+					}
+
+					return printJSON(entries)
+				}
+
 				for _, logEntry := range logs {
 					if _, shownAlready := shown[logEntry]; !shownAlready {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat), logEntry.ID, logEntry.Message)
+
+						if !jsonOut {
+							fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat),
+								logEntry.ID, logEntry.Message)
+						} else {
+							err = printJSON(logEntryJSON{
+								ID:        logEntry.ID,
+								Timestamp: eventTime.UTC().Format(timeFormat),
+								Message:   logEntry.Message,
+							})
+							if err != nil {
+								return err
+							}
+						}
+
 						shown[logEntry] = true
 					}
 				}
@@ -100,7 +153,12 @@ func newLogsCmd() *cobra.Command {
 
 	logsCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"List configuration for a different stack than the currently selected stack")
+		"The name of the stack to operate on. Defaults to the current stack")
+	logsCmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
+	logsCmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	logsCmd.PersistentFlags().BoolVarP(
 		&follow, "follow", "f", false,
 		"Follow the log stream in real time (like tail -f)")
@@ -129,4 +187,13 @@ func parseSince(since string, reference time.Time) (*time.Time, error) {
 	}
 	startTime := time.Unix(startTimeSec, startTimeNs)
 	return &startTime, nil
+}
+
+// logEntryJSON is the shape of the --json output of this command. When --json is passed, if we are not following the
+// log stream, we print an array of logEntry objects. If we are following the log stream, we instead print each object
+// at top level.
+type logEntryJSON struct {
+	ID        string
+	Timestamp string
+	Message   string
 }

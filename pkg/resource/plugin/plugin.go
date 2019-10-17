@@ -16,7 +16,6 @@ package plugin
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -24,7 +23,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"unicode"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -39,26 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
-
-// MissingError is returned if a plugin is missing.
-type MissingError struct {
-	// Info contains information about the plugin that was not found.
-	Info workspace.PluginInfo
-}
-
-// NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(info workspace.PluginInfo) error {
-	return &MissingError{
-		Info: info,
-	}
-}
-
-func (err *MissingError) Error() string {
-	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
-		err.Info.Kind, err.Info.String())
-}
 
 type plugin struct {
 	stdoutDone <-chan bool
@@ -76,10 +55,17 @@ type plugin struct {
 // pluginRPCConnectionTimeout dictates how long we wait for the plugin's RPC to become available.
 var pluginRPCConnectionTimeout = time.Second * 10
 
+// pluginRPCMaxMessageSize raises the gRPC Max Message size from `4194304` to `419430400`
+var pluginRPCMaxMessageSize = 1024 * 1024 * 400
+
 // A unique ID provided to the output stream of each plugin.  This allows the output of the plugin
 // to be streamed to the display, while still allowing that output to be sent a small piece at a
 // time.
 var nextStreamID int32
+
+// errRunPolicyModuleNotFound is returned when we determine that the plugin failed to load because
+// the stack's Pulumi SDK did not have the required modules. i.e. is too old.
+var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy as code")
 
 func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin, error) {
 	if logging.V(9) {
@@ -111,6 +97,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	errStreamID := atomic.AddInt32(&nextStreamID, 1)
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
+	var sawPolicyModuleNotFoundErr bool
 	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
 		reader := bufio.NewReader(t)
 
@@ -120,7 +107,15 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 				break
 			}
 
-			msg = strings.TrimRightFunc(msg, unicode.IsSpace)
+			// We may be trying to run a plugin that isn't present in the SDK installed with the stack.
+			// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
+			//
+			// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
+			// is a well-known problem and return a better error as appropriate.
+			if strings.Contains(msg, "Cannot find module '@pulumi/pulumi/cmd/run-policy-pack'") {
+				sawPolicyModuleNotFoundErr = true
+			}
+
 			if strings.TrimSpace(msg) != "" {
 				if stderr {
 					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
@@ -146,7 +141,14 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 		n, readerr := plug.Stdout.Read(b)
 		if readerr != nil {
 			killerr := plug.Proc.Kill()
-			contract.IgnoreError(killerr) // we are ignoring because the readerr trumps it.
+			contract.IgnoreError(killerr) // We are ignoring because the readerr trumps it.
+
+			// If from the output we have seen, return a specific error if possible.
+			if sawPolicyModuleNotFoundErr {
+				return nil, errRunPolicyModuleNotFound
+			}
+
+			// Fall back to a generic, opaque error.
 			if port == "" {
 				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", bin)
 			}
@@ -171,10 +173,13 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
+	// We want to increase the default message size as per pulumi/pulumi#2319
+	messageSizeOpts := grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(pluginRPCMaxMessageSize))
+
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(":"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+	conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
 		rpcutil.OpenTracingClientInterceptor(),
-	))
+	), messageSizeOpts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
@@ -231,19 +236,18 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	// Flow the logging information if set.
 	if logging.LogFlow {
 		if logging.LogToStderr {
-			args = append(args, "--logtostderr")
+			args = append(args, "-logtostderr")
 		}
 		if logging.Verbose > 0 {
 			args = append(args, "-v="+strconv.Itoa(logging.Verbose))
 		}
 	}
-	// Always flow tracing settings.
-	if cmdutil.TracingEndpoint != "" {
+	// Flow tracing settings if we are using a remote collector.
+	if cmdutil.TracingEndpoint != "" && !cmdutil.TracingToFile {
 		args = append(args, "--tracing", cmdutil.TracingEndpoint)
 	}
 	args = append(args, pluginArgs...)
 
-	// nolint: gas
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
@@ -266,8 +270,7 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 
 func (p *plugin) Close() error {
 	if p.Conn != nil {
-		closerr := p.Conn.Close()
-		contract.IgnoreError(closerr)
+		contract.IgnoreClose(p.Conn)
 	}
 
 	var result error

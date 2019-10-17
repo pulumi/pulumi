@@ -18,8 +18,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -31,20 +31,29 @@ import (
 // credentials or tests interacting with one another
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
-// GetAccessToken returns an access token underneath a given key.
-func GetAccessToken(key string) (string, error) {
+// GetAccount returns an account underneath a given key.
+//
+// Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
+// the caller to fill in the username and last validation time.
+func GetAccount(key string) (Account, error) {
 	creds, err := GetStoredCredentials()
 	if err != nil && !os.IsNotExist(err) {
-		return "", err
+		return Account{}, err
 	}
-	if creds.AccessTokens == nil {
-		return "", nil
+
+	// Try the account
+	if account, ok := creds.Accounts[key]; ok {
+		return account, nil
 	}
-	return creds.AccessTokens[key], nil
+	token, ok := creds.AccessTokens[key]
+	if !ok {
+		return Account{}, nil
+	}
+	return Account{AccessToken: token}, nil
 }
 
-// DeleteAccessToken deletes an access token underneath the given key.
-func DeleteAccessToken(key string) error {
+// DeleteAccount deletes an account underneath the given key.
+func DeleteAccount(key string) error {
 	creds, err := GetStoredCredentials()
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -52,14 +61,17 @@ func DeleteAccessToken(key string) error {
 	if creds.AccessTokens != nil {
 		delete(creds.AccessTokens, key)
 	}
+	if creds.Accounts != nil {
+		delete(creds.Accounts, key)
+	}
 	if creds.Current == key {
 		creds.Current = ""
 	}
 	return StoreCredentials(creds)
 }
 
-// StoreAccessToken saves the given access token underneath the given key.
-func StoreAccessToken(key string, token string, current bool) error {
+// StoreAccount saves the given account underneath the given key.
+func StoreAccount(key string, account Account, current bool) error {
 	creds, err := GetStoredCredentials()
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -67,35 +79,45 @@ func StoreAccessToken(key string, token string, current bool) error {
 	if creds.AccessTokens == nil {
 		creds.AccessTokens = make(map[string]string)
 	}
-	creds.AccessTokens[key] = token
+	if creds.Accounts == nil {
+		creds.Accounts = make(map[string]Account)
+	}
+	creds.AccessTokens[key], creds.Accounts[key] = account.AccessToken, account
 	if current {
 		creds.Current = key
 	}
 	return StoreCredentials(creds)
 }
 
+// Account holds the information associated with a Pulumi account.
+type Account struct {
+	AccessToken     string    `json:"accessToken,omitempty"`     // The access token for this account.
+	Username        string    `json:"username,omitempty"`        // The username for this account.
+	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"` // The last time this token was validated.
+}
+
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
 // a map from the cloud API URL to the associated access token.
 type Credentials struct {
-	Current      string            `json:"current,omitempty"`      // the currently selected key.
-	AccessTokens map[string]string `json:"accessTokens,omitempty"` // a map of arbitrary key strings to tokens.
+	Current      string             `json:"current,omitempty"`      // the currently selected key.
+	AccessTokens map[string]string  `json:"accessTokens,omitempty"` // a map of arbitrary key strings to tokens.
+	Accounts     map[string]Account `json:"accounts,omitempty"`     // a map of arbitrary keys to account info.
 }
 
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
 // whether it exists or not.
 func getCredsFilePath() (string, error) {
-	user, err := user.Current()
-	if user == nil || err != nil {
-		return "", errors.Wrapf(err, "getting creds file path: failed to get current user")
-	}
-
 	// Allow the folder we use to store credentials to be overridden by tests
 	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
 	if pulumiFolder == "" {
-		pulumiFolder = filepath.Join(user.HomeDir, BookkeepingDir)
+		folder, err := GetPulumiHomeDir()
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to get the home path")
+		}
+		pulumiFolder = folder
 	}
 
-	err = os.MkdirAll(pulumiFolder, 0700)
+	err := os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
 	}
@@ -106,12 +128,29 @@ func getCredsFilePath() (string, error) {
 // GetCurrentCloudURL returns the URL of the cloud we are currently connected to. This may be empty if we
 // have not logged in.
 func GetCurrentCloudURL() (string, error) {
-	creds, err := GetStoredCredentials()
-	if err != nil {
-		return "", err
+	var url string
+	// Try detecting backend from config
+	projPath, err := DetectProjectPath()
+	if err == nil && projPath != "" {
+		proj, err := LoadProject(projPath)
+		if err != nil {
+			return "", errors.Wrap(err, "could not load current project")
+		}
+
+		if proj.Backend != nil {
+			url = proj.Backend.URL
+		}
 	}
 
-	return creds.Current, nil
+	if url == "" {
+		creds, err := GetStoredCredentials()
+		if err != nil {
+			return "", err
+		}
+		url = creds.Current
+	}
+
+	return url, nil
 }
 
 // GetStoredCredentials returns any credentials stored on the local machine.

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Inputs } from "../output";
 import * as resource from "../resource";
 import * as runtime from "../runtime";
 
@@ -87,6 +88,10 @@ export interface CreateResult {
 }
 
 export interface ReadResult {
+    /**
+     * The ID of the resource ready back (or blank if missing).
+     */
+    readonly id?: resource.ID;
     /**
      * The current property state read from the live environment.
      */
@@ -173,8 +178,8 @@ export abstract class Resource extends resource.CustomResource {
      *              property "__provider".
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(provider: ResourceProvider, name: string, props: resource.Inputs,
-                opts?: resource.ResourceOptions) {
+    constructor(provider: ResourceProvider, name: string, props: Inputs,
+                opts?: resource.CustomResourceOptions) {
         const providerKey: string = "__provider";
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");

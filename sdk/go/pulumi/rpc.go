@@ -16,7 +16,6 @@ package pulumi
 
 import (
 	"reflect"
-	"sort"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
@@ -28,18 +27,12 @@ import (
 )
 
 // marshalInputs turns resource property inputs into a gRPC struct suitable for marshaling.
-func marshalInputs(props map[string]interface{}) ([]string, *structpb.Struct, []URN, error) {
-	var keys []string
-	for key := range props {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
+func marshalInputs(props map[string]interface{}) (*structpb.Struct, map[string][]URN, []URN, error) {
 	var depURNs []URN
-	pmap := make(map[string]interface{})
-	for _, key := range keys {
+	pmap, pdeps := make(map[string]interface{}), make(map[string][]URN)
+	for key := range props {
 		// Get the underlying value, possibly waiting for an output to arrive.
-		v, deps, err := marshalInput(props[key])
+		v, resourceDeps, err := marshalInput(props[key])
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", key)
 		}
@@ -47,9 +40,17 @@ func marshalInputs(props map[string]interface{}) ([]string, *structpb.Struct, []
 		pmap[key] = v
 
 		// Record all dependencies accumulated from reading this property.
-		for _, dep := range deps {
-			depURNs = append(depURNs, dep.URN())
+		deps := make([]URN, 0, len(resourceDeps))
+		for _, dep := range resourceDeps {
+			depURN, err := dep.URN().Value()
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			deps = append(deps, depURN)
 		}
+		pdeps[key] = deps
+
+		depURNs = append(depURNs, deps...)
 	}
 
 	// Marshal all properties for the RPC call.
@@ -57,14 +58,16 @@ func marshalInputs(props map[string]interface{}) ([]string, *structpb.Struct, []
 		resource.NewPropertyMapFromMap(pmap),
 		plugin.MarshalOptions{KeepUnknowns: true},
 	)
-	return keys, m, depURNs, err
+	return m, pdeps, depURNs, err
 }
 
+// `gosec` thinks these are credentials, but they are not.
+// nolint: gosec
 const (
-	// nolint: gas, linter thinks these are creds, but they aren't.
 	rpcTokenSpecialSigKey     = "4dabf18193072939515e22adb298388d"
 	rpcTokenSpecialAssetSig   = "c44067f5952c0a294b673a41bacd8c17"
 	rpcTokenSpecialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7"
+	rpcTokenSpecialSecretSig  = "1b47061264138c4ac30d75fd1eb44270"
 	rpcTokenUnknownValue      = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 )
 
@@ -222,32 +225,39 @@ func unmarshalOutput(v interface{}) (interface{}, error) {
 
 	// In the case of assets and archives, turn these into real asset and archive structures.
 	if m, ok := v.(map[string]interface{}); ok {
-		if m[rpcTokenSpecialSigKey] == rpcTokenSpecialAssetSig {
-			if path := m["path"]; path != nil {
-				return asset.NewFileAsset(cast.ToString(path)), nil
-			} else if text := m["text"]; text != nil {
-				return asset.NewStringAsset(cast.ToString(text)), nil
-			} else if uri := m["uri"]; uri != nil {
-				return asset.NewRemoteAsset(cast.ToString(uri)), nil
-			}
-			return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
-		} else if m[rpcTokenSpecialSigKey] == rpcTokenSpecialArchiveSig {
-			if assets := m["assets"]; assets != nil {
-				as := make(map[string]interface{})
-				for k, v := range assets.(map[string]interface{}) {
-					a, err := unmarshalOutput(v)
-					if err != nil {
-						return nil, err
-					}
-					as[k] = a
+		if sig, hasSig := m[rpcTokenSpecialSigKey]; hasSig {
+			switch sig {
+			case rpcTokenSpecialAssetSig:
+				if path := m["path"]; path != nil {
+					return asset.NewFileAsset(cast.ToString(path)), nil
+				} else if text := m["text"]; text != nil {
+					return asset.NewStringAsset(cast.ToString(text)), nil
+				} else if uri := m["uri"]; uri != nil {
+					return asset.NewRemoteAsset(cast.ToString(uri)), nil
 				}
-				return asset.NewAssetArchive(as), nil
-			} else if path := m["path"]; path != nil {
-				return asset.NewFileArchive(cast.ToString(path)), nil
-			} else if uri := m["uri"]; uri != nil {
-				return asset.NewRemoteArchive(cast.ToString(uri)), nil
+				return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
+			case rpcTokenSpecialArchiveSig:
+				if assets := m["assets"]; assets != nil {
+					as := make(map[string]interface{})
+					for k, v := range assets.(map[string]interface{}) {
+						a, err := unmarshalOutput(v)
+						if err != nil {
+							return nil, err
+						}
+						as[k] = a
+					}
+					return asset.NewAssetArchive(as), nil
+				} else if path := m["path"]; path != nil {
+					return asset.NewFileArchive(cast.ToString(path)), nil
+				} else if uri := m["uri"]; uri != nil {
+					return asset.NewRemoteArchive(cast.ToString(uri)), nil
+				}
+				return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
+			case rpcTokenSpecialSecretSig:
+				return nil, errors.New("this version of the Pulumi SDK does not support first-class secrets")
+			default:
+				return nil, errors.Errorf("unrecognized signature '%v' in output value", sig)
 			}
-			return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
 		}
 	}
 

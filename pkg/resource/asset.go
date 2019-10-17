@@ -43,13 +43,17 @@ import (
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
-// nolint: lll
 type Asset struct {
-	Sig  string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the asset contents.
-	Text string `json:"text,omitempty" yaml:"text,omitempty"`                                     // a textual asset.
-	Path string `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
-	URI  string `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a URI (file://, http://, https://, or custom).
+	// Sig is the unique asset type signature (see properties.go).
+	Sig string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
+	// Hash is the SHA256 hash of the asset's contents.
+	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`
+	// Text is set to a non-empty value for textual assets.
+	Text string `json:"text,omitempty" yaml:"text,omitempty"`
+	// Path will contain a non-empty path to the file on the current filesystem for file assets.
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
+	// URI will contain a non-empty URI (file://, http://, https://, or custom) for URI-backed assets.
+	URI string `json:"uri,omitempty" yaml:"uri,omitempty"`
 }
 
 const (
@@ -81,7 +85,7 @@ func NewURIAsset(uri string) (*Asset, error) {
 	return a, err
 }
 
-func (a *Asset) IsText() bool { return a.Text != "" }
+func (a *Asset) IsText() bool { return !a.IsPath() && !a.IsURI() }
 func (a *Asset) IsPath() bool { return a.Path != "" }
 func (a *Asset) IsURI() bool  { return a.URI != "" }
 
@@ -217,7 +221,7 @@ func (a *Asset) Equals(other *Asset) bool {
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
 func (a *Asset) Serialize() map[string]interface{} {
 	result := map[string]interface{}{
-		string(SigKey): AssetSig,
+		SigKey: AssetSig,
 	}
 	if a.Hash != "" {
 		result[AssetHashProperty] = a.Hash
@@ -237,26 +241,42 @@ func (a *Asset) Serialize() map[string]interface{} {
 // DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
 func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	// If not an asset, return false immediately.
-	if obj[string(SigKey)] != AssetSig {
+	if obj[SigKey] != AssetSig {
 		return &Asset{}, false, nil
 	}
 
 	// Else, deserialize the possible fields.
 	var hash string
 	if v, has := obj[AssetHashProperty]; has {
-		hash = v.(string)
+		h, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset hash of type %T", v)
+		}
+		hash = h
 	}
 	var text string
 	if v, has := obj[AssetTextProperty]; has {
-		text = v.(string)
+		t, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset text of type %T", v)
+		}
+		text = t
 	}
 	var path string
 	if v, has := obj[AssetPathProperty]; has {
-		path = v.(string)
+		p, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset path of type %T", v)
+		}
+		path = p
 	}
 	var uri string
 	if v, has := obj[AssetURIProperty]; has {
-		uri = v.(string)
+		u, ok := v.(string)
+		if !ok {
+			return &Asset{}, false, errors.Errorf("unexpected asset URI of type %T", v)
+		}
+		uri = u
 	}
 
 	return &Asset{Hash: hash, Text: text, Path: path, URI: uri}, true, nil
@@ -283,7 +303,6 @@ func (a *Asset) Bytes() ([]byte, error) {
 
 // Read begins reading an asset.
 func (a *Asset) Read() (*Blob, error) {
-	contract.Assertf(a.HasContents(), "cannot read an asset that has no contents")
 	if a.IsText() {
 		return a.readText()
 	} else if a.IsPath() {
@@ -291,7 +310,7 @@ func (a *Asset) Read() (*Blob, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
-	return nil, nil
+	return nil, errors.New("unrecognized asset type")
 }
 
 func (a *Asset) readText() (*Blob, error) {
@@ -423,13 +442,17 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 
 // Archive is a serialized archive reference.  It is a union: thus, only one of its fields will be non-nil.  Several
 // helper routines exist as members in order to easily interact with archives of different kinds.
-//nolint: lll
 type Archive struct {
-	Sig    string                 `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Hash   string                 `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the archive contents.
-	Assets map[string]interface{} `json:"assets,omitempty" yaml:"assets,omitempty"`                                 // a collection of other assets/archives.
-	Path   string                 `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
-	URI    string                 `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a remote URI (file://, http://, https://, etc).
+	// Sig is the unique archive type signature (see properties.go).
+	Sig string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
+	// Hash contains the SHA256 hash of the archive's contents.
+	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`
+	// Assets, when non-nil, is a collection of other assets/archives.
+	Assets map[string]interface{} `json:"assets,omitempty" yaml:"assets,omitempty"`
+	// Path is a non-empty string representing a path to a file on the current filesystem, for file archives.
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
+	// URI is a non-empty URI (file://, http://, https://, etc), for URI-backed archives.
+	URI string `json:"uri,omitempty" yaml:"uri,omitempty"`
 }
 
 const (
@@ -529,7 +552,7 @@ func (a *Archive) Equals(other *Archive) bool {
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
 func (a *Archive) Serialize() map[string]interface{} {
 	result := map[string]interface{}{
-		string(SigKey): ArchiveSig,
+		SigKey: ArchiveSig,
 	}
 	if a.Hash != "" {
 		result[ArchiveHashProperty] = a.Hash
@@ -560,20 +583,29 @@ func (a *Archive) Serialize() map[string]interface{} {
 // DeserializeArchive checks to see if the map contains an archive, using its signature, and if so deserializes it.
 func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 	// If not an archive, return false immediately.
-	if obj[string(SigKey)] != ArchiveSig {
+	if obj[SigKey] != ArchiveSig {
 		return &Archive{}, false, nil
 	}
 
 	var hash string
 	if v, has := obj[ArchiveHashProperty]; has {
-		hash = v.(string)
+		h, ok := v.(string)
+		if !ok {
+			return &Archive{}, false, errors.Errorf("unexpected archive hash of type %T", v)
+		}
+		hash = h
 	}
 
 	var assets map[string]interface{}
 	if v, has := obj[ArchiveAssetsProperty]; has {
 		assets = make(map[string]interface{})
 		if v != nil {
-			for k, elem := range v.(map[string]interface{}) {
+			m, ok := v.(map[string]interface{})
+			if !ok {
+				return &Archive{}, false, errors.Errorf("unexpected archive contents of type %T", v)
+			}
+
+			for k, elem := range m {
 				switch t := elem.(type) {
 				case *Asset:
 					assets[k] = t
@@ -595,18 +627,26 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 						assets[k] = arch
 					}
 				default:
-					return &Archive{}, false, nil
+					return &Archive{}, false, errors.Errorf("archive member '%v' is not an asset or archive", k)
 				}
 			}
 		}
 	}
 	var path string
 	if v, has := obj[ArchivePathProperty]; has {
-		path = v.(string)
+		p, ok := v.(string)
+		if !ok {
+			return &Archive{}, false, errors.Errorf("unexpected archive path of type %T", v)
+		}
+		path = p
 	}
 	var uri string
 	if v, has := obj[ArchiveURIProperty]; has {
-		uri = v.(string)
+		u, ok := v.(string)
+		if !ok {
+			return &Archive{}, false, errors.Errorf("unexpected archive URI of type %T", v)
+		}
+		uri = u
 	}
 
 	return &Archive{Hash: hash, Assets: assets, Path: path, URI: uri}, true, nil
@@ -638,7 +678,7 @@ func (a *Archive) Open() (ArchiveReader, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
-	return nil, nil
+	return nil, errors.New("unrecognized archive type")
 }
 
 // assetsArchiveReader is used to read an Assets archive.
@@ -747,6 +787,9 @@ func (r *directoryArchiveReader) Next() (string, *Blob, error) {
 	}
 	name = filepath.Clean(name)
 
+	// Replace Windows separators with Linux ones (ToSlash is a no-op on Linux)
+	name = filepath.ToSlash(name)
+
 	// Open and return the blob.
 	blob, err := (&Asset{Path: assetPath}).Read()
 	if err != nil {
@@ -772,7 +815,7 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't read archive path '%v'", path)
 		} else if !info.IsDir() {
-			return nil, errors.Wrapf(err, "'%v' is neither a recognized archive type nor a directory", path)
+			return nil, errors.Errorf("'%v' is neither a recognized archive type nor a directory", path)
 		}
 
 		// Accumulate the list of asset paths. This list is ordered deterministically by filepath.Walk.
@@ -792,9 +835,23 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 				return nil
 			}
 
-			// If this was a directory or a symlink, skip it.
-			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+			// If this was a directory, skip it.
+			if f.IsDir() {
 				return nil
+			}
+
+			// If this is a symlink and it points at a directory, skip it. Otherwise continue along. This will mean
+			// that the file will be added to the list of files to archive. When you go to read this archive, you'll
+			// get a copy of the file (instead of a symlink) to some other file in the archive.
+			if f.Mode()&os.ModeSymlink != 0 {
+				fileInfo, statErr := os.Stat(filePath)
+				if statErr != nil {
+					return statErr
+				}
+
+				if fileInfo.IsDir() {
+					return nil
+				}
 			}
 
 			// Otherwise, add this asset to the list of paths and keep going.
@@ -897,12 +954,20 @@ func (a *Archive) Archive(format ArchiveFormat, w io.Writer) error {
 
 // addNextFileToTar adds the next file in the given archive to the given tar file. Returns io.EOF if the archive
 // contains no more files.
-func addNextFileToTar(r ArchiveReader, tw *tar.Writer) error {
+func addNextFileToTar(r ArchiveReader, tw *tar.Writer, seenFiles map[string]bool) error {
 	file, data, err := r.Next()
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(data)
+
+	// It's possible to run into the same file multiple times in the list of archives we're passed.
+	// For example, if there is an archive pointing to foo/bar and an archive pointing to
+	// foo/bar/baz/quux.  Because of this only include the file the first time we see it.
+	if _, has := seenFiles[file]; has {
+		return nil
+	}
+	seenFiles[file] = true
 
 	sz := data.Size()
 	if err = tw.WriteHeader(&tar.Header{
@@ -929,8 +994,9 @@ func (a *Archive) archiveTar(w io.Writer) error {
 
 	// Now actually emit the contents, file by file.
 	tw := tar.NewWriter(w)
+	seenFiles := make(map[string]bool)
 	for err == nil {
-		err = addNextFileToTar(reader, tw)
+		err = addNextFileToTar(reader, tw, seenFiles)
 	}
 	if err != io.EOF {
 		return err
@@ -946,12 +1012,20 @@ func (a *Archive) archiveTarGZIP(w io.Writer) error {
 
 // addNextFileToZIP adds the next file in the given archive to the given ZIP file. Returns io.EOF if the archive
 // contains no more files.
-func addNextFileToZIP(r ArchiveReader, zw *zip.Writer) error {
+func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool) error {
 	file, data, err := r.Next()
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(data)
+
+	// It's possible to run into the same file multiple times in the list of archives we're passed.
+	// For example, if there is an archive pointing to foo/bar and an archive pointing to
+	// foo/bar/baz/quux.  Because of this only include the file the first time we see it.
+	if _, has := seenFiles[file]; has {
+		return nil
+	}
+	seenFiles[file] = true
 
 	fh := &zip.FileHeader{
 		// These are the two fields set by zw.Create()
@@ -984,8 +1058,9 @@ func (a *Archive) archiveZIP(w io.Writer) error {
 
 	// Now actually emit the contents, file by file.
 	zw := zip.NewWriter(w)
+	seenFiles := make(map[string]bool)
 	for err == nil {
-		err = addNextFileToZIP(reader, zw)
+		err = addNextFileToZIP(reader, zw, seenFiles)
 	}
 	if err != io.EOF {
 		return err
@@ -1062,15 +1137,13 @@ var ArchiveExts = map[string]ArchiveFormat{
 
 // detectArchiveFormat takes a path and infers its archive format based on the file extension.
 func detectArchiveFormat(path string) ArchiveFormat {
-	ext := filepath.Ext(path)
-	if moreext := filepath.Ext(strings.TrimRight(path, ext)); moreext != "" {
-		ext = moreext + ext // this ensures we detect ".tar.gz" correctly.
+	for ext, typ := range ArchiveExts {
+		if strings.HasSuffix(path, ext) {
+			return typ
+		}
 	}
-	format, has := ArchiveExts[ext]
-	if !has {
-		return NotArchive
-	}
-	return format
+
+	return NotArchive
 }
 
 // readArchive takes a stream to an existing archive and returns a map of names to readers for the inner assets.

@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -27,7 +26,7 @@ import (
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
-	var checkpoint apitype.CheckpointV1
+	var checkpoint apitype.CheckpointV3
 	byts, err := ioutil.ReadFile(path)
 	assert.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)
@@ -35,7 +34,6 @@ func getPulumiResources(t *testing.T, path string) *Resource {
 	snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
 	assert.NoError(t, err)
 	resources := NewResourceTree(snapshot.Resources)
-	spew.Dump(resources)
 	return resources
 }
 

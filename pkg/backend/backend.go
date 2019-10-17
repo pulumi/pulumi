@@ -18,14 +18,28 @@ package backend
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
+)
+
+var (
+	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
+	ErrNoPreviousDeployment = errors.New("no previous deployment")
 )
 
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
@@ -44,10 +58,42 @@ func (e StackAlreadyExistsError) Error() string {
 type StackReference interface {
 	// fmt.Stringer's String() method returns a string of the stack identity, suitable for display in the CLI
 	fmt.Stringer
-	// StackName is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
+	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
-	// but that informaion is not part of the StackName() we pass to the engine.
-	StackName() tokens.QName
+	// but that information is not part of the StackName() we pass to the engine.
+	Name() tokens.QName
+}
+
+// PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
+// uses the ParsePolicyPackReference method to turn a string like "myOrg/mySecurityRules" into a
+// PolicyPackReference that can be used to interact with the PolicyPack via the backend.
+// PolicyPackReferences are specific to a given backend and different back ends may interpret the
+// string passed to ParsePolicyPackReference differently.
+type PolicyPackReference interface {
+	// fmt.Stringer's String() method returns a string of the stack identity, suitable for display in the CLI
+	fmt.Stringer
+	// OrgName is the name of the organization that is managing the PolicyPack.
+	OrgName() string
+	// Name is the name of the PolicyPack being referenced.
+	Name() tokens.QName
+}
+
+// StackSummary provides a basic description of a stack, without the ability to inspect its resources or make changes.
+type StackSummary interface {
+	Name() StackReference
+
+	// LastUpdate returns when the stack was last updated, as applicable.
+	LastUpdate() *time.Time
+	// ResourceCount returns the stack's resource count, as applicable.
+	ResourceCount() *int
+}
+
+// ListStacksFilter describes optional filters when listing stacks.
+type ListStacksFilter struct {
+	Organization *string
+	Project      *string
+	TagName      *string
+	TagValue     *string
 }
 
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
@@ -55,10 +101,20 @@ type StackReference interface {
 type Backend interface {
 	// Name returns a friendly name for this backend.
 	Name() string
+	// URL returns a URL at which information about this backend may be seen.
+	URL() string
 
+	// GetPolicyPack returns a PolicyPack object tied to this backend, or nil if it cannot be found.
+	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
+
+	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+	SupportsOrganizations() bool
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
+
+	// DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
+	DoesProjectExist(ctx context.Context, projectName string) (bool, error)
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
@@ -67,40 +123,63 @@ type Backend interface {
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.
-	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
+	RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]Stack, error)
+	ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error)
 
-	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
-	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
+	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) error
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Update(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
+	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+
+	// Query against the resource outputs in a stack's state checkpoint.
+	Query(ctx context.Context, stack Stack, op UpdateOperation) result.Result
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(ctx context.Context, stackRef StackReference, query operations.LogQuery) ([]operations.LogEntry, error)
+	GetLogs(ctx context.Context, stack Stack, cfg StackConfiguration,
+		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
-	GetLatestConfiguration(ctx context.Context, stackRef StackReference) (config.Map, error)
+	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
+
+	// GetStackTags fetches the stack's existing tags.
+	GetStackTags(ctx context.Context, stack Stack) (map[apitype.StackTagName]string, error)
+	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
+	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
-	ExportDeployment(ctx context.Context, stackRef StackReference) (*apitype.UntypedDeployment, error)
+	ExportDeployment(ctx context.Context, stack Stack) (*apitype.UntypedDeployment, error)
 	// ImportDeployment imports the given deployment into the indicated stack.
-	ImportDeployment(ctx context.Context, stackRef StackReference, deployment *apitype.UntypedDeployment) error
+	ImportDeployment(ctx context.Context, stack Stack, deployment *apitype.UntypedDeployment) error
 	// Logout logs you out of the backend and removes any stored credentials.
 	Logout() error
+	// Returns the identity of the current user for the backend.
+	CurrentUser() (string, error)
+}
+
+// UpdateOperation is a complete stack update operation (preview, update, refresh, or destroy).
+type UpdateOperation struct {
+	Proj               *workspace.Project
+	Root               string
+	M                  *UpdateMetadata
+	Opts               UpdateOptions
+	SecretsManager     secrets.Manager
+	StackConfiguration StackConfiguration
+	Scopes             CancellationScopeSource
+}
+
+// StackConfiguration holds the configuration for a stack and it's associated decrypter.
+type StackConfiguration struct {
+	Config    config.Map
+	Decrypter config.Decrypter
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.
@@ -108,7 +187,7 @@ type UpdateOptions struct {
 	// Engine contains all of the engine-specific options.
 	Engine engine.UpdateOptions
 	// Display contains all of the backend display options.
-	Display DisplayOptions
+	Display display.Options
 
 	// AutoApprove, when true, will automatically approve previews.
 	AutoApprove bool
@@ -130,26 +209,69 @@ type CancellationScopeSource interface {
 	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
 }
 
-// tracingOptionsKey is the value used as the context key for TracingOptions.
-var tracingOptionsKey struct{}
-
-// TracingOptions describes the set of options available for configuring tracing on a per-request basis.
-type TracingOptions struct {
-	// PropagateSpans indicates that spans should be propagated from the client to the Pulumi service when making API
-	// calls.
-	PropagateSpans bool
-	// IncludeTracingHeader indicates that API calls should include the indicated tracing header contents.
-	TracingHeader string
+// NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
+func NewBackendClient(backend Backend) deploy.BackendClient {
+	return &backendClient{backend: backend}
 }
 
-// ContextWithTracingOptions returns a new context.Context with the indicated tracing options.
-func ContextWithTracingOptions(ctx context.Context, opts TracingOptions) context.Context {
-	return context.WithValue(ctx, tracingOptionsKey, opts)
+type backendClient struct {
+	backend Backend
 }
 
-// TracingOptionsFromContext retrieves any tracing options present in the given context. If no options are present,
-// this function returns the zero value.
-func TracingOptionsFromContext(ctx context.Context) TracingOptions {
-	opts, _ := ctx.Value(tracingOptionsKey).(TracingOptions)
-	return opts
+// GetStackOutputs returns the outputs of the stack with the given name.
+func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+	ref, err := c.backend.ParseStackReference(name)
+	if err != nil {
+		return nil, err
+	}
+	s, err := c.backend.GetStack(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil {
+		return nil, errors.Errorf("unknown stack %q", name)
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := stack.GetRootStackResource(snap)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting root stack resources")
+	}
+	if res == nil {
+		return resource.PropertyMap{}, nil
+	}
+	return res.Outputs, nil
+}
+
+func (c *backendClient) GetStackResourceOutputs(
+	ctx context.Context, name string) (resource.PropertyMap, error) {
+	ref, err := c.backend.ParseStackReference(name)
+	if err != nil {
+		return nil, err
+	}
+	s, err := c.backend.GetStack(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil {
+		return nil, errors.Errorf("unknown stack %q", name)
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pm := resource.PropertyMap{}
+	for _, r := range snap.Resources {
+		if r.Delete {
+			continue
+		}
+
+		resc := resource.PropertyMap{
+			resource.PropertyKey("type"):    resource.NewStringProperty(string(r.Type)),
+			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs)}
+		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
+	}
+	return pm, nil
 }

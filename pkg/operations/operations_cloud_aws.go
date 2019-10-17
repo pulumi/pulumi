@@ -53,8 +53,8 @@ const (
 	cloudTaskType         = tokens.Type("cloud:task:Task")
 
 	// AWS resource types
-	awsServerlessFunctionTypeName = "aws:serverless:Function"
-	awsLogGroupTypeName           = "aws:cloudwatch/logGroup:LogGroup"
+	awsLambdaFunctionTypeName = "aws:lambda/function:Function"
+	awsLogGroupTypeName       = "aws:cloudwatch/logGroup:LogGroup"
 )
 
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
@@ -62,12 +62,13 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	switch state.Type {
 	case cloudFunctionType:
-		// We get the aws:serverless:Function child and request it's logs, parsing out the user-visible content from
-		// those logs to project into our own log output, but leaving out explicit Lambda metadata.
+		// We get the aws:lambda/function:Function child and request it's logs, parsing out the
+		// user-visible content from those logs to project into our own log output, but leaving out
+		// explicit Lambda metadata.
 		name := string(state.URN.Name())
-		serverlessFunction, ok := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
-			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsServerlessFunctionTypeName, name)
+			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
 			return nil, nil
 		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
@@ -94,9 +95,9 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// live Lambda logs from individual functions, de-duplicating the results, to piece together the full set of
 		// logs.
 		name := string(state.URN.Name())
-		serverlessFunction, ok := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
-			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsServerlessFunctionTypeName, name)
+			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
 			return nil, nil
 		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
@@ -193,14 +194,15 @@ var (
 	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-g0-9\\-]{36}\t((?s).*)\n")
 )
 
-// extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific
-// metadata.  In particular, only the second line below is extracter, and it is extracted with the recorded timestamp.
+// extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping
+// Lambda-specific metadata.  In particular, only the second line below is extracted, and it is
+// extracted with the recorded timestamp.
 //
 // ```
 //  START RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723 Version: $LATEST
-//  2017-11-17T20:30:27.736Z	25e0d1e0-cbd6-11e7-9808-c7085dfe5723	GET /todo
+//  2017-11-17T20:30:27.736Z    25e0d1e0-cbd6-11e7-9808-c7085dfe5723    GET /todo
 //  END RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723
-//  REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723	Duration: 222.92 ms	Billed Duration: 300 ms 	<snip>
+//  REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723  Duration: 222.92 ms Billed Duration: 300 ms     <snip>
 // ```
 func extractLambdaLogMessage(message string, id string) *LogEntry {
 	innerMatches := logRegexp.FindAllStringSubmatch(message, -1)

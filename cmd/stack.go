@@ -18,19 +18,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackCmd() *cobra.Command {
 	var showIDs bool
 	var showURNs bool
+	var showSecrets bool
+	var stackName string
+
 	cmd := &cobra.Command{
 		Use:   "stack",
 		Short: "Manage stacks",
@@ -41,7 +43,11 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireCurrentStack(true)
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -51,19 +57,16 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %s:\n", s.Name())
+			fmt.Printf("Current stack is %s:\n", s.Ref())
 
 			be := s.Backend()
-			cloudBe, isCloud := be.(cloud.Backend)
-			if !isCloud || cloudBe.CloudURL() != cloud.PulumiCloudURL {
+			cloudBe, isCloud := be.(httpstate.Backend)
+			if !isCloud || cloudBe.CloudURL() != httpstate.PulumiCloudURL {
 				fmt.Printf("    Managed by %s\n", be.Name())
 			}
 			if isCloud {
-				if cs, ok := s.(cloud.Stack); ok {
+				if cs, ok := s.(httpstate.Stack); ok {
 					fmt.Printf("    Owner: %s\n", cs.OrgName())
-					if !cs.RunLocally() {
-						fmt.Printf("    PPC: %s\n", cs.CloudName())
-					}
 				}
 			}
 
@@ -90,14 +93,8 @@ func newStackCmd() *cobra.Command {
 					fmt.Printf("    Plugin %s [%s] version: %s\n", plugin.Name, plugin.Kind, plugver)
 				}
 			} else {
-				fmt.Printf("    No updates yet; run 'pulumi update'\n")
+				fmt.Printf("    No updates yet; run 'pulumi up'\n")
 			}
-
-			cfg := s.Config()
-			if cfg != nil && len(cfg) > 0 {
-				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(cfg))
-			}
-			fmt.Printf("\n")
 
 			// Now show the resources.
 			var rescnt int
@@ -108,29 +105,39 @@ func newStackCmd() *cobra.Command {
 			if rescnt == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
-				fmt.Printf("    %-48s %s\n", "TYPE", "NAME")
+				rows := []cmdutil.TableRow{}
+
 				for _, res := range snap.Resources {
-					fmt.Printf("    %-48s %s\n", res.Type, res.URN.Name())
+					columns := []string{string(res.Type), string(res.URN.Name())}
+					additionalInfo := ""
 
 					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
 					// this on a single line, but this can get quite lengthy and so this formatting is better.
 					if showURNs {
-						fmt.Printf("        URN: %s\n", res.URN)
+						additionalInfo += fmt.Sprintf("        URN: %s\n", res.URN)
 					}
 					if showIDs && res.ID != "" {
-						fmt.Printf("        ID: %s\n", res.ID)
+						additionalInfo += fmt.Sprintf("        ID: %s\n", res.ID)
 					}
+
+					rows = append(rows, cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo})
 				}
 
-				// Print out the output properties for the stack, if present.
-				if res, outputs := stack.GetRootStackResource(snap); res != nil {
+				cmdutil.PrintTable(cmdutil.Table{
+					Headers: []string{"TYPE", "NAME"},
+					Rows:    rows,
+					Prefix:  "    ",
+				})
+
+				outputs, err := getStackOutputs(snap, showSecrets)
+				if err != nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
 			}
 
 			// Add a link to the pulumi.com console page for this stack, if it has one.
-			if cs, ok := s.(cloud.Stack); ok {
+			if cs, ok := s.(httpstate.Stack); ok {
 				if consoleURL, err := cs.ConsoleURL(); err == nil {
 					fmt.Printf("\n")
 					fmt.Printf("More information at: %s\n", consoleURL)
@@ -144,11 +151,15 @@ func newStackCmd() *cobra.Command {
 			return nil
 		}),
 	}
-
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVarP(
 		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.PersistentFlags().BoolVarP(
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())
@@ -158,6 +169,8 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackOutputCmd())
 	cmd.AddCommand(newStackRmCmd())
 	cmd.AddCommand(newStackSelectCmd())
+	cmd.AddCommand(newStackTagCmd())
+	cmd.AddCommand(newStackRenameCmd())
 
 	return cmd
 }
@@ -167,19 +180,23 @@ func printStackOutputs(outputs map[string]interface{}) {
 	if len(outputs) == 0 {
 		fmt.Printf("    No output values currently in this stack\n")
 	} else {
-		maxkey := 48
 		var outkeys []string
 		for outkey := range outputs {
-			if len(outkey) > maxkey {
-				maxkey = len(outkey)
-			}
 			outkeys = append(outkeys, outkey)
 		}
 		sort.Strings(outkeys)
-		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
+
+		rows := []cmdutil.TableRow{}
+
 		for _, key := range outkeys {
-			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", key, stringifyOutput(outputs[key]))
+			rows = append(rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
 		}
+
+		cmdutil.PrintTable(cmdutil.Table{
+			Headers: []string{"OUTPUT", "VALUE"},
+			Rows:    rows,
+			Prefix:  "    ",
+		})
 	}
 }
 

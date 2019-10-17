@@ -23,14 +23,16 @@ import "encoding/json"
 type UpdateKind string
 
 const (
-	// DeployUpdate is the prototypical Pulumi program update.
-	DeployUpdate UpdateKind = "update"
+	// UpdateUpdate is the prototypical Pulumi program update.
+	UpdateUpdate UpdateKind = "update"
 	// PreviewUpdate is a preview of an update, without impacting resources.
 	PreviewUpdate UpdateKind = "preview"
 	// RefreshUpdate is an update that came from a refresh operation.
 	RefreshUpdate UpdateKind = "refresh"
 	// DestroyUpdate is an update which removes all resources.
 	DestroyUpdate UpdateKind = "destroy"
+	// ImportUpdate is an update that entails importing a raw checkpoint file.
+	ImportUpdate UpdateKind = "import"
 )
 
 // UpdateResult is an enum for the result of the update.
@@ -57,19 +59,19 @@ const (
 type OpType string
 
 const (
-	// OpSame indiciates no change was made.
+	// OpSame indicates no change was made.
 	OpSame OpType = "same"
-	// OpCreate indiciates a new resource was created.
+	// OpCreate indicates a new resource was created.
 	OpCreate OpType = "create"
 	// OpUpdate indicates an existing resource was updated.
 	OpUpdate OpType = "update"
-	// OpDelete indiciates an existing resource was deleted.
+	// OpDelete indicates an existing resource was deleted.
 	OpDelete OpType = "delete"
 	// OpReplace indicates an existing resource was replaced with a new one.
 	OpReplace OpType = "replace"
-	// OpCreateReplacement indiciates a new resource was created for a replacement.
+	// OpCreateReplacement indicates a new resource was created for a replacement.
 	OpCreateReplacement OpType = "create-replacement"
-	// OpDeleteReplaced indiciates an existing resource was deleted after replacement.
+	// OpDeleteReplaced indicates an existing resource was deleted after replacement.
 	OpDeleteReplaced OpType = "delete-replaced"
 )
 

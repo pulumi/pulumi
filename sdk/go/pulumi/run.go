@@ -63,13 +63,21 @@ func RunErr(body RunFunc) error {
 	}
 	defer contract.IgnoreClose(ctx)
 
+	return RunWithContext(ctx, body)
+}
+
+// RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
+// configuration, and engine connection.
+func RunWithContext(ctx *Context, body RunFunc) error {
+	info := ctx.info
+
 	// Create a root stack resource that we'll parent everything to.
 	reg, err := ctx.RegisterResource(
 		"pulumi:pulumi:Stack", fmt.Sprintf("%s-%s", info.Project, info.Stack), false, nil)
 	if err != nil {
 		return err
 	}
-	ctx.stackR, err = reg.URN.Value()
+	ctx.stackR, err = reg.URN().Value()
 	if err != nil {
 		return err
 	}
@@ -81,13 +89,13 @@ func RunErr(body RunFunc) error {
 		result = multierror.Append(result, err)
 	}
 
-	// Ensure all outstanding RPCs have completed before proceeding.  Also, prevent any new RPCs from happening.
-	ctx.waitForRPCs()
-
 	// Register all the outputs to the stack object.
 	if err = ctx.RegisterResourceOutputs(ctx.stackR, ctx.exports); err != nil {
 		result = multierror.Append(result, err)
 	}
+
+	// Ensure all outstanding RPCs have completed before proceeding.  Also, prevent any new RPCs from happening.
+	ctx.waitForRPCs()
 
 	// Propagate the error from the body, if any.
 	return result

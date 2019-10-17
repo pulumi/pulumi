@@ -16,15 +16,21 @@
 
 from setuptools import setup, find_packages
 
+def readme():
+    with open('README.md', encoding='utf-8') as f:
+        return f.read()
+
 setup(name='pulumi',
       version='${VERSION}',
       description='Pulumi\'s Python SDK',
+      long_description=readme(),
+      long_description_content_type='text/markdown',
       url='https://github.com/pulumi/pulumi',
       license='Apache 2.0',
-      packages=find_packages(),
+      packages=find_packages(exclude=("test*",)),
       install_requires=[
-          'google==2.0.1',
-          'grpcio==1.9.1',
-          'six==1.11.0'
+          'protobuf>=3.6.0',
+          'dill>=0.3.0',
+          'grpcio>=1.9.1'
       ],
       zip_safe=False)

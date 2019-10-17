@@ -19,8 +19,14 @@ class Provider implements pulumi.dynamic.ResourceProvider {
     }
 }
 
+class Component extends pulumi.ComponentResource {
+    constructor(name: string, parent?: pulumi.ComponentResource) {
+        super("component", name, {}, { parent: parent });
+    }
+}
+
 class Resource extends pulumi.dynamic.Resource {
-    constructor(name: string, parent?: pulumi.Resource) {
+    constructor(name: string, parent?: pulumi.ComponentResource) {
         super(Provider.instance, name, {}, { parent: parent });
     }
 }
@@ -35,14 +41,14 @@ class Resource extends pulumi.dynamic.Resource {
 //     D   E
 //
 // with the caveat, of course, that A and F will share a common parent, the implicit stack.
-let a = new Resource("a");
+let a = new Component("a");
 
 let b = new Resource("b", a);
-let c = new Resource("c", a);
+let c = new Component("c", a);
 
 let d = new Resource("d", c);
 let e = new Resource("e", c);
 
-let f = new Resource("f");
+let f = new Component("f");
 
 let g = new Resource("g", f);

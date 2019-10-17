@@ -1,0 +1,5 @@
+#!/bin/sh
+PULUMI_RUN_SCRIPT_PATH=$(node -e "try { console.log(require.resolve('@pulumi/pulumi/cmd/run-policy-pack')) } catch (e) { console.error(e.message) }")
+if [ ! -z "$PULUMI_RUN_SCRIPT_PATH" ]; then
+    node "$PULUMI_RUN_SCRIPT_PATH" $@
+fi

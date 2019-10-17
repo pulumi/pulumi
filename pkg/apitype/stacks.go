@@ -14,77 +14,38 @@
 
 package apitype
 
-import "encoding/json"
-
-// StackSummary presents an overview of a particular stack without enumerating its current resource set.
+// StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
-	// ID is the unique identifier for a stack in the context of its PPC.
-	ID string `json:"id"`
+	// OrgName is the organization name the stack is found in.
+	OrgName string `json:"orgName"`
+	// ProjectName is the name of the project the stack is associated with.
+	ProjectName string `json:"projectName"`
+	// StackName is the name of the stack.
+	StackName string `json:"stackName"`
 
-	// ActiveUpdate is the unique identifier for the stack's active update. This may be empty if no update has
-	// been applied.
-	ActiveUpdate string `json:"activeUpdate"`
+	// LastUpdate is a Unix timestamp of the stack's last update, as applicable.
+	LastUpdate *int64 `json:"lastUpdate,omitempty"`
 
-	// ResourceCount is the number of resources associated with this stack. Note that this is currently unimplemented.
-	ResourceCount int `json:"resourceCount"`
+	// ResourceCount is the number of resources associated with this stack, as applicable.
+	ResourceCount *int `json:"resourceCount,omitempty"`
 }
 
-// ListStacksResponse describes the data returned by the `GET /stacks` endpoint of the PPC API.
+// ListStacksResponse returns a set of stack summaries. This call is designed to be inexpensive.
 type ListStacksResponse struct {
-	// Stacks contains a list of summaries for each stack that currently exists in the PPC.
 	Stacks []StackSummary `json:"stacks"`
-}
-
-// CreateStackResponseByID describes the data returned by the `POST /stacks` endpoint of the PPC API.
-type CreateStackResponseByID struct {
-	// ID is the unique identifier for the newly-created stack.
-	ID string `json:"id"`
 }
 
 // CreateStackRequest defines the request body for creating a new Stack
 type CreateStackRequest struct {
-	// If empty means use the default cloud.
-	CloudName string `json:"cloudName"`
-	// The rest of the StackIdentifier (repo, project) is in the URL.
+	// The rest of the StackIdentifier (e.g. organization, project) is in the URL.
 	StackName string `json:"stackName"`
+
 	// An optional set of tags to apply to the stack.
 	Tags map[StackTagName]string `json:"tags,omitEmpty"`
 }
 
-// CreateStackResponseByName is the response from a create Stack request.
-type CreateStackResponseByName struct {
-	// The name of the cloud used if the default was sent.
-	CloudName string `json:"cloudName"`
-}
-
-// GetStackResponse describes the data returned by the `/GET /stack/{stackID}` endpoint of the PPC API. If the
-// `deployment` query parameter is set to `true`, `Deployment` will be set and `Resources will be empty.
-type GetStackResponse struct {
-	// ID is the unique identifier for a stack in the context of its PPC.
-	ID string `json:"id"`
-
-	// ActiveUpdate is the unique identifier for the stack's active update. This may be empty if no update has
-	// been applied.
-	ActiveUpdate string `json:"activeUpdate"`
-
-	// UnknownState indicates whether or not the contents of the resources array contained in the response is
-	// known to accurately represent the cloud resources managed by this stack. A stack that is in an unknown
-	// state cannot be updated.
-	// TODO: [pulumi/pulumi-ppc#29]: make this state recoverable. This could be as simple as import/export.
-	UnknownState bool `json:"unknownState"`
-
-	// Version indicates the schema of the Resources, Manifest, and Deployment fields below.
-	Version int `json:"version"`
-
-	// Resources provides the list of cloud resources managed by this stack.
-	Resources []ResourceV1 `json:"resources"`
-
-	// Manifest is the Manifest from the last rendered checkpoint.
-	Manifest ManifestV1 `json:"manifest"`
-
-	// Deployment provides a view of the stack as an opaque Pulumi deployment.
-	Deployment json.RawMessage `json:"deployment,omitempty"`
-}
+// CreateStackResponse is the response from a create Stack request.
+type CreateStackResponse struct{}
 
 // EncryptValueRequest defines the request body for encrypting a value.
 type EncryptValueRequest struct {

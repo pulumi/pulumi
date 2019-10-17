@@ -1,7 +1,8 @@
 {
     "compilerOptions": {
+        "strict": true,
         "outDir": "bin",
-        "target": "es6",
+        "target": "es2016",
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
@@ -10,17 +11,18 @@
         "experimentalDecorators": true,
         "pretty": true,
         "noFallthroughCasesInSwitch": true,
-        "noImplicitAny": true,
         "noImplicitReturns": true,
-        "forceConsistentCasingInFileNames": true,
-        "strictNullChecks": true,
+        "forceConsistentCasingInFileNames": true
     },
     "files": [
         "index.ts",
         "config.ts",
         "errors.ts",
         "metadata.ts",
+        "output.ts",
         "resource.ts",
+        "stackReference.ts",
+        "utils.ts",
         "version.ts",
 
         "asset/index.ts",
@@ -29,14 +31,22 @@
 
         "dynamic/index.ts",
 
+        "iterable/index.ts",
+
         "log/index.ts",
 
         "runtime/index.ts",
-        "runtime/closure/v8.ts",
+
+        "runtime/closure/codePaths.ts",
         "runtime/closure/createClosure.ts",
         "runtime/closure/parseFunction.ts",
-        "runtime/closure/serializeClosure.ts",
         "runtime/closure/rewriteSuper.ts",
+        "runtime/closure/serializeClosure.ts",
+        "runtime/closure/utils.ts",
+        "runtime/closure/v8.ts",
+        "runtime/closure/v8_v10andLower.ts",
+        "runtime/closure/v8_v11andHigher.ts",
+
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
@@ -47,11 +57,22 @@
 
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
+        "cmd/run/run.ts",
+        "cmd/run-policy-pack/index.ts",
+        "cmd/run-policy-pack/run.ts",
 
         "tests/config.spec.ts",
+        "tests/deasync.spec.ts",
         "tests/init.spec.ts",
+        "tests/iterable.spec.ts",
+        "tests/options.spec.ts",
+        "tests/output.spec.ts",
+        "tests/resource.spec.ts",
+        "tests/testmode.spec.ts",
+        "tests/unwrap.spec.ts",
         "tests/util.ts",
-        "tests/runtime/closure.spec.ts",
+        "tests/runtime/closureLoader.spec.ts",
+        "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/langhost/run.spec.ts"
     ]

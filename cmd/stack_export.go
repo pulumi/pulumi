@@ -21,11 +21,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackExportCmd() *cobra.Command {
 	var file string
+	var stackName string
+
 	cmd := &cobra.Command{
 		Use:   "export",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -37,8 +40,12 @@ func newStackExportCmd() *cobra.Command {
 			"in a stack's state due to failed deployments, manual changes to cloud\n" +
 			"resources, etc.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Fetch the current stack and export its deployment
-			s, err := requireCurrentStack(false)
+			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -66,6 +73,8 @@ func newStackExportCmd() *cobra.Command {
 			return nil
 		}),
 	}
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVarP(
 		&file, "file", "", "", "A filename to write stack output to")
 	return cmd

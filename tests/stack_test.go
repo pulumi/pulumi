@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2019, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package tests
 
@@ -17,7 +29,8 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -191,6 +204,69 @@ func TestStackCommands(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("FixingInvalidResources", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		stackName := addRandomSuffix("invalid-resources")
+		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/stack_dependencies")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", stackName)
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		// We're going to futz with the stack a little so that one of the resources we just created
+		// becomes invalid.
+		stackFile := path.Join(e.RootPath, "stack.json")
+		e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
+		stackJSON, err := ioutil.ReadFile(stackFile)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		var deployment apitype.UntypedDeployment
+		err = json.Unmarshal(stackJSON, &deployment)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		snap, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
+		// invalid resources in the snapshot.
+		res := snap.Resources[len(snap.Resources)-1]
+		snap.PendingOperations = append(snap.PendingOperations, resource.Operation{
+			Resource: res,
+			Type:     resource.OperationTypeDeleting,
+		})
+		v3deployment, err := stack.SerializeDeployment(snap, nil)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		data, err := json.Marshal(&v3deployment)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		deployment.Deployment = data
+		bytes, err := json.Marshal(&deployment)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
+		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
+		// The engine should be happy now that there are no invalid resources.
+		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+	})
 }
 
 func TestStackBackups(t *testing.T) {
@@ -203,12 +279,12 @@ func TestStackBackups(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/stack_outputs")
+		e.ImportDirectory("integration/stack_outputs/nodejs")
 
 		// We're testing that backups are created so ensure backups aren't disabled.
-		if env := os.Getenv(local.DisableCheckpointBackupsEnvVar); env != "" {
-			os.Unsetenv(local.DisableCheckpointBackupsEnvVar)
-			defer os.Setenv(local.DisableCheckpointBackupsEnvVar, env)
+		if env := os.Getenv(filestate.DisableCheckpointBackupsEnvVar); env != "" {
+			os.Unsetenv(filestate.DisableCheckpointBackupsEnvVar)
+			defer os.Setenv(filestate.DisableCheckpointBackupsEnvVar, env)
 		}
 
 		const stackName = "imulup"
@@ -229,17 +305,18 @@ func TestStackBackups(t *testing.T) {
 		// Build the project.
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "run", "build")
 
-		// Now run pulumi update.
+		// Now run pulumi up.
 		before := time.Now().UnixNano()
-		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
 		files, err := ioutil.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
-		assert.Equal(t, 1, len(files))
+		files = filterOutAttrsFiles(files)
+		fileNames := getFileNames(files)
+		assert.Equal(t, 1, len(files), "Files: %s", strings.Join(fileNames, ", "))
 		fileName := files[0].Name()
 
 		// Verify the backup file.
@@ -247,13 +324,15 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi destroy.
 		before = time.Now().UnixNano()
-		e.RunCommand("pulumi", "destroy", "--non-interactive", "--skip-preview", "--yes")
+		e.RunCommand("pulumi", "destroy", "--non-interactive", "--skip-preview")
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.
 		files, err = ioutil.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
-		assert.Equal(t, 2, len(files))
+		files = filterOutAttrsFiles(files)
+		fileNames = getFileNames(files)
+		assert.Equal(t, 2, len(files), "Files: %s", strings.Join(fileNames, ", "))
 
 		// Verify the new backup file.
 		for _, file := range files {
@@ -269,16 +348,50 @@ func TestStackBackups(t *testing.T) {
 	})
 }
 
+func TestStackRenameAfterCreate(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	stackName := addRandomSuffix("stack-rename")
+	integration.CreateBasicPulumiRepo(e)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	newName := addRandomSuffix("renamed-stack")
+	e.RunCommand("pulumi", "stack", "rename", newName)
+}
+
+func getFileNames(infos []os.FileInfo) []string {
+	var result []string
+	for _, i := range infos {
+		result = append(result, i.Name())
+	}
+	return result
+}
+
+func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
+	var result []os.FileInfo
+	for _, f := range files {
+		if filepath.Ext(f.Name()) != ".attrs" {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
 func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
 	assert.False(t, file.IsDir())
 	assert.True(t, file.Size() > 0)
 	split := strings.Split(file.Name(), ".")
-	assert.Equal(t, 3, len(split))
+	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])
 	parsedTime, err := strconv.ParseInt(split[1], 10, 64)
 	assert.NoError(t, err, "parsing the time in the stack backup filename")
-	assert.True(t, parsedTime > before)
-	assert.True(t, parsedTime < after)
+	assert.True(t, parsedTime > before, "False: %v > %v", parsedTime, before)
+	assert.True(t, parsedTime < after, "False: %v < %v", parsedTime, after)
 }
 
 func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string, error) {
@@ -289,7 +402,7 @@ func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string
 	), nil
 }
 
-func addRandomSufix(s string) string {
+func addRandomSuffix(s string) string {
 	b := make([]byte, 4)
 	_, err := cryptorand.Read(b)
 	contract.AssertNoError(err)

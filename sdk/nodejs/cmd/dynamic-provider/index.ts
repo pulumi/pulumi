@@ -17,15 +17,18 @@ import * as path from "path";
 
 import * as dynamic from "../../dynamic";
 import * as resource from "../../resource";
+import * as runtime from "../../runtime";
 import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
 const grpc = require("grpc");
+const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const provproto = require("../../proto/provider_pb.js");
 const provrpc = require("../../proto/provider_grpc_pb.js");
 const plugproto = require("../../proto/plugin_pb.js");
+const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
 
@@ -45,8 +48,14 @@ function getProvider(props: any): dynamic.ResourceProvider {
 // This allows the creation of the replacement resource to use the new provider while the deletion of the old
 // resource uses the provider with which it was created.
 
-function configureRPC(call: any, callback: any): void {
+function cancelRPC(call: any, callback: any): void {
     callback(undefined, new emptyproto.Empty());
+}
+
+function configureRPC(call: any, callback: any): void {
+    const resp = new provproto.ConfigureResponse();
+    resp.setAcceptsecrets(false);
+    callback(undefined, resp);
 }
 
 async function invokeRPC(call: any, callback: any): Promise<void> {
@@ -63,9 +72,9 @@ async function checkRPC(call: any, callback: any): Promise<void> {
 
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        const provider = getProvider(news);
+        const provider = getProvider(news[providerKey] === runtime.unknownValue ? olds : news);
 
-        let inputs: any = {};
+        let inputs: any = news;
         let failures: any[] = [];
         if (provider.check) {
             const result = await provider.check(olds, news);
@@ -75,6 +84,9 @@ async function checkRPC(call: any, callback: any): Promise<void> {
             if (result.failures) {
                 failures = result.failures;
             }
+        } else {
+            // If no check method was provided, propagate the new inputs as-is.
+            inputs = news;
         }
 
         inputs[providerKey] = news[providerKey];
@@ -98,37 +110,45 @@ async function checkRPC(call: any, callback: any): Promise<void> {
     }
 }
 
+function checkConfigRPC(call: any, callback: any): void {
+    callback({
+        code: grpc.status.UNIMPLEMENTED,
+        details: "CheckConfig is not implemented by the dynamic provider",
+    }, undefined);
+}
+
 async function diffRPC(call: any, callback: any): Promise<void> {
     try {
         const req: any = call.request;
         const resp = new provproto.DiffResponse();
 
-        // If the provider itself has changed, do not delegate to the dynamic provider. Instead, simply report that the
-        // resource requires replacement. This allows the new resource to be created using the new provider and the old
-        // resource to be deleted using the old provider.
+        // Note that we do not take any special action if the provider has changed. This allows a user to iterate on a
+        // dynamic provider's implementation. This does require some care on the part of the user: each iteration of a
+        // dynamic provider's implementation must be able to handle all state produced by prior iterations.
+        //
+        // Prior versions of the dynamic provider required that a dynamic resource be replaced any time its provider
+        // implementation changed. This made iteration painful, especially if the dynamic resource was managing a
+        // physical resource--in this case, the physical resource would be unnecessarily deleted and recreated each
+        // time the provider was updated.
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        if (olds[providerKey] !== news[providerKey]) {
-            resp.setReplacesList([ providerKey ]);
-        } else {
-            const provider = getProvider(olds);
-            if (provider.diff) {
-                const result: any = await provider.diff(req.getId(), olds, news);
+        const provider = getProvider(news[providerKey] === runtime.unknownValue ? olds : news);
+        if (provider.diff) {
+            const result: any = await provider.diff(req.getId(), olds, news);
 
-                if (result.changes === true) {
-                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_SOME);
-                } else if (result.changes === false) {
-                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_NONE);
-                } else {
-                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_UNKNOWN);
-                }
+            if (result.changes === true) {
+                resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_SOME);
+            } else if (result.changes === false) {
+                resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_NONE);
+            } else {
+                resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_UNKNOWN);
+            }
 
-                if (result.replaces && result.replaces.length !== 0) {
-                    resp.setReplacesList(result.replaces);
-                }
-                if (result.deleteBeforeReplace) {
-                    resp.setDeletebeforereplace(result.deleteBeforeReplace);
-                }
+            if (result.replaces && result.replaces.length !== 0) {
+                resp.setReplacesList(result.replaces);
+            }
+            if (result.deleteBeforeReplace) {
+                resp.setDeletebeforereplace(result.deleteBeforeReplace);
             }
         }
 
@@ -137,6 +157,13 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
+}
+
+function diffConfigRPC(call: any, callback: any): void {
+    callback({
+        code: grpc.status.UNIMPLEMENTED,
+        details: "DiffConfig is not implemented by the dynamic provider",
+    }, undefined);
 }
 
 async function createRPC(call: any, callback: any): Promise<void> {
@@ -153,8 +180,7 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(`${e}: ${e.stack}`);
-        callback(e, undefined);
+        return callback(grpcResponseFromError(e));
     }
 }
 
@@ -163,16 +189,19 @@ async function readRPC(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp = new provproto.ReadResponse();
 
+        const id = req.getId();
         const props = req.getProperties().toJavaScript();
         const provider = getProvider(props);
         if (provider.read) {
-            // If there's a read function, consult the provider.  Ensure to propagate the special __provider
+            // If there's a read function, consult the provider. Ensure to propagate the special __provider
             // value too, so that the provider's CRUD operations continue to function after a refresh.
-            const result: any = await provider.read(req.getId(), props);
-            const resultProps = resultIncludingProvider(result.properties, props);
+            const result: any = await provider.read(id, props);
+            resp.setId(result.id);
+            const resultProps = resultIncludingProvider(result.props, props);
             resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
         } else {
-            // In the event of a missing read, simply return back the input properties.
+            // In the event of a missing read, simply return back the input state.
+            resp.setId(id);
             resp.setProperties(req.getProperties());
         }
 
@@ -190,23 +219,19 @@ async function updateRPC(call: any, callback: any): Promise<void> {
 
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        if (olds[providerKey] !== news[providerKey]) {
-            throw new Error("changes to provider should require replacement");
-        }
 
-        let outs: any;
-        const provider = getProvider(olds);
+        let result: any = {};
+        const provider = getProvider(news);
         if (provider.update) {
-            outs = (await provider.update(req.getId(), olds, news)).outs;
+            result = await provider.update(req.getId(), olds, news) || {};
         }
 
-        const resultProps = resultIncludingProvider(outs, news);
+        const resultProps = resultIncludingProvider(result.outs, news);
         resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(`${e}: ${e.stack}`);
-        callback(e, undefined);
+        return callback(grpcResponseFromError(e));
     }
 }
 
@@ -237,6 +262,45 @@ function resultIncludingProvider(result: any, props: any): any {
     });
 }
 
+// grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's
+// resource. This is typically either a creation error, in which the API server has (virtually)
+// rejected the resource, or an initialization error, where the API server has accepted the
+// resource, but it failed to initialize (e.g., the app code is continually crashing and the
+// resource has failed to become alive).
+function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}): any {
+    // Create response object.
+    const resp = new statusproto.Status();
+    resp.setCode(grpc.status.UNKNOWN);
+    resp.setMessage(e.message);
+
+    const metadata = new grpc.Metadata();
+    if (e.id) {
+        // Object created successfully, but failed to initialize. Pack initialization failure into
+        // details.
+        const detail = new provproto.ErrorResourceInitFailed();
+        detail.setId(e.id);
+        detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
+        detail.setReasonsList(e.reasons || []);
+
+        const details = new anyproto.Any();
+        details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");
+
+        // Add details to metadata.
+        resp.addDetails(details);
+        // NOTE: `grpc-status-details-bin` is a magic field that allows us to send structured
+        // protobuf data as an error back through gRPC. This notion of details is a first-class in
+        // the Go gRPC implementation, and the nodejs implementation has not quite caught up to it,
+        // which is why it's cumbersome here.
+        metadata.add("grpc-status-details-bin", Buffer.from(resp.serializeBinary()));
+    }
+
+    return {
+        code: grpc.status.UNKNOWN,
+        message: e.message,
+        metadata: metadata,
+    };
+}
+
 export function main(args: string[]): void {
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
@@ -250,10 +314,13 @@ export function main(args: string[]): void {
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server();
     server.addService(provrpc.ResourceProviderService, {
+        cancel: cancelRPC,
         configure: configureRPC,
         invoke: invokeRPC,
         check: checkRPC,
+        checkConfig: checkConfigRPC,
         diff: diffRPC,
+        diffConfig: diffConfigRPC,
         create: createRPC,
         read: readRPC,
         update: updateRPC,

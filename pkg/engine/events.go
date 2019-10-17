@@ -15,14 +15,17 @@
 package engine
 
 import (
+	"bytes"
 	"reflect"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -47,6 +50,7 @@ const (
 	ResourcePreEvent        EventType = "resource-pre"
 	ResourceOutputsEvent    EventType = "resource-outputs"
 	ResourceOperationFailed EventType = "resource-operationfailed"
+	PolicyViolationEvent    EventType = "policy-violation"
 )
 
 func cancelEvent() Event {
@@ -55,12 +59,25 @@ func cancelEvent() Event {
 
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {
-	URN      resource.URN
-	Prefix   string
-	Message  string
-	Color    colors.Colorization
-	Severity diag.Severity
-	StreamID int32
+	URN       resource.URN
+	Prefix    string
+	Message   string
+	Color     colors.Colorization
+	Severity  diag.Severity
+	StreamID  int32
+	Ephemeral bool
+}
+
+// PolicyViolationEventPayload is the payload for an event with type `policy-violation`.
+type PolicyViolationEventPayload struct {
+	ResourceURN       resource.URN
+	Message           string
+	Color             colors.Colorization
+	PolicyName        string
+	PolicyPackName    string
+	PolicyPackVersion string
+	EnforcementLevel  apitype.EnforcementLevel
+	Prefix            string
 }
 
 type StdoutEventPayload struct {
@@ -74,10 +91,11 @@ type PreludeEventPayload struct {
 }
 
 type SummaryEventPayload struct {
-	IsPreview       bool            // true if this summary is for a plan operation
-	MaybeCorrupt    bool            // true if one or more resources may be corrupt
-	Duration        time.Duration   // the duration of the entire update operation (zero values for previews)
-	ResourceChanges ResourceChanges // count of changed resources, useful for reporting
+	IsPreview       bool              // true if this summary is for a plan operation
+	MaybeCorrupt    bool              // true if one or more resources may be corrupt
+	Duration        time.Duration     // the duration of the entire update operation (zero values for previews)
+	ResourceChanges ResourceChanges   // count of changed resources, useful for reporting
+	PolicyPacks     map[string]string // {policy-pack: version} for each policy pack applied
 }
 
 type ResourceOperationFailedPayload struct {
@@ -98,18 +116,25 @@ type ResourcePreEventPayload struct {
 	Debug    bool
 }
 
+// StepEventMetadata contains the metadata associated with a step the engine is performing.
 type StepEventMetadata struct {
-	Op      deploy.StepOp           // the operation performed by this step.
-	URN     resource.URN            // the resource URN (for before and after).
-	Type    tokens.Type             // the type affected by this step.
-	Old     *StepEventStateMetadata // the state of the resource before performing this step.
-	New     *StepEventStateMetadata // the state of the resource after performing this step.
-	Res     *StepEventStateMetadata // the latest state for the resource that is known (worst case, old).
-	Keys    []resource.PropertyKey  // the keys causing replacement (only for CreateStep and ReplaceStep).
-	Logical bool                    // true if this step represents a logical operation in the program.
+	Op           deploy.StepOp                  // the operation performed by this step.
+	URN          resource.URN                   // the resource URN (for before and after).
+	Type         tokens.Type                    // the type affected by this step.
+	Old          *StepEventStateMetadata        // the state of the resource before performing this step.
+	New          *StepEventStateMetadata        // the state of the resource after performing this step.
+	Res          *StepEventStateMetadata        // the latest state for the resource that is known (worst case, old).
+	Keys         []resource.PropertyKey         // the keys causing replacement (only for CreateStep and ReplaceStep).
+	Diffs        []resource.PropertyKey         // the keys causing diffs
+	DetailedDiff map[string]plugin.PropertyDiff // the rich, structured diff
+	Logical      bool                           // true if this step represents a logical operation in the program.
+	Provider     string                         // the provider that performed this step.
 }
 
+// StepEventStateMetadata contains detailed metadata about a resource's state pertaining to a given step.
 type StepEventStateMetadata struct {
+	// State contains the raw, complete state, for this resource.
+	State *resource.State
 	// the resource's type.
 	Type tokens.Type
 	// the resource's object urn, a human-friendly, unique name for the resource.
@@ -134,52 +159,117 @@ type StepEventStateMetadata struct {
 	// the resource's complete output state (as returned by the resource provider).  See "Inputs"
 	// for additional details about how data will be transformed before going into this map.
 	Outputs resource.PropertyMap
+	// the resource's provider reference
+	Provider string
+	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+	// during create or update).
+	InitErrors []string
 }
 
-func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
+func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
 	target := update.GetTarget()
 	var secrets []string
 	if target.Config.HasSecureValue() {
-		for _, v := range target.Config {
+		for k, v := range target.Config {
 			if !v.Secure() {
 				continue
 			}
-			secret, err := v.Value(target.Decrypter)
-			contract.AssertNoError(err)
 
+			secret, err := v.Value(target.Decrypter)
+			if err != nil {
+				return eventEmitter{}, DecryptError{
+					Key: k,
+					Err: err,
+				}
+			}
 			secrets = append(secrets, secret)
 		}
 	}
 
 	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
 
+	// Instead of sending to the source channel directly, buffer events to account for slow receivers.
+	//
+	// Buffering is done by a goroutine that concurrently receives from the senders and attempts to send events to the
+	// receiver. Events that are received while waiting for the receiver to catch up are buffered in a slice.
+	//
+	// We do not use a buffered channel because it is empirically less likely that the goroutine reading from a
+	// buffered channel will be scheduled when new data is placed in the channel.
+	buffer, done := make(chan Event), make(chan bool)
+	go func() {
+		defer close(done)
+
+		var queue []Event
+		for {
+			contract.Assert(buffer != nil)
+
+			e, ok := <-buffer
+			if !ok {
+				return
+			}
+			queue = append(queue, e)
+
+			// While there are events in the queue, attempt to send them to the waiting receiver. If the receiver is
+			// blocked and an event is received from the event senders, stick that event in the queue.
+			for len(queue) > 0 {
+				select {
+				case e, ok := <-buffer:
+					if !ok {
+						// If the event source has been closed, flush the queue.
+						for _, e := range queue {
+							events <- e
+						}
+						return
+					}
+					queue = append(queue, e)
+				case events <- queue[0]:
+					queue = queue[1:]
+				}
+			}
+		}
+	}()
+
 	return eventEmitter{
-		Chan: events,
-	}
+		done: done,
+		ch:   buffer,
+	}, nil
 }
 
 type eventEmitter struct {
-	Chan chan<- Event
+	done <-chan bool
+	ch   chan<- Event
 }
 
-func makeStepEventMetadata(step deploy.Step, debug bool) StepEventMetadata {
-	var keys []resource.PropertyKey
+func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepEventMetadata {
+	contract.Assert(op == step.Op() || step.Op() == deploy.OpRefresh)
 
-	if step.Op() == deploy.OpCreateReplacement {
-		keys = step.(*deploy.CreateStep).Keys()
-	} else if step.Op() == deploy.OpReplace {
-		keys = step.(*deploy.ReplaceStep).Keys()
+	var keys, diffs []resource.PropertyKey
+	if keyer, hasKeys := step.(interface{ Keys() []resource.PropertyKey }); hasKeys {
+		keys = keyer.Keys()
+	}
+	if differ, hasDiffs := step.(interface{ Diffs() []resource.PropertyKey }); hasDiffs {
+		diffs = differ.Diffs()
+	}
+
+	var detailedDiff map[string]plugin.PropertyDiff
+	if detailedDiffer, hasDetailedDiff := step.(interface {
+		DetailedDiff() map[string]plugin.PropertyDiff
+	}); hasDetailedDiff {
+		detailedDiff = detailedDiffer.DetailedDiff()
 	}
 
 	return StepEventMetadata{
-		Op:      step.Op(),
-		URN:     step.URN(),
-		Type:    step.Type(),
-		Keys:    keys,
-		Old:     makeStepEventStateMetadata(step.Old(), debug),
-		New:     makeStepEventStateMetadata(step.New(), debug),
-		Res:     makeStepEventStateMetadata(step.Res(), debug),
-		Logical: step.Logical(),
+		Op:           op,
+		URN:          step.URN(),
+		Type:         step.Type(),
+		Keys:         keys,
+		Diffs:        diffs,
+		DetailedDiff: detailedDiff,
+		Old:          makeStepEventStateMetadata(step.Old(), debug),
+		New:          makeStepEventStateMetadata(step.New(), debug),
+		Res:          makeStepEventStateMetadata(step.Res(), debug),
+		Logical:      step.Logical(),
+		Provider:     step.Provider(),
 	}
 }
 
@@ -189,15 +279,18 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 	}
 
 	return &StepEventStateMetadata{
-		Type:    state.Type,
-		URN:     state.URN,
-		Custom:  state.Custom,
-		Delete:  state.Delete,
-		ID:      state.ID,
-		Parent:  state.Parent,
-		Protect: state.Protect,
-		Inputs:  filterPropertyMap(state.Inputs, debug),
-		Outputs: filterPropertyMap(state.Outputs, debug),
+		State:      state,
+		Type:       state.Type,
+		URN:        state.URN,
+		Custom:     state.Custom,
+		Delete:     state.Delete,
+		ID:         state.ID,
+		Parent:     state.Parent,
+		Protect:    state.Protect,
+		Inputs:     filterPropertyMap(state.Inputs, debug),
+		Outputs:    filterPropertyMap(state.Outputs, debug),
+		Provider:   state.Provider,
+		InitErrors: state.InitErrors,
 	}
 }
 
@@ -261,6 +354,8 @@ func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.Pr
 				URI:    t.URI,
 				Assets: filterValue(t.Assets).(map[string]interface{}),
 			}
+		case resource.Secret:
+			return "[secret]"
 		case resource.Computed:
 			return resource.Computed{
 				Element: filterPropertyValue(t.Element),
@@ -310,30 +405,33 @@ func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.Pr
 		})
 }
 
+func (e *eventEmitter) Close() {
+	close(e.ch)
+	<-e.done
+}
+
 func (e *eventEmitter) resourceOperationFailedEvent(
 	step deploy.Step, status resource.Status, steps int, debug bool) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: ResourceOperationFailed,
 		Payload: ResourceOperationFailedPayload{
-			Metadata: makeStepEventMetadata(step, debug),
+			Metadata: makeStepEventMetadata(step.Op(), step, debug),
 			Status:   status,
 			Steps:    steps,
 		},
 	}
 }
 
-func (e *eventEmitter) resourceOutputsEvent(
-	step deploy.Step, planning bool, debug bool) {
-
+func (e *eventEmitter) resourceOutputsEvent(op deploy.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: ResourceOutputsEvent,
 		Payload: ResourceOutputsEventPayload{
-			Metadata: makeStepEventMetadata(step, debug),
+			Metadata: makeStepEventMetadata(op, step, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
@@ -345,10 +443,10 @@ func (e *eventEmitter) resourcePreEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: ResourcePreEvent,
 		Payload: ResourcePreEventPayload{
-			Metadata: makeStepEventMetadata(step, debug),
+			Metadata: makeStepEventMetadata(step.Op(), step, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
@@ -366,7 +464,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 		configStringMap[keyString] = valueString
 	}
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: PreludeEvent,
 		Payload: PreludeEventPayload{
 			IsPreview: isPreview,
@@ -375,67 +473,114 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	}
 }
 
-func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges) {
+func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: SummaryEvent,
 		Payload: SummaryEventPayload{
 			IsPreview:       true,
 			MaybeCorrupt:    false,
 			Duration:        0,
 			ResourceChanges: resourceChanges,
+			PolicyPacks:     policyPacks,
 		},
 	}
 }
 
 func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
-	duration time.Duration, resourceChanges ResourceChanges) {
+	duration time.Duration, resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
+	e.ch <- Event{
 		Type: SummaryEvent,
 		Payload: SummaryEventPayload{
 			IsPreview:       false,
 			MaybeCorrupt:    maybeCorrupt,
 			Duration:        duration,
 			ResourceChanges: resourceChanges,
+			PolicyPacks:     policyPacks,
 		},
 	}
 }
 
-func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity) {
+func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.Chan <- Event{
-		Type: DiagEvent,
-		Payload: DiagEventPayload{
-			URN:      d.URN,
-			Prefix:   logging.FilterString(prefix),
-			Message:  logging.FilterString(msg),
-			Color:    colors.Raw,
-			Severity: sev,
-			StreamID: d.StreamID,
+	// Write prefix.
+	var prefix bytes.Buffer
+	switch d.EnforcementLevel {
+	case apitype.Mandatory:
+		prefix.WriteString(colors.SpecError)
+	case apitype.Advisory:
+		prefix.WriteString(colors.SpecWarning)
+	default:
+		contract.Failf("Unrecognized diagnostic severity: %v", d)
+	}
+
+	prefix.WriteString(string(d.EnforcementLevel))
+	prefix.WriteString(": ")
+	prefix.WriteString(colors.Reset)
+
+	// Write the message itself.
+	var buffer bytes.Buffer
+	buffer.WriteString(colors.SpecNote)
+
+	buffer.WriteString(d.Message)
+
+	buffer.WriteString(colors.Reset)
+	buffer.WriteRune('\n')
+
+	e.ch <- Event{
+		Type: PolicyViolationEvent,
+		Payload: PolicyViolationEventPayload{
+			ResourceURN:       urn,
+			Message:           logging.FilterString(buffer.String()),
+			Color:             colors.Raw,
+			PolicyName:        d.PolicyName,
+			PolicyPackName:    d.PolicyPackName,
+			PolicyPackVersion: d.PolicyPackVersion,
+			EnforcementLevel:  d.EnforcementLevel,
+			Prefix:            logging.FilterString(prefix.String()),
 		},
 	}
 }
 
-func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Debug)
+func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
+	ephemeral bool) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.ch <- Event{
+		Type: DiagEvent,
+		Payload: DiagEventPayload{
+			URN:       d.URN,
+			Prefix:    logging.FilterString(prefix),
+			Message:   logging.FilterString(msg),
+			Color:     colors.Raw,
+			Severity:  sev,
+			StreamID:  d.StreamID,
+			Ephemeral: ephemeral,
+		},
+	}
 }
 
-func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Info)
+func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Debug, ephemeral)
 }
 
-func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Infoerr)
+func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Info, ephemeral)
 }
 
-func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Error)
+func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Infoerr, ephemeral)
 }
 
-func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string) {
-	diagEvent(e, d, prefix, msg, diag.Warning)
+func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Error, ephemeral)
+}
+
+func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
+	diagEvent(e, d, prefix, msg, diag.Warning, ephemeral)
 }

@@ -18,12 +18,24 @@ import "source-map-support/register";
 // Export top-level elements.
 export * from "./config";
 export * from "./errors";
+export * from "./invoke";
 export * from "./metadata";
+export * from "./output";
 export * from "./resource";
+export * from "./stackReference";
 
 // Export submodules individually.
 import * as asset from "./asset";
 import * as dynamic from "./dynamic";
+import * as iterable from "./iterable";
 import * as log from "./log";
 import * as runtime from "./runtime";
-export { asset, dynamic, log, runtime };
+import * as utils from "./utils";
+export { asset, dynamic, iterable, log, runtime, utils };
+
+// @pulumi is a deployment-only module.  If someone tries to capture it, and we fail for some reason
+// we want to give a good message about what the problem likely is.  Note that capturing a
+// deployment time module can be ok in some cases.  For example, using "new pulumi.Config" is fine.
+// However, in general, the majority of this API is not safe to use at 'run time' and will fail.
+/** @internal */
+export const deploymentOnlyModule = true;

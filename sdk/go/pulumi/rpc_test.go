@@ -50,8 +50,9 @@ func TestMarshalRoundtrip(t *testing.T) {
 	}
 
 	// Marshal those inputs.
-	_, m, deps, err := marshalInputs(input)
+	m, pdeps, deps, err := marshalInputs(input)
 	if !assert.Nil(t, err) {
+		assert.Equal(t, len(input), len(pdeps))
 		assert.Equal(t, 0, len(deps))
 
 		// Now just unmarshal and ensure the resulting map matches.
@@ -85,4 +86,22 @@ func TestMarshalRoundtrip(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestUnmarshalUnsupportedSecret(t *testing.T) {
+	m, _, err := marshalInput(map[string]interface{}{
+		rpcTokenSpecialSigKey: rpcTokenSpecialSecretSig,
+	})
+	assert.NoError(t, err)
+	_, err = unmarshalOutput(m)
+	assert.Error(t, err)
+}
+
+func TestUnmarshalUnknownSig(t *testing.T) {
+	m, _, err := marshalInput(map[string]interface{}{
+		rpcTokenSpecialSigKey: "foobar",
+	})
+	assert.NoError(t, err)
+	_, err = unmarshalOutput(m)
+	assert.Error(t, err)
 }

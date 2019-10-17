@@ -18,13 +18,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
 func newStackSelectCmd() *cobra.Command {
-	var cloud string
+	var stack string
 	cmd := &cobra.Command{
 		Use:   "select [<stack>]",
 		Short: "Switch the current workspace to the given stack",
@@ -36,13 +37,25 @@ func newStackSelectCmd() *cobra.Command {
 			"If no <stack> argument is supplied, you will be prompted to select one interactively.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			b, err := currentBackend()
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			b, err := currentBackend(opts)
 			if err != nil {
 				return err
 			}
 
 			if len(args) > 0 {
-				// A stack was given, ask all known backends about it
+				if stack != "" {
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
+				}
+
+				stack = args[0]
+			}
+
+			if stack != "" {
+				// A stack was given, ask the backend about it
 				stackRef, stackErr := b.ParseStackReference(args[0])
 				if stackErr != nil {
 					return stackErr
@@ -59,15 +72,16 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(b, true)
+			stack, err := chooseStack(b, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-			return state.SetCurrentStack(stack.Name().String())
+			return state.SetCurrentStack(stack.Ref().String())
 
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&cloud, "cloud", "c", "", "A URL for the Pulumi Cloud containing the stack to be selected")
+		&stack, "stack", "s", "",
+		"The name of the stack to select")
 	return cmd
 }

@@ -16,8 +16,8 @@ Using yarn:
 $ yarn add @pulumi/pulumi
 ```
 
-This SDK is meant for use with the Pulumi CLI.  Please visit [pulumi.io](https://pulumi.io) for
-installation instructions.
+This SDK is meant for use with the Pulumi CLI.  Please visit
+[pulumi.com](https://pulumi.com) for installation instructions.
 
 ## Building and Testing
 
@@ -45,5 +45,5 @@ root).  This will build the code, run tests, and install the package and its sup
 
 At the moment, for local development, we install everything into `/opt/pulumi`.  You will want this on your `$PATH`.
 
-The tests will verify that everything works, but feel free to try running `pulumi preview` and/or `pulumi update` from
+The tests will verify that everything works, but feel free to try running `pulumi preview` and/or `pulumi up` from
 the `examples/minimal/` directory.  Remember to run `tsc` first, since `pulumi` expects JavaScript, not TypeScript.

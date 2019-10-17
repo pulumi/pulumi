@@ -44,7 +44,7 @@ func AsName(s string) Name {
 }
 
 // QName is a qualified identifier.  The "/" character optionally delimits different pieces of the name.  Each element
-// conforms to the Name regex [A-Za-z_][A-Za-z0-9_]*.  For example, "pulumi/pulumi/stack".
+// conforms to the Name regex [A-Za-z_.][A-Za-z0-9_.]*.  For example, "pulumi/pulumi/stack".
 type QName string
 
 func (nm QName) String() string { return string(nm) }

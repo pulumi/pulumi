@@ -9,25 +9,34 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-func validateResources(t *testing.T, resources []apitype.Resource, expectedNames ...string) {
+func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNames ...string) {
 	// Build the lookup table of expected resource names.
 	expectedNamesTable := make(map[string]struct{})
 	for _, n := range expectedNames {
 		expectedNamesTable[n] = struct{}{}
 	}
 
-	// Ensure that the resource count is correct.
-	assert.Equal(t, len(resources), len(expectedNames)+1)
-
 	// Pull out the stack resource, which must be the first resource in the checkpoint.
-	stackRes := resources[0]
+	stackRes, resources := resources[0], resources[1:]
 	assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 
+	// If there are more resources than just the stack, the second resource will be the default provider.
+	if len(resources) > 0 {
+		// Pull out the single provider resource, which should be the second resource in the checkpoint.
+		providerRes := resources[0]
+		resources = resources[1:]
+		assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+	}
+
+	// Ensure that the resource count is correct.
+	assert.Equal(t, len(resources), len(expectedNames))
+
 	// Ensure that exactly the provided resources are in the array.
-	for _, res := range resources[1:] {
+	for _, res := range resources {
 		name := string(res.URN.Name())
 		_, ok := expectedNamesTable[name]
 		assert.True(t, ok)

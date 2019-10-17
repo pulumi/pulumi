@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -45,6 +46,10 @@ func newPluginRmCmd() *cobra.Command {
 			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 			"using the plugin install command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Parse the filters.
 			var kind workspace.PluginKind
 			var name string
@@ -92,13 +97,13 @@ func newPluginRmCmd() *cobra.Command {
 				suffix = "s"
 			}
 			fmt.Print(
-				colors.ColorizeText(
+				opts.Color.Colorize(
 					fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
 						colors.SpecAttention, len(deletes), suffix, colors.Reset)))
 			for _, del := range deletes {
 				fmt.Printf("    %s %s\n", del.Kind, del.String())
 			}
-			if yes || confirmPrompt("", "yes") {
+			if yes || confirmPrompt("", "yes", opts) {
 				var result error
 				for _, plugin := range deletes {
 					if err := plugin.Delete(); err != nil {

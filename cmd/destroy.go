@@ -16,13 +16,17 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -32,16 +36,17 @@ func newDestroyCmd() *cobra.Command {
 	var message string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
-	var color colorFlag
 	var diffDisplay bool
+	var eventLogPath string
 	var parallel int
+	var refresh bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var nonInteractive bool
 	var skipPreview bool
+	var suppressOutputs bool
 	var yes bool
+	var targets *[]string
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -50,57 +55,94 @@ func newDestroyCmd() *cobra.Command {
 		Long: "Destroy an existing stack and its resources\n" +
 			"\n" +
 			"This command deletes an entire existing stack by name.  The current state is\n" +
-			"loaded from the associated snapshot file in the workspace.  After running to completion,\n" +
+			"loaded from the associated state file in the workspace.  After running to completion,\n" +
 			"all of this stack's resources and associated state will be gone.\n" +
 			"\n" +
-			"Warning: although old snapshots can be used to recreate a stack, this command\n" +
-			"is generally irreversible and should be used with great care.",
+			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := isInteractive(nonInteractive)
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			interactive := cmdutil.Interactive()
 			if !interactive {
 				yes = true // auto-approve changes, since we cannot prompt.
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
-			s, err := requireStack(stack, false)
+			var displayType = display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
+			opts.Display = display.Options{
+				Color:                cmdutil.GetGlobalColorization(),
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSameResources:    showSames,
+				SuppressOutputs:      suppressOutputs,
+				IsInteractive:        interactive,
+				Type:                 displayType,
+				EventLogPath:         eventLogPath,
+				Debug:                debug,
+			}
+
+			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 			proj, root, err := readProject()
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			m, err := getUpdateMetadata(message, root)
 			if err != nil {
-				return errors.Wrap(err, "gathering environment metadata")
+				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+			}
+
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			}
+
+			cfg, err := getStackConfiguration(s, sm)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			}
+
+			targetUrns := []resource.URN{}
+			for _, t := range *targets {
+				targetUrns = append(targetUrns, resource.URN(t))
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Analyzers: analyzers,
-				Parallel:  parallel,
-				Debug:     debug,
-			}
-			opts.Display = backend.DisplayOptions{
-				Color:                color.Colorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				IsInteractive:        interactive,
-				DiffDisplay:          diffDisplay,
-				Debug:                debug,
+				Parallel:       parallel,
+				Debug:          debug,
+				Refresh:        refresh,
+				DestroyTargets: targetUrns,
+				UseLegacyDiff:  useLegacyDiff(),
 			}
 
-			_, err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)
-			if err == context.Canceled {
-				return errors.New("destroy cancelled")
+			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
+				Proj:               proj,
+				Root:               root,
+				M:                  m,
+				Opts:               opts,
+				StackConfiguration: cfg,
+				SecretsManager:     sm,
+				Scopes:             cancellationScopes,
+			})
+
+			if res == nil && len(*targets) == 0 {
+				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
+					"associated with the stack are still maintained. \nIf you want to remove the stack "+
+					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
+			} else if res != nil && res.Error() == context.Canceled {
+				return result.FromError(errors.New("destroy cancelled"))
 			}
-			return err
+			return PrintEngineResult(res)
 		}),
 	}
 
@@ -109,25 +151,29 @@ func newDestroyCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose a stack other than the currently selected one")
+		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
 
+	targets = cmd.PersistentFlags().StringArrayP(
+		"target", "t", []string{},
+		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed."+
+			" Multiple resources can be specified using: --target urn1 --target urn2")
+
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this update")
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().BoolVar(
-		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		&parallel, "parallel", "p", defaultParallel,
+		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+	cmd.PersistentFlags().BoolVarP(
+		&refresh, "refresh", "r", false,
+		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -140,9 +186,18 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not perform a preview before performing the destroy")
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
+
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
 
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }

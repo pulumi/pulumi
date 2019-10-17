@@ -19,8 +19,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 func newPreviewCmd() *cobra.Command {
@@ -28,16 +30,19 @@ func newPreviewCmd() *cobra.Command {
 	var expectNop bool
 	var message string
 	var stack string
+	var configArray []string
 
 	// Flags for engine.UpdateOptions.
-	var analyzers []string
-	var color colorFlag
+	var policyPackPaths []string
 	var diffDisplay bool
-	var nonInteractive bool
+	var eventLogPath string
+	var jsonDisplay bool
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var showReads bool
+	var suppressOutputs bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -47,7 +52,7 @@ func newPreviewCmd() *cobra.Command {
 		Long: "Show a preview of updates a stack's resources.\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
-			"represented by an existing snapshot file. The new desired state is computed by running\n" +
+			"represented by an existing state file. The new desired state is computed by running\n" +
 			"a Pulumi program, and extracting all resource allocations from its resulting object graph.\n" +
 			"These allocations are then compared against the existing state to determine what\n" +
 			"operations must take place to achieve the desired state. No changes to the stack will\n" +
@@ -56,44 +61,79 @@ func newPreviewCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(stack, true)
-			if err != nil {
-				return err
-			}
-
-			proj, root, err := readProject()
-			if err != nil {
-				return err
-			}
-
-			m, err := getUpdateMetadata("", root)
-			if err != nil {
-				return errors.Wrap(err, "gathering environment metadata")
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			var displayType = display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
 			}
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					Analyzers: analyzers,
-					Parallel:  parallel,
-					Debug:     debug,
+					LocalPolicyPackPaths: policyPackPaths,
+					Parallel:             parallel,
+					Debug:                debug,
+					UseLegacyDiff:        useLegacyDiff(),
 				},
-				Display: backend.DisplayOptions{
-					Color:                color.Colorization(),
+				Display: display.Options{
+					Color:                cmdutil.GetGlobalColorization(),
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
-					IsInteractive:        isInteractive(nonInteractive),
-					DiffDisplay:          diffDisplay,
+					ShowReads:            showReads,
+					SuppressOutputs:      suppressOutputs,
+					IsInteractive:        cmdutil.Interactive(),
+					Type:                 displayType,
+					JSONDisplay:          jsonDisplay,
+					EventLogPath:         eventLogPath,
 					Debug:                debug,
 				},
 			}
-			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
+
+			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			// Save any config values passed via flags.
+			if err := parseAndSaveConfigArray(s, configArray); err != nil {
+				return result.FromError(err)
+			}
+
+			proj, root, err := readProject()
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			m, err := getUpdateMetadata("", root)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+			}
+
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			}
+
+			cfg, err := getStackConfiguration(s, sm)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			}
+
+			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
+				Proj:               proj,
+				Root:               root,
+				M:                  m,
+				Opts:               opts,
+				StackConfiguration: cfg,
+				SecretsManager:     sm,
+				Scopes:             cancellationScopes,
+			})
+
 			switch {
-			case err != nil:
-				return err
+			case res != nil:
+				return PrintEngineResult(res)
 			case expectNop && changes != nil && changes.HasChanges():
-				return errors.New("error: no changes were expected but changes were proposed")
+				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
 			default:
 				return nil
 			}
@@ -108,35 +148,55 @@ func newPreviewCmd() *cobra.Command {
 		"Return an error if any changes are proposed by this preview")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose a stack other than the currently selected one")
+		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&stackConfigFile, "config-file", "",
+		"Use the configuration values in the specified file rather than detecting the file name")
+	cmd.PersistentFlags().StringArrayVarP(
+		&configArray, "config", "c", []string{},
+		"Config to use during the preview")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the preview operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this update")
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringSliceVar(
+			&policyPackPaths, "policy-pack", []string{},
+			"Run one or more analyzers as part of this update")
+	}
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().BoolVar(
-		&nonInteractive, "non-interactive", false, "Disable interactive mode")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the preview diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+		&parallel, "parallel", "p", defaultParallel,
+		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
+
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&showReads, "show-reads", false,
+		"Show resources that are being read in, alongside those being managed directly in the stack")
 
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
+
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 	return cmd
 }

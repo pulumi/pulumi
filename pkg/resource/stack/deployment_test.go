@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -69,13 +70,22 @@ func TestDeploymentSerialization(t *testing.T) {
 		}),
 		"",
 		false,
+		false,
 		[]resource.URN{
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
 		},
+		[]string{},
+		"",
+		nil,
+		false,
+		nil,
+		nil,
+		nil,
 	)
 
-	dep := SerializeResource(res)
+	dep, err := SerializeResource(res, config.NopEncrypter)
+	assert.NoError(t, err)
 
 	// assert some things about the deployment record:
 	assert.NotNil(t, dep)
@@ -149,7 +159,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
-	deployment, err := DeserializeDeployment(untypedDeployment)
+	deployment, err := DeserializeUntypedDeployment(untypedDeployment, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
@@ -160,8 +170,24 @@ func TestLoadTooOldDeployment(t *testing.T) {
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
 
-	deployment, err := DeserializeDeployment(untypedDeployment)
+	deployment, err := DeserializeUntypedDeployment(untypedDeployment, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
+}
+
+func TestUnsupportedSecret(t *testing.T) {
+	rawProp := map[string]interface{}{
+		resource.SigKey: resource.SecretSig,
+	}
+	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
+	assert.Error(t, err)
+}
+
+func TestUnknownSig(t *testing.T) {
+	rawProp := map[string]interface{}{
+		resource.SigKey: "foobar",
+	}
+	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
+	assert.Error(t, err)
 }

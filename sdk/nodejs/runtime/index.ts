@@ -18,6 +18,9 @@ export {
     SerializedFunction,
     SerializeFunctionArgs,
 }  from "./closure/serializeClosure";
+
+export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
+
 export * from "./config";
 export * from "./invoke";
 export * from "./resource";

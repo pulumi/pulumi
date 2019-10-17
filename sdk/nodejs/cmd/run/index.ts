@@ -12,16 +12,74 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is the entrypoint for running a Node.js program with minimal scaffolding.
+// The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
+// events cause us to exit with a non-zero code. It is critically important that we do this early:
+// if we do not, unhandled rejections in particular may cause us to exit with a 0 exit code, which
+// will trick the engine into thinking that the program ran successfully. This can cause the engine
+// to decide to delete all of a stack's resources.
+//
+// We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
+// code.
+const uncaughtErrors = new Set<Error>();
 
-import * as fs from "fs";
+// We also track errors we know were logged to the user using our standard `log.error` call from
+// inside our uncaught-error-handler in run.ts.  If all uncaught-errors above were also known to all
+// be logged properly to the user, then we know the user has the information they need to proceed.
+// We can then report the langhost that it should just stop running immediately and not print any
+// additional superfluous information.
+const loggedErrors = new Set<Error>();
+
+let programRunning = false;
+const uncaughtHandler = (err: Error) => {
+    uncaughtErrors.add(err);
+    if (!programRunning) {
+        console.error(err.stack || err.message);
+    }
+};
+
+// Keep track if we already logged the information about an unhandled error to the user..  If
+// so, we end with a different exit code.  The language host recognizes this and will not print
+// any further messages to the user since we already took care of it.
+//
+// 32 was picked so as to be very unlikely to collide with any of the error codes documented by
+// nodejs here:
+// https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
+
+process.on("uncaughtException", uncaughtHandler);
+// @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
+// suppress the TS strictness here.
+process.on("unhandledRejection", uncaughtHandler);
+process.on("exit", (code: number) => {
+
+    // If there were any uncaught errors at all, we always want to exit with an error code. If we
+    // did not, it could be disastrous for the user.  i.e. not all resources may have been created,
+    // but the 0 code would indicate we could proceed.  That could lead to many (or all) of the
+    // user resources being deleted.
+    if (code === 0 && uncaughtErrors.size > 0) {
+        // Now Check if this error was already logged to the user in a visible fashion.  If not
+        // we will exit with '1', indicating that the host should give a generic message about
+        // things not working.
+        for (const err of uncaughtErrors) {
+            if (!loggedErrors.has(err)) {
+                process.exitCode = 1;
+                return;
+            }
+        }
+
+        process.exitCode = nodeJSProcessExitedAfterLoggingUserActionableMessage;
+    }
+});
+
+// As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
+// this as some information is only sent out as events, without any way to query for it after the
+// fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
+// report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
+// by register to hear about scripts being parsed.
+import * as v8Hooks from "../../runtime/closure/v8Hooks";
+
+// This is the entrypoint for running a Node.js program with minimal scaffolding.
 import * as minimist from "minimist";
-import * as path from "path";
-import * as util from "util";
-import * as pulumi from "../../";
-import { RunError } from "../../errors";
-import * as log from "../../log";
-import * as runtime from "../../runtime";
 
 function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
@@ -31,10 +89,12 @@ function usage(): void {
     console.error(`        --stack=s           set the stack name to s`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
     console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
+    console.error(`        --query-mode        true to run pulumi in query mode`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      [required] the RPC address for a resource monitor to connect to`);
     console.error(`        --engine=addr       the RPC address for a resource engine to connect to`);
+    console.error(`        --sync=path         path to synchronous 'invoke' endpoints`);
     console.error(`        --tracing=url       a Zipkin-compatible endpoint to send tracing data to`);
     console.error(``);
     console.error(`    and [program] is a JavaScript program to run in Node.js, and [arg]... optional args to it.`);
@@ -46,232 +106,70 @@ function printErrorUsageAndExit(message: string): never {
     return process.exit(-1);
 }
 
-/**
- * Attempts to provide a detailed error message for module load failure if the
- * module that failed to load is the top-level module.
- * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occured. Must be a module load error.
- */
-function reportModuleLoadFailure(program: string, error: Error): never {
-    // error is guaranteed to be a Node module load error. Node emits a very
-    // specific string in its error message for module load errors, which includes
-    // the module it was trying to load.
-    const errorRegex = /Cannot find module '(.*)'/;
-
-    // If there's no match, who knows what this exception is; it's not something
-    // we can provide an intelligent diagnostic for.
-    const moduleNameMatches = errorRegex.exec(error.message);
-    if (moduleNameMatches === null) {
-        throw error;
-    }
-
-    // Is the module that failed to load exactly the one that this script considered to
-    // be the top-level module for this program?
-    //
-    // We are only interested in producing good diagnostics for top-level module loads,
-    // since anything else are probably user code issues.
-    const moduleName = moduleNameMatches[1];
-    if (moduleName !== program) {
-        throw error;
-    }
-
-    console.error(`We failed to locate the entry point for your program: ${program}`);
-
-    // From here on out, we're going to try to inspect the program we're being asked to run
-    // a little to see what sort of details we can glean from it, in the hopes of producing
-    // a better error message.
-    //
-    // The first step of this is trying to slurp up a package.json for this program, if
-    // one exists.
-    const stat = fs.lstatSync(program);
-    let projectRoot: string;
-    if (stat.isDirectory()) {
-        projectRoot = program;
-    } else {
-        projectRoot = path.dirname(program);
-    }
-
-    let packageObject: Record<string, any>;
-    try {
-        const packageJson = path.join(projectRoot, "package.json");
-        packageObject = require(packageJson);
-    } catch {
-        // This is all best-effort so if we can't load the package.json file, that's
-        // fine.
-        return process.exit(1);
-    }
-
-    console.error("Here's what we think went wrong:");
-
-    // The objective here is to emit the best diagnostic we can, starting from the
-    // most specific to the least specific.
-    const deps = packageObject["dependencies"] || {};
-    const devDeps = packageObject["devDependencies"] || {};
-    const scripts = packageObject["scripts"] || {};
-    const mainProperty  = packageObject["main"] || "index.js";
-
-    // Is there a build script associated with this program? It's a little confusing that the
-    // Pulumi CLI doesn't run build scripts before running the program so call that out
-    // explicitly.
-    if ("build" in scripts) {
-        const command = scripts["build"];
-        console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
-        console.error("Pulumi does not run build scripts before running your program. " +
-                        `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
-        return process.exit(1);
-    }
-
-    // Not all typescript programs have build scripts. If we think it's a typescript program,
-    // tell the user to run tsc.
-    if ("typescript" in deps || "typescript" in devDeps) {
-        console.error("  * Your program looks like a TypeScript program. Have you run 'tsc'?");
-        return process.exit(1);
-    }
-
-    // Not all projects are typescript. If there's a main property, check that the file exists.
-    if (mainProperty !== undefined && typeof mainProperty === "string") {
-        const mainFile = path.join(projectRoot, mainProperty);
-        if (!fs.existsSync(mainFile)) {
-            console.error(`  * Your program's 'main' file (${mainFile}) does not exist.`);
-            return process.exit(1);
-        }
-    }
-
-    console.error("  * Yowzas, our sincere apologies, we haven't seen this before!");
-    console.error(`    Here is the raw exception message we received: ${error.message}`);
-    return process.exit(1);
-}
-
-export function main(args: string[]): void {
+function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
-    const config: {[key: string]: string} = {};
     const argv: minimist.ParsedArgs = minimist(args, {
-        boolean: [ "dry-run" ],
+        boolean: [ "dry-run", "query-mode" ],
         string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
-            if (arg.indexOf("-") === 0) {
-                return printErrorUsageAndExit(`error: Unrecognized flag ${arg}`);
-            }
             return true;
         },
         stopEarly: true,
     });
 
-    // Load configuration passed from the language plugin
-    runtime.ensureConfig();
-
-    // If there is a --project=p, and/or a --stack=s, use them in the options.
-    const project: string | undefined = argv["project"];
-    const stack: string | undefined = argv["stack"];
-
-    // If there is a --pwd directive, switch directories.
-    const pwd: string | undefined = argv["pwd"];
-    if (pwd) {
-        process.chdir(pwd);
-    }
-
-    // If resource parallelism was requested, turn it on.
-    let parallel: number | undefined;
+    // If parallel was passed, validate it is an number
     if (argv["parallel"]) {
-        parallel = parseInt(argv["parallel"], 10);
-        if (isNaN(parallel)) {
+        if (isNaN(parseInt(argv["parallel"], 10))) {
             return printErrorUsageAndExit(
                 `error: --parallel flag must specify a number: ${argv["parallel"]} is not a number`);
         }
     }
 
-    // If ther is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
-    const dryRun: boolean = !!(argv["dry-run"]);
-
-    // If there is a monitor argument, connect to it.
+    // Ensure a monitor address was passed
     const monitorAddr = argv["monitor"];
     if (!monitorAddr) {
         return printErrorUsageAndExit(`error: --monitor=addr must be provided.`);
     }
 
-    // If there is an engine argument, connect to it too.
-    const engineAddr: string | undefined = argv["engine"];
-
-    // Now configure the runtime and get it ready to run the program.
-    runtime.setOptions({
-        project: project,
-        stack: stack,
-        dryRun: dryRun,
-        parallel: parallel,
-        monitorAddr: monitorAddr,
-        engineAddr: engineAddr,
-    });
-
-    // Pluck out the program and arguments.
+    // Finally, ensure we have a program to run.
     if (argv._.length === 0) {
         return printErrorUsageAndExit("error: Missing program to execute");
     }
-    let program: string = argv._[0];
-    if (program.indexOf("/") !== 0) {
-        // If this isn't an absolute path, make it relative to the working directory.
-        program = path.join(process.cwd(), program);
+
+    // Due to node module loading semantics, multiple copies of @pulumi/pulumi could be loaded at runtime. So we need
+    // to squirel these settings in the environment such that other copies which may be loaded later can recover them.
+    //
+    // Config is already an environment variaible set by the language plugin.
+    addToEnvIfDefined("PULUMI_NODEJS_PROJECT", argv["project"]);
+    addToEnvIfDefined("PULUMI_NODEJS_STACK", argv["stack"]);
+    addToEnvIfDefined("PULUMI_NODEJS_DRY_RUN", argv["dry-run"]);
+    addToEnvIfDefined("PULUMI_NODEJS_QUERY_MODE", argv["query-mode"]);
+    addToEnvIfDefined("PULUMI_NODEJS_PARALLEL", argv["parallel"]);
+    addToEnvIfDefined("PULUMI_NODEJS_MONITOR", argv["monitor"]);
+    addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
+    addToEnvIfDefined("PULUMI_NODEJS_SYNC", argv["sync"]);
+
+    // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
+    v8Hooks.isInitializedAsync().then(() => {
+        const promise: Promise<void> = require("./run").run(
+            argv,
+            /*programStarted:   */ () => programRunning = true,
+            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err));
+
+        // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
+        // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.
+        //
+        // Note: we only do this in the 'resolved' arg of '.then' (not the 'rejected' arg).  If the users code throws
+        // an exception, this promise will get rejected, and we don't want touch or otherwise intercept the exception
+        // or change the programRunning state here at all.
+        promise.then(() => { programRunning = false; });
+    });
+}
+
+function addToEnvIfDefined(key: string, value: string | undefined) {
+    if (value) {
+        process.env[key] = value;
     }
-
-    // Now fake out the process-wide argv, to make the program think it was run normally.
-    const programArgs: string[] = argv._.slice(1);
-    process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
-
-    // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
-    let uncaught: Error | undefined;
-    const uncaughtHandler = (err: Error) => {
-        // First, log the error.
-        if (RunError.isInstance(err)) {
-            // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
-            // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
-            log.error(err.message);
-        }
-        else {
-            log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(util.format(err));
-        }
-
-        // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
-        uncaught = err;
-    };
-    process.on("uncaughtException", uncaughtHandler);
-    process.on("unhandledRejection", uncaughtHandler);
-
-    process.on("exit", (code: number) => {
-        runtime.disconnectSync();
-
-        // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
-        if (code === 0 && uncaught) {
-            process.exit(1);
-        }
-    });
-
-    // Construct a `Stack` resource to represent the outputs of the program.
-    runtime.runInPulumiStack(() => {
-        // We run the program inside this context so that it adopts all resources.
-        //
-        // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
-        // problem with the current Component design though - not sure what else we could do here.
-        //
-        // Now go ahead and execute the code. The process will remain alive until the message loop empties.
-        log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
-        try {
-            return require(program);
-        } catch (e) {
-            // User JavaScript can throw anything, so if it's not an Error it's definitely
-            // not something we want to catch up here.
-            if (!(e instanceof Error)) {
-                throw e;
-            }
-
-            // Give a better error message, if we can.
-            const errorCode = (<any>e).code;
-            if (errorCode === "MODULE_NOT_FOUND") {
-                reportModuleLoadFailure(program, e);
-            }
-
-            throw e;
-        }
-    });
 }
 
 main(process.argv.slice(2));

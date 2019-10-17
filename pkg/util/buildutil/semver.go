@@ -26,11 +26,15 @@ import (
 
 var (
 	releaseVersionRegex = regexp.MustCompile(
-		`^v(?P<version>\d+\.\d+\.\d+)(-(?P<time>\d+)-(?P<gitInfo>g[a-z0-9]+))?(?P<dirty>-dirty)?$`)
+		`^v(?P<version>\d+\.\d+\.\d+)(?P<dirty>\+dirty)?$`)
 	rcVersionRegex = regexp.MustCompile(
-		`^v(?P<version>\d+\.\d+\.\d+)-rc(?P<rcN>\d+)(-(?P<time>\d+)-(?P<gitInfo>g[a-z0-9]+))?(?P<dirty>-dirty)?$`)
+		`^v(?P<version>\d+\.\d+\.\d+)-rc\.(?P<rcN>\d+)(?P<dirty>\+dirty)?$`)
+	betaVersionRegex = regexp.MustCompile(
+		`^v(?P<version>\d+\.\d+\.\d+)-beta\.(?P<betaN>\d+)(?P<dirty>.dirty)?$`)
+	alphaVersionRegex = regexp.MustCompile(
+		`^v(?P<version>\d+\.\d+\.\d+)-alpha\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
 	devVersionRegex = regexp.MustCompile(
-		`^v(?P<version>\d+\.\d+\.\d+)-dev-(?P<time>\d+)-(?P<gitInfo>g[a-z0-9]+)(?P<dirty>-dirty)?$`)
+		`^v(?P<version>\d+\.\d+\.\d+)-dev\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
 )
 
 // PyPiVersionFromNpmVersion returns a PEP-440 compliant version for a given semver version. This method does not
@@ -42,17 +46,36 @@ var (
 func PyPiVersionFromNpmVersion(s string) (string, error) {
 	var b bytes.Buffer
 
-	if releaseVersionRegex.MatchString(s) {
+	switch {
+	case releaseVersionRegex.MatchString(s):
 		capMap := captureToMap(releaseVersionRegex, s)
 		mustFprintf(&b, "%s", capMap["version"])
-		writePostBuildAndDirtyInfoToReleaseVersion(&b, capMap)
+		if capMap["dirty"] != "" {
+			mustFprintf(&b, "+dirty")
+		}
 		return b.String(), nil
-	} else if rcVersionRegex.MatchString(s) {
+	case rcVersionRegex.MatchString(s):
 		capMap := captureToMap(rcVersionRegex, s)
 		mustFprintf(&b, "%src%s", capMap["version"], capMap["rcN"])
-		writePostBuildAndDirtyInfoToReleaseVersion(&b, capMap)
+		if capMap["dirty"] != "" {
+			mustFprintf(&b, "+dirty")
+		}
 		return b.String(), nil
-	} else if devVersionRegex.MatchString(s) {
+	case betaVersionRegex.MatchString(s):
+		capMap := captureToMap(betaVersionRegex, s)
+		mustFprintf(&b, "%sb%s", capMap["version"], capMap["betaN"])
+		if capMap["dirty"] != "" {
+			mustFprintf(&b, "+dirty")
+		}
+		return b.String(), nil
+	case alphaVersionRegex.MatchString(s):
+		capMap := captureToMap(alphaVersionRegex, s)
+		mustFprintf(&b, "%sa%s", capMap["version"], capMap["time"])
+		if capMap["dirty"] != "" {
+			mustFprintf(&b, "+dirty")
+		}
+		return b.String(), nil
+	case devVersionRegex.MatchString(s):
 		capMap := captureToMap(devVersionRegex, s)
 		mustFprintf(&b, "%s.dev%s", capMap["version"], capMap["time"])
 		if capMap["dirty"] != "" {
@@ -74,21 +97,6 @@ func captureToMap(r *regexp.Regexp, s string) map[string]string {
 	}
 
 	return capMap
-}
-
-// While the version string for dev builds always contain timestamp and commit information, release and release
-// release candidate builds do not. In the case where we do have this information, it is for a build newer than
-// the actual release build, and we'll use the PEP-440 .post notation to show this. We also handle adding the dirty
-// tag in the local version if we need it.
-func writePostBuildAndDirtyInfoToReleaseVersion(w io.Writer, capMap map[string]string) {
-	if capMap["time"] != "" {
-		mustFprintf(w, ".post%s", capMap["time"])
-		if capMap["dirty"] != "" {
-			mustFprintf(w, "+dirty")
-		}
-	} else if capMap["dirty"] != "" {
-		mustFprintf(w, "+dirty")
-	}
 }
 
 func mustFprintf(w io.Writer, format string, a ...interface{}) {

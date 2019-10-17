@@ -22,6 +22,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/version"
 )
@@ -34,19 +36,20 @@ func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return 
 func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
 
 type MockStackPersister struct {
-	Valid          bool
 	SavedSnapshots []*deploy.Snapshot
 }
 
 func (m *MockStackPersister) Save(snap *deploy.Snapshot) error {
-	m.Valid = true
 	m.SavedSnapshots = append(m.SavedSnapshots, snap)
 	return nil
 }
 
-func (m *MockStackPersister) Invalidate() error {
-	m.Valid = false
-	return nil
+func (m *MockStackPersister) SecretsManager() secrets.Manager {
+	return b64.NewBase64SecretsManager()
+}
+
+func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
+	return m.SavedSnapshots[len(m.SavedSnapshots)-1]
 }
 
 func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
@@ -74,7 +77,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, resources)
+	}, b64.NewBase64SecretsManager(), resources, nil)
 }
 
 func TestIdenticalSames(t *testing.T) {
@@ -91,18 +94,19 @@ func TestIdenticalSames(t *testing.T) {
 
 	mutation, err := manager.BeginMutation(same)
 	assert.NoError(t, err)
-
-	// The snapshot manager invalidated the stored snapshot
-	assert.False(t, sp.Valid)
-
 	// No mutation was made
 	assert.Empty(t, sp.SavedSnapshots)
 
 	err = mutation.End(same, true)
 	assert.NoError(t, err)
-	assert.True(t, sp.Valid)
 
-	// Sames `do` cause a snapshot mutation as part of `End`.
+	// Identical sames do not cause a snapshot mutation as part of `End`.
+	assert.Empty(t, sp.SavedSnapshots)
+
+	// Close must write the snapshot.
+	err = manager.Close()
+	assert.NoError(t, err)
+
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
@@ -141,10 +145,8 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	bSame := deploy.NewSameStep(nil, nil, resourceB, resourceBUpdated)
 	mutation, err := manager.BeginMutation(bSame)
 	assert.NoError(t, err)
-	assert.False(t, sp.Valid)
 	err = mutation.End(bSame, true)
 	assert.NoError(t, err)
-	assert.True(t, sp.Valid)
 
 	// The snapshot should now look like this:
 	//   snapshot
@@ -163,10 +165,8 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	aSame := deploy.NewSameStep(nil, nil, resourceA, resourceAUpdated)
 	mutation, err = manager.BeginMutation(aSame)
 	assert.NoError(t, err)
-	assert.False(t, sp.Valid)
 	err = mutation.End(aSame, true)
 	assert.NoError(t, err)
-	assert.True(t, sp.Valid)
 
 	// The snapshot should now look like this:
 	//   snapshot
@@ -181,6 +181,143 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	assert.Equal(t, resourceA.URN, secondSnap.Resources[1].URN)
 	assert.Len(t, secondSnap.Resources[1].Dependencies, 1)
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
+}
+
+// This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
+// that the snapshot is written.
+func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
+	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider")
+	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgA", "id"
+
+	resourceP := NewResource("a-unique-urn-resource-p")
+	resourceA := NewResource("a-unique-urn-resource-a")
+
+	var changes []*resource.State
+
+	// Change the "custom" bit.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
+
+	// Change the parent.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[1].Parent = resourceP.URN
+
+	// Change the "protect" bit.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[2].Protect = !resourceA.Protect
+
+	// Change the resource outputs.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+
+	snap := NewSnapshot([]*resource.State{
+		provider,
+		resourceP,
+		resourceA,
+	})
+
+	for _, c := range changes {
+		manager, sp := MockSetup(t, snap)
+
+		// Generate a same for the provider.
+		provUpdated := NewResource(string(provider.URN))
+		provUpdated.Custom, provUpdated.Type = true, provider.Type
+		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
+		mutation, err := manager.BeginMutation(provSame)
+		assert.NoError(t, err)
+		_, _, err = provSame.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(provSame, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
+		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
+		pUpdated := NewResource(string(resourceP.URN))
+		pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
+		mutation, err = manager.BeginMutation(pSame)
+		assert.NoError(t, err)
+		err = mutation.End(pSame, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
+		// The engine generates a Same for a. Because this is a meaningful change, the snapshot is written:
+		aSame := deploy.NewSameStep(nil, nil, resourceA, c)
+		mutation, err = manager.BeginMutation(aSame)
+		assert.NoError(t, err)
+		err = mutation.End(aSame, true)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, sp.SavedSnapshots)
+		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
+
+		inSnapshot := sp.SavedSnapshots[0].Resources[2]
+		assert.Equal(t, c, inSnapshot)
+
+		err = manager.Close()
+		assert.NoError(t, err)
+	}
+
+	// Set up a second provider and change the resource's provider reference.
+	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2")
+	provider2.Custom, provider2.Type, provider2.ID = true, "pulumi:providers:pkgA", "id2"
+
+	resourceA.Custom, resourceA.ID, resourceA.Provider =
+		true, "id", "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
+
+	snap = NewSnapshot([]*resource.State{
+		provider,
+		provider2,
+		resourceA,
+	})
+
+	changes = []*resource.State{NewResource(string(resourceA.URN))}
+	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
+
+	for _, c := range changes {
+		manager, sp := MockSetup(t, snap)
+
+		// Generate sames for the providers.
+		provUpdated := NewResource(string(provider.URN))
+		provUpdated.Custom, provUpdated.Type = true, provider.Type
+		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
+		mutation, err := manager.BeginMutation(provSame)
+		assert.NoError(t, err)
+		_, _, err = provSame.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(provSame, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
+		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
+		prov2Updated := NewResource(string(provider2.URN))
+		prov2Updated.Custom, prov2Updated.Type = true, provider.Type
+		prov2Same := deploy.NewSameStep(nil, nil, provider2, prov2Updated)
+		mutation, err = manager.BeginMutation(prov2Same)
+		assert.NoError(t, err)
+		_, _, err = prov2Same.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(prov2Same, true)
+		assert.NoError(t, err)
+		assert.Empty(t, sp.SavedSnapshots)
+
+		// The engine generates a Same for a. Because this is a meaningful change, the snapshot is written:
+		aSame := deploy.NewSameStep(nil, nil, resourceA, c)
+		mutation, err = manager.BeginMutation(aSame)
+		assert.NoError(t, err)
+		_, _, err = aSame.Apply(false)
+		assert.NoError(t, err)
+		err = mutation.End(aSame, true)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, sp.SavedSnapshots)
+		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
+
+		inSnapshot := sp.SavedSnapshots[0].Resources[2]
+		assert.Equal(t, c, inSnapshot)
+
+		err = manager.Close()
+		assert.NoError(t, err)
+	}
 }
 
 // This test exercises the merge operation with a particularly vexing deployment
@@ -274,8 +411,8 @@ func TestVexingDeployment(t *testing.T) {
 	cPrime := NewResource(string(c.URN), bPrime.URN)
 
 	// mocking out the behavior of a provider indicating that this resource needs to be deleted
-	createReplacement := deploy.NewCreateReplacementStep(nil, MockRegisterResourceEvent{}, c, cPrime, nil, true)
-	replace := deploy.NewReplaceStep(nil, c, cPrime, nil, true)
+	createReplacement := deploy.NewCreateReplacementStep(nil, MockRegisterResourceEvent{}, c, cPrime, nil, nil, nil, true)
+	replace := deploy.NewReplaceStep(nil, c, cPrime, nil, nil, nil, true)
 	c.Delete = true
 
 	applyStep(createReplacement)
@@ -284,7 +421,7 @@ func TestVexingDeployment(t *testing.T) {
 	// cPrime now exists, c is now pending deletion
 	// dPrime now depends on cPrime, which got replaced
 	dPrime := NewResource(string(d.URN), cPrime.URN)
-	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil))
+	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil, nil, nil, nil))
 
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
 	assert.Len(t, lastSnap.Resources, 6)
@@ -369,6 +506,378 @@ func TestFailedDelete(t *testing.T) {
 	// since we marked the mutation as not successful, the snapshot should still contain
 	// the resource we failed to delete.
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
+	assert.Len(t, lastSnap.Resources, 1)
+	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
+}
+
+func TestRecordingCreateSuccess(t *testing.T) {
+	resourceA := NewResource("a")
+	snap := NewSnapshot(nil)
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the create step mutation should have placed a pending "creating" operation
+	// into the operations list
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 0)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
+
+	err = mutation.End(step, true /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A successful creation should remove the "creating" operation from the operations list
+	// and persist the created resource in the snapshot.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+}
+
+func TestRecordingCreateFailure(t *testing.T) {
+	resourceA := NewResource("a")
+	snap := NewSnapshot(nil)
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the create step mutation should have placed a pending "creating" operation
+	// into the operations list
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 0)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
+
+	err = mutation.End(step, false /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A failed creation should remove the "creating" operation from the operations list
+	// and not persist the created resource in the snapshot.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 0)
+	assert.Len(t, snap.PendingOperations, 0)
+}
+
+func TestRecordingUpdateSuccess(t *testing.T) {
+	resourceA := NewResource("a")
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceANew := NewResource("a")
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the update mutation should have placed a pending "updating" operation into
+	// the operations list, with the resource's new inputs.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+
+	err = mutation.End(step, true /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Completing the update should place the resource with the new inputs into the snapshot and clear the in
+	// flight operation.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
+}
+
+func TestRecordingUpdateFailure(t *testing.T) {
+	resourceA := NewResource("a")
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceANew := NewResource("a")
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the update mutation should have placed a pending "updating" operation into
+	// the operations list, with the resource's new inputs.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+
+	err = mutation.End(step, false /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Failing the update should keep the old resource with old inputs in the snapshot while clearing the
+	// in flight operation.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+}
+
+func TestRecordingDeleteSuccess(t *testing.T) {
+	resourceA := NewResource("a")
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewDeleteStep(nil, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the delete mutation should have placed a pending "deleting" operation into the operations list.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	err = mutation.End(step, true /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A successful delete should remove the in flight operation and deleted resource from the snapshot.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 0)
+	assert.Len(t, snap.PendingOperations, 0)
+}
+
+func TestRecordingDeleteFailure(t *testing.T) {
+	resourceA := NewResource("a")
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewDeleteStep(nil, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the delete mutation should have placed a pending "deleting" operation into the operations list.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	err = mutation.End(step, false /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A failed delete should remove the in flight operation but leave the resource in the snapshot.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+}
+
+func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
+	resourceA := NewResource("a")
+	resourceA.External = true
+	resourceA.Custom = true
+	snap := NewSnapshot(nil)
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewReadStep(nil, nil, nil, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the read mutation should have placed a pending "reading" operation into the operations list.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 0)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
+	err = mutation.End(step, true /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A successful read should clear the in flight operation and put the new resource into the snapshot
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+}
+
+func TestRecordingReadSuccessPreviousResource(t *testing.T) {
+	resourceA := NewResource("a")
+	resourceA.External = true
+	resourceA.Custom = true
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceANew := NewResource("a")
+	resourceANew.External = true
+	resourceANew.Custom = true
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the read mutation should have placed a pending "reading" operation into the operations list
+	// with the inputs of the new read
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	err = mutation.End(step, true /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A successful read should clear the in flight operation and replace the existing resource in the snapshot.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	assert.Equal(t, resource.NewStringProperty("new"), snap.Resources[0].Inputs["key"])
+}
+
+func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
+	resourceA := NewResource("a")
+	resourceA.External = true
+	resourceA.Custom = true
+	snap := NewSnapshot(nil)
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewReadStep(nil, nil, nil, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the read mutation should have placed a pending "reading" operation into the operations list.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 0)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
+	err = mutation.End(step, false /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A failed read should clear the in flight operation and leave the snapshot empty.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 0)
+	assert.Len(t, snap.PendingOperations, 0)
+}
+
+func TestRecordingReadFailurePreviousResource(t *testing.T) {
+	resourceA := NewResource("a")
+	resourceA.External = true
+	resourceA.Custom = true
+	resourceA.Inputs["key"] = resource.NewStringProperty("old")
+	resourceANew := NewResource("a")
+	resourceANew.External = true
+	resourceANew.Custom = true
+	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
+
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
+	mutation, err := manager.BeginMutation(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// Beginning the read mutation should have placed a pending "reading" operation into the operations list
+	// with the inputs of the new read
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
+	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+	err = mutation.End(step, false /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// A failed read should clear the in flight operation and leave the existing read in the snapshot with the
+	// old inputs.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
+}
+
+func TestRegisterOutputs(t *testing.T) {
+	resourceA := NewResource("a")
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+	manager, sp := MockSetup(t, snap)
+
+	// There should be zero snaps performed at the start.
+	assert.Len(t, sp.SavedSnapshots, 0)
+
+	// The step here is not important.
+	step := deploy.NewSameStep(nil, nil, resourceA, resourceA)
+	err := manager.RegisterResourceOutputs(step)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	// The RegisterResourceOutputs should have caused a snapshot to be written.
+	assert.Len(t, sp.SavedSnapshots, 1)
+
+	// It should be identical to what has already been written.
+	lastSnap := sp.LastSnap()
 	assert.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
 }

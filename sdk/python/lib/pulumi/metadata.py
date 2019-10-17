@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import runtime
+from .runtime.settings import get_project as runtime_gp
+from .runtime.settings import get_stack as runtime_gs
 
-def get_project():
+
+def get_project() -> str:
     """
     Returns the current project name.
     """
-    return runtime.get_project()
+    return runtime_gp()
 
-def get_stack():
+
+def get_stack() -> str:
     """
     Returns the current stack name.
     """
-    return runtime.get_stack()
+    return runtime_gs()

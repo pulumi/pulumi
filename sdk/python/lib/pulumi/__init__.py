@@ -13,14 +13,73 @@
 # limitations under the License.
 
 """
-The primary Pulumi Python SDK package.
+The Pulumi Core SDK for Python. This package defines the core primitives that
+providers and libraries in the Pulumi ecosystem use to create and manage
+resources.
 """
 
 # Make subpackages available.
-__all__ = ['runtime']
+__all__ = ['runtime', 'dynamic']
 
 # Make all module members inside of this package available as package members.
-from config import *
-from errors import *
-from metadata import *
-from resource import *
+from .asset import (
+    Asset,
+    Archive,
+    AssetArchive,
+    FileArchive,
+    FileAsset,
+    RemoteArchive,
+    RemoteAsset,
+    StringAsset,
+)
+
+from .config import (
+    Config,
+    ConfigMissingError,
+    ConfigTypeError,
+)
+
+from .errors import (
+    RunError,
+)
+
+from .invoke import (
+    InvokeOptions,
+)
+
+from .metadata import (
+    get_project,
+    get_stack,
+)
+
+from .resource import (
+    Alias,
+    Resource,
+    CustomResource,
+    ComponentResource,
+    ProviderResource,
+    ResourceOptions,
+    create_urn,
+    export,
+    ROOT_STACK_RESOURCE,
+    ResourceTransformation,
+    ResourceTransformationArgs,
+    ResourceTransformationResult,
+)
+
+from .output import (
+    Output,
+    Input,
+    Inputs,
+)
+
+from .log import (
+    debug,
+    info,
+    warn,
+    error,
+)
+
+from .stack_reference import (
+    StackReference,
+)

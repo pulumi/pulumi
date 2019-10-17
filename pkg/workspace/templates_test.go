@@ -15,6 +15,8 @@
 package workspace
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,33 +37,40 @@ func TestGetValidDefaultProjectName(t *testing.T) {
 	assert.Equal(t, "foo.bar", getValidProjectName("foo.bar"))
 
 	// Invalid characters are left off.
+	assert.Equal(t, "foo", getValidProjectName("!foo"))
 	assert.Equal(t, "foo", getValidProjectName("@foo"))
-	assert.Equal(t, "foo", getValidProjectName("-foo"))
-	assert.Equal(t, "foo", getValidProjectName("0foo"))
-	assert.Equal(t, "foo", getValidProjectName("1foo"))
-	assert.Equal(t, "foo", getValidProjectName("2foo"))
-	assert.Equal(t, "foo", getValidProjectName("3foo"))
-	assert.Equal(t, "foo", getValidProjectName("4foo"))
-	assert.Equal(t, "foo", getValidProjectName("5foo"))
-	assert.Equal(t, "foo", getValidProjectName("6foo"))
-	assert.Equal(t, "foo", getValidProjectName("7foo"))
-	assert.Equal(t, "foo", getValidProjectName("8foo"))
-	assert.Equal(t, "foo", getValidProjectName("9foo"))
+	assert.Equal(t, "foo", getValidProjectName("#foo"))
+	assert.Equal(t, "foo", getValidProjectName("$foo"))
+	assert.Equal(t, "foo", getValidProjectName("%foo"))
+	assert.Equal(t, "foo", getValidProjectName("^foo"))
+	assert.Equal(t, "foo", getValidProjectName("&foo"))
+	assert.Equal(t, "foo", getValidProjectName("*foo"))
+	assert.Equal(t, "foo", getValidProjectName("(foo"))
+	assert.Equal(t, "foo", getValidProjectName(")foo"))
 
 	// Invalid names are replaced with a fallback name.
+	assert.Equal(t, "project", getValidProjectName("!"))
 	assert.Equal(t, "project", getValidProjectName("@"))
-	assert.Equal(t, "project", getValidProjectName("-"))
-	assert.Equal(t, "project", getValidProjectName("0"))
-	assert.Equal(t, "project", getValidProjectName("1"))
-	assert.Equal(t, "project", getValidProjectName("2"))
-	assert.Equal(t, "project", getValidProjectName("3"))
-	assert.Equal(t, "project", getValidProjectName("4"))
-	assert.Equal(t, "project", getValidProjectName("5"))
-	assert.Equal(t, "project", getValidProjectName("6"))
-	assert.Equal(t, "project", getValidProjectName("7"))
-	assert.Equal(t, "project", getValidProjectName("8"))
-	assert.Equal(t, "project", getValidProjectName("9"))
-	assert.Equal(t, "project", getValidProjectName("@1"))
+	assert.Equal(t, "project", getValidProjectName("#"))
+	assert.Equal(t, "project", getValidProjectName("$"))
+	assert.Equal(t, "project", getValidProjectName("%"))
+	assert.Equal(t, "project", getValidProjectName("^"))
+	assert.Equal(t, "project", getValidProjectName("&"))
+	assert.Equal(t, "project", getValidProjectName("*"))
+	assert.Equal(t, "project", getValidProjectName("("))
+	assert.Equal(t, "project", getValidProjectName(")"))
+	assert.Equal(t, "project", getValidProjectName("!@#$%^&*()"))
+}
+
+func TestValidateStackName(t *testing.T) {
+	assert.NoError(t, ValidateStackName("alpha-beta-gamma"))
+	assert.NoError(t, ValidateStackName("owner-name/alpha-beta-gamma"))
+
+	err := ValidateStackName("alpha/beta/gamma")
+	assert.Equal(t, err.Error(), "A stack name may not contain slashes")
+
+	err = ValidateStackName("mooo looo mi/alpha-beta-gamma")
+	assert.Equal(t, err.Error(), "Invalid stack owner")
 }
 
 func getValidProjectNamePrefixes() []string {
@@ -75,4 +84,67 @@ func getValidProjectNamePrefixes() []string {
 	results = append(results, "_")
 	results = append(results, ".")
 	return results
+}
+
+func TestRetrieveNonExistingTemplate(t *testing.T) {
+	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
+	_, err := RetrieveTemplates(templateName, false)
+	assert.NotNil(t, err)
+}
+
+func TestRetrieveStandardTemplate(t *testing.T) {
+	templateName := "typescript"
+	repository, err := RetrieveTemplates(templateName, false)
+	assert.Nil(t, err)
+	assert.Equal(t, false, repository.ShouldDelete)
+
+	// Root should point to Pulumi templates directory (e.g. ~/.pulumi/templates)
+	templateDir, _ := GetTemplateDir()
+	assert.Equal(t, templateDir, repository.Root)
+
+	// SubDirectory should be a direct subfolder of Root with the name of the template
+	expectedPath := filepath.Join(repository.Root, templateName)
+	assert.Equal(t, expectedPath, repository.SubDirectory)
+}
+
+func TestRetrieveHttpsTemplate(t *testing.T) {
+	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
+	repository, err := RetrieveTemplates(templateURL, false)
+	assert.Nil(t, err)
+	assert.Equal(t, true, repository.ShouldDelete)
+
+	// Root should point to a subfolder of a Temp Dir
+	tempDir := os.TempDir()
+	pattern := filepath.Join(tempDir, "*")
+	matched, _ := filepath.Match(pattern, repository.Root)
+	assert.True(t, matched)
+
+	// SubDirectory follows the path of the template in the Git repo
+	expectedPath := filepath.Join(repository.Root, "examples", "minimal")
+	assert.Equal(t, expectedPath, repository.SubDirectory)
+
+	// SubDirectory should exist and contain the template files
+	yamlPath := filepath.Join(repository.SubDirectory, "Pulumi.yaml")
+	_, err = os.Stat(yamlPath)
+	assert.Nil(t, err)
+
+	// Clean Up
+	err = repository.Delete()
+	assert.Nil(t, err)
+}
+
+func TestRetrieveHttpsTemplateOffline(t *testing.T) {
+	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
+	_, err := RetrieveTemplates(templateURL, true)
+	assert.NotNil(t, err)
+}
+
+func TestRetrieveFileTemplate(t *testing.T) {
+	repository, err := RetrieveTemplates(".", false)
+	assert.Nil(t, err)
+	assert.Equal(t, false, repository.ShouldDelete)
+
+	// Both Root and SubDirectory just point to the (existing) specified folder
+	assert.Equal(t, ".", repository.Root)
+	assert.Equal(t, ".", repository.SubDirectory)
 }

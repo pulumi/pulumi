@@ -1,0 +1,12 @@
+{
+    "name": "aliases",
+    "license": "Apache-2.0",
+    "main": "bin/index.js",
+    "typings": "bin/index.d.ts",
+    "devDependencies": {
+        "typescript": "^2.5.3"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

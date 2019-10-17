@@ -1,0 +1,3 @@
+name: duplicate_urns
+description: A program that tests the engine's ability to handle duplicate URNs
+runtime: nodejs

@@ -35,9 +35,11 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
+	defer func() { finished = true }()
+
 	go func() {
 		for !finished {
-			time.Sleep(30 * time.Second)
+			time.Sleep(120 * time.Second)
 			if !finished {
 				fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
 			}
@@ -48,6 +50,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	if opts.Env != nil {
 		env = append(env, opts.Env...)
 	}
+	env = append(env, "PULUMI_DEBUG_COMMANDS=true")
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
@@ -86,11 +89,9 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 			TestName:       filepath.Base(opts.Dir),
 			IsError:        runerr != nil,
 			CloudURL:       opts.CloudURL,
-			CloudPPC:       opts.PPCName,
 		})
 	}
 
-	finished = true
 	if runerr != nil {
 		fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 
@@ -109,6 +110,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		} else {
 			fprintf(opts.Stderr, "Wrote output to %s\n", logFile)
 		}
+	} else {
+		fprintf(opts.Stderr, "Command completed without output\n")
 	}
 
 	return runerr

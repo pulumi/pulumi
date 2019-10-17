@@ -17,16 +17,19 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/util/result"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newCancelCmd() *cobra.Command {
 	var yes bool
+	var stack string
 	var cmd = &cobra.Command{
 		Use:   "cancel [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -39,37 +42,48 @@ func newCancelCmd() *cobra.Command {
 			"\n" +
 			"After this command completes successfully, the stack will be ready for further\n" +
 			"updates.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			// Use the stack provided or, if missing, default to the current one.
-			stack := ""
 			if len(args) > 0 {
+				if stack != "" {
+					return result.Error("only one of --stack or argument stack name may be specified, not both")
+				}
+
 				stack = args[0]
 			}
-			s, err := requireStack(stack, false)
+
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
 			if err != nil {
-				return err
+				return result.FromError(err)
 			}
 
 			// Ensure that we are targeting the Pulumi cloud.
-			backend, ok := s.Backend().(cloud.Backend)
+			backend, ok := s.Backend().(httpstate.Backend)
 			if !ok {
-				return errors.New("the `cancel` command is not supported for local stacks")
+				return result.Error("the `cancel` command is not supported for local stacks")
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will irreversably cancel the currently running update for '%s'!", s.Name())
-			if !yes && !confirmPrompt(prompt, s.Name().String()) {
-				return errors.New("confirmation declined")
+			stackName := string(s.Ref().Name())
+			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
+			if !yes && !confirmPrompt(prompt, stackName, opts) {
+				fmt.Println("confirmation declined")
+				return result.Bail()
 			}
 
 			// Cancel the update.
-			if err := backend.CancelCurrentUpdate(commandContext(), s.Name()); err != nil {
-				return err
+			if err := backend.CancelCurrentUpdate(commandContext(), s.Ref()); err != nil {
+				return result.FromError(err)
 			}
 
-			msg := fmt.Sprintf("%sThe currently running update for '%s' has been canceled!%s", colors.SpecAttention, s.Name(),
-				colors.Reset)
-			fmt.Println(colors.ColorizeText(msg))
+			msg := fmt.Sprintf(
+				"%sThe currently running update for '%s' has been canceled!%s",
+				colors.SpecAttention, stackName, colors.Reset)
+			fmt.Println(opts.Color.Colorize(msg))
 
 			return nil
 		}),
@@ -78,6 +92,9 @@ func newCancelCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with cancellation anyway")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }

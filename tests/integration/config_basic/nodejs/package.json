@@ -1,11 +1,7 @@
 {
     "name": "config_basic_js",
-    "version": "0.9",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
-    "scripts": {
-        "build": "tsc"
-    },
+    "version": "0.0.9",
+    "license": "Apache-2.0",
     "devDependencies": {
         "typescript": "^2.5.3"
     },
@@ -13,6 +9,6 @@
         "pulumi": "latest"
     },
     "dependencies": {
-        "@types/node": "^9.4.7"
+        "@types/node": "^8.0.0"
     }
 }

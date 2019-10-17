@@ -23,10 +23,16 @@ package pulumirpc;
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
+    // CheckConfig validates the configuration for this resource provider.
+    rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
+    // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+    rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
     // Configure configures the resource provider with "globals" that control its behavior.
-    rpc Configure(ConfigureRequest) returns (google.protobuf.Empty) {}
+    rpc Configure(ConfigureRequest) returns (ConfigureResponse) {}
+
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
+
     // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
     // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
     // inputs returned by a call to Check should preserve the original representation of the properties as present in
@@ -45,12 +51,21 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+
+    // Cancel signals the provider to abort all outstanding resource operations.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 }
 
 message ConfigureRequest {
     map<string, string> variables = 1; // a map of configuration keys to values.
+    google.protobuf.Struct args = 2;   // the input properties for the provider. Only filled in for newer providers.
+    bool acceptSecrets  = 3;          // when true operations should retrun secrets as strongly typed.
+}
+
+message ConfigureResponse {
+    bool acceptSecrets  = 1;  // when true, the engine should pass secrets as strongly typed values to the provider.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
@@ -66,6 +81,8 @@ message ConfigureErrorMissingKeys {
 message InvokeRequest {
     string tok = 1;                  // the function token to invoke.
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
+    string provider = 3;             // an optional reference to the provider to use for this invoke.
+    string version = 4;              // the version of the provider to use when servicing this request.
 }
 
 message InvokeResponse {
@@ -90,17 +107,66 @@ message CheckFailure {
 }
 
 message DiffRequest {
-    string id = 1;                   // the ID of the resource to diff.
-    string urn = 2;                  // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3; // the old values of provider inputs to diff.
-    google.protobuf.Struct news = 4; // the new values of provider inputs to diff.
+    string id = 1;                     // the ID of the resource to diff.
+    string urn = 2;                    // the Pulumi URN for this resource.
+    google.protobuf.Struct olds = 3;   // the old values of provider inputs to diff.
+    google.protobuf.Struct news = 4;   // the new values of provider inputs to diff.
+    repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
+}
+
+message PropertyDiff {
+    Kind kind = 1; // The kind of diff asdsociated with this property.
+    bool inputDiff = 2; // The difference is between old and new inputs, not old and new state.
+
+    enum Kind {
+        ADD = 0;            // this property was added
+        ADD_REPLACE = 1;    // this property was added, and this change requires a replace
+        DELETE = 2;         // this property was removed
+        DELETE_REPLACE = 3; // this property was removed, and this change requires a replace
+        UPDATE = 4;         // this property's value was changed
+        UPDATE_REPLACE = 5; // this property's value was changed, and this change requires a replace
+    }
 }
 
 message DiffResponse {
     repeated string replaces = 1; // if this update requires a replacement, the set of properties triggering it.
     repeated string stables = 2;  // an optional list of properties that will not ever change.
     bool deleteBeforeReplace = 3; // if true, this resource must be deleted before replacing it.
-    DiffChanges changes = 4;   // if true, this diff represents an actual difference and thus requires an update.
+    DiffChanges changes = 4;      // if true, this diff represents an actual difference and thus requires an update.
+    repeated string diffs = 5;    // a list of the properties that changed.
+
+    // detailedDiff is an optional field that contains map from each changed property to the type of the change.
+    //
+    // The keys of this map are property paths. These paths are essentially Javascript property access expressions
+    // in which all elements are literals, and obey the following EBNF-ish grammar:
+    //
+    //   propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
+    //   quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
+    //   arrayIndex := { [0-9] }
+    //
+    //   propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
+    //   rootProperty := ( propertyName | propertyIndex )
+    //   propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
+    //   path := rootProperty { propertyAccessor }
+    //
+    // Examples of valid keys:
+    // - root
+    // - root.nested
+    // - root["nested"]
+    // - root.double.nest
+    // - root["double"].nest
+    // - root["double"]["nest"]
+    // - root.array[0]
+    // - root.array[100]
+    // - root.array[0].nested
+    // - root.array[0][1].nested
+    // - root.nested.array[0].double[1]
+    // - root["key with \"escaped\" quotes"]
+    // - root["key with a ."]
+    // - ["root key with \"escaped\" quotes"].nested
+    // - ["root key with a ."][100]
+    map<string, PropertyDiff> detailedDiff = 6; // a detailed diff appropriate for display.
+    bool hasDetailedDiff = 7; // true if this response contains a detailed diff.
 
     enum DiffChanges {
         DIFF_UNKNOWN = 0; // unknown whether there are changes or not (legacy behavior).
@@ -112,9 +178,12 @@ message DiffResponse {
 message CreateRequest {
     string urn = 1;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
+    double timeout = 3;                    // the create request timeout represented in seconds.
 }
 
 message CreateResponse {
+    // NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+
     string id = 1;                         // the ID of the created resource.
     google.protobuf.Struct properties = 2; // any properties that were computed during creation.
 }
@@ -123,18 +192,24 @@ message ReadRequest {
     string id = 1;                         // the ID of the resource to read.
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current state (sufficiently complete to identify the resource).
+    google.protobuf.Struct inputs = 4;     // the current inputs, if any (only populated during refresh).
 }
 
 message ReadResponse {
     string id = 1;                         // the ID of the resource read back (or empty if missing).
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
+    google.protobuf.Struct inputs = 3;     // the inputs for this resource that would be returned from Check.
 }
 
 message UpdateRequest {
-    string id = 1;                   // the ID of the resource to update.
-    string urn = 2;                  // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3; // the old values of provider inputs for the resource to update.
-    google.protobuf.Struct news = 4; // the new values of provider inputs for the resource to update.
+    // NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+
+    string id = 1;                     // the ID of the resource to update.
+    string urn = 2;                    // the Pulumi URN for this resource.
+    google.protobuf.Struct olds = 3;   // the old values of provider inputs for the resource to update.
+    google.protobuf.Struct news = 4;   // the new values of provider inputs for the resource to update.
+    double timeout = 5;                // the update request timeout represented in seconds.
+    repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
 }
 
 message UpdateResponse {
@@ -145,4 +220,14 @@ message DeleteRequest {
     string id = 1;                         // the ID of the resource to delete.
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current properties on the resource.
+    double timeout = 4;                    // the delete request timeout represented in seconds.
+}
+
+// ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a
+// resource was created successfully, but failed to initialize.
+message ErrorResourceInitFailed {
+    string id = 1;                         // the ID of the created resource.
+    google.protobuf.Struct properties = 2; // any properties that were computed during updating.
+    repeated string reasons = 3;           // error messages associated with initialization failure.
+    google.protobuf.Struct inputs = 4;     // the current inputs to this resource (only applicable for Read)
 }

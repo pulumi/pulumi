@@ -17,6 +17,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/graph"
 	"github.com/pulumi/pulumi/pkg/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -38,6 +39,8 @@ var dependencyEdgeColor string
 var parentEdgeColor string
 
 func newStackGraphCmd() *cobra.Command {
+	var stackName string
+
 	cmd := &cobra.Command{
 		Use:   "graph",
 		Args:  cmdutil.ExactArgs(1),
@@ -48,7 +51,11 @@ func newStackGraphCmd() *cobra.Command {
 			"admitted when it was ran. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireCurrentStack(false)
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -73,14 +80,15 @@ func newStackGraphCmd() *cobra.Command {
 			return file.Close()
 		}),
 	}
-
-	cmd.Flags().BoolVar(&ignoreParentEdges, "ignore-parent-edges", false,
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().BoolVar(&ignoreParentEdges, "ignore-parent-edges", false,
 		"Ignores edges introduced by parent/child resource relationships")
-	cmd.Flags().BoolVar(&ignoreDependencyEdges, "ignore-dependency-edges", false,
+	cmd.PersistentFlags().BoolVar(&ignoreDependencyEdges, "ignore-dependency-edges", false,
 		"Ignores edges introduced by dependency resource relationships")
-	cmd.Flags().StringVar(&dependencyEdgeColor, "dependency-edge-color", "#246C60",
+	cmd.PersistentFlags().StringVar(&dependencyEdgeColor, "dependency-edge-color", "#246C60",
 		"Sets the color of dependency edges in the graph")
-	cmd.Flags().StringVar(&parentEdgeColor, "parent-edge-color", "#AA6639",
+	cmd.PersistentFlags().StringVar(&parentEdgeColor, "parent-edge-color", "#AA6639",
 		"Sets the color of parent edges in the graph")
 	return cmd
 }

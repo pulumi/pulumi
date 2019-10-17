@@ -8,12 +8,22 @@ For larger features, we'd appreciate it if you open a [new issue](https://github
 
 To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
 
-- Go 1.9 or Later
-- NodeJS 6.10.X or 8.11.X (LTS releases).  Others may work, but there are [known issues using Node 10](https://github.com/pulumi/pulumi/issues/1270).
-- Python 2.7.X
-- [dep](https://github.com/golang/dep)
-- [Gometalinter](https://github.com/alecthomas/gometalinter)
+- Go 1.12 or later
+- NodeJS 6.10.X or later
+- Python 3.6 or later
+- [pipenv](https://github.com/pypa/pipenv)
+- [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
+
+## Getting dependencies on macOS
+
+You can easily get all required dependencies with brew
+
+```bash
+brew install node pipenv python@3 typescript yarn go golangci/tap/golangci-lint
+```
+
+## Make build system
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
 
@@ -21,6 +31,7 @@ For historical reasons (which we'd [like to address](https://github.com/pulumi/p
 
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
 
+0. `make ensure`, which restores/installs any build dependencies
 1. `make`, which builds Pulumi and runs a quick set of tests
 2. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
 
@@ -28,8 +39,21 @@ We make heavy use of integration level testing where we invoke `pulumi` to creat
 
 This repository does not actually create any real cloud resources as part of testing, but still uses Pulumi.com to store information abot some synthetic resources it creates during testing. Other repositories may require additional setup before running tests (most often this is just setting a few environment variables that tell the tests some information about how to use the cloud provider we are testing). Please see the `CONTRIBUTING.md` file in the repository, which will explain what additional configuration needs to be done before running tests.
 
-Pulumi integration tests make use of the Go test runner. When using Go 1.10 or above, we recommend setting the `GOCACHE` environment variable to `off` to avoid
-erroneously caching test results.
+## Debugging
+
+The Pulumi tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and adding new logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
+
+All logging is done using a fork of Google's [Glog library](https://github.com/pulumi/glog).  It is relatively bare-bones, and adds basic leveled logging, stack dumping, and other capabilities beyond what Go's built-in logging routines offer.
+
+The `pulumi` command line has two flags that control this logging and that can come in handy when debugging problems. The `--logtostderr` flag spews directly to stderr, rather than the default of logging to files in your temp directory. And the `--verbose=n` flag (`-v=n` for short) sets the logging level to `n`.  Anything greater than 3 is reserved for debug-level logging, greater than 5 is going to be quite verbose, and anything beyond 7 is extremely noisy.
+
+For example, the command
+
+```sh
+$ pulumi preview --logtostderr -v=5
+```
+
+is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
 ## Submitting a Pull Request
 
@@ -37,4 +61,7 @@ For contributors we use the standard fork based workflow. Fork this repository, 
 
 ## Getting Help
 
-We're sure there are rough edges and we appreciate you helping out. If you want to talk with other folks hacking on Pulumi (or members of the Pulumi team!) come hang out `#contribute` channel in the [Pulumi Community Slack](https://slack.pulumi.io/).
+We're sure there are rough edges and we appreciate you helping out. If you want
+to talk with other folks hacking on Pulumi (or members of the Pulumi team!)
+come hang out `#contribute` channel in the
+[Pulumi Community Slack](https://slack.pulumi.com/).

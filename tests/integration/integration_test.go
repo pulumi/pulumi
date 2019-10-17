@@ -3,20 +3,58 @@
 package ints
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+// assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
+// failures when a scenario exceeds the provided threshold.
+type assertPerfBenchmark struct {
+	T                  *testing.T
+	MaxPreviewDuration time.Duration
+	MaxUpdateDuration  time.Duration
+}
+
+func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
+	var maxDuration *time.Duration
+	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
+		maxDuration = &t.MaxPreviewDuration
+	}
+	if strings.HasPrefix(stats.StepName, "pulumi-update") {
+		maxDuration = &t.MaxUpdateDuration
+	}
+
+	if maxDuration != nil && *maxDuration != 0 {
+		if stats.ElapsedSeconds < maxDuration.Seconds() {
+			t.T.Logf(
+				"Test step %q was under threshold. %.2fs (max %.2fs)",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		} else {
+			t.T.Errorf(
+				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
+				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		}
+	}
+}
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
@@ -30,7 +68,10 @@ func TestEmptyNodeJS(t *testing.T) {
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "python"),
+		Dir: filepath.Join("empty", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
 		Quick: true,
 	})
 }
@@ -43,10 +84,57 @@ func TestEmptyGo(t *testing.T) {
 	})
 }
 
+// Tests emitting many engine events doesn't result in a performance problem.
+func TestEngineEventPerf(t *testing.T) {
+	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
+	// Since then, it should now be down to ~4s, with additional padding,
+	// since some Travis machines (especially the macOS ones) seem quite slow
+	// to begin with.
+	benchmarkEnforcer := &assertPerfBenchmark{
+		T:                  t,
+		MaxPreviewDuration: 8 * time.Second,
+		MaxUpdateDuration:  8 * time.Second,
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "ee_perf",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ReportStats:  benchmarkEnforcer,
+		// Don't run in parallel since it is sensitive to system resources.
+		NoParallel: true,
+	})
+}
+
+// TestEngineEvents ensures that the test framework properly records and reads engine events.
+func TestEngineEvents(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "single_resource",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure that we have a non-empty list of events.
+			assert.NotEmpty(t, stackInfo.Events)
+
+			// Ensure that we have two "ResourcePre" events: one for the stack and one for our resource.
+			preEventResourceTypes := []string{}
+			for _, e := range stackInfo.Events {
+				if e.ResourcePreEvent != nil {
+					preEventResourceTypes = append(preEventResourceTypes, e.ResourcePreEvent.Metadata.Type)
+				}
+			}
+
+			assert.Equal(t, 2, len(preEventResourceTypes))
+			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
+			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
+		},
+	})
+
+}
+
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
-	var test integration.ProgramTestOptions
-	test = integration.ProgramTestOptions{
+	test := integration.ProgramTestOptions{
 		Dir:          "project_main",
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -66,8 +154,8 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
-		assert.Equal(t, "", stdout)
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
+		assert.Equal(t, "Updating (main-abs):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -82,8 +170,8 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
-		assert.Equal(t, "", stdout)
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
+		assert.Equal(t, "Updating (main-parent):\n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -148,10 +236,35 @@ func TestStackTagValidation(t *testing.T) {
 	})
 }
 
+func TestRemoveWithResourcesBlocked(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.ImportDirectory("single_resource")
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
+	assert.Contains(t, stderr, "--force")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+}
+
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
-func TestStackOutputs(t *testing.T) {
+func TestStackOutputsNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "stack_outputs",
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -167,6 +280,89 @@ func TestStackOutputs(t *testing.T) {
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 			}
+		},
+	})
+}
+
+func TestStackOutputsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_outputs", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
+			}
+		},
+	})
+
+}
+
+// TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
+func TestStackOutputsJSON(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "stack-outs")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
+	assert.Equal(t, `{
+  "foo": 42,
+  "xyz": "ABC"
+}
+`, stdout)
+}
+
+// TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
+func TestStackOutputsDisplayed(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        false,
+		Verbose:      true,
+		Stdout:       stdout,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+
+			// ensure we get the outputs info both for the normal update, and for the no-change update.
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    + 1 created")
+			assert.Contains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n\nResources:\n    1 unchanged")
+		},
+	})
+}
+
+// TestStackOutputsSuppressed ensures that outputs whose values are intentionally suppresses don't show.
+func TestStackOutputsSuppressed(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("stack_outputs", "nodejs"),
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  false,
+		Verbose:                true,
+		Stdout:                 stdout,
+		UpdateCommandlineFlags: []string{"--suppress-outputs"},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
+			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
 		},
 	})
 }
@@ -189,7 +385,7 @@ func TestStackParenting(t *testing.T) {
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
 			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 8, len(stackInfo.Deployment.Resources)) {
+			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
@@ -210,6 +406,9 @@ func TestStackParenting(t *testing.T) {
 						assert.Equal(t, urns["c"], res.Parent)
 					case "g":
 						assert.Equal(t, urns["f"], res.Parent)
+					case "default":
+						// Default providers are not parented.
+						assert.Equal(t, "", string(res.Parent))
 					default:
 						t.Fatalf("unexpected name %s", res.URN.Name())
 					}
@@ -239,7 +438,6 @@ func TestStackDependencyGraph(t *testing.T) {
 			assert.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
-			fmt.Println(latest.Resources)
 			sawFirst := false
 			sawSecond := false
 			for _, res := range latest.Resources {
@@ -275,7 +473,7 @@ func TestConfigSave(t *testing.T) {
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
 	err := (&workspace.Project{
 		Name:    "testing-config",
-		Runtime: "nodejs",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -351,8 +549,29 @@ func TestConfigBasicNodeJS(t *testing.T) {
 	})
 }
 
+func TestConfigCaptureNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"value": "it works",
+		},
+	})
+}
+
+func TestInvalidVersionInPackageJson(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("invalid_package_json"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config:       map[string]string{},
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
+	t.Skip("pulumi/pulumi#2138")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:   filepath.Join("config_basic", "python"),
 		Quick: true,
@@ -377,4 +596,271 @@ func TestConfigBasicGo(t *testing.T) {
 			"bEncryptedSecret": "this super secret is encrypted",
 		},
 	})
+}
+
+// Tests an explicit provider instance.
+func TestExplicitProvider(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "explicit_provider",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			latest := stackInfo.Deployment
+
+			// Expect one stack resource, two provider resources, and two custom resources.
+			assert.True(t, len(latest.Resources) == 5)
+
+			var defaultProvider *apitype.ResourceV3
+			var explicitProvider *apitype.ResourceV3
+			for _, res := range latest.Resources {
+				urn := res.URN
+				switch urn.Name() {
+				case "default":
+					assert.True(t, providers.IsProviderType(res.Type))
+					assert.Nil(t, defaultProvider)
+					prov := res
+					defaultProvider = &prov
+
+				case "p":
+					assert.True(t, providers.IsProviderType(res.Type))
+					assert.Nil(t, explicitProvider)
+					prov := res
+					explicitProvider = &prov
+
+				case "a":
+					prov, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					assert.NotNil(t, defaultProvider)
+					defaultRef, err := providers.NewReference(defaultProvider.URN, defaultProvider.ID)
+					assert.NoError(t, err)
+					assert.Equal(t, defaultRef.String(), prov.String())
+
+				case "b":
+					prov, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					assert.NotNil(t, explicitProvider)
+					explicitRef, err := providers.NewReference(explicitProvider.URN, explicitProvider.ID)
+					assert.NoError(t, err)
+					assert.Equal(t, explicitRef.String(), prov.String())
+				}
+			}
+
+			assert.NotNil(t, defaultProvider)
+			assert.NotNil(t, explicitProvider)
+		},
+	})
+}
+
+// Tests that reads of unknown IDs do not fail.
+func TestGetCreated(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "get_created",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+// Tests that stack references work in Node.
+func TestStackReferenceNodeJS(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:          "stack_reference",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+func TestStackReferencePython(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+// Tests that we issue an error if we fail to locate the Python command when running
+// a Python example.
+func TestPython3NotInstalled(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	badPython := "python3000"
+	expectedError := fmt.Sprintf(
+		"error: Failed to locate '%s' on your PATH. Have you installed Python 3.6 or greater?",
+		badPython)
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: path.Join("empty", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Env: []string{
+			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
+			// for Python 3, since anyone running tests surely already has Python 3 installed on their
+			// machine. The code paths are functionally the same.
+			fmt.Sprintf("PULUMI_PYTHON_CMD=%s", badPython),
+		},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
+		},
+	})
+}
+
+// TestProviderSecretConfig that a first class provider can be created when it has secrets as part of its config.
+func TestProviderSecretConfig(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "provider_secret_config",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+// Tests dynamic provider in Python.
+func TestDynamicPython(t *testing.T) {
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python"),
+		Dependencies: []string{
+			path.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      "step1",
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+			},
+		}},
+	})
+}
+
+func TestResourceWithSecretSerialization(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "secret_outputs",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// The program exports two resources, one named `withSecret` who's prefix property should be secret
+			// and one named `withoutSecret` which should not. We serialize both of the these as POJO objects, so
+			// they appear as maps in the output.
+			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			// The secret prop should have been serialized as a secret
+			secretPropValue, ok := withSecretProps["prefix"].(map[string]interface{})
+			assert.Truef(t, ok, "secret output was not serialized as a secret")
+			assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+
+			// And here, the prop was not set, it should just be a string value
+			_, isString := withoutSecretProps["prefix"].(string)
+			assert.Truef(t, isString, "non-secret output was not a string")
+		},
+	})
+}
+
+func TestStackReferenceSecrets(t *testing.T) {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+	if owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	d := "stack_reference_secrets"
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          path.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Config: map[string]string{
+			"org": owner,
+		},
+		Quick: true,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:             path.Join(d, "step2"),
+				Additive:        true,
+				ExpectNoChanges: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					_, isString := stackInfo.Outputs["refNormal"].(string)
+					assert.Truef(t, isString, "referenced non-secret output was not a string")
+
+					secretPropValue, ok := stackInfo.Outputs["refSecret"].(map[string]interface{})
+					assert.Truef(t, ok, "secret output was not serialized as a secret")
+					assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+				},
+			},
+		},
+	})
+}
+
+func TestCloudSecretProvider(t *testing.T) {
+	kmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
+	if kmsKeyAlias == "" {
+		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
+	}
+
+	testOptions := integration.ProgramTestOptions{
+		Dir:             "cloud_secrets_provider",
+		Dependencies:    []string{"@pulumi/pulumi"},
+		SecretsProvider: fmt.Sprintf("awskms://alias/%s", kmsKeyAlias),
+		Secrets: map[string]string{
+			"mysecret": "THISISASECRET",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			secretsProvider := stackInfo.Deployment.SecretsProviders
+			assert.NotNil(t, secretsProvider)
+			assert.Equal(t, secretsProvider.Type, "cloud")
+
+			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
+			assert.NoError(t, err)
+
+			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
+		},
+	}
+
+	localTestOptions := testOptions.With(integration.ProgramTestOptions{
+		CloudURL: "file://~",
+	})
+
+	// Run with default Pulumi service backend
+	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
+
+	// Also run with local backend
+	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
 }

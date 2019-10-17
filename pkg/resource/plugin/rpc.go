@@ -34,6 +34,8 @@ type MarshalOptions struct {
 	RejectUnknowns     bool   // true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
 	ElideAssetContents bool   // true if we are eliding the contents of assets.
 	ComputeAssetHashes bool   // true if we are computing missing asset hashes on the fly.
+	KeepSecrets        bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
+	RejectAssets       bool   // true if we should return errors on Asset and Archive values.
 }
 
 const (
@@ -117,8 +119,14 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			},
 		}, nil
 	} else if v.IsAsset() {
+		if opts.RejectAssets {
+			return nil, errors.New("unexpected Asset property value")
+		}
 		return MarshalAsset(v.AssetValue(), opts)
 	} else if v.IsArchive() {
+		if opts.RejectAssets {
+			return nil, errors.New("unexpected Asset Archive property value")
+		}
 		return MarshalArchive(v.ArchiveValue(), opts)
 	} else if v.IsObject() {
 		obj, err := MarshalProperties(v.ObjectValue(), opts)
@@ -140,6 +148,16 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			return marshalUnknownProperty(v.OutputValue().Element, opts), nil
 		}
 		return nil, nil // return nil and the caller will ignore it.
+	} else if v.IsSecret() {
+		if !opts.KeepSecrets {
+			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
+			return MarshalPropertyValue(v.SecretValue().Element, opts)
+		}
+		secret := resource.NewObjectProperty(resource.PropertyMap{
+			resource.SigKey: resource.NewStringProperty(resource.SecretSig),
+			"value":         v.SecretValue().Element,
+		})
+		return MarshalPropertyValue(secret, opts)
 	}
 
 	contract.Failf("Unrecognized property value in RPC[%s]: %v (type=%v)", opts.Label, v.V, reflect.TypeOf(v.V))
@@ -267,10 +285,25 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 
 		// Before returning it as an object, check to see if it's a known recoverable type.
 		objmap := obj.Mappable()
-		asset, isasset, err := resource.DeserializeAsset(objmap)
-		if err != nil {
-			return nil, err
-		} else if isasset {
+		sig, hasSig := objmap[string(resource.SigKey)]
+		if !hasSig {
+			// This is a weakly-typed object map.
+			m := resource.NewObjectProperty(obj)
+			return &m, nil
+		}
+
+		switch sig {
+		case resource.AssetSig:
+			if opts.RejectAssets {
+				return nil, errors.New("unexpected Asset property value")
+			}
+			asset, isasset, err := resource.DeserializeAsset(objmap)
+			if err != nil {
+				return nil, err
+			}
+			// This can only be false with a non-nil error if there is a signature match. We've already verified the
+			// signature.
+			contract.Assert(isasset)
 			if opts.ComputeAssetHashes {
 				if err = asset.EnsureHash(); err != nil {
 					return nil, errors.Wrapf(err, "failed to compute asset hash")
@@ -278,11 +311,17 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			}
 			m := resource.NewAssetProperty(asset)
 			return &m, nil
-		}
-		archive, isarchive, err := resource.DeserializeArchive(objmap)
-		if err != nil {
-			return nil, err
-		} else if isarchive {
+		case resource.ArchiveSig:
+			if opts.RejectAssets {
+				return nil, errors.New("unexpected Asset Archive property value")
+			}
+			archive, isarchive, err := resource.DeserializeArchive(objmap)
+			if err != nil {
+				return nil, err
+			}
+			// This can only be false with a non-nil error if there is a signature match. We've already verified the
+			// signature.
+			contract.Assert(isarchive)
 			if opts.ComputeAssetHashes {
 				if err = archive.EnsureHash(); err != nil {
 					return nil, errors.Wrapf(err, "failed to compute archive hash")
@@ -290,9 +329,20 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			}
 			m := resource.NewArchiveProperty(archive)
 			return &m, nil
+		case resource.SecretSig:
+			value, ok := obj["value"]
+			if !ok {
+				return nil, errors.New("malformed RPC secret: missing value")
+			}
+			if !opts.KeepSecrets {
+				logging.V(5).Infof("unmarshalling secret as raw value, as opts.KeepSecrets is false")
+				return &value, nil
+			}
+			s := resource.MakeSecret(value)
+			return &s, nil
+		default:
+			return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)
 		}
-		m := resource.NewObjectProperty(obj)
-		return &m, nil
 
 	default:
 		contract.Failf("Unrecognized structpb value kind in RPC[%s]: %v", opts.Label, reflect.TypeOf(v.Kind))

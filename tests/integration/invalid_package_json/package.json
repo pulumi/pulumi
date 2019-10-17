@@ -1,0 +1,19 @@
+{
+    "name": "config_basic_js",
+    "comment": "The version flag below is invalid.  But we don't want to throw on it.",
+    "version": "0.1",
+    "license": "Apache-2.0",
+    "main": "bin/index.js",
+    "scripts": {
+        "build": "tsc"
+    },
+    "optionalDependencies": {
+        "typescript": "^2.5.3"
+    },
+    "peerDependencies": {
+        "pulumi": "latest"
+    },
+    "dependencies": {
+        "@types/node": "^8.0.0"
+    }
+}

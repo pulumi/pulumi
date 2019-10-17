@@ -15,6 +15,7 @@
 import * as ts from "typescript";
 import * as log from "../../log";
 import * as closure from "./createClosure";
+import * as utils from "./utils";
 
 export interface ParsedFunctionCode {
     // The serialized code for the function, usable as an expression. Valid for all functions forms
@@ -41,9 +42,6 @@ export interface ParsedFunction extends ParsedFunctionCode {
 
     // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
     usesNonLexicalThis: boolean;
-
-    // The set of package `require`s seen in the parsed function.
-    requiredPackages: Set<string>;
 }
 
 // Information about a captured property.  Both the name and whether or not the property was
@@ -53,7 +51,22 @@ export interface CapturedPropertyInfo {
     invoked: boolean;
 }
 
-export type CapturedVariableMap = Map<string, CapturedPropertyInfo[]>;
+// Information about a chain of captured properties.  i.e. if you have "foo.bar.baz.quux()", we'll
+// say that 'foo' was captured, but that "[bar, baz, quux]" was accessed off of it.  We'll also note
+// that 'quux' was invoked.
+export interface CapturedPropertyChain {
+    infos: CapturedPropertyInfo[];
+}
+
+// A mapping from the names of variables we captured, to information about how those variables were
+// used.  For example, if we see "a.b.c()" (and 'a' is not declared in the function), we'll record a
+// mapping of { "a": ['b', 'c' (invoked)] }.  i.e. we captured 'a', accessed the properties 'b.c'
+// off of it, and we invoked that property access.  With this information we can decide the totality
+// of what we need to capture for 'a'.
+//
+// Note: if we want to capture everything, we just use an empty array for 'CapturedPropertyChain[]'.
+// Otherwise, we'll use the chains to determine what portions of the object to serialize.
+export type CapturedVariableMap = Map<string, CapturedPropertyChain[]>;
 
 // The set of variables the function attempts to capture.  There is a required set an an optional
 // set. The optional set will not block closure-serialization if we cannot find them, while the
@@ -62,7 +75,6 @@ export type CapturedVariableMap = Map<string, CapturedPropertyInfo[]>;
 export interface CapturedVariables {
     required: CapturedVariableMap;
     optional: CapturedVariableMap;
-    requiredPackages: Set<string>;
 }
 
 // These are the special globals we've marked as ones we do not want to capture by value.
@@ -105,7 +117,6 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
     const result = <ParsedFunction>functionCode;
     result.capturedVariables = capturedVariables;
     result.usesNonLexicalThis = usesNonLexicalThis;
-    result.requiredPackages = capturedVariables.requiredPackages;
 
     if (result.capturedVariables.required.has("this")) {
         return [
@@ -122,79 +133,49 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         return [`the function form was not understood.`, <any>undefined];
     }
 
-    if (funcString.indexOf("[native code]") !== -1) {
+    // Split this constant out so that if this function *itself* is closure serialized,
+    // it will not be thought to be native code itself.
+    const nativeCodeString = "[native " + "code]";
+    if (funcString.indexOf(nativeCodeString) !== -1) {
         return [`it was a native code function.`, <any>undefined];
     }
 
-    // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
-    // This will make it so that we can correctly handle 'this' properly depending on if that should
-    // be treated as the lexical capture of 'this' or hte non-lexical 'this'.
+    // There are three general forms of node toString'ed Functions we're trying to find out here.
     //
-    // It might seem like we could just look at the first character of the string to see if it is a
-    // '('.  However, that's insufficient due to how v8 generates strings for some functions.
-    // Specifically we have to consider the following cases.
+    // 1. `[mods] (...) => ...
     //
-    //      (...) { }       // i.e. a function with a *computed* property name.
-    //      (...) => { }    // lambda with a block body
-    //      (...) => expr   // lambda with an expression body.
+    //      i.e. an arrow function.  We need to ensure that arrow-functions stay arrow-functions,
+    //      and non-arrow-functions end up looking like normal `function` functions. This will make
+    //      it so that we can correctly handle 'this' properly depending on if that should be
+    //      treated as the lexical capture of 'this' or the non-lexical 'this'.
     //
-    // First we check if we have a open curly or not.  If we don't, then we're in the last case. We
-    // confirm that we have a => (throwing if we don't).
+    // 2. `class Foo { ... }`
     //
-    // If we do have an open curly, then we're in one of the top two cases.  To determine which we
-    // trim things up to the open curly, leaving us with either:
+    //      i.e. node uses the entire string of a class when toString'ing the constructor function
+    //      for it.
     //
-    //      (...) {
-    //      (...) => {
+    // 3. `[mods] function ...
     //
-    // We then see if we have an => or not.  if we do, it's a lambda.  If we don't, it's a function
-    // with a computed name.
+    //      i.e. a normal function (maybe async, maybe a get/set function, but def not an arrow
+    //      function)
 
-    const openCurlyIndex = funcString.indexOf("{");
-    if (openCurlyIndex < 0) {
-        // No block body.  Can happen if this is an arrow function with an expression body.
-        const arrowIndex = funcString.indexOf("=>");
-        if (arrowIndex >= 0) {
-            // (...) => expr
-            return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
-        }
-
-        return [`the function form was not understood.`, <any>undefined];
-    }
-
-    const signature = funcString.substr(0, openCurlyIndex);
-    if (signature.indexOf("=>") >= 0) {
-        // (...) => { ... }
+    if (tryParseAsArrowFunction(funcString)) {
         return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
     }
 
-    let isAsync = false;
-    if (funcString.startsWith("async ")) {
-        isAsync = true;
-        funcString = funcString.substr("async".length).trimLeft();
-    }
-
-    if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
-        const trimmed = funcString.substr("function get".length);
-        return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
-    }
-
-    if (funcString.startsWith("function")) {
-        const trimmed = funcString.substr("function".length);
-        return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ true);
-    }
-
+    // First check to see if this startsWith 'class'.  If so, this is definitely a class.  This
+    // works as Node does not place preceding comments on a class/function, allowing us to just
+    // directly see if we've started with the right text.
     if (funcString.startsWith("class ")) {
         // class constructor function.  We want to get the actual constructor
         // in the class definition (synthesizing an empty one if one does not)
         // exist.
-        const file = ts.createSourceFile("", funcString, ts.ScriptTarget.Latest);
-        const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
-        if (diagnostics.length) {
-            return [`the class could not be parsed: ${diagnostics[0].messageText}`, <any>undefined];
+        const [file, firstDiagnostic] = tryCreateSourceFile(funcString);
+        if (firstDiagnostic) {
+            return [`the class could not be parsed: ${firstDiagnostic}`, <any>undefined];
         }
 
-        const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
+        const classDecl = <ts.ClassDeclaration>file!.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
             return [`the class form was not understood:\n${funcString}`, <any>undefined];
         }
@@ -205,58 +186,107 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             const isSubClass = classDecl.heritageClauses && classDecl.heritageClauses.some(
                 c => c.token === ts.SyntaxKind.ExtendsKeyword);
             return isSubClass
-                ? makeFunctionDeclaration("constructor() { super(); }", /*isFunctionDeclaration:*/ false)
-                : makeFunctionDeclaration("constructor() { }", /*isFunctionDeclaration:*/ false);
+                ? makeFunctionDeclaration("constructor() { super(); }", /*isAsync:*/ false, /*isFunctionDeclaration:*/ false)
+                : makeFunctionDeclaration("constructor() { }", /*isAsync:*/ false, /*isFunctionDeclaration:*/ false);
         }
 
-        const constructorCode = funcString.substring(constructor.pos, constructor.end).trim();
-        return makeFunctionDeclaration(constructorCode, /*isFunctionDeclaration: */ false);
+        const constructorCode = funcString.substring(constructor.getStart(file, /*includeJsDocComment*/ false), constructor.end).trim();
+        return makeFunctionDeclaration(constructorCode, /*isAsync:*/ false, /*isFunctionDeclaration: */ false);
+    }
+
+    let isAsync = false;
+    if (funcString.startsWith("async ")) {
+        isAsync = true;
+        funcString = funcString.substr("async".length).trimLeft();
+    }
+
+    if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
+        const trimmed = funcString.substr("function get".length);
+        return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ false);
+    }
+
+    if (funcString.startsWith("get ") || funcString.startsWith("set ")) {
+        const trimmed = funcString.substr("get ".length);
+        return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ false);
+    }
+
+    if (funcString.startsWith("function")) {
+        const trimmed = funcString.substr("function".length);
+        return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ true);
     }
 
     // Add "function" (this will make methods parseable).  i.e.  "foo() { }" becomes
     // "function foo() { }"
     // this also does the right thing for functions with computed names.
-    return makeFunctionDeclaration(funcString, /*isFunctionDeclaration: */ false);
+    return makeFunctionDeclaration(funcString, isAsync, /*isFunctionDeclaration: */ false);
+}
 
-    function makeFunctionDeclaration(v: string, isFunctionDeclaration: boolean): [string, ParsedFunctionCode] {
-        let prefix = isAsync ? "async " : "";
-        prefix += "function ";
+function tryParseAsArrowFunction(toParse: string): boolean {
+    const [file] = tryCreateSourceFile(toParse);
+    if (!file || file.statements.length !== 1) {
+        return false;
+    }
 
-        v = v.trimLeft();
+    const firstStatement = file.statements[0];
+    return ts.isExpressionStatement(firstStatement) &&
+           ts.isArrowFunction(firstStatement.expression);
+}
 
-        if (v.startsWith("*")) {
-            v = v.substr(1).trimLeft();
-            prefix = "function* ";
-        }
+function makeFunctionDeclaration(
+        v: string, isAsync: boolean, isFunctionDeclaration: boolean): [string, ParsedFunctionCode] {
 
-        const openParenIndex = v.indexOf("(");
-        if (openParenIndex < 0) {
-            return [`the function form was not understood.`, <any>undefined];
-        }
+    let prefix = isAsync ? "async " : "";
+    prefix += "function ";
 
-        if (openParenIndex === 0) {
-            return ["", {
-                funcExprWithoutName: prefix + v,
-                funcExprWithName: prefix + "__computed" + v,
-                functionDeclarationName: undefined,
-                isArrowFunction: false,
-            }];
-        }
+    v = v.trimLeft();
 
-        const nameChunk = v.substr(0, openParenIndex);
-        const funcName = closure.isLegalMemberName(nameChunk)
-            ? closure.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
-            : "";
-        const commentedName = closure.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
-        v = v.substr(openParenIndex).trimLeft();
+    if (v.startsWith("*")) {
+        v = v.substr(1).trimLeft();
+        prefix = "function* ";
+    }
 
+    const openParenIndex = v.indexOf("(");
+    if (openParenIndex < 0) {
+        return [`the function form was not understood.`, <any>undefined];
+    }
+
+    if (isComputed(v, openParenIndex)) {
+        v = v.substr(openParenIndex);
         return ["", {
-            funcExprWithoutName: prefix + commentedName + v,
-            funcExprWithName: prefix + funcName + v,
-            functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
+            funcExprWithoutName: prefix + v,
+            funcExprWithName: prefix + "__computed" + v,
+            functionDeclarationName: undefined,
             isArrowFunction: false,
         }];
     }
+
+    const nameChunk = v.substr(0, openParenIndex);
+    const funcName = utils.isLegalMemberName(nameChunk)
+        ? utils.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
+        : "";
+    const commentedName = utils.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
+    v = v.substr(openParenIndex).trimLeft();
+
+    return ["", {
+        funcExprWithoutName: prefix + commentedName + v,
+        funcExprWithName: prefix + funcName + v,
+        functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
+        isArrowFunction: false,
+    }];
+}
+
+function isComputed(v: string, openParenIndex: number) {
+    if (openParenIndex === 0) {
+        // node 8 and lower use no name at all for computed members.
+        return true;
+    }
+
+    if (v.length > 0 && v.charAt(0) === "[") {
+        // node 10 actually has the name as: [expr]
+        return true;
+    }
+
+    return false;
 }
 
 function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.SourceFile | null] {
@@ -268,14 +298,24 @@ function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.S
     // (it's missing a name).  But it's totally legal as "(function () { })".
     const toParse = "(" + funcstr + ")";
 
-    const file = ts.createSourceFile(
-        "", toParse, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
-    if (diagnostics.length) {
-        return [`the function could not be parsed: ${diagnostics[0].messageText}`, null];
+    const [file, firstDiagnostic] = tryCreateSourceFile(toParse);
+    if (firstDiagnostic) {
+        return [`the function could not be parsed: ${firstDiagnostic}`, null];
     }
 
-    return ["", file];
+    return ["", file!];
+}
+
+function tryCreateSourceFile(toParse: string): [ts.SourceFile | undefined, string | undefined] {
+    const file = ts.createSourceFile(
+        "", toParse, ts.ScriptTarget.Latest, /*setParentNodes:*/ true, ts.ScriptKind.TS);
+
+    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
+    if (diagnostics.length) {
+        return [undefined, `${diagnostics[0].messageText}`];
+    }
+
+    return [file, undefined];
 }
 
 function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
@@ -368,7 +408,6 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     let optional: CapturedVariableMap = new Map();
     const scopes: Set<string>[] = [];
     let functionVars: Set<string> = new Set();
-    const requiredPackages: Set<string> = new Set();
 
     // Recurse through the tree.  We use typescript's AST here and generally walk the entire
     // tree. One subtlety to be aware of is that we generally assume that when we hit an
@@ -382,17 +421,17 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
     // Now just return all variables whose value is true.  Filter out any that are part of the built-in
     // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-    const result: CapturedVariables = { required: new Map(), optional: new Map(), requiredPackages: requiredPackages };
+    const result: CapturedVariables = { required: new Map(), optional: new Map() };
 
     for (const key of required.keys()) {
-        if (required.has(key) && !isBuiltIn(key)) {
+        if (!isBuiltIn(key)) {
             result.required.set(key, required.get(key)!.concat(
                 optional.has(key) ? optional.get(key)! : []));
         }
     }
 
     for (const key of optional.keys()) {
-        if (optional.has(key) && !isBuiltIn(key) && !required.has(key)) {
+        if (!isBuiltIn(key) && !required.has(key)) {
             result.optional.set(key, optional.get(key)!);
         }
     }
@@ -401,6 +440,15 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     return result;
 
     function isBuiltIn(ident: string): boolean {
+        // The __awaiter is never considered built-in.  We do this as async/await code will generate
+        // this (so we will need it), but some libraries (like tslib) will add this to the 'global'
+        // object.  If we think this is built-in, we won't serialize it, and the function may not
+        // actually be available if the import that caused it to get attached isn't included in the
+        // final serialized code.
+        if (ident === "__awaiter") {
+            return false;
+        }
+
         // Anything in the global dictionary is a built-in.  So is anything that's a global Node.js object;
         // note that these only exist in the scope of modules, and so are not truly global in the usual sense.
         // See https://nodejs.org/api/globals.html for more details.
@@ -422,14 +470,14 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
 
         // We reached the top of the scope chain and this wasn't found; it's captured.
-        const capturedProperty = determineCapturedPropertyInfo(node);
+        const capturedPropertyChain = determineCapturedPropertyChain(node);
         if (node.parent!.kind === ts.SyntaxKind.TypeOfExpression) {
             // "typeof undeclared_id" is legal in JS (and is actually used in libraries). So keep
             // track that we would like to capture this variable, but mark that capture as optional
             // so we will not throw if we aren't able to find it in scope.
-            optional.set(name, combineProperties(optional.get(name), capturedProperty));
+            optional.set(name, combineProperties(optional.get(name), capturedPropertyChain));
         } else {
-            required.set(name, combineProperties(required.get(name), capturedProperty));
+            required.set(name, combineProperties(required.get(name), capturedPropertyChain));
         }
     }
 
@@ -474,11 +522,12 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     }
 
     function visitThisExpression(node: ts.ThisExpression): void {
-        required.set("this", combineProperties(required.get("this"), determineCapturedPropertyInfo(node)));
+        required.set(
+            "this", combineProperties(required.get("this"), determineCapturedPropertyChain(node)));
     }
 
-    function combineProperties(existing: CapturedPropertyInfo[] | undefined,
-                               current: CapturedPropertyInfo | undefined) {
+    function combineProperties(existing: CapturedPropertyChain[] | undefined,
+                               current: CapturedPropertyChain | undefined) {
         if (existing && existing.length === 0) {
             // We already want to capture everything.  Keep things that way.
             return existing;
@@ -493,32 +542,68 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // We want to capture a specific set of properties.  Add this set of properties
         // into the existing set.
         const combined = existing || [];
-
-        // See if we've already marked this property as captured.  If so, make sure we still record
-        // if this property was invoked or not.
-        for (const existingProp of combined) {
-            if (existingProp.name === current.name) {
-                existingProp.invoked = existingProp.invoked || current.invoked;
-                return combined;
-            }
-        }
-
-        // Haven't seen this property.  Record that we're capturing it.
         combined.push(current);
+
         return combined;
     }
 
-    function determineCapturedPropertyInfo(node: ts.Node): CapturedPropertyInfo | undefined {
-        if (node.parent &&
-            ts.isPropertyAccessExpression(node.parent) &&
-            node.parent.expression === node) {
+    // Finds nodes of the form `(...expr...).PropName` or `(...expr...)["PropName"]`
+    // For element access expressions, the argument must be a string literal.
+    function isPropertyOrElementAccessExpression(node: ts.Node): node is (ts.PropertyAccessExpression | ts.ElementAccessExpression) {
+        if (ts.isPropertyAccessExpression(node)) {
+            return true;
+        }
 
-            const propertyAccess = <ts.PropertyAccessExpression>node.parent;
-            const invoked = propertyAccess.parent !== undefined &&
-                            ts.isCallExpression(propertyAccess.parent) &&
-                            propertyAccess.parent.expression === propertyAccess;
+        if (ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression)) {
+            return true;
+        }
 
-            return { name: node.parent.name.text, invoked };
+        return false;
+    }
+
+    function determineCapturedPropertyChain(node: ts.Node): CapturedPropertyChain | undefined {
+        let infos: CapturedPropertyInfo[] | undefined;
+
+        // Walk up a sequence of property-access'es, recording the names we hit, until we hit
+        // something that isn't a property-access.
+        while (node &&
+               node.parent &&
+               isPropertyOrElementAccessExpression(node.parent) &&
+               node.parent.expression === node) {
+
+            if (!infos) {
+                infos = [];
+            }
+
+            const propOrElementAccess = node.parent;
+
+            const name = ts.isPropertyAccessExpression(propOrElementAccess)
+                ? propOrElementAccess.name.text
+                : (<ts.StringLiteral>propOrElementAccess.argumentExpression).text;
+
+            const invoked = propOrElementAccess.parent !== undefined &&
+                            ts.isCallExpression(propOrElementAccess.parent) &&
+                            propOrElementAccess.parent.expression === propOrElementAccess;
+
+            // Keep track if this name was invoked.  If so, we'll have to analyze it later
+            // to see if it captured 'this'
+            infos.push({ name, invoked });
+            node = propOrElementAccess;
+        }
+
+        if (infos) {
+            // Invariant checking.
+            if (infos.length === 0) {
+                throw new Error("How did we end up with an empty list?");
+            }
+
+            for (let i = 0; i < infos.length - 1; i++) {
+                if (infos[i].invoked) {
+                    throw new Error("Only the last item in the dotted chain is allowed to be invoked.");
+                }
+            }
+
+            return { infos };
         }
 
         // For all other cases, capture everything.
@@ -657,18 +742,6 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // For normal calls, just walk all arguments normally.
         for (const arg of node.arguments) {
             walk(arg);
-        }
-
-        // If we see calls to `require`, record them.
-        if (node.expression.kind === ts.SyntaxKind.Identifier) {
-            if ((node.expression as ts.Identifier).text === "require") {
-                if (node.arguments.length > 0) {
-                    if (node.arguments[0].kind === ts.SyntaxKind.StringLiteral) {
-                        const modName = (node.arguments[0] as ts.StringLiteral).text;
-                        requiredPackages.add(modName);
-                    }
-                }
-            }
         }
     }
 

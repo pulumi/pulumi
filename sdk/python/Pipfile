@@ -1,0 +1,13 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+protobuf = ">=3.6.0"
+grpcio = ">=1.9.1"
+dill = ">=0.3.0"
+six = ">=1.12.0"
+
+[dev-packages]
+pylint = ">=2.1"

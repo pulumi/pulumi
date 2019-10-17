@@ -1,0 +1,10 @@
+{
+    "name": "double_pending_delete",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "typescript": "^3.0.0"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

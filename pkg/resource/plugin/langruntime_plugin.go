@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/blang/semver"
@@ -40,20 +41,27 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime string) (LanguageRuntime, error) {
+func NewLanguageRuntime(host Host, ctx *Context, runtime string,
+	options map[string]interface{}) (LanguageRuntime, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	_, path, err := workspace.GetPluginPath(
 		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, NewMissingError(workspace.PluginInfo{
+		return nil, workspace.NewMissingError(workspace.PluginInfo{
 			Kind: workspace.LanguagePlugin,
 			Name: runtime,
 		})
 	}
 
-	plug, err := newPlugin(ctx, path, runtime, []string{host.ServerAddr()})
+	var args []string
+	for k, v := range options {
+		args = append(args, fmt.Sprintf("-%s=%t", k, v))
+	}
+	args = append(args, host.ServerAddr())
+
+	plug, err := newPlugin(ctx, path, runtime, args)
 	if err != nil {
 		return nil, err
 	}
@@ -107,9 +115,10 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
 		results = append(results, workspace.PluginInfo{
-			Name:    info.GetName(),
-			Kind:    workspace.PluginKind(info.GetKind()),
-			Version: version,
+			Name:      info.GetName(),
+			Kind:      workspace.PluginKind(info.GetKind()),
+			Version:   version,
+			ServerURL: info.GetServer(),
 		})
 	}
 
@@ -119,10 +128,11 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 
 }
 
-// Run executes a program in the language runtime for planning or deployment purposes.  If info.DryRun is true,
-// the code must not assume that side-effects or final values resulting from resource deployments are actually
-// available.  If it is false, on the other hand, a real deployment is occurring and it may safely depend on these.
-func (h *langhost) Run(info RunInfo) (string, error) {
+// Run executes a program in the language runtime for planning or deployment purposes.  If
+// info.DryRun is true, the code must not assume that side-effects or final values resulting from
+// resource deployments are actually available.  If it is false, on the other hand, a real
+// deployment is occurring and it may safely depend on these.
+func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	config := make(map[string]string)
@@ -138,19 +148,21 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		Stack:          info.Stack,
 		Config:         config,
 		DryRun:         info.DryRun,
+		QueryMode:      info.QueryMode,
 		Parallel:       int32(info.Parallel),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
 			h.runtime, info.Pwd, info.Program, info.DryRun, rpcError)
-		return "", rpcError
+		return "", false, rpcError
 	}
 
 	progerr := resp.GetError()
+	bail := resp.GetBail()
 	logging.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
 		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
-	return progerr, nil
+	return progerr, bail, nil
 }
 
 // GetPluginInfo returns this plugin's information.

@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -49,8 +50,9 @@ func (host *HostClient) Close() error {
 	return host.conn.Close()
 }
 
-// Log logs a global message, including errors and warnings.
-func (host *HostClient) Log(context context.Context, sev diag.Severity, msg string) error {
+func (host *HostClient) log(
+	context context.Context, sev diag.Severity, urn resource.URN, msg string, ephemeral bool,
+) error {
 	var rpcsev lumirpc.LogSeverity
 	switch sev {
 	case diag.Debug:
@@ -65,8 +67,25 @@ func (host *HostClient) Log(context context.Context, sev diag.Severity, msg stri
 		contract.Failf("Unrecognized log severity type: %v", sev)
 	}
 	_, err := host.client.Log(context, &lumirpc.LogRequest{
-		Severity: rpcsev,
-		Message:  msg,
+		Severity:  rpcsev,
+		Message:   msg,
+		Urn:       string(urn),
+		Ephemeral: ephemeral,
 	})
 	return err
+}
+
+// Log logs a global message, including errors and warnings.
+func (host *HostClient) Log(
+	context context.Context, sev diag.Severity, urn resource.URN, msg string,
+) error {
+	return host.log(context, sev, urn, msg, false)
+}
+
+// LogStatus logs a global status message, including errors and warnings. Status messages will
+// appear in the `Info` column of the progress display, but not in the final output.
+func (host *HostClient) LogStatus(
+	context context.Context, sev diag.Severity, urn resource.URN, msg string,
+) error {
+	return host.log(context, sev, urn, msg, true)
 }

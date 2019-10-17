@@ -41,14 +41,37 @@ func GetResourcePropertyInvalidValueError(urn resource.URN) *Diag {
 	return newError(urn, 2003, "%v resource '%v's property '%v' value %v has a problem: %v")
 }
 
-func GetAnalyzeResourceFailureError(urn resource.URN) *Diag {
-	return newError(urn, 2004,
-		"Analyzer '%v' reported a resource error:\n"+
-			"\tResource: %v\n"+
-			"\tProperty: %v\n"+
-			"\tReason: %v")
-}
-
 func GetPreviewFailedError(urn resource.URN) *Diag {
 	return newError(urn, 2005, "Preview failed: %v")
+}
+
+func GetBadProviderError(urn resource.URN) *Diag {
+	return newError(urn, 2006, "bad provider reference '%v' for resource '%v': %v")
+}
+
+func GetUnknownProviderError(urn resource.URN) *Diag {
+	return newError(urn, 2007, "unknown provider '%v' for resource '%v'")
+}
+
+func GetDuplicateResourceAliasError(urn resource.URN) *Diag {
+	return newError(urn, 2008,
+		"Duplicate resource alias '%v' applied to resource with URN '%v' conflicting with resource with URN '%v'",
+	)
+}
+
+func GetTargetCouldNotBeFoundError() *Diag {
+	return newError("", 2010, "Target '%v' could not be found in the stack.")
+}
+
+func GetTargetCouldNotBeFoundDidYouForgetError() *Diag {
+	return newError("", 2011, "Target '%v' could not be found in the stack. "+
+		"Did you forget to escape $ in your shell?")
+}
+
+func GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(urn resource.URN) *Diag {
+	return newError(urn, 2012, "Cannot delete parent resource '%v' without also deleting child '%v'.")
+}
+
+func GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn resource.URN) *Diag {
+	return newError(urn, 2013, "Resource '%v' is being created but was not specified in -target list.")
 }

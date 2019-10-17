@@ -20,11 +20,15 @@ import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
-// Analyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
-// for arbitrary issues.  These might be style, policy, correctness, security, or performance related.
+// Analyzer provides a pluggable interface for checking resource definitions against some number of
+// resource policies. It is intentionally open-ended, allowing for implementations that check
+// everything from raw resource definitions to entire projects/stacks/snapshots for arbitrary
+// issues -- style, policy, correctness, security, and so on.
 service Analyzer {
     // Analyze analyzes a single resource object, and returns any errors that it finds.
     rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
+    // GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
+    rpc GetAnalyzerInfo(google.protobuf.Empty) returns (AnalyzerInfo) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 }
@@ -35,10 +39,37 @@ message AnalyzeRequest {
 }
 
 message AnalyzeResponse {
-    repeated AnalyzeFailure failures = 1; // the failures (or empty if none).
+    repeated AnalyzeDiagnostic diagnostics = 2; // information about policy violations.
 }
 
-message AnalyzeFailure {
-    string property = 1; // the property that the analyzer rejected (or "" if general).
-    string reason = 2;   // the reason that the analyzer rejected the request.
+// EnforcementLevel indicates the severity of a policy violation.
+enum EnforcementLevel {
+    ADVISORY = 0;  // Displayed to users, but does not block deployment.
+    MANDATORY = 1; // Stops deployment, cannot be overridden.
+}
+
+message AnalyzeDiagnostic {
+    string policyName = 1;                 // Name of the violated policy.
+    string policyPackName = 2;             // Name of the policy pack the policy is in.
+    string policyPackVersion = 3;          // Version of the policy pack.
+    string description = 4;                // Description of policy rule. e.g., "encryption enabled."
+    string message = 5;                    // Message to display on policy violation, e.g., remediation steps.
+    repeated string tags = 6;              // Keywords/terms to associate with a policy, e.g., "cost".
+    EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
+}
+
+// AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
+message AnalyzerInfo {
+	string name = 1;                  // Name of the PolicyPack.
+	string displayName = 2;           // Pretty name for the PolicyPack.
+	repeated PolicyInfo policies = 3; // Metadata about policies contained in PolicyPack.
+}
+
+// PolicyInfo provides metadata about an individual Policy within a Policy Pack.
+message PolicyInfo {
+	string name = 1;                       // Name of the policy.
+	string displayName = 2;                // Pretty name for the policy.
+	string description = 3;                // Description of policy rule. e.g., "encryption enabled."
+	string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
+	EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
 }

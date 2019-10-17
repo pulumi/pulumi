@@ -1,4 +1,7 @@
 name: minimal
 description: A minimal Pulumi program.
-runtime: nodejs
+runtime:
+  name: nodejs
+  options:
+    typescript: false
 

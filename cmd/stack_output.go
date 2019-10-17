@@ -20,12 +20,19 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newStackOutputCmd() *cobra.Command {
-	return &cobra.Command{
+	var jsonOut bool
+	var showSecrets bool
+	var stackName string
+
+	cmd := &cobra.Command{
 		Use:   "output [property-name]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Show a stack's output properties",
@@ -34,8 +41,12 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Fetch the current stack and its output properties.
-			s, err := requireCurrentStack(false)
+			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -44,9 +55,12 @@ func newStackOutputCmd() *cobra.Command {
 				return err
 			}
 
-			res, outputs := stack.GetRootStackResource(snap)
-			if res == nil || outputs == nil {
-				return errors.New("current stack has no output properties")
+			outputs, err := getStackOutputs(snap, showSecrets)
+			if err != nil {
+				return errors.Wrap(err, "getting outputs")
+			}
+			if outputs == nil {
+				outputs = make(map[string]interface{})
 			}
 
 			// If there is an argument, just print that property.  Else, print them all (similar to `pulumi stack`).
@@ -54,9 +68,19 @@ func newStackOutputCmd() *cobra.Command {
 				name := args[0]
 				v, has := outputs[name]
 				if has {
-					fmt.Printf("%v\n", stringifyOutput(v))
+					if jsonOut {
+						if err := printJSON(v); err != nil {
+							return err
+						}
+					} else {
+						fmt.Printf("%v\n", stringifyOutput(v))
+					}
 				} else {
 					return errors.Errorf("current stack does not have output property '%v'", name)
+				}
+			} else if jsonOut {
+				if err := printJSON(outputs); err != nil {
+					return err
 				}
 			} else {
 				printStackOutputs(outputs)
@@ -64,4 +88,29 @@ func newStackOutputCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit output as JSON")
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
+
+	return cmd
+}
+
+func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {
+	state, err := stack.GetRootStackResource(snap)
+	if err != nil {
+		return nil, err
+	}
+
+	if state == nil {
+		return map[string]interface{}{}, nil
+	}
+
+	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
+	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
+	// secret values!
+	return stack.SerializeProperties(display.MassageSecrets(state.Outputs, showSecrets), config.NewPanicCrypter())
 }

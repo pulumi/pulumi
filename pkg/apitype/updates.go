@@ -47,7 +47,7 @@ type UpdateProgramRequest struct {
 // Should generally mirror engine.UpdateOptions, but we clone it in this package to add
 // flexibility in case there is a breaking change in the engine-type.
 type UpdateOptions struct {
-	Analyzers            []string            `json:"analyzers"`
+	LocalPolicyPackPaths []string            `json:"localPolicyPackPaths"`
 	Color                colors.Colorization `json:"color"`
 	DryRun               bool                `json:"dryRun"`
 	Parallel             int                 `json:"parallel"`
@@ -76,8 +76,8 @@ type UpdateProgramResponse struct {
 	// well as poll for its progress.
 	UpdateID string `json:"updateID"`
 
-	// UploadURL is a URL the client can use to upload their program's contents into. Ignored for destroys.
-	UploadURL string `json:"uploadURL"`
+	// RequiredPolicies is a list of required Policy Packs to run during the update.
+	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
@@ -170,92 +170,6 @@ type UpdateProgram struct {
 	Refresh bool `json:"refresh"`
 }
 
-// CreateUpdateRequest describe the data provided as the body of a request to the `POST /updates` endpoint of
-// the PPC API.
-type CreateUpdateRequest struct {
-	// Stack is the unqique ID for the stack that this update targets.
-	Stack string `json:"stack"`
-
-	// Import indicates whether or not this update's resources are given by a checkpoint to import rather than
-	// an actual Pulumi program.  If this field is `true`, the client must upload the checkpoint file to the
-	// URL returned in the response. Config should be empty, as it will be copied from the base update. Program
-	// should also be empty, as it will not be used.
-	IsCheckpointImport bool `json:"import,omitempty"`
-
-	// StackAlias is the friendly name for the update's stack that will be exposed to the update's Pulumi
-	// program.
-	StackAlias string `json:"stackAlias,omitempty"`
-
-	// Config records the configuration values for an update. Must be nil if IsCheckpointImport is true.
-	Config *CreateUpdateConfig `json:"config,omitempty"`
-
-	// Program records the program metadata for an update. Must be nil if IsCheckpointImport is true.
-	Program *UpdateProgram `json:"program,omitempty"`
-}
-
-// CreateUpdateResponse describes the data returned by a request to the `POST /updates` endpoint of the PPC
-// API.
-type CreateUpdateResponse struct {
-	// ID is the unique identifier of the newly-created update.
-	ID string `json:"id"`
-
-	// Stack is the unique identifier of the stack targeted by the update.
-	Stack string `json:"stack"`
-
-	// BaseUpdate is the unique identifier of the update that was active in the stack indicated above at the
-	// time at which this update was created.
-	BaseUpdate string `json:"baseUpdate"`
-
-	// UploadURL is a URL that the client must use to upload the contents of the program associated with this
-	// update. The client should upload the program by sending a `PUT` request to this URL with the contents of
-	// the program as a ZIP file in the request body. The `PUT` request must also set the `Content-Length`
-	// header.
-	UploadURL string `json:"uploadURL"`
-}
-
-// UpdateApplyRequest describes the data provided as the body of a request to the `POST
-// /updates/{updateID}/apply` and `POST /updates/{updateID}/preview` endpoints of the PPC API.
-type UpdateApplyRequest struct {
-	// Should we tell the engine to emit information about the configuration during this update.
-	ShowConfig bool `json:"showConfig,omitempty"`
-
-	// Should we tell the engine to emit information about resources that have not changed during this update.
-	ShowSames bool `json:"showSames,omitempty"`
-
-	// Should we tell the engine to emit information about replacement steps during this update.
-	ShowReplacementSteps bool `json:"showReplacementSteps,omitempty"`
-
-	// Should we tell the engine to emit summary information during this update.
-	Summary bool `json:"summary,omitempty"`
-}
-
-// GetUpdateResponse describes the data retuerned by a request to the `GET /updates/{updateID}` endpoint of the
-// PPC API.
-type GetUpdateResponse struct {
-	CreateUpdateResponse
-
-	// State indicates which state the update is in.
-	State string `json:"state"`
-
-	// StackAlias is the friendly name for the update's stack that will be exposed to the update's Pulumi
-	// program.
-	StackAlias string `json:"stackAlias,omitempty"`
-
-	// Config records the configuration values for an update.
-	Config map[string]string `json:"config"`
-
-	// Program records the program metadata for an update.
-	Program UpdateProgram `json:"program"`
-}
-
-// GetApplyUpdateResultsResponse describes the data returned by the `GET /updates/{updateID}/apply` endpoint of
-// the PPC API.
-type GetApplyUpdateResultsResponse UpdateResults
-
-// GetPreviewUpdateResultsResponse describes the data returned by the `GET /updates/{updateID}/preview`
-// endpoint of the PPC API.
-type GetPreviewUpdateResultsResponse UpdateResults
-
 // RenewUpdateLeaseRequest defines the body of a request to the update lease renewal endpoint of the service API.
 type RenewUpdateLeaseRequest struct {
 	// The current, valid lease token.
@@ -279,7 +193,7 @@ const (
 	UpdateStatusCancelled UpdateStatus = "cancelled"
 )
 
-// CompleteUpdateRequest defines the body of a reqeust to the update completion endpoint of the service API.
+// CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.
 type CompleteUpdateRequest struct {
 	Status UpdateStatus `json:"status"`
 }
@@ -294,7 +208,16 @@ type PatchUpdateCheckpointRequest struct {
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
+// No longer sent from the CLI, but the type definition is still required for backwards compat with older clients.
 type AppendUpdateLogEntryRequest struct {
 	Kind   string                 `json:"kind"`
 	Fields map[string]interface{} `json:"fields"`
+}
+
+// StackRenameRequest is the shape of the request to change an existing stack's name.
+// If either NewName or NewProject is the empty string, the current project/name will
+// be preserved. (But at least one should be set.)
+type StackRenameRequest struct {
+	NewName    string `json:"newName"`
+	NewProject string `json:"newProject"`
 }

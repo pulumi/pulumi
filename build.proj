@@ -12,6 +12,10 @@
 
   <Target Name="EnsureGoDependencies">
     <Exec Command="dep ensure -v"
+          Condition="Exists('Gopkg.toml')"
+          WorkingDirectory="$(RepoRootDirectory)" />
+    <Exec Command="(set GO111MODULE=on) &amp; go mod vendor"
+          Condition="Exists('go.mod')"
           WorkingDirectory="$(RepoRootDirectory)" />
   </Target>
 
@@ -108,7 +112,7 @@
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
          fails. Otherwise, the AppVeyor job would hang until it reached the timeout -->
-    <Exec Command="go test -timeout 2m -cover -parallel $(TestParallelism) .\examples"
+    <Exec Command="go test -count=1 -timeout 10m -cover -parallel $(TestParallelism) .\examples"
           IgnoreExitCode="true"
           WorkingDirectory="$(RepoRootDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="GoTestExitCode" />

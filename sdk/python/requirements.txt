@@ -1,5 +1,0 @@
-google==2.0.1
-grpcio==1.9.1
-pylint==1.8.2
-six==1.11.0
-wheel==0.30.0

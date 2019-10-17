@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as log from "../log";
+import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
-import { ComponentResource, Inputs, Resource } from "../resource";
-import { getRootResource, setRootResource } from "./settings";
+import { Inputs, Output, output, secret } from "../output";
+import { ComponentResource, Resource, ResourceTransformation } from "../resource";
+import { getRootResource, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -24,29 +25,189 @@ import { getRootResource, setRootResource } from "./settings";
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
+let stackResource: Stack | undefined;
+
+// Get the root stack resource for the current stack deployment
+export function getStackResource(): Stack | undefined {
+    return stackResource;
+}
+
 /**
  * runInPulumiStack creates a new Pulumi stack resource and executes the callback inside of it.  Any outputs
  * returned by the callback will be stored as output properties on this resulting Stack object.
  */
-export function runInPulumiStack(init: () => any): void {
-    const _ = new Stack(init);
+export function runInPulumiStack(init: () => any): Promise<Inputs | undefined> {
+    if (!isQueryMode()) {
+        const stack = new Stack(init);
+        return stack.outputs.promise();
+    } else {
+        return Promise.resolve(init());
+    }
 }
 
+/**
+ * Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it registers itself as the root
+ * resource with the Pulumi engine.
+ */
 class Stack extends ComponentResource {
+    /**
+     * The outputs of this stack, if the `init` callback exited normally.
+     */
+    public readonly outputs: Output<Inputs | undefined>;
+
     constructor(init: () => Inputs) {
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
+        this.outputs = output(this.runInit(init));
+    }
 
-        if (getRootResource()) {
+    /**
+     * runInit invokes the given init callback with this resource set as the root resource. The return value of init is
+     * used as the stack's output properties.
+     *
+     * @param init The callback to run in the context of this Pulumi stack
+     */
+    private async runInit(init: () => Inputs): Promise<Inputs | undefined> {
+        const parent = await getRootResource();
+        if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
+        await setRootResource(this);
+
+        // Set the global reference to the stack resource before invoking this init() function
+        stackResource = this;
+
         let outputs: Inputs | undefined;
         try {
-            setRootResource(this);      // install ourselves as the current root.
-            outputs = init();           // run the init code.
+            outputs = await massage(init(), []);
+        } finally {
+            // We want to expose stack outputs as simple pojo objects (including Resources).  This
+            // helps ensure that outputs can point to resources, and that that is stored and
+            // presented as something reasonable, and not as just an id/urn in the case of
+            // Resources.
+            super.registerOutputs(outputs);
         }
-        finally {
-            super.registerOutputs(outputs); // save the outputs for this component to whatever the init returned.
-            // intentionally not removing the root resource because we want subsequent async turns to parent to it.
+
+        return outputs;
+    }
+}
+
+async function massage(prop: any, objectStack: any[]): Promise<any> {
+    if (prop === undefined ||
+        prop === null ||
+        typeof prop === "boolean" ||
+        typeof prop === "number" ||
+        typeof prop === "string") {
+
+        return prop;
+    }
+
+    if (prop instanceof Promise) {
+        return await massage(await prop, objectStack);
+    }
+
+    if (Output.isInstance(prop)) {
+        const result = prop.apply(v => massage(v, objectStack));
+        // explicitly await the underlying promise of the output here.  This is necessary to get a
+        // deterministic walk of the object graph.  We need that deterministic walk, otherwise our
+        // actual cycle detection logic (using 'objectStack') doesn't work.  i.e. if we don't do
+        // this then the main walking logic will be interleaved with the async function this output
+        // is executing.  This interleaving breaks out assumption about pushing/popping values onto
+        // objectStack'
+        await result.promise();
+        return result;
+    }
+
+    // from this point on, we have complex objects.  If we see them again, we don't want to emit
+    // them again fully or else we'd loop infinitely.
+    if (objectStack.indexOf(prop) >= 0) {
+        // Note: for Resources we hit again, emit their urn so cycles can be easily understood
+        // in the pojo objects.
+        if (Resource.isInstance(prop)) {
+            return await massage(prop.urn, objectStack);
+        }
+
+        return undefined;
+    }
+
+    try {
+        // push and pop what we see into a stack.  That way if we see the same object through
+        // different paths, we will still print it out.  We only skip it if it would truly cause
+        // recursion.
+        objectStack.push(prop);
+        return await massageComplex(prop, objectStack);
+    }
+    finally {
+        const popped = objectStack.pop();
+        if (popped !== prop) {
+            throw new Error("Invariant broken when processing stack outputs");
         }
     }
+}
+
+async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
+    if (asset.Asset.isInstance(prop)) {
+        if ((<asset.FileAsset>prop).path !== undefined) {
+            return { path: (<asset.FileAsset>prop).path };
+        }
+        else if ((<asset.RemoteAsset>prop).uri !== undefined) {
+            return { uri: (<asset.RemoteAsset>prop).uri };
+        }
+        else if ((<asset.StringAsset>prop).text !== undefined) {
+            return { text: "..." };
+        }
+
+        return undefined;
+    }
+
+    if (asset.Archive.isInstance(prop)) {
+        if ((<asset.AssetArchive>prop).assets) {
+            return { assets: await massage((<asset.AssetArchive>prop).assets, objectStack) };
+        }
+        else if ((<asset.FileArchive>prop).path !== undefined) {
+            return { path: (<asset.FileArchive>prop).path };
+        }
+        else if ((<asset.RemoteArchive>prop).uri !== undefined) {
+            return { uri: (<asset.RemoteArchive>prop).uri };
+        }
+
+        return undefined;
+    }
+
+    if (Resource.isInstance(prop)) {
+        // Emit a resource as a normal pojo.  But filter out all our internal properties so that
+        // they don't clutter the display/checkpoint with values not relevant to the application.
+        return serializeAllKeys(n => !n.startsWith("__"));
+    }
+
+    if (prop instanceof Array) {
+        const result = [];
+        for (let i = 0; i < prop.length; i++) {
+            result[i] = await massage(prop[i], objectStack);
+        }
+
+        return result;
+    }
+
+    return await serializeAllKeys(n => true);
+
+    async function serializeAllKeys(include: (name: string) => boolean) {
+        const obj: Record<string, any> = {};
+        for (const k of Object.keys(prop)) {
+            if (include(k)) {
+                obj[k] = await massage(prop[k], objectStack);
+            }
+        }
+
+        return obj;
+    }
+}
+
+/**
+ * Add a transformation to all future resources constructed in this Pulumi stack.
+ */
+export function registerStackTransformation(t: ResourceTransformation) {
+    if (!stackResource) {
+        throw new Error("The root stack resource was referenced before it was initialized.");
+    }
+    stackResource.__transformations = [...(stackResource.__transformations || []), t];
 }

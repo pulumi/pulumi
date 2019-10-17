@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { CustomResource, Input, Inputs, Output, Resource } from "../resource";
+import { Input, Inputs, Output } from "../output";
+import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { excessiveDebugOutput, isDryRun } from "./settings";
+import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
-export type OutputResolvers = Record<string, (value: any, isStable: boolean) => void>;
+export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean) => void>;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
@@ -50,63 +50,72 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 
         let resolveValue: (v: any) => void;
         let resolveIsKnown: (v: boolean) => void;
+        let resolveIsSecret: (v: boolean) => void;
 
-        resolvers[k] = (v: any, isKnown: boolean) => {
+        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean) => {
             resolveValue(v);
             resolveIsKnown(isKnown);
+            resolveIsSecret(isSecret);
         };
 
-        (<any>onto)[k] = Output.create(
+        const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
+        (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolveValue = resolve),
-                `transferProperty(${label}, ${k}, ${props[k]})`),
+                `transferProperty(${label}, ${k}, ${propString})`),
             debuggablePromise(
                 new Promise<boolean>(resolve => resolveIsKnown = resolve),
-                `transferIsStable(${label}, ${k}, ${props[k]})`));
+                `transferIsStable(${label}, ${k}, ${propString})`),
+            debuggablePromise(
+                new Promise<boolean>(resolve => resolveIsSecret = resolve),
+                `transferIsSecret(${label}, ${k}, ${props[k]})`));
     }
 
     return resolvers;
 }
 
 /**
- * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for propertoes with
- * keys that match the provided filter, creating a reasonable POJO object that can be remoted over to
- * registerResource.
+ * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for
+ * properties with keys that match the provided filter, creating a reasonable POJO object that can
+ * be remoted over to registerResource.
  */
 async function serializeFilteredProperties(
-        label: string, props: Inputs, acceptKey: (k: string) => boolean,
-        dependentResources: Resource[] = []): Promise<Record<string, any>> {
+        label: string, props: Inputs, acceptKey: (k: string) => boolean): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
+
+    const propertyToDependentResources = new Map<string, Set<Resource>>();
+
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
+            const dependentResources = new Set<Resource>();
             const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
             if (v !== undefined) {
                 result[k] = v;
+                propertyToDependentResources.set(k, dependentResources);
             }
         }
     }
 
-    return result;
+    return [result, propertyToDependentResources];
 }
 
 /**
  * serializeResourceProperties walks the props object passed in, awaiting all interior promises besides those for `id`
  * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
-export async function serializeResourceProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", dependentResources);
+export async function serializeResourceProperties(label: string, props: Inputs) {
+    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn");
 }
 
 /**
  * serializeProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
  * POJO object that can be remoted over to registerResource.
  */
-export async function serializeProperties(
-        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
-    return serializeFilteredProperties(label, props, key => true, dependentResources);
+export async function serializeProperties(label: string, props: Inputs) {
+    const [result] = await serializeFilteredProperties(label, props, _ => true);
+    return result;
 }
 
 /**
@@ -133,7 +142,7 @@ export function deserializeProperties(outputsStruct: any): any {
  * `allProps`represents an unknown value that was returned by an engine operation.
  */
 export function resolveProperties(
-    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean) => void>,
+    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean) => void>,
     t: string, name: string, allProps: any): void {
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
@@ -144,42 +153,45 @@ export function resolveProperties(
         }
 
         // Otherwise, unmarshal the value, and store it on the resource object.
-        let resolve = resolvers[k];
+        const resolve = resolvers[k];
 
         if (resolve === undefined) {
-            let resolveValue: (v: any) => void;
-            let resolveIsKnown: (v: boolean) => void;
-
-            resolve = (v, isKnown) => {
-                resolveValue(v);
-                resolveIsKnown(isKnown);
-            };
-
-            // If there is no property yet, zero initialize it.  This ensures unexpected properties
-            // are still made available on the object.  This isn't ideal, because any code running
-            // prior to the actual resource CRUD operation can't hang computations off of it, but
-            // it's better than tossing it.
-            (res as any)[k] = Output.create(
-                res,
-                debuggablePromise(new Promise<any>(r => resolveValue = r)),
-                debuggablePromise(new Promise<boolean>(r => resolveIsKnown = r)));
+            // engine returned a property that was not in our initial property-map.  This can happen
+            // for outputs that were registered through direct calls to 'registerOutputs'. We do
+            // *not* want to do anything with these returned properties.  First, the component
+            // resources that were calling 'registerOutputs' will have already assigned these fields
+            // directly on them themselves.  Second, if we were to try to assign here we would have
+            // an incredibly bad race condition for two reasons:
+            //
+            //  1. This call to 'resolveProperties' happens asynchronously at some point far after
+            //     the resource was constructed.  So the user will have been able to observe the
+            //     initial value up until we get to this point.
+            //
+            //  2. The component resource will have often assigned a value of some arbitrary type
+            //     (say, a 'string').  If we overwrite this with an `Output<string>` we'll be changing
+            //     the type at some non-deterministic point in the future.
+            continue;
         }
+
+        // If this value is a secret, unwrap its inner value.
+        let value = allProps[k];
+        const isSecret = isRpcSecret(value);
+        value = unwrapRpcSecret(value);
 
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know
             // if it's final.
             if (!isDryRun()) {
-                // normal 'pulumi update'.  resolve the output with the value we got back
+                // normal 'pulumi up'.  resolve the output with the value we got back
                 // from the engine.  That output can always run its .apply calls.
-                resolve(allProps[k], true);
+                resolve(value, true, isSecret);
             }
             else {
                 // We're previewing. If the engine was able to give us a reasonable value back,
                 // then use it. Otherwise, inform the Output that the value isn't known.
-                const value = allProps[k];
                 const isKnown = value !== undefined;
-                resolve(value, isKnown);
+                resolve(value, isKnown, isSecret);
             }
         }
         catch (err) {
@@ -194,7 +206,7 @@ export function resolveProperties(
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
             const resolve = resolvers[k];
-            resolve(undefined, !isDryRun());
+            resolve(undefined, !isDryRun(), false);
         }
     }
 }
@@ -204,23 +216,31 @@ export function resolveProperties(
  */
 export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 /**
- * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
+ * specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
  */
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
 /**
- * specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go.
+ * specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
  */
 export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
 /**
- * specialArchiveSig is a randomly assigned hash used to identify archives in maps.  See pkg/resource/asset.go.
+ * specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
  */
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
+/**
+ * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+ */
+export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
+export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
+    // IMPORTANT:
+    // IMPORTANT: Keep this in sync with serializesPropertiesSync in invoke.ts
+    // IMPORTANT:
+
     if (prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
@@ -232,28 +252,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
         return prop;
     }
-    else if (prop instanceof Array) {
-        const elems: any[] = [];
-        for (let i = 0; i < prop.length; i++) {
-            if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
-            }
-            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
-            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
-            elems.push(elem === undefined ? null : elem);
-        }
-        return elems;
-    }
-    else if (CustomResource.isInstance(prop)) {
-        // Resources aren't serializable; instead, we serialize them as references to the ID property.
-        if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: resource ID`);
-        }
 
-        dependentResources.push(prop);
-        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
-    }
-    else if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
         const obj: any = {
@@ -262,31 +262,99 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 
         return await serializeAllKeys(prop, obj);
     }
-    else if (prop instanceof Promise) {
+
+    if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Promise<T>`);
         }
+
         const subctx = `Promise<${ctx}>`;
         return serializeProperty(subctx,
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
     }
-    else if (Output.isInstance(prop)) {
+
+    if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
-        dependentResources.push(...prop.resources());
+        for (const resource of prop.resources()) {
+            dependentResources.add(resource);
+        }
 
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
         // resolve isKnown to true) and for any resource outputs that were resolved with known values.
         const isKnown = await prop.isKnown;
+
+        // You might think that doing an explict `=== true` here is not needed, but it is for a subtle reason. If the
+        // output we are serializing is a proxy itself, and it comes from a version of the SDK that did not have the
+        // `isSecret` member on `OutputImpl` then the call to `prop.isSecret` here will return an Output itself,
+        // which will wrap undefined, if it were to be resolved (since `Output` has no member named .isSecret).
+        // so we must compare to the literal true instead of just doing await prop.isSecret.
+        const isSecret = await prop.isSecret === true;
         const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
-        return isKnown ? value : unknownValue;
-    } else {
-        return await serializeAllKeys(prop, {});
+
+        if (!isKnown) {
+            return unknownValue;
+        }
+        if (isSecret && await monitorSupportsSecrets()) {
+            return {
+                [specialSigKey]: specialSecretSig,
+                // coerce 'undefined' to 'null' as required by the protobuf system.
+                value: value === undefined ? null : value,
+            };
+        }
+        return value;
     }
+
+    if (CustomResource.isInstance(prop)) {
+        // Resources aren't serializable; instead, we serialize them as references to the ID property.
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: custom resource id`);
+        }
+
+        dependentResources.add(prop);
+        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+    }
+
+    if (ComponentResource.isInstance(prop)) {
+        // Component resources often can contain cycles in them.  For example, an awsinfra
+        // SecurityGroupRule can point a the awsinfra SecurityGroup, which in turn can point back to
+        // its rules through its `egressRules` and `ingressRules` properties.  If serializing out
+        // the `SecurityGroup` resource ends up trying to serialize out those properties, a deadlock
+        // will happen, due to waiting on the child, which is waiting on the parent.
+        //
+        // Practically, there is no need to actually serialize out a component.  It doesn't represent
+        // a real resource, nor does it have normal properties that need to be tracked for differences
+        // (since changes to its properties don't represent changes to resources in the real world).
+        //
+        // So, to avoid these problems, while allowing a flexible and simple programming model, we
+        // just serialize out the component as its urn.  This allows the component to be identified
+        // and tracked in a reasonable manner, while not causing us to compute or embed information
+        // about it that is not needed, and which can lead to deadlocks.
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: component resource urnid`);
+        }
+
+        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+    }
+
+    if (prop instanceof Array) {
+        const result: any[] = [];
+        for (let i = 0; i < prop.length; i++) {
+            if (excessiveDebugOutput) {
+                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+            }
+            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
+            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
+            result.push(elem === undefined ? null : elem);
+        }
+        return result;
+    }
+
+    return await serializeAllKeys(prop, {});
 
     async function serializeAllKeys(innerProp: any, obj: any) {
         for (const k of Object.keys(innerProp)) {
@@ -306,6 +374,23 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 }
 
 /**
+ * isRpcSecret returns true if obj is a wrapped secret value (i.e. it's an object with the special key set).
+ */
+function isRpcSecret(obj: any): boolean {
+    return obj && obj[specialSigKey] === specialSecretSig;
+}
+
+/**
+ * unwrapRpcSecret returns the underlying value for a secret, or the value itself if it was not a secret.
+ */
+function unwrapRpcSecret(obj: any): any {
+    if (!isRpcSecret(obj)) {
+        return obj;
+    }
+    return obj.value;
+}
+
+/**
  * deserializeProperty unpacks some special types, reversing the above process.
  */
 export function deserializeProperty(prop: any): any {
@@ -319,10 +404,24 @@ export function deserializeProperty(prop: any): any {
         return prop;
     }
     else if (prop instanceof Array) {
+        // We can just deserialize all the elements of the underyling array and return it.
+        // However, we want to push secretness up to the top level (since we can't set sub-properties to secret)
+        // values since they are not typed as Output<T>.
+        let hadSecret = false;
         const elems: any[] = [];
         for (const e of prop) {
-            elems.push(deserializeProperty(e));
+            prop = deserializeProperty(e);
+            hadSecret = hadSecret || isRpcSecret(prop);
+            elems.push(unwrapRpcSecret(prop));
         }
+
+        if (hadSecret) {
+            return {
+                [specialSigKey]: specialSecretSig,
+                value: elems,
+            };
+        }
+
         return elems;
     }
     else {
@@ -365,15 +464,33 @@ export function deserializeProperty(prop: any): any {
                     else {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
+                case specialSecretSig:
+                    return {
+                        [specialSigKey]: specialSecretSig,
+                        value: deserializeProperty(prop["value"]),
+                    };
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
         }
 
         // If there isn't a signature, it's not a special type, and we can simply return the object as a map.
+        // However, we want to push secretness up to the top level (since we can't set sub-properties to secret)
+        // values since they are not typed as Output<T>.
         const obj: any = {};
+        let hadSecrets = false;
+
         for (const k of Object.keys(prop)) {
-            obj[k] = deserializeProperty(prop[k]);
+            const o = deserializeProperty(prop[k]);
+            hadSecrets = hadSecrets || isRpcSecret(o);
+            obj[k] = unwrapRpcSecret(o);
+        }
+
+        if (hadSecrets) {
+            return {
+                [specialSigKey]: specialSecretSig,
+                value: obj,
+            };
         }
         return obj;
     }

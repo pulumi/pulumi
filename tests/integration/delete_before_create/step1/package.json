@@ -1,12 +1,11 @@
 {
     "name": "steps",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
-    "scripts": {
-        "build": "tsc"
-    },
+    "license": "Apache-2.0",
     "devDependencies": {
-        "typescript": "^2.5.3"
+        "typescript": "^3.0.0"
+    },
+    "dependencies": {
+        "uuid": "^3.3.2"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

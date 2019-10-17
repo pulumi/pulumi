@@ -20,5 +20,6 @@ type Status int
 
 const (
 	StatusOK Status = iota
+	StatusPartialFailure
 	StatusUnknown
 )

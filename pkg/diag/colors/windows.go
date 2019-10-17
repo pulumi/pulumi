@@ -16,10 +16,6 @@
 
 package colors
 
-import (
-	"github.com/reconquest/loreley"
-)
-
 func init() {
-	loreley.Colorize = loreley.ColorizeNever
+	disableColorization = true
 }

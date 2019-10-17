@@ -18,10 +18,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 
@@ -29,33 +31,45 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 	info, err := newPlanContext(u, "refresh", ctx.ParentSpan)
 	if err != nil {
-		return nil, err
+		return nil, result.FromError(err)
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer emitter.Close()
+
+	// Force opts.Refresh to true.
+	opts.Refresh = true
+
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
-		SkipOutputs:   true, // refresh is exclusively about outputs
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
-		Diag:          newEventSink(emitter),
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
+		isRefresh:     true,
 	}, dryRun)
 }
 
-func newRefreshSource(opts planOptions, proj *workspace.Project, pwd, main string,
+func newRefreshSource(client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
-	// First, consult the manifest for the plugins we will need to ask to refresh the state.
-	if target != nil && target.Snapshot != nil {
-		// We don't need the language plugin, since refresh doesn't run code, so we will leave that out.
-		kinds := plugin.AllPlugins & ^plugin.LanguagePlugins
-		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins, kinds); err != nil {
-			return nil, err
-		}
+	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.
+	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described
+	// in the snapshot.
+	plugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	if err != nil {
+		return nil, err
 	}
 
-	// Now create a refresh source.  This source simply loads up the current checkpoint state, enumerates it,
-	// and refreshes each state with the current cloud provider's view of it.
-	return deploy.NewRefreshSource(plugctx, proj, target, dryRun), nil
+	// Like Update, if we're missing plugins, attempt to download the missing plugins.
+	if err := ensurePluginsAreInstalled(plugins); err != nil {
+		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
+	}
+
+	// Just return an error source. Refresh doesn't use its source.
+	return deploy.NewErrorSource(proj.Name), nil
 }

@@ -19,19 +19,18 @@ package stack
 import (
 	"encoding/json"
 
-	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV1, error) {
+func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV3, error) {
 	var versionedCheckpoint apitype.VersionedCheckpoint
 	if err := json.Unmarshal(bytes, &versionedCheckpoint); err != nil {
 		return nil, err
@@ -43,94 +42,87 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 		// json package did not support strict marshalling before 1.10, and we use 1.9 in our toolchain today.
 		// After we upgrade, we could consider rewriting this code to use DisallowUnknownFields() on the decoder
 		// to have the old checkpoint not even deserialize as an apitype.VersionedCheckpoint.
-		var checkpoint apitype.CheckpointV1
-		if err := json.Unmarshal(bytes, &checkpoint); err != nil {
+		var v1checkpoint apitype.CheckpointV1
+		if err := json.Unmarshal(bytes, &v1checkpoint); err != nil {
 			return nil, err
 		}
-		return &checkpoint, nil
+
+		v2checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
+		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
+		return &v3checkpoint, nil
 	case 1:
-		var checkpoint apitype.CheckpointV1
-		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &checkpoint); err != nil {
+		var v1checkpoint apitype.CheckpointV1
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v1checkpoint); err != nil {
 			return nil, err
 		}
-		return &checkpoint, nil
+
+		v2checkpoint := migrate.UpToCheckpointV2(v1checkpoint)
+		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
+		return &v3checkpoint, nil
+	case 2:
+		var v2checkpoint apitype.CheckpointV2
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v2checkpoint); err != nil {
+			return nil, err
+		}
+
+		v3checkpoint := migrate.UpToCheckpointV3(v2checkpoint)
+		return &v3checkpoint, nil
+	case 3:
+		var v3checkpoint apitype.CheckpointV3
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &v3checkpoint); err != nil {
+			return nil, err
+		}
+
+		return &v3checkpoint, nil
 	default:
 		return nil, errors.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
 	}
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *apitype.VersionedCheckpoint {
+func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
+	sm secrets.Manager) (*apitype.VersionedCheckpoint, error) {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
-	var latest *apitype.Deployment
+	var latest *apitype.DeploymentV3
 	if snap != nil {
-		latest = SerializeDeployment(snap)
+		dep, err := SerializeDeployment(snap, sm)
+		if err != nil {
+			return nil, errors.Wrap(err, "serializing deployment")
+		}
+		latest = dep
 	}
 
-	b, err := json.Marshal(apitype.CheckpointV1{
+	b, err := json.Marshal(apitype.CheckpointV3{
 		Stack:  stack,
-		Config: config,
 		Latest: latest,
 	})
-	contract.AssertNoError(err)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling checkpoint")
+	}
 
 	return &apitype.VersionedCheckpoint{
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Checkpoint: json.RawMessage(b),
-	}
+	}, nil
 }
 
-// DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(chkpoint *apitype.CheckpointV1) (*deploy.Snapshot, error) {
+// DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot. Returns nil
+// if there have been no deployments performed on this checkpoint.
+func DeserializeCheckpoint(chkpoint *apitype.CheckpointV3) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
-
-	var snap *deploy.Snapshot
-	if latest := chkpoint.Latest; latest != nil {
-		// Unpack the versions.
-		manifest := deploy.Manifest{
-			Time:    latest.Manifest.Time,
-			Magic:   latest.Manifest.Magic,
-			Version: latest.Manifest.Version,
-		}
-		for _, plug := range latest.Manifest.Plugins {
-			var version *semver.Version
-			if v := plug.Version; v != "" {
-				sv, err := semver.ParseTolerant(v)
-				if err != nil {
-					return nil, err
-				}
-				version = &sv
-			}
-			manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
-				Name:    plug.Name,
-				Kind:    plug.Type,
-				Version: version,
-			})
-		}
-
-		// For every serialized resource vertex, create a ResourceDeployment out of it.
-		var resources []*resource.State
-		for _, res := range latest.Resources {
-			desres, err := DeserializeResource(res)
-			if err != nil {
-				return nil, err
-			}
-			resources = append(resources, desres)
-		}
-
-		snap = deploy.NewSnapshot(manifest, resources)
+	if chkpoint.Latest != nil {
+		return DeserializeDeploymentV3(*chkpoint.Latest, DefaultSecretsProvider)
 	}
 
-	return snap, nil
+	return nil, nil
 }
 
-// GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.  If the stack
-// exists, its output properties, if any, are also returned in the resulting map.
-func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, map[string]interface{}) {
+// GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.
+func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 	if snap != nil {
 		for _, res := range snap.Resources {
 			if res.Type == resource.RootStackType {
-				return res, SerializeResource(res).Outputs
+				return res, nil
 			}
 		}
 	}

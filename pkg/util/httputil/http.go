@@ -51,7 +51,7 @@ func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error)
 				return true, res, nil
 			}
 			if try >= (maxRetryCount - 1) {
-				return false, res, resErr
+				return true, res, resErr
 			}
 
 			// Close the response body, if present, since our caller can't.

@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
@@ -28,37 +29,25 @@ type UpdateMetadata struct {
 	Environment map[string]string `json:"environment"`
 }
 
-// UpdateKind is an enum for the type of update performed.
-type UpdateKind string
-
-const (
-	// DeployUpdate is the prototypical Pulumi program update.
-	DeployUpdate UpdateKind = "update"
-	// PreviewUpdate is a preview of an update, without impacting resources.
-	PreviewUpdate UpdateKind = "preview"
-	// RefreshUpdate is an update that adopts a cloud's existing resource state.
-	RefreshUpdate UpdateKind = "refresh"
-	// DestroyUpdate is an update which removes all resources.
-	DestroyUpdate UpdateKind = "destroy"
-)
-
 // UpdateResult is an enum for the result of the update.
 type UpdateResult string
 
 const (
 	// InProgressResult is for updates that have not yet completed.
-	InProgressResult = "in-progress"
+	InProgressResult UpdateResult = "in-progress"
 	// SucceededResult is for updates that completed successfully.
 	SucceededResult UpdateResult = "succeeded"
 	// FailedResult is for updates that have failed.
-	FailedResult = "failed"
+	FailedResult UpdateResult = "failed"
 )
 
 // Keys we use for values put into UpdateInfo.Environment.
 const (
 	// GitHead is the commit hash of HEAD.
 	GitHead = "git.head"
-	// GitDirty ("true", "false") indiciates if there are any unstaged or modified files in the local repo.
+	// GitHeadName is the name of the HEAD ref. e.g. "refs/heads/master" or "refs/tags/v1.0.0".
+	GitHeadName = "git.headName"
+	// GitDirty ("true", "false") indicates if there are any unstaged or modified files in the local repo.
 	GitDirty = "git.dirty"
 
 	// GitCommitter is the name of the person who committed the commit at HEAD.
@@ -70,17 +59,35 @@ const (
 	// GitAuthorEmail is the email address associated with the commit's author.
 	GitAuthorEmail = "git.author.email"
 
-	// GitHubLogin is the user/organization who owns the local repo, if the origin remote is hosted on GitHub.com.
-	GitHubLogin = "github.login"
-	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
-	GitHubRepo = "github.repo"
+	// VCSRepoOwner is the user who owns the local repo, if the origin remote is a cloud host.
+	VCSRepoOwner = "vcs.owner"
+	// VCSRepoName is the name of the repo, if the local git repo's remote origin is a cloud host.
+	VCSRepoName = "vcs.repo"
+	//VCSRepoKind is the cloud host where the repo is hosted.
+	VCSRepoKind = "vcs.kind"
+
+	// CISystem is the name of the CI system running the pulumi operation.
+	CISystem = "ci.system"
+	// CIBuildID is an opaque ID of the build in the CI system.
+	CIBuildID = "ci.build.id"
+	// CIBuildType is the type of build of the CI system, e.g. "push", "pull_request", "test_only".
+	CIBuildType = "ci.build.type"
+	// CIBuildURL is a URL to get more information about the particular CI build.
+	CIBuildURL = "ci.build.url"
+
+	// CIPRHeadSHA is the SHA of the HEAD commit of a pull request running on CI. This is needed since the CI
+	// server will run at a different, merge commit. (headSHA merged into the target branch.)
+	CIPRHeadSHA = "ci.pr.headSHA"
+	// CIPRNumber is the PR number, for which the current CI job may be executing.
+	// Combining this information with the `VCSRepoKind` will give us the PR URL.
+	CIPRNumber = "ci.pr.number"
 )
 
 // UpdateInfo describes a previous update.
 type UpdateInfo struct {
 	// Information known before an update is started.
-	Kind      UpdateKind `json:"kind"`
-	StartTime int64      `json:"startTime"`
+	Kind      apitype.UpdateKind `json:"kind"`
+	StartTime int64              `json:"startTime"`
 
 	// Message is an optional message associated with the update.
 	Message string `json:"message"`

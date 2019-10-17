@@ -20,7 +20,9 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -38,6 +40,8 @@ type analyzer struct {
 	client pulumirpc.AnalyzerClient
 }
 
+var _ Analyzer = (*analyzer)(nil)
+
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
@@ -47,15 +51,53 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	} else if path == "" {
-		return nil, NewMissingError(workspace.PluginInfo{
+		return nil, workspace.NewMissingError(workspace.PluginInfo{
 			Kind: workspace.AnalyzerPlugin,
 			Name: string(name),
 		})
 	}
 
-	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (analyzer)", name), []string{host.ServerAddr()})
+	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (analyzer)", name),
+		[]string{host.ServerAddr(), ctx.Pwd})
 	if err != nil {
 		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
+
+	return &analyzer{
+		ctx:    ctx,
+		name:   name,
+		plug:   plug,
+		client: pulumirpc.NewAnalyzerClient(plug.Conn),
+	}, nil
+}
+
+const policyAnalyzerName = "policy"
+
+// NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
+func NewPolicyAnalyzer(
+	host Host, ctx *Context, name tokens.QName, policyPackPath string) (Analyzer, error) {
+
+	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
+	_, pluginPath, err := workspace.GetPluginPath(
+		workspace.AnalyzerPlugin, policyAnalyzerName, nil)
+	if err != nil {
+		return nil, rpcerror.Convert(err)
+	} else if pluginPath == "" {
+		return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
+			"plugin that runs policy plugins is missing. This might occur when the plugin "+
+			"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
+			"does not support resource policies", string(name))
+	}
+
+	plug, err := newPlugin(ctx, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		[]string{host.ServerAddr(), policyPackPath})
+	if err != nil {
+		if err == errRunPolicyModuleNotFound {
+			return nil, fmt.Errorf("the Pulumi SDK used with this stack does not appear to support policy as code.\n" +
+				"Upgrading to a newer version of the Pulumi SDK may fix this problem.")
+		}
+		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
 	}
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
@@ -75,10 +117,12 @@ func (a *analyzer) label() string {
 }
 
 // Analyze analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error) {
+func (a *analyzer) Analyze(
+	t tokens.Type, props resource.PropertyMap) ([]AnalyzeDiagnostic, error) {
+
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
-	mprops, err := MarshalProperties(props, MarshalOptions{})
+	mprops, err := MarshalProperties(props, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}
@@ -93,15 +137,62 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 		return nil, rpcError
 	}
 
-	var failures []AnalyzeFailure
-	for _, failure := range resp.GetFailures() {
-		failures = append(failures, AnalyzeFailure{
-			Property: resource.PropertyKey(failure.Property),
-			Reason:   failure.Reason,
+	failures := resp.GetDiagnostics()
+	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
+
+	diags := []AnalyzeDiagnostic{}
+	for _, failure := range failures {
+		enforcementLevel, err := convertEnforcementLevel(failure.EnforcementLevel)
+		if err != nil {
+			return nil, err
+		}
+
+		diags = append(diags, AnalyzeDiagnostic{
+			PolicyName:        failure.PolicyName,
+			PolicyPackName:    failure.PolicyPackName,
+			PolicyPackVersion: failure.PolicyPackVersion,
+			Description:       failure.Description,
+			Message:           failure.Message,
+			Tags:              failure.Tags,
+			EnforcementLevel:  enforcementLevel,
 		})
 	}
-	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
-	return failures, nil
+
+	return diags, nil
+}
+
+// GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
+func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
+	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
+	logging.V(7).Infof("%s executing", label)
+	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
+		return AnalyzerInfo{}, rpcError
+	}
+
+	policies := []apitype.Policy{}
+	for _, p := range resp.GetPolicies() {
+		enforcementLevel, err := convertEnforcementLevel(p.EnforcementLevel)
+		if err != nil {
+			return AnalyzerInfo{}, err
+		}
+
+		policies = append(policies, apitype.Policy{
+			Name:             p.GetName(),
+			DisplayName:      p.GetDisplayName(),
+			Description:      p.GetDescription(),
+			EnforcementLevel: enforcementLevel,
+			Message:          p.GetMessage(),
+		})
+	}
+
+	return AnalyzerInfo{
+		Name:        resp.GetName(),
+		DisplayName: resp.GetDisplayName(),
+		Policies:    policies,
+	}, nil
 }
 
 // GetPluginInfo returns this plugin's information.
@@ -135,4 +226,16 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (a *analyzer) Close() error {
 	return a.plug.Close()
+}
+
+func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {
+	switch el {
+	case pulumirpc.EnforcementLevel_ADVISORY:
+		return apitype.Advisory, nil
+	case pulumirpc.EnforcementLevel_MANDATORY:
+		return apitype.Mandatory, nil
+
+	default:
+		return "", fmt.Errorf("Invalid enforcement level %d", el)
+	}
 }

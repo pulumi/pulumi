@@ -1,0 +1,47 @@
+{
+    "version": 3,
+    "deployment": {
+        "manifest": {
+            "time": "2019-05-30T15:54:35.812817-07:00",
+            "magic": "a30fca03706c39813da48bc53fcff973e24eb2deed9b31e72dcc69adc238cfe3",
+            "version": "v0.17.14-dev.1559249133+g96714654.dirty"
+        },
+        "secrets_providers": {
+            "type": "service",
+            "state": {
+                "url": "https://api.pulumi.com",
+                "owner": "lukehoban",
+                "project": "aliases_rename_component",
+                "stack": "foo"
+            }
+        },
+        "resources": [
+            {
+                "urn": "urn:pulumi:foo::aliases_rename_component::pulumi:pulumi:Stack::aliases_rename_component-foo",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            },
+            {
+                "urn": "urn:pulumi:foo::aliases_rename_component::my:module:ComponentThree::newcomp3",
+                "custom": false,
+                "type": "my:module:ComponentThree",
+                "parent": "urn:pulumi:foo::aliases_rename_component::pulumi:pulumi:Stack::aliases_rename_component-foo",
+                "aliases": [
+                    "urn:pulumi:foo::aliases_rename_component::my:module:ComponentThree::comp3"
+                ]
+            },
+            {
+                "urn": "urn:pulumi:foo::aliases_rename_component::my:module:ComponentThree$my:module:Resource::otherchild",
+                "custom": false,
+                "type": "my:module:Resource",
+                "parent": "urn:pulumi:foo::aliases_rename_component::my:module:ComponentThree::comp3"
+            },
+            {
+                "urn": "urn:pulumi:foo::aliases_rename_component::my:module:ComponentThree$my:module:Resource::comp3-child",
+                "custom": false,
+                "type": "my:module:Resource",
+                "parent": "urn:pulumi:foo::aliases_rename_component::my:module:ComponentThree::comp3"
+            }
+        ]
+    }
+}
