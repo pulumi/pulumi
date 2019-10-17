@@ -2,6 +2,8 @@
 
 #nullable enable
 
+using System;
+
 namespace Pulumi
 {
     public readonly struct UrnOrAlias
@@ -11,6 +13,11 @@ namespace Pulumi
 
         private UrnOrAlias(Urn? urn, Alias? alias)
         {
+            if (urn ==null && alias == null)
+            {
+                throw new ArgumentException("One of urn or alias must be non-null");
+            }
+
             Urn = urn;
             Alias = alias;
         }

@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DocumentationFile>U:\home\cyrusn\go\src\github.com\pulumi\pulumi\sdk\dotnet\Pulumi\Pulumi.xml</DocumentationFile>
+    <DocumentationFile>.\Pulumi.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

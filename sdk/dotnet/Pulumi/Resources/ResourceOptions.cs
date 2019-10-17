@@ -87,7 +87,7 @@ namespace Pulumi
         /// <summary>
         /// An optional list of aliases to treat this resource as matching.
         /// </summary>
-        public List<InputList<UrnOrAlias>> Aliases { get; set; } = new List<InputList<UrnOrAlias>>();
+        public List<Input<UrnOrAlias>> Aliases { get; set; } = new List<Input<UrnOrAlias>>();
     }
 }
 

@@ -16,7 +16,7 @@ namespace Pulumi
         //private Input([MaybeNull]T value) : this()
         //    => _value = value;
 
-        private Input(Output<T> outputValue) : this()
+        private Input(Output<T> outputValue)
             => _outputValue = outputValue ?? throw new ArgumentNullException(nameof(outputValue));
 
         public static implicit operator Input<T>([MaybeNull]T value)
@@ -27,6 +27,9 @@ namespace Pulumi
 
         public static implicit operator Output<T>(Input<T> input)
             => input._outputValue;
+
+        public Output<T> ToOutput()
+            => this;
     }
 }
 

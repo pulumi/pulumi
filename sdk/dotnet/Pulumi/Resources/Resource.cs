@@ -3,12 +3,9 @@
 #nullable enable
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace Pulumi
 {
@@ -131,7 +128,8 @@ namespace Pulumi
             }
             this._transformations = transformations.ToImmutable();
 
-            foreach (var transformation in this._transformations) {
+            foreach (var transformation in this._transformations)
+            {
                 var tres = transformation(this, type, name, properties, opts);
                 if (tres != null)
                 {
@@ -156,10 +154,11 @@ namespace Pulumi
 
             // Make a shallow clone of opts to ensure we don't modify the value passed in.
             opts = opts.Clone();
+            var componentOpts = opts as ComponentResourceOptions;
+            var customOpts = opts as CustomResourceOptions;
 
             if (opts.Provider != null &&
-                opts is ComponentResourceOptions componentOpts &&
-                componentOpts.Providers.Count > 0)
+                componentOpts?.Providers.Count > 0)
             {
                 throw new ResourceException("Do not supply both 'provider' and 'providers' options to a ComponentResource.", opts.Parent);
             }
@@ -167,8 +166,7 @@ namespace Pulumi
             // Check the parent type if one exists and fill in any default options.
             this._providers = ImmutableDictionary<string, ProviderResource>.Empty;
 
-            var providers = ImmutableDictionary.CreateBuilder<string, ProviderResource>();
-            if (opts.Parent!= null)
+            if (opts.Parent != null)
             {
                 this._parentResource = opts.Parent;
                 this._parentResource._childResources.Add(this);
@@ -177,7 +175,7 @@ namespace Pulumi
                     opts.Protect = opts.Parent._protect;
 
                 // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
-                opts.Aliases = opts.Aliases.ToList()
+                opts.Aliases = opts.Aliases.ToList();
                 foreach (var parentAlias in opts.Parent._aliases)
                 {
                     opts.Aliases.Add(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
@@ -188,68 +186,71 @@ namespace Pulumi
 
             if (custom)
             {
-                var customOpts = opts as CustomResourceOptions;
-
-                var provider =customOpts?.provider;
+                var provider = customOpts?.Provider;
                 if (provider == null)
                 {
                     if (opts.Parent != null)
                     {
                         // If no provider was given, but we have a parent, then inherit the
                         // provider from our parent.
-                        (< CustomResourceOptions > opts).provider = opts.parent.getProvider(t);
+
+                        opts.Provider = opts.Parent.GetProvider(type);
                     }
                 }
                 else
                 {
                     // If a provider was specified, add it to the providers map under this type's package so that
                     // any children of this resource inherit its provider.
-                    const typeComponents = t.split(":");
-                    if (typeComponents.length === 3)
+                    var typeComponents = type.Split(":");
+                    if (typeComponents.Length == 3)
                     {
-                        const pkg = typeComponents[0];
-                        this.__providers = { ...this.__providers, [pkg]: provider
-    };
-}
+                        var pkg = typeComponents[0];
+                        this._providers = this._providers.Add(pkg, provider);
+                    }
+                }
             }
-        }
-        else {
-            // Note: we checked above that at most one of opts.provider or opts.providers is set.
+            else
+            {
+                // Note: we checked above that at most one of opts.provider or opts.providers is set.
 
-            // If opts.provider is set, treat that as if we were given a array of provider with that
-            // single value in it.  Otherwise, take the array or map of providers, convert it to a
-            // map and combine with any providers we've already set from our parent.
-            const providers = opts.provider
-                ? convertToProvidersMap([opts.provider])
-                : convertToProvidersMap((<ComponentResourceOptions>opts).providers);
-            this.__providers = { ...this.__providers, ...providers };
-        }
-
-        this.__protect = !!opts.protect;
-
-        // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
-        // default `name` and `type` to apply until we are inside the resource constructor.
-        this.__aliases = [];
-        if (opts.aliases) {
-            for (const alias of opts.aliases) {
-    this.__aliases.push(collapseAliasToUrn(alias, name, t, opts.parent));
-}
-}
-
-        if (opts.id) {
-            // If this resource already exists, read its state rather than registering it anew.
-            if (!custom) {
-                throw new ResourceError(
-                    "Cannot read an existing resource unless it has a custom provider", opts.parent);
+                // If opts.provider is set, treat that as if we were given a array of provider with that
+                // single value in it.  Otherwise, take the array or map of providers, convert it to a
+                // map and combine with any providers we've already set from our parent.
+                var providers = opts.Provider != null
+                    ? convertToProvidersMap(new[] { opts.Provider })
+                    : convertToProvidersMap(componentOpts?.Providers);
+                this._providers = this._providers.AddRange(providers);
             }
-            readResource(this, t, name, props, opts);
-        } else {
-            // Kick off the resource registration.  If we are actually performing a deployment, this
-            // resource's properties will be resolved asynchronously after the operation completes, so
-            // that dependent computations resolve normally.  If we are just planning, on the other
-            // hand, values will never resolve.
-            registerResource(this, t, name, custom, props, opts);
-        }
+
+            this._protect = opts.Protect == true;
+
+            // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
+            // default `name` and `type` to apply until we are inside the resource constructor.
+            var aliases = ImmutableArray.CreateBuilder<Input<Urn>>();
+            foreach (var alias in opts.Aliases)
+            {
+                aliases.Add(collapseAliasToUrn(alias, name, type, opts.Parent));
+            }
+            this._aliases = aliases.ToImmutable();
+
+            if (opts.Id != null)
+            {
+                // If this resource already exists, read its state rather than registering it anew.
+                if (!custom)
+                {
+                    throw new ResourceException(
+                        "Cannot read an existing resource unless it has a custom provider", opts.Parent);
+                }
+                readResource(this, type, name, properties, opts);
+            }
+            else
+            {
+                // Kick off the resource registration.  If we are actually performing a deployment,
+                // this resource's properties will be resolved asynchronously after the operation
+                // completes, so that dependent computations resolve normally.  If we are just
+                // planning, on the other hand, values will never resolve.
+                registerResource(this, type, name, custom, properties, opts);
+            }
         }
 
         /// <summary>
@@ -265,6 +266,40 @@ namespace Pulumi
 
             this._providers.TryGetValue(memComponents[0], out var result);
             return result;
+        }
+
+        private static Output<Urn> CollapseAliasToUrn(
+            Input<UrnOrAlias> alias,
+            string defaultName,
+            string defaultType,
+            Resource? defaultParent)
+        {
+            return alias.ToOutput().Apply(a =>
+            {
+                if (a.Urn != null)
+                {
+                    return Output.Create(a.Urn);
+                }
+
+                var alias = a.Alias;
+                var name = alias.hasOwnProperty("name") ? a.name : defaultName;
+                const type = a.hasOwnProperty("type") ? a.type : defaultType;
+                const parent = a.hasOwnProperty("parent") ? a.parent : defaultParent;
+                const project = a.hasOwnProperty("project") ? a.project : getProject();
+                const stack = a.hasOwnProperty("stack") ? a.stack : getStack();
+
+                if (name === undefined)
+                {
+                    throw new Error("No valid 'name' passed in for alias.");
+                }
+
+                if (type === undefined)
+                {
+                    throw new Error("No valid 'type' passed in for alias.");
+                }
+
+                return createUrn(name, type, parent, project, stack);
+            });
         }
     }
 }

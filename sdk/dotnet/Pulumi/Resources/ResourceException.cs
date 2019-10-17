@@ -14,10 +14,10 @@ namespace Pulumi
     /// </summary>
     public class ResourceException : Exception
     {
-        public readonly Resource Resource;
+        public readonly Resource? Resource;
         public readonly bool HideStack;
 
-        public ResourceException(string message, Resource resource, bool hideStack = false) : base(message)
+        public ResourceException(string message, Resource? resource, bool hideStack = false) : base(message)
         {
             this.Resource = resource;
             this.HideStack = hideStack;
