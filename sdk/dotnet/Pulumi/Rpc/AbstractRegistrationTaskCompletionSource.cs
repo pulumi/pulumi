@@ -37,7 +37,7 @@ namespace Pulumi.Rpc
 
             UnwrapSecret(value, out var isSecret, out var unwrapped);
             var converted = Convert(value);
-            return new OutputData<T>(converted, converted != null)
+            return new OutputData<T>(converted, converted != null);
         }
 
         protected static void UnwrapSecret(Value value, out bool isSecret, out Value unwrapped)

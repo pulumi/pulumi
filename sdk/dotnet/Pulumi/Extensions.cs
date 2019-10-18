@@ -3,6 +3,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
@@ -10,6 +11,12 @@ namespace Pulumi
 {
     internal static class Extensions
     {
+        public static void Deconstruct<K, V>(this KeyValuePair<K, V> pair, out K key, out V value)
+        {
+            key = pair.Key;
+            value = pair.Value;
+        }
+
         public static Output<object?> ToObjectOutput(this object obj)
         {
             var output = obj is IInput input ? input.ToOutput() : obj as IOutput;

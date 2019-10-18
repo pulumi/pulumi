@@ -56,7 +56,7 @@ namespace Pulumi
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
         /// </summary>
-        private readonly HashSet<Resource> _childResources = new HashSet<Resource>();
+        internal readonly HashSet<Resource> ChildResources = new HashSet<Resource>();
 
         /// <summary>
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
@@ -104,7 +104,7 @@ namespace Pulumi
         /// <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
         /// <param name="args">The arguments to use to populate the new resource.</param>
         /// <param name="opts">A bag of options that control this resource's behavior.</param>
-        public Resource(
+        private protected Resource(
             string type, string name, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
@@ -179,7 +179,7 @@ namespace Pulumi
             if (opts.Parent != null)
             {
                 this._parentResource = opts.Parent;
-                this._parentResource._childResources.Add(this);
+                this._parentResource.ChildResources.Add(this);
 
                 if (opts.Protect == null)
                     opts.Protect = opts.Parent._protect;
@@ -253,7 +253,7 @@ namespace Pulumi
                     throw new ResourceException(
                         "Cannot read an existing resource unless it has a custom provider", opts.Parent);
                 }
-                Deployment.Instance.ReadResource(this, type, name, args, opts));
+                Deployment.Instance.ReadResource(this, type, name, args, opts);
             }
             else
             {
