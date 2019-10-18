@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 1.3.4 (2019-10-18)
+
+- Remove unintentional console outupt introduced in 1.3.3.
+
 ## 1.3.3 (2019-10-17)
 
 - Fix an issue with first-class providers introduced in 1.3.2.
