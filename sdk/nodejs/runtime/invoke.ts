@@ -136,7 +136,6 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
     log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
     const providerRef = getProviderRefSync();
-    log.debug("Invoke providerRef: " + providerRef);
     const req = createInvokeRequest(tok, serialized, providerRef, opts);
 
     // Encode the request.
