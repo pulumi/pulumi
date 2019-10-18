@@ -2,14 +2,6 @@
 
 #nullable enable
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Threading.Tasks;
-
 namespace Pulumi
 {
     /// <summary>
@@ -31,5 +23,13 @@ namespace Pulumi
         /// The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
         /// </summary>
         public string? Delete { get; set; }
+
+        internal static CustomTimeouts? Clone(CustomTimeouts? timeouts)
+            => timeouts == null ? null : new CustomTimeouts
+            {
+                Create = timeouts.Create,
+                Delete = timeouts.Delete,
+                Update = timeouts.Update,
+            };
     }
 }

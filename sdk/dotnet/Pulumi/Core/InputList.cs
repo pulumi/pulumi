@@ -29,6 +29,9 @@ namespace Pulumi
                             .Apply(a => a[0].AddRange(a[1]));
         }
 
+        internal InputList<T> Clone()
+            => new InputList<T>(_values);
+
         #region construct from unary
 
         public static implicit operator InputList<T>(T value)

@@ -24,7 +24,7 @@ namespace Pulumi
         public static Output<Urn> Create(
             Input<string> name, Input<string> type,
             Resource? parent, Input<Urn>? parentUrn,
-            string? project, string? stack)
+            Input<string>? project, Input<string>? stack)
         {
             if (parent != null && parentUrn != null)
                 throw new ArgumentException("Only one of `parent` and `parentUrn` can be non-null.");
@@ -41,7 +41,7 @@ namespace Pulumi
             }
             else
             {
-                parentPrefix = Output.Create($"urn:pulumi:{stack ?? Stack.Current}::${project ?? Project.Current}::");
+                parentPrefix = Output.Create($"urn:pulumi:{stack ?? GlobalOptions.Instance.Stack}::${project ?? GlobalOptions.Instance.Project}::");
             }
 
             return Output.Format($"{parentPrefix}{type}::{name}").Apply(value => new Urn(value));

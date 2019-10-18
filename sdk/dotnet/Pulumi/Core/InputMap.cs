@@ -20,6 +20,9 @@ namespace Pulumi
         private InputMap(Output<ImmutableDictionary<K, V>> values)
             => _values = values;
 
+        internal Output<ImmutableDictionary<K, V>> GetInnerMap()
+            => _values;
+
         public void Add(Input<K> key, Input<V> value)
         {
             var inputDictionary = (Input<ImmutableDictionary<K, V>>)_values;

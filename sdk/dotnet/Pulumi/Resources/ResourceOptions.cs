@@ -3,6 +3,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Pulumi
 {
@@ -88,6 +89,21 @@ namespace Pulumi
         /// An optional list of aliases to treat this resource as matching.
         /// </summary>
         public List<Input<UrnOrAlias>> Aliases { get; set; } = new List<Input<UrnOrAlias>>();
+
+        internal virtual ResourceOptions Clone()
+            => new ResourceOptions
+            {
+                Aliases = this.Aliases.ToList(),
+                CustomTimeouts = CustomTimeouts.Clone(this.CustomTimeouts),
+                DependsOn = this.DependsOn.Clone(),
+                Id = this.Id,
+                Parent = this.Parent,
+                IgnoreChanges = this.IgnoreChanges.ToList(),
+                Protect = this.Protect,
+                Provider = this.Provider,
+                ResourceTransformations = this.ResourceTransformations.ToList(),
+                Version = this.Version,
+            };
     }
 }
 

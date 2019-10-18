@@ -100,7 +100,7 @@ namespace Pulumi
         /// <param name="name">The unique name of the resource.</param>
         /// <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
         /// <param name="properties">The arguments to use to populate the new resource.</param>
-        /// <param name="options">A bag of options that control this resource's behavior.</param>
+        /// <param name="opts">A bag of options that control this resource's behavior.</param>
         public Resource(
             string type, string name, bool custom,
             ImmutableDictionary<string, Input<object>> properties,
@@ -120,7 +120,12 @@ namespace Pulumi
 
             // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
             // options assigned to this resource.
-            var parent = opts.Parent ?? GetStackResource() /* ?? { __transformations: undefined }; */;
+            var parent = opts.Parent ?? Stack.Instance; /* ?? { __transformations: undefined }; */;
+            if (parent == null && type != Stack._rootPulumiStackTypeName)
+            {
+                throw new InvalidOperationException("No stack instance, and we were not the stack itself.");
+            }
+
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
             transformations.AddRange(opts.ResourceTransformations);
             if (parent != null)
@@ -179,7 +184,7 @@ namespace Pulumi
                 opts.Aliases = opts.Aliases.ToList();
                 foreach (var parentAlias in opts.Parent._aliases)
                 {
-                    opts.Aliases.Add(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+                    opts.Aliases.Add(inheritedChildAlias(name, opts.Parent._name, parentAlias, type));
                 }
 
                 this._providers = opts.Parent._providers;
@@ -282,15 +287,32 @@ namespace Pulumi
                     return Output.Create(a.Urn);
                 }
 
-                var alias = a.Alias;
+                var alias = a.Alias!;
                 var name = alias.Name.HasValue ? alias.Name.Value : defaultName;
                 var type = alias.Type.HasValue ? alias.Type.Value : defaultType;
-                var project = alias.Project.HasValue ? alias.Project.Value : Pulumi.Project.Current;
-                var stack = alias.Stack.HasValue ? alias.Stack.Value : Pulumi.Stack.Current;
+                var project = alias.Project.HasValue ? alias.Project.Value : GlobalOptions.Instance.Project;
+                var stack = alias.Stack.HasValue ? alias.Stack.Value : GlobalOptions.Instance.Stack;
+                
                 if (alias.Parent.HasValue && alias.ParentUrn.HasValue)
                     throw new ArgumentException("Alias cannot specify Parent and ParentUrn at the same time.");
 
-                const parent = a.hasOwnProperty("parent") ? a.parent : defaultParent;
+                Resource? parent;
+                Input<Urn>? parentUrn;
+                if (alias.Parent.HasValue)
+                {
+                    parent = alias.Parent.Value;
+                    parentUrn = null;
+                }
+                else if (alias.ParentUrn.HasValue)
+                {
+                    parent = null;
+                    parentUrn = alias.ParentUrn.Value;
+                }
+                else
+                {
+                    parent = defaultParent;
+                    parentUrn = null;
+                }
 
                 if (name == null)
                     throw new Exception("No valid 'Name' passed in for alias.");
@@ -298,7 +320,7 @@ namespace Pulumi
                 if (type == null)
                     throw new Exception("No valid 'type' passed in for alias.");
 
-                return Pulumi.Urn.Create(name, type, parent, project, stack);
+                return Pulumi.Urn.Create(name, type, parent, parentUrn, project, stack);
             });
         }
     }

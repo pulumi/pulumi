@@ -8,6 +8,6 @@ namespace Pulumi
 {
     public static class Project
     {
-        public static string Current => throw new NotImplementedException();
+        public static string Name => GlobalOptions.Instance.Project;
     }
 }
