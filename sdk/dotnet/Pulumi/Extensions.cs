@@ -10,6 +10,14 @@ namespace Pulumi
 {
     internal static class Extensions
     {
+        public static Output<object?> ToObjectOutput(this object obj)
+        {
+            var output = obj is IInput input ? input.ToOutput() : obj as IOutput;
+            return output != null
+                ? new Output<object?>(output.GetDataAsync())
+                : Output.Create<object?>(obj);
+        }
+
         public static ImmutableArray<TResult> SelectAsArray<TItem, TResult>(this ImmutableArray<TItem> items, Func<TItem, TResult> map)
             => ImmutableArray.CreateRange(items, map);
 

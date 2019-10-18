@@ -7,12 +7,12 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Pulumi
 {
-    internal interface IProvidesOutputOfObj
+    internal interface IInput
     {
-        Output<object?> OutputOfObj { get; }
+        IOutput ToOutput();
     }
 
-    public class Input<T> : IProvidesOutputOfObj
+    public class Input<T> : IOutput
     {
         private readonly Output<T> _outputValue;
 
@@ -31,8 +31,8 @@ namespace Pulumi
         public Output<T> ToOutput()
             => this;
 
-        Output<object?> IProvidesOutputOfObj.OutputOfObj
-            => _outputValue.Apply(v => (object?)v);
+        IOutput IInput.ToOutput()
+            => ToOutput();
     }
 }
 

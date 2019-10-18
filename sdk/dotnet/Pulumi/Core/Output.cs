@@ -6,6 +6,7 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -38,9 +39,7 @@ namespace Pulumi
             for (var i = 0; i < arguments.Length; i++)
             {
                 var arg = arguments[i];
-                inputs[i] = arg is IProvidesOutputOfObj provider
-                    ? provider.OutputOfObj
-                    : Create<object?>(arg);
+                inputs[i] = arg.ToObjectOutput();
             }
 
             return All(inputs).Apply(objs =>
@@ -48,33 +47,38 @@ namespace Pulumi
          }
     }
 
-    public class Output<T> : IProvidesOutputOfObj
+    internal interface IOutput
     {
-        private readonly Task<OutputData<T>> _dataTask;
+        Task<OutputData<object?>> GetDataAsync();
+    }
+
+    public class Output<T> : IOutput
+    {
+        internal readonly Task<OutputData<T>> DataTask;
 
         internal Output(Task<OutputData<T>> dataTask)
-            => _dataTask = dataTask;
+            => DataTask = dataTask;
 
-        internal async Task<T> GetValue()
-        {
-            var data = await _dataTask.ConfigureAwait(false);
-            return data.Value;
-        }
+        //internal async Task<T> GetValueAsync()
+        //{
+        //    var data = await _dataTask.ConfigureAwait(false);
+        //    return data.Value;
+        //}
 
-        Output<object?> IProvidesOutputOfObj.OutputOfObj
-            => this.Apply(v => (object?)v);
+        //internal async Task<bool> IsKnownAsync()
+        //{
+        //    var data = await _dataTask.ConfigureAwait(false);
+        //    return data.IsKnown;
+        //}
 
-        internal async Task<bool> IsKnown()
-        {
-            var data = await _dataTask.ConfigureAwait(false);
-            return data.IsKnown;
-        }
+        //internal async Task<bool> IsSecretAsync()
+        //{
+        //    var data = await _dataTask.ConfigureAwait(false);
+        //    return data.IsSecret;
+        //}
 
-        internal async Task<bool> IsSecret()
-        {
-            var data = await _dataTask.ConfigureAwait(false);
-            return data.IsSecret;
-        }
+        async Task<OutputData<object?>> IOutput.GetDataAsync()
+            => await DataTask.ConfigureAwait(false);
 
         public static Output<T> Create(Task<T> value)
         {
@@ -87,7 +91,7 @@ namespace Pulumi
             => Apply(t => Output.Create(func(t)));
 
         public Output<U> Apply<U>(Func<T, Output<U>> func)
-            => new Output<U>(ApplyHelperAsync(_dataTask, func));
+            => new Output<U>(ApplyHelperAsync(DataTask, func));
 
         private static async Task<OutputData<U>> ApplyHelperAsync<U>(
             Task<OutputData<T>> dataTask, Func<T, Output<U>> func)
@@ -95,7 +99,7 @@ namespace Pulumi
             var data = await dataTask.ConfigureAwait(false);
 
             var inner = func(data.Value);
-            var innerData = await inner._dataTask.ConfigureAwait(false);
+            var innerData = await inner.DataTask.ConfigureAwait(false);
 
             return new OutputData<U>(
                 innerData.Value, data.IsKnown && innerData.IsKnown, data.IsSecret || innerData.IsSecret);
@@ -112,7 +116,7 @@ namespace Pulumi
             foreach (var input in inputs)
             {
                 var output = (Output<T>)input;
-                var data = await output._dataTask.ConfigureAwait(false);
+                var data = await output.DataTask.ConfigureAwait(false);
 
                 values.Add(data.Value);
                 (isKnown, isSecret) = Combine(data, isKnown, isSecret);
@@ -135,21 +139,21 @@ namespace Pulumi
 
             {
                 var output = (Output<X>)item1;
-                var data = await output._dataTask.ConfigureAwait(false);
+                var data = await output.DataTask.ConfigureAwait(false);
                 tuple.Item1 = data.Value;
                 (isKnown, isSecret) = Combine(data, isKnown, isSecret);
             }
 
             {
                 var output = (Output<Y>)item2;
-                var data = await output._dataTask.ConfigureAwait(false);
+                var data = await output.DataTask.ConfigureAwait(false);
                 tuple.Item2 = data.Value;
                 (isKnown, isSecret) = Combine(data, isKnown, isSecret);
             }
 
             {
                 var output = (Output<Z>)item3;
-                var data = await output._dataTask.ConfigureAwait(false);
+                var data = await output.DataTask.ConfigureAwait(false);
                 tuple.Item3 = data.Value;
                 (isKnown, isSecret) = Combine(data, isKnown, isSecret);
             }
@@ -170,5 +174,8 @@ namespace Pulumi
             IsKnown = isKnown;
             IsSecret = isSecret;
         }
+
+        public static implicit operator OutputData<object?>(OutputData<X> data)
+            => new OutputData<object?>(data.Value, data.IsKnown, data.IsSecret);
     }
 }

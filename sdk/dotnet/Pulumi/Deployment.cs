@@ -25,15 +25,8 @@ namespace Pulumi
             var parallel = Environment.GetEnvironmentVariable("PULUMI_PARALLEL");
             var tracing = Environment.GetEnvironmentVariable("PULUMI_TRACING");
 
-            GlobalOptions.Instance = new GlobalOptions
-            {
-                Engine = engine,
-                Monitor = monitor,
-                Project = project,
-                Pwd = pwd,
-                Stack = stack,
-                Tracing = tracing,
-            }
+            GlobalOptions.Instance = new GlobalOptions(
+                dryRun: dryRun, queryMode = 
 
             var engineChannel = new Channel(engine, ChannelCredentials.Insecure);
             var monitorChannel = new Channel(monitor, ChannelCredentials.Insecure);
