@@ -174,6 +174,7 @@ func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config s
 	maybeAppendEnv("stack", req.GetStack())
 	maybeAppendEnv("pwd", req.GetPwd())
 	maybeAppendEnv("dry_run", fmt.Sprintf("%v", req.GetDryRun()))
+	maybeAppendEnv("query_mode", fmt.Sprint(req.GetQueryMode()))
 	maybeAppendEnv("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendEnv("tracing", host.tracing)
 	maybeAppendEnv("config", config)

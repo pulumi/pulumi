@@ -11,22 +11,22 @@ namespace Pulumi
     /// </summary>
     public sealed class Urn : IEquatable<Urn>
     {
-        private readonly string _value;
+        internal readonly string Value;
 
         internal Urn(string value)
-            => _value = value ?? throw new ArgumentNullException(nameof(value));
+            => Value = value ?? throw new ArgumentNullException(nameof(value));
 
         public override string ToString()
-            => _value;
+            => Value;
 
         public override int GetHashCode()
-            => _value.GetHashCode();
+            => Value.GetHashCode();
 
         public override bool Equals(object obj)
             => obj is Urn urn && Equals(urn);
 
         public bool Equals(Urn urn)
-            => _value == urn._value;
+            => Value == urn.Value;
 
         /// <summary>
         /// Computes a URN from the combination of a resource name, resource type, optional parent,
@@ -49,11 +49,11 @@ namespace Pulumi
                     : parentUrn!.ToOutput();
 
                 parentPrefix = parentUrnOutput.Apply(
-                    parentUrnString => parentUrnString._value.Substring(0, parentUrnString._value.LastIndexOf("::")) + "$");
+                    parentUrnString => parentUrnString.Value.Substring(0, parentUrnString.Value.LastIndexOf("::")) + "$");
             }
             else
             {
-                parentPrefix = Output.Create($"urn:pulumi:{stack ?? GlobalOptions.Instance.Stack}::${project ?? GlobalOptions.Instance.Project}::");
+                parentPrefix = Output.Create($"urn:pulumi:{stack ?? Deployment.Instance.Options.Stack}::${project ?? Deployment.Instance.Options.Project}::");
             }
 
             return Output.Format($"{parentPrefix}{type}::{name}").Apply(value => new Urn(value));
@@ -90,7 +90,7 @@ namespace Pulumi
             {
                 aliasName = parentAlias.ToOutput().Apply(parentAliasUrn =>
                 {
-                    var parentAliasVal = parentAliasUrn._value;
+                    var parentAliasVal = parentAliasUrn.Value;
                     var parentAliasName = parentAliasVal.Substring(parentAliasVal.LastIndexOf("::") + 2);
                     return parentAliasName + childName.Substring(parentName.Length);
                 });

@@ -25,7 +25,7 @@ namespace Pulumi
         /// </summary>
         public ComponentResource(string type, string name, ResourceOptions? opts = null)
             : base(type, name, custom: false,
-                   properties: ImmutableDictionary<string, Input<object>>.Empty,
+                   args: ResourceArgs.Empty,
                    opts ?? new ComponentResourceOptions())
         {
         }
@@ -38,7 +38,7 @@ namespace Pulumi
         // quickly as possible (instead of waiting until the entire application completes).
         protected void RegisterOutputs(InputMap<string, object>? map = null)
         {
-            // TODO Runtime.RegisterResourceOutputs(this, map ?? new InputMap<string, object>());
+            Deployment.Instance.RegisterResourceOutputs(this, map ?? new InputMap<string, object>());
         }
 
         internal sealed override void AttachRegistrations(Task<RegisterResourceResponse> response)

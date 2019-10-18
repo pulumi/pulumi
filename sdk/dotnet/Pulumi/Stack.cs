@@ -3,6 +3,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -12,10 +13,13 @@ namespace Pulumi
     /// <summary>
     /// Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it
     /// registers itself as the root resource with the Pulumi engine.
+    /// 
+    /// An instance of this will be automatically created when any <see
+    /// cref="Deployment.Run(Action)"/> overload is called.
     /// </summary>
     public class Stack : ComponentResource
     {
-        public static Stack Instance { get; private set; }
+        // public static Stack Instance { get; private set; }
 
         /// <summary>
         /// Constant to represent the 'root stack' resource for a Pulumi application.  The purpose
@@ -41,37 +45,37 @@ namespace Pulumi
         /// </summary>
         internal const string _rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
-        public readonly string Project;
-        public readonly string Name;
-
         /// <summary>
         /// The outputs of this stack, if the `init` callback exited normally.
         /// </summary>
         public readonly Output<ImmutableDictionary<string, object>> Outputs =
             Output.Create(ImmutableDictionary<string, object>.Empty);
 
-        public Stack(Func<Task<InputMap<object>>> init)
-            : base(_rootPulumiStackTypeName, $"{GlobalOptions.Instance.Project}-{GlobalOptions.Instance.Stack}")
+        public Stack(Func<Task<IDictionary<string, object>>> init)
+            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.Options.Project}-{Deployment.Instance.Options.Stack}")
         {
-            this.Project = GlobalOptions.Instance.Project;
-            this.Name = GlobalOptions.Instance.Stack;
-
-            if (Instance != null)
-            {
-                throw new InvalidOperationException("Cannot make multiple instances of the Stack resource");
-            }
-
-            Instance = this;
+            Deployment.Instance.Stack = this;
 
             try
             {
-                var task = init();
-                this.Outputs = Output.Create(task).Apply(m => m.GetInnerMap());
+                this.Outputs = Output.Create(RunInit(init));
             }
             finally
             {
                 this.RegisterOutputs(this.Outputs);
             }
+        }
+
+        private async Task<ImmutableDictionary<string, object>> RunInit(Func<Task<IDictionary<string, object>>> init)
+        {
+            // Ensure we are known as the root resource.  This is needed before we execute any user
+            // code as many codepaths will request the root resource.
+            await Deployment.Instance.SetRootResourceAsync(this);
+
+            var dictionary = await init();
+            return dictionary == null
+                ? ImmutableDictionary<string, object>.Empty
+                : dictionary.ToImmutableDictionary();
         }
     }
 }

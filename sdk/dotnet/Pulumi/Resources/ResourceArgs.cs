@@ -3,6 +3,7 @@
 #nullable enable
 
 using System.Collections.Immutable;
+using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi
 {
@@ -11,6 +12,12 @@ namespace Pulumi
     /// </summary>
     public abstract class ResourceArgs
     {
+        public static readonly ResourceArgs Empty = new EmptyResourceArgs();
+
+        protected ResourceArgs()
+        {
+        }
+
         internal ImmutableDictionary<string, IInput> ToDictionary()
         {
             var dictionaryBuilder = ImmutableDictionary.CreateBuilder<string, IInput>();
@@ -37,6 +44,13 @@ namespace Pulumi
 
             public void Add<T>(string name, InputMap<T> map)
                 => _builder.Add(name, map);
+        }
+
+        private class EmptyResourceArgs : ResourceArgs
+        {
+            protected override void AddProperties(PropertyBuilder builder)
+            {
+            }
         }
     }
 }

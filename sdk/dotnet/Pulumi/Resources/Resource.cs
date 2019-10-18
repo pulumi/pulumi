@@ -122,7 +122,7 @@ namespace Pulumi
 
             // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
             // options assigned to this resource.
-            var parent = opts.Parent ?? Stack.Instance; /* ?? { __transformations: undefined }; */;
+            var parent = opts.Parent ?? Deployment.Instance.Stack; /* ?? { __transformations: undefined }; */;
             if (parent == null && type != Stack._rootPulumiStackTypeName)
             {
                 throw new InvalidOperationException("No stack instance, and we were not the stack itself.");
@@ -253,7 +253,7 @@ namespace Pulumi
                     throw new ResourceException(
                         "Cannot read an existing resource unless it has a custom provider", opts.Parent);
                 }
-                Deployment.RegisterTask(Runtime.ReadResourceAsync(this, type, name, args, opts));
+                Deployment.Instance.ReadResource(this, type, name, args, opts));
             }
             else
             {
@@ -261,7 +261,7 @@ namespace Pulumi
                 // this resource's properties will be resolved asynchronously after the operation
                 // completes, so that dependent computations resolve normally.  If we are just
                 // planning, on the other hand, values will never resolve.
-                Deployment.RegisterTask(Runtime.RegisterResourceAsync(this, type, name, custom, properties, opts));
+                Deployment.Instance.RegisterResource(this, type, name, custom, args, opts);
             }
         }
 
@@ -344,8 +344,8 @@ namespace Pulumi
                 var alias = a.Alias!;
                 var name = alias.Name.HasValue ? alias.Name.Value : defaultName;
                 var type = alias.Type.HasValue ? alias.Type.Value : defaultType;
-                var project = alias.Project.HasValue ? alias.Project.Value : GlobalOptions.Instance.Project;
-                var stack = alias.Stack.HasValue ? alias.Stack.Value : GlobalOptions.Instance.Stack;
+                var project = alias.Project.HasValue ? alias.Project.Value : Deployment.Instance.Options.Project;
+                var stack = alias.Stack.HasValue ? alias.Stack.Value : Deployment.Instance.Options.Stack;
 
                 if (alias.Parent.HasValue && alias.ParentUrn.HasValue)
                     throw new ArgumentException("Alias cannot specify Parent and ParentUrn at the same time.");

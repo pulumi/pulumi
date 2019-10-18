@@ -32,12 +32,12 @@ namespace Pulumi.Rpc
             if (response?.Object?.Fields == null ||
                 !response.Object.Fields.TryGetValue(fieldName, out var value))
             {
-                return new OutputData<T>(default!, isKnown: !GlobalOptions.Instance.DryRun, isSecret: false);
+                return new OutputData<T>(default!, isKnown: !Deployment.Instance.Options.DryRun, isSecret: false);
             }
 
             UnwrapSecret(value, out var isSecret, out var unwrapped);
-            var converted = default(T);// TODO Convert(value);
-            return new OutputData<T>(converted, converted != null, false);
+            var converted = Convert(value);
+            return new OutputData<T>(converted, converted != null)
         }
 
         protected static void UnwrapSecret(Value value, out bool isSecret, out Value unwrapped)
@@ -59,7 +59,7 @@ namespace Pulumi.Rpc
 
     public sealed class BoolRegistrationTaskCompletionSource<T> : AbstractRegistrationTaskCompletionSource<bool>
     {
-        private protected OutputData<bool> Extract(RegisterResourceResponse response)
+        private protected override OutputData<bool> Extract(RegisterResourceResponse response)
         {
             throw new NotImplementedException();
         }

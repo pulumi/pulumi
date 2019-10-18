@@ -4,17 +4,27 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http.Headers;
+using System.Collections.Immutable;
+using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Pulumirpc;
 
 namespace Pulumi
 {
-    public static class Deployment
+    public partial class Deployment
     {
-        private static readonly Queue<Task> _tasks = new Queue<Task>();
+        public static Deployment Instance;
 
-        private static void Initialize()
+        private readonly Queue<Task> _tasks = new Queue<Task>();
+
+        public Options Options { get; }
+        internal Engine.EngineClient Engine { get; }
+        internal ResourceMonitor.ResourceMonitorClient Monitor { get; }
+
+        internal Stack Stack { get; set; }
+
+        private Deployment()
         {
             var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
             var engine = Environment.GetEnvironmentVariable("PULUMI_ENGINE");
@@ -22,38 +32,64 @@ namespace Pulumi
             var stack = Environment.GetEnvironmentVariable("PULUMI_STACK");
             var pwd = Environment.GetEnvironmentVariable("PULUMI_PWD");
             var dryRun = Environment.GetEnvironmentVariable("PULUMI_DRY_RUN");
+            var queryMode = Environment.GetEnvironmentVariable("PULUMI_QUERY_MODE");
             var parallel = Environment.GetEnvironmentVariable("PULUMI_PARALLEL");
             var tracing = Environment.GetEnvironmentVariable("PULUMI_TRACING");
+            var config = Environment.GetEnvironmentVariable("PULUMI_CONFIG");
 
-            GlobalOptions.Instance = new GlobalOptions(
-                dryRun: dryRun, queryMode = 
+            if (string.IsNullOrEmpty(monitor))
+                throw new InvalidOperationException("Environment did not contain: PULUMI_MONITOR");
 
-            var engineChannel = new Channel(engine, ChannelCredentials.Insecure);
-            var monitorChannel = new Channel(monitor, ChannelCredentials.Insecure);
+            if (string.IsNullOrEmpty(engine))
+                throw new InvalidOperationException("Environment did not contain: PULUMI_ENGINE");
 
-            Runtime.Initialize(new Runtime.Settings(new Engine.EngineClient(engineChannel),
-                               new ResourceMonitor.ResourceMonitorClient(monitorChannel),
-                               stack, project, int.Parse(parallel), bool.Parse(dryRun)));
+            if (!bool.TryParse(dryRun, out var dryRunValue))
+                throw new InvalidOperationException("Environment did not contain a valid bool value for: PULUMI_DRY_RUN");
+
+            if (!bool.TryParse(queryMode, out var queryModeValue))
+                throw new InvalidOperationException("Environment did not contain a valid bool value for: PULUMI_QUERY_MODE");
+
+            if (!int.TryParse(parallel, out var parallelValue))
+                throw new InvalidOperationException("Environment did not contain a valid int value for: PULUMI_PARALLEL");
+
+            this.Options = new Options(
+                dryRun: dryRunValue, queryMode: queryModeValue, parallel: parallelValue,
+                project: project, stack: stack, pwd: pwd,
+                monitor: monitor, engine: engine, tracing: tracing);
+
+            this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));
+            this.Monitor = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure));
         }
 
         public static Task Run(Action action)
             => Run(() =>
             {
                 action();
-                return new InputMap<object>();
+                return ImmutableDictionary<string, object>.Empty;
             });
 
-        public static Task Run(Func<InputMap<object>> func)
+        public static Task Run(Func<IDictionary<string, object>> func)
             => Run(() => Task.FromResult(func()));
 
-        public static Task Run(Func<Task<InputMap<object>>> func)
+        public static Task Run(Func<Task<IDictionary<string, object>>> func)
         {
-            Initialize();
-            new Stack(func);
+            if (Instance != null)
+            {
+                throw new NotSupportedException("Deployment.Run can only be called a single time.");
+            }
+
+            Instance = new Deployment();
+            return Instance.RunWorker(func);
+        }
+
+        private Task RunWorker(Func<Task<IDictionary<string, object>>> func)
+        {
+            var stack = new Stack(func);
+            RegisterTask(stack.Outputs.DataTask);
             return WhileRunning();
         }
 
-        internal static void RegisterTask(Task task)
+        internal void RegisterTask(Task task)
         {
             lock (_tasks)
             {
@@ -61,7 +97,7 @@ namespace Pulumi
             }
         }
 
-        private static async Task WhileRunning()
+        private async Task WhileRunning()
         {
             while (true)
             {
