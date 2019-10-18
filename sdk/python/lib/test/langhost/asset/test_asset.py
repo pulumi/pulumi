@@ -21,7 +21,7 @@ class AssetTest(LanghostTest):
     def test_asset(self):
         self.run_test(
             program=path.join(self.base_path(), "asset"),
-            expected_resource_count=3)
+            expected_resource_count=4)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
                           _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
@@ -29,7 +29,7 @@ class AssetTest(LanghostTest):
         self.assertEqual(ty, "test:index:MyResource")
         if name == "file":
             self.assertIsInstance(resource["asset"], FileAsset)
-            self.assertEqual(resource["asset"].path, "./testfile.txt")
+            self.assertEqual(path.normpath(resource["asset"].path), "testfile.txt")
         elif name == "string":
             self.assertIsInstance(resource["asset"], StringAsset)
             self.assertEqual(resource["asset"].text, "its a string")
