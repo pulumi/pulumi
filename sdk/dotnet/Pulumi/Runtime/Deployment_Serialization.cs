@@ -74,18 +74,6 @@ namespace Pulumi
 
                 return prop;
             }
-           
-
-
-    if (prop == null ||
-
-        typeof prop === "boolean" ||
-        typeof prop === "number" ||
-        typeof prop === "string") {
-
-        }
-        return prop;
-    }
 
     if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
