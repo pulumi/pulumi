@@ -267,7 +267,7 @@ namespace Pulumi
                 // this resource's properties will be resolved asynchronously after the operation
                 // completes, so that dependent computations resolve normally.  If we are just
                 // planning, on the other hand, values will never resolve.
-                registerResource(this, type, name, custom, properties, opts);
+                Runtime.RegisterResource(this, type, name, custom, properties, opts);
             }
         }
 

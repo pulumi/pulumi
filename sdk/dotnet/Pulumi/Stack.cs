@@ -65,7 +65,9 @@ namespace Pulumi
 
             try
             {
-                this.Outputs = Output.Create(init()).Apply(m => m.GetInnerMap());
+                var task = init();
+                Deployment.RegisterTask(task);
+                this.Outputs = Output.Create(task).Apply(m => m.GetInnerMap());
             }
             finally
             {
