@@ -9,7 +9,7 @@ using System.Collections.Immutable;
 
 namespace Pulumi
 {
-    public class InputMap<V> : IEnumerable
+    public class InputMap<V> : IEnumerable, IInput
     {
         private Output<ImmutableDictionary<string, V>> _values;
 
@@ -21,6 +21,9 @@ namespace Pulumi
             => _values = values;
 
         internal Output<ImmutableDictionary<string, V>> GetInnerMap()
+            => _values;
+
+        IOutput IInput.ToOutput()
             => _values;
 
         public void Add(string key, Input<V> value)

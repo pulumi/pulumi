@@ -19,12 +19,11 @@ namespace Pulumi
     /// <param name="resource">The Resource instance that is being transformed.</param>
     /// <param name="type">The type of the Resource.</param>
     /// <param name="name">The name of the Resource.</param>
-    /// <param name="properties">The original properties passed to the Resource constructor.</param>
-    /// <param name="options">The original resource options passed to the Resource constructor.</param>
+    /// <param name="args">The original properties passed to the Resource constructor.</param>
+    /// <param name="opts">The original resource options passed to the Resource constructor.</param>
     /// <returns>The new values to use for the `properties` and `options` of the <see
     /// cref="Resource"/> in place of the originally provided values.</returns>
-    public delegate (ImmutableDictionary<string, Input<object>> properties, ResourceOptions options)? ResourceTransformation(
+    public delegate (ResourceArgs args, ResourceOptions opts)? ResourceTransformation(
         Resource resource, string type, string name,
-        ImmutableDictionary<string, Input<object>> properties,
-        ResourceOptions options);
+        ResourceArgs args, ResourceOptions opts);
 }

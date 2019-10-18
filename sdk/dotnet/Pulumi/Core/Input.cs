@@ -12,7 +12,7 @@ namespace Pulumi
         IOutput ToOutput();
     }
 
-    public class Input<T> : IOutput
+    public class Input<T> : IInput
     {
         private readonly Output<T> _outputValue;
 

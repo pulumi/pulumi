@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Pulumirpc;
 
 namespace Pulumi
 {
@@ -14,7 +15,8 @@ namespace Pulumi
             Resource resource, string type, string name, bool custom,
             ImmutableDictionary<string, Input<object>> properties, ResourceOptions opts)
         {
-            var monitor = 
+            var rrr = new RegisterResourceRequest();
+            rrr.Object
 //            const monitor = getMonitor();
 //            const resopAsync = prepareResource(label, res, custom, props, opts);
 

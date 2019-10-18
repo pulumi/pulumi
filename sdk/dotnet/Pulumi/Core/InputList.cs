@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace Pulumi
 {
-    public class InputList<T> : IEnumerable
+    public class InputList<T> : IEnumerable, IInput
     {
         private Output<ImmutableArray<T>> _values;
 
@@ -20,6 +20,9 @@ namespace Pulumi
 
         private InputList(Output<ImmutableArray<T>> values)
             => _values = values;
+
+        IOutput IInput.ToOutput()
+            => _values;
 
         public void Add(params Input<T>[] inputs)
         {
