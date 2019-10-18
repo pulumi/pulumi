@@ -2,13 +2,9 @@
 
 #nullable enable
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading.Tasks;
+using Pulumirpc;
 
 namespace Pulumi
 {
@@ -20,6 +16,40 @@ namespace Pulumi
     /// </summary>
     public class CustomResource : Resource
     {
+        /// <summary>
+        /// Id is the provider-assigned unique ID for this managed resource.  It is set during
+        /// deployments and may be missing (unknown) during planning phases.
+        /// </summary>
+        public readonly Output<Id> Id;
+
+        [ResourceField("id")]
+        private readonly TaskCompletionSource<Id> _id = new TaskCompletionSource<Id>();
+
+        /// <summary>
+        /// Creates and registers a new managed resource.  t is the fully qualified type token and
+        /// name is the "name" part to use in creating a stable and globally unique URN for the
+        /// object. dependsOn is an optional list of other resources that this resource depends on,
+        /// controlling the order in which we perform resource operations.Creating an instance does
+        /// not necessarily perform a create on the physical entity which it represents, and
+        /// instead, this is dependent upon the diffing of the new goal state compared to the
+        /// current known resource state.
+        /// </summary>
+        public CustomResource(string type, string name, ImmutableDictionary<string, Input<object>> properties, ResourceOptions? opts = null)
+            : base(type, name, custom: true, properties, opts ?? new ResourceOptions())
+        {
+            if (opts is ComponentResourceOptions componentOpts && componentOpts.Providers != null)
+            {
+                throw new ResourceException("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", this);
+            }
+
+            this.Id = Output.Create(_id.Task);
+        }
+
+        internal override void AttachRegistrations(Task<RegisterResourceResponse> response)
+        {
+            base.AttachRegistrations(response);
+            response.Assign(_id, r => new Id(r.Id));
+        }
     }
 }
 

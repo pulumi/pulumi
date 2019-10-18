@@ -3,6 +3,9 @@
 #nullable enable
 
 using System.Collections.Immutable;
+using System.Linq;
+using System.Threading.Tasks;
+using Pulumirpc;
 
 namespace Pulumi
 {
@@ -36,6 +39,11 @@ namespace Pulumi
         protected void RegisterOutputs(InputMap<string, object>? map = null)
         {
             Runtime.RegisterResourceOutputs(this, map ?? new InputMap<string, object>());
+        }
+
+        internal sealed override void AttachRegistrations(Task<RegisterResourceResponse> response)
+        {
+            base.AttachRegistrations(response);
         }
     }
 }

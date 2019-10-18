@@ -79,19 +79,7 @@ namespace Pulumi
         public static Output<T> Create(Task<T> value)
         {
             var tcs = new TaskCompletionSource<OutputData<T>>();
-            value.ContinueWith(t =>
-            {
-                switch (t.Status)
-                {
-                    default: throw new InvalidOperationException("Task was not complete: " + t.Status);
-                    case TaskStatus.Canceled: tcs.SetCanceled(); break;
-                    case TaskStatus.Faulted: tcs.SetException(t.Exception.InnerExceptions); break;
-                    case TaskStatus.RanToCompletion:
-                        tcs.SetResult(new OutputData<T>(t.Result, isKnown: true, isSecret: false));
-                        break;
-                }
-            });
-
+            value.Assign(tcs, t => new OutputData<T>(t, isKnown: true, isSecret: false));
             return new Output<T>(tcs.Task);
         }
 

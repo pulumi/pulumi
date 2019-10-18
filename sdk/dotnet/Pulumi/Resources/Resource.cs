@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
+using Pulumirpc;
 
 namespace Pulumi
 {
@@ -62,7 +64,10 @@ namespace Pulumi
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
         /// after deployments.
         /// </summary>
-        public Output<Urn> Urn { get; }
+        public readonly Output<Urn> Urn;
+
+        [ResourceField("urn")]
+        private readonly TaskCompletionSource<Urn> _urn = new TaskCompletionSource<Urn>();
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
@@ -126,6 +131,8 @@ namespace Pulumi
                 throw new InvalidOperationException("No stack instance, and we were not the stack itself.");
             }
 
+            this.Urn = Output.Create(_urn.Task);
+
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
             transformations.AddRange(opts.ResourceTransformations);
             if (parent != null)
@@ -184,7 +191,7 @@ namespace Pulumi
                 opts.Aliases = opts.Aliases.ToList();
                 foreach (var parentAlias in opts.Parent._aliases)
                 {
-                    opts.Aliases.Add(inheritedChildAlias(name, opts.Parent._name, parentAlias, type));
+                    opts.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, opts.Parent._name, parentAlias, type));
                 }
 
                 this._providers = opts.Parent._providers;
@@ -217,15 +224,17 @@ namespace Pulumi
             }
             else
             {
-                // Note: we checked above that at most one of opts.provider or opts.providers is set.
+                // Note: we checked above that at most one of opts.provider or opts.providers is
+                // set.
 
-                // If opts.provider is set, treat that as if we were given a array of provider with that
-                // single value in it.  Otherwise, take the array or map of providers, convert it to a
+                // If opts.provider is set, treat that as if we were given a array of provider with
+                // that single value in it.  Otherwise, take the array of providers, convert it to a
                 // map and combine with any providers we've already set from our parent.
-                var providers = opts.Provider != null
-                    ? convertToProvidersMap(new[] { opts.Provider })
-                    : convertToProvidersMap(componentOpts?.Providers);
-                this._providers = this._providers.AddRange(providers);
+                var providerList = opts.Provider != null
+                    ? new List<ProviderResource> { opts.Provider }
+                    : componentOpts?.Providers;
+
+                this._providers = this._providers.AddRange(ConvertToProvidersMap(providerList));
             }
 
             this._protect = opts.Protect == true;
@@ -235,7 +244,7 @@ namespace Pulumi
             var aliases = ImmutableArray.CreateBuilder<Input<Urn>>();
             foreach (var alias in opts.Aliases)
             {
-                aliases.Add(collapseAliasToUrn(alias, name, type, opts.Parent));
+                aliases.Add(CollapseAliasToUrn(alias, name, type, opts.Parent));
             }
             this._aliases = aliases.ToImmutable();
 
@@ -274,6 +283,11 @@ namespace Pulumi
             return result;
         }
 
+        internal virtual void AttachRegistrations(Task<RegisterResourceResponse> response)
+        {
+            response.Assign(_urn, r => new Urn(r.Urn));
+        }
+
         private static Output<Urn> CollapseAliasToUrn(
             Input<UrnOrAlias> alias,
             string defaultName,
@@ -292,7 +306,7 @@ namespace Pulumi
                 var type = alias.Type.HasValue ? alias.Type.Value : defaultType;
                 var project = alias.Project.HasValue ? alias.Project.Value : GlobalOptions.Instance.Project;
                 var stack = alias.Stack.HasValue ? alias.Stack.Value : GlobalOptions.Instance.Stack;
-                
+
                 if (alias.Parent.HasValue && alias.ParentUrn.HasValue)
                     throw new ArgumentException("Alias cannot specify Parent and ParentUrn at the same time.");
 
@@ -322,6 +336,20 @@ namespace Pulumi
 
                 return Pulumi.Urn.Create(name, type, parent, parentUrn, project, stack);
             });
+        }
+
+        private static ImmutableDictionary<string, ProviderResource> ConvertToProvidersMap(List<ProviderResource>? providers)
+        {
+            var result = ImmutableDictionary.CreateBuilder<string, ProviderResource>();
+            if (providers != null)
+            {
+                foreach (var provider in providers)
+                {
+                    result[provider.Package] = provider;
+                }
+            }
+
+            return result.ToImmutable();
         }
     }
 }

@@ -9,12 +9,24 @@ namespace Pulumi
     /// <summary>
     /// An automatically generated logical URN, used to stably identify resources.
     /// </summary>
-    public sealed class Urn
+    public sealed class Urn : IEquatable<Urn>
     {
         private readonly string _value;
 
-        private Urn(string value)
-            => _value = value;
+        internal Urn(string value)
+            => _value = value ?? throw new ArgumentNullException(nameof(value));
+
+        public override string ToString()
+            => _value;
+
+        public override int GetHashCode()
+            => _value.GetHashCode();
+
+        public override bool Equals(object obj)
+            => obj is Urn urn && Equals(urn);
+
+        public bool Equals(Urn urn)
+            => _value == urn._value;
 
         /// <summary>
         /// Computes a URN from the combination of a resource name, resource type, optional parent,
@@ -23,8 +35,8 @@ namespace Pulumi
         /// <returns></returns>
         public static Output<Urn> Create(
             Input<string> name, Input<string> type,
-            Resource? parent, Input<Urn>? parentUrn,
-            Input<string>? project, Input<string>? stack)
+            Resource? parent = null, Input<Urn>? parentUrn = null,
+            Input<string>? project = null, Input<string>? stack = null)
         {
             if (parent != null && parentUrn != null)
                 throw new ArgumentException("Only one of `parent` and `parentUrn` can be non-null.");
@@ -45,6 +57,46 @@ namespace Pulumi
             }
 
             return Output.Format($"{parentPrefix}{type}::{name}").Apply(value => new Urn(value));
+        }
+
+        /// <summary>
+        /// inheritedChildAlias computes the alias that should be applied to a child based on an
+        /// alias applied to it's parent. This may involve changing the name of the resource in
+        /// cases where the resource has a named derived from the name of the parent, and the parent
+        /// name changed.
+        /// </summary>
+        internal static Output<UrnOrAlias> InheritedChildAlias(string childName, string parentName, Input<Urn> parentAlias, string childType)
+        {
+            var urn = InheritedChildAliasWorker(childName, parentName, parentAlias, childType);
+            return urn.Apply(u => (UrnOrAlias)u);
+        }
+
+        internal static Output<Urn> InheritedChildAliasWorker(string childName, string parentName, Input<Urn> parentAlias, string childType)
+        {
+            // If the child name has the parent name as a prefix, then we make the assumption that
+            // it was constructed from the convention of using `{name}-details` as the name of the
+            // child resource.  To ensure this is aliased correctly, we must then also replace the
+            // parent aliases name in the prefix of the child resource name.
+            //
+            // For example:
+            // * name: "newapp-function"
+            // * opts.parent.__name: "newapp"
+            // * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+            // * parentAliasName: "app"
+            // * aliasName: "app-function"
+            // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+            var aliasName = Output.Create(childName);
+            if (childName.StartsWith(parentName))
+            {
+                aliasName = parentAlias.ToOutput().Apply(parentAliasUrn =>
+                {
+                    var parentAliasVal = parentAliasUrn._value;
+                    var parentAliasName = parentAliasVal.Substring(parentAliasVal.LastIndexOf("::") + 2);
+                    return parentAliasName + childName.Substring(parentName.Length);
+                });
+            }
+
+            return Create(aliasName, childType, parentUrn: parentAlias);
         }
     }
 }

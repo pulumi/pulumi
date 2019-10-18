@@ -4,6 +4,8 @@
 
 using System;
 using System.Collections.Immutable;
+using System.Threading.Tasks;
+using Pulumirpc;
 
 namespace Pulumi
 {
@@ -11,5 +13,35 @@ namespace Pulumi
     {
         public static ImmutableArray<TResult> SelectAsArray<TItem, TResult>(this ImmutableArray<TItem> items, Func<TItem, TResult> map)
             => ImmutableArray.CreateRange(items, map);
+
+        public static void Assign<X, Y>(
+            this Task<X> response, TaskCompletionSource<Y> tcs, Func<X, Y> extract)
+        {
+            response.ContinueWith(t =>
+            {
+                switch (t.Status)
+                {
+                    default: throw new InvalidOperationException("Task was not complete: " + t.Status);
+                    case TaskStatus.Canceled: tcs.SetCanceled(); break;
+                    case TaskStatus.Faulted: tcs.SetException(t.Exception.InnerExceptions); break;
+                    case TaskStatus.RanToCompletion:
+                        try
+                        {
+                            tcs.SetResult(extract(t.Result));
+                        }
+                        catch (Exception e)
+                        {
+                            tcs.TrySetException(e);
+                        }
+                        break;
+                }
+
+
+                if (t.Status == TaskStatus.Canceled)
+                {
+                    tcs.set
+                }
+            });
+        }
     }
 }
