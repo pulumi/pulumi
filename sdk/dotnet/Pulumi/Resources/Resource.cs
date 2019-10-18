@@ -7,8 +7,11 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Threading.Tasks;
 using Pulumirpc;
+using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi
 {
@@ -67,7 +70,7 @@ namespace Pulumi
         public readonly Output<Urn> Urn;
 
         [ResourceField("urn")]
-        private readonly TaskCompletionSource<Urn> _urn = new TaskCompletionSource<Urn>();
+        private readonly TaskCompletionSource<OutputData<Urn>> _urn = new TaskCompletionSource<OutputData<Urn>>();
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
@@ -131,7 +134,7 @@ namespace Pulumi
                 throw new InvalidOperationException("No stack instance, and we were not the stack itself.");
             }
 
-            this.Urn = Output.Create(_urn.Task);
+            this.Urn = new Output<Urn>(_urn.Task);
 
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
             transformations.AddRange(opts.ResourceTransformations);
@@ -283,9 +286,52 @@ namespace Pulumi
             return result;
         }
 
-        internal virtual void AttachRegistrations(Task<RegisterResourceResponse> response)
+        internal void AttachRegistrations(Task<RegisterResourceResponse> response)
         {
-            response.Assign(_urn, r => new Urn(r.Urn));
+            Attach(response, "urn", r => r.urn, v => new Urn(v));
+            Attach(response, "id", r => r.Id, v => new Id(v), optional: true);
+
+            foreach (var field in this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+            {
+                var resourceFieldAttribute = field.GetCustomAttribute<ResourceFieldAttribute>();
+                if (resourceFieldAttribute != null)
+                {
+                    var fieldName = resourceFieldAttribute.Name;
+                    Attach(response, field, fieldName, r => r.Object);
+                }
+            }
+        }
+
+        private void Deserialize(Task<RegisterResourceResponse> response, FieldInfo field, string fieldName)
+        {
+            RegisterResourceResponse r = null!;
+            if (r.Object.Fields.ContainsKey(fieldName))
+            {
+
+            }
+
+            var value = r.Object.Fields[fieldName];
+            value.ListValue
+            switch (value.KindCase)
+            {
+                case Value.KindOneofCase.NullValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.NumberValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StringValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.BoolValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StructValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.ListValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.None:
+                default:
+                    throw new NotSupportedException($"Unknown kind for field '{fieldName}': {value.KindCase}");
+            }
+
+            response.Assign(tcs)
         }
 
         private static Output<Urn> CollapseAliasToUrn(

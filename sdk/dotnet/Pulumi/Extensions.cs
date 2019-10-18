@@ -5,7 +5,6 @@
 using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Pulumirpc;
 
 namespace Pulumi
 {

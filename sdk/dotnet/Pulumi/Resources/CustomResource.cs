@@ -23,7 +23,7 @@ namespace Pulumi
         public readonly Output<Id> Id;
 
         [ResourceField("id")]
-        private readonly TaskCompletionSource<Id> _id = new TaskCompletionSource<Id>();
+        private readonly TaskCompletionSource<OutputData<Id>> _id = new TaskCompletionSource<OutputData<Id>>();
 
         /// <summary>
         /// Creates and registers a new managed resource.  t is the fully qualified type token and
@@ -42,13 +42,7 @@ namespace Pulumi
                 throw new ResourceException("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", this);
             }
 
-            this.Id = Output.Create(_id.Task);
-        }
-
-        internal override void AttachRegistrations(Task<RegisterResourceResponse> response)
-        {
-            base.AttachRegistrations(response);
-            response.Assign(_id, r => new Id(r.Id));
+            this.Id = new Output<Id>(_id.Task);
         }
     }
 }

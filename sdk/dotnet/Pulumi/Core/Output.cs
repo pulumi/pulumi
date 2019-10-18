@@ -52,6 +52,9 @@ namespace Pulumi
     {
         private readonly Task<OutputData<T>> _dataTask;
 
+        internal Output(Task<OutputData<T>> dataTask)
+            => _dataTask = dataTask;
+
         internal async Task<T> GetValue()
         {
             var data = await _dataTask.ConfigureAwait(false);
@@ -72,9 +75,6 @@ namespace Pulumi
             var data = await _dataTask.ConfigureAwait(false);
             return data.IsSecret;
         }
-
-        private Output(Task<OutputData<T>> dataTask)
-            => _dataTask = dataTask;
 
         public static Output<T> Create(Task<T> value)
         {
