@@ -50,7 +50,7 @@ namespace Pulumi
         public readonly Output<ImmutableDictionary<string, object>> Outputs =
             Output.Create(ImmutableDictionary<string, object>.Empty);
 
-        public Stack(Func<Task<InputMap<string, object>>> init)
+        public Stack(Func<Task<InputMap<object>>> init)
             : base(_rootPulumiStackTypeName, $"{GlobalOptions.Instance.Project}-{GlobalOptions.Instance.Stack}")
         {
             this.Project = GlobalOptions.Instance.Project;
@@ -66,7 +66,6 @@ namespace Pulumi
             try
             {
                 var task = init();
-                Deployment.RegisterTask(task);
                 this.Outputs = Output.Create(task).Apply(m => m.GetInnerMap());
             }
             finally

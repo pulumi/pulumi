@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -15,20 +14,58 @@ namespace Pulumi
     {
         private static readonly Queue<Task> _tasks = new Queue<Task>();
 
+        private static void Initialize()
+        {
+            var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
+            var engine = Environment.GetEnvironmentVariable("PULUMI_ENGINE");
+            var project = Environment.GetEnvironmentVariable("PULUMI_PROJECT");
+            var stack = Environment.GetEnvironmentVariable("PULUMI_STACK");
+            var pwd = Environment.GetEnvironmentVariable("PULUMI_PWD");
+            var dryRun = Environment.GetEnvironmentVariable("PULUMI_DRY_RUN");
+            var parallel = Environment.GetEnvironmentVariable("PULUMI_PARALLEL");
+            var tracing = Environment.GetEnvironmentVariable("PULUMI_TRACING");
+
+            GlobalOptions.Instance = new GlobalOptions
+            {
+                Engine = engine,
+                Monitor = monitor,
+                Project = project,
+                Pwd = pwd,
+                Stack = stack,
+                Tracing = tracing,
+            }
+
+            var engineChannel = new Channel(engine, ChannelCredentials.Insecure);
+            var monitorChannel = new Channel(monitor, ChannelCredentials.Insecure);
+
+            Runtime.Initialize(new Runtime.Settings(new Engine.EngineClient(engineChannel),
+                               new ResourceMonitor.ResourceMonitorClient(monitorChannel),
+                               stack, project, int.Parse(parallel), bool.Parse(dryRun)));
+        }
+
         public static Task Run(Action action)
             => Run(() =>
             {
                 action();
-                return new Dictionary<string, object>();
+                return new InputMap<object>();
             });
 
-        public static Task Run(Func<IDictionary<string, object>> func)
+        public static Task Run(Func<InputMap<object>> func)
             => Run(() => Task.FromResult(func()));
 
-        public static Task Run(Func<Task<IDictionary<string, object>>> func)
+        public static Task Run(Func<Task<InputMap<object>>> func)
         {
+            Initialize();
             new Stack(func);
             return WhileRunning();
+        }
+
+        internal static void RegisterTask(Task task)
+        {
+            lock (_tasks)
+            {
+                _tasks.Enqueue(task);
+            }
         }
 
         private static async Task WhileRunning()

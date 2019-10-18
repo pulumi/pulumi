@@ -259,7 +259,7 @@ namespace Pulumi
                     throw new ResourceException(
                         "Cannot read an existing resource unless it has a custom provider", opts.Parent);
                 }
-                readResource(this, type, name, properties, opts);
+                Deployment.RegisterTask(Runtime.ReadResourceAsync(this, type, name, properties, opts));
             }
             else
             {
@@ -267,7 +267,7 @@ namespace Pulumi
                 // this resource's properties will be resolved asynchronously after the operation
                 // completes, so that dependent computations resolve normally.  If we are just
                 // planning, on the other hand, values will never resolve.
-                Runtime.RegisterResource(this, type, name, custom, properties, opts);
+                Deployment.RegisterTask(Runtime.RegisterResourceAsync(this, type, name, custom, properties, opts));
             }
         }
 
@@ -286,53 +286,53 @@ namespace Pulumi
             return result;
         }
 
-        internal void AttachRegistrations(Task<RegisterResourceResponse> response)
-        {
-            Attach(response, "urn", r => r.urn, v => new Urn(v));
-            Attach(response, "id", r => r.Id, v => new Id(v), optional: true);
+        //internal void AttachRegistrations(Task<RegisterResourceResponse> response)
+        //{
+        //    Attach(response, "urn", r => r.urn, v => new Urn(v));
+        //    Attach(response, "id", r => r.Id, v => new Id(v), optional: true);
 
-            foreach (var field in this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
-            {
-                var resourceFieldAttribute = field.GetCustomAttribute<ResourceFieldAttribute>();
-                if (resourceFieldAttribute != null)
-                {
-                    var fieldName = resourceFieldAttribute.Name;
-                    Attach(response, field, fieldName, r => r.Object);
-                }
-            }
-        }
+        //    foreach (var field in this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+        //    {
+        //        var resourceFieldAttribute = field.GetCustomAttribute<ResourceFieldAttribute>();
+        //        if (resourceFieldAttribute != null)
+        //        {
+        //            var fieldName = resourceFieldAttribute.Name;
+        //            Attach(response, field, fieldName, r => r.Object);
+        //        }
+        //    }
+        //}
 
-        private void Deserialize(Task<RegisterResourceResponse> response, FieldInfo field, string fieldName)
-        {
-            RegisterResourceResponse r = null!;
-            if (r.Object.Fields.ContainsKey(fieldName))
-            {
+        //private void Deserialize(Task<RegisterResourceResponse> response, FieldInfo field, string fieldName)
+        //{
+        //    RegisterResourceResponse r = null!;
+        //    if (r.Object.Fields.ContainsKey(fieldName))
+        //    {
 
-            }
+        //    }
 
-            var value = r.Object.Fields[fieldName];
-            value.ListValue
-            switch (value.KindCase)
-            {
-                case Value.KindOneofCase.NullValue:
-                    break;
-                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.NumberValue:
-                    break;
-                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StringValue:
-                    break;
-                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.BoolValue:
-                    break;
-                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StructValue:
-                    break;
-                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.ListValue:
-                    break;
-                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.None:
-                default:
-                    throw new NotSupportedException($"Unknown kind for field '{fieldName}': {value.KindCase}");
-            }
+        //    var value = r.Object.Fields[fieldName];
+        //    value.ListValue
+        //    switch (value.KindCase)
+        //    {
+        //        case Value.KindOneofCase.NullValue:
+        //            break;
+        //        case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.NumberValue:
+        //            break;
+        //        case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StringValue:
+        //            break;
+        //        case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.BoolValue:
+        //            break;
+        //        case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StructValue:
+        //            break;
+        //        case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.ListValue:
+        //            break;
+        //        case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.None:
+        //        default:
+        //            throw new NotSupportedException($"Unknown kind for field '{fieldName}': {value.KindCase}");
+        //    }
 
-            response.Assign(tcs)
-        }
+        //    response.Assign(tcs)
+        //}
 
         private static Output<Urn> CollapseAliasToUrn(
             Input<UrnOrAlias> alias,

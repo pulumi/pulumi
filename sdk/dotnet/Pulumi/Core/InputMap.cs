@@ -9,45 +9,45 @@ using System.Collections.Immutable;
 
 namespace Pulumi
 {
-    public class InputMap<K, V> : IEnumerable
+    public class InputMap<V> : IEnumerable
     {
-        private Output<ImmutableDictionary<K, V>> _values;
+        private Output<ImmutableDictionary<string, V>> _values;
 
-        internal InputMap() : this(Output.Create(ImmutableDictionary<K, V>.Empty))
+        internal InputMap() : this(Output.Create(ImmutableDictionary<string, V>.Empty))
         {
         }
 
-        private InputMap(Output<ImmutableDictionary<K, V>> values)
+        private InputMap(Output<ImmutableDictionary<string, V>> values)
             => _values = values;
 
-        internal Output<ImmutableDictionary<K, V>> GetInnerMap()
+        internal Output<ImmutableDictionary<string, V>> GetInnerMap()
             => _values;
 
-        public void Add(Input<K> key, Input<V> value)
+        public void Add(string key, Input<V> value)
         {
-            var inputDictionary = (Input<ImmutableDictionary<K, V>>)_values;
-            _values = Output.Tuple(inputDictionary, key, value)
-                            .Apply(x => x.Item1.Add(x.Item2, x.Item3));
+            var inputDictionary = (Input<ImmutableDictionary<string, V>>)_values;
+            _values = Output.Tuple(inputDictionary, value)
+                            .Apply(x => x.Item1.Add(key, x.Item2));
         }
 
-        public Input<V> this[Input<K> key]
+        public Input<V> this[string key]
         {
             set => Add(key, value);
         }
 
         #region construct from dictionary types
 
-        public static implicit operator InputMap<K, V>(Dictionary<K, V> values)
+        public static implicit operator InputMap<V>(Dictionary<string, V> values)
             => Output.Create(values);
 
-        public static implicit operator InputMap<K, V>(ImmutableDictionary<K, V> values)
+        public static implicit operator InputMap<V>(ImmutableDictionary<string, V> values)
             => Output.Create(values);
 
-        public static implicit operator InputMap<K, V>(Output<Dictionary<K, V>> values)
+        public static implicit operator InputMap<V>(Output<Dictionary<string, V>> values)
             => values.Apply(d => ImmutableDictionary.CreateRange(d));
 
-        public static implicit operator InputMap<K, V>(Output<ImmutableDictionary<K, V>> values)
-            => new InputMap<K, V>(values);
+        public static implicit operator InputMap<V>(Output<ImmutableDictionary<string, V>> values)
+            => new InputMap<V>(values);
 
         #endregion
 
