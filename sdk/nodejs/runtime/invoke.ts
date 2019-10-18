@@ -86,7 +86,6 @@ export function invokeFallbackToAsync(tok: string, props: Inputs, opts: InvokeOp
 
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
-    console.log(label);
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     // Wait for all values to be available, and then perform the RPC.
@@ -131,14 +130,12 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
 
 function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): Promise<any> {
     const label = `Invoking function: tok=${tok} synchronously`;
-    console.log(label);
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     const serialized = serializePropertiesSync(props);
     log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
     const providerRef = getProviderRefSync();
-    console.log("ProviderRef: " + providerRef);
     const req = createInvokeRequest(tok, serialized, providerRef, opts);
 
     // Encode the request.
