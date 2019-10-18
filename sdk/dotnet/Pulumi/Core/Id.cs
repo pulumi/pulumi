@@ -11,21 +11,21 @@ namespace Pulumi
     /// </summary>
     public readonly struct Id : IEquatable<Id>
     {
-        private readonly string _value;
+        internal readonly string Value;
 
         internal Id(string value)
-            => _value = value ?? throw new ArgumentNullException(nameof(value));
+            => Value = value ?? throw new ArgumentNullException(nameof(value));
 
         public override string ToString()
-            => $"Id({_value})";
+            => $"Id({Value})";
 
         public override int GetHashCode()
-            => _value.GetHashCode();
+            => Value.GetHashCode();
 
         public override bool Equals(object obj)
             => obj is Id id && Equals(id);
 
         public bool Equals(Id id)
-            => _value == id._value;
+            => Value == id.Value;
     }
 }

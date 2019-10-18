@@ -80,7 +80,7 @@ namespace Pulumi
         /// <summary>
         /// A list of aliases applied to this resource.
         /// </summary>
-        private readonly ImmutableArray<Input<Urn>> _aliases;
+        internal readonly ImmutableArray<Input<Urn>> _aliases;
 
         /// <summary>
         /// The name assigned to the resource at construction.

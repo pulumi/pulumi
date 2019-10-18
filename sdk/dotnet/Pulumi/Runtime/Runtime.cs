@@ -3,7 +3,9 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Pulumirpc;
 
@@ -13,10 +15,52 @@ namespace Pulumi
     {
         public static async Task RegisterResourceAsync(
             Resource resource, string type, string name, bool custom,
-            ImmutableDictionary<string, Input<object>> properties, ResourceOptions opts)
+            ResourceArgs args, ResourceOptions opts)
         {
-            var rrr = new RegisterResourceRequest();
-            rrr.Object
+            var label = $"resource:{name}[{t}]";
+            Serilog.Log.Debug($"Registering resource: t={type}, name=${name}, custom=${custom}");
+
+            var registerArgs = await PrepareResourceAsync(label, resource, custom, args, opts).ConfigureAwait(false);
+
+            var customOpts = opts as CustomResourceOptions;
+            var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
+
+            var map = args.ToDictionary();
+            var rrr = new RegisterResourceRequest()
+            {
+                Type = type,
+                Name = name,
+                Parent = ,
+                Custom = custom,
+                Protect = opts.Protect ?? false,
+                Provider = ,
+                Version = opts.Version ?? "",
+                CustomTimeouts = new RegisterResourceRequest.Types.CustomTimeouts(),
+                DeleteBeforeReplace = deleteBeforeReplace ?? false,
+                DeleteBeforeReplaceDefined = deleteBeforeReplace != null,
+                AcceptSecrets = true,
+                Aliases = ,
+                Object = new Google.Protobuf.WellKnownTypes.Struct()
+            }
+
+            rrr.IgnoreChanges.AddRange(opts.IgnoreChanges);
+
+            if (customOpts != null) {
+                rrr.AdditionalSecretOutputs.AddRange(customOpts.AdditionalSecretOutputs);
+            }
+
+
+            if (opts.CustomTimeouts?.Create != null)
+                rrr.CustomTimeouts.Create = opts.CustomTimeouts.Create;
+
+            if (opts.CustomTimeouts?.Delete != null)
+                rrr.CustomTimeouts.Delete = opts.CustomTimeouts.Delete;
+
+            if (opts.CustomTimeouts?.Update != null)
+                rrr.CustomTimeouts.Update = opts.CustomTimeouts.Update;
+
+
+            rrr.Object.Fields
 //            const monitor = getMonitor();
 //            const resopAsync = prepareResource(label, res, custom, props, opts);
 
@@ -30,31 +74,12 @@ namespace Pulumi
 //(excessiveDebugOutput ? `, obj =${ JSON.stringify(resop.serializedProps)}` : ``));
 
 //            const req = new resproto.RegisterResourceRequest();
-//            req.setType(t);
-//            req.setName(name);
 //            req.setParent(resop.parentURN);
-//            req.setCustom(custom);
 //            req.setObject(gstruct.Struct.fromJavaScript(resop.serializedProps));
-//            req.setProtect(opts.protect);
 //            req.setProvider(resop.providerRef);
 //            req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
-//            req.setDeletebeforereplace((< any > opts).deleteBeforeReplace || false);
-//            req.setDeletebeforereplacedefined((< any > opts).deleteBeforeReplace !== undefined);
-//            req.setIgnorechangesList(opts.ignoreChanges || []);
-//            req.setVersion(opts.version || "");
-//            req.setAcceptsecrets(true);
-//            req.setAdditionalsecretoutputsList((< any > opts).additionalSecretOutputs || []);
-//            req.setAliasesList(resop.aliases);
 //            req.setImportid(resop.import || "");
 
-//            const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
-//            if (opts.customTimeouts != null)
-//            {
-//                customTimeouts.setCreate(opts.customTimeouts.create);
-//                customTimeouts.setUpdate(opts.customTimeouts.update);
-//                customTimeouts.setDelete(opts.customTimeouts.delete);
-//            }
-//            req.setCustomtimeouts(customTimeouts);
 
 //            const propertyDependencies = req.getPropertydependenciesMap();
 //            for (const [key, resourceURNs] of resop.propertyToDirectDependencyURNs) {
@@ -116,6 +141,121 @@ namespace Pulumi
 //        });
 //    }), label);
 
+        }
+
+        private async Task<PrepareResult> PrepareResource(
+            string label, Resource res, bool custom,
+            ResourceArgs args, ResourceOptions opts)
+        {
+
+            //    // Simply initialize the URN property and get prepared to resolve it later on.
+            //    // Note: a resource urn will always get a value, and thus the output property
+            //    // for it can always run .apply calls.
+            //    let resolveURN: (urn: URN) => void;
+            //    (res as any).urn = new Output(
+            //        res,
+            //        debuggablePromise(
+            //            new Promise<URN>(resolve => resolveURN = resolve),
+            //            `resolveURN(${ label})`),
+            //        /*isKnown:*/ Promise.resolve(true),
+            //        /*isSecret:*/ Promise.resolve(false));
+
+            //    // If a custom resource, make room for the ID property.
+            //    let resolveID: ((v: any, performApply: boolean) => void) | undefined;
+            //    if (custom) {
+            //        let resolveValue: (v: ID) => void;
+            //        let resolveIsKnown: (v: boolean) => void;
+            //        (res as any).id = new Output(
+            //            res,
+            //            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${ label})`),
+            //            debuggablePromise(new Promise<boolean>(
+            //                resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${ label})`),
+            //            Promise.resolve(false));
+
+            //        resolveID = (v, isKnown) => {
+            //            resolveValue(v);
+            //        resolveIsKnown(isKnown);
+            //    };
+            //}
+
+            //// Now "transfer" all input properties into unresolved Promises on res.  This way,
+            //// this resource will look like it has all its output properties to anyone it is
+            //// passed to.  However, those promises won't actually resolve until the registerResource
+            //// RPC returns
+            //const resolvers = transferProperties(res, label, props);
+
+            /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
+
+            // Before we can proceed, all our dependencies must be finished.
+            var explicitDirectDependencies = new HashSet<Resource>(
+                await GatherExplicitDependenciesAsync(opts.DependsOn).ConfigureAwait(false));
+
+            // Serialize out all our props to their final values.  In doing so, we'll also collect all
+            // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
+            var (serializedProps, propertyToDirectDependencies) = await SerializeResourcePropertiesAsync(label, args);
+
+            // Wait for the parent to complete.
+            // If no parent was provided, parent to the root resource.
+            var parentURN = opts.Parent != null
+                ? await opts.Parent.Urn.GetValueAsync().ConfigureAwait(false)
+                : await GetRootResource().ConfigureAwait(false);
+
+            string? providerRef = null;
+            Id? importID = null;
+            if (custom) {
+                var customOpts = opts as CustomResourceOptions;
+                importID = customOpts?.Import;
+                providerRef = await ProviderResource.Register(customOpts?.Provider);
+            }
+
+            // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
+            // the dependency graph and optimize operations accordingly.
+
+            // The list of all dependencies (implicit or explicit).
+            var allDirectDependencies = new HashSet<Resource>(explicitDirectDependencies);
+
+            var allDirectDependencyURNs = await GetAllTransitivelyReferencedCustomResourceURNs(explicitDirectDependencies).ConfigureAwait(false);
+            var propertyToDirectDependencyURNs = new Dictionary<string, HashSet<Urn>>();
+
+            foreach (var (propertyName, directDependencies) in propertyToDirectDependencies) {
+                AddAll(allDirectDependencies, directDependencies);
+
+                var urns = await GetAllTransitivelyReferencedCustomResourceURNs(directDependencies).ConfigureAwait(false);
+                AddAll(allDirectDependencyURNs, urns);
+                propertyToDirectDependencyURNs[propertyName] = urns;
+            }
+
+            // Wait for all aliases. Note that we use `res.__aliases` instead of `opts.aliases` as the former has been processed
+            // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
+            // simplifying aliases down to URNs.
+            var aliases = new List<Urn>();
+            var uniqueAliases = new HashSet<Urn>();
+            foreach (var alias in res._aliases) {
+                var aliasVal = await alias.ToOutput().GetValueAsync();
+                if (!uniqueAliases.Add(aliasVal)) {
+                    aliases.Add(aliasVal);
+                }
+            }
+
+            return new PrepareResult(
+                serializedProps,
+                parentURN,
+                providerRef,
+                allDirectDependencyURNs,
+                propertyToDirectDependencyURNs,
+                aliases,
+                importID);
+    //    //    resolveURN: resolveURN!,
+    //    //resolveID: resolveID,
+    //    //resolvers: resolvers,
+    //    serializedProps: serializedProps,
+    //    parentURN: parentURN,
+    //    providerRef: providerRef,
+    //    allDirectDependencyURNs: allDirectDependencyURNs,
+    //    propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
+    //    aliases: aliases,
+    //    import: importID,
+    //};
         }
     }
 }

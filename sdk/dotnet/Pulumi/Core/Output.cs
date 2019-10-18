@@ -59,11 +59,11 @@ namespace Pulumi
         internal Output(Task<OutputData<T>> dataTask)
             => DataTask = dataTask;
 
-        //internal async Task<T> GetValueAsync()
-        //{
-        //    var data = await _dataTask.ConfigureAwait(false);
-        //    return data.Value;
-        //}
+        internal async Task<T> GetValueAsync()
+        {
+            var data = await DataTask.ConfigureAwait(false);
+            return data.Value;
+        }
 
         //internal async Task<bool> IsKnownAsync()
         //{
