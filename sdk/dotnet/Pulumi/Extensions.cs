@@ -11,6 +11,17 @@ namespace Pulumi
 {
     internal static class Extensions
     {
+        public static bool AddRange<T>(this HashSet<T> to, IEnumerable<T> values)
+        {
+            var result = false;
+            foreach (var value in values)
+            {
+                result |= to.Add(value);
+            }
+
+            return result;
+        }
+
         public static void Deconstruct<K, V>(this KeyValuePair<K, V> pair, out K key, out V value)
         {
             key = pair.Key;

@@ -3,10 +3,10 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -49,15 +49,20 @@ namespace Pulumi
 
     internal interface IOutput
     {
+        ImmutableHashSet<Resource> Resources { get; }
         Task<OutputData<object?>> GetDataAsync();
     }
 
     public class Output<T> : IOutput
     {
+        internal ImmutableHashSet<Resource> Resources;
         internal readonly Task<OutputData<T>> DataTask;
 
-        internal Output(Task<OutputData<T>> dataTask)
-            => DataTask = dataTask;
+        internal Output(ImmutableHashSet<Resource> resources, Task<OutputData<T>> dataTask)
+        {
+            Resources = resources;
+            DataTask = dataTask;
+        }
 
         internal async Task<T> GetValueAsync()
         {
@@ -77,6 +82,8 @@ namespace Pulumi
         //    return data.IsSecret;
         //}
 
+        ImmutableHashSet<Resource> IOutput.Resources => this.Resources;
+
         async Task<OutputData<object?>> IOutput.GetDataAsync()
             => await DataTask.ConfigureAwait(false);
 
@@ -84,14 +91,14 @@ namespace Pulumi
         {
             var tcs = new TaskCompletionSource<OutputData<T>>();
             value.Assign(tcs, t => new OutputData<T>(t, isKnown: true, isSecret: false));
-            return new Output<T>(tcs.Task);
+            return new Output<T>(ImmutableHashSet<Resource>.Empty, tcs.Task);
         }
 
         public Output<U> Apply<U>(Func<T, U> func)
             => Apply(t => Output.Create(func(t)));
 
         public Output<U> Apply<U>(Func<T, Output<U>> func)
-            => new Output<U>(ApplyHelperAsync(DataTask, func));
+            => new Output<U>(Resources, ApplyHelperAsync(DataTask, func));
 
         private static async Task<OutputData<U>> ApplyHelperAsync<U>(
             Task<OutputData<T>> dataTask, Func<T, Output<U>> func)
@@ -106,7 +113,7 @@ namespace Pulumi
         }
 
         internal static Output<ImmutableArray<T>> All(ImmutableArray<Input<T>> inputs)
-            => new Output<ImmutableArray<T>>(AllHelperAsync(inputs));
+            => new Output<ImmutableArray<T>>(GetAllResources(inputs), AllHelperAsync(inputs));
 
         private static async Task<OutputData<ImmutableArray<T>>> AllHelperAsync(ImmutableArray<Input<T>> inputs)
         {
@@ -129,7 +136,12 @@ namespace Pulumi
             => (isKnown && data.IsKnown, isSecret || data.IsSecret);
 
         internal static Output<(X, Y, Z)> Tuple<X, Y, Z>(Input<X> item1, Input<Y> item2, Input<Z> item3)
-            => new Output<(X, Y, Z)>(TupleHelperAsync(item1, item2, item3));
+            => new Output<(X, Y, Z)>(
+                GetAllResources(new IInput[] { item1, item2, item3 }),
+                TupleHelperAsync(item1, item2, item3));
+
+        private static ImmutableHashSet<Resource> GetAllResources(IEnumerable<IInput> inputs)
+            => ImmutableHashSet.CreateRange(inputs.SelectMany(i => i.ToOutput().Resources));
 
         private static async Task<OutputData<(X, Y, Z)>> TupleHelperAsync<X, Y, Z>(Input<X> item1, Input<Y> item2, Input<Z> item3)
         {

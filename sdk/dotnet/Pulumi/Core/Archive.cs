@@ -4,17 +4,26 @@
 
 using System;
 using System.Collections.Immutable;
+using Pulumi.Rpc;
 
 namespace Pulumi
 {
     /// <summary>
     /// An Archive represents a collection of named assets.
     /// </summary>
-    public abstract class Archive
+    public abstract class Archive : IAssetOrArchive
     {
         private protected Archive()
         {
         }
+
+        (string sigKey, string propName, object value) IAssetOrArchive.GetSerializationData()
+        {
+            var (propName, value) = GetSerializationData();
+            return (Constants.SpecialArchiveSig, propName, value);
+        }
+
+        internal abstract (string propName, object value) GetSerializationData();
     }
 
     public struct AssetOrArchive
@@ -55,10 +64,13 @@ namespace Pulumi
         /// <summary>
         /// A map of names to assets.
         /// </summary>
-        internal readonly ImmutableDictionary<string, AssetOrArchive> _assets;
+        private readonly ImmutableDictionary<string, AssetOrArchive> _assets;
 
         public AssetArchive(ImmutableDictionary<string, AssetOrArchive> assets)
                 => _assets = assets ?? throw new ArgumentNullException(nameof(assets));
+
+        internal override (string propName, object value) GetSerializationData()
+            => ("assets", _assets);
     }
 
     /// <summary>
@@ -71,10 +83,13 @@ namespace Pulumi
         /// <summary>
         /// The path to the asset file.
         /// </summary>
-        internal readonly string Path;
+        private readonly string _path;
 
         public FileArchive(string path)
-            => this.Path = path ?? throw new ArgumentNullException(nameof(path));
+            => this._path = path ?? throw new ArgumentNullException(nameof(path));
+
+        internal override (string propName, object value) GetSerializationData()
+            => ("path", _path);
     }
 
     /// <summary>
@@ -88,9 +103,12 @@ namespace Pulumi
         /// <summary>
         /// The URI where the archive lives.
         /// </summary>
-        internal readonly string Uri;
+        private readonly string _uri;
 
         public RemoteArchive(string uri)
-                => this.Uri = uri ?? throw new ArgumentNullException(nameof(uri));
+                => _uri = uri ?? throw new ArgumentNullException(nameof(uri));
+
+        internal override (string propName, object value) GetSerializationData()
+            => ("uri", _uri);
     }
 }

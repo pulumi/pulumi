@@ -3,17 +3,31 @@
 #nullable enable
 
 using System;
+using Pulumi.Rpc;
 
 namespace Pulumi
 {
+    internal interface IAssetOrArchive
+    {
+        (string sigKey, string propName, object value) GetSerializationData();
+    }
+
     /// <summary>
     /// Asset represents a single blob of text or data that is managed as a first class entity.
     /// </summary>
-    public abstract class Asset
+    public abstract class Asset : IAssetOrArchive
     {
         private protected Asset()
         {
         }
+
+        (string sigKey, string propName, object value) IAssetOrArchive.GetSerializationData()
+        {
+            var (propName, value) = GetSerializationData();
+            return (Constants.SpecialAssetSig, propName, value);
+        }
+
+        internal abstract (string propName, object value) GetSerializationData();
     }
 
     /// <summary>
@@ -24,10 +38,13 @@ namespace Pulumi
         /// <summary>
         /// The path to the asset file.
         /// </summary>
-        internal string Path { get; }
+        private readonly string _path;
 
         public FileAsset(string path)
-            => this.Path = path ?? throw new ArgumentNullException(nameof(path));
+            => _path = path ?? throw new ArgumentNullException(nameof(path));
+
+        internal override (string propName, object value) GetSerializationData()
+            => ("path", _path);
     }
 
 
@@ -39,10 +56,13 @@ namespace Pulumi
         /// <summary>
         /// The string contents.
         /// </summary>
-        internal string Text { get; }
+        private readonly string _text;
 
         public StringAsset(string text)
-            => this.Text = text ?? throw new ArgumentNullException(nameof(text));
+            => _text = text ?? throw new ArgumentNullException(nameof(text));
+
+        internal override (string propName, object value) GetSerializationData()
+            => ("text", _text);
     }
 
     /// <summary>
@@ -56,9 +76,12 @@ namespace Pulumi
         /// <summary>
         /// The URI where the asset lives.
         /// </summary>
-        internal string Uri { get; }
+        private readonly string _uri;
 
         public RemoteAsset(string uri)
-            => this.Uri = uri ?? throw new ArgumentNullException(nameof(uri));
+            => _uri = uri ?? throw new ArgumentNullException(nameof(uri));
+
+        internal override (string propName, object value) GetSerializationData()
+            => ("uri", _uri);
     }
 }
