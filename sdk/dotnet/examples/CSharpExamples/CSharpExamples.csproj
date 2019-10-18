@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PulumiAzure\PulumiAzure.csproj" />
+    <ProjectReference Include="..\..\Pulumi\Pulumi.csproj" />
+  </ItemGroup>
+
+</Project>

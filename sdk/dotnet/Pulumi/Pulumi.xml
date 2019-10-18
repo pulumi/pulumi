@@ -1,0 +1,3268 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Pulumi</name>
+    </assembly>
+    <members>
+        <member name="T:Pulumi.Alias">
+             <summary>
+             Alias is a partial description of prior named used for a resource. It can be processed in
+             the context of a resource creation to determine what the full aliased URN would be.
+            
+             Note there is a semantic difference between properties being absent from this type and properties
+             having the `undefined` value.Specifically, there is a difference between:
+            
+             ```c#
+             new Alias { Name = "foo", Parent = null } // and
+             new Alias { Name = "foo" }
+             ```
+            
+             The presence of a property indicates if its value should be used. If absent, then the value
+             is not used. So, in the above while `alias.Parent` is `null` for both, the first alias
+             means "the original urn had no parent" while the second alias means "use the current
+             parent".
+            
+             Note: to indicate that a resource was previously parented by the root stack, it is
+             recommended that you use:
+            
+             <c>Aliases = { new Alias { Parent = Pulumi.Stack.Root } }</c>
+            
+             This form is self-descriptive and makes the intent clearer than using:
+            
+             <c>Aliases = { new Alias { Parent = null } }</c>
+             </summary>
+        </member>
+        <member name="P:Pulumi.Alias.Name">
+            <summary>
+            The previous name of the resource.  If not provided, the current name of the resource is
+            used.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Alias.Type">
+            <summary>
+            The previous type of the resource.  If not provided, the current type of the resource is used.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Alias.Stack">
+            <summary>
+            The previous stack of the resource.  If not provided, defaults to <c>Pulumi.Stack.Current</c>`.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Alias.Project">
+            <summary>
+            The previous project of the resource. If not provided, defaults to <c>Pulumi.Project.Current</c>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Alias.Parent">
+            <summary>
+            The previous parent of the resource. If not provided (i.e. <c>new Alias { Name =
+            "foo"}</c>), the current parent of the resource is used (<c>opts.Parent</c> if provided,
+            else the implicit stack resource parent).
+            
+            To specify no original parent, use <c>new Alias { Parent = Pulumi.Stack.Root }</c>.
+            
+            Only specify one of <see cref="P:Pulumi.Alias.Parent"/> or <see cref="P:Pulumi.Alias.ParentUrn"/>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Alias.ParentUrn">
+            <summary>
+            The previous parent of the resource. If not provided (i.e. <c>new Alias { Name =
+            "foo"}</c>), the current parent of the resource is used (<c>opts.Parent</c> if provided,
+            else the implicit stack resource parent).
+            
+            To specify no original parent, use <c>new Alias { Parent = Pulumi.Stack.Root }</c>.
+            
+            Only specify one of <see cref="P:Pulumi.Alias.Parent"/> or <see cref="P:Pulumi.Alias.ParentUrn"/>.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Id">
+            <summary>
+            A provider-assigned ID.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Optional`1">
+            <summary>
+            Combines a value, <see cref="P:Pulumi.Optional`1.Value"/>, and a flag, <see cref="P:Pulumi.Optional`1.HasValue"/>, indicating
+            whether or not that value is meaningful.
+            </summary>
+            <typeparam name="T">The type of the value.</typeparam>
+        </member>
+        <member name="M:Pulumi.Optional`1.#ctor(`0)">
+            <summary>
+            Constructs an <see cref="T:Pulumi.Optional`1"/> with a meaningful value.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Optional`1.HasValue">
+            <summary>
+            Returns <see langword="true"/> if the <see cref="P:Pulumi.Optional`1.Value"/> will return a meaningful
+            value.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Optional`1.Value">
+            <summary>
+            Gets the value of the current object.  Not meaningful unless <see cref="P:Pulumi.Optional`1.HasValue"/>
+            returns <see langword="true"/>.
+            </summary>
+            <remarks>
+            <para>Unlike <see cref="P:System.Nullable`1.Value"/>, this property does not throw an exception when
+            <see cref="P:Pulumi.Optional`1.HasValue"/> is <see langword="false"/>.</para>
+            </remarks>
+            <returns>
+            <para>The value if <see cref="P:Pulumi.Optional`1.HasValue"/> is <see langword="true"/>; otherwise, the default value for type
+            <typeparamref name="T"/>.</para>
+            </returns>
+        </member>
+        <member name="M:Pulumi.Optional`1.op_Implicit(`0)~Pulumi.Optional{`0}">
+            <summary>
+            Creates a new object initialized to a meaningful value. 
+            </summary>
+        </member>
+        <member name="M:Pulumi.Optional`1.ToString">
+            <summary>
+            Returns a string representation of this object.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Urn">
+            <summary>
+            An automatically generated logical URN, used to stably identify resources.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Urn.Create(Pulumi.Input{System.String},Pulumi.Input{System.String},Pulumi.Resource,Pulumi.Input{Pulumi.Urn},Pulumi.Input{System.String},Pulumi.Input{System.String})">
+            <summary>
+            Computes a URN from the combination of a resource name, resource type, optional parent,
+            optional project and optional stack.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Pulumi.Urn.InheritedChildAlias(System.String,System.String,Pulumi.Input{Pulumi.Urn},System.String)">
+            <summary>
+            inheritedChildAlias computes the alias that should be applied to a child based on an
+            alias applied to it's parent. This may involve changing the name of the resource in
+            cases where the resource has a named derived from the name of the parent, and the parent
+            name changed.
+            </summary>
+        </member>
+        <member name="T:Pulumi.ComponentResource">
+            <summary>
+            A <see cref="T:Pulumi.Resource"/> that aggregates one or more other child resources into a higher
+            level abstraction.The component resource itself is a resource, but does not require custom
+            CRUD operations for provisioning.
+            </summary>
+        </member>
+        <member name="M:Pulumi.ComponentResource.#ctor(System.String,System.String,Pulumi.ResourceOptions)">
+            <summary>
+            Creates and registers a new component resource.  <paramref name="type"/> is the fully
+            qualified type token and <paramref name="name"/> is the "name" part to use in creating a
+            stable and globally unique URN for the object. <c>opts.parent</c> is the optional parent for
+            this component, and [opts.dependsOn] is an optional list of other resources that this
+            resource depends on, controlling the order in which we perform resource operations.
+            </summary>
+        </member>
+        <member name="T:Pulumi.ComponentResourceOptions">
+            <summary>
+            A bag of optional settings that control a <see cref="T:Pulumi.ComponentResource"/>'s behavior.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ComponentResourceOptions.Providers">
+             <summary>
+             An optional set of providers to use for child resources.
+            
+             Note: do not provide both <see cref="P:Pulumi.ResourceOptions.Provider"/> and <see
+             cref="P:Pulumi.ComponentResourceOptions.Providers"/>.
+             </summary>
+        </member>
+        <member name="T:Pulumi.CustomResource">
+            <summary>
+            CustomResource is a resource whose create, read, update, and delete(CRUD) operations are
+            managed by performing external operations on some physical entity. The engine understands how
+            to diff and perform partial updates of them, and these CRUD operations are implemented in a
+            dynamically loaded plugin for the defining package.
+            </summary>
+        </member>
+        <member name="F:Pulumi.CustomResource.Id">
+            <summary>
+            Id is the provider-assigned unique ID for this managed resource.  It is set during
+            deployments and may be missing (unknown) during planning phases.
+            </summary>
+        </member>
+        <member name="M:Pulumi.CustomResource.#ctor(System.String,System.String,System.Collections.Immutable.ImmutableDictionary{System.String,Pulumi.Input{System.Object}},Pulumi.ResourceOptions)">
+            <summary>
+            Creates and registers a new managed resource.  t is the fully qualified type token and
+            name is the "name" part to use in creating a stable and globally unique URN for the
+            object. dependsOn is an optional list of other resources that this resource depends on,
+            controlling the order in which we perform resource operations.Creating an instance does
+            not necessarily perform a create on the physical entity which it represents, and
+            instead, this is dependent upon the diffing of the new goal state compared to the
+            current known resource state.
+            </summary>
+        </member>
+        <member name="T:Pulumi.CustomResourceOptions">
+            <summary>
+            <see cref="T:Pulumi.CustomResourceOptions"/> is a bag of optional settings that control a <see
+            cref="T:Pulumi.CustomResource"/>'s behavior.
+            </summary>
+        </member>
+        <member name="P:Pulumi.CustomResourceOptions.DeleteBeforeReplace">
+            <summary>
+            When set to <c>true</c>, indicates that this resource should be deleted before its
+            replacement is created when replacement is necessary.
+            </summary>
+        </member>
+        <member name="P:Pulumi.CustomResourceOptions.AdditionalSecretOutputs">
+            <summary>
+            The names of outputs for this resource that should be treated as secrets. This augments
+            the list that the resource provider and pulumi engine already determine based on inputs
+            to your resource. It can be used to mark certain outputs as a secrets on a per resource
+            basis.
+            </summary>
+        </member>
+        <member name="P:Pulumi.CustomResourceOptions.Import">
+            <summary>
+            When provided with a resource ID, import indicates that this resource's provider should
+            import its state from the cloud resource with the given ID.The inputs to the resource's
+            constructor must align with the resource's current state.Once a resource has been
+            imported, the import property must be removed from the resource's options.
+            </summary>
+        </member>
+        <member name="T:Pulumi.CustomTimeouts">
+            <summary>
+            Optional timeouts to supply in <see cref="P:Pulumi.ResourceOptions.CustomTimeouts"/>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.CustomTimeouts.Create">
+            <summary>
+            The optional create timeout represented as a string e.g. 5m, 40s, 1d.
+            </summary>
+        </member>
+        <member name="P:Pulumi.CustomTimeouts.Update">
+            <summary>
+            The optional update timeout represented as a string e.g. 5m, 40s, 1d.
+            </summary>
+        </member>
+        <member name="P:Pulumi.CustomTimeouts.Delete">
+            <summary>
+            The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
+            </summary>
+        </member>
+        <member name="T:Pulumi.ProviderResource">
+            <summary>
+            <see cref="T:Pulumi.ProviderResource"/> is a <see cref="T:Pulumi.Resource"/> that implements CRUD operations
+            for other custom resources. These resources are managed similarly to other resources,
+            including the usual diffing and update semantics.
+            </summary>
+        </member>
+        <member name="M:Pulumi.ProviderResource.#ctor(System.String,System.String,System.Collections.Immutable.ImmutableDictionary{System.String,Pulumi.Input{System.Object}},Pulumi.ResourceOptions)">
+            <summary>
+            Creates and registers a new provider resource for a particular package.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Resource">
+            <summary>
+            Resource represents a class whose CRUD operations are implemented by a provider plugin.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._parentResource">
+            <summary>
+            The optional parent of this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._childResources">
+             <summary>
+             The child resources of this resource.  We use these (only from a ComponentResource) to
+             allow code to dependOn a ComponentResource and have that effectively mean that it is
+             depending on all the CustomResource children of that component.
+            
+             Important!  We only walk through ComponentResources.They're the only resources that
+             serve as an aggregation of other primitive(i.e.custom) resources.While a custom resource
+             can be a parent of other resources, we don't want to ever depend on those child
+             resource.  If we do, it's simple to end up in a situation where we end up depending on a
+             child resource that has a data cycle dependency due to the data passed into it. An
+             example of how this would be bad is:
+            
+             ```ts
+                 var c1 = new CustomResource("c1");
+                     var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1
+             });
+                 var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
+             ```
+            
+             The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
+             'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
+             But 'c3' will be waiting in the same manner on 'c2', and a cycle forms. This normally
+             does not happen with ComponentResources as they do not have any data flowing into
+             them.The only way you would be able to have a problem is if you had this sort of coding
+             pattern:
+            
+             ```c#
+                 var c1 = new ComponentResource("c1");
+                 var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
+                 var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
+             ```
+            
+             However, this would be pretty nonsensical as there is zero need for a custom resource to
+             ever need to reference the urn of a component resource.  So it's acceptable if that sort
+             of pattern failed in practice.
+             </summary>
+        </member>
+        <member name="F:Pulumi.Resource.Urn">
+            <summary>
+            Urn is the stable logical URN used to distinctly address a resource, both before and
+            after deployments.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._protect">
+            <summary>
+            When set to true, protect ensures this resource cannot be deleted.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._transformations">
+            <summary>
+            A collection of transformations to apply as part of resource registration.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._aliases">
+            <summary>
+            A list of aliases applied to this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._name">
+            <summary>
+            The name assigned to the resource at construction.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._providers">
+            <summary>
+            The set of providers to use for child resources. Keyed by package name (e.g. "aws").
+            </summary>
+        </member>
+        <member name="M:Pulumi.Resource.#ctor(System.String,System.String,System.Boolean,System.Collections.Immutable.ImmutableDictionary{System.String,Pulumi.Input{System.Object}},Pulumi.ResourceOptions)">
+            <summary>
+            Creates and registers a new resource object.  <paramref name="type"/> is the fully
+            qualified type token and <paramref name="name"/> is the "name" part to use in creating a
+            stable and globally unique URN for the object. dependsOn is an optional list of other
+            resources that this resource depends on, controlling the order in which we perform
+            resource operations.
+            </summary>
+            <param name="type">The type of the resource.</param>
+            <param name="name">The unique name of the resource.</param>
+            <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
+            <param name="properties">The arguments to use to populate the new resource.</param>
+            <param name="opts">A bag of options that control this resource's behavior.</param>
+        </member>
+        <member name="M:Pulumi.Resource.GetProvider(System.String)">
+            <summary>
+            Fetches the provider for the given module member, if any.
+            </summary>
+        </member>
+        <member name="T:Pulumi.ResourceException">
+            <summary>
+            ResourceError can be used for terminating a program abruptly, specifically associating the
+            problem with a Resource.Depending on the nature of the problem, clients can choose whether
+            or not a call stack should be returned as well.This should be very rare, and would only
+            indicate no usefulness of presenting that stack to the user.
+            </summary>
+        </member>
+        <member name="T:Pulumi.ResourceOptions">
+            <summary>
+            ResourceOptions is a bag of optional settings that control a resource's behavior.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.Id">
+            <summary>
+            An optional existing ID to load, rather than create.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.Parent">
+            <summary>
+            An optional parent resource to which this resource belongs.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.DependsOn">
+            <summary>
+            Optional additional explicit dependencies on other resources.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.Protect">
+            <summary>
+            When set to true, protect ensures this resource cannot be deleted.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.IgnoreChanges">
+            <summary>
+            Ignore changes to any of the specified properties.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.Version">
+            <summary>
+            An optional version, corresponding to the version of the provider plugin that should be
+            used when operating on this resource. This version overrides the version information
+            inferred from the current package and should rarely be used.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.Provider">
+             <summary>
+             An optional provider to use for this resource's CRUD operations. If no provider is
+             supplied, the default provider for the resource's package will be used. The default
+             provider is pulled from the parent's provider bag (see also
+             ComponentResourceOptions.providers).
+            
+             If this is a <see cref="T:Pulumi.ComponentResourceOptions"/> do not provide both <see
+             cref="P:Pulumi.ResourceOptions.Provider"/> and <see cref="P:Pulumi.ComponentResourceOptions.Providers"/>.
+             </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.CustomTimeouts">
+            <summary>
+             An optional CustomTimeouts configuration block.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.ResourceTransformations">
+            <summary>
+            Optional list of transformations to apply to this resource during construction.The
+            transformations are applied in order, and are applied prior to transformation applied to
+            parents walking from the resource up to the stack.
+            </summary>
+        </member>
+        <member name="P:Pulumi.ResourceOptions.Aliases">
+            <summary>
+            An optional list of aliases to treat this resource as matching.
+            </summary>
+        </member>
+        <member name="T:Pulumi.ResourceTransformation">
+            <summary>
+            ResourceTransformation is the callback signature for <see
+            cref="P:Pulumi.ResourceOptions.ResourceTransformations"/>. A transformation is passed the same set of
+            inputs provided to the <see cref="T:Pulumi.Resource"/> constructor, and can optionally return back
+            alternate values for the <c>properties</c> and/or <c>options</c> prior to the resource
+            actually being created. The effect will be as though those <c>properties</c> and/or
+            <c>options</c> were passed in place of the original call to the <see cref="T:Pulumi.Resource"/>
+            constructor.  If the transformation returns undefined, this indicates that the resource will
+            not be transformed.
+            </summary>
+            <param name="resource">The Resource instance that is being transformed.</param>
+            <param name="type">The type of the Resource.</param>
+            <param name="name">The name of the Resource.</param>
+            <param name="properties">The original properties passed to the Resource constructor.</param>
+            <param name="options">The original resource options passed to the Resource constructor.</param>
+            <returns>The new values to use for the `properties` and `options` of the <see
+            cref="T:Pulumi.Resource"/> in place of the originally provided values.</returns>
+        </member>
+        <member name="F:Pulumi.Rpc.Constants.UnknownValue">
+            <summary>
+            Unknown values are encoded as a distinguished string value.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Rpc.Constants.SpecialSigKey">
+            <summary>
+            specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Rpc.Constants.SpecialAssetSig">
+            <summary>
+            specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Rpc.Constants.SpecialArchiveSig">
+            <summary>
+            specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Rpc.Constants.SpecialSecretSig">
+            <summary>
+            specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Stack">
+            <summary>
+            Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it
+            registers itself as the root resource with the Pulumi engine.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Stack.Root">
+             <summary>
+             Constant to represent the 'root stack' resource for a Pulumi application.  The purpose
+             of this is solely to make it easy to write an <see cref="T:Pulumi.Alias"/> like so:
+            
+             <c>aliases = { new Alias { Parent = Pulumi.Stack.Root } }</c>
+            
+             This indicates that the prior name for a resource was created based on it being parented
+             directly by the stack itself and no other resources.  Note: this is equivalent to:
+            
+             <c>aliases = { new Alias { Parent = null } }</c>
+            
+             However, the former form is preferable as it is more self-descriptive, while the latter
+             may look a bit confusing and may incorrectly look like something that could be removed
+             without changing semantics.
+             </summary>
+        </member>
+        <member name="F:Pulumi.Stack._rootPulumiStackTypeName">
+            <summary>
+            rootPulumiStackTypeName is the type name that should be used to construct the root
+            component in the tree of Pulumi resources allocated by a deployment.This must be kept up
+            to date with `github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName`.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Stack.Outputs">
+            <summary>
+            The outputs of this stack, if the `init` callback exited normally.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.AnalyzerReflection">
+            <summary>Holder for reflection information generated from analyzer.proto</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzerReflection.Descriptor">
+            <summary>File descriptor for analyzer.proto</summary>
+        </member>
+        <member name="T:Pulumirpc.EnforcementLevel">
+            <summary>
+            EnforcementLevel indicates the severity of a policy violation.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.EnforcementLevel.Advisory">
+            <summary>
+            Displayed to users, but does not block deployment.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.EnforcementLevel.Mandatory">
+            <summary>
+            Stops deployment, cannot be overridden.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeRequest.TypeFieldNumber">
+            <summary>Field number for the "type" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeRequest.Type">
+            <summary>
+            the type token of the resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeRequest.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeRequest.Properties">
+            <summary>
+            the full properties to use for validation.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeResponse.DiagnosticsFieldNumber">
+            <summary>Field number for the "diagnostics" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeResponse.Diagnostics">
+            <summary>
+            information about policy violations.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeDiagnostic.PolicyNameFieldNumber">
+            <summary>Field number for the "policyName" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeDiagnostic.PolicyName">
+            <summary>
+            Name of the violated policy.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeDiagnostic.PolicyPackNameFieldNumber">
+            <summary>Field number for the "policyPackName" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeDiagnostic.PolicyPackName">
+            <summary>
+            Name of the policy pack the policy is in.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeDiagnostic.PolicyPackVersionFieldNumber">
+            <summary>Field number for the "policyPackVersion" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeDiagnostic.PolicyPackVersion">
+            <summary>
+            Version of the policy pack.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeDiagnostic.DescriptionFieldNumber">
+            <summary>Field number for the "description" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeDiagnostic.Description">
+            <summary>
+            Description of policy rule. e.g., "encryption enabled."
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeDiagnostic.MessageFieldNumber">
+            <summary>Field number for the "message" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeDiagnostic.Message">
+            <summary>
+            Message to display on policy violation, e.g., remediation steps.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeDiagnostic.TagsFieldNumber">
+            <summary>Field number for the "tags" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeDiagnostic.Tags">
+            <summary>
+            Keywords/terms to associate with a policy, e.g., "cost".
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzeDiagnostic.EnforcementLevelFieldNumber">
+            <summary>Field number for the "enforcementLevel" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzeDiagnostic.EnforcementLevel">
+            <summary>
+            Severity of the policy violation.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.AnalyzerInfo">
+            <summary>
+            AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzerInfo.NameFieldNumber">
+            <summary>Field number for the "name" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzerInfo.Name">
+            <summary>
+            Name of the PolicyPack.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzerInfo.DisplayNameFieldNumber">
+            <summary>Field number for the "displayName" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzerInfo.DisplayName">
+            <summary>
+            Pretty name for the PolicyPack.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.AnalyzerInfo.PoliciesFieldNumber">
+            <summary>Field number for the "policies" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.AnalyzerInfo.Policies">
+            <summary>
+            Metadata about policies contained in PolicyPack.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.PolicyInfo">
+            <summary>
+            PolicyInfo provides metadata about an individual Policy within a Policy Pack.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PolicyInfo.NameFieldNumber">
+            <summary>Field number for the "name" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PolicyInfo.Name">
+            <summary>
+            Name of the policy.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PolicyInfo.DisplayNameFieldNumber">
+            <summary>Field number for the "displayName" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PolicyInfo.DisplayName">
+            <summary>
+            Pretty name for the policy.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PolicyInfo.DescriptionFieldNumber">
+            <summary>Field number for the "description" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PolicyInfo.Description">
+            <summary>
+            Description of policy rule. e.g., "encryption enabled."
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PolicyInfo.MessageFieldNumber">
+            <summary>Field number for the "message" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PolicyInfo.Message">
+            <summary>
+            Message to display on policy violation, e.g., remediation steps.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PolicyInfo.EnforcementLevelFieldNumber">
+            <summary>Field number for the "enforcementLevel" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PolicyInfo.EnforcementLevel">
+            <summary>
+            Severity of the policy violation.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.Analyzer">
+            <summary>
+            Analyzer provides a pluggable interface for checking resource definitions against some number of
+            resource policies. It is intentionally open-ended, allowing for implementations that check
+            everything from raw resource definitions to entire projects/stacks/snapshots for arbitrary
+            issues -- style, policy, correctness, security, and so on.
+            </summary>
+        </member>
+        <member name="P:Pulumirpc.Analyzer.Descriptor">
+            <summary>Service descriptor</summary>
+        </member>
+        <member name="T:Pulumirpc.Analyzer.AnalyzerBase">
+            <summary>Base class for server-side implementations of Analyzer</summary>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerBase.Analyze(Pulumirpc.AnalyzeRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Analyze analyzes a single resource object, and returns any errors that it finds.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerBase.GetAnalyzerInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.ServerCallContext)">
+            <summary>
+            GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerBase.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.ServerCallContext)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="T:Pulumirpc.Analyzer.AnalyzerClient">
+            <summary>Client for Analyzer</summary>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.#ctor(Grpc.Core.ChannelBase)">
+            <summary>Creates a new client for Analyzer</summary>
+            <param name="channel">The channel to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.#ctor(Grpc.Core.CallInvoker)">
+            <summary>Creates a new client for Analyzer that uses a custom <c>CallInvoker</c>.</summary>
+            <param name="callInvoker">The callInvoker to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.#ctor">
+            <summary>Protected parameterless constructor to allow creation of test doubles.</summary>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.#ctor(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Protected constructor to allow creation of configured clients.</summary>
+            <param name="configuration">The client configuration.</param>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.Analyze(Pulumirpc.AnalyzeRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Analyze analyzes a single resource object, and returns any errors that it finds.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.Analyze(Pulumirpc.AnalyzeRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Analyze analyzes a single resource object, and returns any errors that it finds.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.AnalyzeAsync(Pulumirpc.AnalyzeRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Analyze analyzes a single resource object, and returns any errors that it finds.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.AnalyzeAsync(Pulumirpc.AnalyzeRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Analyze analyzes a single resource object, and returns any errors that it finds.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetAnalyzerInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetAnalyzerInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetAnalyzerInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetAnalyzerInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetPluginInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.GetPluginInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.AnalyzerClient.NewInstance(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.BindService(Pulumirpc.Analyzer.AnalyzerBase)">
+            <summary>Creates service definition that can be registered with a server</summary>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="M:Pulumirpc.Analyzer.BindService(Grpc.Core.ServiceBinderBase,Pulumirpc.Analyzer.AnalyzerBase)">
+            <summary>Register service method with a service binder with or without implementation. Useful when customizing the  service binding logic.
+            Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+            <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="T:Pulumirpc.EngineReflection">
+            <summary>Holder for reflection information generated from engine.proto</summary>
+        </member>
+        <member name="P:Pulumirpc.EngineReflection.Descriptor">
+            <summary>File descriptor for engine.proto</summary>
+        </member>
+        <member name="T:Pulumirpc.LogSeverity">
+            <summary>
+            LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogSeverity.Debug">
+            <summary>
+            a debug-level message not displayed to end-users (the default).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogSeverity.Info">
+            <summary>
+            an informational message printed to output during resource operations.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogSeverity.Warning">
+            <summary>
+            a warning to indicate that something went wrong.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogSeverity.Error">
+            <summary>
+            a fatal error indicating that the tool should stop processing subsequent resource operations.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogRequest.SeverityFieldNumber">
+            <summary>Field number for the "severity" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.LogRequest.Severity">
+            <summary>
+            the logging level of this message.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogRequest.MessageFieldNumber">
+            <summary>Field number for the "message" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.LogRequest.Message">
+            <summary>
+            the contents of the logged message.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.LogRequest.Urn">
+            <summary>
+            the (optional) resource urn this log is associated with.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.LogRequest.StreamIdFieldNumber">
+            <summary>Field number for the "streamId" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.LogRequest.StreamId">
+             <summary>
+             the (optional) stream id that a stream of log messages can be associated with. This allows
+             clients to not have to buffer a large set of log messages that they all want to be
+             conceptually connected.  Instead the messages can be sent as chunks (with the same stream id)
+             and the end display can show the messages as they arrive, while still stitching them together
+             into one total log message.
+            
+             0/not-given means: do not associate with any stream.
+             </summary>
+        </member>
+        <member name="F:Pulumirpc.LogRequest.EphemeralFieldNumber">
+            <summary>Field number for the "ephemeral" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.LogRequest.Ephemeral">
+            <summary>
+            Optional value indicating whether this is a status message.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.GetRootResourceRequest">
+            <summary>
+            empty.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.GetRootResourceResponse.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.GetRootResourceResponse.Urn">
+            <summary>
+            the URN of the root resource, or the empty string if one was not set.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.SetRootResourceRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.SetRootResourceRequest.Urn">
+            <summary>
+            the URN of the root resource, or the empty string.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.SetRootResourceResponse">
+            <summary>
+            empty.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.Engine">
+            <summary>
+            Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
+            to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
+            that can't store their own global state.
+            </summary>
+        </member>
+        <member name="P:Pulumirpc.Engine.Descriptor">
+            <summary>Service descriptor</summary>
+        </member>
+        <member name="T:Pulumirpc.Engine.EngineBase">
+            <summary>Base class for server-side implementations of Engine</summary>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineBase.Log(Pulumirpc.LogRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Log logs a global message in the engine, including errors and warnings.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineBase.GetRootResource(Pulumirpc.GetRootResourceRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            GetRootResource gets the URN of the root resource, the resource that should be the root of all
+            otherwise-unparented resources.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineBase.SetRootResource(Pulumirpc.SetRootResourceRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            SetRootResource sets the URN of the root resource.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="T:Pulumirpc.Engine.EngineClient">
+            <summary>Client for Engine</summary>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.#ctor(Grpc.Core.ChannelBase)">
+            <summary>Creates a new client for Engine</summary>
+            <param name="channel">The channel to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.#ctor(Grpc.Core.CallInvoker)">
+            <summary>Creates a new client for Engine that uses a custom <c>CallInvoker</c>.</summary>
+            <param name="callInvoker">The callInvoker to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.#ctor">
+            <summary>Protected parameterless constructor to allow creation of test doubles.</summary>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.#ctor(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Protected constructor to allow creation of configured clients.</summary>
+            <param name="configuration">The client configuration.</param>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.Log(Pulumirpc.LogRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Log logs a global message in the engine, including errors and warnings.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.Log(Pulumirpc.LogRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Log logs a global message in the engine, including errors and warnings.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.LogAsync(Pulumirpc.LogRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Log logs a global message in the engine, including errors and warnings.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.LogAsync(Pulumirpc.LogRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Log logs a global message in the engine, including errors and warnings.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.GetRootResource(Pulumirpc.GetRootResourceRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetRootResource gets the URN of the root resource, the resource that should be the root of all
+            otherwise-unparented resources.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.GetRootResource(Pulumirpc.GetRootResourceRequest,Grpc.Core.CallOptions)">
+            <summary>
+            GetRootResource gets the URN of the root resource, the resource that should be the root of all
+            otherwise-unparented resources.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.GetRootResourceAsync(Pulumirpc.GetRootResourceRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetRootResource gets the URN of the root resource, the resource that should be the root of all
+            otherwise-unparented resources.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.GetRootResourceAsync(Pulumirpc.GetRootResourceRequest,Grpc.Core.CallOptions)">
+            <summary>
+            GetRootResource gets the URN of the root resource, the resource that should be the root of all
+            otherwise-unparented resources.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.SetRootResource(Pulumirpc.SetRootResourceRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            SetRootResource sets the URN of the root resource.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.SetRootResource(Pulumirpc.SetRootResourceRequest,Grpc.Core.CallOptions)">
+            <summary>
+            SetRootResource sets the URN of the root resource.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.SetRootResourceAsync(Pulumirpc.SetRootResourceRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            SetRootResource sets the URN of the root resource.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.SetRootResourceAsync(Pulumirpc.SetRootResourceRequest,Grpc.Core.CallOptions)">
+            <summary>
+            SetRootResource sets the URN of the root resource.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.Engine.EngineClient.NewInstance(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
+        </member>
+        <member name="M:Pulumirpc.Engine.BindService(Pulumirpc.Engine.EngineBase)">
+            <summary>Creates service definition that can be registered with a server</summary>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="M:Pulumirpc.Engine.BindService(Grpc.Core.ServiceBinderBase,Pulumirpc.Engine.EngineBase)">
+            <summary>Register service method with a service binder with or without implementation. Useful when customizing the  service binding logic.
+            Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+            <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="T:Pulumirpc.ErrorsReflection">
+            <summary>Holder for reflection information generated from errors.proto</summary>
+        </member>
+        <member name="P:Pulumirpc.ErrorsReflection.Descriptor">
+            <summary>File descriptor for errors.proto</summary>
+        </member>
+        <member name="F:Pulumirpc.ErrorCause.MessageFieldNumber">
+            <summary>Field number for the "message" field.</summary>
+        </member>
+        <member name="F:Pulumirpc.ErrorCause.StackTraceFieldNumber">
+            <summary>Field number for the "stackTrace" field.</summary>
+        </member>
+        <member name="T:Pulumirpc.LanguageReflection">
+            <summary>Holder for reflection information generated from language.proto</summary>
+        </member>
+        <member name="P:Pulumirpc.LanguageReflection.Descriptor">
+            <summary>File descriptor for language.proto</summary>
+        </member>
+        <member name="F:Pulumirpc.GetRequiredPluginsRequest.ProjectFieldNumber">
+            <summary>Field number for the "project" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.GetRequiredPluginsRequest.Project">
+            <summary>
+            the project name.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.GetRequiredPluginsRequest.PwdFieldNumber">
+            <summary>Field number for the "pwd" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.GetRequiredPluginsRequest.Pwd">
+            <summary>
+            the program's working directory.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.GetRequiredPluginsRequest.ProgramFieldNumber">
+            <summary>Field number for the "program" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.GetRequiredPluginsRequest.Program">
+            <summary>
+            the path to the program.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.GetRequiredPluginsResponse.PluginsFieldNumber">
+            <summary>Field number for the "plugins" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.GetRequiredPluginsResponse.Plugins">
+            <summary>
+            a list of plugins required by this program.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.RunRequest">
+            <summary>
+            RunRequest asks the interpreter to execute a program.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.ProjectFieldNumber">
+            <summary>Field number for the "project" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.Project">
+            <summary>
+            the project name.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.StackFieldNumber">
+            <summary>Field number for the "stack" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.Stack">
+            <summary>
+            the name of the stack being deployed into.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.PwdFieldNumber">
+            <summary>Field number for the "pwd" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.Pwd">
+            <summary>
+            the program's working directory.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.ProgramFieldNumber">
+            <summary>Field number for the "program" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.Program">
+            <summary>
+            the path to the program to execute.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.ArgsFieldNumber">
+            <summary>Field number for the "args" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.Args">
+            <summary>
+            any arguments to pass to the program.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.ConfigFieldNumber">
+            <summary>Field number for the "config" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.Config">
+            <summary>
+            the configuration variables to apply before running.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.DryRunFieldNumber">
+            <summary>Field number for the "dryRun" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.DryRun">
+            <summary>
+            true if we're only doing a dryrun (preview).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.ParallelFieldNumber">
+            <summary>Field number for the "parallel" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.Parallel">
+            <summary>
+            the degree of parallelism for resource operations (&lt;=1 for serial).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.MonitorAddressFieldNumber">
+            <summary>Field number for the "monitor_address" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.MonitorAddress">
+            <summary>
+            the address for communicating back to the resource monitor.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunRequest.QueryModeFieldNumber">
+            <summary>Field number for the "queryMode" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunRequest.QueryMode">
+            <summary>
+            true if we're only doing a query.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.RunResponse">
+            <summary>
+            RunResponse is the response back from the interpreter/source back to the monitor.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunResponse.ErrorFieldNumber">
+            <summary>Field number for the "error" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunResponse.Error">
+            <summary>
+            An unhandled error if any occurred.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RunResponse.BailFieldNumber">
+            <summary>Field number for the "bail" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RunResponse.Bail">
+            <summary>
+            An error happened.  And it was reported to the user.  Work should stop immediately
+            with nothing further to print to the user.  This corresponds to a "result.Bail()"
+            value in the 'go' layer.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.LanguageRuntime">
+            <summary>
+            LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
+            for confguring and creating resource objects.
+            </summary>
+        </member>
+        <member name="P:Pulumirpc.LanguageRuntime.Descriptor">
+            <summary>Service descriptor</summary>
+        </member>
+        <member name="T:Pulumirpc.LanguageRuntime.LanguageRuntimeBase">
+            <summary>Base class for server-side implementations of LanguageRuntime</summary>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeBase.GetRequiredPlugins(Pulumirpc.GetRequiredPluginsRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeBase.Run(Pulumirpc.RunRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Run executes a program and returns its result.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeBase.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.ServerCallContext)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="T:Pulumirpc.LanguageRuntime.LanguageRuntimeClient">
+            <summary>Client for LanguageRuntime</summary>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.#ctor(Grpc.Core.ChannelBase)">
+            <summary>Creates a new client for LanguageRuntime</summary>
+            <param name="channel">The channel to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.#ctor(Grpc.Core.CallInvoker)">
+            <summary>Creates a new client for LanguageRuntime that uses a custom <c>CallInvoker</c>.</summary>
+            <param name="callInvoker">The callInvoker to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.#ctor">
+            <summary>Protected parameterless constructor to allow creation of test doubles.</summary>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.#ctor(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Protected constructor to allow creation of configured clients.</summary>
+            <param name="configuration">The client configuration.</param>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetRequiredPlugins(Pulumirpc.GetRequiredPluginsRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetRequiredPlugins(Pulumirpc.GetRequiredPluginsRequest,Grpc.Core.CallOptions)">
+            <summary>
+            GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetRequiredPluginsAsync(Pulumirpc.GetRequiredPluginsRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetRequiredPluginsAsync(Pulumirpc.GetRequiredPluginsRequest,Grpc.Core.CallOptions)">
+            <summary>
+            GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.Run(Pulumirpc.RunRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Run executes a program and returns its result.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.Run(Pulumirpc.RunRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Run executes a program and returns its result.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.RunAsync(Pulumirpc.RunRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Run executes a program and returns its result.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.RunAsync(Pulumirpc.RunRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Run executes a program and returns its result.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetPluginInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.GetPluginInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.LanguageRuntimeClient.NewInstance(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.BindService(Pulumirpc.LanguageRuntime.LanguageRuntimeBase)">
+            <summary>Creates service definition that can be registered with a server</summary>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="M:Pulumirpc.LanguageRuntime.BindService(Grpc.Core.ServiceBinderBase,Pulumirpc.LanguageRuntime.LanguageRuntimeBase)">
+            <summary>Register service method with a service binder with or without implementation. Useful when customizing the  service binding logic.
+            Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+            <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="T:Pulumirpc.PluginReflection">
+            <summary>Holder for reflection information generated from plugin.proto</summary>
+        </member>
+        <member name="P:Pulumirpc.PluginReflection.Descriptor">
+            <summary>File descriptor for plugin.proto</summary>
+        </member>
+        <member name="T:Pulumirpc.PluginInfo">
+            <summary>
+            PluginInfo is meta-information about a plugin that is used by the system.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PluginInfo.VersionFieldNumber">
+            <summary>Field number for the "version" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PluginInfo.Version">
+            <summary>
+            the semver for this plugin.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.PluginDependency">
+            <summary>
+            PluginDependency is information about a plugin that a program may depend upon.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PluginDependency.NameFieldNumber">
+            <summary>Field number for the "name" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PluginDependency.Name">
+            <summary>
+            the name of the plugin.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PluginDependency.KindFieldNumber">
+            <summary>Field number for the "kind" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PluginDependency.Kind">
+            <summary>
+            the kind of plugin (e.g., language, etc).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PluginDependency.VersionFieldNumber">
+            <summary>Field number for the "version" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PluginDependency.Version">
+            <summary>
+            the semver for this plugin.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PluginDependency.ServerFieldNumber">
+            <summary>Field number for the "server" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PluginDependency.Server">
+            <summary>
+            the URL of a server that can be used to download this plugin, if needed.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ProviderReflection">
+            <summary>Holder for reflection information generated from provider.proto</summary>
+        </member>
+        <member name="P:Pulumirpc.ProviderReflection.Descriptor">
+            <summary>File descriptor for provider.proto</summary>
+        </member>
+        <member name="F:Pulumirpc.ConfigureRequest.VariablesFieldNumber">
+            <summary>Field number for the "variables" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ConfigureRequest.Variables">
+            <summary>
+            a map of configuration keys to values.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ConfigureRequest.ArgsFieldNumber">
+            <summary>Field number for the "args" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ConfigureRequest.Args">
+            <summary>
+            the input properties for the provider. Only filled in for newer providers.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ConfigureRequest.AcceptSecretsFieldNumber">
+            <summary>Field number for the "acceptSecrets" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ConfigureRequest.AcceptSecrets">
+            <summary>
+            when true operations should retrun secrets as strongly typed.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ConfigureResponse.AcceptSecretsFieldNumber">
+            <summary>Field number for the "acceptSecrets" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ConfigureResponse.AcceptSecrets">
+            <summary>
+            when true, the engine should pass secrets as strongly typed values to the provider.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ConfigureErrorMissingKeys">
+            <summary>
+            ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ConfigureErrorMissingKeys.MissingKeysFieldNumber">
+            <summary>Field number for the "missingKeys" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ConfigureErrorMissingKeys.MissingKeys">
+            <summary>
+            a list of required configuration keys that were not supplied.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ConfigureErrorMissingKeys.Types">
+            <summary>Container for nested types declared in the ConfigureErrorMissingKeys message type.</summary>
+        </member>
+        <member name="F:Pulumirpc.ConfigureErrorMissingKeys.Types.MissingKey.NameFieldNumber">
+            <summary>Field number for the "name" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ConfigureErrorMissingKeys.Types.MissingKey.Name">
+            <summary>
+            the Pulumi name (not the provider name!) of the missing config key.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ConfigureErrorMissingKeys.Types.MissingKey.DescriptionFieldNumber">
+            <summary>Field number for the "description" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ConfigureErrorMissingKeys.Types.MissingKey.Description">
+            <summary>
+            a description of the missing config key, as reported by the provider.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.InvokeRequest.TokFieldNumber">
+            <summary>Field number for the "tok" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.InvokeRequest.Tok">
+            <summary>
+            the function token to invoke.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.InvokeRequest.ArgsFieldNumber">
+            <summary>Field number for the "args" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.InvokeRequest.Args">
+            <summary>
+            the arguments for the function invocation.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.InvokeRequest.ProviderFieldNumber">
+            <summary>Field number for the "provider" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.InvokeRequest.Provider">
+            <summary>
+            an optional reference to the provider to use for this invoke.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.InvokeRequest.VersionFieldNumber">
+            <summary>Field number for the "version" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.InvokeRequest.Version">
+            <summary>
+            the version of the provider to use when servicing this request.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.InvokeResponse.ReturnFieldNumber">
+            <summary>Field number for the "return" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.InvokeResponse.Return">
+            <summary>
+            the returned values, if invoke was successful.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.InvokeResponse.FailuresFieldNumber">
+            <summary>Field number for the "failures" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.InvokeResponse.Failures">
+            <summary>
+            the failures if any arguments didn't pass verification.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CheckRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CheckRequest.Urn">
+            <summary>
+            the Pulumi URN for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CheckRequest.OldsFieldNumber">
+            <summary>Field number for the "olds" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CheckRequest.Olds">
+            <summary>
+            the old Pulumi inputs for this resource, if any.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CheckRequest.NewsFieldNumber">
+            <summary>Field number for the "news" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CheckRequest.News">
+            <summary>
+            the new Pulumi inputs for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CheckResponse.InputsFieldNumber">
+            <summary>Field number for the "inputs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CheckResponse.Inputs">
+            <summary>
+            the provider inputs for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CheckResponse.FailuresFieldNumber">
+            <summary>Field number for the "failures" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CheckResponse.Failures">
+            <summary>
+            any validation failures that occurred.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CheckFailure.PropertyFieldNumber">
+            <summary>Field number for the "property" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CheckFailure.Property">
+            <summary>
+            the property that failed validation.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CheckFailure.ReasonFieldNumber">
+            <summary>Field number for the "reason" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CheckFailure.Reason">
+            <summary>
+            the reason that the property failed validation.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffRequest.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffRequest.Id">
+            <summary>
+            the ID of the resource to diff.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffRequest.Urn">
+            <summary>
+            the Pulumi URN for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffRequest.OldsFieldNumber">
+            <summary>Field number for the "olds" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffRequest.Olds">
+            <summary>
+            the old values of provider inputs to diff.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffRequest.NewsFieldNumber">
+            <summary>Field number for the "news" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffRequest.News">
+            <summary>
+            the new values of provider inputs to diff.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffRequest.IgnoreChangesFieldNumber">
+            <summary>Field number for the "ignoreChanges" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffRequest.IgnoreChanges">
+            <summary>
+            a set of property paths that should be treated as unchanged.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.KindFieldNumber">
+            <summary>Field number for the "kind" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PropertyDiff.Kind">
+            <summary>
+            The kind of diff asdsociated with this property.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.InputDiffFieldNumber">
+            <summary>Field number for the "inputDiff" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.PropertyDiff.InputDiff">
+            <summary>
+            The difference is between old and new inputs, not old and new state.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.PropertyDiff.Types">
+            <summary>Container for nested types declared in the PropertyDiff message type.</summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.Types.Kind.Add">
+            <summary>
+            this property was added
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.Types.Kind.AddReplace">
+            <summary>
+            this property was added, and this change requires a replace
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.Types.Kind.Delete">
+            <summary>
+            this property was removed
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.Types.Kind.DeleteReplace">
+            <summary>
+            this property was removed, and this change requires a replace
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.Types.Kind.Update">
+            <summary>
+            this property's value was changed
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.PropertyDiff.Types.Kind.UpdateReplace">
+            <summary>
+            this property's value was changed, and this change requires a replace
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.ReplacesFieldNumber">
+            <summary>Field number for the "replaces" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffResponse.Replaces">
+            <summary>
+            if this update requires a replacement, the set of properties triggering it.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.StablesFieldNumber">
+            <summary>Field number for the "stables" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffResponse.Stables">
+            <summary>
+            an optional list of properties that will not ever change.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.DeleteBeforeReplaceFieldNumber">
+            <summary>Field number for the "deleteBeforeReplace" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffResponse.DeleteBeforeReplace">
+            <summary>
+            if true, this resource must be deleted before replacing it.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.ChangesFieldNumber">
+            <summary>Field number for the "changes" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffResponse.Changes">
+            <summary>
+            if true, this diff represents an actual difference and thus requires an update.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.DiffsFieldNumber">
+            <summary>Field number for the "diffs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffResponse.Diffs">
+            <summary>
+            a list of the properties that changed.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.DetailedDiffFieldNumber">
+            <summary>Field number for the "detailedDiff" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffResponse.DetailedDiff">
+             <summary>
+             detailedDiff is an optional field that contains map from each changed property to the type of the change.
+            
+             The keys of this map are property paths. These paths are essentially Javascript property access expressions
+             in which all elements are literals, and obey the following EBNF-ish grammar:
+            
+               propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
+               quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
+               arrayIndex := { [0-9] }
+            
+               propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
+               rootProperty := ( propertyName | propertyIndex )
+               propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
+               path := rootProperty { propertyAccessor }
+            
+             Examples of valid keys:
+             - root
+             - root.nested
+             - root["nested"]
+             - root.double.nest
+             - root["double"].nest
+             - root["double"]["nest"]
+             - root.array[0]
+             - root.array[100]
+             - root.array[0].nested
+             - root.array[0][1].nested
+             - root.nested.array[0].double[1]
+             - root["key with \"escaped\" quotes"]
+             - root["key with a ."]
+             - ["root key with \"escaped\" quotes"].nested
+             - ["root key with a ."][100]
+             </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.HasDetailedDiffFieldNumber">
+            <summary>Field number for the "hasDetailedDiff" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DiffResponse.HasDetailedDiff">
+            <summary>
+            true if this response contains a detailed diff.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.DiffResponse.Types">
+            <summary>Container for nested types declared in the DiffResponse message type.</summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.Types.DiffChanges.DiffUnknown">
+            <summary>
+            unknown whether there are changes or not (legacy behavior).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.Types.DiffChanges.DiffNone">
+            <summary>
+            the diff was performed, and no changes were detected that require an update.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DiffResponse.Types.DiffChanges.DiffSome">
+            <summary>
+            the diff was performed, and changes were detected that require an update or replacement.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CreateRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CreateRequest.Urn">
+            <summary>
+            the Pulumi URN for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CreateRequest.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CreateRequest.Properties">
+            <summary>
+            the provider inputs to set during creation.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CreateRequest.TimeoutFieldNumber">
+            <summary>Field number for the "timeout" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CreateRequest.Timeout">
+            <summary>
+            the create request timeout represented in seconds.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.CreateResponse">
+            <summary>
+            NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CreateResponse.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CreateResponse.Id">
+            <summary>
+            the ID of the created resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.CreateResponse.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.CreateResponse.Properties">
+            <summary>
+            any properties that were computed during creation.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadRequest.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadRequest.Id">
+            <summary>
+            the ID of the resource to read.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadRequest.Urn">
+            <summary>
+            the Pulumi URN for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadRequest.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadRequest.Properties">
+            <summary>
+            the current state (sufficiently complete to identify the resource).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadRequest.InputsFieldNumber">
+            <summary>Field number for the "inputs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadRequest.Inputs">
+            <summary>
+            the current inputs, if any (only populated during refresh).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResponse.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResponse.Id">
+            <summary>
+            the ID of the resource read back (or empty if missing).
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResponse.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResponse.Properties">
+            <summary>
+            the state of the resource read from the live environment.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResponse.InputsFieldNumber">
+            <summary>Field number for the "inputs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResponse.Inputs">
+            <summary>
+            the inputs for this resource that would be returned from Check.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.UpdateRequest">
+            <summary>
+            NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.UpdateRequest.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.UpdateRequest.Id">
+            <summary>
+            the ID of the resource to update.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.UpdateRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.UpdateRequest.Urn">
+            <summary>
+            the Pulumi URN for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.UpdateRequest.OldsFieldNumber">
+            <summary>Field number for the "olds" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.UpdateRequest.Olds">
+            <summary>
+            the old values of provider inputs for the resource to update.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.UpdateRequest.NewsFieldNumber">
+            <summary>Field number for the "news" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.UpdateRequest.News">
+            <summary>
+            the new values of provider inputs for the resource to update.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.UpdateRequest.TimeoutFieldNumber">
+            <summary>Field number for the "timeout" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.UpdateRequest.Timeout">
+            <summary>
+            the update request timeout represented in seconds.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.UpdateRequest.IgnoreChangesFieldNumber">
+            <summary>Field number for the "ignoreChanges" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.UpdateRequest.IgnoreChanges">
+            <summary>
+            a set of property paths that should be treated as unchanged.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.UpdateResponse.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.UpdateResponse.Properties">
+            <summary>
+            any properties that were computed during updating.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DeleteRequest.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DeleteRequest.Id">
+            <summary>
+            the ID of the resource to delete.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DeleteRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DeleteRequest.Urn">
+            <summary>
+            the Pulumi URN for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DeleteRequest.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DeleteRequest.Properties">
+            <summary>
+            the current properties on the resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.DeleteRequest.TimeoutFieldNumber">
+            <summary>Field number for the "timeout" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.DeleteRequest.Timeout">
+            <summary>
+            the delete request timeout represented in seconds.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ErrorResourceInitFailed">
+            <summary>
+            ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a
+            resource was created successfully, but failed to initialize.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ErrorResourceInitFailed.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ErrorResourceInitFailed.Id">
+            <summary>
+            the ID of the created resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ErrorResourceInitFailed.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ErrorResourceInitFailed.Properties">
+            <summary>
+            any properties that were computed during updating.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ErrorResourceInitFailed.ReasonsFieldNumber">
+            <summary>Field number for the "reasons" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ErrorResourceInitFailed.Reasons">
+            <summary>
+            error messages associated with initialization failure.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ErrorResourceInitFailed.InputsFieldNumber">
+            <summary>Field number for the "inputs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ErrorResourceInitFailed.Inputs">
+            <summary>
+            the current inputs to this resource (only applicable for Read)
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ResourceProvider">
+            <summary>
+            ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
+            within a single package.  It is driven by the overall planning engine in response to resource diffs.
+            </summary>
+        </member>
+        <member name="P:Pulumirpc.ResourceProvider.Descriptor">
+            <summary>Service descriptor</summary>
+        </member>
+        <member name="T:Pulumirpc.ResourceProvider.ResourceProviderBase">
+            <summary>Base class for server-side implementations of ResourceProvider</summary>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.CheckConfig(Pulumirpc.CheckRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            CheckConfig validates the configuration for this resource provider.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.DiffConfig(Pulumirpc.DiffRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Configure(Pulumirpc.ConfigureRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Configure configures the resource provider with "globals" that control its behavior.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Invoke(Pulumirpc.InvokeRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Invoke dynamically executes a built-in function in the provider.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Check(Pulumirpc.CheckRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Check validates that the given property bag is valid for a resource of the given type and returns the inputs
+            that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
+            inputs returned by a call to Check should preserve the original representation of the properties as present in
+            the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
+            the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Diff(Pulumirpc.DiffRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Diff checks what impacts a hypothetical update will have on the resource's properties.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Create(Pulumirpc.CreateRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
+            must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Read(Pulumirpc.ReadRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+            identify the resource; this is typically just the resource ID, but may also include some properties.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Update(Pulumirpc.UpdateRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Update updates an existing resource with new values.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Delete(Pulumirpc.DeleteRequest,Grpc.Core.ServerCallContext)">
+            <summary>
+            Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.Cancel(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.ServerCallContext)">
+            <summary>
+            Cancel signals the provider to abort all outstanding resource operations.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderBase.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.ServerCallContext)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request received from the client.</param>
+            <param name="context">The context of the server-side call handler being invoked.</param>
+            <returns>The response to send back to the client (wrapped by a task).</returns>
+        </member>
+        <member name="T:Pulumirpc.ResourceProvider.ResourceProviderClient">
+            <summary>Client for ResourceProvider</summary>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.#ctor(Grpc.Core.ChannelBase)">
+            <summary>Creates a new client for ResourceProvider</summary>
+            <param name="channel">The channel to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.#ctor(Grpc.Core.CallInvoker)">
+            <summary>Creates a new client for ResourceProvider that uses a custom <c>CallInvoker</c>.</summary>
+            <param name="callInvoker">The callInvoker to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.#ctor">
+            <summary>Protected parameterless constructor to allow creation of test doubles.</summary>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.#ctor(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Protected constructor to allow creation of configured clients.</summary>
+            <param name="configuration">The client configuration.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CheckConfig(Pulumirpc.CheckRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            CheckConfig validates the configuration for this resource provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CheckConfig(Pulumirpc.CheckRequest,Grpc.Core.CallOptions)">
+            <summary>
+            CheckConfig validates the configuration for this resource provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CheckConfigAsync(Pulumirpc.CheckRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            CheckConfig validates the configuration for this resource provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CheckConfigAsync(Pulumirpc.CheckRequest,Grpc.Core.CallOptions)">
+            <summary>
+            CheckConfig validates the configuration for this resource provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DiffConfig(Pulumirpc.DiffRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DiffConfig(Pulumirpc.DiffRequest,Grpc.Core.CallOptions)">
+            <summary>
+            DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DiffConfigAsync(Pulumirpc.DiffRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DiffConfigAsync(Pulumirpc.DiffRequest,Grpc.Core.CallOptions)">
+            <summary>
+            DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Configure(Pulumirpc.ConfigureRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Configure configures the resource provider with "globals" that control its behavior.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Configure(Pulumirpc.ConfigureRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Configure configures the resource provider with "globals" that control its behavior.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.ConfigureAsync(Pulumirpc.ConfigureRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Configure configures the resource provider with "globals" that control its behavior.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.ConfigureAsync(Pulumirpc.ConfigureRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Configure configures the resource provider with "globals" that control its behavior.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Invoke(Pulumirpc.InvokeRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Invoke dynamically executes a built-in function in the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Invoke(Pulumirpc.InvokeRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Invoke dynamically executes a built-in function in the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.InvokeAsync(Pulumirpc.InvokeRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Invoke dynamically executes a built-in function in the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.InvokeAsync(Pulumirpc.InvokeRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Invoke dynamically executes a built-in function in the provider.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Check(Pulumirpc.CheckRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Check validates that the given property bag is valid for a resource of the given type and returns the inputs
+            that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
+            inputs returned by a call to Check should preserve the original representation of the properties as present in
+            the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
+            the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Check(Pulumirpc.CheckRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Check validates that the given property bag is valid for a resource of the given type and returns the inputs
+            that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
+            inputs returned by a call to Check should preserve the original representation of the properties as present in
+            the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
+            the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CheckAsync(Pulumirpc.CheckRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Check validates that the given property bag is valid for a resource of the given type and returns the inputs
+            that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
+            inputs returned by a call to Check should preserve the original representation of the properties as present in
+            the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
+            the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CheckAsync(Pulumirpc.CheckRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Check validates that the given property bag is valid for a resource of the given type and returns the inputs
+            that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
+            inputs returned by a call to Check should preserve the original representation of the properties as present in
+            the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
+            the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Diff(Pulumirpc.DiffRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Diff checks what impacts a hypothetical update will have on the resource's properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Diff(Pulumirpc.DiffRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Diff checks what impacts a hypothetical update will have on the resource's properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DiffAsync(Pulumirpc.DiffRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Diff checks what impacts a hypothetical update will have on the resource's properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DiffAsync(Pulumirpc.DiffRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Diff checks what impacts a hypothetical update will have on the resource's properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Create(Pulumirpc.CreateRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
+            must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Create(Pulumirpc.CreateRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
+            must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CreateAsync(Pulumirpc.CreateRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
+            must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CreateAsync(Pulumirpc.CreateRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
+            must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Read(Pulumirpc.ReadRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+            identify the resource; this is typically just the resource ID, but may also include some properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Read(Pulumirpc.ReadRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+            identify the resource; this is typically just the resource ID, but may also include some properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.ReadAsync(Pulumirpc.ReadRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+            identify the resource; this is typically just the resource ID, but may also include some properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.ReadAsync(Pulumirpc.ReadRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+            identify the resource; this is typically just the resource ID, but may also include some properties.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Update(Pulumirpc.UpdateRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Update updates an existing resource with new values.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Update(Pulumirpc.UpdateRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Update updates an existing resource with new values.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.UpdateAsync(Pulumirpc.UpdateRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Update updates an existing resource with new values.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.UpdateAsync(Pulumirpc.UpdateRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Update updates an existing resource with new values.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Delete(Pulumirpc.DeleteRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Delete(Pulumirpc.DeleteRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DeleteAsync(Pulumirpc.DeleteRequest,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.DeleteAsync(Pulumirpc.DeleteRequest,Grpc.Core.CallOptions)">
+            <summary>
+            Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Cancel(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Cancel signals the provider to abort all outstanding resource operations.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.Cancel(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            Cancel signals the provider to abort all outstanding resource operations.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CancelAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Cancel signals the provider to abort all outstanding resource operations.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.CancelAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            Cancel signals the provider to abort all outstanding resource operations.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.GetPluginInfo(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The response received from the server.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.GetPluginInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.Metadata,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+            <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+            <param name="cancellationToken">An optional token for canceling the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.GetPluginInfoAsync(Google.Protobuf.WellKnownTypes.Empty,Grpc.Core.CallOptions)">
+            <summary>
+            GetPluginInfo returns generic information about this plugin, like its version.
+            </summary>
+            <param name="request">The request to send to the server.</param>
+            <param name="options">The options for the call.</param>
+            <returns>The call object.</returns>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.ResourceProviderClient.NewInstance(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.BindService(Pulumirpc.ResourceProvider.ResourceProviderBase)">
+            <summary>Creates service definition that can be registered with a server</summary>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceProvider.BindService(Grpc.Core.ServiceBinderBase,Pulumirpc.ResourceProvider.ResourceProviderBase)">
+            <summary>Register service method with a service binder with or without implementation. Useful when customizing the  service binding logic.
+            Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+            <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="T:Pulumirpc.ResourceReflection">
+            <summary>Holder for reflection information generated from resource.proto</summary>
+        </member>
+        <member name="P:Pulumirpc.ResourceReflection.Descriptor">
+            <summary>File descriptor for resource.proto</summary>
+        </member>
+        <member name="T:Pulumirpc.SupportsFeatureRequest">
+            <summary>
+            SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
+            to control the format or types of messages it sends.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.SupportsFeatureRequest.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.SupportsFeatureRequest.Id">
+            <summary>
+            the ID of the feature to test support for.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.SupportsFeatureResponse.HasSupportFieldNumber">
+            <summary>Field number for the "hasSupport" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.SupportsFeatureResponse.HasSupport">
+            <summary>
+            true when the resource monitor supports this feature.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ReadResourceRequest">
+            <summary>
+            ReadResourceRequest contains enough information to uniquely qualify and read a resource's state.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Id">
+            <summary>
+            the ID of the resource to read.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.TypeFieldNumber">
+            <summary>Field number for the "type" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Type">
+            <summary>
+            the type of the resource object.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.NameFieldNumber">
+            <summary>Field number for the "name" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Name">
+            <summary>
+            the name, for URN purposes, of the object.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.ParentFieldNumber">
+            <summary>Field number for the "parent" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Parent">
+            <summary>
+            an optional parent URN that this child resource belongs to.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Properties">
+            <summary>
+            optional state sufficient to uniquely identify the resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.DependenciesFieldNumber">
+            <summary>Field number for the "dependencies" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Dependencies">
+            <summary>
+            a list of URNs that this read depends on, as observed by the language host.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.ProviderFieldNumber">
+            <summary>Field number for the "provider" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Provider">
+            <summary>
+            an optional reference to the provider to use for this read.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.VersionFieldNumber">
+            <summary>Field number for the "version" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Version">
+            <summary>
+            the version of the provider to use when servicing this request.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.AcceptSecretsFieldNumber">
+            <summary>Field number for the "acceptSecrets" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.AcceptSecrets">
+            <summary>
+            when true operations should return secrets as strongly typed.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.AdditionalSecretOutputsFieldNumber">
+            <summary>Field number for the "additionalSecretOutputs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.AdditionalSecretOutputs">
+            <summary>
+            a list of output properties that should also be treated as secret, in addition to ones we detect.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceRequest.AliasesFieldNumber">
+            <summary>Field number for the "aliases" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceRequest.Aliases">
+            <summary>
+            a list of additional URNs that shoud be considered the same.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ReadResourceResponse">
+            <summary>
+            ReadResourceResponse contains the result of reading a resource's state.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceResponse.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceResponse.Urn">
+            <summary>
+            the URN for this resource.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.ReadResourceResponse.PropertiesFieldNumber">
+            <summary>Field number for the "properties" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.ReadResourceResponse.Properties">
+            <summary>
+            the state of the resource read from the live environment.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.RegisterResourceRequest">
+            <summary>
+            RegisterResourceRequest contains information about a resource object that was newly allocated.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.TypeFieldNumber">
+            <summary>Field number for the "type" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Type">
+            <summary>
+            the type of the object allocated.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.NameFieldNumber">
+            <summary>Field number for the "name" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Name">
+            <summary>
+            the name, for URN purposes, of the object.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.ParentFieldNumber">
+            <summary>Field number for the "parent" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Parent">
+            <summary>
+            an optional parent URN that this child resource belongs to.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.CustomFieldNumber">
+            <summary>Field number for the "custom" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Custom">
+            <summary>
+            true if the resource is a custom, managed by a plugin's CRUD operations.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.ObjectFieldNumber">
+            <summary>Field number for the "object" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Object">
+            <summary>
+            an object produced by the interpreter/source.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.ProtectFieldNumber">
+            <summary>Field number for the "protect" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Protect">
+            <summary>
+            true if the resource should be marked protected.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.DependenciesFieldNumber">
+            <summary>Field number for the "dependencies" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Dependencies">
+            <summary>
+            a list of URNs that this resource depends on, as observed by the language host.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.ProviderFieldNumber">
+            <summary>Field number for the "provider" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Provider">
+            <summary>
+            an optional reference to the provider to manage this resource's CRUD operations.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.PropertyDependenciesFieldNumber">
+            <summary>Field number for the "propertyDependencies" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.PropertyDependencies">
+            <summary>
+            a map from property keys to the dependencies of the property.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.DeleteBeforeReplaceFieldNumber">
+            <summary>Field number for the "deleteBeforeReplace" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.DeleteBeforeReplace">
+            <summary>
+            true if this resource should be deleted before replacement.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.VersionFieldNumber">
+            <summary>Field number for the "version" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Version">
+            <summary>
+            the version of the provider to use when servicing this request.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.IgnoreChangesFieldNumber">
+            <summary>Field number for the "ignoreChanges" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.IgnoreChanges">
+            <summary>
+            a list of property selectors to ignore during updates.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.AcceptSecretsFieldNumber">
+            <summary>Field number for the "acceptSecrets" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.AcceptSecrets">
+            <summary>
+            when true operations should return secrets as strongly typed.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.AdditionalSecretOutputsFieldNumber">
+            <summary>Field number for the "additionalSecretOutputs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.AdditionalSecretOutputs">
+            <summary>
+            a list of output properties that should also be treated as secret, in addition to ones we detect.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.AliasesFieldNumber">
+            <summary>Field number for the "aliases" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Aliases">
+            <summary>
+            a list of additional URNs that shoud be considered the same.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.ImportIdFieldNumber">
+            <summary>Field number for the "importId" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.ImportId">
+            <summary>
+            if set, this resource's state should be imported from the given ID.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.CustomTimeoutsFieldNumber">
+            <summary>Field number for the "customTimeouts" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.CustomTimeouts">
+            <summary>
+            ability to pass a custom Timeout block.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.DeleteBeforeReplaceDefinedFieldNumber">
+            <summary>Field number for the "deleteBeforeReplaceDefined" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.DeleteBeforeReplaceDefined">
+            <summary>
+            true if the deleteBeforeReplace property should be treated as defined even if it is false.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.RegisterResourceRequest.Types">
+            <summary>Container for nested types declared in the RegisterResourceRequest message type.</summary>
+        </member>
+        <member name="T:Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies">
+            <summary>
+            PropertyDependencies describes the resources that a particular property depends on.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies.UrnsFieldNumber">
+            <summary>Field number for the "urns" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Types.PropertyDependencies.Urns">
+            <summary>
+            A list of URNs this property depends on.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.RegisterResourceRequest.Types.CustomTimeouts">
+            <summary>
+            CustomTimeouts allows a user to be able to create a set of custom timeout parameters.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.Types.CustomTimeouts.CreateFieldNumber">
+            <summary>Field number for the "create" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Types.CustomTimeouts.Create">
+            <summary>
+            The create resource timeout represented as a string e.g. 5m.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.Types.CustomTimeouts.UpdateFieldNumber">
+            <summary>Field number for the "update" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Types.CustomTimeouts.Update">
+            <summary>
+            The update resource timeout represented as a string e.g. 5m.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceRequest.Types.CustomTimeouts.DeleteFieldNumber">
+            <summary>Field number for the "delete" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceRequest.Types.CustomTimeouts.Delete">
+            <summary>
+            The delete resource timeout represented as a string e.g. 5m.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.RegisterResourceResponse">
+            <summary>
+            RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
+            auto-assigned URN, the provider-assigned ID, and any other properties initialized by the engine.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceResponse.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceResponse.Urn">
+            <summary>
+            the URN assigned by the engine.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceResponse.IdFieldNumber">
+            <summary>Field number for the "id" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceResponse.Id">
+            <summary>
+            the unique ID assigned by the provider.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceResponse.ObjectFieldNumber">
+            <summary>Field number for the "object" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceResponse.Object">
+            <summary>
+            the resulting object properties, including provider defaults.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceResponse.StableFieldNumber">
+            <summary>Field number for the "stable" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceResponse.Stable">
+            <summary>
+            if true, the object's state is stable and may be trusted not to change.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceResponse.StablesFieldNumber">
+            <summary>Field number for the "stables" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceResponse.Stables">
+            <summary>
+            an optional list of guaranteed-stable properties.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.RegisterResourceOutputsRequest">
+            <summary>
+            RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceOutputsRequest.UrnFieldNumber">
+            <summary>Field number for the "urn" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceOutputsRequest.Urn">
+            <summary>
+            the URN for the resource to attach output properties to.
+            </summary>
+        </member>
+        <member name="F:Pulumirpc.RegisterResourceOutputsRequest.OutputsFieldNumber">
+            <summary>Field number for the "outputs" field.</summary>
+        </member>
+        <member name="P:Pulumirpc.RegisterResourceOutputsRequest.Outputs">
+            <summary>
+            additional output properties to add to the existing resource.
+            </summary>
+        </member>
+        <member name="T:Pulumirpc.ResourceMonitor">
+            <summary>
+            ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
+            </summary>
+        </member>
+        <member name="P:Pulumirpc.ResourceMonitor.Descriptor">
+            <summary>Service descriptor</summary>
+        </member>
+        <member name="T:Pulumirpc.ResourceMonitor.ResourceMonitorBase">
+            <summary>Base class for server-side implementations of ResourceMonitor</summary>
+        </member>
+        <member name="T:Pulumirpc.ResourceMonitor.ResourceMonitorClient">
+            <summary>Client for ResourceMonitor</summary>
+        </member>
+        <member name="M:Pulumirpc.ResourceMonitor.ResourceMonitorClient.#ctor(Grpc.Core.ChannelBase)">
+            <summary>Creates a new client for ResourceMonitor</summary>
+            <param name="channel">The channel to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceMonitor.ResourceMonitorClient.#ctor(Grpc.Core.CallInvoker)">
+            <summary>Creates a new client for ResourceMonitor that uses a custom <c>CallInvoker</c>.</summary>
+            <param name="callInvoker">The callInvoker to use to make remote calls.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceMonitor.ResourceMonitorClient.#ctor">
+            <summary>Protected parameterless constructor to allow creation of test doubles.</summary>
+        </member>
+        <member name="M:Pulumirpc.ResourceMonitor.ResourceMonitorClient.#ctor(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Protected constructor to allow creation of configured clients.</summary>
+            <param name="configuration">The client configuration.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceMonitor.ResourceMonitorClient.NewInstance(Grpc.Core.ClientBase.ClientBaseConfiguration)">
+            <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
+        </member>
+        <member name="M:Pulumirpc.ResourceMonitor.BindService(Pulumirpc.ResourceMonitor.ResourceMonitorBase)">
+            <summary>Creates service definition that can be registered with a server</summary>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="M:Pulumirpc.ResourceMonitor.BindService(Grpc.Core.ServiceBinderBase,Pulumirpc.ResourceMonitor.ResourceMonitorBase)">
+            <summary>Register service method with a service binder with or without implementation. Useful when customizing the  service binding logic.
+            Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+            <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+            <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        </member>
+        <member name="T:Google.Rpc.StatusReflection">
+            <summary>Holder for reflection information generated from status.proto</summary>
+        </member>
+        <member name="P:Google.Rpc.StatusReflection.Descriptor">
+            <summary>File descriptor for status.proto</summary>
+        </member>
+        <member name="T:Google.Rpc.Status">
+             <summary>
+             The `Status` type defines a logical error model that is suitable for different
+             programming environments, including REST APIs and RPC APIs. It is used by
+             [gRPC](https://github.com/grpc). The error model is designed to be:
+            
+             - Simple to use and understand for most users
+             - Flexible enough to meet unexpected needs
+            
+             # Overview
+            
+             The `Status` message contains three pieces of data: error code, error message,
+             and error details. The error code should be an enum value of
+             [google.rpc.Code][google.rpc.Code], but it may accept additional error codes if needed.  The
+             error message should be a developer-facing English message that helps
+             developers *understand* and *resolve* the error. If a localized user-facing
+             error message is needed, put the localized message in the error details or
+             localize it in the client. The optional error details may contain arbitrary
+             information about the error. There is a predefined set of error detail types
+             in the package `google.rpc` which can be used for common error conditions.
+            
+             # Language mapping
+            
+             The `Status` message is the logical representation of the error model, but it
+             is not necessarily the actual wire format. When the `Status` message is
+             exposed in different client libraries and different wire protocols, it can be
+             mapped differently. For example, it will likely be mapped to some exceptions
+             in Java, but more likely mapped to some error codes in C.
+            
+             # Other uses
+            
+             The error model and the `Status` message can be used in a variety of
+             environments, either with or without APIs, to provide a
+             consistent developer experience across different environments.
+            
+             Example uses of this error model include:
+            
+             - Partial errors. If a service needs to return partial errors to the client,
+                 it may embed the `Status` in the normal response to indicate the partial
+                 errors.
+            
+             - Workflow errors. A typical workflow has multiple steps. Each step may
+                 have a `Status` message for error reporting purpose.
+            
+             - Batch operations. If a client uses batch request and batch response, the
+                 `Status` message should be used directly inside batch response, one for
+                 each error sub-response.
+            
+             - Asynchronous operations. If an API call embeds asynchronous operation
+                 results in its response, the status of those operations should be
+                 represented directly using the `Status` message.
+            
+             - Logging. If some API errors are stored in logs, the message `Status` could
+                 be used directly after any stripping needed for security/privacy reasons.
+             </summary>
+        </member>
+        <member name="F:Google.Rpc.Status.CodeFieldNumber">
+            <summary>Field number for the "code" field.</summary>
+        </member>
+        <member name="P:Google.Rpc.Status.Code">
+            <summary>
+            The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+            </summary>
+        </member>
+        <member name="F:Google.Rpc.Status.MessageFieldNumber">
+            <summary>Field number for the "message" field.</summary>
+        </member>
+        <member name="P:Google.Rpc.Status.Message">
+            <summary>
+            A developer-facing error message, which should be in English. Any
+            user-facing error message should be localized and sent in the
+            [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+            </summary>
+        </member>
+        <member name="F:Google.Rpc.Status.DetailsFieldNumber">
+            <summary>Field number for the "details" field.</summary>
+        </member>
+        <member name="P:Google.Rpc.Status.Details">
+            <summary>
+            A list of messages that carry the error details.  There will be a
+            common set of message types for APIs to use.
+            </summary>
+        </member>
+    </members>
+</doc>

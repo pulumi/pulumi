@@ -38,7 +38,7 @@ namespace Pulumi
 
                 if (t.Status == TaskStatus.Canceled)
                 {
-                    tcs.set
+                    // TODO tcs.set
                 }
             });
         }

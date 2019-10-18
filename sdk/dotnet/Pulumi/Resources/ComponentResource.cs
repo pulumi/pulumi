@@ -38,7 +38,7 @@ namespace Pulumi
         // quickly as possible (instead of waiting until the entire application completes).
         protected void RegisterOutputs(InputMap<string, object>? map = null)
         {
-            Runtime.RegisterResourceOutputs(this, map ?? new InputMap<string, object>());
+            // TODO Runtime.RegisterResourceOutputs(this, map ?? new InputMap<string, object>());
         }
 
         internal sealed override void AttachRegistrations(Task<RegisterResourceResponse> response)

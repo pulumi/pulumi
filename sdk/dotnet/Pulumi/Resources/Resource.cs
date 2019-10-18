@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Pulumirpc;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
+using Pulumi.Rpc;
 
 namespace Pulumi
 {
@@ -29,34 +30,34 @@ namespace Pulumi
         /// The child resources of this resource.  We use these (only from a ComponentResource) to
         /// allow code to dependOn a ComponentResource and have that effectively mean that it is
         /// depending on all the CustomResource children of that component.
-        /// 
+        ///
         /// Important!  We only walk through ComponentResources.They're the only resources that
         /// serve as an aggregation of other primitive(i.e.custom) resources.While a custom resource
         /// can be a parent of other resources, we don't want to ever depend on those child
         /// resource.  If we do, it's simple to end up in a situation where we end up depending on a
         /// child resource that has a data cycle dependency due to the data passed into it. An
         /// example of how this would be bad is:
-        /// 
+        ///
         /// ```ts
         ///     var c1 = new CustomResource("c1");
         ///         var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1
         /// });
         ///     var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
         /// ```
-        /// 
+        ///
         /// The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
         /// 'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
         /// But 'c3' will be waiting in the same manner on 'c2', and a cycle forms. This normally
         /// does not happen with ComponentResources as they do not have any data flowing into
         /// them.The only way you would be able to have a problem is if you had this sort of coding
         /// pattern:
-        /// 
+        ///
         /// ```c#
         ///     var c1 = new ComponentResource("c1");
         ///     var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
         ///     var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
         /// ```
-        /// 
+        ///
         /// However, this would be pretty nonsensical as there is zero need for a custom resource to
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
@@ -259,7 +260,11 @@ namespace Pulumi
                     throw new ResourceException(
                         "Cannot read an existing resource unless it has a custom provider", opts.Parent);
                 }
+<<<<<<< HEAD
                 Deployment.RegisterTask(Runtime.ReadResourceAsync(this, type, name, properties, opts));
+=======
+                // TODO readResource(this, type, name, properties, opts);
+>>>>>>> b3a3a5b3dc3945bacbee46f69792d3806ddc3369
             }
             else
             {
@@ -267,7 +272,11 @@ namespace Pulumi
                 // this resource's properties will be resolved asynchronously after the operation
                 // completes, so that dependent computations resolve normally.  If we are just
                 // planning, on the other hand, values will never resolve.
+<<<<<<< HEAD
                 Deployment.RegisterTask(Runtime.RegisterResourceAsync(this, type, name, custom, properties, opts));
+=======
+                // TODO registerResource(this, type, name, custom, properties, opts);
+>>>>>>> b3a3a5b3dc3945bacbee46f69792d3806ddc3369
             }
         }
 
@@ -286,6 +295,7 @@ namespace Pulumi
             return result;
         }
 
+<<<<<<< HEAD
         //internal void AttachRegistrations(Task<RegisterResourceResponse> response)
         //{
         //    Attach(response, "urn", r => r.urn, v => new Urn(v));
@@ -333,6 +343,55 @@ namespace Pulumi
 
         //    response.Assign(tcs)
         //}
+=======
+        internal virtual void AttachRegistrations(Task<RegisterResourceResponse> response)
+        {
+            // TODO
+            //Attach(response, "urn", r => r.urn, v => new Urn(v));
+            //Attach(response, "id", r => r.Id, v => new Id(v), optional: true);
+
+            //foreach (var field in this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+            //{
+            //    var resourceFieldAttribute = field.GetCustomAttribute<ResourceFieldAttribute>();
+            //    if (resourceFieldAttribute != null)
+            //    {
+            //        var fieldName = resourceFieldAttribute.Name;
+            //        Attach(response, field, fieldName, r => r.Object);
+            //    }
+            //}
+        }
+
+        private void Deserialize(Task<RegisterResourceResponse> response, FieldInfo field, string fieldName)
+        {
+            RegisterResourceResponse r = null!;
+            if (r.Object.Fields.ContainsKey(fieldName))
+            {
+
+            }
+
+            var value = r.Object.Fields[fieldName];
+            switch (value.KindCase)
+            {
+                case Value.KindOneofCase.NullValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.NumberValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StringValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.BoolValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.StructValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.ListValue:
+                    break;
+                case Google.Protobuf.WellKnownTypes.Value.KindOneofCase.None:
+                default:
+                    throw new NotSupportedException($"Unknown kind for field '{fieldName}': {value.KindCase}");
+            }
+
+            // TODO response.Assign(tcs);
+        }
+>>>>>>> b3a3a5b3dc3945bacbee46f69792d3806ddc3369
 
         private static Output<Urn> CollapseAliasToUrn(
             Input<UrnOrAlias> alias,
