@@ -3,6 +3,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Pulumi
 {
@@ -23,6 +24,28 @@ namespace Pulumi
         {
             get => _providers ?? (_providers = new List<ProviderResource>());
             set => _providers = value;
+        }
+
+        internal override ResourceOptions Clone()
+        {
+            var cloned = base.Clone();
+            return new ComponentResourceOptions
+            {
+                // Base properties
+                Aliases = cloned.Aliases,
+                CustomTimeouts = cloned.CustomTimeouts,
+                DependsOn = cloned.DependsOn,
+                Id = cloned.Id,
+                Parent = cloned.Parent,
+                IgnoreChanges = cloned.IgnoreChanges,
+                Protect = cloned.Protect,
+                Provider = cloned.Provider,
+                ResourceTransformations = cloned.ResourceTransformations,
+                Version = cloned.Version,
+
+                // Our properties
+                Providers = this.Providers.ToList(),
+            };
         }
     }
 }

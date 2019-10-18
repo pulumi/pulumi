@@ -3,6 +3,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Pulumi
 {
@@ -39,5 +40,29 @@ namespace Pulumi
         /// imported, the import property must be removed from the resource's options.
         /// </summary>
         public Id? Import { get; set; }
+
+        internal override ResourceOptions Clone()
+        {
+            var cloned = base.Clone();
+            return new CustomResourceOptions
+            {
+                // Base properties
+                Aliases = cloned.Aliases,
+                CustomTimeouts = cloned.CustomTimeouts,
+                DependsOn = cloned.DependsOn,
+                Id = cloned.Id,
+                Parent = cloned.Parent,
+                IgnoreChanges = cloned.IgnoreChanges,
+                Protect = cloned.Protect,
+                Provider = cloned.Provider,
+                ResourceTransformations = cloned.ResourceTransformations,
+                Version = cloned.Version,
+
+                // Our properties
+                AdditionalSecretOutputs = this.AdditionalSecretOutputs.ToList(),
+                DeleteBeforeReplace = this.DeleteBeforeReplace,
+                Import = this.Import,
+            };
+        }
     }
 }
