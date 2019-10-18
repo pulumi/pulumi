@@ -459,7 +459,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	configStringMap := make(map[string]string, len(cfg))
 	for k, v := range cfg {
 		keyString := k.String()
-		valueString, err := v.Value(config.NewBlindingDecrypter())
+		valueString, err := v.Value(config.BlindingCrypter)
 		contract.AssertNoError(err)
 		configStringMap[keyString] = valueString
 	}

@@ -4,14 +4,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // convertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
 // EngineEvent.{ Sequence, Timestamp } are expected to be set by the caller.
-func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
+func ConvertEngineEvent(e engine.Event, encrypter config.Encrypter) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 
 	// Error to return if the payload doesn't match expected.
@@ -97,7 +99,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ResourcePreEvent = &apitype.ResourcePreEvent{
-			Metadata: convertStepEventMetadata(p.Metadata),
+			Metadata: convertStepEventMetadata(p.Metadata, encrypter),
 			Planning: p.Planning,
 		}
 
@@ -107,7 +109,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ResOutputsEvent = &apitype.ResOutputsEvent{
-			Metadata: convertStepEventMetadata(p.Metadata),
+			Metadata: convertStepEventMetadata(p.Metadata, encrypter),
 			Planning: p.Planning,
 		}
 
@@ -117,7 +119,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ResOpFailedEvent = &apitype.ResOpFailedEvent{
-			Metadata: convertStepEventMetadata(p.Metadata),
+			Metadata: convertStepEventMetadata(p.Metadata, encrypter),
 			Status:   int(p.Status),
 			Steps:    p.Steps,
 		}
@@ -129,7 +131,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 	return apiEvent, nil
 }
 
-func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMetadata {
+func convertStepEventMetadata(md engine.StepEventMetadata, encrypter config.Encrypter) apitype.StepEventMetadata {
 	keys := make([]string, len(md.Keys))
 	for i, v := range md.Keys {
 		keys[i] = string(v)
@@ -171,8 +173,8 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 		URN:  string(md.URN),
 		Type: string(md.Type),
 
-		Old: convertStepEventStateMetadata(md.Old),
-		New: convertStepEventStateMetadata(md.New),
+		Old: convertStepEventStateMetadata(md.Old, encrypter),
+		New: convertStepEventStateMetadata(md.New, encrypter),
 
 		Keys:         keys,
 		Diffs:        diffs,
@@ -182,19 +184,18 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 	}
 }
 
-func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.StepEventStateMetadata {
+func convertStepEventStateMetadata(
+	md *engine.StepEventStateMetadata, encrypter config.Encrypter) *apitype.StepEventStateMetadata {
+
 	if md == nil {
 		return nil
 	}
 
-	inputs := make(map[string]interface{})
-	for k, v := range md.Inputs {
-		inputs[string(k)] = v
-	}
-	outputs := make(map[string]interface{})
-	for k, v := range md.Outputs {
-		outputs[string(k)] = v
-	}
+	inputs, err := stack.SerializeProperties(md.Inputs, encrypter)
+	contract.IgnoreError(err)
+
+	outputs, err := stack.SerializeProperties(md.Outputs, encrypter)
+	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
 		Type: string(md.Type),

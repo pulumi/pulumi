@@ -414,6 +414,11 @@ func (b *localBackend) apply(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
 	}
 
+	encrypter, err := op.SecretsManager.Encrypter()
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+
 	// Start the update.
 	update, err := b.newUpdate(stackName, op)
 	if err != nil {
@@ -425,7 +430,7 @@ func (b *localBackend) apply(
 	displayDone := make(chan bool)
 	go display.ShowEvents(
 		strings.ToLower(actionLabel), kind, stackName, op.Proj.Name,
-		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+		displayEvents, displayDone, op.Opts.Display, opts.DryRun, encrypter)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)

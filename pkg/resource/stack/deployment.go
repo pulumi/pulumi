@@ -37,6 +37,8 @@ const (
 	// need to be at least one less than the current schema version so that old deployments can
 	// be migrated to the current schema.
 	DeploymentSchemaVersionOldestSupported = 1
+
+	unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 )
 
 var (
@@ -319,8 +321,12 @@ func SerializeProperties(props resource.PropertyMap, enc config.Encrypter) (map[
 func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter) (interface{}, error) {
 	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
 	// that hasn't materialized (either because we're serializing inputs or the provider didn't give us the value).
-	if prop.IsComputed() || !prop.HasValue() {
+	if !prop.HasValue() {
 		return nil, nil
+	}
+
+	if prop.IsComputed() {
+		return unknownValue, nil
 	}
 
 	// For arrays, make sure to recurse.
@@ -433,6 +439,9 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter) (resource.Pro
 		case float64:
 			return resource.NewNumberProperty(w), nil
 		case string:
+			if w == unknownValue {
+				return resource.MakeComputed(resource.NewStringProperty("")), nil
+			}
 			return resource.NewStringProperty(w), nil
 		case []interface{}:
 			var arr []resource.PropertyValue

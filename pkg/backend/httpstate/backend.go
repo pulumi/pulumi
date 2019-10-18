@@ -46,7 +46,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -874,7 +873,8 @@ func (b *cloudBackend) runEngineAction(
 	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op, update, token)
+
+	u, err := b.newUpdate(ctx, stackRef, op, update, token, op.SecretsManager)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -903,13 +903,8 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
-	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
-	// to ensure that secrets are not re-encrypted on each update.
-	sm := op.SecretsManager
-	if secrets.AreCompatible(sm, u.GetTarget().Snapshot.SecretsManager) {
-		sm = u.GetTarget().Snapshot.SecretsManager
-	}
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, sm)
+	// the Snapshot (checkpoint file) in the HTTP backend
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, u.GetSecretsManager())
 	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and

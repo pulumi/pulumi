@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -34,10 +36,10 @@ import (
 // channel so the caller can await all the events being written.
 func ShowEvents(
 	op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool, encrypter config.Encrypter) {
 
 	if opts.EventLogPath != "" {
-		events, done = startEventLogger(events, done, opts.EventLogPath)
+		events, done = startEventLogger(events, done, opts.EventLogPath, encrypter)
 	}
 
 	if opts.JSONDisplay {
@@ -60,7 +62,9 @@ func ShowEvents(
 	}
 }
 
-func startEventLogger(events <-chan engine.Event, done chan<- bool, path string) (<-chan engine.Event, chan<- bool) {
+func startEventLogger(events <-chan engine.Event, done chan<- bool, path string,
+	encrypter config.Encrypter) (<-chan engine.Event, chan<- bool) {
+
 	// Before moving further, attempt to open the log file.
 	logFile, err := os.Create(path)
 	if err != nil {
@@ -76,11 +80,14 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, path string)
 		}()
 
 		encoder := json.NewEncoder(logFile)
+		sequence := 0
 		logEvent := func(e engine.Event) error {
-			apiEvent, err := ConvertEngineEvent(e)
+			apiEvent, err := ConvertEngineEvent(e, encrypter)
 			if err != nil {
 				return err
 			}
+			apiEvent.Sequence, sequence = sequence, sequence+1
+			apiEvent.Timestamp = int(time.Now().Unix())
 			return encoder.Encode(apiEvent)
 		}
 

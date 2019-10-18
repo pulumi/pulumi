@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 
@@ -133,6 +134,8 @@ type cloudUpdate struct {
 	root   string
 	proj   *workspace.Project
 	target *deploy.Target
+
+	sm secrets.Manager
 }
 
 func (u *cloudUpdate) GetRoot() string {
@@ -145,6 +148,10 @@ func (u *cloudUpdate) GetProject() *workspace.Project {
 
 func (u *cloudUpdate) GetTarget() *deploy.Target {
 	return u.target
+}
+
+func (u *cloudUpdate) GetSecretsManager() secrets.Manager {
+	return u.sm
 }
 
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
@@ -166,9 +173,14 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 		return err
 	}
 
+	encrypter, err := u.sm.Encrypter()
+	if err != nil {
+		return err
+	}
+
 	var apiEvents apitype.EngineEventBatch
 	for idx, event := range events {
-		apiEvent, convErr := display.ConvertEngineEvent(event)
+		apiEvent, convErr := display.ConvertEngineEvent(event, encrypter)
 		if convErr != nil {
 			return errors.Wrap(convErr, "converting engine event")
 		}
@@ -206,10 +218,15 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 		close(done)
 	}()
 
+	encrypter, err := u.sm.Encrypter()
+	if err != nil {
+		encrypter = config.BlindingCrypter
+	}
+
 	// Start the Go-routines for displaying and persisting events.
 	go display.ShowEvents(
 		label, action, stackRef.Name(), op.Proj.Name,
-		displayEvents, displayEventsDone, opts, isPreview)
+		displayEvents, displayEventsDone, opts, isPreview, encrypter)
 	go persistEngineEvents(
 		u, opts.Debug, /* persist debug events */
 		persistEvents, persistEventsDone)
@@ -241,7 +258,7 @@ func (b *cloudBackend) newQuery(ctx context.Context, stackRef backend.StackRefer
 }
 
 func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
-	update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
+	update client.UpdateIdentifier, token string, sm secrets.Manager) (*cloudUpdate, error) {
 
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
@@ -259,6 +276,12 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 		return nil, err
 	}
 
+	// We will reuse the snapshot's secrets manager when possible to ensure that secrets are not re-encrypted on each
+	// update.
+	if secrets.AreCompatible(sm, target.Snapshot.SecretsManager) {
+		sm = target.Snapshot.SecretsManager
+	}
+
 	// Construct and return a new update.
 	return &cloudUpdate{
 		context:     ctx,
@@ -268,6 +291,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 		root:        op.Root,
 		proj:        op.Proj,
 		target:      target,
+		sm:          sm,
 	}, nil
 }
 

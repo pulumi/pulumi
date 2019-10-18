@@ -58,16 +58,18 @@ func (nopCrypter) EncryptValue(plaintext string) (string, error) {
 	return plaintext, nil
 }
 
-// NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "[secret]", it can
+// BlindingCrypter returns a Crypter that instead of decrypting or encrypting data, just returns "[secret]", it can
 // be used when you want to display configuration information to a user but don't want to prompt for a password
-// so secrets will not be decrypted.
-func NewBlindingDecrypter() Decrypter {
-	return blindingDecrypter{}
+// so secrets will not be decrypted or encrypted.
+var BlindingCrypter = blindingCrypter{}
+
+type blindingCrypter struct{}
+
+func (b blindingCrypter) DecryptValue(ciphertext string) (string, error) {
+	return "[secret]", nil
 }
 
-type blindingDecrypter struct{}
-
-func (b blindingDecrypter) DecryptValue(ciphertext string) (string, error) {
+func (b blindingCrypter) EncryptValue(plaintext string) (string, error) {
 	return "[secret]", nil
 }
 
