@@ -322,7 +322,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     if (custom) {
         const customOpts = <CustomResourceOptions>opts;
         importID = customOpts.import;
-        providerRef = await ProviderResource.register(customOpts.provider);
+        providerRef = await ProviderResource.register(opts.provider);
     }
 
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
