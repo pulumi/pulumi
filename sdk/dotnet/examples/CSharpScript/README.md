@@ -1,4 +1,4 @@
-# Running in a C# script
+# How To Run a C# script
 
 To run it from a console:
 

@@ -2,11 +2,11 @@
 #r "../PulumiAzure/bin/Debug/netstandard2.1/PulumiAzure.dll"
 
 using Pulumi.Azure.Core;
-using Storage = Pulumi.Azure.Storage;
+using Pulumi.Azure.Storage;
 
 var resourceGroup = new ResourceGroup("rg");
 
-var storageAccount = new Storage.Account("sa", new Storage.AccountArgs
+var storageAccount = new Account("sa", new AccountArgs
 {
     ResourceGroupName = resourceGroup.Name,
     AccountReplicationType = "LRS",
