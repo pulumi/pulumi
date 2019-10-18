@@ -4,7 +4,7 @@
 
 using System;
 
-namespace Pulumi
+namespace Pulumi.Rpc
 {
     [AttributeUsage(AttributeTargets.Field)]
     public class ResourceFieldAttribute : Attribute 
