@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pathlib import Path
+
 from pulumi import CustomResource
 from pulumi.asset import FileAsset, StringAsset, RemoteAsset
 
@@ -23,5 +25,6 @@ class MyResource(CustomResource):
         })
 
 MyResource("file", FileAsset("./testfile.txt"))
+MyResource("file", FileAsset(Path(".") / "testfile.txt"))
 MyResource("string", StringAsset("its a string"))
 MyResource("remote", RemoteAsset("https://pulumi.com"))
