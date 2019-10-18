@@ -6,10 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
-using Pulumirpc;
 using Pulumi.Rpc;
 
 namespace Pulumi
@@ -35,7 +32,7 @@ namespace Pulumi
         /// POJO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-                string label, ResourceArgs args, Predicate<string> acceptKey)
+            string label, ResourceArgs args, Predicate<string> acceptKey)
         {
             var props = args.ToDictionary();
 
@@ -57,7 +54,9 @@ namespace Pulumi
                 }
             }
 
-            return new SerializationResult(result, propertyToDependentResources);
+            return new SerializationResult(
+                result.ToImmutableDictionary(),
+                propertyToDependentResources.ToImmutableDictionary());
         }
 
         private static async Task<object?> SerializePropertyAsync(
@@ -69,6 +68,7 @@ namespace Pulumi
             if (prop == null ||
                 prop is bool ||
                 prop is int ||
+                prop is double ||
                 prop is string)
             {
                 if (_excessiveDebugOutput)
@@ -232,13 +232,23 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
         private struct SerializationResult
         {
-            public readonly Dictionary<string, object> Serialized;
-            public readonly Dictionary<string, HashSet<Resource>> PropertyToDependentResources;
+            public readonly ImmutableDictionary<string, object> Serialized;
+            public readonly ImmutableDictionary<string, HashSet<Resource>> PropertyToDependentResources;
 
-            public SerializationResult(Dictionary<string, object> result, Dictionary<string, HashSet<Resource>> propertyToDependentResources)
+            public SerializationResult(
+                ImmutableDictionary<string, object> result,
+                ImmutableDictionary<string, HashSet<Resource>> propertyToDependentResources)
             {
                 Serialized = result;
                 PropertyToDependentResources = propertyToDependentResources;
+            }
+
+            public void Deconstruct(
+                out ImmutableDictionary<string, object> serialized,
+                out ImmutableDictionary<string, HashSet<Resource>> propertyToDependentResources)
+            {
+                serialized = Serialized;
+                propertyToDependentResources = PropertyToDependentResources;
             }
         }
     }

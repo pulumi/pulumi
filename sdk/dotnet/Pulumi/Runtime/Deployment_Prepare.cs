@@ -2,13 +2,10 @@
 
 #nullable enable
 
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Pulumirpc;
 
 namespace Pulumi
 {
@@ -55,7 +52,7 @@ namespace Pulumi
             //// RPC returns
             //const resolvers = transferProperties(res, label, props);
 
-            /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
+            /* IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
             // Before we can proceed, all our dependencies must be finished.
             var explicitDirectDependencies = new HashSet<Resource>(
@@ -63,7 +60,8 @@ namespace Pulumi
 
             // Serialize out all our props to their final values.  In doing so, we'll also collect all
             // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-            var (serializedProps, propertyToDirectDependencies) = await SerializeResourcePropertiesAsync(label, args);
+            var (serializedProps, propertyToDirectDependencies) =
+                await SerializeResourcePropertiesAsync(label, args).ConfigureAwait(false);
 
             // Wait for the parent to complete.
             // If no parent was provided, parent to the root resource.
@@ -72,11 +70,9 @@ namespace Pulumi
                 : await GetRootResourceAsync(type).ConfigureAwait(false);
 
             string? providerRef = null;
-            Id? importID = null;
             if (custom)
             {
                 var customOpts = opts as CustomResourceOptions;
-                importID = customOpts?.Import;
                 providerRef = await ProviderResource.RegisterAsync(customOpts?.Provider).ConfigureAwait(false);
             }
 
@@ -91,10 +87,10 @@ namespace Pulumi
 
             foreach (var (propertyName, directDependencies) in propertyToDirectDependencies)
             {
-                AddAll(allDirectDependencies, directDependencies);
+                allDirectDependencies.AddRange(directDependencies);
 
                 var urns = await GetAllTransitivelyReferencedCustomResourceURNsAsync(directDependencies).ConfigureAwait(false);
-                AddAll(allDirectDependencyURNs, urns);
+                allDirectDependencyURNs.AddRange(urns);
                 propertyToDirectDependencyURNs[propertyName] = urns;
             }
 
@@ -113,24 +109,12 @@ namespace Pulumi
             }
 
             return new PrepareResult(
-                serializedProps,
+                serializedProps.ToImmutableDictionary(),
                 parentURN,
                 providerRef,
                 allDirectDependencyURNs,
                 propertyToDirectDependencyURNs,
-                aliases,
-                importID);
-            //    //    resolveURN: resolveURN!,
-            //    //resolveID: resolveID,
-            //    //resolvers: resolvers,
-            //    serializedProps: serializedProps,
-            //    parentURN: parentURN,
-            //    providerRef: providerRef,
-            //    allDirectDependencyURNs: allDirectDependencyURNs,
-            //    propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
-            //    aliases: aliases,
-            //    import: importID,
-            //};
+                aliases);
         }
 
         private Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
@@ -225,15 +209,14 @@ namespace Pulumi
 
         private struct PrepareResult
         {
-            public readonly object SerializedProps;
+            public readonly ImmutableDictionary<string, object> SerializedProps;
             public readonly Urn? ParentUrn;
             public readonly string? ProviderRef;
             public readonly HashSet<Urn> AllDirectDependencyURNs;
             public readonly Dictionary<string, HashSet<Urn>> PropertyToDirectDependencyURNs;
             public readonly List<Urn> Aliases;
-            public readonly Id? ImportID;
 
-            public PrepareResult(object serializedProps, Urn? parentUrn, string? providerRef, HashSet<Urn> allDirectDependencyURNs, Dictionary<string, HashSet<Urn>> propertyToDirectDependencyURNs, List<Urn> aliases, Id? importID)
+            public PrepareResult(ImmutableDictionary<string, object> serializedProps, Urn? parentUrn, string? providerRef, HashSet<Urn> allDirectDependencyURNs, Dictionary<string, HashSet<Urn>> propertyToDirectDependencyURNs, List<Urn> aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
@@ -241,7 +224,6 @@ namespace Pulumi
                 AllDirectDependencyURNs = allDirectDependencyURNs;
                 PropertyToDirectDependencyURNs = propertyToDirectDependencyURNs;
                 Aliases = aliases;
-                ImportID = importID;
             }
         }
     }
