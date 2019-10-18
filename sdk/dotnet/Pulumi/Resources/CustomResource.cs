@@ -4,7 +4,6 @@
 
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Pulumi.Rpc;
 using Pulumirpc;
 
 namespace Pulumi
@@ -35,8 +34,8 @@ namespace Pulumi
         /// instead, this is dependent upon the diffing of the new goal state compared to the
         /// current known resource state.
         /// </summary>
-        public CustomResource(string type, string name, ImmutableDictionary<string, Input<object>> properties, ResourceOptions? opts = null)
-            : base(type, name, custom: true, properties, opts ?? new ResourceOptions())
+        public CustomResource(string type, string name, ResourceArgs args, ResourceOptions? opts = null)
+            : base(type, name, custom: true, args, opts ?? new ResourceOptions())
         {
             if (opts is ComponentResourceOptions componentOpts && componentOpts.Providers != null)
             {

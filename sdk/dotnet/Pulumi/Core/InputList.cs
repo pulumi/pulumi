@@ -24,6 +24,8 @@ namespace Pulumi
         IOutput IInput.ToOutput()
             => _values;
 
+        internal Output<ImmutableArray<T>> Values => _values;
+
         public void Add(params Input<T>[] inputs)
         {
             var values1 = _values;

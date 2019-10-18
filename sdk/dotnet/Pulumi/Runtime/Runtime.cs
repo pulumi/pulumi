@@ -17,10 +17,10 @@ namespace Pulumi
             Resource resource, string type, string name, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
-            var label = $"resource:{name}[{t}]";
+            var label = $"resource:{name}[{type}]";
             Serilog.Log.Debug($"Registering resource: t={type}, name=${name}, custom=${custom}");
 
-            var registerArgs = await PrepareResourceAsync(label, resource, custom, args, opts).ConfigureAwait(false);
+            var prepareResult = await PrepareResourceAsync(label, resource, custom, args, opts).ConfigureAwait(false);
 
             var customOpts = opts as CustomResourceOptions;
             var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
@@ -143,7 +143,7 @@ namespace Pulumi
 
         }
 
-        private async Task<PrepareResult> PrepareResource(
+        private async Task<PrepareResult> PrepareResourceAsync(
             string label, Resource res, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
@@ -205,7 +205,7 @@ namespace Pulumi
             if (custom) {
                 var customOpts = opts as CustomResourceOptions;
                 importID = customOpts?.Import;
-                providerRef = await ProviderResource.Register(customOpts?.Provider);
+                providerRef = await ProviderResource.RegisterAsync(customOpts?.Provider).ConfigureAwait(false);
             }
 
             // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
@@ -257,5 +257,37 @@ namespace Pulumi
     //    import: importID,
     //};
         }
-    }
+
+        private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
+            => resources.Values.GetValueAsync();
+
+//    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<Resource[]> {
+
+//    if (dependsOn) {
+//        if (Array.isArray(dependsOn)) {
+//            const dos: Resource[] = [];
+//            for (const d of dependsOn) {
+//                dos.push(...(await gatherExplicitDependencies(d)));
+//            }
+//            return dos;
+//        } else if (dependsOn instanceof Promise) {
+//            return gatherExplicitDependencies(await dependsOn);
+//        } else if (Output.isInstance(dependsOn)) {
+//            // Recursively gather dependencies, await the promise, and append the output's dependencies.
+//            const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(v => gatherExplicitDependencies(v));
+//const urns = await dos.promise();
+//const implicits = await gatherExplicitDependencies([...dos.resources()]);
+//            return urns.concat(implicits);
+//        } else {
+//            if (!Resource.isInstance(dependsOn)) {
+//                throw new Error("'dependsOn' was passed a value that was not a Resource.");
+//            }
+
+//            return [dependsOn];
+//        }
+//    }
+
+//    return [];
+//}
+//    }
 }
