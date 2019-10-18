@@ -36,8 +36,8 @@ namespace Pulumi.Rpc
             }
 
             UnwrapSecret(value, out var isSecret, out var unwrapped);
-            var converted = Convert(value);
-            return new OutputData<T>(converted, converted != null)
+            var converted = default(T);// TODO Convert(value);
+            return new OutputData<T>(converted, converted != null, false);
         }
 
         protected static void UnwrapSecret(Value value, out bool isSecret, out Value unwrapped)
@@ -59,7 +59,7 @@ namespace Pulumi.Rpc
 
     public sealed class BoolRegistrationTaskCompletionSource<T> : AbstractRegistrationTaskCompletionSource<bool>
     {
-        private protected override OutputData<bool> Extract(RegisterResourceResponse response)
+        private protected OutputData<bool> Extract(RegisterResourceResponse response)
         {
             throw new NotImplementedException();
         }

@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Pulumirpc;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
+using Pulumi.Rpc;
 
 namespace Pulumi
 {
@@ -286,20 +287,21 @@ namespace Pulumi
             return result;
         }
 
-        internal void AttachRegistrations(Task<RegisterResourceResponse> response)
+        internal virtual void AttachRegistrations(Task<RegisterResourceResponse> response)
         {
-            Attach(response, "urn", r => r.urn, v => new Urn(v));
-            Attach(response, "id", r => r.Id, v => new Id(v), optional: true);
+            // TODO
+            //Attach(response, "urn", r => r.urn, v => new Urn(v));
+            //Attach(response, "id", r => r.Id, v => new Id(v), optional: true);
 
-            foreach (var field in this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
-            {
-                var resourceFieldAttribute = field.GetCustomAttribute<ResourceFieldAttribute>();
-                if (resourceFieldAttribute != null)
-                {
-                    var fieldName = resourceFieldAttribute.Name;
-                    Attach(response, field, fieldName, r => r.Object);
-                }
-            }
+            //foreach (var field in this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+            //{
+            //    var resourceFieldAttribute = field.GetCustomAttribute<ResourceFieldAttribute>();
+            //    if (resourceFieldAttribute != null)
+            //    {
+            //        var fieldName = resourceFieldAttribute.Name;
+            //        Attach(response, field, fieldName, r => r.Object);
+            //    }
+            //}
         }
 
         private void Deserialize(Task<RegisterResourceResponse> response, FieldInfo field, string fieldName)
@@ -311,7 +313,6 @@ namespace Pulumi
             }
 
             var value = r.Object.Fields[fieldName];
-            value.ListValue
             switch (value.KindCase)
             {
                 case Value.KindOneofCase.NullValue:
@@ -331,7 +332,7 @@ namespace Pulumi
                     throw new NotSupportedException($"Unknown kind for field '{fieldName}': {value.KindCase}");
             }
 
-            response.Assign(tcs)
+            // TODO response.Assign(tcs);
         }
 
         private static Output<Urn> CollapseAliasToUrn(
