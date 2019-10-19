@@ -6,11 +6,11 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Rpc
 {
-    public abstract class ProtobufCompletionSource<T> : OutputCompletionSource<T>, IProtobufOutputCompletionSource
-    {
+    public abstract class ProtobufOutputCompletionSource<T> : OutputCompletionSource<T>, IProtobufOutputCompletionSource
+    { 
         private readonly Deserializer<T> _deserialize;
 
-        private protected ProtobufCompletionSource(
+        private protected ProtobufOutputCompletionSource(
             Resource resource, Deserializer<T> deserialize)
             : base(resource)
         {

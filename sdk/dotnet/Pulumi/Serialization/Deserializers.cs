@@ -9,57 +9,41 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Rpc
 {
-    public static class Deserializers
+    internal static class Deserializers
     {
-        public static readonly Deserializer<bool> BoolDeserializer =
-            v =>
+        private static Deserializer<T> CreateSimpleDeserializer<T>(
+            Value.KindOneofCase kind, Func<Value, T> func)
+        {
+            return v =>
             {
                 var (innerVal, isSecret) = UnwrapSecret(v);
                 v = innerVal;
 
-                return v.KindCase != Value.KindOneofCase.BoolValue
-                    ? (v.BoolValue, isSecret)
-                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a bool");
+                return v.KindCase == kind
+                    ? (func(v), isSecret)
+                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a {kind}");
             };
+        }
+
+        public static readonly Deserializer<bool> BoolDeserializer =
+            CreateSimpleDeserializer(Value.KindOneofCase.BoolValue, v => v.BoolValue);
 
         public static readonly Deserializer<string> StringDeserializer =
-            v =>
-            {
-                var (innerVal, isSecret) = UnwrapSecret(v);
-                v = innerVal;
-
-                return v.KindCase != Value.KindOneofCase.StringValue
-                    ? (v.StringValue, isSecret)
-                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a string");
-            };
-
-        public static readonly Deserializer<object> NumberDeserializer =
-            v =>
-            {
-                var (innerVal, isSecret) = UnwrapSecret(v);
-                v = innerVal;
-
-                return v.KindCase != Value.KindOneofCase.NumberValue
-                    ? (ConvertNumberToInt32OrDouble(v.NumberValue), isSecret)
-                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a number");
-
-            };
-
-        private static object ConvertNumberToInt32OrDouble(double numberValue)
-            => (int)numberValue == numberValue
-                ? (object)(int)numberValue
-                : numberValue;
+            CreateSimpleDeserializer(Value.KindOneofCase.StringValue, v => v.StringValue);
 
         public static readonly Deserializer<int> Int32Deserializer =
-            v =>
-            {
-                var (innerVal, isSecret) = UnwrapSecret(v);
-                v = innerVal;
+            CreateSimpleDeserializer(Value.KindOneofCase.NumberValue, v => (int)v.NumberValue);
 
-                return v.KindCase != Value.KindOneofCase.NumberValue
-                    ? ((int)v.NumberValue, isSecret)
-                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a number");
-            };
+        public static readonly Deserializer<double> DoubleDeserializer =
+            CreateSimpleDeserializer(Value.KindOneofCase.NumberValue, v => v.NumberValue);
+
+        public static readonly Deserializer<object> NumberDeserializer =
+            CreateSimpleDeserializer(Value.KindOneofCase.NumberValue, v => ConvertNumberToInt32OrDouble(v.NumberValue));
+
+        private static object ConvertNumberToInt32OrDouble(double numberValue)
+            => unchecked((int)numberValue == numberValue
+                ? (object)(int)numberValue
+                : numberValue);
 
         public static Deserializer<ImmutableArray<T>> CreateListDeserializer<T>(Deserializer<T> elementDeserializer)
             => v =>

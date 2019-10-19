@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 
 namespace Pulumi.Rpc
 {
-    public sealed class StructOutputCompletionSource<T> : ProtobufCompletionSource<ImmutableDictionary<string, T>>
+    public sealed class StructOutputCompletionSource<T> : ProtobufOutputCompletionSource<ImmutableDictionary<string, T>>
     {
         public StructOutputCompletionSource(Resource resource, Deserializer<T> elementDeserializer)
             : base(resource, Deserializers.CreateStructDeserializer(elementDeserializer))

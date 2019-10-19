@@ -4,7 +4,7 @@
 
 namespace Pulumi.Rpc
 {
-    public sealed class StringOutputCompletionSource : ProtobufCompletionSource<string>
+    public sealed class StringOutputCompletionSource : ProtobufOutputCompletionSource<string>
     {
         public StringOutputCompletionSource(Resource resource)
             : base(resource, Deserializers.StringDeserializer)

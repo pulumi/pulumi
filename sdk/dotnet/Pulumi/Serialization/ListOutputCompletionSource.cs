@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 
 namespace Pulumi.Rpc
 {
-    public sealed class ListOutputCompletionSource<T> : ProtobufCompletionSource<ImmutableArray<T>>
+    public sealed class ListOutputCompletionSource<T> : ProtobufOutputCompletionSource<ImmutableArray<T>>
     {
         public ListOutputCompletionSource(Resource resource, Deserializer<T> elementDeserializer)
             : base(resource, Deserializers.CreateListDeserializer(elementDeserializer))
