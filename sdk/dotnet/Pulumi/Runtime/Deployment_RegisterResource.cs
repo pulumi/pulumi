@@ -5,10 +5,8 @@
 using System;
 using System.Collections;
 using System.Collections.Immutable;
-using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Pulumi.Rpc;
@@ -112,60 +110,6 @@ namespace Pulumi
             PopulateRequest(request, prepareResult);
 
             return await this.Monitor.RegisterResourceAsync(request);
-            
-            //            // Now run the operation, serializing the invocation if necessary.
-            //            const opLabel = `monitor.registerResource(${ label})`;
-            //            runAsyncResourceOp(opLabel, async () => {
-            //            let resp: any;
-            //            if (monitor)
-            //            {
-            //                // If we're running with an attachment to the engine, perform the operation.
-            //                resp = await debuggablePromise(new Promise((resolve, reject) =>
-            //                    (monitor as any).registerResource(req, (err: grpc.ServiceError, innerResponse: any) => {
-            //                        log.debug(`RegisterResource RPC finished: ${label}; err: ${ err}, resp: ${ innerResponse}`);
-            //            if (err)
-            //            {
-            //                // If the monitor is unavailable, it is in the process of shutting down or has already
-            //                // shut down. Don't emit an error and don't do any more RPCs, just exit.
-            //                if (err.code === grpc.status.UNAVAILABLE)
-            //                {
-            //                    log.debug("Resource monitor is terminating");
-            //                    process.exit(0);
-            //                }
-
-            //                // Node lets us hack the message as long as we do it before accessing the `stack` property.
-            //                preallocError.message = `failed to register new resource ${ name} [${t}]: ${err.message
-            //}`;
-            //                            reject(preallocError);
-            //                        }
-            //                        else {
-            //                            resolve(innerResponse);
-            //                        }
-            //                    })), opLabel);
-            //            } else {
-            //                // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
-            //                const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
-            //resp = {
-            //                    getUrn: () => mockurn,
-            //                    getId: () => undefined,
-            //                    getObject: () => req.getObject(),
-            //                };
-            //            }
-
-            //            resop.resolveURN(resp.getUrn());
-
-            //            // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
-            //            // undefined so that later parts of our system don't have to deal with values like 'null'.
-            //            if (resop.resolveID) {
-            //                const id = resp.getId() || undefined;
-            //resop.resolveID(id, id !== undefined);
-            //            }
-
-            //            // Now resolve the output properties.
-            //            await resolveOutputs(res, t, name, props, resp.getObject(), resop.resolvers);
-            //        });
-            //    }), label);
-
         }
 
         private static void PopulateRequest(RegisterResourceRequest request, PrepareResult prepareResult)
@@ -252,34 +196,5 @@ namespace Pulumi
 
             return request;
         }
-
-        //private static async Task ResolveOutputsAsync(Resource resource, Task<RegisterResourceResponse> responseTask)
-        //{
-        //    var query = from f in resource.GetType().GetFields(BindingFlags.NonPublic)
-        //                let attr = f.GetCustomAttribute<ResourceFieldAttribute>()
-        //                where attr != null
-        //                select f;
-
-        //    var fields = query.ToList();
-
-        //    try
-        //    {
-        //        var response = 
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        resource._urn.SetException(e);
-        //        if (resource is CustomResource customResource)
-        //            customResource._id.SetException(e);
-
-        //        foreach (var field in fields)
-        //        {
-        //            var completionSource = (IOutputCompletionSource)field.GetValue(resource);
-        //            completionSource.SetException(e);
-        //        }
-
-        //        throw;
-        //    }
-        //}
     }
 }

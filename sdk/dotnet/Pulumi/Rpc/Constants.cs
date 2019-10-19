@@ -2,8 +2,6 @@
 
 #nullable enable
 
-using System;
-
 namespace Pulumi.Rpc
 {
     internal static class Constants

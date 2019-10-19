@@ -2,8 +2,6 @@
 
 #nullable enable
 
-using System.Collections.Immutable;
-
 namespace Pulumi
 {
     /// <summary>

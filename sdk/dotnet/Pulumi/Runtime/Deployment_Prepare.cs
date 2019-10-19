@@ -15,43 +15,6 @@ namespace Pulumi
             string label, Resource res, string type, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
-
-            //    // Simply initialize the URN property and get prepared to resolve it later on.
-            //    // Note: a resource urn will always get a value, and thus the output property
-            //    // for it can always run .apply calls.
-            //    let resolveURN: (urn: URN) => void;
-            //    (res as any).urn = new Output(
-            //        res,
-            //        debuggablePromise(
-            //            new Promise<URN>(resolve => resolveURN = resolve),
-            //            `resolveURN(${ label})`),
-            //        /*isKnown:*/ Promise.resolve(true),
-            //        /*isSecret:*/ Promise.resolve(false));
-
-            //    // If a custom resource, make room for the ID property.
-            //    let resolveID: ((v: any, performApply: boolean) => void) | undefined;
-            //    if (custom) {
-            //        let resolveValue: (v: ID) => void;
-            //        let resolveIsKnown: (v: boolean) => void;
-            //        (res as any).id = new Output(
-            //            res,
-            //            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${ label})`),
-            //            debuggablePromise(new Promise<boolean>(
-            //                resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${ label})`),
-            //            Promise.resolve(false));
-
-            //        resolveID = (v, isKnown) => {
-            //            resolveValue(v);
-            //        resolveIsKnown(isKnown);
-            //    };
-            //}
-
-            //// Now "transfer" all input properties into unresolved Promises on res.  This way,
-            //// this resource will look like it has all its output properties to anyone it is
-            //// passed to.  However, those promises won't actually resolve until the registerResource
-            //// RPC returns
-            //const resolvers = transferProperties(res, label, props);
-
             /* IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
             // Before we can proceed, all our dependencies must be finished.
@@ -119,36 +82,6 @@ namespace Pulumi
 
         private Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.Values.GetValueAsync();
-
-        //    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined): Promise<Resource[]> {
-
-        //    if (dependsOn) {
-        //        if (Array.isArray(dependsOn)) {
-        //            const dos: Resource[] = [];
-        //            for (const d of dependsOn) {
-        //                dos.push(...(await gatherExplicitDependencies(d)));
-        //            }
-        //            return dos;
-        //        } else if (dependsOn instanceof Promise) {
-        //            return gatherExplicitDependencies(await dependsOn);
-        //        } else if (Output.isInstance(dependsOn)) {
-        //            // Recursively gather dependencies, await the promise, and append the output's dependencies.
-        //            const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(v => gatherExplicitDependencies(v));
-        //const urns = await dos.promise();
-        //const implicits = await gatherExplicitDependencies([...dos.resources()]);
-        //            return urns.concat(implicits);
-        //        } else {
-        //            if (!Resource.isInstance(dependsOn)) {
-        //                throw new Error("'dependsOn' was passed a value that was not a Resource.");
-        //            }
-
-        //            return [dependsOn];
-        //        }
-        //    }
-
-        //    return [];
-        //}
-        //    }
 
         private static async Task<HashSet<Urn>> GetAllTransitivelyReferencedCustomResourceURNsAsync(
             HashSet<Resource> resources)

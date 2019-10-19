@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using System.Transactions;
 
 namespace Pulumi
 {
@@ -79,47 +78,3 @@ namespace Pulumi
         }
     }
 }
-
-//    ///**
-//    // * The outputs of this stack, if the `init` callback exited normally.
-//    // */
-//    //public readonly outputs: Output<Inputs | undefined>;
-
-//    //constructor(init: () => Inputs)
-//    //{
-//    //    super(rootPulumiStackTypeName, `${ getProject()}
-//    //    -${ getStack()}`);
-//    //    this.outputs = output(this.runInit(init));
-//    //}
-
-//    /**
-//     * runInit invokes the given init callback with this resource set as the root resource. The return value of init is
-//     * used as the stack's output properties.
-//     *
-//     * @param init The callback to run in the context of this Pulumi stack
-//     */
-//    private async runInit(init: () => Inputs): Promise<Inputs | undefined> {
-//        const parent = await getRootResource();
-//        if (parent) {
-//            throw new Error("Only one root Pulumi Stack may be active at once");
-//}
-//await setRootResource(this);
-
-//// Set the global reference to the stack resource before invoking this init() function
-//stackResource = this;
-
-//        let outputs: Inputs | undefined;
-//        try {
-
-//    outputs = await massage(init(), []);
-//        } finally {
-//            // We want to expose stack outputs as simple pojo objects (including Resources).  This
-//            // helps ensure that outputs can point to resources, and that that is stored and
-//            // presented as something reasonable, and not as just an id/urn in the case of
-//            // Resources.
-//            super.registerOutputs(outputs);
-//        }
-
-//        return outputs;
-//    }
-//}

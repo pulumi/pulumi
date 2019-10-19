@@ -2,7 +2,6 @@
 
 #nullable enable
 
-
 namespace Pulumi.Rpc
 {
     internal sealed class IdOutputCompletionSource : OutputCompletionSource<Id>

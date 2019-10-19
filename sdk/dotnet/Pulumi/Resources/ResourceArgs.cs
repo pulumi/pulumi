@@ -2,6 +2,7 @@
 
 #nullable enable
 
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using Google.Protobuf.WellKnownTypes;
 
@@ -18,7 +19,7 @@ namespace Pulumi
         {
         }
 
-        internal ImmutableDictionary<string, IInput> ToDictionary()
+        internal IDictionary<string, IInput> ToDictionary()
         {
             var dictionaryBuilder = ImmutableDictionary.CreateBuilder<string, IInput>();
             AddProperties(new PropertyBuilder(dictionaryBuilder));

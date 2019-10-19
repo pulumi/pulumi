@@ -22,25 +22,7 @@ namespace Pulumi
     {
         internal readonly string Package;
 
-        //    /** @internal */
-        //    // tslint:disable-next-line: variable-name
-        //    public __registrationId?: string;
         private string? _registrationId;
-
-        //    public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
-        //        if (provider === undefined) {
-        //            return undefined;
-        //        }
-
-        //        if (!provider.__registrationId) {
-        //            const providerURN = await provider.urn.promise();
-        //    const providerID = await provider.id.promise() || unknownValue;
-        //    provider.__registrationId = `${providerURN
-        //}::${providerID}`;
-        //        }
-
-        //        return provider.__registrationId;
-        //    }
 
         /// <summary>
         /// Creates and registers a new provider resource for a particular package.

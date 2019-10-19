@@ -32,7 +32,7 @@ namespace Pulumi
         {
             var output = obj is IInput input ? input.ToOutput() : obj as IOutput;
             return output != null
-                ? new Output<object?>(output.GetDataAsync())
+                ? new Output<object?>(output.Resources, output.GetDataAsync())
                 : Output.Create<object?>(obj);
         }
 
@@ -47,8 +47,8 @@ namespace Pulumi
                 switch (t.Status)
                 {
                     default: throw new InvalidOperationException("Task was not complete: " + t.Status);
-                    case TaskStatus.Canceled: tcs.SetCanceled(); break;
-                    case TaskStatus.Faulted: tcs.SetException(t.Exception.InnerExceptions); break;
+                    case TaskStatus.Canceled: tcs.SetCanceled(); return;
+                    case TaskStatus.Faulted: tcs.SetException(t.Exception.InnerExceptions); return;
                     case TaskStatus.RanToCompletion:
                         try
                         {
@@ -58,13 +58,7 @@ namespace Pulumi
                         {
                             tcs.TrySetException(e);
                         }
-                        break;
-                }
-
-
-                if (t.Status == TaskStatus.Canceled)
-                {
-                    // TODO tcs.set
+                        return;
                 }
             });
         }
