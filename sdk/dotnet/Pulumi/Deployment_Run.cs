@@ -3,9 +3,8 @@
 #nullable enable
 
 using System;
-using System.Collections.Immutable;
 using System.Collections.Generic;
-using System.Text;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace Pulumi
