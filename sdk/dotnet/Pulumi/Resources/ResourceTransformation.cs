@@ -19,7 +19,7 @@ namespace Pulumi
     /// <param name="name">The name of the Resource.</param>
     /// <param name="args">The original properties passed to the Resource constructor.</param>
     /// <param name="opts">The original resource options passed to the Resource constructor.</param>
-    /// <returns>The new values to use for the <c>args<c> and <c>opts</c> of the <see
+    /// <returns>The new values to use for the <c>args</c> and <c>opts</c> of the <see
     /// cref="Resource"/> in place of the originally provided values.</returns>
     public delegate (ResourceArgs args, ResourceOptions opts)? ResourceTransformation(
         Resource resource, string type, string name,
