@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\..\proto\*.proto" />
+    <Protobuf Include="..\..\proto\*.proto" Access="internal"/>
   </ItemGroup>
 
   <ItemGroup>
