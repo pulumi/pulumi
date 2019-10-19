@@ -39,7 +39,7 @@ namespace Pulumi
             Input<string>? project = null, Input<string>? stack = null)
         {
             if (parent != null && parentUrn != null)
-                throw new ArgumentException("Only one of `parent` and `parentUrn` can be non-null.");
+                throw new ArgumentException("Only one of 'parent' and 'parentUrn' can be non-null.");
 
             Output<string> parentPrefix;
             if (parent != null || parentUrn != null)
@@ -74,7 +74,7 @@ namespace Pulumi
         internal static Output<Urn> InheritedChildAliasWorker(string childName, string parentName, Input<Urn> parentAlias, string childType)
         {
             // If the child name has the parent name as a prefix, then we make the assumption that
-            // it was constructed from the convention of using `{name}-details` as the name of the
+            // it was constructed from the convention of using '{name}-details' as the name of the
             // child resource.  To ensure this is aliased correctly, we must then also replace the
             // parent aliases name in the prefix of the child resource name.
             //

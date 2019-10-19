@@ -173,10 +173,10 @@
              Note there is a semantic difference between properties being absent from this type and properties
              having the <see langword="null"/> value.Specifically, there is a difference between:
             
-             ```c#
+             <c>
              new Alias { Name = "foo", Parent = null } // and
              new Alias { Name = "foo" }
-             ```
+             </c>
             
              The presence of a property indicates if its value should be used. If absent, then the value
              is not used. So, in the above while <c>alias.Parent</c> is <see langword="null"/> for both,
@@ -651,12 +651,11 @@
             child resource that has a data cycle dependency due to the data passed into it. An
             example of how this would be bad is:
             
-            ```ts
+            <c>
                 var c1 = new CustomResource("c1");
-                    var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1
-            });
-                var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
-            ```
+                var c2 = new CustomResource("c2", { parentId = c1.id }, { parent = c1 });
+                var c3 = new CustomResource("c3", { parentId = c1.id }, { parent = c1 });
+            </c>
             
             The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
             'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
@@ -665,11 +664,11 @@
             them.The only way you would be able to have a problem is if you had this sort of coding
             pattern:
             
-            ```c#
+            <c>
                 var c1 = new ComponentResource("c1");
-                var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
-                var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
-            ```
+                var c2 = new CustomResource("c2", { parentId = c1.urn }, { parent: c1 });
+                var c3 = new CustomResource("c3", { parentId = c1.urn }, { parent: c1 });
+            </c>
             
             However, this would be pretty nonsensical as there is zero need for a custom resource to
             ever need to reference the urn of a component resource.  So it's acceptable if that sort

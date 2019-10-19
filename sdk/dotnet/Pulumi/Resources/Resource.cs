@@ -32,12 +32,11 @@ namespace Pulumi
         /// child resource that has a data cycle dependency due to the data passed into it. An
         /// example of how this would be bad is:
         /// 
-        /// ```ts
+        /// <c>
         ///     var c1 = new CustomResource("c1");
-        ///         var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1
-        /// });
-        ///     var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
-        /// ```
+        ///     var c2 = new CustomResource("c2", { parentId = c1.id }, { parent = c1 });
+        ///     var c3 = new CustomResource("c3", { parentId = c1.id }, { parent = c1 });
+        /// </c>
         /// 
         /// The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
         /// 'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
@@ -46,11 +45,11 @@ namespace Pulumi
         /// them.The only way you would be able to have a problem is if you had this sort of coding
         /// pattern:
         /// 
-        /// ```c#
+        /// <c>
         ///     var c1 = new ComponentResource("c1");
-        ///     var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
-        ///     var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
-        /// ```
+        ///     var c2 = new CustomResource("c2", { parentId = c1.urn }, { parent: c1 });
+        ///     var c3 = new CustomResource("c3", { parentId = c1.urn }, { parent: c1 });
+        /// </c>
         /// 
         /// However, this would be pretty nonsensical as there is zero need for a custom resource to
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
@@ -153,7 +152,7 @@ namespace Pulumi
                         // take affect).  It's theoretically possible this restriction could be
                         // lifted in the future, but for now just disallow re-parenting resources in
                         // transformations to be safe.
-                        throw new ArgumentException("Transformations cannot currently be used to change the `parent` of a resource.");
+                        throw new ArgumentException("Transformations cannot currently be used to change the 'parent' of a resource.");
                     }
 
                     args = tres.Value.args;
@@ -235,8 +234,9 @@ namespace Pulumi
 
             this._protect = opts.Protect == true;
 
-            // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
-            // default `name` and `type` to apply until we are inside the resource constructor.
+            // Collapse any 'Alias'es down to URNs. We have to wait until this point to do so
+            // because we do not know the default 'name' and 'type' to apply until we are inside the
+            // resource constructor.
             var aliases = ImmutableArray.CreateBuilder<Input<Urn>>();
             foreach (var alias in opts.Aliases)
             {

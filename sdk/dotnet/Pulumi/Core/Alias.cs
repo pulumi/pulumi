@@ -11,10 +11,10 @@ namespace Pulumi
     /// Note there is a semantic difference between properties being absent from this type and properties
     /// having the <see langword="null"/> value.Specifically, there is a difference between:
     ///
-    /// ```c#
+    /// <c>
     /// new Alias { Name = "foo", Parent = null } // and
     /// new Alias { Name = "foo" }
-    /// ```
+    /// </c>
     ///
     /// The presence of a property indicates if its value should be used. If absent, then the value
     /// is not used. So, in the above while <c>alias.Parent</c> is <see langword="null"/> for both,

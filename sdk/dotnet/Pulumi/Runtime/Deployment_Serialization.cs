@@ -171,8 +171,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             {
                 // Component resources often can contain cycles in them.  For example, an awsinfra
                 // SecurityGroupRule can point a the awsinfra SecurityGroup, which in turn can point
-                // back to its rules through its `egressRules` and `ingressRules` properties.  If
-                // serializing out the `SecurityGroup` resource ends up trying to serialize out
+                // back to its rules through its 'egressRules' and 'ingressRules' properties.  If
+                // serializing out the 'SecurityGroup' resource ends up trying to serialize out
                 // those properties, a deadlock will happen, due to waiting on the child, which is
                 // waiting on the parent.
                 //

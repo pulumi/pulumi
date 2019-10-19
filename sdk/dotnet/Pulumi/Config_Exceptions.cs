@@ -85,7 +85,7 @@ namespace Pulumi
         {
             public ConfigMissingException(string key)
                     : base($"Missing Required configuration variable '{key}'\n" +
-                    $"\tplease set a value using the command `pulumi config set ${key} <value>`")
+                    $"\tplease set a value using the command `pulumi config set {key} <value>`")
             {
             }
         }

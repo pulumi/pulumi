@@ -58,9 +58,10 @@ namespace Pulumi
                 propertyToDirectDependencyURNs[propertyName] = urns;
             }
 
-            // Wait for all aliases. Note that we use `res.__aliases` instead of `opts.aliases` as the former has been processed
-            // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
-            // simplifying aliases down to URNs.
+            // Wait for all aliases. Note that we use 'res._aliases' instead of 'opts.aliases' as
+            // the former has been processed in the Resource constructor prior to calling
+            // 'registerResource' - both adding new inherited aliases and simplifying aliases down
+            // to URNs.
             var aliases = new List<Urn>();
             var uniqueAliases = new HashSet<Urn>();
             foreach (var alias in res._aliases)
@@ -102,7 +103,7 @@ namespace Pulumi
             //          Cust4
             //
             // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2,
-            // Cust3]. It will *not* include `Cust4`.
+            // Cust3]. It will *not* include 'Cust4'.
 
             // To do this, first we just get the transitively reachable set of resources (not diving
             // into custom resources).  In the above picture, if we start with 'Comp1', this will be
