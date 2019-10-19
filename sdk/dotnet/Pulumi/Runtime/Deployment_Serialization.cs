@@ -18,8 +18,9 @@ namespace Pulumi
 
         /// <summary>
         /// serializeResourceProperties walks the props object passed in, awaiting all interior
-        /// promises besides those for `id` and `urn`, creating a reasonable POCO object that can be
-        /// remoted over to registerResource.
+        /// promises besides those for <see cref="Resource.Urn"/> and <see
+        /// cref="CustomResource.Id"/>, creating a reasonable POCO object that can be remoted over
+        /// to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
             string label, IDictionary<string, IInput> args)
@@ -38,7 +39,7 @@ namespace Pulumi
         /// <summary>
         /// serializeFilteredProperties walks the props object passed in, awaiting all interior
         /// promises for properties with keys that match the provided filter, creating a reasonable
-        /// POJO object that can be remoted over to registerResource.
+        /// POCO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
             string label, Input<IDictionary<string, IInput>> args, Predicate<string> acceptKey)

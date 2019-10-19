@@ -9,7 +9,7 @@ namespace Pulumi
     /// the context of a resource creation to determine what the full aliased URN would be.
     ///
     /// Note there is a semantic difference between properties being absent from this type and properties
-    /// having the `undefined` value.Specifically, there is a difference between:
+    /// having the <see langword="null"/> value.Specifically, there is a difference between:
     ///
     /// ```c#
     /// new Alias { Name = "foo", Parent = null } // and
@@ -17,9 +17,9 @@ namespace Pulumi
     /// ```
     ///
     /// The presence of a property indicates if its value should be used. If absent, then the value
-    /// is not used. So, in the above while `alias.Parent` is `null` for both, the first alias
-    /// means "the original urn had no parent" while the second alias means "use the current
-    /// parent".
+    /// is not used. So, in the above while <c>alias.Parent</c> is <see langword="null"/> for both,
+    /// the first alias means "the original urn had no parent" while the second alias means "use the
+    /// current parent".
     ///
     /// Note: to indicate that a resource was previously parented by the root stack, it is
     /// recommended that you use:
@@ -44,12 +44,14 @@ namespace Pulumi
         public Optional<Input<string>> Type { get; set; }
 
         /// <summary>
-        /// The previous stack of the resource.  If not provided, defaults to <c>Pulumi.Stack.Current</c>`.
+        /// The previous stack of the resource.  If not provided, defaults to the value of <see
+        /// cref="Options.Stack"/> in <see cref="Deployment.Instance"/>.
         /// </summary>
         public Optional<Input<string>> Stack { get; set; }
 
         /// <summary>
-        /// The previous project of the resource. If not provided, defaults to <c>Pulumi.Project.Current</c>.
+        /// The previous project of the resource. f not provided, defaults to the value of <see
+        /// cref="Options.Project"/> in <see cref="Deployment.Instance"/>.
         /// </summary>
         public Optional<Input<string>> Project { get; set; }
 

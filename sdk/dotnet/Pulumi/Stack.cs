@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Pulumi
 {
     /// <summary>
-    /// Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it
+    /// Stack is the root resource for a Pulumi stack. Before invoking the <c>init</c> callback, it
     /// registers itself as the root resource with the Pulumi engine.
     /// 
     /// An instance of this will be automatically created when any <see
@@ -38,12 +38,12 @@ namespace Pulumi
         /// <summary>
         /// rootPulumiStackTypeName is the type name that should be used to construct the root
         /// component in the tree of Pulumi resources allocated by a deployment.This must be kept up
-        /// to date with `github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName`.
+        /// to date with <c>github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName</c>.
         /// </summary>
         internal const string _rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
         /// <summary>
-        /// The outputs of this stack, if the `init` callback exited normally.
+        /// The outputs of this stack, if the <c>init</c> callback exited normally.
         /// </summary>
         public readonly Output<IDictionary<string, object>> Outputs =
             Output.Create<IDictionary<string, object>>(ImmutableDictionary<string, object>.Empty);
