@@ -4,6 +4,7 @@
 
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Pulumi.Rpc;
 using Pulumirpc;
 
 namespace Pulumi
@@ -16,14 +17,13 @@ namespace Pulumi
     /// </summary>
     public class CustomResource : Resource
     {
+        internal readonly IdOutputCompletionSource _id;
+
         /// <summary>
         /// Id is the provider-assigned unique ID for this managed resource.  It is set during
         /// deployments and may be missing (unknown) during planning phases.
         /// </summary>
-        public readonly Output<Id> Id;
-
-        [ResourceField("id")]
-        private readonly TaskCompletionSource<OutputData<Id>> _id = new TaskCompletionSource<OutputData<Id>>();
+        public Output<Id> Id => _id.Output;
 
         /// <summary>
         /// Creates and registers a new managed resource.  t is the fully qualified type token and
@@ -42,7 +42,7 @@ namespace Pulumi
                 throw new ResourceException("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", this);
             }
 
-            this.Id = new Output<Id>(_id.Task);
+            this._id = new IdOutputCompletionSource(this);
         }
     }
 }

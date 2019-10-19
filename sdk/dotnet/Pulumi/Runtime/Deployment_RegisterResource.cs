@@ -4,9 +4,14 @@
 
 using System;
 using System.Collections;
+using System.Collections.Immutable;
+using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using Pulumi.Rpc;
 using Pulumirpc;
 
 namespace Pulumi
@@ -17,10 +22,84 @@ namespace Pulumi
             Resource resource, string type, string name, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
-            this.RegisterTask(RegisterResourceAsync(resource, type, name, custom, args, opts));
+            var completionSources = GetOutputCompletionSources(resource);
+            var task1 = RegisterResourceAsync(resource, type, name, custom, args, opts, completionSources);
+            // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
+            // this task so that the application will not quit until this async work completes.
+            this.RegisterTask(task1);
+        }
+
+        private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
+            Resource resource)
+        {
+            var query = from field in resource.GetType().GetFields(BindingFlags.NonPublic)
+                        let attr = field.GetCustomAttribute<ResourceFieldAttribute>()
+                        where attr != null
+                        select (field, attr);
+
+            var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
+            foreach (var (field, attr) in query.ToList())
+            {
+                var completionSource = (IOutputCompletionSource)field.GetValue(resource);
+                result.Add(attr.Name, completionSource);
+            }
+
+            result.Add("urn", resource._urn);
+            if (resource is CustomResource customResource)
+                result.Add("id", customResource._id);
+
+            return result.ToImmutable();
         }
 
         private async Task RegisterResourceAsync(
+            Resource resource, string type, string name, bool custom,
+            ResourceArgs args, ResourceOptions opts,
+            ImmutableDictionary<string, IOutputCompletionSource> completionSources)
+        {
+            try
+            {
+                var response = await RegisterResourceWorkerAsync(
+                    resource, type, name, custom, args, opts).ConfigureAwait(false);
+
+                resource._urn.SetResult(response.Urn);
+                if (resource is CustomResource customResource)
+                    customResource._id.SetResult(response.Id);
+
+                // Go through all our output fields and lookup a corresponding value in the response
+                // object.  Allow the output field to deserialize the response.
+                foreach (var (fieldName, completionSource) in completionSources)
+                {
+                    if (completionSource is IProtobufOutputCompletionSource pbCompletionSource &&
+                        response.Object.Fields.TryGetValue(fieldName, out var value))
+                    {
+                        pbCompletionSource.SetResult(value);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                // Mark any unresolved output properties with this exception.  That way we don't
+                // leave any outstanding tasks sitting around which might cause hangs.
+                foreach (var source in completionSources.Values)
+                {
+                    source.TrySetException(e);
+                }
+            }
+            finally
+            {
+                // ensure that we've at least resolved all our completion sources.  That way we
+                // don't leave any outstanding tasks sitting around which might cause hangs.
+                foreach (var source in completionSources.Values)
+                {
+                    // Didn't get a value for this field.  Resolve it with a default value.
+                    // If we're in preview, we'll consider this unknown and in a normal
+                    // update we'll consider it known.
+                    source.SetDefaultResult(isKnown: !this.Options.DryRun);
+                }
+            }
+        }
+
+        private async Task<RegisterResourceResponse> RegisterResourceWorkerAsync(
             Resource resource, string type, string name, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
@@ -32,21 +111,8 @@ namespace Pulumi
             var prepareResult = await PrepareResourceAsync(label, resource, type, custom, args, opts).ConfigureAwait(false);
             PopulateRequest(request, prepareResult);
 
-            //            const monitor = getMonitor();
-            //            const resopAsync = prepareResource(label, res, custom, props, opts);
-
-            //            // In order to present a useful stack trace if an error does occur, we preallocate potential
-            //            // errors here. V8 captures a stack trace at the moment an Error is created and this stack
-            //            // trace will lead directly to user code. Throwing in `runAsyncResourceOp` results in an Error
-            //            // with a non-useful stack trace.
-            //            const preallocError = new Error();
-            //            debuggablePromise(resopAsync.then(async (resop) => {
-            //            log.debug(`RegisterResource RPC prepared: t =${ t}, name =${ name}` +
-            //(excessiveDebugOutput ? `, obj =${ JSON.stringify(resop.serializedProps)}` : ``));
-
-            //            const req = new resproto.RegisterResourceRequest();
-            //            req.setObject(gstruct.Struct.fromJavaScript(resop.serializedProps));
-
+            return await this.Monitor.RegisterResourceAsync(request);
+            
             //            // Now run the operation, serializing the invocation if necessary.
             //            const opLabel = `monitor.registerResource(${ label})`;
             //            runAsyncResourceOp(opLabel, async () => {
@@ -186,5 +252,34 @@ namespace Pulumi
 
             return request;
         }
+
+        //private static async Task ResolveOutputsAsync(Resource resource, Task<RegisterResourceResponse> responseTask)
+        //{
+        //    var query = from f in resource.GetType().GetFields(BindingFlags.NonPublic)
+        //                let attr = f.GetCustomAttribute<ResourceFieldAttribute>()
+        //                where attr != null
+        //                select f;
+
+        //    var fields = query.ToList();
+
+        //    try
+        //    {
+        //        var response = 
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        resource._urn.SetException(e);
+        //        if (resource is CustomResource customResource)
+        //            customResource._id.SetException(e);
+
+        //        foreach (var field in fields)
+        //        {
+        //            var completionSource = (IOutputCompletionSource)field.GetValue(resource);
+        //            completionSource.SetException(e);
+        //        }
+
+        //        throw;
+        //    }
+        //}
     }
 }

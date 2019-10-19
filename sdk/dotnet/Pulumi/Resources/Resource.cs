@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using Pulumi.Rpc;
 
 namespace Pulumi
 {
@@ -62,10 +63,9 @@ namespace Pulumi
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
         /// after deployments.
         /// </summary>
-        public readonly Output<Urn> Urn;
 
-        [ResourceField("urn")]
-        private readonly TaskCompletionSource<OutputData<Urn>> _urn = new TaskCompletionSource<OutputData<Urn>>();
+        internal readonly UrnOutputCompletionSource _urn;
+        public Output<Urn> Urn => _urn.Output;
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
@@ -114,21 +114,15 @@ namespace Pulumi
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentException(nameof(name));
 
-            //if (properties == null)
-            //    properties = ImmutableDictionary<string, Input<object>>.Empty;
-
-            //if (options == null)
-            //    options = new ResourceOptions();
-
-            // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
-            // options assigned to this resource.
-            var parent = opts.Parent ?? Deployment.Instance.Stack; /* ?? { __transformations: undefined }; */;
+            // Before anything else - if there are transformations registered, invoke them in order
+            // to transform the properties and options assigned to this resource.
+            var parent = opts.Parent ?? Deployment.Instance.Stack;
             if (parent == null && type != Stack._rootPulumiStackTypeName)
             {
                 throw new InvalidOperationException("No stack instance, and we were not the stack itself.");
             }
 
-            this.Urn = new Output<Urn>(_urn.Task);
+            this._urn = new UrnOutputCompletionSource(this);
 
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
             transformations.AddRange(opts.ResourceTransformations);
