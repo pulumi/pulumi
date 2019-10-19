@@ -18,8 +18,6 @@ namespace Pulumi
     /// </summary>
     public class Stack : ComponentResource
     {
-        // public static Stack Instance { get; private set; }
-
         /// <summary>
         /// Constant to represent the 'root stack' resource for a Pulumi application.  The purpose
         /// of this is solely to make it easy to write an <see cref="Alias"/> like so:

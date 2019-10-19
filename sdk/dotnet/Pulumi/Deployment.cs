@@ -4,11 +4,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Pulumirpc;
-using Serilog;
 
 namespace Pulumi
 {
@@ -68,67 +66,13 @@ namespace Pulumi
                 project: project, stack: stack, pwd: pwd,
                 monitor: monitor, engine: engine, tracing: tracing);
 
+            Serilog.Log.Debug("Creating Deployment Engine.");
             this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));
+            Serilog.Log.Debug("Created Deployment Engine.");
+
+            Serilog.Log.Debug("Creating Deployment Monitor.");
             this.Monitor = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure));
-        }
-
-        public static Task<int> Run(Action action)
-            => Run(() =>
-            {
-                action();
-                return ImmutableDictionary<string, object>.Empty;
-            });
-
-        public static Task<int> Run(Func<IDictionary<string, object>> func)
-            => Run(() => Task.FromResult(func()));
-
-        public static Task<int> Run(Func<Task<IDictionary<string, object>>> func)
-        {
-            if (Instance != null)
-            {
-                throw new NotSupportedException("Deployment.Run can only be called a single time.");
-            }
-
-            Instance = new Deployment();
-            return Instance.RunWorker(func);
-        }
-
-        private Task<int> RunWorker(Func<Task<IDictionary<string, object>>> func)
-        {
-            var stack = new Stack(func);
-            RegisterTask("User program code.", stack.Outputs.DataTask);
-            return WhileRunning();
-        }
-
-        internal void RegisterTask(string description, Task task)
-        {
-            lock (_tasks)
-            {
-                _tasks.Enqueue((description, task));
-            }
-        }
-
-        private async Task<int> WhileRunning()
-        {
-            while (true)
-            {
-                string description;
-                Task task;
-                lock (_tasks)
-                {
-                    if (_tasks.Count == 0)
-                    {
-                        break;
-                    }
-
-                    (description, task) = _tasks.Dequeue(); 
-                }
-
-                Serilog.Log.Debug("Deployment awaiting: " + description);
-                await task;
-            }
-
-            return HasErrors ? 1 : 0;
+            Serilog.Log.Debug("Created Deployment Monitor.");
         }
     }
 }

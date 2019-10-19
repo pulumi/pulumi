@@ -30,42 +30,42 @@ namespace Pulumi
         /// <summary>
         /// Logs a debug-level message that is generally hidden from end-users.
         /// </summary>
-        internal void Debug(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task Debug(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Debug(message);
-            LogImpl(LogSeverity.Debug, message, resource, streamId, ephemeral);
+            return LogImpl(LogSeverity.Debug, message, resource, streamId, ephemeral);
         }
 
         /// <summary>
         /// Logs an informational message that is generally printed to stdout during resource
         /// operations.
         /// </summary>
-        internal void Info(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task Info(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Information(message);
-            LogImpl(LogSeverity.Info, message, resource, streamId, ephemeral);
+            return LogImpl(LogSeverity.Info, message, resource, streamId, ephemeral);
         }
 
         /// <summary>
         /// Warn logs a warning to indicate that something went wrong, but not catastrophically so.
         /// </summary>
-        internal void Warn(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task Warn(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Warning(message);
-            LogImpl(LogSeverity.Warning, message, resource, streamId, ephemeral);
+            return LogImpl(LogSeverity.Warning, message, resource, streamId, ephemeral);
         }
 
         /// <summary>
         /// Error logs a fatal error to indicate that the tool should stop processing resource
         /// operations immediately.
         /// </summary>
-        internal void Error(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task Error(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Error(message);
-            LogImpl(LogSeverity.Error, message, resource, streamId, ephemeral);
+            return LogImpl(LogSeverity.Error, message, resource, streamId, ephemeral);
         }
 
-        private void LogImpl(LogSeverity severity, string message, Resource? resource, int? streamId, bool? ephemeral)
+        private Task LogImpl(LogSeverity severity, string message, Resource? resource, int? streamId, bool? ephemeral)
         {
             // Serialize our logging tasks so that streaming logs appear in order.
             Task task;
@@ -82,6 +82,7 @@ namespace Pulumi
             }
 
             RegisterTask($"Log: {severity}: {message}", task);
+            return task;
         }
 
         private async Task LogAsync(LogSeverity severity, string message, Resource? resource, int? streamId, bool? ephemeral)
@@ -103,17 +104,19 @@ namespace Pulumi
             }
             catch (Exception e)
             {
+                lock (_logGate)
+                {
+                    // mark that we had an error so that our top level process quits with an error
+                    // code.
+                    _errorCount++;
+                }
+
                 // we have a potential pathological case with logging.  Consider if logging a
                 // message itself throws an error.  If we then allow the error to bubble up, our top
                 // level handler will try to log that error, which can potentially lead to an error
-                // repeating unendingly.  So, to prevent that from happening, we swallow any errors
-                // here and just print them out ourselves.
-                Serilog.Log.Error(e, "Error occurred trying to send logging message to engine.");
-                Console.Error.WriteLine("Error occurred trying to send logging message to engine:\n" + e);
-                lock (_logGate)
-                {
-                    _errorCount++;
-                }
+                // repeating unendingly.  So, to prevent that from happening, we report a very specific
+                // exception that the top level can know about and handle specially.
+                throw new LogException(e);
             }
         }
     }

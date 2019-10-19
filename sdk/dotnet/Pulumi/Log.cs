@@ -2,11 +2,6 @@
 
 #nullable enable
 
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Threading.Tasks;
-
 namespace Pulumi
 {
     public static class Log

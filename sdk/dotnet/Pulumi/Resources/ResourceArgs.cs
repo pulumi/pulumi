@@ -4,7 +4,6 @@
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi
 {
