@@ -79,6 +79,10 @@ fi
 
 # Next, lazily install packages if required.
 if [ -e package.json ] && [ ! -d node_modules ]; then
+    # Set npm auth token if one is provided.
+    if [ ! -z "$NPM_AUTH_TOKEN" ]; then
+        npm config set "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN"
+    fi
     npm install
 fi
 
