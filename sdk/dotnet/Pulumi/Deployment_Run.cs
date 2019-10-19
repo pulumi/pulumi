@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace Pulumi
 {
@@ -23,6 +24,8 @@ namespace Pulumi
 
         public static Task<int> Run(Func<Task<IDictionary<string, object>>> func)
         {
+            Serilog.Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+
             Serilog.Log.Debug("Deployment.Run called.");
             if (Instance != null)
             {
