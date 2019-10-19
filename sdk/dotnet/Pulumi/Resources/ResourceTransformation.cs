@@ -11,8 +11,8 @@ namespace Pulumi
     /// alternate values for the <c>properties</c> and/or <c>options</c> prior to the resource
     /// actually being created. The effect will be as though those <c>properties</c> and/or
     /// <c>options</c> were passed in place of the original call to the <see cref="Resource"/>
-    /// constructor.  If the transformation returns undefined, this indicates that the resource will
-    /// not be transformed.
+    /// constructor.  If the transformation returns <see langword="null"/>, this indicates that the
+    /// resource will not be transformed.
     /// </summary>
     /// <param name="resource">The Resource instance that is being transformed.</param>
     /// <param name="type">The type of the Resource.</param>

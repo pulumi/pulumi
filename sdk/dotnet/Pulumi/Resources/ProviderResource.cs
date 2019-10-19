@@ -30,7 +30,7 @@ namespace Pulumi
         public ProviderResource(
             string package, string name,
             ResourceArgs args, ResourceOptions? opts = null)
-            : base($"pulumi:providers:${package}", name, args, opts)
+            : base($"pulumi:providers:{package}", name, args, opts)
         {
             this.Package = package;
         }

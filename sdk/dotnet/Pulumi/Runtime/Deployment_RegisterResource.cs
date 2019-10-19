@@ -109,7 +109,7 @@ namespace Pulumi
             var type = resource.Type;
 
             var label = $"resource:{name}[{type}]";
-            Log.Debug($"Registering resource: t={type}, name=${name}, custom=${custom}");
+            Log.Debug($"Registering resource: t={type}, name={name}, custom={custom}");
 
             var request = CreateRegisterResourceRequest(type, name, custom, opts);
 

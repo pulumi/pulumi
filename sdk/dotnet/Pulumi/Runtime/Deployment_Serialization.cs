@@ -210,8 +210,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                         Log.Debug($"Serialize property[{ctx}]: object.{stringKey}");
                     }
 
-                    // When serializing an object, we omit any keys with undefined values. This
-                    // matches JSON semantics.
+                    // When serializing an object, we omit any keys with null values. This matches
+                    // JSON semantics.
                     var v = await SerializePropertyAsync(
                         $"{ctx}.{stringKey}", dictionary[stringKey], dependentResources).ConfigureAwait(false);
                     if (v != null)

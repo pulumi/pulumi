@@ -43,8 +43,8 @@ namespace Pulumi
             var propInputs = props.ToDictionary(kvp => kvp.Key, kvp => (IInput)kvp.ToObjectOutput());
 
             var serialized = await SerializeAllPropertiesAsync(opLabel, propInputs).ConfigureAwait(false);
-            Log.Debug($"RegisterResourceOutputs RPC prepared: urn=${urn}" +
-                (_excessiveDebugOutput ? $", outputs =${JsonFormatter.Default.Format(serialized)}" : ""));
+            Log.Debug($"RegisterResourceOutputs RPC prepared: urn={urn}" +
+                (_excessiveDebugOutput ? $", outputs ={JsonFormatter.Default.Format(serialized)}" : ""));
 
             var request = new RegisterResourceOutputsRequest()
             {
