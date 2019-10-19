@@ -27,7 +27,7 @@ namespace Pulumi
             Serilog.Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
 
             Serilog.Log.Debug("Deployment.Run called.");
-            if (Instance != null)
+            if (_instance != null)
             {
                 throw new NotSupportedException("Deployment.Run can only be called a single time.");
             }

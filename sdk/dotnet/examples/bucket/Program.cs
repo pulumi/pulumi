@@ -3,13 +3,14 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using Pulumi;
 
 class Program
 {
-    static void Main(string[] args)
+    static Task<int> Main(string[] args)
     {
-        Deployment.Run(() =>
+        return Deployment.Run(() =>
         {
             var config = new Config("hello-dotnet");
 
