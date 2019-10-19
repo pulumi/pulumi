@@ -3,6 +3,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Immutable;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -112,8 +113,10 @@ namespace Pulumi
             }
             else
             {
+                var location = System.Reflection.Assembly.GetEntryAssembly().Location;
                 await Error(
-$"Running program '{System.Reflection.Assembly.GetEntryAssembly().Location}' failed with an unhandled exception:\n{resourceEx.ToString()}");
+$@"Running program '{location}' failed with an unhandled exception:
+{exception.ToString()}");
             }
 
             return _processExitedAfterLoggingUserActionableMessage;
