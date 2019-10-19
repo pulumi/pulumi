@@ -82,9 +82,15 @@ namespace Pulumi
         internal readonly ImmutableArray<Input<Urn>> _aliases;
 
         /// <summary>
+        /// The type assigned to the resource at construction.
+        /// </summary>
+        internal readonly string Type;
+
+
+        /// <summary>
         /// The name assigned to the resource at construction.
         /// </summary>
-        private readonly string _name;
+        internal readonly string Name;
 
         /// <summary>
         /// The set of providers to use for child resources. Keyed by package name (e.g. "aws").
@@ -121,6 +127,8 @@ namespace Pulumi
                 throw new InvalidOperationException("No stack instance, and we were not the stack itself.");
             }
 
+            this.Type = type;
+            this.Name = name;
             this._urn = new UrnOutputCompletionSource(this);
 
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
@@ -153,8 +161,6 @@ namespace Pulumi
                 }
             }
 
-            this._name = name;
-
             // Make a shallow clone of opts to ensure we don't modify the value passed in.
             opts = opts.Clone();
             var componentOpts = opts as ComponentResourceOptions;
@@ -181,7 +187,7 @@ namespace Pulumi
                 opts.Aliases = opts.Aliases.ToList();
                 foreach (var parentAlias in opts.Parent._aliases)
                 {
-                    opts.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, opts.Parent._name, parentAlias, type));
+                    opts.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, opts.Parent.Name, parentAlias, type));
                 }
 
                 this._providers = opts.Parent._providers;

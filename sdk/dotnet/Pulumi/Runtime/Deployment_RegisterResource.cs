@@ -17,14 +17,15 @@ namespace Pulumi
     public partial class Deployment
     {
         internal void RegisterResource(
-            Resource resource, string type, string name, bool custom,
-            ResourceArgs args, ResourceOptions opts)
+            Resource resource, bool custom, ResourceArgs args, ResourceOptions opts)
         {
             var completionSources = GetOutputCompletionSources(resource);
-            var task1 = RegisterResourceAsync(resource, type, name, custom, args, opts, completionSources);
+            var task1 = RegisterResourceAsync(resource, custom, args, opts, completionSources);
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
-            this.RegisterTask(task1);
+            this.RegisterTask(
+                $"{nameof(RegisterResource)}: {resource.Type}-{resource.Name}",
+                task1);
         }
 
         private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
@@ -50,14 +51,14 @@ namespace Pulumi
         }
 
         private async Task RegisterResourceAsync(
-            Resource resource, string type, string name, bool custom,
+            Resource resource, bool custom,
             ResourceArgs args, ResourceOptions opts,
             ImmutableDictionary<string, IOutputCompletionSource> completionSources)
         {
             try
             {
                 var response = await RegisterResourceWorkerAsync(
-                    resource, type, name, custom, args, opts).ConfigureAwait(false);
+                    resource, custom, args, opts).ConfigureAwait(false);
 
                 resource._urn.SetResult(response.Urn);
                 if (resource is CustomResource customResource)
@@ -98,9 +99,12 @@ namespace Pulumi
         }
 
         private async Task<RegisterResourceResponse> RegisterResourceWorkerAsync(
-            Resource resource, string type, string name, bool custom,
+            Resource resource, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
+            var name = resource.Name;
+            var type = resource.Type;
+
             var label = $"resource:{name}[{type}]";
             Serilog.Log.Debug($"Registering resource: t={type}, name=${name}, custom=${custom}");
 

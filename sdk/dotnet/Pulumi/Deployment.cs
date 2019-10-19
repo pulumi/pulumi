@@ -13,15 +13,26 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        public static Deployment Instance;
+        private static Deployment? _instance;
+        public static Deployment Instance
+        {
+            get => _instance ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
+            set => _instance = (value ?? throw new ArgumentNullException(nameof(value)));
+        }
 
-        private readonly Queue<Task> _tasks = new Queue<Task>();
+        private readonly Queue<(string description, Task task)> _tasks =
+            new Queue<(string description, Task task)>();
 
         public Options Options { get; }
         internal Engine.EngineClient Engine { get; }
         internal ResourceMonitor.ResourceMonitorClient Monitor { get; }
 
-        internal Stack Stack { get; set; }
+        internal Stack? _stack;
+        public Stack Stack
+        {
+            get => _stack ?? throw new InvalidOperationException("Trying to acquire Deployment.Stack before 'Run' was called.");
+            set => _stack = (value ?? throw new ArgumentNullException(nameof(value)));
+        }
 
         private Deployment()
         {
@@ -84,15 +95,15 @@ namespace Pulumi
         private Task RunWorker(Func<Task<IDictionary<string, object>>> func)
         {
             var stack = new Stack(func);
-            RegisterTask(stack.Outputs.DataTask);
+            RegisterTask("User program code.", stack.Outputs.DataTask);
             return WhileRunning();
         }
 
-        internal void RegisterTask(Task task)
+        internal void RegisterTask(string description, Task task)
         {
             lock (_tasks)
             {
-                _tasks.Enqueue(task);
+                _tasks.Enqueue((description, task));
             }
         }
 
@@ -100,6 +111,7 @@ namespace Pulumi
         {
             while (true)
             {
+                string description;
                 Task task;
                 lock (_tasks)
                 {
@@ -108,9 +120,10 @@ namespace Pulumi
                         return;
                     }
 
-                    task = _tasks.Dequeue();
+                    (description, task) = _tasks.Dequeue(); 
                 }
 
+                Serilog.Log.Debug("Deployment awaiting: " + description);
                 await task;
             }
         }

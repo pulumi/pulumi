@@ -2,6 +2,11 @@
 
 #nullable enable
 
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Threading.Tasks;
+
 namespace Pulumi
 {
     /// <summary>
@@ -25,15 +30,26 @@ namespace Pulumi
         {
         }
 
-        // registerOutputs registers synthetic outputs that a component has initialized, usually by
-        // allocating other child sub-resources and propagating their resulting property values.
-        // ComponentResources should always call this at the end of their constructor to indicate
-        // that they are done creating child resources.  While not strictly necessary, this helps
-        // the experience by ensuring the UI transitions the ComponentResource to the 'complete'
-        // state as quickly as possible (instead of waiting until the entire application completes).
-        protected void RegisterOutputs(InputMap<string, object>? map = null)
-        {
-            Deployment.Instance.RegisterResourceOutputs(this, map ?? new InputMap<string, object>());
-        }
+        /// <summary>
+        /// RegisterOutputs registers synthetic outputs that a component has initialized, usually by
+        /// allocating other child sub-resources and propagating their resulting property values.
+        /// ComponentResources should always call this at the end of their constructor to indicate
+        /// that they are done creating child resources.  While not strictly necessary, this helps
+        /// the experience by ensuring the UI transitions the ComponentResource to the 'complete'
+        /// state as quickly as possible (instead of waiting until the entire application completes).
+        /// </summary>
+        /// <param name="map"></param>
+        /// 
+        protected void RegisterOutputs()
+            => RegisterOutputs(ImmutableDictionary<string, object>.Empty);
+
+        protected void RegisterOutputs(IDictionary<string, object> outputs)
+            => RegisterOutputs(Task.FromResult(outputs ?? throw new ArgumentNullException(nameof(outputs))));
+
+        protected void RegisterOutputs(Task<IDictionary<string, object>> outputs)
+            => RegisterOutputs(Output.Create(outputs ?? throw new ArgumentNullException(nameof(outputs))));
+
+        protected void RegisterOutputs(Output<IDictionary<string, object>> outputs)
+            => Deployment.Instance.RegisterResourceOutputs(this, outputs ?? throw new ArgumentNullException(nameof(outputs)));
     }
 }
