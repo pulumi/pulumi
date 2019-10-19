@@ -33,6 +33,34 @@ namespace Pulumi.Rpc
                     : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a string");
             };
 
+        public static readonly Deserializer<object> NumberDeserializer =
+            v =>
+            {
+                var (innerVal, isSecret) = UnwrapSecret(v);
+                v = innerVal;
+
+                return v.KindCase != Value.KindOneofCase.NumberValue
+                    ? (ConvertNumberToInt32OrDouble(v.NumberValue), isSecret)
+                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a number");
+
+            };
+
+        private static object ConvertNumberToInt32OrDouble(double numberValue)
+            => (int)numberValue == numberValue
+                ? (object)(int)numberValue
+                : numberValue;
+
+        public static readonly Deserializer<int> Int32Deserializer =
+            v =>
+            {
+                var (innerVal, isSecret) = UnwrapSecret(v);
+                v = innerVal;
+
+                return v.KindCase != Value.KindOneofCase.NumberValue
+                    ? ((int)v.NumberValue, isSecret)
+                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a number");
+            };
+
         public static Deserializer<ImmutableArray<T>> CreateListDeserializer<T>(Deserializer<T> elementDeserializer)
             => v =>
             {

@@ -2,7 +2,6 @@
 
 #nullable enable
 
-
 namespace Pulumi.Rpc
 {
     public sealed class StringOutputCompletionSource : ProtobufCompletionSource<string>
