@@ -18,24 +18,23 @@ namespace Pulumi
         /// parented to a common parent resource.
         /// </summary>
         /// <returns></returns>
-        internal Task<Urn?> GetRootResourceAsync(string type)
+        internal async Task<Urn?> GetRootResourceAsync(string type)
         {
+            // If we're calling this while creating the stack itself.  No way to know its urn at
+            // this point.
             if (type == Stack._rootPulumiStackTypeName)
-            {
-                // We're calling this while creating the stack itself.  No way to know its urn at
-                // this point.
                 return null;
-            }
 
-            return _rootResource ?? throw new InvalidOperationException("Calling GetRootResourceAsync before the root resource was registered!");
+            if (_rootResource == null)
+                throw new InvalidOperationException($"Calling {nameof(GetRootResourceAsync)} before the root resource was registered!");
+
+            return await _rootResource.ConfigureAwait(false);
         }
 
         internal Task SetRootResourceAsync(Stack stack)
         {
             if (_rootResource != null)
-            {
                 throw new InvalidOperationException("Tried to set the root resource more than once!");
-            }
 
             _rootResource = SetRootResourceWorkerAsync(stack);
             return _rootResource;

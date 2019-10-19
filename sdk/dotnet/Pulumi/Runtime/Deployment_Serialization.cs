@@ -7,6 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Pulumi.Rpc;
 
 namespace Pulumi
@@ -21,15 +22,17 @@ namespace Pulumi
         /// remoted over to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, Input<IDictionary<string, IInput>> args)
+            string label, IDictionary<string, IInput> args)
         {
-            return SerializeFilteredPropertiesAsync(label, args, key => key != "id" && key != "urn");
+            return SerializeFilteredPropertiesAsync(
+                label, Output.Create(args), key => key != "id" && key != "urn");
         }
 
-        private static Task<SerializationResult> SerializeAllPropertiesAsync(
+        private static async Task<Struct> SerializeAllPropertiesAsync(
             string label, Input<IDictionary<string, IInput>> args)
         {
-            return SerializeFilteredPropertiesAsync(label, args, _ => true);
+            var result = await SerializeFilteredPropertiesAsync(label, args, _ => true).ConfigureAwait(false);
+            return result.Serialized;
         }
 
         /// <summary>
@@ -61,7 +64,7 @@ namespace Pulumi
             }
 
             return new SerializationResult(
-                result.ToImmutableDictionary(),
+                CreateStruct(result.ToImmutableDictionary()),
                 propertyToDependentResources.ToImmutableDictionary());
         }
 
@@ -238,11 +241,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
         private struct SerializationResult
         {
-            public readonly ImmutableDictionary<string, object> Serialized;
+            public readonly Struct Serialized;
             public readonly ImmutableDictionary<string, HashSet<Resource>> PropertyToDependentResources;
 
             public SerializationResult(
-                ImmutableDictionary<string, object> result,
+                Struct result,
                 ImmutableDictionary<string, HashSet<Resource>> propertyToDependentResources)
             {
                 Serialized = result;
@@ -250,7 +253,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             }
 
             public void Deconstruct(
-                out ImmutableDictionary<string, object> serialized,
+                out Struct serialized,
                 out ImmutableDictionary<string, HashSet<Resource>> propertyToDependentResources)
             {
                 serialized = Serialized;

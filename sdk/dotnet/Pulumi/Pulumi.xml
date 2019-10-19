@@ -75,6 +75,85 @@
             Only specify one of <see cref="P:Pulumi.Alias.Parent"/> or <see cref="P:Pulumi.Alias.ParentUrn"/>.
             </summary>
         </member>
+        <member name="T:Pulumi.Archive">
+            <summary>
+            An Archive represents a collection of named assets.
+            </summary>
+        </member>
+        <member name="T:Pulumi.AssetArchive">
+            <summary>
+            An AssetArchive is an archive created from an in-memory collection of named assets or other
+            archives.
+            </summary>
+        </member>
+        <member name="F:Pulumi.AssetArchive._assets">
+            <summary>
+            A map of names to assets.
+            </summary>
+        </member>
+        <member name="T:Pulumi.FileArchive">
+            <summary>
+            A FileArchive is a file-based archive, or a collection of file-based assets.  This can be a
+            raw directory or a single archive file in one of the supported formats(.tar, .tar.gz,
+            or.zip).
+            </summary>
+        </member>
+        <member name="F:Pulumi.FileArchive._path">
+            <summary>
+            The path to the asset file.
+            </summary>
+        </member>
+        <member name="T:Pulumi.RemoteArchive">
+            <summary>
+            A RemoteArchive is a file-based archive fetched from a remote location.  The URI's scheme
+            dictates the protocol for fetching the archive's contents: <c>file://</c> is a local file
+            (just like a FileArchive), <c>http://</c> and <c>https://</c> specify HTTP and HTTPS,
+            respectively, and specific providers may recognize custom schemes.
+            </summary>
+        </member>
+        <member name="F:Pulumi.RemoteArchive._uri">
+            <summary>
+            The URI where the archive lives.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Asset">
+            <summary>
+            Asset represents a single blob of text or data that is managed as a first class entity.
+            </summary>
+        </member>
+        <member name="T:Pulumi.FileAsset">
+            <summary>
+            FileAsset is a kind of asset produced from a given path to a file on the local filesystem.
+            </summary>
+        </member>
+        <member name="F:Pulumi.FileAsset._path">
+            <summary>
+            The path to the asset file.
+            </summary>
+        </member>
+        <member name="T:Pulumi.StringAsset">
+            <summary>
+            StringAsset is a kind of asset produced from an in-memory UTF8-encoded string.
+            </summary>
+        </member>
+        <member name="F:Pulumi.StringAsset._text">
+            <summary>
+            The string contents.
+            </summary>
+        </member>
+        <member name="T:Pulumi.RemoteAsset">
+            <summary>
+            RemoteAsset is a kind of asset produced from a given URI string.  The URI's scheme dictates
+            the protocol for fetching contents: <c>file://</c> specifies a local file, <c>http://</c>
+            and <c>https://</c> specify HTTP and HTTPS, respectively.  Note that specific providers may
+            recognize alternative schemes; this is merely the base-most set that all providers support.
+            </summary>
+        </member>
+        <member name="F:Pulumi.RemoteAsset._uri">
+            <summary>
+            The URI where the asset lives.
+            </summary>
+        </member>
         <member name="T:Pulumi.Id">
             <summary>
             A provider-assigned ID.
@@ -142,6 +221,78 @@
             name changed.
             </summary>
         </member>
+        <member name="M:Pulumi.Deployment.Debug(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Logs a debug-level message that is generally hidden from end-users.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.Info(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Logs an informational message that is generally printed to stdout during resource
+            operations.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.Warn(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Warn logs a warning to indicate that something went wrong, but not catastrophically so.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.Error(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Error logs a fatal error to indicate that the tool should stop processing resource
+            operations immediately.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.GetTransitivelyReferencedChildResourcesOfComponentResources(System.Collections.Generic.HashSet{Pulumi.Resource})">
+            <summary>
+            Recursively walk the resources passed in, returning them and all resources reachable from
+            <see cref="F:Pulumi.Resource.ChildResources"/> through any **Component** resources we encounter.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.GetRootResourceAsync(System.String)">
+            <summary>
+            returns a root resource URN that will automatically become the default parent of all
+            resources.  This can be used to ensure that all resources without explicit parents are
+            parented to a common parent resource.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Pulumi.Deployment.SerializeResourcePropertiesAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.IInput})">
+            <summary>
+            serializeResourceProperties walks the props object passed in, awaiting all interior
+            promises besides those for `id` and `urn`, creating a reasonable POCO object that can be
+            remoted over to registerResource.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.SerializeFilteredPropertiesAsync(System.String,Pulumi.Input{System.Collections.Generic.IDictionary{System.String,Pulumi.IInput}},System.Predicate{System.String})">
+            <summary>
+            serializeFilteredProperties walks the props object passed in, awaiting all interior
+            promises for properties with keys that match the provided filter, creating a reasonable
+            POJO object that can be remoted over to registerResource.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Log.Debug(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Logs a debug-level message that is generally hidden from end-users.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Log.Info(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Logs an informational message that is generally printed to stdout during resource
+            operations.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Log.Warn(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Warn logs a warning to indicate that something went wrong, but not catastrophically so.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Log.Error(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+            <summary>
+            Error logs a fatal error to indicate that the tool should stop processing resource
+            operations immediately.
+            </summary>
+        </member>
         <member name="T:Pulumi.ComponentResource">
             <summary>
             A <see cref="T:Pulumi.Resource"/> that aggregates one or more other child resources into a higher
@@ -153,9 +304,19 @@
             <summary>
             Creates and registers a new component resource.  <paramref name="type"/> is the fully
             qualified type token and <paramref name="name"/> is the "name" part to use in creating a
-            stable and globally unique URN for the object. <c>opts.parent</c> is the optional parent for
-            this component, and [opts.dependsOn] is an optional list of other resources that this
-            resource depends on, controlling the order in which we perform resource operations.
+            stable and globally unique URN for the object. <c>opts.parent</c> is the optional parent
+            for this component, and [opts.dependsOn] is an optional list of other resources that
+            this resource depends on, controlling the order in which we perform resource operations.
+            </summary>
+        </member>
+        <member name="M:Pulumi.ComponentResource.RegisterOutputs">
+            <summary>
+            RegisterOutputs registers synthetic outputs that a component has initialized, usually by
+            allocating other child sub-resources and propagating their resulting property values.
+            ComponentResources should always call this at the end of their constructor to indicate
+            that they are done creating child resources.  While not strictly necessary, this helps
+            the experience by ensuring the UI transitions the ComponentResource to the 'complete'
+            state as quickly as possible (instead of waiting until the entire application completes).
             </summary>
         </member>
         <member name="T:Pulumi.ComponentResourceOptions">
@@ -174,18 +335,18 @@
         <member name="T:Pulumi.CustomResource">
             <summary>
             CustomResource is a resource whose create, read, update, and delete(CRUD) operations are
-            managed by performing external operations on some physical entity. The engine understands how
-            to diff and perform partial updates of them, and these CRUD operations are implemented in a
-            dynamically loaded plugin for the defining package.
+            managed by performing external operations on some physical entity. The engine understands
+            how to diff and perform partial updates of them, and these CRUD operations are implemented
+            in a dynamically loaded plugin for the defining package.
             </summary>
         </member>
-        <member name="F:Pulumi.CustomResource.Id">
+        <member name="P:Pulumi.CustomResource.Id">
             <summary>
             Id is the provider-assigned unique ID for this managed resource.  It is set during
             deployments and may be missing (unknown) during planning phases.
             </summary>
         </member>
-        <member name="M:Pulumi.CustomResource.#ctor(System.String,System.String,System.Collections.Immutable.ImmutableDictionary{System.String,Pulumi.Input{System.Object}},Pulumi.ResourceOptions)">
+        <member name="M:Pulumi.CustomResource.#ctor(System.String,System.String,Pulumi.ResourceArgs,Pulumi.ResourceOptions)">
             <summary>
             Creates and registers a new managed resource.  t is the fully qualified type token and
             name is the "name" part to use in creating a stable and globally unique URN for the
@@ -251,7 +412,7 @@
             including the usual diffing and update semantics.
             </summary>
         </member>
-        <member name="M:Pulumi.ProviderResource.#ctor(System.String,System.String,System.Collections.Immutable.ImmutableDictionary{System.String,Pulumi.Input{System.Object}},Pulumi.ResourceOptions)">
+        <member name="M:Pulumi.ProviderResource.#ctor(System.String,System.String,Pulumi.ResourceArgs,Pulumi.ResourceOptions)">
             <summary>
             Creates and registers a new provider resource for a particular package.
             </summary>
@@ -266,45 +427,45 @@
             The optional parent of this resource.
             </summary>
         </member>
-        <member name="F:Pulumi.Resource._childResources">
-             <summary>
-             The child resources of this resource.  We use these (only from a ComponentResource) to
-             allow code to dependOn a ComponentResource and have that effectively mean that it is
-             depending on all the CustomResource children of that component.
+        <member name="F:Pulumi.Resource.ChildResources">
+            <summary>
+            The child resources of this resource.  We use these (only from a ComponentResource) to
+            allow code to dependOn a ComponentResource and have that effectively mean that it is
+            depending on all the CustomResource children of that component.
             
-             Important!  We only walk through ComponentResources.They're the only resources that
-             serve as an aggregation of other primitive(i.e.custom) resources.While a custom resource
-             can be a parent of other resources, we don't want to ever depend on those child
-             resource.  If we do, it's simple to end up in a situation where we end up depending on a
-             child resource that has a data cycle dependency due to the data passed into it. An
-             example of how this would be bad is:
+            Important!  We only walk through ComponentResources.They're the only resources that
+            serve as an aggregation of other primitive(i.e.custom) resources.While a custom resource
+            can be a parent of other resources, we don't want to ever depend on those child
+            resource.  If we do, it's simple to end up in a situation where we end up depending on a
+            child resource that has a data cycle dependency due to the data passed into it. An
+            example of how this would be bad is:
             
-             ```ts
-                 var c1 = new CustomResource("c1");
-                     var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1
-             });
-                 var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
-             ```
+            ```ts
+                var c1 = new CustomResource("c1");
+                    var c2 = new CustomResource("c2", { parentId: c1.id }, { parent: c1
+            });
+                var c3 = new CustomResource("c3", { parentId: c1.id }, { parent: c1 });
+            ```
             
-             The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
-             'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
-             But 'c3' will be waiting in the same manner on 'c2', and a cycle forms. This normally
-             does not happen with ComponentResources as they do not have any data flowing into
-             them.The only way you would be able to have a problem is if you had this sort of coding
-             pattern:
+            The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
+            'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
+            But 'c3' will be waiting in the same manner on 'c2', and a cycle forms. This normally
+            does not happen with ComponentResources as they do not have any data flowing into
+            them.The only way you would be able to have a problem is if you had this sort of coding
+            pattern:
             
-             ```c#
-                 var c1 = new ComponentResource("c1");
-                 var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
-                 var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
-             ```
+            ```c#
+                var c1 = new ComponentResource("c1");
+                var c2 = new CustomResource("c2", { parentId: c1.urn }, { parent: c1 });
+                var c3 = new CustomResource("c3", { parentId: c1.urn }, { parent: c1 });
+            ```
             
-             However, this would be pretty nonsensical as there is zero need for a custom resource to
-             ever need to reference the urn of a component resource.  So it's acceptable if that sort
-             of pattern failed in practice.
-             </summary>
+            However, this would be pretty nonsensical as there is zero need for a custom resource to
+            ever need to reference the urn of a component resource.  So it's acceptable if that sort
+            of pattern failed in practice.
+            </summary>
         </member>
-        <member name="F:Pulumi.Resource.Urn">
+        <member name="F:Pulumi.Resource._urn">
             <summary>
             Urn is the stable logical URN used to distinctly address a resource, both before and
             after deployments.
@@ -325,7 +486,12 @@
             A list of aliases applied to this resource.
             </summary>
         </member>
-        <member name="F:Pulumi.Resource._name">
+        <member name="F:Pulumi.Resource.Type">
+            <summary>
+            The type assigned to the resource at construction.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource.Name">
             <summary>
             The name assigned to the resource at construction.
             </summary>
@@ -335,7 +501,7 @@
             The set of providers to use for child resources. Keyed by package name (e.g. "aws").
             </summary>
         </member>
-        <member name="M:Pulumi.Resource.#ctor(System.String,System.String,System.Boolean,System.Collections.Immutable.ImmutableDictionary{System.String,Pulumi.Input{System.Object}},Pulumi.ResourceOptions)">
+        <member name="M:Pulumi.Resource.#ctor(System.String,System.String,System.Boolean,Pulumi.ResourceArgs,Pulumi.ResourceOptions)">
             <summary>
             Creates and registers a new resource object.  <paramref name="type"/> is the fully
             qualified type token and <paramref name="name"/> is the "name" part to use in creating a
@@ -346,12 +512,17 @@
             <param name="type">The type of the resource.</param>
             <param name="name">The unique name of the resource.</param>
             <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
-            <param name="properties">The arguments to use to populate the new resource.</param>
+            <param name="args">The arguments to use to populate the new resource.</param>
             <param name="opts">A bag of options that control this resource's behavior.</param>
         </member>
         <member name="M:Pulumi.Resource.GetProvider(System.String)">
             <summary>
             Fetches the provider for the given module member, if any.
+            </summary>
+        </member>
+        <member name="T:Pulumi.ResourceArgs">
+            <summary>
+            Base type for all resource argument classes.
             </summary>
         </member>
         <member name="T:Pulumi.ResourceException">
@@ -441,8 +612,8 @@
             <param name="resource">The Resource instance that is being transformed.</param>
             <param name="type">The type of the Resource.</param>
             <param name="name">The name of the Resource.</param>
-            <param name="properties">The original properties passed to the Resource constructor.</param>
-            <param name="options">The original resource options passed to the Resource constructor.</param>
+            <param name="args">The original properties passed to the Resource constructor.</param>
+            <param name="opts">The original resource options passed to the Resource constructor.</param>
             <returns>The new values to use for the `properties` and `options` of the <see
             cref="T:Pulumi.Resource"/> in place of the originally provided values.</returns>
         </member>
@@ -475,6 +646,9 @@
             <summary>
             Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it
             registers itself as the root resource with the Pulumi engine.
+            
+            An instance of this will be automatically created when any <see
+            cref="M:Pulumi.Deployment.Run(System.Action)"/> overload is called.
             </summary>
         </member>
         <member name="F:Pulumi.Stack.Root">

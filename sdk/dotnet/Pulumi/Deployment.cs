@@ -128,7 +128,7 @@ namespace Pulumi
                 await task;
             }
 
-            return Log.HasErrors ? 1 : 0;
+            return HasErrors ? 1 : 0;
         }
     }
 }

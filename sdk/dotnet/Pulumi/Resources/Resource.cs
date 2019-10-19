@@ -252,7 +252,9 @@ namespace Pulumi
                     throw new ResourceException(
                         "Cannot read an existing resource unless it has a custom provider", opts.Parent);
                 }
-                Deployment.Instance.ReadResource(this, type, name, args, opts);
+
+                throw new NotSupportedException("Reading is not yet implemented");
+                // Deployment.Instance.ReadResource(this, type, name, args, opts);
             }
             else
             {
@@ -260,7 +262,7 @@ namespace Pulumi
                 // this resource's properties will be resolved asynchronously after the operation
                 // completes, so that dependent computations resolve normally.  If we are just
                 // planning, on the other hand, values will never resolve.
-                Deployment.Instance.RegisterResource(this, type, name, custom, args, opts);
+                Deployment.Instance.RegisterResource(this, custom, args, opts);
             }
         }
 

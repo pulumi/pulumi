@@ -38,8 +38,6 @@ namespace Pulumi
         /// the experience by ensuring the UI transitions the ComponentResource to the 'complete'
         /// state as quickly as possible (instead of waiting until the entire application completes).
         /// </summary>
-        /// <param name="map"></param>
-        /// 
         protected void RegisterOutputs()
             => RegisterOutputs(ImmutableDictionary<string, object>.Empty);
 

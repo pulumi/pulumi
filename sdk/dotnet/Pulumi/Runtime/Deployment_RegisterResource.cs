@@ -140,7 +140,7 @@ namespace Pulumi
                 request.PropertyDependencies.Add(key, deps);
             }
 
-            request.Object = CreateStruct(prepareResult.SerializedProps);
+            request.Object = prepareResult.SerializedProps;
         }
 
         private static Value CreateValue(object value)

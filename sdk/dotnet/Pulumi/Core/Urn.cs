@@ -86,7 +86,7 @@ namespace Pulumi
             // * aliasName: "app-function"
             // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
             var aliasName = Output.Create(childName);
-            if (childName.StartsWith(parentName))
+            if (childName!.StartsWith(parentName))
             {
                 aliasName = parentAlias.ToOutput().Apply(parentAliasUrn =>
                 {

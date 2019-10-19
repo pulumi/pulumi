@@ -47,8 +47,8 @@ namespace Pulumi
         /// <summary>
         /// The outputs of this stack, if the `init` callback exited normally.
         /// </summary>
-        public readonly Output<ImmutableDictionary<string, object>> Outputs =
-            Output.Create(ImmutableDictionary<string, object>.Empty);
+        public readonly Output<IDictionary<string, object>> Outputs =
+            Output.Create<IDictionary<string, object>>(ImmutableDictionary<string, object>.Empty);
 
         public Stack(Func<Task<IDictionary<string, object>>> init)
             : base(_rootPulumiStackTypeName, $"{Deployment.Instance.Options.Project}-{Deployment.Instance.Options.Stack}")
@@ -65,7 +65,7 @@ namespace Pulumi
             }
         }
 
-        private async Task<ImmutableDictionary<string, object>> RunInit(Func<Task<IDictionary<string, object>>> init)
+        private async Task<IDictionary<string, object>> RunInit(Func<Task<IDictionary<string, object>>> init)
         {
             // Ensure we are known as the root resource.  This is needed before we execute any user
             // code as many codepaths will request the root resource.

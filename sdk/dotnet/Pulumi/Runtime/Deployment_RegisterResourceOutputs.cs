@@ -13,6 +13,8 @@ using Pulumi.Rpc;
 using Pulumirpc;
 
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using Google.Protobuf;
 
 namespace Pulumi
 {
@@ -41,41 +43,16 @@ namespace Pulumi
             var propInputs = props.ToDictionary(kvp => kvp.Key, kvp => (IInput)kvp.ToObjectOutput());
 
             var serialized = await SerializeAllPropertiesAsync(opLabel, propInputs).ConfigureAwait(false);
-            Log.Debug(`RegisterResourceOutputs RPC prepared: urn =${ urn}` +
-(excessiveDebugOutput ? `, outputs =${ JSON.stringify(outputsObj)}` : ``));
+            Log.Debug($"RegisterResourceOutputs RPC prepared: urn=${urn}" +
+                (_excessiveDebugOutput ? $", outputs =${JsonFormatter.Default.Format(serialized)}" : ""));
 
-            // Fetch the monitor and make an RPC request.
-            const monitor = getMonitor();
-            if (monitor)
+            var request = new RegisterResourceOutputsRequest()
             {
-                const req = new resproto.RegisterResourceOutputsRequest();
-                req.setUrn(urn);
-                req.setOutputs(outputsObj);
+                Urn = urn.Value,
+                Outputs = serialized,
+            };
 
-                const label = `monitor.registerResourceOutputs(${ urn}, ...)`;
-                await debuggablePromise(new Promise((resolve, reject) =>
-                    (monitor as any).registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
-                    log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` +
-                            `err: ${ err}, resp: ${ innerResponse}`);
-                if (err)
-                {
-                    // If the monitor is unavailable, it is in the process of shutting down or has already
-                    // shut down. Don't emit an error and don't do any more RPCs, just exit.
-                    if (err.code === grpc.status.UNAVAILABLE)
-                    {
-                        log.debug("Resource monitor is terminating");
-                        process.exit(0);
-                    }
-
-                    log.error(`Failed to end new resource registration '${urn}': ${ err.stack}`);
-                    reject(err);
-                }
-                else
-                {
-                    resolve();
-                }
-            })), label);
-
+            await Monitor.RegisterResourceOutputsAsync(request);
         }
     }
 }

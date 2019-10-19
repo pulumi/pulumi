@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi
 {
@@ -72,7 +73,7 @@ namespace Pulumi
             }
 
             return new PrepareResult(
-                serializedProps.ToImmutableDictionary(),
+                serializedProps,
                 parentURN,
                 providerRef,
                 allDirectDependencyURNs,
@@ -142,14 +143,14 @@ namespace Pulumi
 
         private struct PrepareResult
         {
-            public readonly ImmutableDictionary<string, object> SerializedProps;
+            public readonly Struct SerializedProps;
             public readonly Urn? ParentUrn;
             public readonly string? ProviderRef;
             public readonly HashSet<Urn> AllDirectDependencyURNs;
             public readonly Dictionary<string, HashSet<Urn>> PropertyToDirectDependencyURNs;
             public readonly List<Urn> Aliases;
 
-            public PrepareResult(ImmutableDictionary<string, object> serializedProps, Urn? parentUrn, string? providerRef, HashSet<Urn> allDirectDependencyURNs, Dictionary<string, HashSet<Urn>> propertyToDirectDependencyURNs, List<Urn> aliases)
+            public PrepareResult(Struct serializedProps, Urn? parentUrn, string? providerRef, HashSet<Urn> allDirectDependencyURNs, Dictionary<string, HashSet<Urn>> propertyToDirectDependencyURNs, List<Urn> aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
