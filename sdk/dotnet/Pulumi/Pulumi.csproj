@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
@@ -19,7 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\..\proto\*.proto" Access="internal"/>
+    <Protobuf Include="..\..\proto\*.proto" Access="internal" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\CustomResource.cs.orig" />
+    <None Remove="Resources\Resource.cs.orig" />
   </ItemGroup>
 
   <ItemGroup>
