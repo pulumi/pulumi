@@ -55,7 +55,7 @@ namespace Pulumi
         /// </summary>
         public string? Get(string key, StringOptions? opts = null)
         {
-            var v = GetConfig(this.FullKey(key));
+            var v = Deployment.Instance.GetConfig(this.FullKey(key));
             if (v == null)
             {
                 return null;
@@ -67,11 +67,11 @@ namespace Pulumi
                 {
                     throw new ConfigEnumException(this.FullKey(key), v, opts.AllowedValues);
                 }
-                else if (opts.MinLength != null && v.length < opts.MinLength)
+                else if (opts.MinLength != null && v.Length < opts.MinLength)
                 {
                     throw new ConfigRangeException(this.FullKey(key), v, opts.MinLength, null);
                 }
-                else if (opts.MaxLength != null && v.length > opts.MaxLength)
+                else if (opts.MaxLength != null && v.Length > opts.MaxLength)
                 {
                     throw new ConfigRangeException(this.FullKey(key), v, null, opts.MaxLength);
                 }

@@ -4,13 +4,174 @@
         <name>Pulumi</name>
     </assembly>
     <members>
+        <member name="T:Pulumi.Config">
+            <summary>
+            Config is a bag of related configuration state.  Each bag contains any number of
+            configuration variables, indexed by simple keys, and each has a name that uniquely
+            identifies it; two bags with different names do not share values for variables that
+            otherwise share the same key.  For example, a bag whose name is <c>pulumi:foo</c>, with keys <c>a</c>,
+            <c>b</c>, and <c>c</c>, is entirely separate from a bag whose name is <c>pulumi:bar</c> with
+            the same simple key names.  Each key has a fully qualified names, such as
+            <c>pulumi:foo:a</c>, ..., and <c>pulumi:bar:a</c>, respectively.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Config.Name">
+            <summary>
+            name is the configuration bag's logical name and uniquely identifies it.  The default
+            is the name of the current project.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.Get(System.String,Pulumi.Config.StringOptions)">
+            <summary>
+            Loads an optional configuration value by its key, or <see langword="null"/> if it doesn't exist.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.GetSecret(System.String,Pulumi.Config.StringOptions)">
+            <summary>
+            Loads an optional configuration value by its key, marking it as a secret, or <see
+            langword="null"/> if it doesn't exist.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.GetBool(System.String)">
+            <summary>
+            Loads an optional configuration value, as a boolean, by its key, or null if it doesn't exist.
+            If the configuration value isn't a legal boolean, this function will throw an error.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.GetSecretBool(System.String)">
+            <summary>
+            loads an optional configuration value, as a boolean, by its key, making it as a secret or
+            null if it doesn't exist. If the configuration value isn't a legal boolean, this
+            function will throw an error.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.GetInt32(System.String,Pulumi.Config.Int32Options)">
+            <summary>
+            Loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
+            If the configuration value isn't a legal number, this function will throw an error.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.GetSecretInt32(System.String,Pulumi.Config.Int32Options)">
+            <summary>
+            loads an optional configuration value, as a number, by its key, marking it as a secret
+            or null if it doesn't exist.
+            If the configuration value isn't a legal number, this function will throw an error.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.Require(System.String,Pulumi.Config.StringOptions)">
+            <summary>
+            Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.RequireSecret(System.String,Pulumi.Config.StringOptions)">
+            <summary>
+            loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
+            is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.RequireBool(System.String)">
+            <summary>
+            loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
+            configuration value is not a legal boolean, an error is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.RequireSecretBool(System.String)">
+            <summary>
+            loads a configuration value, as a boolean, by its given key, marking it as a secret.
+            If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.RequireInt32(System.String,Pulumi.Config.Int32Options)">
+            <summary>
+            loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
+            configuration value is not a legal number, an error is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.RequireSecretInt32(System.String,Pulumi.Config.Int32Options)">
+            <summary>
+            loads a configuration value, as a number, by its given key, marking it as a secret.
+            If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.FullKey(System.String)">
+            <summary>
+            turns a simple configuration key into a fully resolved one, by prepending the bag's name.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Config.ConfigTypeException">
+            <summary>
+            ConfigTypeException is used when a configuration value is of the wrong type.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Config.ConfigEnumException">
+            <summary>
+            ConfigEnumException is used when a configuration value isn't a correct enum value.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Config.ConfigRangeException">
+            <summary>
+            ConfigRangeException is used when a configuration value is outside of the range of legal sizes.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Config.ConfigPatternException">
+            <summary>
+            ConfigPatternException is used when a configuration value does not match the given regular expression.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Config.ConfigMissingException">
+            <summary>
+            ConfigMissingException is used when a configuration value is completely missing.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Config.StringOptions">
+            <summary>
+            StringConfigOptions may be used to constrain the set of legal values a string config value may contain.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Config.StringOptions.AllowedValues">
+            <summary>
+            The legal enum values. If it does not match, a ConfigEnumError is thrown.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Config.StringOptions.MinLength">
+            <summary>
+            The minimum string length. If the string is not this long, a ConfigRangeError is thrown.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Config.StringOptions.MaxLength">
+            <summary>
+            The maximum string length. If the string is longer than this, a ConfigRangeError is thrown.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Config.StringOptions.Pattern">
+            <summary>
+            A regular expression the string must match. If it does not match, a ConfigPatternError is thrown.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Config.Int32Options">
+            <summary>
+            Int32ConfigOptions may be used to constrain the set of legal values a number config value may contain.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Config.Int32Options.Min">
+            <summary>
+            The minimum number value, inclusive. If the number is less than this, a ConfigRangeError
+            is thrown.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Config.Int32Options.Max">
+            <summary>
+            The maximum number value, inclusive. If the number is greater than this, a
+            ConfigRangeError is thrown.
+            </summary>
+        </member>
         <member name="T:Pulumi.Alias">
              <summary>
              Alias is a partial description of prior named used for a resource. It can be processed in
              the context of a resource creation to determine what the full aliased URN would be.
             
              Note there is a semantic difference between properties being absent from this type and properties
-             having the `undefined` value.Specifically, there is a difference between:
+             having the <see langword="null"/> value.Specifically, there is a difference between:
             
              ```c#
              new Alias { Name = "foo", Parent = null } // and
@@ -18,9 +179,9 @@
              ```
             
              The presence of a property indicates if its value should be used. If absent, then the value
-             is not used. So, in the above while `alias.Parent` is `null` for both, the first alias
-             means "the original urn had no parent" while the second alias means "use the current
-             parent".
+             is not used. So, in the above while <c>alias.Parent</c> is <see langword="null"/> for both,
+             the first alias means "the original urn had no parent" while the second alias means "use the
+             current parent".
             
              Note: to indicate that a resource was previously parented by the root stack, it is
              recommended that you use:
@@ -45,12 +206,14 @@
         </member>
         <member name="P:Pulumi.Alias.Stack">
             <summary>
-            The previous stack of the resource.  If not provided, defaults to <c>Pulumi.Stack.Current</c>`.
+            The previous stack of the resource.  If not provided, defaults to the value of <see
+            cref="F:Pulumi.Options.Stack"/> in <see cref="P:Pulumi.Deployment.Instance"/>.
             </summary>
         </member>
         <member name="P:Pulumi.Alias.Project">
             <summary>
-            The previous project of the resource. If not provided, defaults to <c>Pulumi.Project.Current</c>.
+            The previous project of the resource. f not provided, defaults to the value of <see
+            cref="F:Pulumi.Options.Project"/> in <see cref="P:Pulumi.Deployment.Instance"/>.
             </summary>
         </member>
         <member name="P:Pulumi.Alias.Parent">
@@ -221,6 +384,36 @@
             name changed.
             </summary>
         </member>
+        <member name="F:Pulumi.Deployment._configEnvKey">
+            <summary>
+            The environment variable key that the language plugin uses to set configuration values.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.AllConfig">
+            <summary>
+            returns a copy of the full config map.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.SetConfig(System.String,System.String)">
+            <summary>
+            sets a configuration variable.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.GetConfig(System.String)">
+            <summary>
+            returns a configuration variable's value or <see langword="null"/> if it is unset.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Deployment.CleanKey(System.String)">
+            <summary>
+            CleanKey takes a configuration key, and if it is of the form "(string):config:(string)"
+            removes the ":config:" portion. Previously, our keys always had the string ":config:" in
+            them, and we'd like to remove it. However, the language host needs to continue to set it
+            so we can be compatible with older versions of our packages. Once we stop supporting
+            older packages, we can change the language host to not add this :config: thing and
+            remove this function.
+            </summary>
+        </member>
         <member name="M:Pulumi.Deployment.Debug(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Logs a debug-level message that is generally hidden from end-users.
@@ -260,15 +453,16 @@
         <member name="M:Pulumi.Deployment.SerializeResourcePropertiesAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.IInput})">
             <summary>
             serializeResourceProperties walks the props object passed in, awaiting all interior
-            promises besides those for `id` and `urn`, creating a reasonable POCO object that can be
-            remoted over to registerResource.
+            promises besides those for <see cref="P:Pulumi.Resource.Urn"/> and <see
+            cref="P:Pulumi.CustomResource.Id"/>, creating a reasonable POCO object that can be remoted over
+            to registerResource.
             </summary>
         </member>
         <member name="M:Pulumi.Deployment.SerializeFilteredPropertiesAsync(System.String,Pulumi.Input{System.Collections.Generic.IDictionary{System.String,Pulumi.IInput}},System.Predicate{System.String})">
             <summary>
             serializeFilteredProperties walks the props object passed in, awaiting all interior
             promises for properties with keys that match the provided filter, creating a reasonable
-            POJO object that can be remoted over to registerResource.
+            POCO object that can be remoted over to registerResource.
             </summary>
         </member>
         <member name="T:Pulumi.ResourceException">
@@ -615,15 +809,15 @@
             alternate values for the <c>properties</c> and/or <c>options</c> prior to the resource
             actually being created. The effect will be as though those <c>properties</c> and/or
             <c>options</c> were passed in place of the original call to the <see cref="T:Pulumi.Resource"/>
-            constructor.  If the transformation returns undefined, this indicates that the resource will
-            not be transformed.
+            constructor.  If the transformation returns <see langword="null"/>, this indicates that the
+            resource will not be transformed.
             </summary>
             <param name="resource">The Resource instance that is being transformed.</param>
             <param name="type">The type of the Resource.</param>
             <param name="name">The name of the Resource.</param>
             <param name="args">The original properties passed to the Resource constructor.</param>
             <param name="opts">The original resource options passed to the Resource constructor.</param>
-            <returns>The new values to use for the `properties` and `options` of the <see
+            <returns>The new values to use for the <c>args</c> and <c>opts</c> of the <see
             cref="T:Pulumi.Resource"/> in place of the originally provided values.</returns>
         </member>
         <member name="F:Pulumi.Rpc.Constants.UnknownValue">
@@ -653,7 +847,7 @@
         </member>
         <member name="T:Pulumi.Stack">
             <summary>
-            Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it
+            Stack is the root resource for a Pulumi stack. Before invoking the <c>init</c> callback, it
             registers itself as the root resource with the Pulumi engine.
             
             An instance of this will be automatically created when any <see
@@ -681,12 +875,12 @@
             <summary>
             rootPulumiStackTypeName is the type name that should be used to construct the root
             component in the tree of Pulumi resources allocated by a deployment.This must be kept up
-            to date with `github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName`.
+            to date with <c>github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName</c>.
             </summary>
         </member>
         <member name="F:Pulumi.Stack.Outputs">
             <summary>
-            The outputs of this stack, if the `init` callback exited normally.
+            The outputs of this stack, if the <c>init</c> callback exited normally.
             </summary>
         </member>
         <member name="T:Pulumirpc.AnalyzerReflection">
