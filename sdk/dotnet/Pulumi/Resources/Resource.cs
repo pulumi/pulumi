@@ -120,7 +120,7 @@ namespace Pulumi
 
             // Before anything else - if there are transformations registered, invoke them in order
             // to transform the properties and options assigned to this resource.
-            var parent = opts.Parent ?? Deployment.Instance.Stack;
+            var parent = opts.Parent ?? Deployment.Instance._stack;
             if (parent == null && type != Stack._rootPulumiStackTypeName)
             {
                 throw new InvalidOperationException("No stack instance, and we were not the stack itself.");

@@ -40,7 +40,7 @@ namespace Pulumi
             // Additionally, the output properties might have come from other resources, so we must await those too.
             var urn = await resource.Urn.GetValueAsync().ConfigureAwait(false);
             var props = await outputs.GetValueAsync().ConfigureAwait(false);
-            var propInputs = props.ToDictionary(kvp => kvp.Key, kvp => (IInput)kvp.ToObjectOutput());
+            var propInputs = props.ToDictionary(kvp => kvp.Key, kvp => (IInput)(Input<object?>)kvp.Value.ToObjectOutput());
 
             var serialized = await SerializeAllPropertiesAsync(opLabel, propInputs).ConfigureAwait(false);
             Log.Debug($"RegisterResourceOutputs RPC prepared: urn={urn}" +

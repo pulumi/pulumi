@@ -24,7 +24,7 @@ namespace Pulumi
 
         public static Task<int> Run(Func<Task<IDictionary<string, object>>> func)
         {
-            Serilog.Log.Logger = new LoggerConfiguration().WriteTo.Fil.Console().CreateLogger();
+            Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
 
             Serilog.Log.Debug("Deployment.Run called.");
             if (_instance != null)
