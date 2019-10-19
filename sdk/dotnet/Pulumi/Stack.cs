@@ -35,7 +35,7 @@ namespace Pulumi
         /// may look a bit confusing and may incorrectly look like something that could be removed
         /// without changing semantics.
         /// </summary>
-        public static readonly Resource Root = null!;
+        public static readonly Resource? Root = null;
 
         /// <summary>
         /// rootPulumiStackTypeName is the type name that should be used to construct the root

@@ -62,7 +62,7 @@ namespace Pulumi
         /// 
         /// Only specify one of <see cref="Parent"/> or <see cref="ParentUrn"/>.
         /// </summary>
-        public Optional<Resource> Parent { get; set; }
+        public Optional<Resource?> Parent { get; set; }
 
         /// <summary>
         /// The previous parent of the resource. If not provided (i.e. <c>new Alias { Name =

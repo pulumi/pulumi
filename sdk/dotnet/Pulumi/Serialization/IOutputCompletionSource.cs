@@ -9,7 +9,6 @@ namespace Pulumi.Rpc
     internal interface IOutputCompletionSource
     {
         void TrySetException(Exception exception);
-        // void TrySetUnknownResult();
         void SetDefaultResult(bool isKnown);
     }
 }

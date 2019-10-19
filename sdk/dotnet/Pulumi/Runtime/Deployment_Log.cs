@@ -2,6 +2,7 @@
 
 #nullable enable
 
+using System;
 using System.Threading.Tasks;
 using Pulumirpc;
 
@@ -85,19 +86,35 @@ namespace Pulumi
 
         private async Task LogAsync(LogSeverity severity, string message, Resource? resource, int? streamId, bool? ephemeral)
         {
-            var urn = resource == null
-                ? new Urn("")
-                : await resource.Urn.GetValueAsync().ConfigureAwait(false);
-
-            await Engine.LogAsync(new LogRequest
+            try
             {
-                Severity = severity,
-                Message = message,
-                Urn = urn.Value,
-                StreamId = streamId ?? 0,
-                Ephemeral = ephemeral ?? false,
-            });
+                var urn = resource == null
+                    ? new Urn("")
+                    : await resource.Urn.GetValueAsync().ConfigureAwait(false);
 
+                await Engine.LogAsync(new LogRequest
+                {
+                    Severity = severity,
+                    Message = message,
+                    Urn = urn.Value,
+                    StreamId = streamId ?? 0,
+                    Ephemeral = ephemeral ?? false,
+                });
+            }
+            catch (Exception e)
+            {
+                // we have a potential pathological case with logging.  Consider if logging a
+                // message itself throws an error.  If we then allow the error to bubble up, our top
+                // level handler will try to log that error, which can potentially lead to an error
+                // repeating unendingly.  So, to prevent that from happening, we swallow any errors
+                // here and just print them out ourselves.
+                Serilog.Log.Error(e, "Error occurred trying to send logging message to engine.");
+                Console.Error.WriteLine("Error occurred trying to send logging message to engine:\n" + e);
+                lock (_logGate)
+                {
+                    _errorCount++;
+                }
+            }
         }
     }
 }
