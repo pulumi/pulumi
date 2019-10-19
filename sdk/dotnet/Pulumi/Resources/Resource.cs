@@ -85,7 +85,6 @@ namespace Pulumi
         /// </summary>
         internal readonly string Type;
 
-
         /// <summary>
         /// The name assigned to the resource at construction.
         /// </summary>

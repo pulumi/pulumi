@@ -317,6 +317,11 @@
             The URI where the asset lives.
             </summary>
         </member>
+        <member name="T:Pulumi.AssetOrArchive">
+            <summary>
+            Base class of <see cref="T:Pulumi.Asset"/>s and <see cref="T:Pulumi.Archive"/>s.
+            </summary>
+        </member>
         <member name="T:Pulumi.Id">
             <summary>
             A provider-assigned ID.

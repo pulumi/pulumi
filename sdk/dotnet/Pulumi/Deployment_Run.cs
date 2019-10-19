@@ -121,6 +121,7 @@ $@"Running program '{location}' failed with an unhandled exception:
 {exception.ToString()}");
             }
 
+            Serilog.Log.Debug("Wrote last error.  Returning from program.");
             return _processExitedAfterLoggingUserActionableMessage;
         }
     }

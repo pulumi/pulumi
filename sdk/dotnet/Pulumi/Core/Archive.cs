@@ -11,48 +11,19 @@ namespace Pulumi
     /// <summary>
     /// An Archive represents a collection of named assets.
     /// </summary>
-    public abstract class Archive : IAssetOrArchive
+    public abstract class Archive : AssetOrArchive
     {
         private protected Archive()
         {
         }
 
-        (string sigKey, string propName, object value) IAssetOrArchive.GetSerializationData()
+        internal override (string sigKey, string propName, object value) GetSerializationData()
         {
-            var (propName, value) = GetSerializationData();
+            var (propName, value) = GetSerializationDataWorker();
             return (Constants.SpecialArchiveSig, propName, value);
         }
 
-        internal abstract (string propName, object value) GetSerializationData();
-    }
-
-    public struct AssetOrArchive
-    {
-        public Asset? Asset { get; }
-        public Archive? Archive { get; }
-
-        public AssetOrArchive(Asset asset) : this(asset, archive: null)
-        {
-        }
-
-        public AssetOrArchive(Archive archive) : this(asset: null, archive)
-        {
-        }
-
-        private AssetOrArchive(Asset? asset, Archive? archive)
-        {
-            if (asset == null && archive == null)
-                throw new ArgumentException("asset and archive cannot both be null.");
-
-            Asset = asset;
-            Archive = archive;
-        }
-
-        public static implicit operator AssetOrArchive(Asset asset)
-            => new AssetOrArchive(asset);
-
-        public static implicit operator AssetOrArchive(Archive archive)
-            => new AssetOrArchive(archive);
+        internal abstract (string propName, object value) GetSerializationDataWorker();
     }
 
     /// <summary>
@@ -69,7 +40,7 @@ namespace Pulumi
         public AssetArchive(ImmutableDictionary<string, AssetOrArchive> assets)
                 => _assets = assets ?? throw new ArgumentNullException(nameof(assets));
 
-        internal override (string propName, object value) GetSerializationData()
+        internal override (string propName, object value) GetSerializationDataWorker()
             => ("assets", _assets);
     }
 
@@ -88,7 +59,7 @@ namespace Pulumi
         public FileArchive(string path)
             => this._path = path ?? throw new ArgumentNullException(nameof(path));
 
-        internal override (string propName, object value) GetSerializationData()
+        internal override (string propName, object value) GetSerializationDataWorker()
             => ("path", _path);
     }
 
@@ -108,7 +79,7 @@ namespace Pulumi
         public RemoteArchive(string uri)
                 => _uri = uri ?? throw new ArgumentNullException(nameof(uri));
 
-        internal override (string propName, object value) GetSerializationData()
+        internal override (string propName, object value) GetSerializationDataWorker()
             => ("uri", _uri);
     }
 }

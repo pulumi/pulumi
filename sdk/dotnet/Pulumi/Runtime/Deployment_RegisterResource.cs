@@ -7,8 +7,10 @@ using System.Collections;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using Newtonsoft.Json.Linq;
 using Pulumi.Rpc;
 using Pulumirpc;
 
@@ -34,7 +36,7 @@ namespace Pulumi
         private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
             Resource resource)
         {
-            var query = from field in resource.GetType().GetFields(BindingFlags.NonPublic)
+            var query = from field in resource.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
                         let attr = field.GetCustomAttribute<ResourceFieldAttribute>()
                         where attr != null
                         select (field, attr);
@@ -50,6 +52,7 @@ namespace Pulumi
             if (resource is CustomResource customResource)
                 result.Add("id", customResource._id);
 
+            Log.Debug("Fields to assign: " + new JArray(result.Keys), resource);
             return result.ToImmutable();
         }
 
@@ -62,6 +65,7 @@ namespace Pulumi
             {
                 var response = await RegisterResourceWorkerAsync(
                     resource, custom, args, opts).ConfigureAwait(false);
+
 
                 resource._urn.SetResult(response.Urn);
                 if (resource is CustomResource customResource)

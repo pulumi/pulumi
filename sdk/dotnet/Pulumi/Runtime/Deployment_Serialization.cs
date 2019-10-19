@@ -89,6 +89,26 @@ namespace Pulumi
                 return prop;
             }
 
+            if (prop is Id id)
+            {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: id={id.Value}");
+                }
+
+                return id.Value;
+            }
+
+            if (prop is Urn urn)
+            {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: urn={urn.Value}");
+                }
+
+                return urn.Value;
+            }
+
             if (prop is ResourceArgs args)
             {
                 if (_excessiveDebugOutput)
@@ -99,7 +119,7 @@ namespace Pulumi
                 return await SerializePropertyAsync(ctx, args.ToDictionary(), dependentResources);
             }
 
-            if (prop is IAssetOrArchive assetOrArchive)
+            if (prop is AssetOrArchive assetOrArchive)
             {
                 var (sig, propName, propValue) = assetOrArchive.GetSerializationData();
                 var result = new Dictionary<string, object?>
