@@ -24,6 +24,7 @@ namespace AWS.S3
         public Input<string> ContentBase64;
         public Input<string> ContentType;
         public Input<string> Key;
+        public Input<AssetOrArchive> Source;
 
         protected override void AddProperties(PropertyBuilder builder)
         {
@@ -32,6 +33,7 @@ namespace AWS.S3
             builder.Add("contentBase64", ContentBase64);
             builder.Add("contentType", ContentType);
             builder.Add("key", Key);
+            builder.Add("source", Source);
         }
     }
 

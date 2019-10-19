@@ -115,7 +115,7 @@ namespace Pulumi
             }
             else
             {
-                var location = System.Reflection.Assembly.GetEntryAssembly().Location;
+                var location = System.Reflection.Assembly.GetEntryAssembly()?.Location;
                 await Error(
 $@"Running program '{location}' failed with an unhandled exception:
 {exception.ToString()}");

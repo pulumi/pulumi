@@ -22,7 +22,7 @@ namespace Pulumi
         public override int GetHashCode()
             => Value.GetHashCode();
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is Id id && Equals(id);
 
         public bool Equals(Id id)

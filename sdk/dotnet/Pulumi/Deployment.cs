@@ -52,6 +52,12 @@ namespace Pulumi
             if (string.IsNullOrEmpty(engine))
                 throw new InvalidOperationException("Environment did not contain: PULUMI_ENGINE");
 
+            if (string.IsNullOrEmpty(project))
+                throw new InvalidOperationException("Environment did not contain: PULUMI_PROJECT");
+
+            if (string.IsNullOrEmpty(stack))
+                throw new InvalidOperationException("Environment did not contain: PULUMI_STACK");
+
             if (!bool.TryParse(dryRun, out var dryRunValue))
                 throw new InvalidOperationException("Environment did not contain a valid bool value for: PULUMI_DRY_RUN");
 

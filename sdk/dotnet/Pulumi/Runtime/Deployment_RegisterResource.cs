@@ -44,7 +44,12 @@ namespace Pulumi
             var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
             foreach (var (field, attr) in query.ToList())
             {
-                var completionSource = (IOutputCompletionSource)field.GetValue(resource);
+                var completionSource = (IOutputCompletionSource?)field.GetValue(resource);
+                if (completionSource == null)
+                {
+                    throw new InvalidOperationException("[ResourceField] attribute was placed on a null field.");
+                }
+
                 result.Add(attr.Name, completionSource);
             }
 
@@ -147,7 +152,7 @@ namespace Pulumi
             request.Object = prepareResult.SerializedProps;
         }
 
-        private static Value CreateValue(object value)
+        private static Value CreateValue(object? value)
             => value switch
             {
                 null => Value.ForNull(),
