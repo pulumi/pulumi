@@ -32,47 +32,50 @@ namespace Pulumi
         private async Task RegisterResourceOutputsAsync(
             Resource resource, Output<IDictionary<string, object>> outputs)
         {
-            try
+            var opLabel = $"monitor.registerResourceOutputs(...)";
+
+            // The registration could very well still be taking place, so we will need to wait for its URN.
+            // Additionally, the output properties might have come from other resources, so we must await those too.
+            var urn = await resource.Urn.GetValueAsync().ConfigureAwait(false);
+            var props = await outputs.GetValueAsync().ConfigureAwait(false);
+            var propInputs = props.ToDictionary(kvp => kvp.Key, kvp => (IInput)kvp.ToObjectOutput());
+
+            var serialized = await SerializeAllPropertiesAsync(opLabel, propInputs).ConfigureAwait(false);
+            Log.Debug(`RegisterResourceOutputs RPC prepared: urn =${ urn}` +
+(excessiveDebugOutput ? `, outputs =${ JSON.stringify(outputsObj)}` : ``));
+
+            // Fetch the monitor and make an RPC request.
+            const monitor = getMonitor();
+            if (monitor)
             {
-                var response = await RegisterResourceWorkerAsync(
-                    resource, type, name, custom, args, opts).ConfigureAwait(false);
+                const req = new resproto.RegisterResourceOutputsRequest();
+                req.setUrn(urn);
+                req.setOutputs(outputsObj);
 
-                resource._urn.SetResult(response.Urn);
-                if (resource is CustomResource customResource)
-                    customResource._id.SetResult(response.Id);
-
-                // Go through all our output fields and lookup a corresponding value in the response
-                // object.  Allow the output field to deserialize the response.
-                foreach (var (fieldName, completionSource) in completionSources)
+                const label = `monitor.registerResourceOutputs(${ urn}, ...)`;
+                await debuggablePromise(new Promise((resolve, reject) =>
+                    (monitor as any).registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
+                    log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` +
+                            `err: ${ err}, resp: ${ innerResponse}`);
+                if (err)
                 {
-                    if (completionSource is IProtobufOutputCompletionSource pbCompletionSource &&
-                        response.Object.Fields.TryGetValue(fieldName, out var value))
+                    // If the monitor is unavailable, it is in the process of shutting down or has already
+                    // shut down. Don't emit an error and don't do any more RPCs, just exit.
+                    if (err.code === grpc.status.UNAVAILABLE)
                     {
-                        pbCompletionSource.SetResult(value);
+                        log.debug("Resource monitor is terminating");
+                        process.exit(0);
                     }
+
+                    log.error(`Failed to end new resource registration '${urn}': ${ err.stack}`);
+                    reject(err);
                 }
-            }
-            catch (Exception e)
-            {
-                // Mark any unresolved output properties with this exception.  That way we don't
-                // leave any outstanding tasks sitting around which might cause hangs.
-                foreach (var source in completionSources.Values)
+                else
                 {
-                    source.TrySetException(e);
+                    resolve();
                 }
-            }
-            finally
-            {
-                // ensure that we've at least resolved all our completion sources.  That way we
-                // don't leave any outstanding tasks sitting around which might cause hangs.
-                foreach (var source in completionSources.Values)
-                {
-                    // Didn't get a value for this field.  Resolve it with a default value.
-                    // If we're in preview, we'll consider this unknown and in a normal
-                    // update we'll consider it known.
-                    source.SetDefaultResult(isKnown: !this.Options.DryRun);
-                }
-            }
+            })), label);
+
         }
     }
 }

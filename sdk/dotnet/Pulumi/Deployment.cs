@@ -8,6 +8,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Pulumirpc;
+using Serilog;
 
 namespace Pulumi
 {
@@ -71,17 +72,17 @@ namespace Pulumi
             this.Monitor = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure));
         }
 
-        public static Task Run(Action action)
+        public static Task<int> Run(Action action)
             => Run(() =>
             {
                 action();
                 return ImmutableDictionary<string, object>.Empty;
             });
 
-        public static Task Run(Func<IDictionary<string, object>> func)
+        public static Task<int> Run(Func<IDictionary<string, object>> func)
             => Run(() => Task.FromResult(func()));
 
-        public static Task Run(Func<Task<IDictionary<string, object>>> func)
+        public static Task<int> Run(Func<Task<IDictionary<string, object>>> func)
         {
             if (Instance != null)
             {
@@ -92,7 +93,7 @@ namespace Pulumi
             return Instance.RunWorker(func);
         }
 
-        private Task RunWorker(Func<Task<IDictionary<string, object>>> func)
+        private Task<int> RunWorker(Func<Task<IDictionary<string, object>>> func)
         {
             var stack = new Stack(func);
             RegisterTask("User program code.", stack.Outputs.DataTask);
@@ -107,7 +108,7 @@ namespace Pulumi
             }
         }
 
-        private async Task WhileRunning()
+        private async Task<int> WhileRunning()
         {
             while (true)
             {
@@ -117,7 +118,7 @@ namespace Pulumi
                 {
                     if (_tasks.Count == 0)
                     {
-                        return;
+                        break;
                     }
 
                     (description, task) = _tasks.Dequeue(); 
@@ -126,6 +127,8 @@ namespace Pulumi
                 Serilog.Log.Debug("Deployment awaiting: " + description);
                 await task;
             }
+
+            return Log.HasErrors ? 1 : 0;
         }
     }
 }

@@ -24,7 +24,7 @@ namespace Pulumi
             // Serialize out all our props to their final values.  In doing so, we'll also collect all
             // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
             var (serializedProps, propertyToDirectDependencies) =
-                await SerializeResourcePropertiesAsync(label, args).ConfigureAwait(false);
+                await SerializeResourcePropertiesAsync(label, args.ToDictionary()).ConfigureAwait(false);
 
             // Wait for the parent to complete.
             // If no parent was provided, parent to the root resource.
@@ -64,7 +64,7 @@ namespace Pulumi
             var uniqueAliases = new HashSet<Urn>();
             foreach (var alias in res._aliases)
             {
-                var aliasVal = await alias.ToOutput().GetValueAsync();
+                var aliasVal = await alias.ToOutput().GetValueAsync().ConfigureAwait(false);
                 if (!uniqueAliases.Add(aliasVal))
                 {
                     aliases.Add(aliasVal);

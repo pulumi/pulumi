@@ -438,7 +438,7 @@ namespace Pulumi
 //        }
 
 //        public async void RegisterAsync(string type, string name, bool custom, Dictionary<string, object> properties, ResourceOptions options) {
-//            Serilog.Log.Debug("RegisterAsync({type}, {name})", type, name);
+//            Log.Debug("RegisterAsync({type}, {name})", type, name);
 
 //            if (string.IsNullOrEmpty(type))
 //            {
@@ -484,7 +484,7 @@ namespace Pulumi
 //            }
 
 //            foreach(string urn in dependsOnUrns) {
-//                Serilog.Log.Debug("Dependency: {urn}", urn);
+//                Log.Debug("Dependency: {urn}", urn);
 //            }
 
 //            // Kick off the registration, and when it completes, call the OnResourceRegistrationCompete method which will resolve all the tasks to their values. The fact that we don't
@@ -517,7 +517,7 @@ namespace Pulumi
 //        }
 
 //        private async Task<Value> SerializeProperty(object o) {
-//            Serilog.Log.Debug("SerializeProperty({o})", o);
+//            Log.Debug("SerializeProperty({o})", o);
 
 //            var input = o as IInput;
 //            if (input != null) {

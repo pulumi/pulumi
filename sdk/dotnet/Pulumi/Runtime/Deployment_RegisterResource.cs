@@ -20,12 +20,15 @@ namespace Pulumi
             Resource resource, bool custom, ResourceArgs args, ResourceOptions opts)
         {
             var completionSources = GetOutputCompletionSources(resource);
-            var task1 = RegisterResourceAsync(resource, custom, args, opts, completionSources);
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
+            //
+            // Also do this in a task we explicitly kick off.  That way the thread we're currently
+            // on can actually finish constructing the object by the time the rpc message returns
+            // from the engine.
             this.RegisterTask(
                 $"{nameof(RegisterResource)}: {resource.Type}-{resource.Name}",
-                task1);
+                Task.Run(() => RegisterResourceAsync(resource, custom, args, opts, completionSources)));
         }
 
         private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
@@ -106,7 +109,7 @@ namespace Pulumi
             var type = resource.Type;
 
             var label = $"resource:{name}[{type}]";
-            Serilog.Log.Debug($"Registering resource: t={type}, name=${name}, custom=${custom}");
+            Log.Debug($"Registering resource: t={type}, name=${name}, custom=${custom}");
 
             var request = CreateRegisterResourceRequest(type, name, custom, opts);
 

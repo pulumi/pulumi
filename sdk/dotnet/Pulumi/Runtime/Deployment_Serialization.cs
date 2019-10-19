@@ -21,9 +21,15 @@ namespace Pulumi
         /// remoted over to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, ResourceArgs args)
+            string label, Input<IDictionary<string, IInput>> args)
         {
             return SerializeFilteredPropertiesAsync(label, args, key => key != "id" && key != "urn");
+        }
+
+        private static Task<SerializationResult> SerializeAllPropertiesAsync(
+            string label, Input<IDictionary<string, IInput>> args)
+        {
+            return SerializeFilteredPropertiesAsync(label, args, _ => true);
         }
 
         /// <summary>
@@ -32,9 +38,9 @@ namespace Pulumi
         /// POJO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-            string label, ResourceArgs args, Predicate<string> acceptKey)
+            string label, Input<IDictionary<string, IInput>> args, Predicate<string> acceptKey)
         {
-            var props = args.ToDictionary();
+            var props = await args.ToOutput().GetValueAsync().ConfigureAwait(false);
 
             var propertyToDependentResources = new Dictionary<string, HashSet<Resource>>();
             var result = new Dictionary<string, object>();
@@ -73,7 +79,7 @@ namespace Pulumi
             {
                 if (_excessiveDebugOutput)
                 {
-                    Serilog.Log.Debug($"Serialize property[{ctx}]: primitive={prop}");
+                    Log.Debug($"Serialize property[{ctx}]: primitive={prop}");
                 }
 
                 return prop;
@@ -83,7 +89,7 @@ namespace Pulumi
             {
                 if (_excessiveDebugOutput)
                 {
-                    Serilog.Log.Debug($"Serialize property[{ctx}]: Recursing into ResourceArgs");
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into ResourceArgs");
                 }
 
                 return await SerializePropertyAsync(ctx, args.ToDictionary(), dependentResources);
@@ -117,7 +123,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             {
                 if (_excessiveDebugOutput)
                 {
-                    Serilog.Log.Debug($"Serialize property[{ctx}]: Recursing into Output");
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into Output");
                 }
 
                 dependentResources.AddRange(output.Resources);
@@ -150,7 +156,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 // Resources aren't serializable; instead, we serialize them as references to the ID property.
                 if (_excessiveDebugOutput)
                 {
-                    Serilog.Log.Debug($"Serialize property[{ctx}]: Encountered CustomResource");
+                    Log.Debug($"Serialize property[{ctx}]: Encountered CustomResource");
                 }
 
                 dependentResources.Add(customResource);
@@ -178,7 +184,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 // deadlocks.
                 if (_excessiveDebugOutput)
                 {
-                    Serilog.Log.Debug($"Serialize property[{ctx}]: Encountered ComponentResource");
+                    Log.Debug($"Serialize property[{ctx}]: Encountered ComponentResource");
                 }
 
                 return await SerializePropertyAsync($"{ctx}.urn", componentResource.Urn, dependentResources);
@@ -197,7 +203,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
                     if (_excessiveDebugOutput)
                     {
-                        Serilog.Log.Debug($"Serialize property[{ctx}]: object.{stringKey}");
+                        Log.Debug($"Serialize property[{ctx}]: object.{stringKey}");
                     }
 
                     // When serializing an object, we omit any keys with undefined values. This
@@ -220,7 +226,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 {
                     if (_excessiveDebugOutput)
                     {
-                        Serilog.Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
+                        Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
                     }
 
                     result[i] = await SerializePropertyAsync($"{ctx}[{i}]", list[i], dependentResources);
