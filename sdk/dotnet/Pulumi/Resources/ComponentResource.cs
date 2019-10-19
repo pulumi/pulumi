@@ -40,10 +40,5 @@ namespace Pulumi
         {
             Deployment.Instance.RegisterResourceOutputs(this, map ?? new InputMap<string, object>());
         }
-
-        internal sealed override void AttachRegistrations(Task<RegisterResourceResponse> response)
-        {
-            base.AttachRegistrations(response);
-        }
     }
 }

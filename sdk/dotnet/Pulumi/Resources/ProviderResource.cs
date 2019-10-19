@@ -46,10 +46,9 @@ namespace Pulumi
         /// Creates and registers a new provider resource for a particular package.
         /// </summary>
         public ProviderResource(
-                string package, string name,
-                ImmutableDictionary<string, Input<object>> properties,
-                ResourceOptions? opts = null)
-            : base($"pulumi:providers:${package}", name, properties, opts)
+            string package, string name,
+            ResourceArgs args, ResourceOptions? opts = null)
+            : base($"pulumi:providers:${package}", name, args, opts)
         {
             this.Package = package;
         }

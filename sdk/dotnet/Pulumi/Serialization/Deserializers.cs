@@ -9,7 +9,7 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Rpc
 {
-    internal static class Deserializers
+    public static class Deserializers
     {
         private static Deserializer<T> CreateSimpleDeserializer<T>(
             Value.KindOneofCase kind, Func<Value, T> func)
