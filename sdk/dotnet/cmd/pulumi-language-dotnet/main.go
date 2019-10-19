@@ -32,6 +32,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
+	// need for us to print any additional error messages since the user already got a a good
+	// one they can handle.
+	dotnetProcessExitedAfterShowingUserActionableMessage = 32
+)
+
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
 // LanguageRuntimeServer RPC endpoint.
 func main() {
@@ -76,7 +83,7 @@ func main() {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-	})
+	}, nil)
 	if err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
 	}
@@ -115,6 +122,51 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	if err := host.DotnetBuild(ctx, req); err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+	}
+
+	return host.DotnetRun(ctx, req)
+}
+
+func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.RunRequest) error {
+	args := []string{"build"}
+
+	if req.GetProgram() != "" {
+		args = append(args, req.GetProgram())
+	}
+
+	if glog.V(5) {
+		commandStr := strings.Join(args, " ")
+		glog.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
+	}
+
+	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
+			// errors will trigger this.  So, the error message should look as nice as possible.
+			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				return errors.Errorf("'dotnet build' exited with non-zero exit code: %d", status.ExitStatus())
+			} else {
+				return errors.Wrapf(exiterr, "'dotnet build' exited unexpectedly")
+			}
+		} else {
+			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+			return errors.Wrapf(err, "Problem executing 'dotnet build'")
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (host *dotnetLanguageHost) DotnetRun(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	config, err := host.constructConfig(req)
 	if err != nil {
 		err = errors.Wrap(err, "failed to serialize configuration")
@@ -143,6 +195,13 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				// Check if we got special exit code that means "we already gave the user an
+				// actionable message". In that case, we can simply bail out and terminate `pulumi`
+				// without showing any more messages.
+				if status.ExitStatus() == dotnetProcessExitedAfterShowingUserActionableMessage {
+					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
+				}
+
 				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
 			} else {
 				err = errors.Wrapf(exiterr, "Program exited unexpectedly")
