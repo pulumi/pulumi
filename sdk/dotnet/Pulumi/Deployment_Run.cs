@@ -49,7 +49,6 @@ namespace Pulumi
 
         internal void RegisterTask(string description, Task task)
         {
-            Console.WriteLine("Enqueuing task: " + description);
             lock (_taskToDescription)
             {
                 _taskToDescription.Add(task, description);//.Enqueue((description, task));
@@ -74,7 +73,6 @@ namespace Pulumi
                 {
                     if (_taskToDescription.Count == 0)
                     {
-                        Console.WriteLine("No more tasks to wait on.");
                         break;
                     }
 
@@ -91,14 +89,10 @@ namespace Pulumi
 
                 try
                 {
-
-                    Console.WriteLine("Task finished running: " + description);
                     await task.ConfigureAwait(false);
-                    Console.WriteLine("Task finished successfully: " + description);
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Task failed: " + description + "\n" + e);
                     return await HandleExceptionAsync(e).ConfigureAwait(false);
                 }
             }

@@ -33,6 +33,9 @@ namespace Pulumi
         private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
             Resource resource)
         {
+            var name = resource.Name;
+            var type = resource.Type;
+
             var query = from field in resource.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
                         let attr = field.GetCustomAttribute<ResourceFieldAttribute>()
                         where attr != null
@@ -53,7 +56,7 @@ namespace Pulumi
             result.Add("urn", resource._urn);
             if (resource is CustomResource customResource)
                 result.Add("id", customResource._id);
-
+            
             Log.Debug("Fields to assign: " + new JArray(result.Keys), resource);
             return result.ToImmutable();
         }
@@ -62,18 +65,31 @@ namespace Pulumi
             Resource resource, bool custom,
             ResourceArgs args, ResourceOptions opts)
         {
-            Console.Write("RegisteringAsync: " + resource.Type);
+            var name = resource.Name;
+            var type = resource.Type;
+
             var completionSources = GetOutputCompletionSources(resource);
-            Console.Write("RegisteringAsync: got completion sources" + resource.Type);
 
             try
             {
                 var response = await RegisterResourceWorkerAsync(
                     resource, custom, args, opts).ConfigureAwait(false);
 
+                // Console.WriteLine($"Setting urn for {type}-{name} to '{response.Urn}'");
                 resource._urn.SetResult(response.Urn);
                 if (resource is CustomResource customResource)
-                    customResource._id.SetResult(response.Id);
+                {
+                    var id = response.Id;
+                    // Console.WriteLine($"Setting id for {type}-{name} to '{id}' (null: {id == null}) (empty: {id == ""})");
+                    if (string.IsNullOrEmpty(id))
+                    {
+                        customResource._id.SetUnknownResult();
+                    }
+                    else
+                    {
+                        customResource._id.SetResult(id);
+                    }
+                }
 
                 // Go through all our output fields and lookup a corresponding value in the response
                 // object.  Allow the output field to deserialize the response.

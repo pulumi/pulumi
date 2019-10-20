@@ -2,9 +2,7 @@
 
 #nullable enable
 
-using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using AWS.S3;
 using Pulumi;
@@ -29,10 +27,9 @@ class Program
             {
                 Acl = "public-read",
                 Bucket = bucket.Id,
-                ContentBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes("Made with \u2764, Pulumi, and .NET")),
                 ContentType = "text/plain; charset=utf8",
                 Key = "hello.txt",
-                Source = new StringAsset("contents!"),
+                Source = new StringAsset("Made with \u2764, Pulumi, and .NET"),
             });
 
             //bucket.Id.Apply(id => Console.WriteLine($"Bucket ID id: {id}"));
