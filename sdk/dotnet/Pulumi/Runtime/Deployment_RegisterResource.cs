@@ -21,7 +21,7 @@ namespace Pulumi
         internal void RegisterResource(
             Resource resource, bool custom, ResourceArgs args, ResourceOptions opts)
         {
-            var completionSources = GetOutputCompletionSources(resource);
+            Console.Write("Registering: " + resource.Type);
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
             //
@@ -30,7 +30,7 @@ namespace Pulumi
             // from the engine.
             this.RegisterTask(
                 $"{nameof(RegisterResource)}: {resource.Type}-{resource.Name}",
-                Task.Run(() => RegisterResourceAsync(resource, custom, args, opts, completionSources)));
+                Task.Run(() => RegisterResourceAsync(resource, custom, args, opts)));
         }
 
         private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
@@ -63,14 +63,16 @@ namespace Pulumi
 
         private async Task RegisterResourceAsync(
             Resource resource, bool custom,
-            ResourceArgs args, ResourceOptions opts,
-            ImmutableDictionary<string, IOutputCompletionSource> completionSources)
+            ResourceArgs args, ResourceOptions opts)
         {
+            Console.Write("RegisteringAsync: " + resource.Type);
+            var completionSources = GetOutputCompletionSources(resource);
+            Console.Write("RegisteringAsync: got completion sources" + resource.Type);
+
             try
             {
                 var response = await RegisterResourceWorkerAsync(
                     resource, custom, args, opts).ConfigureAwait(false);
-
 
                 resource._urn.SetResult(response.Urn);
                 if (resource is CustomResource customResource)
@@ -118,14 +120,20 @@ namespace Pulumi
             var type = resource.Type;
 
             var label = $"resource:{name}[{type}]";
-            Log.Debug($"Registering resource: t={type}, name={name}, custom={custom}");
+            Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}");
 
             var request = CreateRegisterResourceRequest(type, name, custom, opts);
 
-            var prepareResult = await PrepareResourceAsync(label, resource, type, custom, args, opts).ConfigureAwait(false);
+            Log.Debug($"Preparing resource: t={type}, name={name}, custom={custom}");
+            var prepareResult = await PrepareResourceAsync(label, resource, custom, args, opts).ConfigureAwait(false);
+            Log.Debug($"Prepared resource: t={type}, name={name}, custom={custom}");
+
             PopulateRequest(request, prepareResult);
 
-            return await this.Monitor.RegisterResourceAsync(request);
+            Log.Debug($"Registering resource monitor start: t={type}, name={name}, custom={custom}");
+            var result = await this.Monitor.RegisterResourceAsync(request);
+            Log.Debug($"Registering resource monitor end: t={type}, name={name}, custom={custom}");
+            return result;
         }
 
         private static void PopulateRequest(RegisterResourceRequest request, PrepareResult prepareResult)

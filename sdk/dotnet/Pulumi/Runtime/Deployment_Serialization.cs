@@ -14,7 +14,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        internal static bool _excessiveDebugOutput;
+        internal static bool _excessiveDebugOutput = true;
 
         /// <summary>
         /// serializeResourceProperties walks the props object passed in, awaiting all interior
@@ -121,6 +121,11 @@ namespace Pulumi
 
             if (prop is AssetOrArchive assetOrArchive)
             {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: asset/archive={assetOrArchive.GetType().Name}");
+                }
+
                 var (sig, propName, propValue) = assetOrArchive.GetSerializationData();
                 var result = new Dictionary<string, object?>
                 {
@@ -140,6 +145,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
             if (prop is IInput input)
             {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into input");
+                }
+
                 return await SerializePropertyAsync(ctx, input.ToOutput(), dependentResources);
             }
 
@@ -216,6 +226,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
             if (prop is IDictionary dictionary)
             {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: Hit dictionary");
+                }
+
                 var result = new Dictionary<string, object>();
                 foreach (var key in dictionary.Keys)
                 {
@@ -245,6 +260,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
             if (prop is IList list)
             {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: Hit list");
+                }
+
                 var result = new List<object?>(list.Count);
                 for (int i = 0, n = list.Count; i < n; i++)
                 {

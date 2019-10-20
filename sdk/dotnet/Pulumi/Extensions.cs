@@ -48,7 +48,7 @@ namespace Pulumi
                 {
                     default: throw new InvalidOperationException("Task was not complete: " + t.Status);
                     case TaskStatus.Canceled: tcs.SetCanceled(); return;
-                    case TaskStatus.Faulted: tcs.SetException(t.Exception.InnerExceptions); return;
+                    case TaskStatus.Faulted: tcs.SetException(t.Exception!.InnerExceptions); return;
                     case TaskStatus.RanToCompletion:
                         try
                         {

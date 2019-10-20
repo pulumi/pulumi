@@ -46,7 +46,9 @@ namespace AWS.S3
         public Bucket(string name, BucketArgs args, ResourceOptions opts = null)
             : base("aws:s3/bucket:Bucket", name, args, opts)
         {
+            Console.WriteLine("Making bucket");
             _bucketDomainName = new StringOutputCompletionSource(this);
+            Console.WriteLine("Made bucket");
         }
     }
 

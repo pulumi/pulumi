@@ -5,6 +5,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Serilog;
 
@@ -46,9 +49,10 @@ namespace Pulumi
 
         internal void RegisterTask(string description, Task task)
         {
-            lock (_tasks)
+            Console.WriteLine("Enqueuing task: " + description);
+            lock (_taskToDescription)
             {
-                _tasks.Enqueue((description, task));
+                _taskToDescription.Add(task, description);//.Enqueue((description, task));
             }
         }
 
@@ -59,30 +63,42 @@ namespace Pulumi
         // 32 was picked so as to be very unlikely to collide with any other error codes.
         private const int _processExitedAfterLoggingUserActionableMessage = 32;
 
+        private readonly Dictionary<Task, string> _taskToDescription = new Dictionary<Task, string>();
+
         private async Task<int> WhileRunning()
         {
             while (true)
             {
-                string description;
-                Task task;
-                lock (_tasks)
+                Task[] tasks;
+                lock (_taskToDescription)
                 {
-                    if (_tasks.Count == 0)
+                    if (_taskToDescription.Count == 0)
                     {
+                        Console.WriteLine("No more tasks to wait on.");
                         break;
                     }
 
-                    (description, task) = _tasks.Dequeue();
+                    tasks = _taskToDescription.Keys.ToArray();
                 }
 
-                Serilog.Log.Debug("Deployment awaiting: " + description);
+                var task = await Task.WhenAny(tasks).ConfigureAwait(false);
+                string description;
+                lock (_taskToDescription)
+                {
+                    description = _taskToDescription[task];
+                    _taskToDescription.Remove(task);
+                }
 
                 try
                 {
+
+                    Console.WriteLine("Task finished running: " + description);
                     await task.ConfigureAwait(false);
+                    Console.WriteLine("Task finished successfully: " + description);
                 }
                 catch (Exception e)
                 {
+                    Console.WriteLine("Task failed: " + description + "\n" + e);
                     return await HandleExceptionAsync(e).ConfigureAwait(false);
                 }
             }
