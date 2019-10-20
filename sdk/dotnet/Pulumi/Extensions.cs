@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -42,7 +43,7 @@ namespace Pulumi
         public static void Assign<X, Y>(
             this Task<X> response, TaskCompletionSource<Y> tcs, Func<X, Y> extract)
         {
-            response.ContinueWith(t =>
+            _ = response.ContinueWith(t =>
             {
                 switch (t.Status)
                 {
@@ -60,7 +61,7 @@ namespace Pulumi
                         }
                         return;
                 }
-            });
+            }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
         }
     }
 }

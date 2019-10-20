@@ -3,6 +3,7 @@
 #nullable enable
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Pulumirpc;
 
@@ -30,42 +31,42 @@ namespace Pulumi
         /// <summary>
         /// Logs a debug-level message that is generally hidden from end-users.
         /// </summary>
-        internal Task Debug(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task DebugAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Debug(message);
-            return LogImpl(LogSeverity.Debug, message, resource, streamId, ephemeral);
+            return LogImplAsync(LogSeverity.Debug, message, resource, streamId, ephemeral);
         }
 
         /// <summary>
         /// Logs an informational message that is generally printed to stdout during resource
         /// operations.
         /// </summary>
-        internal Task Info(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task InfoAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Information(message);
-            return LogImpl(LogSeverity.Info, message, resource, streamId, ephemeral);
+            return LogImplAsync(LogSeverity.Info, message, resource, streamId, ephemeral);
         }
 
         /// <summary>
         /// Warn logs a warning to indicate that something went wrong, but not catastrophically so.
         /// </summary>
-        internal Task Warn(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task WarnAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Warning(message);
-            return LogImpl(LogSeverity.Warning, message, resource, streamId, ephemeral);
+            return LogImplAsync(LogSeverity.Warning, message, resource, streamId, ephemeral);
         }
 
         /// <summary>
         /// Error logs a fatal error to indicate that the tool should stop processing resource
         /// operations immediately.
         /// </summary>
-        internal Task Error(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        internal Task ErrorAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Error(message);
-            return LogImpl(LogSeverity.Error, message, resource, streamId, ephemeral);
+            return LogImplAsync(LogSeverity.Error, message, resource, streamId, ephemeral);
         }
 
-        private Task LogImpl(LogSeverity severity, string message, Resource? resource, int? streamId, bool? ephemeral)
+        private Task LogImplAsync(LogSeverity severity, string message, Resource? resource, int? streamId, bool? ephemeral)
         {
             // Serialize our logging tasks so that streaming logs appear in order.
             Task task;
@@ -77,7 +78,8 @@ namespace Pulumi
                 // Use a Task.Run here so that we don't end up aggressively running the actual
                 // logging while holding this lock.
                 _lastLogTask = _lastLogTask.ContinueWith(
-                    _ => Task.Run(() => LogAsync(severity, message, resource, streamId, ephemeral))).Unwrap();
+                    _ => Task.Run(() => LogAsync(severity, message, resource, streamId, ephemeral)),
+                    CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap();
                 task = _lastLogTask;
             }
 

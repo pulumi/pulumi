@@ -15,17 +15,17 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        public static Task<int> Run(Action action)
-            => Run(() =>
+        public static Task<int> RunAsync(Action action)
+            => RunAsync(() =>
             {
                 action();
                 return ImmutableDictionary<string, object>.Empty;
             });
 
-        public static Task<int> Run(Func<IDictionary<string, object>> func)
-            => Run(() => Task.FromResult(func()));
+        public static Task<int> RunAsync(Func<IDictionary<string, object>> func)
+            => RunAsync(() => Task.FromResult(func()));
 
-        public static Task<int> Run(Func<Task<IDictionary<string, object>>> func)
+        public static Task<int> RunAsync(Func<Task<IDictionary<string, object>>> func)
         {
             // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
 
@@ -37,14 +37,14 @@ namespace Pulumi
 
             Serilog.Log.Debug("Creating new Deployment.");
             Instance = new Deployment();
-            return Instance.RunWorker(func);
+            return Instance.RunWorkerAsync(func);
         }
 
-        private Task<int> RunWorker(Func<Task<IDictionary<string, object>>> func)
+        private Task<int> RunWorkerAsync(Func<Task<IDictionary<string, object>>> func)
         {
             var stack = new Stack(func);
             RegisterTask("User program code.", stack.Outputs.DataTask);
-            return WhileRunning();
+            return WhileRunningAsync();
         }
 
         internal void RegisterTask(string description, Task task)
@@ -64,7 +64,7 @@ namespace Pulumi
 
         private readonly Dictionary<Task, string> _taskToDescription = new Dictionary<Task, string>();
 
-        private async Task<int> WhileRunning()
+        private async Task<int> WhileRunningAsync()
         {
             var tasks = new List<Task>();
 
@@ -118,7 +118,7 @@ namespace Pulumi
                 // We got an error while logging itself.  Nothing to do here but print some errors
                 // and fail entirely.
                 Serilog.Log.Error(exception, "Error occurred trying to send logging message to engine.");
-                Console.Error.WriteLine("Error occurred trying to send logging message to engine:\n" + exception);
+                await Console.Error.WriteLineAsync("Error occurred trying to send logging message to engine:\n" + exception).ConfigureAwait(false);
                 return 1;
             }
 
@@ -132,19 +132,19 @@ namespace Pulumi
             if (exception is RunException)
             {
                 // Always hide the stack for RunErrors.
-                await Error(exception.Message).ConfigureAwait(false);
+                await ErrorAsync(exception.Message).ConfigureAwait(false);
             }
             else if (exception is ResourceException resourceEx)
             {
                 var message = resourceEx.HideStack
                     ? resourceEx.Message
                     : resourceEx.ToString();
-                await Error(message, resourceEx.Resource).ConfigureAwait(false);
+                await ErrorAsync(message, resourceEx.Resource).ConfigureAwait(false);
             }
             else
             {
                 var location = System.Reflection.Assembly.GetEntryAssembly()?.Location;
-                await Error(
+                await ErrorAsync(
 $@"Running program '{location}' failed with an unhandled exception:
 {exception.ToString()}");
             }

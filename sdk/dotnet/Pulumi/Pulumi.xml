@@ -529,7 +529,7 @@
             </c>
             </para>
             Importantly: Cloud resources cannot be created outside of the lambda passed to any of the
-            <see cref="M:Pulumi.Deployment.Run(System.Action)"/> overloads.  Because cloud Resource construction is
+            <see cref="M:Pulumi.Deployment.RunAsync(System.Action)"/> overloads.  Because cloud Resource construction is
             inherently asynchronous, the result of this function is a <see cref="T:System.Threading.Tasks.Task`1"/> which should
             then be returned or awaited.  This will ensure that any problems that are encountered during
             the running of the program are properly reported.  Failure to do this may lead to the
@@ -566,23 +566,23 @@
             remove this function.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.Debug(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.DebugAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Logs a debug-level message that is generally hidden from end-users.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.Info(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.InfoAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Logs an informational message that is generally printed to stdout during resource
             operations.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.Warn(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.WarnAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Warn logs a warning to indicate that something went wrong, but not catastrophically so.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.Error(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.ErrorAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Error logs a fatal error to indicate that the tool should stop processing resource
             operations immediately.
@@ -1019,7 +1019,7 @@
             registers itself as the root resource with the Pulumi engine.
             
             An instance of this will be automatically created when any <see
-            cref="M:Pulumi.Deployment.Run(System.Action)"/> overload is called.
+            cref="M:Pulumi.Deployment.RunAsync(System.Action)"/> overload is called.
             </summary>
         </member>
         <member name="F:Pulumi.Stack.Root">

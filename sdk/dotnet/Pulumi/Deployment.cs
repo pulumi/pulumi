@@ -26,7 +26,7 @@ namespace Pulumi
     /// </c>
     /// </para>
     /// Importantly: Cloud resources cannot be created outside of the lambda passed to any of the
-    /// <see cref="Deployment.Run(Action)"/> overloads.  Because cloud Resource construction is
+    /// <see cref="Deployment.RunAsync(Action)"/> overloads.  Because cloud Resource construction is
     /// inherently asynchronous, the result of this function is a <see cref="Task{T}"/> which should
     /// then be returned or awaited.  This will ensure that any problems that are encountered during
     /// the running of the program are properly reported.  Failure to do this may lead to the

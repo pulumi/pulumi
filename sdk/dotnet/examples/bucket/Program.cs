@@ -11,7 +11,7 @@ class Program
 {
     static Task<int> Main(string[] args)
     {
-        return Deployment.Run(() =>
+        return Deployment.RunAsync(() =>
         {
             var config = new Config("hello-dotnet");
 

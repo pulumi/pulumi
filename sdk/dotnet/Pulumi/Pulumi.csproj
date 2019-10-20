@@ -10,6 +10,7 @@
   </PropertyGroup>
     
   <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="16.4.16" />
     <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
     <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />

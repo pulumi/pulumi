@@ -8,6 +8,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Newtonsoft.Json.Linq;
@@ -23,10 +24,16 @@ namespace Pulumi
         {
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
+            //
+            // Also, we can only do our work once the constructor for the resource has actually
+            // finished.  Otherwise, we might actually register and get the result back *prior* to
+            // the object finishing initializing.  Note: this is not a speculative concern. This is
+            // something that does happen and has to be accounted for.
             this.RegisterTask(
                 $"{nameof(RegisterResource)}: {resource.Type}-{resource.Name}",
                 resource._onConstructorFinished.Task.ContinueWith(
-                    _ => RegisterResourceAsync(resource, custom, args, opts)).Unwrap());
+                    _ => RegisterResourceAsync(resource, custom, args, opts),
+                    CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap());
         }
 
         private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(

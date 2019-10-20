@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# VSTHRD003: Avoid awaiting foreign Tasks
+dotnet_diagnostic.VSTHRD003.severity = none

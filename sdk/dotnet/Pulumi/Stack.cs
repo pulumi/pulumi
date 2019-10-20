@@ -14,7 +14,7 @@ namespace Pulumi
     /// registers itself as the root resource with the Pulumi engine.
     /// 
     /// An instance of this will be automatically created when any <see
-    /// cref="Deployment.Run(Action)"/> overload is called.
+    /// cref="Deployment.RunAsync(Action)"/> overload is called.
     /// </summary>
     public class Stack : ComponentResource
     {
@@ -55,7 +55,7 @@ namespace Pulumi
 
             try
             {
-                this.Outputs = Output.Create(RunInit(init));
+                this.Outputs = Output.Create(RunInitAsync(init));
             }
             finally
             {
@@ -63,7 +63,7 @@ namespace Pulumi
             }
         }
 
-        private async Task<IDictionary<string, object>> RunInit(Func<Task<IDictionary<string, object>>> init)
+        private async Task<IDictionary<string, object>> RunInitAsync(Func<Task<IDictionary<string, object>>> init)
         {
             // Ensure we are known as the root resource.  This is needed before we execute any user
             // code as many codepaths will request the root resource.
