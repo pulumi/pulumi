@@ -92,7 +92,7 @@ namespace Pulumi
         }
 
         private Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
-            => resources.Values.GetValueAsync();
+            => resources.ToOutput().GetValueAsync();
 
         private static async Task<HashSet<Urn>> GetAllTransitivelyReferencedCustomResourceURNsAsync(
             HashSet<Resource> resources)

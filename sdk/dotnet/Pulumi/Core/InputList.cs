@@ -24,6 +24,10 @@ namespace Pulumi
     /// cref="Output{T}"/> because its resultant value is dependent on other <see
     /// cref="Output{T}"/>s.
     /// <para/>
+    /// This benefit of <see cref="InputList{T}"/> is also a limitation.  Because it represents a
+    /// list of values that may eventually be created, there is no way to simply iterate over, or
+    /// access the elements of the list synchronously.
+    /// <para/>
     /// <see cref="InputList{T}"/> is designed to be easily used in object and collection
     /// initializers.  For example, a resource that accepts a list of inputs can be written in
     /// either of these forms:
@@ -45,30 +49,33 @@ namespace Pulumi
     {
         // Under the covers we just represent this as an Output of the list that we will
         // replace in-place in this InputList.
-        internal Output<ImmutableArray<T>> Values { get; private set; }
+        private Output<ImmutableArray<T>> _values;
 
         internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))
         {
         }
 
         private InputList(Output<ImmutableArray<T>> values)
-            => Values = values;
+            => _values = values;
+
+        public Output<ImmutableArray<T>> ToOutput()
+            => _values;
 
         IOutput IInput.ToOutput()
-            => Values;
+            => ToOutput();
 
         public void Add(params Input<T>[] inputs)
         {
             // Make an Output from the values passed in, mix in with our own Output, and combine
             // both to produce the final array that we will now point at.
-            var values1 = Values;
+            var values1 = _values;
             var values2 = Output.All(inputs);
-            Values = Output.All<ImmutableArray<T>>(values1, values2)
+            _values = Output.All<ImmutableArray<T>>(values1, values2)
                             .Apply(a => a[0].AddRange(a[1]));
         }
 
         internal InputList<T> Clone()
-            => new InputList<T>(Values);
+            => new InputList<T>(_values);
 
         #region construct from unary
 

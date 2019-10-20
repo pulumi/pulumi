@@ -357,12 +357,16 @@
             <para/>
             <see cref="T:Pulumi.InputList`1"/> differs from a normal <see cref="T:System.Collections.Generic.IList`1"/> in that it is itself
             an <see cref="T:Pulumi.Input`1"/>.  For example, a <see cref="T:Pulumi.Resource"/> that accepts an <see
-            cref="T:Pulumi.InputList`1"/> will accept not just a list of values but an <see cref="T:Pulumi.Output`1"/>
-            of list of values as well.  This is important for cases where the <see cref="T:Pulumi.Output`1"/>
+            cref="T:Pulumi.InputList`1"/> will accept not just a list but an <see cref="T:Pulumi.Output`1"/>
+            of a list.  This is important for cases where the <see cref="T:Pulumi.Output`1"/>
             list from some <see cref="T:Pulumi.Resource"/> needs to be passed into another <see
             cref="T:Pulumi.Resource"/>.  Or for cases where creating the list invariably produces an <see
             cref="T:Pulumi.Output`1"/> because its resultant value is dependent on other <see
             cref="T:Pulumi.Output`1"/>s.
+            <para/>
+            This benefit of <see cref="T:Pulumi.InputList`1"/> is also a limitation.  Because it represents a
+            list of values that may eventually be created, there is no way to simply iterate over, or
+            access the elements of the list synchronously.
             <para/>
             <see cref="T:Pulumi.InputList`1"/> is designed to be easily used in object and collection
             initializers.  For example, a resource that accepts a list of inputs can be written in
@@ -370,14 +374,47 @@
             <para/>
             <code>
                 new SomeResource("name", new SomeResourceArgs {
-                    ListProperty = { Value1, Value2, Value 3 },
+                    ListProperty = { Value1, Value2, Value3 },
                 });
             </code>
             <para/>
             or
             <code>
                 new SomeResource("name", new SomeResourceArgs {
-                    ListProperty = new [] { Value1, Value2, Value 3 },
+                    ListProperty = new [] { Value1, Value2, Value3 },
+                });
+            </code>
+            </summary>
+        </member>
+        <member name="T:Pulumi.InputMap`1">
+            <summary>
+            A mapping of <see cref="T:System.String"/>s to values that can be passed in as the arguments to a
+            <see cref="T:Pulumi.Resource"/>. The individual values are themselves <see cref="T:Pulumi.Input`1"/>s.  i.e.
+            the individual values can be concrete values or <see cref="T:Pulumi.Output`1"/>s.
+            <para/>
+            <see cref="T:Pulumi.InputMap`1"/> differs from a normal <see cref="T:System.Collections.Generic.IDictionary`2"/> in that it is
+            itself an <see cref="T:Pulumi.Input`1"/>.  For example, a <see cref="T:Pulumi.Resource"/> that accepts an
+            <see cref="T:Pulumi.InputMap`1"/> will accept not just a dictionary but an <see cref="T:Pulumi.Output`1"/>
+            of a dictionary as well.  This is important for cases where the <see cref="T:Pulumi.Output`1"/>
+            map from some <see cref="T:Pulumi.Resource"/> needs to be passed into another <see cref="T:Pulumi.Resource"/>.
+            Or for cases where creating the map invariably produces an <see cref="T:Pulumi.Output`1"/> because
+            its resultant value is dependent on other <see cref="T:Pulumi.Output`1"/>s.
+            <para/>
+            This benefit of <see cref="T:Pulumi.InputMap`1"/> is also a limitation.  Because it represents a
+            list of values that may eventually be created, there is no way to simply iterate over, or
+            access the elements of the map synchronously.
+            <para/>
+            <see cref="T:Pulumi.InputMap`1"/> is designed to be easily used in object and collection
+            initializers.  For example, a resource that accepts a map of values can be written easily in
+            this form:
+            <para/>
+            <code>
+                new SomeResource("name", new SomeResourceArgs {
+                    MapProperty = {
+                        { Key1, Value1 },
+                        { Key2, Value2 },
+                        { Key3, Value3 },
+                    },
                 });
             </code>
             </summary>

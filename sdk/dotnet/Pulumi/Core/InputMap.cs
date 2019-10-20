@@ -22,6 +22,10 @@ namespace Pulumi
     /// Or for cases where creating the map invariably produces an <see cref="Output{T}"/> because
     /// its resultant value is dependent on other <see cref="Output{T}"/>s.
     /// <para/>
+    /// This benefit of <see cref="InputMap{V}"/> is also a limitation.  Because it represents a
+    /// list of values that may eventually be created, there is no way to simply iterate over, or
+    /// access the elements of the map synchronously.
+    /// <para/>
     /// <see cref="InputMap{V}"/> is designed to be easily used in object and collection
     /// initializers.  For example, a resource that accepts a map of values can be written easily in
     /// this form:
@@ -47,11 +51,11 @@ namespace Pulumi
         private InputMap(Output<ImmutableDictionary<string, V>> values)
             => _values = values;
 
-        internal Output<ImmutableDictionary<string, V>> GetInnerMap()
+        public Output<ImmutableDictionary<string, V>> ToOutput()
             => _values;
 
         IOutput IInput.ToOutput()
-            => _values;
+            => ToOutput();
 
         public void Add(string key, Input<V> value)
         {
