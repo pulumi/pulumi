@@ -47,8 +47,8 @@ namespace Pulumi
     /// </summary>
     public class InputList<T> : IEnumerable, IInput
     {
-        // Under the covers we just represent this as an Output of the list that we will
-        // replace in-place in this InputList.
+        // Under the covers we just represent this as an Output of the array that we will
+        // replace in-place as the user modifies us.
         private Output<ImmutableArray<T>> _values;
 
         internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))

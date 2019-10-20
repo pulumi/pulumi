@@ -42,6 +42,8 @@ namespace Pulumi
     /// </summary>
     public class InputMap<V> : IEnumerable, IInput
     {
+        // Under the covers we just represent this as an Output of the dictionary that we will
+        // replace in-place as the user modifies us.
         private Output<ImmutableDictionary<string, V>> _values;
 
         internal InputMap() : this(Output.Create(ImmutableDictionary<string, V>.Empty))
