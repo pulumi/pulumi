@@ -15,12 +15,11 @@ namespace Pulumi
         internal void RegisterResourceOutputs(
             Resource resource, Output<IDictionary<string, object>> outputs)
         {
-            var task1 = RegisterResourceOutputsAsync(resource, outputs);
             // RegisterResourceOutputs is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
             this.RegisterTask(
                 $"{nameof(RegisterResourceOutputs)}: {resource.Type}-{resource.Name}",
-                task1);
+                RegisterResourceOutputsAsync(resource, outputs));
         }
 
         private async Task RegisterResourceOutputsAsync(
