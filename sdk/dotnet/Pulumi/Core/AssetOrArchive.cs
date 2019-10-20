@@ -9,6 +9,10 @@ namespace Pulumi
     /// </summary>
     public abstract class AssetOrArchive
     {
+        private protected AssetOrArchive()
+        {
+        }
+
         internal abstract (string sigKey, string propName, object value) GetSerializationData();
     }
 }
