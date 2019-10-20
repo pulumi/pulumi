@@ -67,9 +67,9 @@ namespace Pulumi
         {
             // Ensure we are known as the root resource.  This is needed before we execute any user
             // code as many codepaths will request the root resource.
-            await Deployment.Instance.SetRootResourceAsync(this);
+            await Deployment.Instance.SetRootResourceAsync(this).ConfigureAwait(false);
 
-            var dictionary = await init();
+            var dictionary = await init().ConfigureAwait(false);
             return dictionary == null
                 ? ImmutableDictionary<string, object>.Empty
                 : dictionary.ToImmutableDictionary();

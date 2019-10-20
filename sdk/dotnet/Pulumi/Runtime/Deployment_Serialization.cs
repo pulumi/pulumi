@@ -116,7 +116,7 @@ namespace Pulumi
                     Log.Debug($"Serialize property[{ctx}]: Recursing into ResourceArgs");
                 }
 
-                return await SerializePropertyAsync(ctx, args.ToDictionary(), dependentResources);
+                return await SerializePropertyAsync(ctx, args.ToDictionary(), dependentResources).ConfigureAwait(false);
             }
 
             if (prop is AssetOrArchive assetOrArchive)
@@ -150,7 +150,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into input");
                 }
 
-                return await SerializePropertyAsync(ctx, input.ToOutput(), dependentResources);
+                return await SerializePropertyAsync(ctx, input.ToOutput(), dependentResources).ConfigureAwait(false);
             }
 
             if (prop is IOutput output)
@@ -168,7 +168,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 // resolve isKnown to true) and for any resource outputs that were resolved with known values.
                 var isKnown = data.IsKnown;
                 var isSecret = data.IsSecret;
-                var value = await SerializePropertyAsync($"{ctx}.id", data.Value, dependentResources);
+                var value = await SerializePropertyAsync($"{ctx}.id", data.Value, dependentResources).ConfigureAwait(false);
 
                 if (!isKnown)
                     return Constants.UnknownValue;
@@ -194,7 +194,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 }
 
                 dependentResources.Add(customResource);
-                return await SerializePropertyAsync($"{ctx}.id", customResource.Id, dependentResources);
+                return await SerializePropertyAsync($"{ctx}.id", customResource.Id, dependentResources).ConfigureAwait(false);
             }
 
             if (prop is ComponentResource componentResource)
@@ -221,7 +221,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Encountered ComponentResource");
                 }
 
-                return await SerializePropertyAsync($"{ctx}.urn", componentResource.Urn, dependentResources);
+                return await SerializePropertyAsync($"{ctx}.urn", componentResource.Urn, dependentResources).ConfigureAwait(false);
             }
 
             if (prop is IDictionary dictionary)
@@ -273,7 +273,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                         Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
                     }
 
-                    result[i] = await SerializePropertyAsync($"{ctx}[{i}]", list[i], dependentResources);
+                    result[i] = await SerializePropertyAsync($"{ctx}[{i}]", list[i], dependentResources).ConfigureAwait(false);
                 }
             }
 

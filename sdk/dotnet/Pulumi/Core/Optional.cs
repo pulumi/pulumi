@@ -3,6 +3,8 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Pulumi
 {
@@ -11,7 +13,7 @@ namespace Pulumi
     /// whether or not that value is meaningful.
     /// </summary>
     /// <typeparam name="T">The type of the value.</typeparam>
-    public readonly struct Optional<T>
+    public readonly struct Optional<T> : IEquatable<Optional<T>>
     {
         /// <summary>
         /// Constructs an <see cref="Optional{T}"/> with a meaningful value.
@@ -58,5 +60,20 @@ namespace Pulumi
                 ? Value?.ToString() ?? "null"
                 : "unspecified";
         }
+
+        public override bool Equals(object? obj)
+            => obj is Optional<T> optional && Equals(optional);
+
+        public override int GetHashCode()
+            => HashCode.Combine(HasValue, Value);
+
+        public bool Equals(Optional<T> other)
+            => HasValue == other.HasValue && EqualityComparer<T>.Default.Equals(Value, other.Value);
+
+        public static bool operator ==(Optional<T> left, Optional<T> right)
+            => left.Equals(right);
+
+        public static bool operator !=(Optional<T> left, Optional<T> right)
+            => !(left == right);
     }
 }

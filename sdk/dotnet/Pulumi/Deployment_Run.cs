@@ -146,7 +146,7 @@ namespace Pulumi
                 var location = System.Reflection.Assembly.GetEntryAssembly()?.Location;
                 await ErrorAsync(
 $@"Running program '{location}' failed with an unhandled exception:
-{exception.ToString()}");
+{exception.ToString()}").ConfigureAwait(false);
             }
 
             Serilog.Log.Debug("Wrote last error.  Returning from program.");

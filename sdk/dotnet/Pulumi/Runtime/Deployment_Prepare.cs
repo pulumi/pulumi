@@ -91,7 +91,7 @@ namespace Pulumi
                 aliases);
         }
 
-        private Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
+        private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync();
 
         private static async Task<HashSet<Urn>> GetAllTransitivelyReferencedCustomResourceURNsAsync(
@@ -121,7 +121,7 @@ namespace Pulumi
 
             var transitivelyReachableCustomResources = transitivelyReachableResources.OfType<CustomResource>();
             var tasks = transitivelyReachableCustomResources.Select(r => r.Urn.GetValueAsync());
-            var urns = await Task.WhenAll(tasks);
+            var urns = await Task.WhenAll(tasks).ConfigureAwait(false);
             return new HashSet<Urn>(urns);
         }
 

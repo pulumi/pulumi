@@ -36,7 +36,7 @@ namespace Pulumi
                     CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap());
         }
 
-        private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
+        private static ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
             Resource resource)
         {
             var name = resource.Name;

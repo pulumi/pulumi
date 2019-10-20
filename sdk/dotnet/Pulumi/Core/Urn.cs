@@ -21,13 +21,13 @@ namespace Pulumi
             => Value;
 
         public override int GetHashCode()
-            => Value.GetHashCode();
+            => Value.GetHashCode(StringComparison.Ordinal);
 
         public override bool Equals(object? obj)
             => obj is Urn urn && Equals(urn);
 
         public bool Equals(Urn urn)
-            => Value == urn.Value;
+            => Value == urn?.Value;
 
         /// <summary>
         /// Computes a URN from the combination of a resource name, resource type, optional parent,
@@ -50,7 +50,8 @@ namespace Pulumi
                     : parentUrn!.ToOutput();
 
                 parentPrefix = parentUrnOutput.Apply(
-                    parentUrnString => parentUrnString.Value.Substring(0, parentUrnString.Value.LastIndexOf("::")) + "$");
+                    parentUrnString => parentUrnString.Value.Substring(
+                        0, parentUrnString.Value.LastIndexOf("::", StringComparison.Ordinal)) + "$");
             }
             else
             {
@@ -87,12 +88,12 @@ namespace Pulumi
             // * aliasName: "app-function"
             // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
             var aliasName = Output.Create(childName);
-            if (childName!.StartsWith(parentName))
+            if (childName!.StartsWith(parentName, StringComparison.Ordinal))
             {
                 aliasName = parentAlias.ToOutput().Apply(parentAliasUrn =>
                 {
                     var parentAliasVal = parentAliasUrn.Value;
-                    var parentAliasName = parentAliasVal.Substring(parentAliasVal.LastIndexOf("::") + 2);
+                    var parentAliasName = parentAliasVal.Substring(parentAliasVal.LastIndexOf("::", StringComparison.Ordinal) + 2);
                     return parentAliasName + childName.Substring(parentName.Length);
                 });
             }

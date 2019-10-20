@@ -97,7 +97,7 @@ namespace Pulumi.Rpc
                 return (result.ToImmutable(), isSecret);
             };
 
-        public static Deserializer<object?> GenericDeserializer =
+        public static  readonly Deserializer<object?> GenericDeserializer =
             v =>
             {
                 var (unwrapped, isSecret) = UnwrapSecret(v);
@@ -120,10 +120,10 @@ namespace Pulumi.Rpc
                 };
             };
 
-        public static Deserializer<ImmutableArray<object>> GenericListDeserializer =
+        public static readonly Deserializer<ImmutableArray<object>> GenericListDeserializer =
             CreateListDeserializer<object>(GenericDeserializer!);
 
-        public static Deserializer<ImmutableDictionary<string, object>> GenericStructDeserializer =
+        public static readonly Deserializer<ImmutableDictionary<string, object>> GenericStructDeserializer =
             CreateStructDeserializer<object>(GenericDeserializer!);
 
         internal static (Value unwrapped, bool isSecret) UnwrapSecret(Value value)

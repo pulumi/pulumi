@@ -101,6 +101,11 @@ namespace Pulumi
 
         public static Output<T> Create(Task<T> value)
         {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
             var tcs = new TaskCompletionSource<OutputData<T>>();
             value.Assign(tcs, t => new OutputData<T>(t, isKnown: true, isSecret: false));
             return new Output<T>(ImmutableHashSet<Resource>.Empty, tcs.Task);

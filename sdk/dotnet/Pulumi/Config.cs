@@ -26,7 +26,7 @@ namespace Pulumi
         /// name is the configuration bag's logical name and uniquely identifies it.  The default
         /// is the name of the current project.
         /// </summary>
-        public readonly string Name;
+        private readonly string _name;
 
         public Config(string? name = null)
         {
@@ -35,12 +35,12 @@ namespace Pulumi
                 name = Deployment.Instance.Options.Project;
             }
 
-            if (name.EndsWith(":config"))
+            if (name.EndsWith(":config", StringComparison.Ordinal))
             {
                 name = name[0..^":config".Length];
             }
 
-            this.Name = name;
+            this._name = name;
         }
 
         private static Output<T> MakeSecret<T>(T value)
@@ -282,6 +282,6 @@ namespace Pulumi
         /// turns a simple configuration key into a fully resolved one, by prepending the bag's name.
         /// </summary>
         private string FullKey(string key)
-            => $"{this.Name}:{key}";
+            => $"{this._name}:{key}";
     }
 }

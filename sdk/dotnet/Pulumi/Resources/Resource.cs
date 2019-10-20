@@ -123,10 +123,10 @@ namespace Pulumi
             ResourceArgs args, ResourceOptions opts)
         {
             if (string.IsNullOrEmpty(type))
-                throw new ArgumentException(nameof(type));
+                throw new ArgumentException("'type' cannot be null or empty.", nameof(type));
 
             if (string.IsNullOrEmpty(name))
-                throw new ArgumentException(nameof(name));
+                throw new ArgumentException("'name' cannot be null or empty.", nameof(name));
 
             // Before anything else - if there are transformations registered, invoke them in order
             // to transform the properties and options assigned to this resource.

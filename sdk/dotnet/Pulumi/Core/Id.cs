@@ -20,12 +20,18 @@ namespace Pulumi
             => $"Id({Value})";
 
         public override int GetHashCode()
-            => Value.GetHashCode();
+            => Value.GetHashCode(StringComparison.Ordinal);
 
         public override bool Equals(object? obj)
             => obj is Id id && Equals(id);
 
         public bool Equals(Id id)
             => Value == id.Value;
+
+        public static bool operator ==(Id left, Id right)
+            => left.Equals(right);
+
+        public static bool operator !=(Id left, Id right)
+            => !(left == right);
     }
 }

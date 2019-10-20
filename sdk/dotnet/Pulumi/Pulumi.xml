@@ -15,7 +15,7 @@
             <c>pulumi:foo:a</c>, ..., and <c>pulumi:bar:a</c>, respectively.
             </summary>
         </member>
-        <member name="F:Pulumi.Config.Name">
+        <member name="F:Pulumi.Config._name">
             <summary>
             name is the configuration bag's logical name and uniquely identifies it.  The default
             is the name of the current project.
