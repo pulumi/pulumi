@@ -269,7 +269,7 @@ namespace Pulumi
         }
 
         protected void OnConstructorCompleted()
-            => _onConstructorFinished.SetResult(true);
+            => _onConstructorFinished.TrySetResult(true);
 
         /// <summary>
         /// Fetches the provider for the given module member, if any.
