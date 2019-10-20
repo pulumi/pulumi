@@ -19,7 +19,7 @@ namespace Pulumi
             set => _instance = (value ?? throw new ArgumentNullException(nameof(value)));
         }
 
-        public Options Options { get; }
+        internal Options Options { get; }
         internal Engine.EngineClient Engine { get; }
         internal ResourceMonitor.ResourceMonitorClient Monitor { get; }
 

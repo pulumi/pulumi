@@ -4,7 +4,7 @@
 
 namespace Pulumi
 {
-    public class Options
+    internal class Options
     {
         public readonly string Project;
         public readonly string Stack;
