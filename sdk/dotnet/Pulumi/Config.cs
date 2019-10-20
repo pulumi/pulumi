@@ -141,13 +141,6 @@ namespace Pulumi
             return MakeSecret(v.Value);
         }
 
-        /*
-         * getInt32 loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
-         * If the configuration value isn't a legal number, this function will throw an error.
-         *
-         * @param key The key to lookup.
-         * @param opts An options bag to constrain legal values.
-         */
         /// <summary>
         /// Loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
         /// If the configuration value isn't a legal number, this function will throw an error.
@@ -179,14 +172,6 @@ namespace Pulumi
             return result;
         }
 
-        /*
-         * getSecretInt32 loads an optional configuration value, as a number, by its key, marking it as a secret
-         * or null if it doesn't exist.
-         * If the configuration value isn't a legal number, this function will throw an error.
-         *
-         * @param key The key to lookup.
-         * @param opts An options bag to constrain legal values.
-         */
         /// <summary>
         /// loads an optional configuration value, as a number, by its key, marking it as a secret
         /// or null if it doesn't exist.
@@ -239,12 +224,6 @@ namespace Pulumi
         //        return MakeSecret<T>(v);
         //    }
 
-        /*
-         * Require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
-         *
-         * @param key The key to lookup.
-         * @param opts An options bag to constrain legal values.
-         */
         /// <summary>
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
         /// </summary>
@@ -267,12 +246,6 @@ namespace Pulumi
             return MakeSecret(this.Require(key, opts));
         }
 
-        /*
-         * RequireBool loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
-         * configuration value is not a legal boolean, an error is thrown.
-         *
-         * @param key The key to lookup.
-         */
         /// <summary>
         /// loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal boolean, an error is thrown.
@@ -296,12 +269,6 @@ namespace Pulumi
             return MakeSecret(this.RequireBool(key));
         }
 
-        /*
-         * RequireInt32 
-         *
-         * @param key The key to lookup.
-         * @param opts An options bag to constrain legal values.
-         */
         /// <summary>
         /// loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal number, an error is thrown.
