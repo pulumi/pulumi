@@ -7,7 +7,8 @@ using System;
 namespace Pulumi
 {
     /// <summary>
-    /// An automatically generated logical URN, used to stably identify resources.
+    /// An automatically generated logical URN, used to stably identify resources. These are created
+    /// automatically by Pulumi to identify resources.  They cannot be manually constructed.
     /// </summary>
     public sealed class Urn : IEquatable<Urn>
     {
@@ -33,7 +34,7 @@ namespace Pulumi
         /// optional project and optional stack.
         /// </summary>
         /// <returns></returns>
-        public static Output<Urn> Create(
+        internal static Output<Urn> Create(
             Input<string> name, Input<string> type,
             Resource? parent = null, Input<Urn>? parentUrn = null,
             Input<string>? project = null, Input<string>? stack = null)

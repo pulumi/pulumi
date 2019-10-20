@@ -461,9 +461,39 @@
             Returns a string representation of this object.
             </summary>
         </member>
+        <member name="T:Pulumi.IOutput">
+            <summary>
+            Internal interface to allow our code to operate on outputs in an untyped manner. Necessary
+            as there is no reasonable way to write algorithms over heterogeneous instantiations of
+            generic types.
+            </summary>
+        </member>
+        <member name="M:Pulumi.IOutput.GetDataAsync">
+            <summary>
+            Returns an <see cref="T:Pulumi.Output`1"/> equivalent to this, except with our
+            <see cref="F:Pulumi.OutputData`1.Value"/> casted to an object.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Output`1">
+             <summary>
+             <see cref="T:Pulumi.Output`1"/>s are a key part of how Pulumi tracks dependencies between <see
+             cref="T:Pulumi.Resource"/>s. Because the values of outputs are not available until resources are
+             created, these are represented using the special <see cref="T:Pulumi.Output`1"/>s type, which
+             internally represents two things:
+             
+             1. An eventually available value of the output
+             2. The dependency on the source(s) of the output value
+            
+             In fact, <see cref="T:Pulumi.Output`1"/>s is quite similar to <see cref="T:System.Threading.Tasks.Task`1"/>.
+             Additionally, they carry along dependency information.
+            
+             The output properties of all resource objects in Pulumi have type <see cref="T:Pulumi.Output`1"/>.
+             </summary>
+        </member>
         <member name="T:Pulumi.Urn">
             <summary>
-            An automatically generated logical URN, used to stably identify resources.
+            An automatically generated logical URN, used to stably identify resources. These are created
+            automatically by Pulumi to identify resources.  They cannot be manually constructed.
             </summary>
         </member>
         <member name="M:Pulumi.Urn.Create(Pulumi.Input{System.String},Pulumi.Input{System.String},Pulumi.Resource,Pulumi.Input{Pulumi.Urn},Pulumi.Input{System.String},Pulumi.Input{System.String})">
