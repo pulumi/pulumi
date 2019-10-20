@@ -24,13 +24,10 @@ namespace Pulumi
             Console.Write("Registering: " + resource.Type);
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
-            //
-            // Also do this in a task we explicitly kick off.  That way the thread we're currently
-            // on can actually finish constructing the object by the time the rpc message returns
-            // from the engine.
             this.RegisterTask(
                 $"{nameof(RegisterResource)}: {resource.Type}-{resource.Name}",
-                Task.Run(() => RegisterResourceAsync(resource, custom, args, opts)));
+                resource._onConstructorFinished.Task.ContinueWith(
+                    _ => RegisterResourceAsync(resource, custom, args, opts)).Unwrap());
         }
 
         private ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(

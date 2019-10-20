@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 using Pulumi.Rpc;
 
 namespace Pulumi
@@ -94,6 +95,8 @@ namespace Pulumi
         /// The set of providers to use for child resources. Keyed by package name (e.g. "aws").
         /// </summary>
         private readonly ImmutableDictionary<string, ProviderResource> _providers;
+
+        internal readonly TaskCompletionSource<bool> _onConstructorFinished = new TaskCompletionSource<bool>();
 
         /// <summary>
         /// Creates and registers a new resource object.  <paramref name="type"/> is the fully
@@ -264,6 +267,9 @@ namespace Pulumi
                 Deployment.Instance.RegisterResource(this, custom, args, opts);
             }
         }
+
+        protected void OnConstructorCompleted()
+            => _onConstructorFinished.SetResult(true);
 
         /// <summary>
         /// Fetches the provider for the given module member, if any.

@@ -8,7 +8,7 @@
     <DocumentationFile>.\Pulumi.xml</DocumentationFile>
     <NoWarn>1701;1702;1591</NoWarn>
   </PropertyGroup>
-
+    
   <ItemGroup>
     <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
     <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
