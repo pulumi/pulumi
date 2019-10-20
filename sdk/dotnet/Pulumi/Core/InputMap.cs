@@ -9,6 +9,33 @@ using System.Collections.Immutable;
 
 namespace Pulumi
 {
+    /// <summary>
+    /// A mapping of <see cref="string"/>s to values that can be passed in as the arguments to a
+    /// <see cref="Resource"/>. The individual values are themselves <see cref="Input{T}"/>s.  i.e.
+    /// the individual values can be concrete values or <see cref="Output{T}"/>s.
+    /// <para/>
+    /// <see cref="InputMap{V}"/> differs from a normal <see cref="IDictionary{K,V}"/> in that it is
+    /// itself an <see cref="Input{T}"/>.  For example, a <see cref="Resource"/> that accepts an
+    /// <see cref="InputMap{V}"/> will accept not just a dictionary but an <see cref="Output{T}"/>
+    /// of a dictionary as well.  This is important for cases where the <see cref="Output{T}"/>
+    /// map from some <see cref="Resource"/> needs to be passed into another <see cref="Resource"/>.
+    /// Or for cases where creating the map invariably produces an <see cref="Output{T}"/> because
+    /// its resultant value is dependent on other <see cref="Output{T}"/>s.
+    /// <para/>
+    /// <see cref="InputMap{V}"/> is designed to be easily used in object and collection
+    /// initializers.  For example, a resource that accepts a map of values can be written easily in
+    /// this form:
+    /// <para/>
+    /// <code>
+    ///     new SomeResource("name", new SomeResourceArgs {
+    ///         MapProperty = {
+    ///             { Key1, Value1 },
+    ///             { Key2, Value2 },
+    ///             { Key3, Value3 },
+    ///         },
+    ///     });
+    /// </code>
+    /// </summary>
     public class InputMap<V> : IEnumerable, IInput
     {
         private Output<ImmutableDictionary<string, V>> _values;

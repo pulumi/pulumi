@@ -17,8 +17,8 @@ namespace Pulumi
     /// <para/>
     /// <see cref="InputList{T}"/> differs from a normal <see cref="IList{T}"/> in that it is itself
     /// an <see cref="Input{T}"/>.  For example, a <see cref="Resource"/> that accepts an <see
-    /// cref="InputList{T}"/> will accept not just a list of values but an <see cref="Output{T}"/>
-    /// of list of values as well.  This is important for cases where the <see cref="Output{T}"/>
+    /// cref="InputList{T}"/> will accept not just a list but an <see cref="Output{T}"/>
+    /// of a list.  This is important for cases where the <see cref="Output{T}"/>
     /// list from some <see cref="Resource"/> needs to be passed into another <see
     /// cref="Resource"/>.  Or for cases where creating the list invariably produces an <see
     /// cref="Output{T}"/> because its resultant value is dependent on other <see
@@ -30,14 +30,14 @@ namespace Pulumi
     /// <para/>
     /// <code>
     ///     new SomeResource("name", new SomeResourceArgs {
-    ///         ListProperty = { Value1, Value2, Value 3 },
+    ///         ListProperty = { Value1, Value2, Value3 },
     ///     });
     /// </code>
     /// <para/>
     /// or
     /// <code>
     ///     new SomeResource("name", new SomeResourceArgs {
-    ///         ListProperty = new [] { Value1, Value2, Value 3 },
+    ///         ListProperty = new [] { Value1, Value2, Value3 },
     ///     });
     /// </code>
     /// </summary>
