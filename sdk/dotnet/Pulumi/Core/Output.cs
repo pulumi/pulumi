@@ -47,12 +47,36 @@ namespace Pulumi
          }
     }
 
+    /// <summary>
+    /// Internal interface to allow our code to operate on outputs in an untyped manner. Necessary
+    /// as there is no reasonable way to write algorithms over heterogeneous instantiations of
+    /// generic types.
+    /// </summary>
     internal interface IOutput
     {
         ImmutableHashSet<Resource> Resources { get; }
+
+        /// <summary>
+        /// Returns an <see cref="Output{T}"/> equivalent to this, except with our
+        /// <see cref="OutputData{X}.Value"/> casted to an object.
+        /// </summary>
         Task<OutputData<object?>> GetDataAsync();
     }
 
+    /// <summary>
+    /// <see cref="Output{T}"/>s are a key part of how Pulumi tracks dependencies between <see
+    /// cref="Resource"/>s. Because the values of outputs are not available until resources are
+    /// created, these are represented using the special <see cref="Output{T}"/>s type, which
+    /// internally represents two things:
+    /// 
+    /// 1. An eventually available value of the output
+    /// 2. The dependency on the source(s) of the output value
+    ///
+    /// In fact, <see cref="Output{T}"/>s is quite similar to <see cref="Task{TResult}"/>.
+    /// Additionally, they carry along dependency information.
+    ///
+    /// The output properties of all resource objects in Pulumi have type <see cref="Output{T}"/>.
+    /// </summary>
     public class Output<T> : IOutput
     {
         internal ImmutableHashSet<Resource> Resources;
@@ -69,18 +93,6 @@ namespace Pulumi
             var data = await DataTask.ConfigureAwait(false);
             return data.Value;
         }
-
-        //internal async Task<bool> IsKnownAsync()
-        //{
-        //    var data = await _dataTask.ConfigureAwait(false);
-        //    return data.IsKnown;
-        //}
-
-        //internal async Task<bool> IsSecretAsync()
-        //{
-        //    var data = await _dataTask.ConfigureAwait(false);
-        //    return data.IsSecret;
-        //}
 
         ImmutableHashSet<Resource> IOutput.Resources => this.Resources;
 
