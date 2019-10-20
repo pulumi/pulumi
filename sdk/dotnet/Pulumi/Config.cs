@@ -60,6 +60,7 @@ namespace Pulumi
             {
                 return null;
             }
+
             if (opts != null)
             {
                 // SAFETY: if allowedValues != null, verifying v ∈ K[]
@@ -95,12 +96,7 @@ namespace Pulumi
         public Output<string>? GetSecret(string key, StringOptions? opts = null)
         {
             var v = this.Get(key, opts);
-            if (v == null)
-            {
-                return null;
-            }
-
-            return MakeSecret(v);
+            return v == null ? null : MakeSecret(v);
         }
 
         /// <summary>
@@ -122,6 +118,7 @@ namespace Pulumi
             {
                 return false;
             }
+
             throw new ConfigTypeException(this.FullKey(key), v, "bool");
         }
 
@@ -133,12 +130,7 @@ namespace Pulumi
         public Output<bool>? GetSecretBool(string key)
         {
             var v = this.GetBool(key);
-            if (v == null)
-            {
-                return null;
-            }
-
-            return MakeSecret(v.Value);
+            return v == null ? null : MakeSecret(v.Value);
         }
 
         /// <summary>
@@ -169,6 +161,7 @@ namespace Pulumi
                     throw new ConfigRangeException(this.FullKey(key), result, null, opts.Max);
                 }
             }
+
             return result;
         }
 
@@ -180,12 +173,7 @@ namespace Pulumi
         public Output<int>? GetSecretInt32(string key, Int32Options? opts = null)
         {
             var v = this.GetInt32(key, opts);
-            if (v == null)
-            {
-                return null;
-            }
-
-            return MakeSecret(v.Value);
+            return v == null ? null : MakeSecret(v.Value);
         }
 
         //    /**
@@ -228,69 +216,42 @@ namespace Pulumi
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
         /// </summary>
         public string Require(string key, StringOptions? opts = null)
-        {
-            var v = this.Get(key, opts);
-            if (v == null)
-            {
-                throw new ConfigMissingException(this.FullKey(key));
-            }
-            return v;
-        }
+            => this.Get(key, opts) ?? throw new ConfigMissingException(this.FullKey(key));
 
         /// <summary>
         /// loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
         /// is thrown.
         /// </summary>
         public Output<string> RequireSecret(string key, StringOptions? opts = null)
-        {
-            return MakeSecret(this.Require(key, opts));
-        }
+            => MakeSecret(this.Require(key, opts));
 
         /// <summary>
         /// loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public bool RequireBool(string key)
-        {
-            var v = this.GetBool(key);
-            if (v == null)
-            {
-                throw new ConfigMissingException(this.FullKey(key));
-            }
-            return v.Value;
-        }
+            => this.GetBool(key) ?? throw new ConfigMissingException(this.FullKey(key));
 
         /// <summary>
         /// loads a configuration value, as a boolean, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public Output<bool> RequireSecretBool(string key)
-        {
-            return MakeSecret(this.RequireBool(key));
-        }
+            => MakeSecret(this.RequireBool(key));
 
         /// <summary>
         /// loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal number, an error is thrown.
         /// </summary>
         public int RequireInt32(string key, Int32Options? opts = null)
-        {
-            var v = this.GetInt32(key, opts);
-            if (v == null)
-            {
-                throw new ConfigMissingException(this.FullKey(key));
-            }
-            return v.Value;
-        }
+            => this.GetInt32(key, opts) ?? throw new ConfigMissingException(this.FullKey(key));
 
         /// <summary>
         /// loads a configuration value, as a number, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
         /// </summary>
         public Output<int> RequireSecretInt32(string key, Int32Options? opts = null)
-        {
-            return MakeSecret(this.RequireInt32(key, opts));
-        }
+            => MakeSecret(this.RequireInt32(key, opts));
 
         //    /*
         //     * RequireObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript object. If
@@ -321,8 +282,6 @@ namespace Pulumi
         /// turns a simple configuration key into a fully resolved one, by prepending the bag's name.
         /// </summary>
         private string FullKey(string key)
-        {
-            return $"{this.Name}:{key}";
-        }
+            => $"{this.Name}:{key}";
     }
 }
