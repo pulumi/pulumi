@@ -21,7 +21,6 @@ namespace Pulumi
         internal void RegisterResource(
             Resource resource, bool custom, ResourceArgs args, ResourceOptions opts)
         {
-            Console.Write("Registering: " + resource.Type);
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
             this.RegisterTask(
@@ -75,12 +74,10 @@ namespace Pulumi
                 var response = await RegisterResourceWorkerAsync(
                     resource, custom, args, opts).ConfigureAwait(false);
 
-                // Console.WriteLine($"Setting urn for {type}-{name} to '{response.Urn}'");
                 resource._urn.SetResult(response.Urn);
                 if (resource is CustomResource customResource)
                 {
                     var id = response.Id;
-                    // Console.WriteLine($"Setting id for {type}-{name} to '{id}' (null: {id == null}) (empty: {id == ""})");
                     if (string.IsNullOrEmpty(id))
                     {
                         customResource._id.SetUnknownResult();
