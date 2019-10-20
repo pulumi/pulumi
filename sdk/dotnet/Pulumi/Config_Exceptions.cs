@@ -38,7 +38,7 @@ namespace Pulumi
         private class ConfigRangeException : RunException
         {
             public ConfigRangeException(string key, object v, int? min, int? max)
-            : base($"Configuration '{key}' value '{v}' is outside of the legal range({GetRange(v, min, max)}, inclusive)")
+                : base($"Configuration '{key}' value '{v}' is outside of the legal range({GetRange(v, min, max)}, inclusive)")
             {
             }
 
@@ -84,8 +84,8 @@ namespace Pulumi
         private class ConfigMissingException : RunException
         {
             public ConfigMissingException(string key)
-                    : base($"Missing Required configuration variable '{key}'\n" +
-                    $"\tplease set a value using the command `pulumi config set {key} <value>`")
+                : base($"Missing Required configuration variable '{key}'\n" +
+                       $"\tplease set a value using the command `pulumi config set {key} <value>`")
             {
             }
         }
