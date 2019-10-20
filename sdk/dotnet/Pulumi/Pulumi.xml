@@ -511,6 +511,29 @@
             name changed.
             </summary>
         </member>
+        <member name="T:Pulumi.Deployment">
+            <summary>
+            <see cref="T:Pulumi.Deployment"/> is the entrypoint to a Pulumi application. .NET applications should
+            should perform all startup logic they need in their <c>Main</c> method and then end with:
+            <para>
+            <c>
+            static Task&lt;int&gt; Main(string[] args)
+            {
+                // program initialization code ...
+                
+                return Deployment.Run(async () =>
+                {
+                    // Code that creates resources.
+                });
+            }
+            </c>
+            </para>
+            Importantly: Cloud resources cannot be created outside of the lambda passed to any of the
+            <see cref="M:Pulumi.Deployment.Run(System.Action)"/> overloads.  Because cloud Resource construction is
+            inherently asynchronous, the result of this function is a <see cref="T:System.Threading.Tasks.Task`1"/> which should then
+            
+            </summary>
+        </member>
         <member name="F:Pulumi.Deployment._configEnvKey">
             <summary>
             The environment variable key that the language plugin uses to set configuration values.
