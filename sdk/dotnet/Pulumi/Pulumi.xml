@@ -617,6 +617,13 @@
             POCO object that can be remoted over to registerResource.
             </summary>
         </member>
+        <member name="T:Pulumi.LogException">
+            <summary>
+            Special exception we throw if we had a problem actually logging a message to the engine
+            error rpc endpoint. In this case, we have no choice but to tear ourselves down reporting
+            whatever we can to the console instead.
+            </summary>
+        </member>
         <member name="T:Pulumi.ResourceException">
             <summary>
             ResourceError can be used for terminating a program abruptly, specifically associating the
@@ -861,6 +868,16 @@
         <member name="F:Pulumi.Resource._providers">
             <summary>
             The set of providers to use for child resources. Keyed by package name (e.g. "aws").
+            </summary>
+        </member>
+        <member name="F:Pulumi.Resource._onConstructorFinished">
+            <summary>
+            TaskCompletionSource that our subclasses need to signal when they are done running their
+            construction logic.  This is necessary as we cannot actually register this Resource
+            until the derived-class constructors finish.  If we did, we might get our output results
+            back prior to the contruct finishing.  In which case, we'd have no way to set the output
+            fields of this instance since the <see cref="T:Pulumi.Rpc.OutputCompletionSource`1"/>s for them will
+            not have been instantiated yet.
             </summary>
         </member>
         <member name="M:Pulumi.Resource.#ctor(System.String,System.String,System.Boolean,Pulumi.ResourceArgs,Pulumi.ResourceOptions)">
