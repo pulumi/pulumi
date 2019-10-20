@@ -10,32 +10,65 @@ using System.Linq;
 
 namespace Pulumi
 {
+    /// <summary>
+    /// A list of values that can be passed in as the arguments to a <see cref="Resource"/>.
+    /// The individual values are themselves <see cref="Input{T}"/>s.  i.e. the individual values
+    /// can be concrete values or <see cref="Output{T}"/>s.
+    /// <para/>
+    /// <see cref="InputList{T}"/> differs from a normal <see cref="IList{T}"/> in that it is itself
+    /// an <see cref="Input{T}"/>.  For example, a <see cref="Resource"/> that accepts an <see
+    /// cref="InputList{T}"/> will accept not just a list of values but an <see cref="Output{T}"/>
+    /// of list of values as well.  This is important for cases where the <see cref="Output{T}"/>
+    /// list from some <see cref="Resource"/> needs to be passed into another <see
+    /// cref="Resource"/>.  Or for cases where creating the list invariably produces an <see
+    /// cref="Output{T}"/> because its resultant value is dependent on other <see
+    /// cref="Output{T}"/>s.
+    /// <para/>
+    /// <see cref="InputList{T}"/> is designed to be easily used in object and collection
+    /// initializers.  For example, a resource that accepts a list of inputs can be written in
+    /// either of these forms:
+    /// <para/>
+    /// <code>
+    ///     new SomeResource("name", new SomeResourceArgs {
+    ///         ListProperty = { Value1, Value2, Value 3 },
+    ///     });
+    /// </code>
+    /// <para/>
+    /// or
+    /// <code>
+    ///     new SomeResource("name", new SomeResourceArgs {
+    ///         ListProperty = new [] { Value1, Value2, Value 3 },
+    ///     });
+    /// </code>
+    /// </summary>
     public class InputList<T> : IEnumerable, IInput
     {
-        private Output<ImmutableArray<T>> _values;
+        // Under the covers we just represent this as an Output of the list that we will
+        // replace in-place in this InputList.
+        internal Output<ImmutableArray<T>> Values { get; private set; }
 
         internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))
         {
         }
 
         private InputList(Output<ImmutableArray<T>> values)
-            => _values = values;
+            => Values = values;
 
         IOutput IInput.ToOutput()
-            => _values;
-
-        internal Output<ImmutableArray<T>> Values => _values;
+            => Values;
 
         public void Add(params Input<T>[] inputs)
         {
-            var values1 = _values;
+            // Make an Output from the values passed in, mix in with our own Output, and combine
+            // both to produce the final array that we will now point at.
+            var values1 = Values;
             var values2 = Output.All(inputs);
-            _values = Output.All<ImmutableArray<T>>(values1, values2)
+            Values = Output.All<ImmutableArray<T>>(values1, values2)
                             .Apply(a => a[0].AddRange(a[1]));
         }
 
         internal InputList<T> Clone()
-            => new InputList<T>(_values);
+            => new InputList<T>(Values);
 
         #region construct from unary
 
