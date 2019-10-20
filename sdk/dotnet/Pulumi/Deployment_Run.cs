@@ -66,9 +66,12 @@ namespace Pulumi
 
         private async Task<int> WhileRunning()
         {
+            var tasks = new List<Task>();
+
+            // Keep looping as long as there are outstanding tasks that are still running.
             while (true)
             {
-                Task[] tasks;
+                tasks.Clear();
                 lock (_taskToDescription)
                 {
                     if (_taskToDescription.Count == 0)
@@ -76,27 +79,35 @@ namespace Pulumi
                         break;
                     }
 
-                    tasks = _taskToDescription.Keys.ToArray();
+                    // grab all the tasks we currently have running.
+                    tasks.AddRange(_taskToDescription.Keys);
                 }
 
+                // Now, wait for one of them to finish.
                 var task = await Task.WhenAny(tasks).ConfigureAwait(false);
                 string description;
                 lock (_taskToDescription)
                 {
+                    // once finished, remove it from the set of tasks that are running.
                     description = _taskToDescription[task];
                     _taskToDescription.Remove(task);
                 }
 
                 try
                 {
+                    // Now actually await that completed task so that we will realize any exceptions
+                    // is may have thrown.
                     await task.ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
+                    // if it threw, report it as necessary, then quit.
                     return await HandleExceptionAsync(e).ConfigureAwait(false);
                 }
             }
 
+            // there were no more tasks we were waiting on.  Quit out, reporting if we had any
+            // errors or not.
             return HasErrors ? 1 : 0;
         }
 
@@ -111,6 +122,13 @@ namespace Pulumi
                 return 1;
             }
 
+            // For the rest of the issue we encounter log the problem to the error stream. if we
+            // successfully do this, then return with a special error code stating as such so that
+            // our host doesn't print out another set of errors.
+            //
+            // Note: if these logging calls fail, they will just end up bubbling up an exception
+            // that will be caught by nothing.  This will tear down the actual process with a
+            // non-zero error which our host will handle properly.
             if (exception is RunException)
             {
                 // Always hide the stack for RunErrors.

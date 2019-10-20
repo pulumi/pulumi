@@ -530,8 +530,10 @@
             </para>
             Importantly: Cloud resources cannot be created outside of the lambda passed to any of the
             <see cref="M:Pulumi.Deployment.Run(System.Action)"/> overloads.  Because cloud Resource construction is
-            inherently asynchronous, the result of this function is a <see cref="T:System.Threading.Tasks.Task`1"/> which should then
-            
+            inherently asynchronous, the result of this function is a <see cref="T:System.Threading.Tasks.Task`1"/> which should
+            then be returned or awaited.  This will ensure that any problems that are encountered during
+            the running of the program are properly reported.  Failure to do this may lead to the
+            program ending early before all resources are properly registered.
             </summary>
         </member>
         <member name="F:Pulumi.Deployment._configEnvKey">
