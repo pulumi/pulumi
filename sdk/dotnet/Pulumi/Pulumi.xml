@@ -327,6 +327,61 @@
             A provider-assigned ID.
             </summary>
         </member>
+        <member name="T:Pulumi.IInput">
+            <summary>
+            Internal interface to allow our code to operate on inputs in an untyped manner. Necessary as
+            there is no reasonable way to write algorithms over heterogeneous instantiations of generic
+            types.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Input`1">
+            <summary>
+            <see cref="T:Pulumi.Input`1"/> is a property input for a <see cref="T:Pulumi.Resource"/>.  It may be a promptly
+            available T, or the output from a existing <see cref="T:Pulumi.Resource"/>.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Input`1._outputValue">
+            <summary>
+            Technically, in .net we can represent Inputs entirely using the Output type (since
+            Outputs can wrap values and promises).  However, it would look very weird to state that
+            the inputs to a resource *had* to be Outputs. So we basically just come up with this
+            wrapper type so things look sensible, even though under the covers we implement things
+            using the exact same type
+            </summary>
+        </member>
+        <member name="T:Pulumi.InputList`1">
+            <summary>
+            A list of values that can be passed in as the arguments to a <see cref="T:Pulumi.Resource"/>.
+            The individual values are themselves <see cref="T:Pulumi.Input`1"/>s.  i.e. the individual values
+            can be concrete values or <see cref="T:Pulumi.Output`1"/>s.
+            <para/>
+            <see cref="T:Pulumi.InputList`1"/> differs from a normal <see cref="T:System.Collections.Generic.IList`1"/> in that it is itself
+            an <see cref="T:Pulumi.Input`1"/>.  For example, a <see cref="T:Pulumi.Resource"/> that accepts an <see
+            cref="T:Pulumi.InputList`1"/> will accept not just a list of values but an <see cref="T:Pulumi.Output`1"/>
+            of list of values as well.  This is important for cases where the <see cref="T:Pulumi.Output`1"/>
+            list from some <see cref="T:Pulumi.Resource"/> needs to be passed into another <see
+            cref="T:Pulumi.Resource"/>.  Or for cases where creating the list invariably produces an <see
+            cref="T:Pulumi.Output`1"/> because its resultant value is dependent on other <see
+            cref="T:Pulumi.Output`1"/>s.
+            <para/>
+            <see cref="T:Pulumi.InputList`1"/> is designed to be easily used in object and collection
+            initializers.  For example, a resource that accepts a list of inputs can be written in
+            either of these forms:
+            <para/>
+            <code>
+                new SomeResource("name", new SomeResourceArgs {
+                    ListProperty = { Value1, Value2, Value 3 },
+                });
+            </code>
+            <para/>
+            or
+            <code>
+                new SomeResource("name", new SomeResourceArgs {
+                    ListProperty = new [] { Value1, Value2, Value 3 },
+                });
+            </code>
+            </summary>
+        </member>
         <member name="T:Pulumi.Optional`1">
             <summary>
             Combines a value, <see cref="P:Pulumi.Optional`1.Value"/>, and a flag, <see cref="P:Pulumi.Optional`1.HasValue"/>, indicating
