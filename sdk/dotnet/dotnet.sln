@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{F6
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "bucket", "examples\bucket\bucket.csproj", "{02C0AC19-181C-4B6E-BD07-D98B5DC81370}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pulumi.Tests", "Pulumi.Tests\Pulumi.Tests.csproj", "{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +45,18 @@ Global
 		{02C0AC19-181C-4B6E-BD07-D98B5DC81370}.Release|x64.Build.0 = Release|Any CPU
 		{02C0AC19-181C-4B6E-BD07-D98B5DC81370}.Release|x86.ActiveCfg = Release|Any CPU
 		{02C0AC19-181C-4B6E-BD07-D98B5DC81370}.Release|x86.Build.0 = Release|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Debug|x64.Build.0 = Debug|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Debug|x86.Build.0 = Debug|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Release|x64.ActiveCfg = Release|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Release|x64.Build.0 = Release|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Release|x86.ActiveCfg = Release|Any CPU
+		{B732E03B-BA4D-4F4A-AE38-5833BC2DAC7C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
