@@ -72,7 +72,6 @@ namespace Pulumi
             var queryMode = Environment.GetEnvironmentVariable("PULUMI_QUERY_MODE");
             var parallel = Environment.GetEnvironmentVariable("PULUMI_PARALLEL");
             var tracing = Environment.GetEnvironmentVariable("PULUMI_TRACING");
-            var config = Environment.GetEnvironmentVariable("PULUMI_CONFIG");
 
             if (string.IsNullOrEmpty(monitor))
                 throw new InvalidOperationException("Environment did not contain: PULUMI_MONITOR");
