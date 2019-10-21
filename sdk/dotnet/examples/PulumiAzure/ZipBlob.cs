@@ -8,7 +8,7 @@ namespace Pulumi.Azure.Storage
     {
         [ResourceField("name")]
         private readonly StringOutputCompletionSource _name;
-        public Output<string> Name1 => _name.Output;
+        public new Output<string> Name => _name.Output;
 
         [ResourceField("storageContainerName")]
         private readonly StringOutputCompletionSource _storageContainerName;
@@ -45,7 +45,7 @@ namespace Pulumi.Azure.Storage
         public static Output<string> SignedBlobReadUrl(ZipBlob blob, Account account)
         {
             return Output
-                .All<string>(account.Name1, account.PrimaryConnectionString, blob.StorageContainerName, blob.Name1)
+                .All<string>(account.Name, account.PrimaryConnectionString, blob.StorageContainerName, blob.Name)
                 .Apply(values =>
                 {
                     // TODO 

@@ -9,7 +9,7 @@ namespace Pulumi.Azure.AppService
     {
         [ResourceField("name")]
         private readonly StringOutputCompletionSource _name;
-        public Output<string> Name1 => _name.Output;
+        public new Output<string> Name => _name.Output;
 
 
         public Plan(string name, PlanArgs args = default, ResourceOptions opts = default)

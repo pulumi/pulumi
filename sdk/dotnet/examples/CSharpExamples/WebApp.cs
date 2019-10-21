@@ -38,14 +38,14 @@ namespace Pulumi.CSharpExamples
 
             var container = new Container("c", new ContainerArgs
             {
-                StorageAccountName = storageAccount.Name1,
+                StorageAccountName = storageAccount.Name,
                 ContainerAccessType = "private",
             });
 
             var blob = new ZipBlob("zip", new ZipBlobArgs
             {
-                StorageAccountName = storageAccount.Name1,
-                StorageContainerName = container.Name1,
+                StorageAccountName = storageAccount.Name,
+                StorageContainerName = container.Name,
                 Type = "block",
                 Content = new FileArchive("wwwroot"),
             });
