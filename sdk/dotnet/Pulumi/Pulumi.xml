@@ -536,6 +536,11 @@
             program ending early before all resources are properly registered.
             </summary>
         </member>
+        <member name="F:Pulumi.Deployment.DryRun">
+            <summary>
+            If we're in preview mode or not.
+            </summary>
+        </member>
         <member name="F:Pulumi.Deployment._configEnvKey">
             <summary>
             The environment variable key that the language plugin uses to set configuration values.

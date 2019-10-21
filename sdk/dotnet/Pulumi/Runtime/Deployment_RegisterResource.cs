@@ -124,7 +124,7 @@ namespace Pulumi
                     // Didn't get a value for this field.  Resolve it with a default value.
                     // If we're in preview, we'll consider this unknown and in a normal
                     // update we'll consider it known.
-                    source.SetDefaultResult(isKnown: !this.Options.DryRun);
+                    source.SetDefaultResult(isKnown: !DryRun);
                 }
             }
         }

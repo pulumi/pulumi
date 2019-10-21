@@ -34,6 +34,11 @@ namespace Pulumi
     /// </summary>
     public partial class Deployment
     {
+        /// <summary>
+        /// If we're in preview mode or not.
+        /// </summary>
+        internal static bool DryRun;
+
         private static Deployment? _instance;
         public static Deployment Instance
         {
@@ -87,9 +92,10 @@ namespace Pulumi
                 throw new InvalidOperationException("Environment did not contain a valid int value for: PULUMI_PARALLEL");
 
             this.Options = new Options(
-                dryRun: dryRunValue, queryMode: queryModeValue, parallel: parallelValue,
+                queryMode: queryModeValue, parallel: parallelValue,
                 project: project, stack: stack, pwd: pwd,
                 monitor: monitor, engine: engine, tracing: tracing);
+            DryRun = dryRunValue;
 
             Serilog.Log.Debug("Creating Deployment Engine.");
             this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));

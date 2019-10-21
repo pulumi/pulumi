@@ -79,6 +79,8 @@ namespace Pulumi
     /// </summary>
     public class Output<T> : IOutput
     {
+        internal static bool DryRun;
+
         internal ImmutableHashSet<Resource> Resources;
         internal readonly Task<OutputData<T>> DataTask;
 
@@ -121,6 +123,13 @@ namespace Pulumi
             Task<OutputData<T>> dataTask, Func<T, Output<U>> func)
         {
             var data = await dataTask.ConfigureAwait(false);
+
+            // During previews only perform the apply if the engine was able to
+            // give us an actual value for this Output.
+            if (Deployment.DryRun && !data.IsKnown)
+            {
+                return new OutputData<U>(default!, isKnown: false, data.IsSecret);
+            }
 
             var inner = func(data.Value);
             var innerData = await inner.DataTask.ConfigureAwait(false);

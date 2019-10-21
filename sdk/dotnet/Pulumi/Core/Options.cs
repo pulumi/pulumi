@@ -9,7 +9,6 @@ namespace Pulumi
         public readonly string Project;
         public readonly string Stack;
 
-        internal readonly bool DryRun;
         internal readonly bool QueryMode;
         internal readonly int Parallel;
         internal readonly string? Pwd;
@@ -17,9 +16,8 @@ namespace Pulumi
         internal readonly string Engine;
         internal readonly string? Tracing;
 
-        public Options(bool dryRun, bool queryMode, int parallel, string project, string stack, string? pwd, string monitor, string engine, string? tracing)
+        public Options(bool queryMode, int parallel, string project, string stack, string? pwd, string monitor, string engine, string? tracing)
         {
-            DryRun = dryRun;
             QueryMode = queryMode;
             Parallel = parallel;
             Project = project;
