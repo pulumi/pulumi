@@ -40,30 +40,22 @@ namespace Pulumi
     ///     });
     /// </code>
     /// </summary>
-    public class InputMap<V> : IEnumerable, IInput
+    public class InputMap<V> : Input<ImmutableDictionary<string, V>>, IEnumerable
     {
-        // Under the covers we just represent this as an Output of the dictionary that we will
-        // replace in-place as the user modifies us.
-        private Output<ImmutableDictionary<string, V>> _values;
-
         internal InputMap() : this(Output.Create(ImmutableDictionary<string, V>.Empty))
         {
         }
 
         private InputMap(Output<ImmutableDictionary<string, V>> values)
-            => _values = values;
-
-        public Output<ImmutableDictionary<string, V>> ToOutput()
-            => _values;
-
-        IOutput IInput.ToOutput()
-            => ToOutput();
+            : base(values)
+        {
+        }
 
         public void Add(string key, Input<V> value)
         {
-            var inputDictionary = (Input<ImmutableDictionary<string, V>>)_values;
-            _values = Output.Tuple(inputDictionary, value)
-                            .Apply(x => x.Item1.Add(key, x.Item2));
+            var inputDictionary = (Input<ImmutableDictionary<string, V>>)_outputValue;
+            _outputValue = Output.Tuple(inputDictionary, value)
+                                 .Apply(x => x.Item1.Add(key, x.Item2));
         }
 
         public Input<V> this[string key]

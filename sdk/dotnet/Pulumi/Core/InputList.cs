@@ -45,37 +45,29 @@ namespace Pulumi
     ///     });
     /// </code>
     /// </summary>
-    public class InputList<T> : IEnumerable, IInput
+    public class InputList<T> : Input<ImmutableArray<T>>, IEnumerable
     {
-        // Under the covers we just represent this as an Output of the array that we will
-        // replace in-place as the user modifies us.
-        private Output<ImmutableArray<T>> _values;
-
         internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))
         {
         }
 
         private InputList(Output<ImmutableArray<T>> values)
-            => _values = values;
-
-        public Output<ImmutableArray<T>> ToOutput()
-            => _values;
-
-        IOutput IInput.ToOutput()
-            => ToOutput();
+            : base(values)
+        {
+        }
 
         public void Add(params Input<T>[] inputs)
         {
             // Make an Output from the values passed in, mix in with our own Output, and combine
             // both to produce the final array that we will now point at.
-            var values1 = _values;
+            var values1 = _outputValue;
             var values2 = Output.All(inputs);
-            _values = Output.All<ImmutableArray<T>>(values1, values2)
-                            .Apply(a => a[0].AddRange(a[1]));
+            _outputValue = Output.All<ImmutableArray<T>>(values1, values2)
+                                 .Apply(a => a[0].AddRange(a[1]));
         }
 
         internal InputList<T> Clone()
-            => new InputList<T>(_values);
+            => new InputList<T>(_outputValue);
 
         #region construct from unary
 

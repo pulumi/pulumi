@@ -31,9 +31,9 @@ namespace Pulumi
         /// wrapper type so things look sensible, even though under the covers we implement things
         /// using the exact same type
         /// </summary>
-        private readonly Output<T> _outputValue;
+        private protected Output<T> _outputValue;
 
-        private Input(Output<T> outputValue)
+        private protected Input(Output<T> outputValue)
             => _outputValue = outputValue ?? throw new ArgumentNullException(nameof(outputValue));
 
         public static implicit operator Input<T>([MaybeNull]T value)
