@@ -3,12 +3,9 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 
 namespace Pulumi
 {
@@ -33,7 +30,7 @@ namespace Pulumi
         {
             if (name == null)
             {
-                name = Deployment.InternalInstance.Options.Project;
+                name = Deployment.Instance.ProjectName;
             }
 
             if (name.EndsWith(":config", StringComparison.Ordinal))

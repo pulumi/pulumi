@@ -45,13 +45,13 @@ namespace Pulumi
 
         /// <summary>
         /// The previous stack of the resource.  If not provided, defaults to the value of <see
-        /// cref="Options.Stack"/> in <see cref="Deployment.Instance"/>.
+        /// cref="IDeployment.StackName"/>.
         /// </summary>
         public Optional<Input<string>> Stack { get; set; }
 
         /// <summary>
         /// The previous project of the resource. f not provided, defaults to the value of <see
-        /// cref="Options.Project"/> in <see cref="Deployment.Instance"/>.
+        /// cref="IDeployment.ProjectName"/>.
         /// </summary>
         public Optional<Input<string>> Project { get; set; }
 

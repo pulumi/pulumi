@@ -234,13 +234,13 @@
         <member name="P:Pulumi.Alias.Stack">
             <summary>
             The previous stack of the resource.  If not provided, defaults to the value of <see
-            cref="F:Pulumi.Options.Stack"/> in <see cref="P:Pulumi.Deployment.Instance"/>.
+            cref="P:Pulumi.IDeployment.StackName"/>.
             </summary>
         </member>
         <member name="P:Pulumi.Alias.Project">
             <summary>
             The previous project of the resource. f not provided, defaults to the value of <see
-            cref="F:Pulumi.Options.Project"/> in <see cref="P:Pulumi.Deployment.Instance"/>.
+            cref="P:Pulumi.IDeployment.ProjectName"/>.
             </summary>
         </member>
         <member name="P:Pulumi.Alias.Parent">
@@ -637,6 +637,56 @@
             serializeFilteredProperties walks the props object passed in, awaiting all interior
             promises for properties with keys that match the provided filter, creating a reasonable
             POCO object that can be remoted over to registerResource.
+            </summary>
+        </member>
+        <member name="P:Pulumi.InvokeOptions.Parent">
+            <summary>
+            An optional parent to use for default options for this invoke (e.g. the default provider
+            to use).
+            </summary>
+        </member>
+        <member name="P:Pulumi.InvokeOptions.Provider">
+            <summary>
+            An optional provider to use for this invocation. If no provider is supplied, the default
+            provider for the invoked function's package will be used.
+            </summary>
+        </member>
+        <member name="P:Pulumi.InvokeOptions.Version">
+            <summary>
+            An optional version, corresponding to the version of the provider plugin that should be
+            used when performing this invoke.
+            </summary>
+        </member>
+        <member name="P:Pulumi.IDeployment.StackName">
+            <summary>
+            Returns the current stack name.
+            </summary>
+        </member>
+        <member name="P:Pulumi.IDeployment.ProjectName">
+            <summary>
+            Returns the current project name.
+            </summary>
+        </member>
+        <member name="P:Pulumi.IDeployment.IsDryRun">
+            <summary>
+            Whether or not the application is currently being previewed or actually applied.
+            </summary>
+        </member>
+        <member name="P:Pulumi.IDeployment.Stack">
+            <summary>
+            The Stack that the deployment is producing.
+            </summary>
+        </member>
+        <member name="M:Pulumi.IDeployment.InvokeAsync``1(System.String,Pulumi.ResourceArgs,System.Func{System.Collections.Immutable.ImmutableDictionary{System.String,System.Object},``0},Pulumi.InvokeOptions)">
+            <summary>
+            Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+            provider plugin.
+            <para/>
+            The result of <see cref="M:Pulumi.IDeployment.InvokeAsync``1(System.String,Pulumi.ResourceArgs,System.Func{System.Collections.Immutable.ImmutableDictionary{System.String,System.Object},``0},Pulumi.InvokeOptions)"/> will be a <see cref="T:System.Threading.Tasks.Task"/> resolved to the
+            result value of the provider plugin.
+            <para/>
+            The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+            <see cref="T:System.Threading.Tasks.Task`1"/>s, <see cref="T:Pulumi.Output`1"/>s etc.).
             </summary>
         </member>
         <member name="T:Pulumi.LogException">

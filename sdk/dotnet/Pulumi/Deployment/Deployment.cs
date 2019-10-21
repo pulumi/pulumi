@@ -57,9 +57,9 @@ namespace Pulumi
             set => _stack = (value ?? throw new ArgumentNullException(nameof(value)));
         }
 
-        public string ProjectName => _options.Project;
-        public string StackName => _options.Stack;
-        public bool IsDryRun => _options.DryRun;
+        public string ProjectName { get; }
+        public string StackName { get; }
+        public bool IsDryRun { get; }
 
         private Deployment()
         {
@@ -94,9 +94,12 @@ namespace Pulumi
             if (!int.TryParse(parallel, out var parallelValue))
                 throw new InvalidOperationException("Environment did not contain a valid int value for: PULUMI_PARALLEL");
 
+            this.IsDryRun = dryRunValue;
+            this.StackName = stack;
+            this.ProjectName = project;
+
             _options = new Options(
-                dryRun: dryRunValue, queryMode: queryModeValue, parallel: parallelValue,
-                project: project, stack: stack, pwd: pwd,
+                queryMode: queryModeValue, parallel: parallelValue, pwd: pwd,
                 monitor: monitor, engine: engine, tracing: tracing);
 
             Serilog.Log.Debug("Creating Deployment Engine.");
