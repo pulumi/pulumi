@@ -2,6 +2,7 @@
 
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
@@ -16,7 +17,12 @@ namespace Pulumi
         private class ConfigTypeException : RunException
         {
             public ConfigTypeException(string key, object v, string expectedType)
-                : base($"Configuration '{key}' value '{v}' is not a valid {expectedType}")
+                : this(key, v, expectedType, innerException: null)
+            {
+            }
+
+            public ConfigTypeException(string key, object v, string expectedType, Exception? innerException)
+                : base($"Configuration '{key}' value '{v}' is not a valid {expectedType}", innerException)
             {
             }
         }

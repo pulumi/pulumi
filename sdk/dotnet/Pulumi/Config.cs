@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -176,41 +177,34 @@ namespace Pulumi
             return v == null ? null : MakeSecret(v.Value);
         }
 
-        //    /**
-        //     * getObject loads an optional configuration value, as an object, by its key, or null if it doesn't exist.
-        //     * This routine simply JSON parses and doesn't validate the shape of the contents.
-        //     *
-        //     * @param key The key to lookup.
-        //     */
-        //    public getObject<T>(string key): T | null {
-        //        var v: string | null = this.Get(key);
-        //        if (v == null) {
-        //    return null;
-        //}
-        //        try {
-        //    return < T > JSON.parse(v);
-        //}
-        //        catch (err) {
-        //    throw new ConfigTypeException(this.FullKey(key), v, "JSON object");
-        //}
-        //}
+        /// <summary>
+        /// loads an optional configuration value, as an object, by its key, or null if it doesn't
+        /// exist. This routine simply JSON parses and doesn't validate the shape of the contents.
+        /// </summary>
+        public JsonDocument? GetJson(string key)
+        {
+            var v = this.Get(key);
 
-        //*
-        // * getSecretObject loads an optional configuration value, as an object, by its key, marking it as a secret
-        // * or null if it doesn't exist.
-        // * This routine simply JSON parses and doesn't validate the shape of the contents.
-        // *
-        // * @param key The key to lookup.
-        // */
-        //public getSecretObject<T>(string key): Output<T> | null {
-        //        var v = this.GetObject<T>(key);
+            try
+            {
+                return v == null ? null : JsonDocument.Parse(v);
+            }
+            catch (Exception ex)
+            {
+                throw new ConfigTypeException(this.FullKey(key), v, nameof(JsonDocument), ex);
+            }
+        }
 
-        //        if (v == null) {
-        //            return null;
-        //        }
-
-        //        return MakeSecret<T>(v);
-        //    }
+        /// <summary>
+        /// Loads an optional configuration value, as an object, by its key, marking it as a secret
+        /// or null if it doesn't exist. This routine simply JSON parses and doesn't validate the
+        /// shape of the contents.
+        /// </summary>
+        public Output<JsonDocument>? GetSecretJson(string key)
+        {
+            var v = this.GetJson(key);
+            return v == null ? null : MakeSecret(v);
+        }
 
         /// <summary>
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
@@ -253,30 +247,21 @@ namespace Pulumi
         public Output<int> RequireSecretInt32(string key, Int32Options? opts = null)
             => MakeSecret(this.RequireInt32(key, opts));
 
-        //    /*
-        //     * RequireObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript object. If
-        //     * it doesn't exist, or the configuration value is not a legal JSON string, an error is thrown.
-        //     *
-        //     * @param key The key to lookup.
-        //     */
-        //    public RequireObject<T>(string key): T {
-        //        var v: T | null = this.GetObject<T>(key);
-        //        if (v == null) {
-        //    throw new ConfigMissingException(this.FullKey(key));
-        //}
-        //        return v;
-        //}
+        /// <summary>
+        /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
+        /// object. If it doesn't exist, or the configuration value is not a legal JSON string, an
+        /// error is thrown.
+        /// </summary>
+        public JsonDocument RequireJson(string key)
+            => this.GetJson(key) ?? throw new ConfigMissingException(this.FullKey(key));
 
-        // **
-        // * RequireSecretObject loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
-        // * object, marking it as a secret. If it doesn't exist, or the configuration value is not a legal JSON
-        // * string, an error is thrown.
-        // *
-        // * @param key The key to lookup.
-        // */
-        //public RequireSecretObject<T>(string key): Output<T> {
-        //        return MakeSecret(this.RequireObject<T>(key));
-        //    }
+        /// <summary>
+        /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
+        /// object, marking it as a secret. If it doesn't exist, or the configuration value is not a
+        /// legal JSON string, an error is thrown.
+        /// </summary>
+        public Output<JsonDocument> RequireSecretJson(string key)
+            => MakeSecret(this.RequireJson(key));
 
         /// <summary>
         /// turns a simple configuration key into a fully resolved one, by prepending the bag's name.

@@ -19,5 +19,10 @@ namespace Pulumi
             : base(message)
         {
         }
+
+        public RunException(string message, Exception? innerException)
+            : base(message, innerException)
+        {
+        }
     }
 }
