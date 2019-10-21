@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 #nullable enable
 
@@ -45,7 +45,7 @@ namespace Pulumi
     ///     });
     /// </code>
     /// </summary>
-    public sealed class InputList<T> : Input<ImmutableArray<T>>, IEnumerable
+    public class InputList<T> : Input<ImmutableArray<T>>, IEnumerable
     {
         internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))
         {

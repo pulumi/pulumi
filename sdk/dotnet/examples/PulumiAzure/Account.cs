@@ -1,29 +1,50 @@
-﻿using System;
+﻿using Pulumi.Rpc;
+using System;
 using System.Collections.Immutable;
 
 namespace Pulumi.Azure.Storage
 {
-    public class Account// : CustomResource
+    public class Account : CustomResource
     {
-        public Output<string> Name { get; }
-        public Output<string> PrimaryAccessKey { get; }
-        public Output<string> PrimaryConnectionString { get; }
-        
-        public Account(string name, AccountArgs args = default, ResourceOptions opts = default)// : base("storage.Account", name, props(args), opts)
+        [ResourceField("name")]
+        private readonly StringOutputCompletionSource _name;
+        public Output<string> Name1 => _name.Output;
+
+        [ResourceField("primaryAccessKey")]
+        private readonly StringOutputCompletionSource _primaryAccessKey;
+        public Output<string> PrimaryAccessKey => _primaryAccessKey.Output;
+
+        [ResourceField("primaryConnectionString")]
+        private readonly StringOutputCompletionSource _primaryConnectionString;
+        public Output<string> PrimaryConnectionString => _primaryConnectionString.Output;
+
+        public Account(string name, AccountArgs args = default, ResourceOptions opts = default)
+            : base("azure:storage/account:Account", name, args, opts)
         {
-            this.Name = Output.Create(name + "abc123de");
-            this.PrimaryAccessKey = Output.Create("klsad5jfoaw2iejfaowfoi3wewae==");
-            this.PrimaryConnectionString = this.PrimaryAccessKey.Apply(key => $"Blabla={key}");
-            Console.WriteLine($"    └─ storage.Account        {name,-11} created");
+            _name = new StringOutputCompletionSource(this);
+            _primaryAccessKey = new StringOutputCompletionSource(this);
+            _primaryConnectionString = new StringOutputCompletionSource(this);
+            this.OnConstructorCompleted();
         }
     }
 
-    public class AccountArgs
+    public class AccountArgs : ResourceArgs
     {
-        public Input<string> ResourceGroupName { get; set; }
-        public Input<string> Location { get; set; }
-        public Input<string> AccountReplicationType { get; set; }
-        public Input<string> AccountTier { get; set; }
+        public Input<string> AccessTier { get; set; }
         public Input<string> AccountKind { get; set; }
+        public Input<string> AccountTier { get; set; }
+        public Input<string> AccountReplicationType { get; set; }
+        public Input<string> Location { get; set; }
+        public Input<string> ResourceGroupName { get; set; }
+
+        protected override void AddProperties(PropertyBuilder builder)
+        {
+            builder.Add("accessTier", AccessTier);
+            builder.Add("accountKind", AccountKind);
+            builder.Add("accountTier", AccountTier);
+            builder.Add("accountReplicationType", AccountReplicationType);
+            builder.Add("location", Location);
+            builder.Add("resourceGroupName", ResourceGroupName);
+        }
     }
 }

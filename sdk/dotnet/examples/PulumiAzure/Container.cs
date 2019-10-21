@@ -1,22 +1,32 @@
-﻿using System;
+﻿using Pulumi.Rpc;
+using System;
 using System.Collections.Immutable;
 
 namespace Pulumi.Azure.Storage
 {
-    public class Container// : CustomResource
+    public class Container : CustomResource
     {
-        public Output<string> Name { get; }
+        [ResourceField("name")]
+        private readonly StringOutputCompletionSource _name;
+        public Output<string> Name1 => _name.Output;
 
-        public Container(string name, ContainerArgs args = default, ResourceOptions opts = default)// : base("storage.Container", name, props(args), opts)
+        public Container(string name, ContainerArgs args = default, ResourceOptions opts = default)
+            : base("azure:storage/container:Container", name, args, opts)
         {
-            this.Name = Output.Create(name + "abc123de");
-            Console.WriteLine($"    └─ storage.Container      {name,-11} created");
+            _name = new StringOutputCompletionSource(this);
+            this.OnConstructorCompleted();
         }
     }
 
-    public class ContainerArgs
+    public class ContainerArgs : ResourceArgs
     {
-        public Input<string> StorageAccountName { get; set; }
         public Input<string> ContainerAccessType { get; set; }
+        public Input<string> StorageAccountName { get; set; }
+
+        protected override void AddProperties(PropertyBuilder builder)
+        {
+            builder.Add("containerAccessType", ContainerAccessType);
+            builder.Add("storageAccountName", StorageAccountName);
+        }
     }
 }

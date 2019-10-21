@@ -1,4 +1,8 @@
-﻿using System.Collections.Generic;
+﻿// Copyright 2016-2019, Pulumi Corporation
+
+#nullable enable
+
+using System.Collections.Generic;
 using Pulumi.Azure.Core;
 using Storage = Pulumi.Azure.Storage;
 
@@ -16,7 +20,7 @@ namespace Pulumi.CSharpExamples
             {
                 ResourceGroupName = resourceGroup.Name,
                 AccountReplicationType = "LRS",
-                AccountTier = "Standard",
+                AccessTier = "Standard",
             });
 
             // How do we want to treat exports?

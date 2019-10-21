@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 #nullable enable
 
@@ -22,7 +22,7 @@ namespace Pulumi
             /// <summary>
             /// The minimum string length. If the string is not this long, a ConfigRangeError is thrown.
             /// </summary>
-            public int? MinLength;
+            public int? MinLength { get; }
 
             /// <summary>
             /// The maximum string length. If the string is longer than this, a ConfigRangeError is thrown.
