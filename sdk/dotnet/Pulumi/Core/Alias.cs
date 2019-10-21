@@ -30,7 +30,7 @@ namespace Pulumi
     ///
     /// <c>Aliases = { new Alias { Parent = null } }</c>
     /// </summary>
-    public class Alias
+    public sealed class Alias
     {
         /// <summary>
         /// The previous name of the resource.  If not provided, the current name of the resource is

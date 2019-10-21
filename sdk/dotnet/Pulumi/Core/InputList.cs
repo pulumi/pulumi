@@ -45,7 +45,7 @@ namespace Pulumi
     ///     });
     /// </code>
     /// </summary>
-    public class InputList<T> : Input<ImmutableArray<T>>, IEnumerable
+    public sealed class InputList<T> : Input<ImmutableArray<T>>, IEnumerable
     {
         internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))
         {

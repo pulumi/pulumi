@@ -10,7 +10,7 @@ namespace Pulumi
     /// <summary>
     /// A bag of optional settings that control a <see cref="ComponentResource"/>'s behavior.
     /// </summary>
-    public class ComponentResourceOptions : ResourceOptions
+    public sealed class ComponentResourceOptions : ResourceOptions
     {
         private List<ProviderResource>? _providers;
 

@@ -9,7 +9,7 @@ using Pulumirpc;
 
 namespace Pulumi
 {
-    public partial class Deployment
+    public sealed partial class Deployment
     {
         private readonly object _logGate = new object();
         // We serialize all logging tasks so that the engine doesn't hear about them out of order.

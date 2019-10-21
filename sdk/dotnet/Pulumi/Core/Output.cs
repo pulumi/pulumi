@@ -77,7 +77,7 @@ namespace Pulumi
     ///
     /// The output properties of all resource objects in Pulumi have type <see cref="Output{T}"/>.
     /// </summary>
-    public class Output<T> : IOutput
+    public sealed class Output<T> : IOutput
     {
         internal static bool DryRun;
 

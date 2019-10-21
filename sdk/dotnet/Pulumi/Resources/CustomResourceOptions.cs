@@ -11,7 +11,7 @@ namespace Pulumi
     /// <see cref="CustomResourceOptions"/> is a bag of optional settings that control a <see
     /// cref="CustomResource"/>'s behavior.
     /// </summary>
-    public class CustomResourceOptions : ResourceOptions
+    public sealed class CustomResourceOptions : ResourceOptions
     {
         /// <summary>
         /// When set to <c>true</c>, indicates that this resource should be deleted before its

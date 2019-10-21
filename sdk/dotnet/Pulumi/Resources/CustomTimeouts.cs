@@ -7,7 +7,7 @@ namespace Pulumi
     /// <summary>
     /// Optional timeouts to supply in <see cref="ResourceOptions.CustomTimeouts"/>.
     /// </summary>
-    public class CustomTimeouts
+    public sealed class CustomTimeouts
     {
         /// <summary>
         /// The optional create timeout represented as a string e.g. 5m, 40s, 1d.

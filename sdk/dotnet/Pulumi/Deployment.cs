@@ -32,7 +32,7 @@ namespace Pulumi
     /// the running of the program are properly reported.  Failure to do this may lead to the
     /// program ending early before all resources are properly registered.
     /// </summary>
-    public partial class Deployment
+    public sealed partial class Deployment
     {
         /// <summary>
         /// If we're in preview mode or not.

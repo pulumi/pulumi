@@ -20,7 +20,7 @@ namespace Pulumi
     /// the same simple key names.  Each key has a fully qualified names, such as
     /// <c>pulumi:foo:a</c>, ..., and <c>pulumi:bar:a</c>, respectively.
     /// </summary>
-    public partial class Config
+    public sealed partial class Config
     {
         /// <summary>
         /// name is the configuration bag's logical name and uniquely identifies it.  The default

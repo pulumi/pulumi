@@ -16,7 +16,7 @@ namespace Pulumi
     /// An instance of this will be automatically created when any <see
     /// cref="Deployment.RunAsync(Action)"/> overload is called.
     /// </summary>
-    public class Stack : ComponentResource
+    public sealed class Stack : ComponentResource
     {
         /// <summary>
         /// Constant to represent the 'root stack' resource for a Pulumi application.  The purpose
