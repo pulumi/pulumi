@@ -75,6 +75,6 @@ namespace Pulumi
         /// 
         /// Only specify one of <see cref="Parent"/> or <see cref="ParentUrn"/>.
         /// </summary>
-        public Optional<Input<Urn>> ParentUrn { get; set; }
+        public Optional<Input<string>> ParentUrn { get; set; }
     }
 }

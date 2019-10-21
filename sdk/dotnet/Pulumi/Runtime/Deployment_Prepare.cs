@@ -56,7 +56,7 @@ namespace Pulumi
             var allDirectDependencies = new HashSet<Resource>(explicitDirectDependencies);
 
             var allDirectDependencyURNs = await GetAllTransitivelyReferencedCustomResourceURNsAsync(explicitDirectDependencies).ConfigureAwait(false);
-            var propertyToDirectDependencyURNs = new Dictionary<string, HashSet<Urn>>();
+            var propertyToDirectDependencyURNs = new Dictionary<string, HashSet<string>>();
 
             foreach (var (propertyName, directDependencies) in propertyToDirectDependencies)
             {
@@ -71,8 +71,8 @@ namespace Pulumi
             // the former has been processed in the Resource constructor prior to calling
             // 'registerResource' - both adding new inherited aliases and simplifying aliases down
             // to URNs.
-            var aliases = new List<Urn>();
-            var uniqueAliases = new HashSet<Urn>();
+            var aliases = new List<string>();
+            var uniqueAliases = new HashSet<string>();
             foreach (var alias in res._aliases)
             {
                 var aliasVal = await alias.ToOutput().GetValueAsync().ConfigureAwait(false);
@@ -94,7 +94,7 @@ namespace Pulumi
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync();
 
-        private static async Task<HashSet<Urn>> GetAllTransitivelyReferencedCustomResourceURNsAsync(
+        private static async Task<HashSet<string>> GetAllTransitivelyReferencedCustomResourceURNsAsync(
             HashSet<Resource> resources)
         {
             // Go through 'resources', but transitively walk through **Component** resources,
@@ -122,7 +122,7 @@ namespace Pulumi
             var transitivelyReachableCustomResources = transitivelyReachableResources.OfType<CustomResource>();
             var tasks = transitivelyReachableCustomResources.Select(r => r.Urn.GetValueAsync());
             var urns = await Task.WhenAll(tasks).ConfigureAwait(false);
-            return new HashSet<Urn>(urns);
+            return new HashSet<string>(urns);
         }
 
         /// <summary>
@@ -154,13 +154,13 @@ namespace Pulumi
         private struct PrepareResult
         {
             public readonly Struct SerializedProps;
-            public readonly Urn? ParentUrn;
+            public readonly string? ParentUrn;
             public readonly string? ProviderRef;
-            public readonly HashSet<Urn> AllDirectDependencyURNs;
-            public readonly Dictionary<string, HashSet<Urn>> PropertyToDirectDependencyURNs;
-            public readonly List<Urn> Aliases;
+            public readonly HashSet<string> AllDirectDependencyURNs;
+            public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyURNs;
+            public readonly List<string> Aliases;
 
-            public PrepareResult(Struct serializedProps, Urn? parentUrn, string? providerRef, HashSet<Urn> allDirectDependencyURNs, Dictionary<string, HashSet<Urn>> propertyToDirectDependencyURNs, List<Urn> aliases)
+            public PrepareResult(Struct serializedProps, string? parentUrn, string? providerRef, HashSet<string> allDirectDependencyURNs, Dictionary<string, HashSet<string>> propertyToDirectDependencyURNs, List<string> aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;

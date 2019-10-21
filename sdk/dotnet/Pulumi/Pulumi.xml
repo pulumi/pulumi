@@ -349,11 +349,6 @@
             Base class of <see cref="T:Pulumi.Asset"/>s and <see cref="T:Pulumi.Archive"/>s.
             </summary>
         </member>
-        <member name="T:Pulumi.Id">
-            <summary>
-            A provider-assigned ID.
-            </summary>
-        </member>
         <member name="T:Pulumi.IInput">
             <summary>
             Internal interface to allow our code to operate on inputs in an untyped manner. Necessary as
@@ -523,14 +518,14 @@
             automatically by Pulumi to identify resources.  They cannot be manually constructed.
             </summary>
         </member>
-        <member name="M:Pulumi.Urn.Create(Pulumi.Input{System.String},Pulumi.Input{System.String},Pulumi.Resource,Pulumi.Input{Pulumi.Urn},Pulumi.Input{System.String},Pulumi.Input{System.String})">
+        <member name="M:Pulumi.Urn.Create(Pulumi.Input{System.String},Pulumi.Input{System.String},Pulumi.Resource,Pulumi.Input{System.String},Pulumi.Input{System.String},Pulumi.Input{System.String})">
             <summary>
             Computes a URN from the combination of a resource name, resource type, optional parent,
             optional project and optional stack.
             </summary>
             <returns></returns>
         </member>
-        <member name="M:Pulumi.Urn.InheritedChildAlias(System.String,System.String,Pulumi.Input{Pulumi.Urn},System.String)">
+        <member name="M:Pulumi.Urn.InheritedChildAlias(System.String,System.String,Pulumi.Input{System.String},System.String)">
             <summary>
             inheritedChildAlias computes the alias that should be applied to a child based on an
             alias applied to it's parent. This may involve changing the name of the resource in
@@ -774,7 +769,7 @@
             basis.
             </summary>
         </member>
-        <member name="P:Pulumi.CustomResourceOptions.Import">
+        <member name="P:Pulumi.CustomResourceOptions.ImportId">
             <summary>
             When provided with a resource ID, import indicates that this resource's provider should
             import its state from the cloud resource with the given ID.The inputs to the resource's

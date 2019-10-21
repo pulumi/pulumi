@@ -156,21 +156,21 @@ namespace Pulumi
         private static void PopulateRequest(RegisterResourceRequest request, PrepareResult prepareResult)
         {
             if (prepareResult.ParentUrn != null)
-                request.Parent = prepareResult.ParentUrn.Value;
+                request.Parent = prepareResult.ParentUrn;
 
             if (prepareResult.ProviderRef != null)
                 request.Provider = prepareResult.ProviderRef;
 
             foreach (var alias in prepareResult.Aliases)
-                request.Aliases.Add(alias.Value);
+                request.Aliases.Add(alias);
 
             foreach (var dep in prepareResult.AllDirectDependencyURNs)
-                request.Dependencies.Add(dep.Value);
+                request.Dependencies.Add(dep);
 
             foreach (var (key, resourceURNs) in prepareResult.PropertyToDirectDependencyURNs)
             {
                 var deps = new RegisterResourceRequest.Types.PropertyDependencies();
-                deps.Urns.AddRange(resourceURNs.Select(u => u.Value));
+                deps.Urns.AddRange(resourceURNs);
                 request.PropertyDependencies.Add(key, deps);
             }
 
@@ -204,7 +204,7 @@ namespace Pulumi
         {
             var customOpts = options as CustomResourceOptions;
             var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
-            var importID = customOpts?.Import;
+            var importID = customOpts?.ImportId;
 
             var request = new RegisterResourceRequest()
             {
@@ -213,7 +213,7 @@ namespace Pulumi
                 Custom = custom,
                 Protect = options.Protect ?? false,
                 Version = options.Version ?? "",
-                ImportId = importID?.Value ?? "",
+                ImportId = importID ?? "",
                 AcceptSecrets = true,
 
                 CustomTimeouts = new RegisterResourceRequest.Types.CustomTimeouts(),

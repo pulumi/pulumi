@@ -8,12 +8,12 @@ namespace Pulumi
 {
     public readonly struct UrnOrAlias
     {
-        public readonly Urn? Urn;
+        public readonly string? Urn;
         public readonly Alias? Alias;
 
-        private UrnOrAlias(Urn? urn, Alias? alias)
+        private UrnOrAlias(string? urn, Alias? alias)
         {
-            if (urn ==null && alias == null)
+            if (urn == null && alias == null)
             {
                 throw new ArgumentException("One of urn or alias must be non-null");
             }
@@ -22,7 +22,7 @@ namespace Pulumi
             Alias = alias;
         }
 
-        public static implicit operator UrnOrAlias(Urn urn)
+        public static implicit operator UrnOrAlias(string urn)
             => new UrnOrAlias(urn, alias: null);
 
         public static implicit operator UrnOrAlias(Alias alias)

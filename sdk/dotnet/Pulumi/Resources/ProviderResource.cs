@@ -46,13 +46,12 @@ namespace Pulumi
             {
                 var providerURN = await provider.Urn.GetValueAsync().ConfigureAwait(false);
                 var providerID = await provider.Id.GetValueAsync().ConfigureAwait(false);
-                var providerIDVal = providerID.Value;
-                if (string.IsNullOrEmpty(providerIDVal))
+                if (string.IsNullOrEmpty(providerID))
                 {
-                    providerIDVal = Constants.UnknownValue;
+                    providerID = Constants.UnknownValue;
                 }
 
-                provider._registrationId = $"{providerURN}::{providerIDVal}";
+                provider._registrationId = $"{providerURN}::{providerID}";
             }
 
             return provider._registrationId;

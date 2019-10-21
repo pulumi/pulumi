@@ -4,7 +4,7 @@
 
 namespace Pulumi.Rpc
 {
-    internal sealed class UrnOutputCompletionSource : OutputCompletionSource<Urn>
+    internal sealed class UrnOutputCompletionSource : OutputCompletionSource<string>
     {
         public UrnOutputCompletionSource(Resource resource)
             : base(resource)
@@ -12,6 +12,6 @@ namespace Pulumi.Rpc
         }
 
         public void SetResult(string urn)
-            => SetResult(new OutputData<Urn>(new Urn(urn), isKnown: true, isSecret: false));
+            => SetResult(new OutputData<string>(urn, isKnown: true, isSecret: false));
     }
 }

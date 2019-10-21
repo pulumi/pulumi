@@ -18,7 +18,7 @@ namespace AWS.S3
     public class BucketObjectArgs : ResourceArgs
     {
         public Input<string> Acl;
-        public Input<Id> Bucket;
+        public Input<string> Bucket;
         public Input<string> ContentBase64;
         public Input<string> ContentType;
         public Input<string> Key;

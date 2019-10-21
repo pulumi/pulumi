@@ -20,7 +20,7 @@ namespace Pulumi
         /// Id is the provider-assigned unique ID for this managed resource.  It is set during
         /// deployments and may be missing (unknown) during planning phases.
         /// </summary>
-        public Output<Id> Id => _id.Output;
+        public Output<string> Id => _id.Output;
 
         /// <summary>
         /// Creates and registers a new managed resource.  t is the fully qualified type token and

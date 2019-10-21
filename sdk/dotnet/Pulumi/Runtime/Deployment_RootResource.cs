@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2018, Pulumi Corporation
 
 #nullable enable
 
@@ -10,7 +10,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        private Task<Urn>? _rootResource;
+        private Task<string>? _rootResource;
 
         /// <summary>
         /// returns a root resource URN that will automatically become the default parent of all
@@ -18,7 +18,7 @@ namespace Pulumi
         /// parented to a common parent resource.
         /// </summary>
         /// <returns></returns>
-        internal async Task<Urn?> GetRootResourceAsync(string type)
+        internal async Task<string?> GetRootResourceAsync(string type)
         {
             // If we're calling this while creating the stack itself.  No way to know its urn at
             // this point.
@@ -40,16 +40,16 @@ namespace Pulumi
             return _rootResource;
         }
 
-        private async Task<Urn> SetRootResourceWorkerAsync(Stack stack)
+        private async Task<string> SetRootResourceWorkerAsync(Stack stack)
         {
             var resUrn = await stack.Urn.GetValueAsync().ConfigureAwait(false);
             await this.Engine.SetRootResourceAsync(new SetRootResourceRequest
             {
-                Urn = resUrn.Value,
+                Urn = resUrn,
             });
 
             var getResponse = await this.Engine.GetRootResourceAsync(new GetRootResourceRequest());
-            return new Urn(getResponse.Urn);
+            return getResponse.Urn;
         }
     }
 }

@@ -89,26 +89,6 @@ namespace Pulumi
                 return prop;
             }
 
-            if (prop is Id id)
-            {
-                if (_excessiveDebugOutput)
-                {
-                    Log.Debug($"Serialize property[{ctx}]: id={id.Value}");
-                }
-
-                return id.Value;
-            }
-
-            if (prop is Urn urn)
-            {
-                if (_excessiveDebugOutput)
-                {
-                    Log.Debug($"Serialize property[{ctx}]: urn={urn.Value}");
-                }
-
-                return urn.Value;
-            }
-
             if (prop is ResourceArgs args)
             {
                 if (_excessiveDebugOutput)

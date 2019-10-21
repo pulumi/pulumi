@@ -4,7 +4,7 @@
 
 namespace Pulumi.Rpc
 {
-    internal sealed class IdOutputCompletionSource : OutputCompletionSource<Id>
+    internal sealed class IdOutputCompletionSource : OutputCompletionSource<string>
     {
         public IdOutputCompletionSource(Resource resource)
             : base(resource)
@@ -12,9 +12,9 @@ namespace Pulumi.Rpc
         }
 
         public void SetResult(string id)
-            => SetResult(new OutputData<Id>(new Id(id), isKnown: true, isSecret: false));
+            => SetResult(new OutputData<string>(id, isKnown: true, isSecret: false));
 
         public void SetUnknownResult()
-            => SetResult(new OutputData<Id>(new Id(""), isKnown: false, isSecret: false));
+            => SetResult(new OutputData<string>("", isKnown: false, isSecret: false));
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2018, Pulumi Corporation
 
 #nullable enable
 
@@ -39,7 +39,7 @@ namespace Pulumi
 
             var request = new RegisterResourceOutputsRequest()
             {
-                Urn = urn.Value,
+                Urn = urn,
                 Outputs = serialized,
             };
 

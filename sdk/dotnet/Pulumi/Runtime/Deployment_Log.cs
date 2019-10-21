@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2018, Pulumi Corporation
 
 #nullable enable
 
@@ -95,14 +95,14 @@ namespace Pulumi
             try
             {
                 var urn = resource == null
-                    ? new Urn("")
+                    ? ""
                     : await resource.Urn.GetValueAsync().ConfigureAwait(false);
 
                 await Engine.LogAsync(new LogRequest
                 {
                     Severity = severity,
                     Message = message,
-                    Urn = urn.Value,
+                    Urn = urn,
                     StreamId = streamId ?? 0,
                     Ephemeral = ephemeral ?? false,
                 });

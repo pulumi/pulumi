@@ -15,7 +15,7 @@ namespace Pulumi
         /// <summary>
         /// An optional existing ID to load, rather than create.
         /// </summary>
-        public Input<Id>? Id { get; set; }
+        public Input<string>? Id { get; set; }
 
         /// <summary>
         /// An optional parent resource to which this resource belongs.

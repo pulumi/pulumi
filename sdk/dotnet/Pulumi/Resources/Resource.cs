@@ -64,7 +64,7 @@ namespace Pulumi
         /// </summary>
 
         internal readonly UrnOutputCompletionSource _urn;
-        public Output<Urn> Urn => _urn.Output;
+        public Output<string> Urn => _urn.Output;
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
@@ -79,7 +79,7 @@ namespace Pulumi
         /// <summary>
         /// A list of aliases applied to this resource.
         /// </summary>
-        internal readonly ImmutableArray<Input<Urn>> _aliases;
+        internal readonly ImmutableArray<Input<string>> _aliases;
 
         /// <summary>
         /// The type assigned to the resource at construction.
@@ -245,7 +245,7 @@ namespace Pulumi
             // Collapse any 'Alias'es down to URNs. We have to wait until this point to do so
             // because we do not know the default 'name' and 'type' to apply until we are inside the
             // resource constructor.
-            var aliases = ImmutableArray.CreateBuilder<Input<Urn>>();
+            var aliases = ImmutableArray.CreateBuilder<Input<string>>();
             foreach (var alias in options.Aliases)
             {
                 aliases.Add(CollapseAliasToUrn(alias, name, type, options.Parent));
@@ -292,7 +292,7 @@ namespace Pulumi
             return result;
         }
 
-        private static Output<Urn> CollapseAliasToUrn(
+        private static Output<string> CollapseAliasToUrn(
             Input<UrnOrAlias> alias,
             string defaultName,
             string defaultType,
@@ -315,7 +315,7 @@ namespace Pulumi
                     throw new ArgumentException("Alias cannot specify Parent and ParentUrn at the same time.");
 
                 Resource? parent;
-                Input<Urn>? parentUrn;
+                Input<string>? parentUrn;
                 if (alias.Parent.HasValue)
                 {
                     parent = alias.Parent.Value;

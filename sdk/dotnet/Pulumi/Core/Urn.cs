@@ -10,33 +10,33 @@ namespace Pulumi
     /// An automatically generated logical URN, used to stably identify resources. These are created
     /// automatically by Pulumi to identify resources.  They cannot be manually constructed.
     /// </summary>
-    public sealed class Urn : IEquatable<Urn>
+    public static class Urn
     {
-        internal readonly string Value;
+        //internal readonly string Value;
 
-        internal Urn(string value)
-            => Value = value ?? throw new ArgumentNullException(nameof(value));
+        //internal Urn(string value)
+        //    => Value = value ?? throw new ArgumentNullException(nameof(value));
 
-        public override string ToString()
-            => Value;
+        //public override string ToString()
+        //    => Value;
 
-        public override int GetHashCode()
-            => Value.GetHashCode(StringComparison.Ordinal);
+        //public override int GetHashCode()
+        //    => Value.GetHashCode(StringComparison.Ordinal);
 
-        public override bool Equals(object? obj)
-            => obj is Urn urn && Equals(urn);
+        //public override bool Equals(object? obj)
+        //    => obj is Urn urn && Equals(urn);
 
-        public bool Equals(Urn urn)
-            => Value == urn?.Value;
+        //public bool Equals(Urn urn)
+        //    => Value == urn?.Value;
 
         /// <summary>
         /// Computes a URN from the combination of a resource name, resource type, optional parent,
         /// optional project and optional stack.
         /// </summary>
         /// <returns></returns>
-        internal static Output<Urn> Create(
+        internal static Output<string> Create(
             Input<string> name, Input<string> type,
-            Resource? parent = null, Input<Urn>? parentUrn = null,
+            Resource? parent = null, Input<string>? parentUrn = null,
             Input<string>? project = null, Input<string>? stack = null)
         {
             if (parent != null && parentUrn != null)
@@ -50,15 +50,15 @@ namespace Pulumi
                     : parentUrn!.ToOutput();
 
                 parentPrefix = parentUrnOutput.Apply(
-                    parentUrnString => parentUrnString.Value.Substring(
-                        0, parentUrnString.Value.LastIndexOf("::", StringComparison.Ordinal)) + "$");
+                    parentUrnString => parentUrnString.Substring(
+                        0, parentUrnString.LastIndexOf("::", StringComparison.Ordinal)) + "$");
             }
             else
             {
                 parentPrefix = Output.Create($"urn:pulumi:{stack ?? Deployment.Instance.StackName}::{project ?? Deployment.Instance.ProjectName}::");
             }
 
-            return Output.Format($"{parentPrefix}{type}::{name}").Apply(value => new Urn(value));
+            return Output.Format($"{parentPrefix}{type}::{name}");
         }
 
         /// <summary>
@@ -67,13 +67,13 @@ namespace Pulumi
         /// cases where the resource has a named derived from the name of the parent, and the parent
         /// name changed.
         /// </summary>
-        internal static Output<UrnOrAlias> InheritedChildAlias(string childName, string parentName, Input<Urn> parentAlias, string childType)
+        internal static Output<UrnOrAlias> InheritedChildAlias(string childName, string parentName, Input<string> parentAlias, string childType)
         {
             var urn = InheritedChildAliasWorker(childName, parentName, parentAlias, childType);
             return urn.Apply(u => (UrnOrAlias)u);
         }
 
-        internal static Output<Urn> InheritedChildAliasWorker(string childName, string parentName, Input<Urn> parentAlias, string childType)
+        internal static Output<string> InheritedChildAliasWorker(string childName, string parentName, Input<string> parentAlias, string childType)
         {
             // If the child name has the parent name as a prefix, then we make the assumption that
             // it was constructed from the convention of using '{name}-details' as the name of the
@@ -90,11 +90,10 @@ namespace Pulumi
             var aliasName = Output.Create(childName);
             if (childName!.StartsWith(parentName, StringComparison.Ordinal))
             {
-                aliasName = parentAlias.ToOutput().Apply(parentAliasUrn =>
+                aliasName = parentAlias.ToOutput().Apply<string>(parentAliasUrn =>
                 {
-                    var parentAliasVal = parentAliasUrn.Value;
-                    var parentAliasName = parentAliasVal.Substring(parentAliasVal.LastIndexOf("::", StringComparison.Ordinal) + 2);
-                    return parentAliasName + childName.Substring(parentName.Length);
+                    return parentAliasUrn.Substring(parentAliasUrn.LastIndexOf("::", StringComparison.Ordinal) + 2)
+                    + childName.Substring(parentName.Length);
                 });
             }
 

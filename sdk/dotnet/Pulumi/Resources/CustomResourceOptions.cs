@@ -39,7 +39,7 @@ namespace Pulumi
         /// constructor must align with the resource's current state.Once a resource has been
         /// imported, the import property must be removed from the resource's options.
         /// </summary>
-        public Id? Import { get; set; }
+        public string? ImportId { get; set; }
 
         internal override ResourceOptions Clone()
         {
@@ -61,7 +61,7 @@ namespace Pulumi
                 // Our properties
                 AdditionalSecretOutputs = this.AdditionalSecretOutputs.ToList(),
                 DeleteBeforeReplace = this.DeleteBeforeReplace,
-                Import = this.Import,
+                ImportId = this.ImportId,
             };
         }
     }
