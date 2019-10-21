@@ -7,7 +7,7 @@ using System;
 namespace Pulumi.Rpc
 {
     [AttributeUsage(AttributeTargets.Field)]
-    public class ResourceFieldAttribute : Attribute 
+    public sealed class ResourceFieldAttribute : Attribute 
     {
         public readonly string Name;
 
