@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2018, Pulumi Corporation
 
 #nullable enable
 
@@ -19,14 +19,14 @@ namespace Pulumi
         /// <summary>
         /// Creates and registers a new component resource.  <paramref name="type"/> is the fully
         /// qualified type token and <paramref name="name"/> is the "name" part to use in creating a
-        /// stable and globally unique URN for the object. <c>opts.parent</c> is the optional parent
-        /// for this component, and [opts.dependsOn] is an optional list of other resources that
+        /// stable and globally unique URN for the object. <c>options.parent</c> is the optional parent
+        /// for this component, and [options.dependsOn] is an optional list of other resources that
         /// this resource depends on, controlling the order in which we perform resource operations.
         /// </summary>
-        public ComponentResource(string type, string name, ResourceOptions? opts = null)
+        public ComponentResource(string type, string name, ResourceOptions? options = null)
             : base(type, name, custom: false,
                    args: ResourceArgs.Empty,
-                   opts ?? new ComponentResourceOptions())
+                   options ?? new ComponentResourceOptions())
         {
             this.OnConstructorCompleted();
         }

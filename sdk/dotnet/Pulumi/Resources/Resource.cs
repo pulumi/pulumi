@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2018, Pulumi Corporation
 
 #nullable enable
 
@@ -117,10 +117,10 @@ namespace Pulumi
         /// <param name="name">The unique name of the resource.</param>
         /// <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
         /// <param name="args">The arguments to use to populate the new resource.</param>
-        /// <param name="opts">A bag of options that control this resource's behavior.</param>
+        /// <param name="options">A bag of options that control this resource's behavior.</param>
         private protected Resource(
             string type, string name, bool custom,
-            ResourceArgs args, ResourceOptions opts)
+            ResourceArgs args, ResourceOptions options)
         {
             if (string.IsNullOrEmpty(type))
                 throw new ArgumentException("'type' cannot be null or empty.", nameof(type));
@@ -132,14 +132,14 @@ namespace Pulumi
             // to transform the properties and options assigned to this resource.
             var parent = type == Stack._rootPulumiStackTypeName
                 ? null
-                : (opts.Parent ?? Deployment.Instance.Stack);
+                : (options.Parent ?? Deployment.Instance.Stack);
 
             this.Type = type;
             this.Name = name;
             this._urn = new UrnOutputCompletionSource(this);
 
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
-            transformations.AddRange(opts.ResourceTransformations);
+            transformations.AddRange(options.ResourceTransformations);
             if (parent != null)
             {
                 transformations.AddRange(parent._transformations);
@@ -148,10 +148,10 @@ namespace Pulumi
 
             foreach (var transformation in this._transformations)
             {
-                var tres = transformation(new ResourceTransformationArgs(this, args, opts));
+                var tres = transformation(new ResourceTransformationArgs(this, args, options));
                 if (tres != null)
                 {
-                    if (tres.Value.Opts.Parent != opts.Parent)
+                    if (tres.Value.Options.Parent != options.Parent)
                     {
                         // This is currently not allowed because the parent tree is needed to
                         // establish what transformation to apply in the first place, and to compute
@@ -164,40 +164,40 @@ namespace Pulumi
                     }
 
                     args = tres.Value.Args;
-                    opts = tres.Value.Opts;
+                    options = tres.Value.Options;
                 }
             }
 
-            // Make a shallow clone of opts to ensure we don't modify the value passed in.
-            opts = opts.Clone();
-            var componentOpts = opts as ComponentResourceOptions;
-            var customOpts = opts as CustomResourceOptions;
+            // Make a shallow clone of options to ensure we don't modify the value passed in.
+            options = options.Clone();
+            var componentOpts = options as ComponentResourceOptions;
+            var customOpts = options as CustomResourceOptions;
 
-            if (opts.Provider != null &&
+            if (options.Provider != null &&
                 componentOpts?.Providers.Count > 0)
             {
-                throw new ResourceException("Do not supply both 'provider' and 'providers' options to a ComponentResource.", opts.Parent);
+                throw new ResourceException("Do not supply both 'provider' and 'providers' options to a ComponentResource.", options.Parent);
             }
 
             // Check the parent type if one exists and fill in any default options.
             this._providers = ImmutableDictionary<string, ProviderResource>.Empty;
 
-            if (opts.Parent != null)
+            if (options.Parent != null)
             {
-                this._parentResource = opts.Parent;
+                this._parentResource = options.Parent;
                 this._parentResource.ChildResources.Add(this);
 
-                if (opts.Protect == null)
-                    opts.Protect = opts.Parent._protect;
+                if (options.Protect == null)
+                    options.Protect = options.Parent._protect;
 
                 // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
-                opts.Aliases = opts.Aliases.ToList();
-                foreach (var parentAlias in opts.Parent._aliases)
+                options.Aliases = options.Aliases.ToList();
+                foreach (var parentAlias in options.Parent._aliases)
                 {
-                    opts.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, opts.Parent.Name, parentAlias, type));
+                    options.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, options.Parent.Name, parentAlias, type));
                 }
 
-                this._providers = opts.Parent._providers;
+                this._providers = options.Parent._providers;
             }
 
             if (custom)
@@ -205,12 +205,12 @@ namespace Pulumi
                 var provider = customOpts?.Provider;
                 if (provider == null)
                 {
-                    if (opts.Parent != null)
+                    if (options.Parent != null)
                     {
                         // If no provider was given, but we have a parent, then inherit the
                         // provider from our parent.
 
-                        opts.Provider = opts.Parent.GetProvider(type);
+                        options.Provider = options.Parent.GetProvider(type);
                     }
                 }
                 else
@@ -227,38 +227,38 @@ namespace Pulumi
             }
             else
             {
-                // Note: we checked above that at most one of opts.provider or opts.providers is
-                // set.
+                // Note: we checked above that at most one of options.provider or options.providers
+                // is set.
 
-                // If opts.provider is set, treat that as if we were given a array of provider with
-                // that single value in it.  Otherwise, take the array of providers, convert it to a
-                // map and combine with any providers we've already set from our parent.
-                var providerList = opts.Provider != null
-                    ? new List<ProviderResource> { opts.Provider }
+                // If options.provider is set, treat that as if we were given a array of provider
+                // with that single value in it.  Otherwise, take the array of providers, convert it
+                // to a map and combine with any providers we've already set from our parent.
+                var providerList = options.Provider != null
+                    ? new List<ProviderResource> { options.Provider }
                     : componentOpts?.Providers;
 
                 this._providers = this._providers.AddRange(ConvertToProvidersMap(providerList));
             }
 
-            this._protect = opts.Protect == true;
+            this._protect = options.Protect == true;
 
             // Collapse any 'Alias'es down to URNs. We have to wait until this point to do so
             // because we do not know the default 'name' and 'type' to apply until we are inside the
             // resource constructor.
             var aliases = ImmutableArray.CreateBuilder<Input<Urn>>();
-            foreach (var alias in opts.Aliases)
+            foreach (var alias in options.Aliases)
             {
-                aliases.Add(CollapseAliasToUrn(alias, name, type, opts.Parent));
+                aliases.Add(CollapseAliasToUrn(alias, name, type, options.Parent));
             }
             this._aliases = aliases.ToImmutable();
 
-            if (opts.Id != null)
+            if (options.Id != null)
             {
                 // If this resource already exists, read its state rather than registering it anew.
                 if (!custom)
                 {
                     throw new ResourceException(
-                        "Cannot read an existing resource unless it has a custom provider", opts.Parent);
+                        "Cannot read an existing resource unless it has a custom provider", options.Parent);
                 }
 
                 throw new NotSupportedException("Reading is not yet implemented");
@@ -270,7 +270,7 @@ namespace Pulumi
                 // this resource's properties will be resolved asynchronously after the operation
                 // completes, so that dependent computations resolve normally.  If we are just
                 // planning, on the other hand, values will never resolve.
-                Deployment.InternalInstance.RegisterResource(this, custom, args, opts);
+                Deployment.InternalInstance.RegisterResource(this, custom, args, options);
             }
         }
 

@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2018, Pulumi Corporation
 
 #nullable enable
 
@@ -82,7 +82,7 @@ namespace Pulumi
             //
             // For example:
             // * name: "newapp-function"
-            // * opts.parent.__name: "newapp"
+            // * options.parent.__name: "newapp"
             // * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
             // * parentAliasName: "app"
             // * aliasName: "app-function"

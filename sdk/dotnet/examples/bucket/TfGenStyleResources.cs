@@ -8,8 +8,8 @@ namespace AWS.S3
 {
     public class BucketObject : CustomResource
     {
-        public BucketObject(string name, BucketObjectArgs args, ResourceOptions opts = null)
-            : base("aws:s3/bucketObject:BucketObject", name, args, opts)
+        public BucketObject(string name, BucketObjectArgs args, ResourceOptions options = null)
+            : base("aws:s3/bucketObject:BucketObject", name, args, options)
         {
             OnConstructorCompleted();
         }
@@ -41,8 +41,8 @@ namespace AWS.S3
         private readonly StringOutputCompletionSource _bucketDomainName;
         public Output<string> BucketDomainName => _bucketDomainName.Output;
 
-        public Bucket(string name, BucketArgs args, ResourceOptions opts = null)
-            : base("aws:s3/bucket:Bucket", name, args, opts)
+        public Bucket(string name, BucketArgs args, ResourceOptions options = null)
+            : base("aws:s3/bucket:Bucket", name, args, options)
         {
             _bucketDomainName = new StringOutputCompletionSource(this);
             this.OnConstructorCompleted();

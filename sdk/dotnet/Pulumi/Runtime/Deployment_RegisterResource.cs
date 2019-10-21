@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2018, Pulumi Corporation
 
 #nullable enable
 
@@ -20,7 +20,7 @@ namespace Pulumi
     public partial class Deployment
     {
         void IDeploymentInternal.RegisterResource(
-            Resource resource, bool custom, ResourceArgs args, ResourceOptions opts)
+            Resource resource, bool custom, ResourceArgs args, ResourceOptions options)
         {
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
@@ -32,7 +32,7 @@ namespace Pulumi
             this.RegisterTask(
                 $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.Type}-{resource.Name}",
                 resource._onConstructorFinished.Task.ContinueWith(
-                    _ => RegisterResourceAsync(resource, custom, args, opts),
+                    _ => RegisterResourceAsync(resource, custom, args, options),
                     CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap());
         }
 
@@ -69,7 +69,7 @@ namespace Pulumi
 
         private async Task RegisterResourceAsync(
             Resource resource, bool custom,
-            ResourceArgs args, ResourceOptions opts)
+            ResourceArgs args, ResourceOptions options)
         {
             var name = resource.Name;
             var type = resource.Type;
@@ -79,7 +79,7 @@ namespace Pulumi
             try
             {
                 var response = await RegisterResourceWorkerAsync(
-                    resource, custom, args, opts).ConfigureAwait(false);
+                    resource, custom, args, options).ConfigureAwait(false);
 
                 resource._urn.SetResult(response.Urn);
                 if (resource is CustomResource customResource)
@@ -131,7 +131,7 @@ namespace Pulumi
 
         private async Task<RegisterResourceResponse> RegisterResourceWorkerAsync(
             Resource resource, bool custom,
-            ResourceArgs args, ResourceOptions opts)
+            ResourceArgs args, ResourceOptions options)
         {
             var name = resource.Name;
             var type = resource.Type;
@@ -139,10 +139,10 @@ namespace Pulumi
             var label = $"resource:{name}[{type}]";
             Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}");
 
-            var request = CreateRegisterResourceRequest(type, name, custom, opts);
+            var request = CreateRegisterResourceRequest(type, name, custom, options);
 
             Log.Debug($"Preparing resource: t={type}, name={name}, custom={custom}");
-            var prepareResult = await PrepareResourceAsync(label, resource, custom, args, opts).ConfigureAwait(false);
+            var prepareResult = await PrepareResourceAsync(label, resource, custom, args, options).ConfigureAwait(false);
             Log.Debug($"Prepared resource: t={type}, name={name}, custom={custom}");
 
             PopulateRequest(request, prepareResult);
@@ -200,9 +200,9 @@ namespace Pulumi
             return result;
         }
 
-        private static RegisterResourceRequest CreateRegisterResourceRequest(string type, string name, bool custom, ResourceOptions opts)
+        private static RegisterResourceRequest CreateRegisterResourceRequest(string type, string name, bool custom, ResourceOptions options)
         {
-            var customOpts = opts as CustomResourceOptions;
+            var customOpts = options as CustomResourceOptions;
             var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
             var importID = customOpts?.Import;
 
@@ -211,8 +211,8 @@ namespace Pulumi
                 Type = type,
                 Name = name,
                 Custom = custom,
-                Protect = opts.Protect ?? false,
-                Version = opts.Version ?? "",
+                Protect = options.Protect ?? false,
+                Version = options.Version ?? "",
                 ImportId = importID?.Value ?? "",
                 AcceptSecrets = true,
 
@@ -224,16 +224,16 @@ namespace Pulumi
             if (customOpts != null)
                 request.AdditionalSecretOutputs.AddRange(customOpts.AdditionalSecretOutputs);
 
-            request.IgnoreChanges.AddRange(opts.IgnoreChanges);
+            request.IgnoreChanges.AddRange(options.IgnoreChanges);
 
-            if (opts.CustomTimeouts?.Create != null)
-                request.CustomTimeouts.Create = opts.CustomTimeouts.Create;
+            if (options.CustomTimeouts?.Create != null)
+                request.CustomTimeouts.Create = options.CustomTimeouts.Create;
 
-            if (opts.CustomTimeouts?.Delete != null)
-                request.CustomTimeouts.Delete = opts.CustomTimeouts.Delete;
+            if (options.CustomTimeouts?.Delete != null)
+                request.CustomTimeouts.Delete = options.CustomTimeouts.Delete;
 
-            if (opts.CustomTimeouts?.Update != null)
-                request.CustomTimeouts.Update = opts.CustomTimeouts.Update;
+            if (options.CustomTimeouts?.Update != null)
+                request.CustomTimeouts.Update = options.CustomTimeouts.Update;
 
             return request;
         }

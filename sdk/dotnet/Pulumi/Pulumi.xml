@@ -246,7 +246,7 @@
         <member name="P:Pulumi.Alias.Parent">
             <summary>
             The previous parent of the resource. If not provided (i.e. <c>new Alias { Name =
-            "foo"}</c>), the current parent of the resource is used (<c>opts.Parent</c> if provided,
+            "foo"}</c>), the current parent of the resource is used (<c>options.Parent</c> if provided,
             else the implicit stack resource parent).
             
             To specify no original parent, use <c>new Alias { Parent = Pulumi.Stack.Root }</c>.
@@ -257,7 +257,7 @@
         <member name="P:Pulumi.Alias.ParentUrn">
             <summary>
             The previous parent of the resource. If not provided (i.e. <c>new Alias { Name =
-            "foo"}</c>), the current parent of the resource is used (<c>opts.Parent</c> if provided,
+            "foo"}</c>), the current parent of the resource is used (<c>options.Parent</c> if provided,
             else the implicit stack resource parent).
             
             To specify no original parent, use <c>new Alias { Parent = Pulumi.Stack.Root }</c>.
@@ -701,8 +701,8 @@
             <summary>
             Creates and registers a new component resource.  <paramref name="type"/> is the fully
             qualified type token and <paramref name="name"/> is the "name" part to use in creating a
-            stable and globally unique URN for the object. <c>opts.parent</c> is the optional parent
-            for this component, and [opts.dependsOn] is an optional list of other resources that
+            stable and globally unique URN for the object. <c>options.parent</c> is the optional parent
+            for this component, and [options.dependsOn] is an optional list of other resources that
             this resource depends on, controlling the order in which we perform resource operations.
             </summary>
         </member>
@@ -919,7 +919,7 @@
             <param name="name">The unique name of the resource.</param>
             <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
             <param name="args">The arguments to use to populate the new resource.</param>
-            <param name="opts">A bag of options that control this resource's behavior.</param>
+            <param name="options">A bag of options that control this resource's behavior.</param>
         </member>
         <member name="M:Pulumi.Resource.GetProvider(System.String)">
             <summary>
@@ -1007,7 +1007,7 @@
             constructor.  If the transformation returns <see langword="null"/>, this indicates that the
             resource will not be transformed.
             </summary>
-            <returns>The new values to use for the <c>args</c> and <c>opts</c> of the <see
+            <returns>The new values to use for the <c>args</c> and <c>options</c> of the <see
             cref="T:Pulumi.Resource"/> in place of the originally provided values.</returns>
         </member>
         <member name="F:Pulumi.ResourceTransformationArgs.Resource">
@@ -1020,7 +1020,7 @@
             The original properties passed to the Resource constructor.
             </summary>
         </member>
-        <member name="F:Pulumi.ResourceTransformationArgs.Opts">
+        <member name="F:Pulumi.ResourceTransformationArgs.Options">
             <summary>
             The original resource options passed to the Resource constructor.
             </summary>

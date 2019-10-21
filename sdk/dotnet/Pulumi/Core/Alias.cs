@@ -57,7 +57,7 @@ namespace Pulumi
 
         /// <summary>
         /// The previous parent of the resource. If not provided (i.e. <c>new Alias { Name =
-        /// "foo"}</c>), the current parent of the resource is used (<c>opts.Parent</c> if provided,
+        /// "foo"}</c>), the current parent of the resource is used (<c>options.Parent</c> if provided,
         /// else the implicit stack resource parent).
         /// 
         /// To specify no original parent, use <c>new Alias { Parent = Pulumi.Stack.Root }</c>.
@@ -68,7 +68,7 @@ namespace Pulumi
 
         /// <summary>
         /// The previous parent of the resource. If not provided (i.e. <c>new Alias { Name =
-        /// "foo"}</c>), the current parent of the resource is used (<c>opts.Parent</c> if provided,
+        /// "foo"}</c>), the current parent of the resource is used (<c>options.Parent</c> if provided,
         /// else the implicit stack resource parent).
         /// 
         /// To specify no original parent, use <c>new Alias { Parent = Pulumi.Stack.Root }</c>.

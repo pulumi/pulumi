@@ -31,10 +31,10 @@ namespace Pulumi
         /// instead, this is dependent upon the diffing of the new goal state compared to the
         /// current known resource state.
         /// </summary>
-        public CustomResource(string type, string name, ResourceArgs args, ResourceOptions? opts = null)
-            : base(type, name, custom: true, args, opts ?? new ResourceOptions())
+        public CustomResource(string type, string name, ResourceArgs args, ResourceOptions? options = null)
+            : base(type, name, custom: true, args, options ?? new ResourceOptions())
         {
-            if (opts is ComponentResourceOptions componentOpts && componentOpts.Providers != null)
+            if (options is ComponentResourceOptions componentOpts && componentOpts.Providers != null)
             {
                 throw new ResourceException("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", this);
             }

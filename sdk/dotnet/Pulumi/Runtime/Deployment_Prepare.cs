@@ -14,7 +14,7 @@ namespace Pulumi
     {
         private async Task<PrepareResult> PrepareResourceAsync(
             string label, Resource res, bool custom,
-            ResourceArgs args, ResourceOptions opts)
+            ResourceArgs args, ResourceOptions options)
         {
             /* IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
@@ -24,7 +24,7 @@ namespace Pulumi
 
             Log.Debug($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}");
             var explicitDirectDependencies = new HashSet<Resource>(
-                await GatherExplicitDependenciesAsync(opts.DependsOn).ConfigureAwait(false));
+                await GatherExplicitDependenciesAsync(options.DependsOn).ConfigureAwait(false));
             Log.Debug($"Gathered explicit dependencies: t={type}, name={name}, custom={custom}");
 
             // Serialize out all our props to their final values.  In doing so, we'll also collect all
@@ -37,15 +37,15 @@ namespace Pulumi
             // Wait for the parent to complete.
             // If no parent was provided, parent to the root resource.
             Log.Debug($"Getting parent urn: t={type}, name={name}, custom={custom}");
-            var parentURN = opts.Parent != null
-                ? await opts.Parent.Urn.GetValueAsync().ConfigureAwait(false)
+            var parentURN = options.Parent != null
+                ? await options.Parent.Urn.GetValueAsync().ConfigureAwait(false)
                 : await GetRootResourceAsync(type).ConfigureAwait(false);
             Log.Debug($"Got parent urn: t={type}, name={name}, custom={custom}");
 
             string? providerRef = null;
             if (custom)
             {
-                var customOpts = opts as CustomResourceOptions;
+                var customOpts = options as CustomResourceOptions;
                 providerRef = await ProviderResource.RegisterAsync(customOpts?.Provider).ConfigureAwait(false);
             }
 
@@ -67,7 +67,7 @@ namespace Pulumi
                 propertyToDirectDependencyURNs[propertyName] = urns;
             }
 
-            // Wait for all aliases. Note that we use 'res._aliases' instead of 'opts.aliases' as
+            // Wait for all aliases. Note that we use 'res._aliases' instead of 'options.aliases' as
             // the former has been processed in the Resource constructor prior to calling
             // 'registerResource' - both adding new inherited aliases and simplifying aliases down
             // to URNs.

@@ -16,7 +16,7 @@ namespace Pulumi
     /// constructor.  If the transformation returns <see langword="null"/>, this indicates that the
     /// resource will not be transformed.
     /// </summary>
-    /// <returns>The new values to use for the <c>args</c> and <c>opts</c> of the <see
+    /// <returns>The new values to use for the <c>args</c> and <c>options</c> of the <see
     /// cref="Resource"/> in place of the originally provided values.</returns>
     public delegate ResourceTransformationResult? ResourceTransformation(ResourceTransformationArgs args);
 
@@ -33,26 +33,26 @@ namespace Pulumi
         /// <summary>
         /// The original resource options passed to the Resource constructor.
         /// </summary>
-        public readonly ResourceOptions Opts;
+        public readonly ResourceOptions Options;
 
         public ResourceTransformationArgs(
-            Resource resource, ResourceArgs args, ResourceOptions opts)
+            Resource resource, ResourceArgs args, ResourceOptions options)
         {
             Resource = resource;
             Args = args;
-            Opts = opts;
+            Options = options;
         }
     }
 
     public struct ResourceTransformationResult
     {
         public readonly ResourceArgs Args;
-        public readonly ResourceOptions Opts;
+        public readonly ResourceOptions Options;
 
-        public ResourceTransformationResult(ResourceArgs args, ResourceOptions opts)
+        public ResourceTransformationResult(ResourceArgs args, ResourceOptions options)
         {
             Args = args;
-            Opts = opts;
+            Options = options;
         }
     }
 }
