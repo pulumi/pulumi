@@ -18,7 +18,7 @@ namespace Pulumi
         {
         }
 
-        internal IDictionary<string, IInput> ToDictionary()
+        internal ImmutableDictionary<string, IInput> ToDictionary()
         {
             var dictionaryBuilder = ImmutableDictionary.CreateBuilder<string, IInput>();
             AddProperties(new PropertyBuilder(dictionaryBuilder));

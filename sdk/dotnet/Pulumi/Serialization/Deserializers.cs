@@ -97,7 +97,7 @@ namespace Pulumi.Rpc
                 return (result.ToImmutable(), isSecret);
             };
 
-        public static  readonly Deserializer<object?> GenericDeserializer =
+        public static readonly Deserializer<object?> GenericDeserializer =
             v =>
             {
                 var (unwrapped, isSecret) = UnwrapSecret(v);

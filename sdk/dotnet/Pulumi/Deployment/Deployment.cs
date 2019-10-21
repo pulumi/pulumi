@@ -3,40 +3,12 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Pulumirpc;
 
 namespace Pulumi
 {
-    internal interface IDeploymentInternal : IDeployment
-    {
-        Options Options { get; }
-        string? GetConfig(string fullKey);
-
-        new Stack Stack { get; set; }
-
-        Task DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
-        Task InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
-        Task WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
-        Task ErrorAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
-
-        Task SetRootResourceAsync(Stack stack);
-
-        void RegisterResource(Resource resource, bool custom, ResourceArgs args, ResourceOptions opts);
-        void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object>> outputs);
-    }
-
-    public interface IDeployment
-    {
-        string StackName { get; }
-        string ProjectName { get; }
-        bool IsDryRun { get; }
-
-        Stack Stack { get; }
-    }
-
     /// <summary>
     /// <see cref="Deployment"/> is the entrypoint to a Pulumi application. .NET applications should
     /// should perform all startup logic they need in their <c>Main</c> method and then end with:
