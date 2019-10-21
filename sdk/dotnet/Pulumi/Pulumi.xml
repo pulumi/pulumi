@@ -32,13 +32,13 @@
             langword="null"/> if it doesn't exist.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.GetBool(System.String)">
+        <member name="M:Pulumi.Config.GetBoolean(System.String)">
             <summary>
             Loads an optional configuration value, as a boolean, by its key, or null if it doesn't exist.
             If the configuration value isn't a legal boolean, this function will throw an error.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.GetSecretBool(System.String)">
+        <member name="M:Pulumi.Config.GetSecretBoolean(System.String)">
             <summary>
             loads an optional configuration value, as a boolean, by its key, making it as a secret or
             null if it doesn't exist. If the configuration value isn't a legal boolean, this
@@ -69,13 +69,13 @@
             is thrown.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.RequireBool(System.String)">
+        <member name="M:Pulumi.Config.RequireBoolean(System.String)">
             <summary>
             loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
             configuration value is not a legal boolean, an error is thrown.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.RequireSecretBool(System.String)">
+        <member name="M:Pulumi.Config.RequireSecretBoolean(System.String)">
             <summary>
             loads a configuration value, as a boolean, by its given key, marking it as a secret.
             If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
