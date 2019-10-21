@@ -266,8 +266,7 @@ namespace Pulumi
                         "Cannot read an existing resource unless it has a custom provider", options.Parent);
                 }
 
-                throw new NotSupportedException("Reading is not yet implemented");
-                // Deployment.Instance.ReadResource(this, type, name, args, opts);
+                Deployment.InternalInstance.ReadResource(this, args, options);
             }
             else
             {
