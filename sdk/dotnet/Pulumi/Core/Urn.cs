@@ -10,25 +10,8 @@ namespace Pulumi
     /// An automatically generated logical URN, used to stably identify resources. These are created
     /// automatically by Pulumi to identify resources.  They cannot be manually constructed.
     /// </summary>
-    public static class Urn
+    internal static class Urn
     {
-        //internal readonly string Value;
-
-        //internal Urn(string value)
-        //    => Value = value ?? throw new ArgumentNullException(nameof(value));
-
-        //public override string ToString()
-        //    => Value;
-
-        //public override int GetHashCode()
-        //    => Value.GetHashCode(StringComparison.Ordinal);
-
-        //public override bool Equals(object? obj)
-        //    => obj is Urn urn && Equals(urn);
-
-        //public bool Equals(Urn urn)
-        //    => Value == urn?.Value;
-
         /// <summary>
         /// Computes a URN from the combination of a resource name, resource type, optional parent,
         /// optional project and optional stack.
