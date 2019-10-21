@@ -558,6 +558,13 @@
             program ending early before all resources are properly registered.
             </summary>
         </member>
+        <member name="M:Pulumi.Deployment.CompleteResourceAsync(Pulumi.Resource,System.Func{System.Threading.Tasks.Task{System.ValueTuple{System.String,System.String,Google.Protobuf.WellKnownTypes.Struct}}})">
+            <summary>
+            Executes the provided <paramref name="action"/> and then completes all the 
+            <see cref="T:Pulumi.Rpc.OutputCompletionSource`1"/> sources on the <paramref name="resource"/> with
+            the results of it.
+            </summary>
+        </member>
         <member name="F:Pulumi.Deployment._configEnvKey">
             <summary>
             The environment variable key that the language plugin uses to set configuration values.
@@ -927,12 +934,12 @@
             A list of aliases applied to this resource.
             </summary>
         </member>
-        <member name="P:Pulumi.Resource.Type">
+        <member name="M:Pulumi.Resource.GetResourceType">
             <summary>
             The type assigned to the resource at construction.
             </summary>
         </member>
-        <member name="P:Pulumi.Resource.Name">
+        <member name="M:Pulumi.Resource.GetResourceName">
             <summary>
             The name assigned to the resource at construction.
             </summary>
