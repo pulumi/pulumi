@@ -158,14 +158,15 @@ func colorizeText(s string, c Colorization, maxLen int) string {
 		// Copy the text up to but not including the delimiter into the buffer.
 		text := input[:nextDirectiveStart]
 		if maxLen >= 0 && textLen+len(text) > maxLen {
-			_, err := buf.WriteString(text[:maxLen])
+			_, err := buf.WriteString(text[:maxLen-textLen])
 			contract.IgnoreError(err)
 			writeDirective(&buf, c, Reset)
 			break
 		}
-		_, err := buf.WriteString(input[:nextDirectiveStart])
+		_, err := buf.WriteString(text)
 		contract.IgnoreError(err)
 		input = input[nextDirectiveStart+len(colorLeft):]
+		textLen += len(text)
 
 		// If we have a start delimiter but no end delimiter, terminate. The partial command will not be present in the
 		// output.
