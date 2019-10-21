@@ -8,7 +8,7 @@ namespace Pulumi.Azure.Storage
     {
         [ResourceField("name")]
         private readonly StringOutputCompletionSource _name;
-        public Output<string> Name1 => _name.Output;
+        public new Output<string> Name => _name.Output;
 
         public Container(string name, ContainerArgs args = default, ResourceOptions opts = default)
             : base("azure:storage/container:Container", name, args, opts)

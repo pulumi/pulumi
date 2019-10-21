@@ -20,14 +20,14 @@ namespace Pulumi.CSharpExamples
 
             var storageAccount = new Account("sa", new AccountArgs
             {
-                ResourceGroupName = resourceGroup.Name1,
+                ResourceGroupName = resourceGroup.Name,
                 AccountReplicationType = "LRS",
                 AccountTier = "Standard",
             });
 
             var appServicePlan = new Plan("asp", new PlanArgs
             {
-                ResourceGroupName = resourceGroup.Name1,
+                ResourceGroupName = resourceGroup.Name,
                 Kind = "App",
                 Sku = new PlanSkuArgs
                 {
@@ -38,14 +38,14 @@ namespace Pulumi.CSharpExamples
 
             var container = new Container("c", new ContainerArgs
             {
-                StorageAccountName = storageAccount.Name1,
+                StorageAccountName = storageAccount.Name,
                 ContainerAccessType = "private",
             });
 
             var blob = new ZipBlob("zip", new ZipBlobArgs
             {
-                StorageAccountName = storageAccount.Name1,
-                StorageContainerName = container.Name1,
+                StorageAccountName = storageAccount.Name,
+                StorageContainerName = container.Name,
                 Type = "block",
                 Content = new FileArchive("wwwroot"),
             });
@@ -71,8 +71,8 @@ namespace Pulumi.CSharpExamples
 
             var app = new AppService("app", new AppServiceArgs
             {
-                ResourceGroupName = resourceGroup.Name1,
-                AppServicePlanId = appServicePlan.Id1,
+                ResourceGroupName = resourceGroup.Name,
+                AppServicePlanId = appServicePlan.Id,
                 AppSettings =
                 {
                     { "WEBSITE_RUN_FROM_ZIP", codeBlobUrl },
