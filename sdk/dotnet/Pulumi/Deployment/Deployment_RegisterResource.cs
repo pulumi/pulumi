@@ -71,9 +71,6 @@ namespace Pulumi
             Resource resource, bool custom,
             ResourceArgs args, ResourceOptions options)
         {
-            var name = resource.Name;
-            var type = resource.Type;
-
             var completionSources = GetOutputCompletionSources(resource);
 
             try

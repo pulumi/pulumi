@@ -77,7 +77,7 @@ namespace Pulumi
                     reasons += $"{reason.Reason} ({reason.Property})";
                 }
 
-                throw new InvokeException(reasons);
+                throw new InvokeException($"Invoke of '{token}' failed: {reasons}");
             }
 
             var (deserialized, _) = Deserializers.GenericStructDeserializer(new Value { StructValue = result.Return });

@@ -44,7 +44,7 @@ namespace Pulumi
         internal static IDeploymentInternal InternalInstance
             => (IDeploymentInternal)Instance;
 
-        private Options _options;
+        private readonly Options _options;
         Options IDeploymentInternal.Options => _options;
 
         internal Engine.EngineClient Engine { get; }
