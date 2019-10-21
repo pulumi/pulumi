@@ -1,29 +1,33 @@
-﻿using System;
+﻿using Pulumi.Rpc;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Pulumi.Azure.AppService
 {
-    public class AppService //: CustomResource
+    public class AppService : CustomResource
     {
-        public Output<string> Name { get; }
-        public Output<string> DefaultSiteHostname { get; }        
-
-        public AppService(string name, AppServiceArgs args = default, ResourceOptions opts = default)// : base("appservice.AppService", name, props(args), opts)
+        [ResourceField("defaultSiteHostname")]
+        private readonly StringOutputCompletionSource _defaultSiteHostname;
+        public Output<string> DefaultSiteHostname => _defaultSiteHostname.Output;
+        
+        public AppService(string name, AppServiceArgs args = default, ResourceOptions opts = default)
+            : base("azure:appservice/appService:AppService", name, args, opts)
         {
-            this.Name = Output.Create(name + "abc123de");
-            this.DefaultSiteHostname = this.Name.Apply(name => $"{name}.azurewebsites.net");
-            Console.WriteLine($"    └─ appservice.AppService  {name, -11} created");
+            _defaultSiteHostname = new StringOutputCompletionSource(this);
+            this.OnConstructorCompleted();
         }
     }
 
-    public class AppServiceArgs
+    public class AppServiceArgs : ResourceArgs
     {
+        public Input<string> AppServicePlanId { get; set; }
         public Input<string> Location { get; set; }
         public Input<string> ResourceGroupName { get; set; }
-        public Input<string> AppServicePlanId { get; set; }
-        private InputMap<string, string> _appSettings;
-        public InputMap<string, string> AppSettings
+
+
+        private InputMap<string> _appSettings;
+        public InputMap<string> AppSettings
         {
             get => _appSettings ?? (_appSettings = new Dictionary<string, string>());
             set => _appSettings = value;
@@ -33,6 +37,15 @@ namespace Pulumi.Azure.AppService
         {
             get => _connectionStrings ?? (_connectionStrings = new List<ConnectionStringArgs>());
             set => _connectionStrings = value;
+        }
+
+        protected override void AddProperties(PropertyBuilder builder)
+        {
+            builder.Add("appServicePlanId", AppServicePlanId);
+            builder.Add("location", Location);
+            builder.Add("resourceGroupName", ResourceGroupName);
+            builder.Add("appSettings", AppSettings);
+            //builder.Add("connectionStrings", ConnectionStrings);
         }
     }
 

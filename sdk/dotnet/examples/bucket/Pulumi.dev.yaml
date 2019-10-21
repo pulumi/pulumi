@@ -1,0 +1,3 @@
+config:
+  aws:region: eu-central-1
+  hello-dotnet:name: helloworld

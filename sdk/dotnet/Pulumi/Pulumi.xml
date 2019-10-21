@@ -133,7 +133,7 @@
             The legal enum values. If it does not match, a ConfigEnumError is thrown.
             </summary>
         </member>
-        <member name="F:Pulumi.Config.StringOptions.MinLength">
+        <member name="P:Pulumi.Config.StringOptions.MinLength">
             <summary>
             The minimum string length. If the string is not this long, a ConfigRangeError is thrown.
             </summary>
@@ -631,15 +631,15 @@
         </member>
         <member name="T:Pulumi.ResourceException">
             <summary>
-            ResourceError can be used for terminating a program abruptly, specifically associating the
+            ResourceException can be used for terminating a program abruptly, specifically associating the
             problem with a Resource.Depending on the nature of the problem, clients can choose whether
-            or not a call stack should be returned as well.This should be very rare, and would only
+            or not a call stack should be returned as well. This should be very rare, and would only
             indicate no usefulness of presenting that stack to the user.
             </summary>
         </member>
         <member name="T:Pulumi.RunException">
             <summary>
-            RunError can be used for terminating a program abruptly, but resulting in a clean exit
+            RunException can be used for terminating a program abruptly, but resulting in a clean exit
             rather than the usual verbose unhandled error logic which emits the source program text and
             complete stack trace.  This type should be rarely used.  Ideally <see
             cref="T:Pulumi.ResourceException"/> should always be used so that as many errors as possible can be

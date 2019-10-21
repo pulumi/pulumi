@@ -5,11 +5,11 @@
         // TODO
     }
 
-    public class FileArchive : IArchive
-    {
-        public FileArchive(string name)
-        {
-            // TODO
-        }
-    }
+    //public class FileArchive : IArchive
+    //{
+    //    public FileArchive(string name)
+    //    {
+    //        // TODO
+    //    }
+    //}
 }

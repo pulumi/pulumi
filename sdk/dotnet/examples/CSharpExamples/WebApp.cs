@@ -1,95 +1,99 @@
-﻿using System.Collections.Generic;
+﻿// Copyright 2016-2019, Pulumi Corporation
+
+#nullable enable
+
+using System.Collections.Generic;
 using Pulumi.Azure.Core;
-using Pulumi.Azure.Sql;
-using Storage = Pulumi.Azure.Storage;
-using AppService = Pulumi.Azure.AppService;
+using Pulumi.Azure.AppService;
+using Pulumi.Azure.Storage;
 
 namespace Pulumi.CSharpExamples
 {
     public class WebApp
     {
-        public static IDictionary<string, Output<string>> Run()
+        public static Dictionary<string, object> Run()
         {
-            var resourceGroup = new ResourceGroup("rg");
-
-            var storageAccount = new Storage.Account("sa", new Storage.AccountArgs
+            var resourceGroup = new ResourceGroup("dotnet-rg", new ResourceGroupArgs
             {
-                ResourceGroupName = resourceGroup.Name,
-                AccountKind = "StorageV2",
-                AccountTier = "Standard",
-                AccountReplicationType = "LRS",
+                Location = "West Europe"
             });
 
-            var appServicePlan = new AppService.Plan("asp", new AppService.PlanArgs
+            var storageAccount = new Account("sa", new AccountArgs
             {
-                ResourceGroupName = resourceGroup.Name,
+                ResourceGroupName = resourceGroup.Name1,
+                AccountReplicationType = "LRS",
+                AccountTier = "Standard",
+            });
+
+            var appServicePlan = new Plan("asp", new PlanArgs
+            {
+                ResourceGroupName = resourceGroup.Name1,
                 Kind = "App",
-                Sku = new AppService.PlanSkuArgs
+                Sku = new PlanSkuArgs
                 {
                     Tier = "Basic",
                     Size = "B1",
                 },
             });
 
-            var container = new Storage.Container("c", new Storage.ContainerArgs
+            var container = new Container("c", new ContainerArgs
             {
-                StorageAccountName = storageAccount.Name,
+                StorageAccountName = storageAccount.Name1,
                 ContainerAccessType = "private",
             });
 
-            var blob = new Storage.ZipBlob("zip", new Storage.ZipBlobArgs
+            var blob = new ZipBlob("zip", new ZipBlobArgs
             {
-                StorageAccountName = storageAccount.Name,
-                StorageContainerName = container.Name,
+                StorageAccountName = storageAccount.Name1,
+                StorageContainerName = container.Name1,
                 Type = "block",
-                Content = new Asset.FileArchive("wwwroot"),
+                Content = new FileArchive("wwwroot"),
             });
 
-            var codeBlobUrl = Storage.SharedAccessSignature.SignedBlobReadUrl(blob, storageAccount);
+            var codeBlobUrl = SharedAccessSignature.SignedBlobReadUrl(blob, storageAccount);
 
-            var username = "sa"; // TODO: Pulumi.Config
-            var password = "pwd";
-            var sqlServer = new SqlServer("sql", new SqlServerArgs
-            {
-                ResourceGroupName = resourceGroup.Name,
-                AdministratorLogin = username, 
-                AdministratorLoginPassword = password,
-                Version = "12.0",
-            });
+            //var username = "sa"; // TODO: Pulumi.Config
+            //var password = "pwd";
+            //var sqlServer = new SqlServer("sql", new SqlServerArgs
+            //{
+            //    ResourceGroupName = resourceGroup.Name,
+            //    AdministratorLogin = username,
+            //    AdministratorLoginPassword = password,
+            //    Version = "12.0",
+            //});
 
-            var database = new Database("db", new DatabaseArgs
-            {
-                ResourceGroupName = resourceGroup.Name,
-                ServerName = sqlServer.Name,
-                RequestedServiceObjectiveName = "S0",
-            });
+            //var database = new Database("db", new DatabaseArgs
+            //{
+            //    ResourceGroupName = resourceGroup.Name,
+            //    ServerName = sqlServer.Name,
+            //    RequestedServiceObjectiveName = "S0",
+            //});
 
-            // Namespace == Class name feels awkward
-            var app = new AppService.AppService("app", new AppService.AppServiceArgs
+            var app = new AppService("app", new AppServiceArgs
             {
-                ResourceGroupName = resourceGroup.Name,
-                AppServicePlanId = appServicePlan.Id,
+                ResourceGroupName = resourceGroup.Name1,
+                AppServicePlanId = appServicePlan.Id1,
                 AppSettings =
                 {
                     { "WEBSITE_RUN_FROM_ZIP", codeBlobUrl },
                 },
-                ConnectionStrings = new[]
-                {
-                    new AppService.ConnectionStringArgs 
-                    { 
-                        Name = "db", 
-                        Type = "SQLAzure",
-                        Value = Output.All<string>(sqlServer.Name, database.Name).Apply(values =>
-                        {
-                            return $"Server= tcp:${values[0]}.database.windows.net;initial catalog=${values[1]};userID=${username};password=${password};Min Pool Size=0;Max Pool Size=30;Persist Security Info=true;";
-                        }),
-                    },
-                },
+                //ConnectionStrings = new[]
+                //{
+                //    new AppService.ConnectionStringArgs
+                //    {
+                //        Name = "db",
+                //        Type = "SQLAzure",
+                //        Value = Output.All<string>(sqlServer.Name, database.Name).Apply(values =>
+                //        {
+                //            return $"Server= tcp:${values[0]}.database.windows.net;initial catalog=${values[1]};userID=${username};password=${password};Min Pool Size=0;Max Pool Size=30;Persist Security Info=true;";
+                //        }),
+                //    },
+                //},
             });
 
-            return new Dictionary<string, Output<string>>
+            return new Dictionary<string, object>
             {
-                { "endpoint", app.DefaultSiteHostname.Apply(hostname => $"https://{hostname}") }
+                { "endpoint", app.DefaultSiteHostname },
             };
         }
     }
