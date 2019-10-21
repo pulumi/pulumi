@@ -58,6 +58,19 @@
             If the configuration value isn't a legal number, this function will throw an error.
             </summary>
         </member>
+        <member name="M:Pulumi.Config.GetJson(System.String)">
+            <summary>
+            loads an optional configuration value, as an object, by its key, or null if it doesn't
+            exist. This routine simply JSON parses and doesn't validate the shape of the contents.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.GetSecretJson(System.String)">
+            <summary>
+            Loads an optional configuration value, as an object, by its key, marking it as a secret
+            or null if it doesn't exist. This routine simply JSON parses and doesn't validate the
+            shape of the contents.
+            </summary>
+        </member>
         <member name="M:Pulumi.Config.Require(System.String,Pulumi.Config.StringOptions)">
             <summary>
             Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
@@ -91,6 +104,20 @@
             <summary>
             loads a configuration value, as a number, by its given key, marking it as a secret.
             If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.RequireJson(System.String)">
+            <summary>
+            Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
+            object. If it doesn't exist, or the configuration value is not a legal JSON string, an
+            error is thrown.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Config.RequireSecretJson(System.String)">
+            <summary>
+            Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
+            object, marking it as a secret. If it doesn't exist, or the configuration value is not a
+            legal JSON string, an error is thrown.
             </summary>
         </member>
         <member name="M:Pulumi.Config.FullKey(System.String)">
@@ -536,11 +563,6 @@
             program ending early before all resources are properly registered.
             </summary>
         </member>
-        <member name="F:Pulumi.Deployment.DryRun">
-            <summary>
-            If we're in preview mode or not.
-            </summary>
-        </member>
         <member name="F:Pulumi.Deployment._configEnvKey">
             <summary>
             The environment variable key that the language plugin uses to set configuration values.
@@ -556,7 +578,7 @@
             sets a configuration variable.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.GetConfig(System.String)">
+        <member name="M:Pulumi.Deployment.Pulumi#IDeploymentInternal#GetConfig(System.String)">
             <summary>
             returns a configuration variable's value or <see langword="null"/> if it is unset.
             </summary>
@@ -571,23 +593,23 @@
             remove this function.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.DebugAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.Pulumi#IDeploymentInternal#DebugAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Logs a debug-level message that is generally hidden from end-users.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.InfoAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.Pulumi#IDeploymentInternal#InfoAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Logs an informational message that is generally printed to stdout during resource
             operations.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.WarnAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.Pulumi#IDeploymentInternal#WarnAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Warn logs a warning to indicate that something went wrong, but not catastrophically so.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.ErrorAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
+        <member name="M:Pulumi.Deployment.Pulumi#IDeploymentInternal#ErrorAsync(System.String,Pulumi.Resource,System.Nullable{System.Int32},System.Nullable{System.Boolean})">
             <summary>
             Error logs a fatal error to indicate that the tool should stop processing resource
             operations immediately.

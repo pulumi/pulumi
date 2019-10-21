@@ -19,7 +19,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        internal void RegisterResource(
+        void IDeploymentInternal.RegisterResource(
             Resource resource, bool custom, ResourceArgs args, ResourceOptions opts)
         {
             // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
@@ -30,7 +30,7 @@ namespace Pulumi
             // the object finishing initializing.  Note: this is not a speculative concern. This is
             // something that does happen and has to be accounted for.
             this.RegisterTask(
-                $"{nameof(RegisterResource)}: {resource.Type}-{resource.Name}",
+                $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.Type}-{resource.Name}",
                 resource._onConstructorFinished.Task.ContinueWith(
                     _ => RegisterResourceAsync(resource, custom, args, opts),
                     CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap());
@@ -124,7 +124,7 @@ namespace Pulumi
                     // Didn't get a value for this field.  Resolve it with a default value.
                     // If we're in preview, we'll consider this unknown and in a normal
                     // update we'll consider it known.
-                    source.SetDefaultResult(isKnown: !DryRun);
+                    source.SetDefaultResult(isKnown: !this.IsDryRun);
                 }
             }
         }

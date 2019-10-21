@@ -31,7 +31,7 @@ namespace Pulumi
             return await _rootResource.ConfigureAwait(false);
         }
 
-        internal Task SetRootResourceAsync(Stack stack)
+        Task IDeploymentInternal.SetRootResourceAsync(Stack stack)
         {
             if (_rootResource != null)
                 throw new InvalidOperationException("Tried to set the root resource more than once!");
@@ -40,7 +40,7 @@ namespace Pulumi
             return _rootResource;
         }
 
-        internal async Task<Urn> SetRootResourceWorkerAsync(Stack stack)
+        private async Task<Urn> SetRootResourceWorkerAsync(Stack stack)
         {
             var resUrn = await stack.Urn.GetValueAsync().ConfigureAwait(false);
             await this.Engine.SetRootResourceAsync(new SetRootResourceRequest

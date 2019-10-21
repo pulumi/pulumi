@@ -33,7 +33,7 @@ namespace Pulumi
         {
             if (name == null)
             {
-                name = Deployment.Instance.Options.Project;
+                name = Deployment.InternalInstance.Options.Project;
             }
 
             if (name.EndsWith(":config", StringComparison.Ordinal))
@@ -56,7 +56,7 @@ namespace Pulumi
         /// </summary>
         public string? Get(string key, StringOptions? opts = null)
         {
-            var v = Deployment.Instance.GetConfig(this.FullKey(key));
+            var v = Deployment.InternalInstance.GetConfig(this.FullKey(key));
             if (v == null)
             {
                 return null;

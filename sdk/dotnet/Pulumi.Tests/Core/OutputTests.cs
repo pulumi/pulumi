@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Moq;
 using Xunit;
 
 namespace Pulumi.Tests.Core
@@ -17,16 +18,11 @@ namespace Pulumi.Tests.Core
 
         private static async Task Run(Func<Task> func, bool dryRun)
         {
-            var originalValue = Deployment.DryRun;
-            try
-            {
-                Deployment.DryRun = dryRun;
-                await func().ConfigureAwait(false);
-            }
-            finally
-            {
-                Deployment.DryRun = originalValue;
-            }
+            var mock = new Mock<IDeployment>(MockBehavior.Strict);
+            mock.Setup(d => d.IsDryRun).Returns(dryRun);
+
+            Deployment.Instance = mock.Object;
+            await func().ConfigureAwait(false);
         }
 
         public class PreviewTests
@@ -104,7 +100,7 @@ namespace Pulumi.Tests.Core
                     var o1 = CreateOutput(0, isKnown: false);
                     var o2 = o1.Apply(a => a + 1);
                     var data = await o2.DataTask.ConfigureAwait(false);
-                    Assert.False(data.IsKnown);
+                    Assert.True(data.IsKnown);
                     Assert.Equal(1, data.Value);
                 });
 

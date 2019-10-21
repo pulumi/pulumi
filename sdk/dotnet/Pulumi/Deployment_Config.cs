@@ -5,8 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace Pulumi
@@ -46,7 +44,7 @@ namespace Pulumi
         /// <summary>
         /// returns a configuration variable's value or <see langword="null"/> if it is unset.
         /// </summary>
-        internal string? GetConfig(string key)
+        string? IDeploymentInternal.GetConfig(string key)
         {
             lock (_configGate)
             {

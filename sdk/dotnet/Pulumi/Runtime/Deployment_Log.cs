@@ -31,7 +31,7 @@ namespace Pulumi
         /// <summary>
         /// Logs a debug-level message that is generally hidden from end-users.
         /// </summary>
-        internal Task DebugAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        Task IDeploymentInternal.DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
         {
             Serilog.Log.Debug(message);
             return LogImplAsync(LogSeverity.Debug, message, resource, streamId, ephemeral);
@@ -41,7 +41,7 @@ namespace Pulumi
         /// Logs an informational message that is generally printed to stdout during resource
         /// operations.
         /// </summary>
-        internal Task InfoAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        Task IDeploymentInternal.InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
         {
             Serilog.Log.Information(message);
             return LogImplAsync(LogSeverity.Info, message, resource, streamId, ephemeral);
@@ -50,7 +50,7 @@ namespace Pulumi
         /// <summary>
         /// Warn logs a warning to indicate that something went wrong, but not catastrophically so.
         /// </summary>
-        internal Task WarnAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        Task IDeploymentInternal.WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
         {
             Serilog.Log.Warning(message);
             return LogImplAsync(LogSeverity.Warning, message, resource, streamId, ephemeral);
@@ -60,7 +60,10 @@ namespace Pulumi
         /// Error logs a fatal error to indicate that the tool should stop processing resource
         /// operations immediately.
         /// </summary>
-        internal Task ErrorAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
+        Task IDeploymentInternal.ErrorAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
+            => ErrorAsync(message, resource, streamId, ephemeral);
+
+        private Task ErrorAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
         {
             Serilog.Log.Error(message);
             return LogImplAsync(LogSeverity.Error, message, resource, streamId, ephemeral);

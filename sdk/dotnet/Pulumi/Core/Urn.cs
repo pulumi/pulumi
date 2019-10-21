@@ -55,7 +55,7 @@ namespace Pulumi
             }
             else
             {
-                parentPrefix = Output.Create($"urn:pulumi:{stack ?? Deployment.Instance.Options.Stack}::{project ?? Deployment.Instance.Options.Project}::");
+                parentPrefix = Output.Create($"urn:pulumi:{stack ?? Deployment.Instance.StackName}::{project ?? Deployment.Instance.ProjectName}::");
             }
 
             return Output.Format($"{parentPrefix}{type}::{name}").Apply(value => new Urn(value));

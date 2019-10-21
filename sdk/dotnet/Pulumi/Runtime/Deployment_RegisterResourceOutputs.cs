@@ -12,13 +12,13 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        internal void RegisterResourceOutputs(
+        void IDeploymentInternal.RegisterResourceOutputs(
             Resource resource, Output<IDictionary<string, object>> outputs)
         {
             // RegisterResourceOutputs is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
             this.RegisterTask(
-                $"{nameof(RegisterResourceOutputs)}: {resource.Type}-{resource.Name}",
+                $"{nameof(IDeploymentInternal.RegisterResourceOutputs)}: {resource.Type}-{resource.Name}",
                 RegisterResourceOutputsAsync(resource, outputs));
         }
 

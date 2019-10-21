@@ -5,11 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Serilog;
 
 namespace Pulumi
 {
@@ -36,8 +32,9 @@ namespace Pulumi
             }
 
             Serilog.Log.Debug("Creating new Deployment.");
-            Instance = new Deployment();
-            return Instance.RunWorkerAsync(func);
+            var deployment = new Deployment();
+            Instance = deployment;
+            return deployment.RunWorkerAsync(func);
         }
 
         private Task<int> RunWorkerAsync(Func<Task<IDictionary<string, object>>> func)

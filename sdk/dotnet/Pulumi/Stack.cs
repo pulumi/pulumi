@@ -49,9 +49,9 @@ namespace Pulumi
             Output.Create<IDictionary<string, object>>(ImmutableDictionary<string, object>.Empty);
 
         public Stack(Func<Task<IDictionary<string, object>>> init)
-            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.Options.Project}-{Deployment.Instance.Options.Stack}")
+            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
         {
-            Deployment.Instance.Stack = this;
+            Deployment.InternalInstance.Stack = this;
 
             try
             {
@@ -67,7 +67,7 @@ namespace Pulumi
         {
             // Ensure we are known as the root resource.  This is needed before we execute any user
             // code as many codepaths will request the root resource.
-            await Deployment.Instance.SetRootResourceAsync(this).ConfigureAwait(false);
+            await Deployment.InternalInstance.SetRootResourceAsync(this).ConfigureAwait(false);
 
             var dictionary = await init().ConfigureAwait(false);
             return dictionary == null

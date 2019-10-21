@@ -49,6 +49,6 @@ namespace Pulumi
             => RegisterOutputs(Output.Create(outputs ?? throw new ArgumentNullException(nameof(outputs))));
 
         protected void RegisterOutputs(Output<IDictionary<string, object>> outputs)
-            => Deployment.Instance.RegisterResourceOutputs(this, outputs ?? throw new ArgumentNullException(nameof(outputs)));
+            => Deployment.InternalInstance.RegisterResourceOutputs(this, outputs ?? throw new ArgumentNullException(nameof(outputs)));
     }
 }

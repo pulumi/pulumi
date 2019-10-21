@@ -130,11 +130,9 @@ namespace Pulumi
 
             // Before anything else - if there are transformations registered, invoke them in order
             // to transform the properties and options assigned to this resource.
-            var parent = opts.Parent ?? Deployment.Instance._stack;
-            if (parent == null && type != Stack._rootPulumiStackTypeName)
-            {
-                throw new InvalidOperationException("No stack instance, and we were not the stack itself.");
-            }
+            var parent = type == Stack._rootPulumiStackTypeName
+                ? null
+                : (opts.Parent ?? Deployment.Instance.Stack);
 
             this.Type = type;
             this.Name = name;
@@ -272,7 +270,7 @@ namespace Pulumi
                 // this resource's properties will be resolved asynchronously after the operation
                 // completes, so that dependent computations resolve normally.  If we are just
                 // planning, on the other hand, values will never resolve.
-                Deployment.Instance.RegisterResource(this, custom, args, opts);
+                Deployment.InternalInstance.RegisterResource(this, custom, args, opts);
             }
         }
 
@@ -310,8 +308,8 @@ namespace Pulumi
                 var alias = a.Alias!;
                 var name = alias.Name.HasValue ? alias.Name.Value : defaultName;
                 var type = alias.Type.HasValue ? alias.Type.Value : defaultType;
-                var project = alias.Project.HasValue ? alias.Project.Value : Deployment.Instance.Options.Project;
-                var stack = alias.Stack.HasValue ? alias.Stack.Value : Deployment.Instance.Options.Stack;
+                var project = alias.Project.HasValue ? alias.Project.Value : Deployment.Instance.ProjectName;
+                var stack = alias.Stack.HasValue ? alias.Stack.Value : Deployment.Instance.StackName;
 
                 if (alias.Parent.HasValue && alias.ParentUrn.HasValue)
                     throw new ArgumentException("Alias cannot specify Parent and ParentUrn at the same time.");

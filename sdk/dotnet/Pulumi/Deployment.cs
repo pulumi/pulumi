@@ -3,12 +3,40 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Pulumirpc;
 
 namespace Pulumi
 {
+    internal interface IDeploymentInternal : IDeployment
+    {
+        Options Options { get; }
+        string? GetConfig(string fullKey);
+
+        new Stack Stack { get; set; }
+
+        Task DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
+        Task InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
+        Task WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
+        Task ErrorAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
+
+        Task SetRootResourceAsync(Stack stack);
+
+        void RegisterResource(Resource resource, bool custom, ResourceArgs args, ResourceOptions opts);
+        void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object>> outputs);
+    }
+
+    public interface IDeployment
+    {
+        string StackName { get; }
+        string ProjectName { get; }
+        bool IsDryRun { get; }
+
+        Stack Stack { get; }
+    }
+
     /// <summary>
     /// <see cref="Deployment"/> is the entrypoint to a Pulumi application. .NET applications should
     /// should perform all startup logic they need in their <c>Main</c> method and then end with:
@@ -32,21 +60,21 @@ namespace Pulumi
     /// the running of the program are properly reported.  Failure to do this may lead to the
     /// program ending early before all resources are properly registered.
     /// </summary>
-    public sealed partial class Deployment
+    public sealed partial class Deployment : IDeploymentInternal
     {
-        /// <summary>
-        /// If we're in preview mode or not.
-        /// </summary>
-        internal static bool DryRun;
-
-        private static Deployment? _instance;
-        public static Deployment Instance
+        private static IDeployment? _instance;
+        public static IDeployment Instance
         {
             get => _instance ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
-            set => _instance = (value ?? throw new ArgumentNullException(nameof(value)));
+            internal set => _instance = (value ?? throw new ArgumentNullException(nameof(value)));
         }
 
-        internal Options Options { get; }
+        internal static IDeploymentInternal InternalInstance
+            => (IDeploymentInternal)Instance;
+
+        private Options _options;
+        Options IDeploymentInternal.Options => _options;
+
         internal Engine.EngineClient Engine { get; }
         internal ResourceMonitor.ResourceMonitorClient Monitor { get; }
 
@@ -56,6 +84,10 @@ namespace Pulumi
             get => _stack ?? throw new InvalidOperationException("Trying to acquire Deployment.Stack before 'Run' was called.");
             set => _stack = (value ?? throw new ArgumentNullException(nameof(value)));
         }
+
+        public string ProjectName => _options.Project;
+        public string StackName => _options.Stack;
+        public bool IsDryRun => _options.DryRun;
 
         private Deployment()
         {
@@ -91,11 +123,10 @@ namespace Pulumi
             if (!int.TryParse(parallel, out var parallelValue))
                 throw new InvalidOperationException("Environment did not contain a valid int value for: PULUMI_PARALLEL");
 
-            this.Options = new Options(
-                queryMode: queryModeValue, parallel: parallelValue,
+            _options = new Options(
+                dryRun: dryRunValue, queryMode: queryModeValue, parallel: parallelValue,
                 project: project, stack: stack, pwd: pwd,
                 monitor: monitor, engine: engine, tracing: tracing);
-            DryRun = dryRunValue;
 
             Serilog.Log.Debug("Creating Deployment Engine.");
             this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));

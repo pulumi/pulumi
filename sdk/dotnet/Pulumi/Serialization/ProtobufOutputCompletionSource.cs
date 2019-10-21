@@ -28,7 +28,7 @@ namespace Pulumi.Rpc
                 // we're pointing at null.  During preview, we'll treat that as an unknown value.  
                 // During non-preview though it will be converted the to the default value for this
                 // output type.
-                var isKnown = !Deployment.DryRun;
+                var isKnown = !Deployment.Instance.IsDryRun;
                 this.SetResult(new OutputData<T>(default!, isKnown, isSecret));
                 return;
             }
