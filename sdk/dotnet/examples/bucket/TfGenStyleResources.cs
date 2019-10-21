@@ -2,9 +2,6 @@
 // the shape right "by hand" and then work on the code-gen to stub everything else out:
 
 using Pulumi;
-using System;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using Pulumi.Rpc;
 
 namespace AWS.S3

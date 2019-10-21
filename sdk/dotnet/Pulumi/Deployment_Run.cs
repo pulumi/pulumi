@@ -1,15 +1,11 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 #nullable enable
 
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Serilog;
 
 namespace Pulumi
 {
@@ -55,7 +51,7 @@ namespace Pulumi
             }
         }
 
-        // Keep track if we already logged the information about an unhandled error to the user..  If
+        // Keep track if we already logged the information about an unhandled error to the user.  If
         // so, we end with a different exit code.  The language host recognizes this and will not print
         // any further messages to the user since we already took care of it.
         //

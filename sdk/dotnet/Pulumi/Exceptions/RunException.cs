@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 #nullable enable
 
@@ -7,7 +7,7 @@ using System;
 namespace Pulumi
 {
     /// <summary>
-    /// RunError can be used for terminating a program abruptly, but resulting in a clean exit
+    /// RunException can be used for terminating a program abruptly, but resulting in a clean exit
     /// rather than the usual verbose unhandled error logic which emits the source program text and
     /// complete stack trace.  This type should be rarely used.  Ideally <see
     /// cref="ResourceException"/> should always be used so that as many errors as possible can be
