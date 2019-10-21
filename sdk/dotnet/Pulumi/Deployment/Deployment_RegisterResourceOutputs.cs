@@ -18,7 +18,7 @@ namespace Pulumi
             // RegisterResourceOutputs is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
             this.RegisterTask(
-                $"{nameof(IDeploymentInternal.RegisterResourceOutputs)}: {resource.Type}-{resource.Name}",
+                $"{nameof(IDeploymentInternal.RegisterResourceOutputs)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
                 RegisterResourceOutputsAsync(resource, outputs));
         }
 

@@ -19,8 +19,8 @@ namespace Pulumi
             /* IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
             // Before we can proceed, all our dependencies must be finished.
-            var type = res.Type;
-            var name = res.Name;
+            var type = res.GetResourceType();
+            var name = res.GetResourceName();
 
             Log.Debug($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}");
             var explicitDirectDependencies = new HashSet<Resource>(

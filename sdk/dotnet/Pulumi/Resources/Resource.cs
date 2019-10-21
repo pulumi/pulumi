@@ -16,6 +16,9 @@ namespace Pulumi
     /// </summary>
     public class Resource
     {
+        private readonly string _type;
+        private readonly string _name;
+
         /// <summary>
         /// The optional parent of this resource.
         /// </summary>
@@ -84,12 +87,14 @@ namespace Pulumi
         /// <summary>
         /// The type assigned to the resource at construction.
         /// </summary>
-        public string Type { get; }
+        // This is a method and not a property to not collide with potential subclass property names.
+        public string GetResourceType() => _type;
 
         /// <summary>
         /// The name assigned to the resource at construction.
         /// </summary>
-        public string Name { get; }
+        // This is a method and not a property to not collide with potential subclass property names.
+        public string GetResourceName() => _name;
 
         /// <summary>
         /// The set of providers to use for child resources. Keyed by package name (e.g. "aws").
@@ -134,9 +139,9 @@ namespace Pulumi
                 ? null
                 : (options.Parent ?? Deployment.Instance.Stack);
 
-            this.Type = type;
-            this.Name = name;
-            this._urn = new UrnOutputCompletionSource(this);
+            _type = type;
+            _name = name;
+            _urn = new UrnOutputCompletionSource(this);
 
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
             transformations.AddRange(options.ResourceTransformations);
@@ -194,7 +199,7 @@ namespace Pulumi
                 options.Aliases = options.Aliases.ToList();
                 foreach (var parentAlias in options.Parent._aliases)
                 {
-                    options.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, options.Parent.Name, parentAlias, type));
+                    options.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, options.Parent.GetResourceName(), parentAlias, type));
                 }
 
                 this._providers = options.Parent._providers;

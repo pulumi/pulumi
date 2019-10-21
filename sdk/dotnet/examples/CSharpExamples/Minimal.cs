@@ -18,7 +18,7 @@ namespace Pulumi.CSharpExamples
             // We could suggest always using the namespace, but this makes new-ing of Args even longer and uglier?
             var storageAccount = new Storage.Account("sa", new Storage.AccountArgs
             {
-                ResourceGroupName = resourceGroup.Name,
+                ResourceGroupName = resourceGroup.GetResourceName,
                 AccountReplicationType = "LRS",
                 AccessTier = "Standard",
             });

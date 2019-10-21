@@ -30,7 +30,7 @@ namespace Pulumi
             // the object finishing initializing.  Note: this is not a speculative concern. This is
             // something that does happen and has to be accounted for.
             this.RegisterTask(
-                $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.Type}-{resource.Name}",
+                $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
                 resource._onConstructorFinished.Task.ContinueWith(
                     _ => RegisterResourceAsync(resource, custom, args, options),
                     CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap());
@@ -39,8 +39,8 @@ namespace Pulumi
         private static ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
             Resource resource)
         {
-            var name = resource.Name;
-            var type = resource.Type;
+            var name = resource.GetResourceName();
+            var type = resource.GetResourceType();
 
             var query = from field in resource.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
                         let attr = field.GetCustomAttribute<ResourceFieldAttribute>()
@@ -130,8 +130,8 @@ namespace Pulumi
             Resource resource, bool custom,
             ResourceArgs args, ResourceOptions options)
         {
-            var name = resource.Name;
-            var type = resource.Type;
+            var name = resource.GetResourceName();
+            var type = resource.GetResourceType();
 
             var label = $"resource:{name}[{type}]";
             Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}");
