@@ -79,10 +79,8 @@ namespace Pulumi
     /// </summary>
     public sealed class Output<T> : IOutput
     {
-        internal static bool DryRun;
-
-        internal ImmutableHashSet<Resource> Resources;
-        internal readonly Task<OutputData<T>> DataTask;
+        internal ImmutableHashSet<Resource> Resources { get; private set; }
+        internal Task<OutputData<T>> DataTask { get; private set; }
 
         internal Output(ImmutableHashSet<Resource> resources, Task<OutputData<T>> dataTask)
         {
