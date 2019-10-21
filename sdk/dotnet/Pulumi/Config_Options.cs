@@ -10,7 +10,7 @@ namespace Pulumi
     public partial class Config
     {
         /// <summary>
-        /// StringConfigOptions may be used to constrain the set of legal values a string config value may contain.
+        /// StringOptions may be used to constrain the set of legal values a string config value may contain.
         /// </summary>
         public class StringOptions
         {
@@ -36,7 +36,7 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// Int32ConfigOptions may be used to constrain the set of legal values a number config value may contain.
+        /// Int32Options may be used to constrain the set of legal values a number config value may contain.
         /// </summary>
         public class Int32Options
         {
