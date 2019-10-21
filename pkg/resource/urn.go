@@ -68,6 +68,14 @@ func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType to
 	)
 }
 
+// IsValid returns true if the URN is well-formed.
+func (urn URN) IsValid() bool {
+	if !strings.HasPrefix(string(urn), URNPrefix) {
+		return false
+	}
+	return len(strings.Split(string(urn), URNNameDelimiter)) == 4
+}
+
 // URNName returns the URN name part of a URN (i.e., strips off the prefix).
 func (urn URN) URNName() string {
 	s := string(urn)
