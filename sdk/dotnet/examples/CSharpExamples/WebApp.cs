@@ -20,14 +20,14 @@ namespace Pulumi.CSharpExamples
 
             var storageAccount = new Account("sa", new AccountArgs
             {
-                ResourceGroupName = resourceGroup.Name1,
+                ResourceGroupName = resourceGroup.Name,
                 AccountReplicationType = "LRS",
                 AccountTier = "Standard",
             });
 
             var appServicePlan = new Plan("asp", new PlanArgs
             {
-                ResourceGroupName = resourceGroup.Name1,
+                ResourceGroupName = resourceGroup.Name,
                 Kind = "App",
                 Sku = new PlanSkuArgs
                 {
@@ -71,8 +71,8 @@ namespace Pulumi.CSharpExamples
 
             var app = new AppService("app", new AppServiceArgs
             {
-                ResourceGroupName = resourceGroup.Name1,
-                AppServicePlanId = appServicePlan.Id1,
+                ResourceGroupName = resourceGroup.Name,
+                AppServicePlanId = appServicePlan.Id,
                 AppSettings =
                 {
                     { "WEBSITE_RUN_FROM_ZIP", codeBlobUrl },
