@@ -100,7 +100,7 @@ namespace Pulumi.Tests.Core
                     var o1 = CreateOutput(0, isKnown: false);
                     var o2 = o1.Apply(a => a + 1);
                     var data = await o2.DataTask.ConfigureAwait(false);
-                    Assert.True(data.IsKnown);
+                    Assert.False(data.IsKnown);
                     Assert.Equal(1, data.Value);
                 });
 
