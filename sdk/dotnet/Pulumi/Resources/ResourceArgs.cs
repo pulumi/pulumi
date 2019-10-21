@@ -38,12 +38,6 @@ namespace Pulumi
 
             public void Add<T>(string name, Input<T> input)
                 => _builder.Add(name, input);
-
-            public void Add<T>(string name, InputList<T> list)
-                => _builder.Add(name, list);
-
-            public void Add<T>(string name, InputMap<T> map)
-                => _builder.Add(name, map);
         }
 
         private class EmptyResourceArgs : ResourceArgs
