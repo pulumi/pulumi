@@ -103,7 +103,7 @@ namespace Pulumi
         /// Loads an optional configuration value, as a boolean, by its key, or null if it doesn't exist.
         /// If the configuration value isn't a legal boolean, this function will throw an error.
         /// </summary>
-        public bool? GetBool(string key)
+        public bool? GetBoolean(string key)
         {
             var v = this.Get(key);
             if (v == null)
@@ -127,9 +127,9 @@ namespace Pulumi
         /// null if it doesn't exist. If the configuration value isn't a legal boolean, this
         /// function will throw an error.
         /// </summary>
-        public Output<bool>? GetSecretBool(string key)
+        public Output<bool>? GetSecretBoolean(string key)
         {
-            var v = this.GetBool(key);
+            var v = this.GetBoolean(key);
             return v == null ? null : MakeSecret(v.Value);
         }
 
@@ -229,15 +229,15 @@ namespace Pulumi
         /// loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal boolean, an error is thrown.
         /// </summary>
-        public bool RequireBool(string key)
-            => this.GetBool(key) ?? throw new ConfigMissingException(this.FullKey(key));
+        public bool RequireBoolean(string key)
+            => this.GetBoolean(key) ?? throw new ConfigMissingException(this.FullKey(key));
 
         /// <summary>
         /// loads a configuration value, as a boolean, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
         /// </summary>
-        public Output<bool> RequireSecretBool(string key)
-            => MakeSecret(this.RequireBool(key));
+        public Output<bool> RequireSecretBoolean(string key)
+            => MakeSecret(this.RequireBoolean(key));
 
         /// <summary>
         /// loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
