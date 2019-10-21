@@ -125,7 +125,7 @@
         </member>
         <member name="T:Pulumi.Config.StringOptions">
             <summary>
-            StringConfigOptions may be used to constrain the set of legal values a string config value may contain.
+            StringOptions may be used to constrain the set of legal values a string config value may contain.
             </summary>
         </member>
         <member name="F:Pulumi.Config.StringOptions.AllowedValues">
@@ -150,7 +150,7 @@
         </member>
         <member name="T:Pulumi.Config.Int32Options">
             <summary>
-            Int32ConfigOptions may be used to constrain the set of legal values a number config value may contain.
+            Int32Options may be used to constrain the set of legal values a number config value may contain.
             </summary>
         </member>
         <member name="F:Pulumi.Config.Int32Options.Min">
@@ -860,12 +860,12 @@
             A list of aliases applied to this resource.
             </summary>
         </member>
-        <member name="F:Pulumi.Resource.Type">
+        <member name="P:Pulumi.Resource.Type">
             <summary>
             The type assigned to the resource at construction.
             </summary>
         </member>
-        <member name="F:Pulumi.Resource.Name">
+        <member name="P:Pulumi.Resource.Name">
             <summary>
             The name assigned to the resource at construction.
             </summary>
@@ -985,13 +985,23 @@
             constructor.  If the transformation returns <see langword="null"/>, this indicates that the
             resource will not be transformed.
             </summary>
-            <param name="resource">The Resource instance that is being transformed.</param>
-            <param name="type">The type of the Resource.</param>
-            <param name="name">The name of the Resource.</param>
-            <param name="args">The original properties passed to the Resource constructor.</param>
-            <param name="opts">The original resource options passed to the Resource constructor.</param>
             <returns>The new values to use for the <c>args</c> and <c>opts</c> of the <see
             cref="T:Pulumi.Resource"/> in place of the originally provided values.</returns>
+        </member>
+        <member name="F:Pulumi.ResourceTransformationArgs.Resource">
+            <summary>
+            The Resource instance that is being transformed.
+            </summary>
+        </member>
+        <member name="F:Pulumi.ResourceTransformationArgs.Args">
+            <summary>
+            The original properties passed to the Resource constructor.
+            </summary>
+        </member>
+        <member name="F:Pulumi.ResourceTransformationArgs.Opts">
+            <summary>
+            The original resource options passed to the Resource constructor.
+            </summary>
         </member>
         <member name="F:Pulumi.Rpc.Constants.UnknownValue">
             <summary>

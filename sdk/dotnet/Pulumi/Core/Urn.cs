@@ -29,12 +29,6 @@ namespace Pulumi
         public bool Equals(Urn urn)
             => Value == urn?.Value;
 
-        public static bool operator ==(Urn left, Urn right)
-            => left.Equals(right);
-
-        public static bool operator !=(Urn left, Urn right)
-            => !(left == right);
-
         /// <summary>
         /// Computes a URN from the combination of a resource name, resource type, optional parent,
         /// optional project and optional stack.

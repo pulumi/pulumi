@@ -2,6 +2,8 @@
 
 #nullable enable
 
+using System;
+
 namespace Pulumi
 {
     /// <summary>
@@ -14,14 +16,43 @@ namespace Pulumi
     /// constructor.  If the transformation returns <see langword="null"/>, this indicates that the
     /// resource will not be transformed.
     /// </summary>
-    /// <param name="resource">The Resource instance that is being transformed.</param>
-    /// <param name="type">The type of the Resource.</param>
-    /// <param name="name">The name of the Resource.</param>
-    /// <param name="args">The original properties passed to the Resource constructor.</param>
-    /// <param name="opts">The original resource options passed to the Resource constructor.</param>
     /// <returns>The new values to use for the <c>args</c> and <c>opts</c> of the <see
     /// cref="Resource"/> in place of the originally provided values.</returns>
-    public delegate (ResourceArgs args, ResourceOptions opts)? ResourceTransformation(
-        Resource resource, string type, string name,
-        ResourceArgs args, ResourceOptions opts);
+    public delegate ResourceTransformationResult? ResourceTransformation(ResourceTransformationArgs args);
+
+    public struct ResourceTransformationArgs
+    {
+        /// <summary>
+        /// The Resource instance that is being transformed.
+        /// </summary>
+        public readonly Resource Resource;
+        /// <summary>
+        /// The original properties passed to the Resource constructor.
+        /// </summary>
+        public readonly ResourceArgs Args;
+        /// <summary>
+        /// The original resource options passed to the Resource constructor.
+        /// </summary>
+        public readonly ResourceOptions Opts;
+
+        public ResourceTransformationArgs(
+            Resource resource, ResourceArgs args, ResourceOptions opts)
+        {
+            Resource = resource;
+            Args = args;
+            Opts = opts;
+        }
+    }
+
+    public struct ResourceTransformationResult
+    {
+        public readonly ResourceArgs Args;
+        public readonly ResourceOptions Opts;
+
+        public ResourceTransformationResult(ResourceArgs args, ResourceOptions opts)
+        {
+            Args = args;
+            Opts = opts;
+        }
+    }
 }

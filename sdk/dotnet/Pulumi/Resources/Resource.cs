@@ -84,12 +84,12 @@ namespace Pulumi
         /// <summary>
         /// The type assigned to the resource at construction.
         /// </summary>
-        internal readonly string Type;
+        public string Type { get; }
 
         /// <summary>
         /// The name assigned to the resource at construction.
         /// </summary>
-        internal readonly string Name;
+        public string Name { get; }
 
         /// <summary>
         /// The set of providers to use for child resources. Keyed by package name (e.g. "aws").
@@ -150,10 +150,10 @@ namespace Pulumi
 
             foreach (var transformation in this._transformations)
             {
-                var tres = transformation(this, type, name, args, opts);
+                var tres = transformation(new ResourceTransformationArgs(this, args, opts));
                 if (tres != null)
                 {
-                    if (tres.Value.opts.Parent != opts.Parent)
+                    if (tres.Value.Opts.Parent != opts.Parent)
                     {
                         // This is currently not allowed because the parent tree is needed to
                         // establish what transformation to apply in the first place, and to compute
@@ -165,8 +165,8 @@ namespace Pulumi
                         throw new ArgumentException("Transformations cannot currently be used to change the 'parent' of a resource.");
                     }
 
-                    args = tres.Value.args;
-                    opts = tres.Value.opts;
+                    args = tres.Value.Args;
+                    opts = tres.Value.Opts;
                 }
             }
 
