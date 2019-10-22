@@ -26,6 +26,11 @@ class ResourceMonitorStub(object):
         request_serializer=provider__pb2.InvokeRequest.SerializeToString,
         response_deserializer=provider__pb2.InvokeResponse.FromString,
         )
+    self.StreamInvoke = channel.unary_stream(
+        '/pulumirpc.ResourceMonitor/StreamInvoke',
+        request_serializer=provider__pb2.InvokeRequest.SerializeToString,
+        response_deserializer=provider__pb2.InvokeResponse.FromString,
+        )
     self.ReadResource = channel.unary_unary(
         '/pulumirpc.ResourceMonitor/ReadResource',
         request_serializer=resource__pb2.ReadResourceRequest.SerializeToString,
@@ -55,6 +60,13 @@ class ResourceMonitorServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def Invoke(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def StreamInvoke(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -92,6 +104,11 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
       ),
       'Invoke': grpc.unary_unary_rpc_method_handler(
           servicer.Invoke,
+          request_deserializer=provider__pb2.InvokeRequest.FromString,
+          response_serializer=provider__pb2.InvokeResponse.SerializeToString,
+      ),
+      'StreamInvoke': grpc.unary_stream_rpc_method_handler(
+          servicer.StreamInvoke,
           request_deserializer=provider__pb2.InvokeRequest.FromString,
           response_serializer=provider__pb2.InvokeResponse.SerializeToString,
       ),
