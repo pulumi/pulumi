@@ -384,6 +384,13 @@ func (r *Registry) Invoke(tok tokens.ModuleMember,
 	return nil, nil, errors.New("the provider registry is not invokable")
 }
 
+func (r *Registry) StreamInvoke(
+	tok tokens.ModuleMember, args resource.PropertyMap,
+	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+
+	return nil, fmt.Errorf("the provider registry does not implement streaming invokes")
+}
+
 func (r *Registry) GetPluginInfo() (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
 	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")

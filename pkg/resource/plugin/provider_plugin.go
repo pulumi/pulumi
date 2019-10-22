@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/blang/semver"
@@ -952,6 +953,81 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
 	return ret, failures, nil
+}
+
+// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream of
+// responses.
+func (p *provider) StreamInvoke(
+	tok tokens.ModuleMember,
+	args resource.PropertyMap,
+	onNext func(resource.PropertyMap) error) ([]CheckFailure, error) {
+
+	contract.Assert(tok != "")
+
+	label := fmt.Sprintf("%s.StreamInvoke(%s)", p.label(), tok)
+	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	// If the provider is not fully configured, return an empty property map.
+	if !p.cfgknown {
+		return nil, onNext(resource.PropertyMap{})
+	}
+
+	margs, err := MarshalProperties(args, MarshalOptions{
+		Label:       fmt.Sprintf("%s.args", label),
+		KeepSecrets: p.acceptSecrets,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	streamClient, err := client.StreamInvoke(
+		p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		return nil, rpcError
+	}
+
+	for {
+		in, err := streamClient.Recv()
+		if err == io.EOF {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmarshal response.
+		ret, err := UnmarshalProperties(in.GetReturn(), MarshalOptions{
+			Label:          fmt.Sprintf("%s.returns", label),
+			RejectUnknowns: true,
+			KeepSecrets:    true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// Check properties that failed verification.
+		var failures []CheckFailure
+		for _, failure := range in.GetFailures() {
+			failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+		}
+
+		if len(failures) > 0 {
+			return failures, nil
+		}
+
+		// Send stream message back to whoever is consuming the stream.
+		if err := onNext(ret); err != nil {
+			return nil, err
+		}
+	}
 }
 
 // GetPluginInfo returns this plugin's information.

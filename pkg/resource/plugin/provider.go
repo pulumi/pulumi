@@ -71,6 +71,12 @@ type Provider interface {
 	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
+	// of responses.
+	StreamInvoke(
+		tok tokens.ModuleMember,
+		args resource.PropertyMap,
+		onNext func(resource.PropertyMap) error) ([]CheckFailure, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 

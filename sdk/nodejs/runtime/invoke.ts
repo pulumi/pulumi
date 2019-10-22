@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+const asyncify = require("callback-to-async-iterator");
+import { AsyncIterable } from "@pulumi/query/interfaces";
 import * as fs from "fs";
 import * as grpc from "grpc";
+
 import * as asset from "../asset";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
@@ -76,6 +79,18 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
     }
 
     return invokeSync(tok, props, opts, syncInvokes);
+}
+
+export function streamInvoke(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+): AsyncIterable<any> {
+    if (opts.async) {
+        throw Error("streamInvoke does not support async mode");
+    }
+
+    return streamInvokeAsync(tok, props, opts);
 }
 
 export function invokeFallbackToAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
@@ -175,6 +190,47 @@ For more details see: https://www.pulumi.com/docs/troubleshooting/#synchronous-c
         }
 
         return provider.__registrationId;
+    }
+}
+
+async function* streamInvokeAsync(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions,
+): AsyncIterable<any> {
+    const label = `StreamInvoking function: tok=${tok} asynchronously`;
+    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+
+    // Wait for all values to be available, and then perform the RPC.
+    const done = rpcKeepAlive();
+    try {
+        const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
+        log.debug(
+            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput
+                ? `, obj=${JSON.stringify(serialized)}`
+                : ``,
+        );
+
+        // Fetch the monitor and make an RPC request.
+        const monitor: any = getMonitor();
+
+        const provider = await ProviderResource.register(getProvider(tok, opts));
+        const req = createInvokeRequest(tok, serialized, provider, opts);
+
+        const call = monitor.streamInvoke(req, {});
+        const listenForWatchEvents = (callback: (obj: any) => void) => {
+            return new Promise(resolve => {
+                call.on("data", function(thing: any) {
+                    const live = deserializeResponse(tok, thing);
+                    callback(live);
+                });
+                // Infinite stream, never call `resolve`.
+            });
+        };
+
+        yield* asyncify.default(listenForWatchEvents);
+    } finally {
+        done();
     }
 }
 
