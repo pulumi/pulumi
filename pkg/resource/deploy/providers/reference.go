@@ -58,6 +58,9 @@ func GetProviderPackage(typ tokens.Type) tokens.Package {
 }
 
 func validateURN(urn resource.URN) error {
+	if !urn.IsValid() {
+		return errors.Errorf("%s is not a valid URN", urn)
+	}
 	typ := urn.Type()
 	if typ.Module() != "pulumi:providers" {
 		return errors.Errorf("invalid module in type: expected 'pulumi:providers', got '%v'", typ.Module())
